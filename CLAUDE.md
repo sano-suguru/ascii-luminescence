@@ -19,7 +19,7 @@ src/main.js          ページの入口のモジュール（ゲーム本体 virt
 src/game/*.js        ゲーム本体の古い JS（31ファイル、合わせて約7,500行。下の「ゲーム本体の地図」）
 src/game/imports.mjs ゲーム本体が使う TypeScript のモジュールを読む import の文（包みの関数の前に置かれる）
 src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整形もする
-                     rng：シードの乱数と clamp、random：見た目の乱数 mr・mpick、glyphs：文字の図鑑の番号 G、color：css・hsl2rgb、math：角度など、
+                     rng：シードの乱数を作る mulberry32 と clamp、random：見た目の乱数 mr・mpick と迷宮の乱数 rand・R・RI・pick（入れ替えは setRand）、glyphs：文字の図鑑の番号 G、color：css・hsl2rgb、math：角度など、
                      text：パネルの文字の幅と枠、history：年代記、world：迷宮の大きさ・タイル・液体と地面・支道と異界・層ごとの変化・岩、
                      light：灯りの計算、runes：特性・反応・手の枠、progress：経験・伝承・解放、hands：手元の武器の文字
 src/lib/bodies/*.ts  生き物の形（kit：点の型と道具 q2・q3、small・beasts・lords：各生き物の形）
@@ -110,7 +110,8 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 
 ## TypeScript に移す（段階6で少しずつ）
 古い JS（src/game/）の関数を、1つずつ src/lib/*.ts に移す。動きを変えないことが一番大事。
-1. src/lib/ に、型を付けて書き直す（`export` する）。古い JS の外の名前に頼る物（`rand`・`D` など、ゲームの状態）は、まだ移さない。
+1. src/lib/ に、型を付けて書き直す（`export` する）。古い JS の外の名前に頼る物（`D`・`depth`・`monsters` など、ゲームの状態）は、まだ移さない。
+   迷宮の乱数（`rand`・`R`・`RI`・`pick`）は src/lib/random.ts にあるので、それだけに頼る物は移せる（入れ替えは `setRand`。`rand=…` とは書けない）。
    `const` でも中身が変わる入れ物（`player`・`keys`・`msgs` など）は状態なので、移さない。
    TypeScript のモジュールは、古い JS より先に読まれる。読んだ時に値を覚える書き方（`const mr=Math.random` など）は、
    テスト用モードの入れ替えより前の値を覚えてしまうので、呼んだ時に読む形にする（`mr = () => Math.random()`）。
@@ -176,7 +177,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 |---|---|
 | 00-test-mode | テスト用モード（`TEST`、時計、乱数） |
 | 01-title | タイトルのロゴ |
-| 02-constants | 層・異界の中身（STRATA・テーマ・MTYPES など）、シードの乱数（rand・R・RI・pick）。迷宮の大きさ・タイル・支道・灯りの計算などは src/lib/ |
+| 02-constants | 層・異界の中身（STRATA・テーマ・MTYPES など）。迷宮の乱数（rand・R・RI・pick）・迷宮の大きさ・タイル・支道・灯りの計算などは src/lib/ |
 | 03-vaults-history | 洞窟の形、宝物庫の絵（VAULTS）、歴史の飾り。makeHistory は src/lib/history.ts、岩・鉱脈・宝物庫の壁の高さは src/lib/world.ts |
 | 04-generate | 迷宮の生成（levelDims、generate。1つの関数で約920行） |
 | 05-renderer | 描画（シェーダー、水面、文字の図鑑、dyn、粒子の入れ物） |

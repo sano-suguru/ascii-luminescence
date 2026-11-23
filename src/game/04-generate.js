@@ -7,7 +7,7 @@ function levelDims(st,d){ if(st.k==='bigroom'&&!showroomGen)return [56,34]; if(s
   return [Math.min(MW,w),Math.min(MH,h)]; }
 function generate(seed,depth){
   if(HIST_SEED!==runSeed){ HIST=makeHistory(runSeed); HIST_SEED=runSeed; }
-  rand=mulberry32(seed);
+  setRand(mulberry32(seed));
   const W=MW,H=MH,N=NCELL;
   const prof=depthProfile(depth);
   const tile=new Uint8Array(N), liquid=new Uint8Array(N), surface=new Uint8Array(N), roomOf=new Int16Array(N).fill(-1);
