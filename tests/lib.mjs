@@ -50,3 +50,13 @@ export async function openTest(pg, base, query = '') {
 export const frames = (pg, n) => pg.evaluate((n) => __test.frames(n), n);
 // 描かずに進める（速い）
 export const advance = (pg, sec) => pg.evaluate((s) => __test.advance(s), sec);
+// 一番近い祭壇のそばへ行く（dbg.to('altar') は2マス手前に置くが、祭壇の画面は1.5以内でないと開かない）
+export const nearAltar = (pg) => pg.evaluate(() => {
+  dbg.to('altar');
+  const [px, pz] = __test.state().pos, d = (o) => Math.hypot(o.pos[0] - px, o.pos[1] - pz);
+  const a = dbg.items().filter((o) => o.altar && o.slot === 1).sort((p, q) => d(p) - d(q))[0];
+  if (!a) return false;
+  const [ax, az] = a.pos, k = 1.2 / (d(a) || 1);
+  dbg.step(ax + (px - ax) * k, az + (pz - az) * k);
+  return true;
+});
