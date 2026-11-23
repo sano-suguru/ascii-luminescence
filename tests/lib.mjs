@@ -1,9 +1,9 @@
 // テストの共通部分：組み立て・配信・ブラウザ・テスト用モードのページ。
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
-import { build } from '../tools/build.mjs';
+import { build, locateInPage } from '../tools/build.mjs';
 import { serve } from '../tools/serve.mjs';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -13,10 +13,19 @@ export const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ?
 // ヘッドレスの Chromium はソフトウェアGL（swiftshader）で描く。とても遅い（960x540 で1秒に1フレームほど）。
 const GL_ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--font-render-hinting=none'];
 
+// ページのエラーの「index.html?…:行:列」に、src/game/ の場所を書き足す（組み立てたページの行は、元のファイルの行と違うため）
+let pageText = null;
+export const annotate = (s) => !pageText ? s : s.replace(/index\.html(?:\?[^:\s)]*)?:(\d+):(\d+)/g, (all, l, c) => {
+  const r = locateInPage(pageText, Number(l));
+  return r.file ? `${all} (${r.file}:${r.line}:${c})` : all;
+});
+
 // 組み立てて配信し、ブラウザを開く。fn が終わったら必ず閉じる。
 export async function withBrowser(fn, { cdn = false } = {}) {
   mkdirSync(OUT, { recursive: true });
-  const srv = await serve(build({ test: !cdn }));
+  const dir = build({ test: !cdn });
+  pageText = readFileSync(join(dir, 'index.html'), 'utf8');
+  const srv = await serve(dir);
   // システムのフォントを見せない（tests/fonts.conf）。テスト版は Web フォントを同梱しているので、どのマシンでも同じ文字になる。
   // 公開用の版（cdn）は Google Fonts を読むので、ふつうの設定のままにする。
   const env = cdn ? process.env : { ...process.env, FONTCONFIG_FILE: join(ROOT, 'tests/fonts.conf') };
@@ -29,7 +38,7 @@ export async function withBrowser(fn, { cdn = false } = {}) {
 // still: CSS のアニメーションとトランジションを止める（実際の時間で進むので、画面写真が揺れる。いつも終わった後の姿にする）
 export async function newPage(browser, errs, { width = 960, height = 540, still = false } = {}) {
   const pg = await browser.newPage({ viewport: { width, height } });
-  pg.on('pageerror', (e) => errs.push(String(e.stack || e).slice(0, 400)));
+  pg.on('pageerror', (e) => errs.push(annotate(String(e.stack || e)).slice(0, 600)));
   pg.on('requestfailed', (r) => console.log('request failed:', r.url(), r.failure()?.errorText || ''));
   await pg.addInitScript(() => { HTMLCanvasElement.prototype.requestPointerLock = () => Promise.reject(new Error('no')); });
   if (still) await pg.addInitScript(() => {

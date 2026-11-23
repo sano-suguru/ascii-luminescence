@@ -2,10 +2,12 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 export default [
-  { ignores: ['node_modules/', 'dist/', '.build/', 'tests/out/', '.wrangler/'] },
+  // src/game/ のファイルは1つだけでは調べられない（ほかのファイルの名前が分からない）。つないで調べる：tools/lint-game.mjs
+  { ignores: ['node_modules/', 'dist/', '.build/', 'tests/out/', '.wrangler/', 'src/game/'] },
   js.configs.recommended,
   {
     // ゲーム本体：ブラウザの普通の <script>（モジュールではない）。THREE は CDN の <script> から来る。
+    // tools/lint-game.mjs が、src/game/*.js をつないだものを、仮の名前 src/game.js で調べる。
     files: ['src/**/*.js'],
     languageOptions: {
       ecmaVersion: 'latest',

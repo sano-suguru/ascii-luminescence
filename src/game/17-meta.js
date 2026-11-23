@@ -1,0 +1,121 @@
+// ---------------------------------------------------------------- stage D: lore (points kept between adventures), unlocks, the last adventurer's grave, trials
+const META_DEF={lore:0,spent:0,unl:[],grave:null,trials:[]};
+function loadMeta(){ try{ return Object.assign({},META_DEF,JSON.parse(localStorage.getItem('al_meta')||'{}')); }catch(e){ return Object.assign({},META_DEF); } }
+let META=loadMeta();
+function saveMeta(){ try{ localStorage.setItem('al_meta',JSON.stringify(META)); }catch(e){} }
+const UNLOCKS=[
+  {id:'w_star',kind:'weapon',t:'star',name:'星降りの杖',cost:15,desc:'狙った所に、遅れて光の柱が降る杖'},
+  {id:'w_rain',kind:'weapon',t:'rain',name:'雨降らしの長弓',cost:20,desc:'両手で持つ長弓。狙った所に、矢の雨を降らせる'},
+  {id:'w_gsword',kind:'weapon',t:'gsword',name:'遠鳴りの両手剣',cost:25,desc:'両手で持つ大剣。広い斬撃と、溜めた大きな斬撃'},
+  {id:'w_mstaff',kind:'weapon',t:'mstaff',name:'満ち月の長杖',cost:25,desc:'両手で持つ長杖。溜めるほど育つ光の月'},
+  {id:'r_poison',kind:'rune',t:'poison',name:'毒のルーン',cost:15,desc:'性質のルーン「毒」が、祭壇などに出るようになる'},
+  {id:'b_shatter',kind:'bless',t:'shatter',name:'恩恵「冷え込み」',cost:10,desc:'レベルアップの恩恵に加わる'},
+  {id:'b_swapedge',kind:'bless',t:'swapedge',name:'恩恵「持ち替えの冴え」',cost:10,desc:'レベルアップの恩恵に加わる'},
+  {id:'b_scorch',kind:'bless',t:'scorch',name:'恩恵「焦熱」',cost:10,desc:'レベルアップの恩恵に加わる（代償あり）'},
+  {id:'b_reckless',kind:'bless',t:'reckless',name:'恩恵「捨て身」',cost:10,desc:'レベルアップの恩恵に加わる（代償あり）'},
+  {id:'build3',kind:'build',name:'三つ目のビルド',cost:30,desc:'保存できるビルドが3つになる'},
+  {id:'t_dusk',kind:'trial',t:'dusk',name:'試練「薄明」',cost:20,desc:'灯りが約6割しか届かない。代わりに、敵にも見つかりにくい'},
+  {id:'t_fury',kind:'trial',t:'fury',name:'試練「猛り」',cost:30,desc:'敵の体力と攻撃が約3割強く、群れが少し増える'} ];
+const devAllSafe=()=>{ try{ return DEVALL; }catch(e){ return false; } };
+const unlocked=id=>devAllSafe()||META.unl.includes(id);
+const lockedOf=(kind,t)=>{ const u=UNLOCKS.find(x=>x.kind===kind&&x.t===t); return !!u&&!unlocked(u.id); };
+const weaponPool=()=>RUNE_TYPES.atk.filter(t=>!lockedOf('weapon',t));
+const loreLeft=()=>Math.max(0,(META.lore||0)-(META.spent||0));
+let runTrials=[];
+const trialOn=k=>runTrials.includes(k);
+let introMode='main';
+function buildUnlockPanel(){ const el=document.getElementById('intropanel'); if(!el)return; const f=t=>`<span class="f">${t}</span>`, KIND={weapon:'武器',rune:'ルーン',bless:'恩恵',build:'ビルド',trial:'試練'};
+  const rows=[f('+-- 解放 ---'),`${f('|')} 伝承を使って、選べるものを増やす。　使える伝承 <b style="color:#ffe3a0">${loreLeft()}</b>`,f('|')];
+  for(const u of UNLOCKS){ const done=unlocked(u.id), can=!done&&u.cost<=loreLeft();
+    rows.push(`${f('|')} ${done?'<span class="lab">　解放済み　</span>':can?`<button class="sl" type="button" data-unl="${u.id}">[ 解放する ]</button>`:'<span class="dim">　伝承不足　</span>'} ${padTo(`<span class="lab">${KIND[u.kind]}</span>`,6)} ${padTo(done?u.name:`<span${can?'':' class="dim"'}>${u.name}</span>`,24)} <span class="lab">${String(u.cost).padStart(3)}</span>`);
+    rows.push(`${f('|')}               <span class="dim">${u.desc}</span>`); }
+  rows.push(f('|'),`${f('|')} <button class="sl" id="unlBack" type="button">[ もどる ]</button>`,f('+---'));
+  el.innerHTML=boxText(rows);
+  document.getElementById('unlBack').addEventListener('click',()=>{ introMode='main'; buildIntroPanel(); });
+  for(const b of el.querySelectorAll('button[data-unl]'))b.addEventListener('click',()=>{ const u=UNLOCKS.find(x=>x.id===b.dataset.unl); if(!u||unlocked(u.id)||u.cost>loreLeft())return; META.unl=[...(META.unl||[]),u.id]; META.spent=(META.spent||0)+u.cost; saveMeta(); sndInit(); sChime(0,0,0.5); buildUnlockPanel(); }); }
+function buildIntroPanel(){
+  const devOn=(()=>{ try{ return localStorage.getItem('al_dev')==='1'; }catch(e){ return false; } })(); if(!devOn)startDepth=1; const seedKeep=(document.getElementById('seedIn')||{}).value||'';
+  const el=document.getElementById('intropanel'); if(!el)return; const f=t=>`<span class="f">${t}</span>`;
+  if(introMode==='unlock'){ buildUnlockPanel(); return; }
+  const keys=[['WASD','移動'],['マウス','視点'],['左クリック','左手'],['右クリック','右手'],['ホイール','ビルド切替'],['Space','回避'],['Shift','走る'],['Tab','装備'],['Esc','メニュー']];
+  const cell=([k,v])=>{ const s=`<b>[${k}]</b> ${v}`; return s+' '.repeat(Math.max(1,24-visW(s))); };
+  const keyRows=[]; for(let i=0;i<keys.length;i+=2)keyRows.push(`${f('|')} ${cell(keys[i])}${keys[i+1]?cell(keys[i+1]):''}`);
+  const seen=new Set(), layers=[]; for(const st of STRATA){ if(seen.has(st.n))continue; seen.add(st.n); layers.push(st); }
+  const layerRows=devOn?[`${f('|')} 開始する層`,...layers.map(st=>`${f('|')}   <button class="sl${st.from===startDepth?' on':''}" type="button" data-d="${st.from}"><span class="mk">${st.from===startDepth?'&gt;':' '}</span> 第${st.n}層 ${st.name}</button>`),f('|')]:[];
+  el.innerHTML=boxText([f('+-- 地下迷宮へ ---'),
+    `${f('|')} 壁も床も天井も、そこに棲むものも、`,`${f('|')} すべてが光る文字でできた地下迷宮。`,`${f('|')} 深く潜るほど闇は濃く、溶岩の光が強くなる。`,f('|'),
+    ...keyRows,f('|'),...layerRows,
+    `${f('|')} シード [<input id="seedIn" type="text" inputmode="numeric" autocomplete="off" maxlength="10" size="10" placeholder="ランダム" aria-label="シード">]`,f('|'),
+    ...(UNLOCKS.some(u=>u.kind==='trial'&&unlocked(u.id))?[`${f('|')} 試練 `+UNLOCKS.filter(u=>u.kind==='trial'&&unlocked(u.id)).map(u=>`<button class="sl${(META.trials||[]).includes(u.t)?' on':''}" type="button" data-trial="${u.t}"><span class="mk">${(META.trials||[]).includes(u.t)?'&gt;':' '}</span> ${u.name.replace(/試練|「|」/g,'')}</button>`).join('  '),f('|')]:[]),
+    `${f('|')} 伝承 <b style="color:#ffe3a0">${loreLeft()}</b> <span class="lab">（累計 ${META.lore||0}）</span>  <button class="sl" id="unlockB" type="button">[ 解放 ]</button>`,f('|'),
+    `${f('|')}               <button id="enter" type="button">[ 迷宮に入る ]</button>`,f('|'),
+    `${f('|')} <button class="sl" id="galB" type="button">[ 図鑑 ]</button>  <button class="sl" id="galR" type="button">[ 試しの間 ]</button>   <button class="sl" id="galDev" type="button">[開発用モード：${devOn?'オン':'オフ'}]</button>`,f('+---')]);
+  document.getElementById('galB').addEventListener('click',()=>{ sndInit(); openBestiary(); });
+  document.getElementById('unlockB').addEventListener('click',()=>{ introMode='unlock'; buildIntroPanel(); });
+  for(const b of el.querySelectorAll('button[data-trial]'))b.addEventListener('click',()=>{ const k=b.dataset.trial, T=new Set(META.trials||[]); if(T.has(k))T.delete(k); else T.add(k); META.trials=[...T]; saveMeta(); buildIntroPanel(); });
+  document.getElementById('galR').addEventListener('click',()=>openRange());
+  document.getElementById('galDev').addEventListener('click',()=>{ DEVALL=!DEVALL; try{ localStorage.setItem('al_dev',DEVALL?'1':'0'); }catch(er){} buildIntroPanel(); });
+  for(const b of el.querySelectorAll('button.sl[data-d]'))b.addEventListener('click',()=>{ startDepth=+b.dataset.d; for(const o of el.querySelectorAll('button.sl[data-d]')){ const on=o===b; o.classList.toggle('on',on); o.querySelector('.mk').innerHTML=on?'&gt;':' '; } });
+  const si=document.getElementById('seedIn'); if(si)si.value=seedKeep;
+}
+buildIntroPanel();
+
+// the title panel can be rebuilt, so its [迷宮に入る] is caught on the panel itself
+document.getElementById('intropanel').addEventListener('click',e=>{
+  if(!(e.target&&e.target.closest&&e.target.closest('#enter')))return;
+  sndInit();
+  const sv=(document.getElementById('seedIn').value||'').trim();
+  let regen=false;
+  if(/^[0-9]{1,10}$/.test(sv)){ const n=Number(sv)>>>0; if(n!==runSeed){ runSeed=n; regen=true; } }
+  if(startDepth!==depth){ depth=startDepth; regen=true; }
+  if(regen){ branch=null; realm=null; inter=null; }
+  rains=[]; marks=[]; zones=[]; laters=[];
+  dead=false; { const de=document.getElementById('death'); if(de)de.classList.remove('show','won'); }
+  PLAYER_MAX=40; lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; runTrials=(META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=PLAYER_MAX; runStats={kills:0,t0:time,maxDepth:depth,book0:BOOK.size,beastsNew:0}; resetRunes();
+  if(regen)newLevel();
+  started=true; document.body.classList.add('started'); if(D)showStratum(D.stratum); setHelp(true); helpT=25; introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume();
+});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+window.addEventListener('mousedown',e=>{
+  if(!menuOpen&&!invOpen)return;
+  if(dbgOpen){ if(!(e.target&&e.target.closest&&e.target.closest('#dbgp'))){ e.preventDefault(); e.stopPropagation(); setDbg(false); } return; }
+  const inside=e.target&&e.target.closest&&e.target.closest('#menu,#pack');
+  if(inside)return;
+  e.preventDefault(); e.stopPropagation();
+  if(menuOpen){ setMenu(false); if(!plFailed)tryLock(); }
+  if(invOpen)setInv(false);
+},true);
+canvas.addEventListener('wheel',e=>{ if(!started||isPaused()||!hands)return; e.preventDefault(); const have=(unlocked('build3')?[0,1,2]:[0,1]).filter(k=>builds[k]); if(!have.length||time-(canvas.wheelT||-9)<0.35)return; canvas.wheelT=time;
+  const pos=Math.max(0,have.indexOf(buildIdx)), next=have[(pos+1)%have.length]; const prev=snapHands(); if(applyBuild(next)){ startSwap(prev); showHint(`ビルド${next+1}`); setTimeout(()=>showHint(''),900); } renderHotbar(); },{passive:false});
+let downAt=null;
+canvas.addEventListener('mousedown',e=>{ if(!started||isPaused())return; if(e.button===2){ beginCast('R'); return; } if(locked&&e.button===0){ beginCast('L'); return; } if(e.button===0){ downAt=[e.clientX,e.clientY]; beginCast('L'); } dragging=true; lmx=e.clientX; lmy=e.clientY; if(!locked)tryLock(); canvas.focus(); updateResume(); });
+window.addEventListener('mouseup',e=>{ if(hands){ if(e.button===0)releaseCast('L'); if(e.button===2)releaseCast('R'); } downAt=null; dragging=false; updateResume(); });
+window.addEventListener('mousemove',e=>{
+  if(!started)return;
+  if(locked){ player.yaw-=e.movementX*0.0022; player.pitch-=e.movementY*0.0022; }
+  else if(dragging){ player.yaw-=(e.clientX-lmx)*0.0045; player.pitch-=(e.clientY-lmy)*0.0045; lmx=e.clientX; lmy=e.clientY; }
+  player.pitch=clamp(player.pitch,-1.35,1.35);
+});
+window.addEventListener('keydown',e=>{
+  if(gallery&&gallery.mode==='beast'){ if(e.code==='ArrowLeft')showBeast(gallery.idx-1); else if(e.code==='ArrowRight')showBeast(gallery.idx+1); else if(e.code==='Escape')returnToTitle(); e.preventDefault(); return; }
+  if(e.target&&e.target.tagName==='INPUT'){ if(e.code==='Enter'){ e.preventDefault(); document.getElementById('enter').click(); } return; }
+  keys[e.code]=true;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
+  if(!started&&(e.code==='Enter'||e.code==='Space')){ document.getElementById('enter').click(); return; }
+  if(e.code==='F2'){ e.preventDefault(); if(started&&!dead&&DEVALL){ if(menuOpen)setMenu(false); if(invOpen)setInv(false); setDbg(!dbgOpen); } return; }
+  if(e.code==='Escape'&&dbgOpen){ setDbg(false); return; }
+  if(altarOpen&&(e.code==='Escape'||e.code==='Tab')){ e.preventDefault(); closeAltar(true); if(e.code==='Tab'&&started&&!dead)setInv(true); return; }
+  if(e.code==='Tab'){ e.preventDefault(); if(started&&!dead){ if(menuOpen)setMenu(false); setInv(!invOpen); } return; }
+  if(e.code==='Escape'){ if(invOpen){ setInv(false); return; } if(started&&!dead&&plFailed){ setMenu(!menuOpen); return; } }
+  if(isPaused())return;
+  if(started&&e.code==='KeyM'){ sndToggle(); }
+  if(started&&e.code==='KeyH'){ cycleUi(); }
+  if(dead&&(e.code==='Enter'||e.code==='KeyR')){ newRun(); return; }
+  if(started&&e.code==='Space'){ startRoll(); }
+  if(started&&e.code==='KeyP'){ perfOn=!perfOn; renderStatus(); }
+  if(started&&e.code==='KeyJ'){ chronOn=!chronOn; helpOn=false; helpT=0; const el=document.getElementById('help'); if(el){ if(chronOn)renderChron(); el.classList.toggle('off',!chronOn); } }
+  if(started&&(e.key==='?'||e.code==='Slash')){ setHelp(!helpOn); helpT=0; }
+});
+window.addEventListener('keyup',e=>{ keys[e.code]=false; });
+window.addEventListener('blur',()=>{ for(const k in keys)keys[k]=false; dragging=false; });
+
