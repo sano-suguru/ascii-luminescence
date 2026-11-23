@@ -34,12 +34,12 @@ vitest.config.mjs    単体テスト（Vitest）の設定。テストは tests/u
 package.json         スクリプトと依存。packageManager で pnpm の版を固定（pnpm@12.22.0）
 pnpm-workspace.yaml  pnpm のサプライチェーン対策（公開24時間未満は入れない、信頼の低下を拒む、インストール時のスクリプトは承認制）
 .node-version        Node の版（26.13.1）。CI・SessionStart hook・Cloudflare が読む
-renovate.json        依存の更新の PR（Renovate。公開から1日たった版だけ）
 wrangler.jsonc       Cloudflare Workers（静的アセット）の設定。公開は dist/
 .claude/settings.json  権限と hooks
 .github/workflows/ci.yml  確かめるだけの CI（check・test・画面写真の比較。どれも違えば失敗）
 .github/workflows/dependency-review.yml  PR で増える依存の脆弱性とライセンス
 .github/workflows/codeql.yml  CodeQL（JavaScript の静的解析。PR と毎週）
+.github/dependabot.yml  依存の更新の PR（Dependabot。毎週。公開から1日たった版だけ。three.js と Playwright は手で上げる）
 docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 ```
 `dist/index.html` = `head.html` + `<script>` + （`src/game/*.js` を名前の順につなぎ、`(function(){ 'use strict'; … })();` で包んだもの）+ `</script></body></html>`。
