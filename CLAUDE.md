@@ -22,7 +22,9 @@ tests/lib.mjs        テストの共通部分（組み立て・配信・ブラ�
 tests/smoke.mjs      ふだんのページの起動 ＋ 開発用の冒険で dbg が動くか（画面写真は tests/out/）
 tests/determinism.mjs  同じシードで同じ結果になるか
 tests/levels.mjs     全部の階（20シード×30か所）を生成し、例外と、歩いて行けるかを確かめる
-tests/visual.mjs     画面写真の比較（10場面。基準は tests/baseline/）
+tests/visual.mjs     画面写真の比較（12場面。基準は tests/baseline/）
+tests/panels.mjs     枠のテスト（全部の文字の幅が visW どおりか、操作・装備・メニュー・レベルアップ・祭壇・結果の縦線と、一覧の名前の列が揃うか）
+tests/glyphs.mjs     使う文字が、パネルのフォント（M PLUS 1 Code ＋ BIZ UDGothic の補い）で描けるか（ブラウザ不要）
 eslint.config.js     lint の設定（エラー＝不具合、警告＝整理の候補）
 wrangler.jsonc       Cloudflare Workers（静的アセット）の設定。公開は dist/
 .claude/settings.json  権限と hooks
@@ -35,9 +37,9 @@ docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 ## 組み立て・実行・テスト（Node 22）
 ```
 npm install           # 依存を入れる（クラウドのセッションでは SessionStart hook が自動で行う）
-npm run check         # 構文 + lint（エラーだけ） + 組み立て。数秒。編集のたびにこれ
+npm run check         # 構文 + lint（エラーだけ） + 使う文字のチェック + 組み立て。数秒。編集のたびにこれ
 npm run lint          # 警告も含めて lint を見る
-npm test              # スモーク・同じ結果・全部の階（オフラインで動く。40秒ほど）
+npm test              # スモーク・同じ結果・全部の階・枠（オフラインで動く。40秒ほど）
 npm run test:visual   # 画面写真の比較（30秒ほど）。違えば tests/out/visual/ に違いの画像
 node tests/visual.mjs --update [--only 場面]   # 基準の画像を作り直す（見た目を意図して変えた時だけ）
 node tests/levels.mjs --seed 202               # 1つのシードだけ（--seeds 100 で数を変える）
@@ -65,12 +67,14 @@ npm run deploy        # 手元から Cloudflare に公開（ふだんは Workers
 - `Math.random` はシードで決まる。時計（`performance.now`・`setTimeout`・`setInterval`）は、ゲームが進む時だけ進む。
 - ゲームは自分では進まない。`__test.advance(秒)`（描かずに進める。速い）か `__test.frames(n)`（描いて進める）で進める。1フレーム＝ゲームの1/30秒。
 - `window.__test`：`ready()`、`error()`、`advance(秒)`、`frames(n)`、`state()`（体力・位置・敵・飛ぶ物・溜め・切り替え など）、
-  `equip(手, 武器)`（例：`equip('L','bolt')`）、`press(手)`・`release(手)`（ボタンを押す・離す）、`places()`、`gen(シード, 場所)`（生成だけ。描画の状態を壊すので専用のページで）
+  `equip(手, 武器)`（例：`equip('L','bolt')`）、`bless(n)`（全部の加護を n 段目にする）、`width(文字列)`（visW）、`press(手)`・`release(手)`（ボタンを押す・離す）、`places()`、`gen(シード, 場所)`（生成だけ。描画の状態を壊すので専用のページで）
 - 気をつけること：
   - 溜めている間は、ゲームの時間が半分の速さで進む。ヒットストップ中は1/20。
   - 階に入ると、約1.25秒かけて明るくなる。写す前に `advance(2)` する。
   - CSS のアニメーション（タイトルが消える、など）は実時間で進む。画面写真の比較では止めている（`newPage(…, {still:true})`）。
   - `let`/`const` の変数は `window` から見えない。テストに必要な物は `__test` に足す（HTMLに差し込む昔のやり方は使わない）。
+  - 祭壇の画面は、祭壇から1.5以内でないと開かない（`dbg.to('altar')` は2マス手前）。tests/lib.mjs の `nearAltar(pg)` を使う。
+  - パネルの文字の幅を測る時は、`document.fonts.ready` を待つ（文字の範囲ごとのフォントは、使う時に読まれる）。
 
 ## 自動の確かめ（hooks、.claude/settings.json）
 - **編集の直後**（PostToolUse）：`src/` などの JS を編集すると、構文と lint を確かめる。エラーなら差し戻されるので、その場で直す。
@@ -134,6 +138,11 @@ npm run deploy        # 手元から Cloudflare に公開（ふだんは Workers
 ## 落とし穴（過去に踏んだもの）
 - **宣言の順番（TDZ）**：`buildIntroPanel()` はスクリプトの途中で呼ばれる。そこで使う `let`/`const`（META など）は、
   それより前で宣言すること。`DEVALL` は後で宣言されるので、`devAllSafe()` 経由で読む。
+- **パネルの枠と文字の幅**：枠（boxText）は `visW` で幅を数えて縦線を揃える。パネルのフォントは M PLUS 1 Code
+  （半角1マス・全角2マス。ただし全角スペース「　」は1マス。なので、列を揃える時は全角スペースで埋めず、visW で数えた半角スペースで埋める）。M PLUS 1 Code に無い文字（← → ！：？［］）は、
+  head.html で BIZ UDGothic をその文字だけ読んで補っている（全角2マス）。新しい記号を使う時は、M PLUS 1 Code にあるかを
+  `npm run check`（tests/glyphs.mjs）で確かめ、無ければ別の文字にするか、head.html の text= と visW に足す。
+  Ⅱ などは、BIZ UDGothic にも無いので使わない（II にする）。
 - **lint の警告**：使っていない関数・変数が約60か所ある（古い仕組みの残り）。消す時は、図鑑や dbg から文字列で呼ばれていないか確かめる。
 - **sed の区切り文字**：差し込む文に `|`（`||` など）があると壊れる。置き換えは Python で行う方が安全。
 - **/bin/sh**：`mkdir -p a/{b,c}` は展開されない。

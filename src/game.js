@@ -3707,8 +3707,11 @@ function renderStatus(){
 }
 let perfOn=false, pfFrames=0, pfT=0, pfFps=0;
 let chronOn=false;
+// how many columns a piece of panel text takes. The panels use M PLUS 1 Code (half width = 1, full width = 2);
+// the few characters it lacks (← → and full-width ！：？［］) come from BIZ UDGothic, where they are full width (2).
+// Note: the ideographic space (U+3000) is half width in M PLUS 1 Code, so it counts 1. tests/panels.mjs checks this against the fonts.
 const visW=html=>{ const t=html.replace(/<input[^>]*size="(\d+)"[^>]*>/g,(m,n)=>' '.repeat(+n)).replace(/<[^>]*>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'"); let w=0;
-  for(const ch of t){ const c=ch.codePointAt(0); w+=(c>=0x1100&&(c<=0x115f||(c>=0x2e80&&c<=0xa4cf)||(c>=0xac00&&c<=0xd7a3)||(c>=0xf900&&c<=0xfaff)||(c>=0xfe30&&c<=0xfe4f)||(c>=0xff00&&c<=0xff60)||(c>=0xffe0&&c<=0xffe6)||(c>=0x3000&&c<=0x30ff)))?2:1; } return w; };
+  for(const ch of t){ const c=ch.codePointAt(0); w+=c===0x3000?1:(c===0x2190||c===0x2192)?2:(c>=0x1100&&(c<=0x115f||(c>=0x2e80&&c<=0xa4cf)||(c>=0xac00&&c<=0xd7a3)||(c>=0xf900&&c<=0xfaff)||(c>=0xfe30&&c<=0xfe4f)||(c>=0xff00&&c<=0xff60)||(c>=0xffe0&&c<=0xffe6)||(c>=0x3000&&c<=0x30ff)))?2:1; } return w; };
 function boxText(lines,fixedW){
   const f=t=>`<span class="f">${t}</span>`, all=lines.join('\n').split('\n'), top=all[0], body=all.slice(1,-1);
   const title=top.replace(/<[^>]*>/g,'').replace(/^\+-+\s*/,'').replace(/\s*-*\+?\s*$/,'');
@@ -5320,8 +5323,8 @@ function levelChoices(){ const BEHAVE=['quickdodge','counter','momentum','devour
   for(let i=0;i<2&&pool.length;i++){ const k=pool.splice(Math.floor(mr()*pool.length),1)[0]; out.push({kind:'bless',k}); }
   const useCharm=(runState.bodyOpen||0)>0&&mr()<0.3, t=useCharm?RUNE_TYPES.body[Math.floor(mr()*RUNE_TYPES.body.length)]:randomRuneType(mr,{elem:0.45,trig:0.15,mod:0.4,body:0});
   out.push({kind:'rune',ru:RUNE_DEF[t].cat==='mod'&&mr()<0.1?makeStrong(t):makeRune(t,0)}); return out.sort(()=>mr()-0.5); }
-function lvlLine(o){ const K=t=>t+'　'.repeat(Math.max(1,6-t.length));
-  if(o.kind==='bless'){ const B=BLESS[o.k], l=BL(o.k)+1; return `${K(B.cost?'恩恵（代償）':'恩恵')}<span style="color:${B.cost?'#ff9a8a':'#ffe3a0'}">${B.name}${l>1?' Ⅱ':''}</span>`; }
+function lvlLine(o){ const K=t=>t+' '.repeat(Math.max(2,14-visW(t))); // the label column is 14 wide (the longest, 恩恵（代償）, is 12)
+  if(o.kind==='bless'){ const B=BLESS[o.k], l=BL(o.k)+1; return `${K(B.cost?'恩恵（代償）':'恩恵')}<span style="color:${B.cost?'#ff9a8a':'#ffe3a0'}">${B.name}${l>1?' II':''}</span>`; }
   const d=RUNE_DEF[o.ru.type], br=CAT_BR[d.cat]||['','']; return `${K(d.cat==='body'?'護符':'ルーン')}${br[0]}<b class="rn" style="color:${css(runeCol(o.ru))}">${d.ch}</b> ${runeName(o.ru)}${br[1]}　<span class="lab">${CAT_NAME[d.cat]}</span>`; }
 function renderLevelUp(){ const el=document.getElementById('altarp'); if(!el)return; const f=t=>`<span class="f">${t}</span>`, rows=[f(`+-- レベルが上がった（Lv${lvl.n-lvl.pending+1}） ---`),f('|')];
   lvlOpts.forEach((o,i)=>rows.push(`${f('|')}  <button class="row ao" data-lk="${i}">${clipHtml(lvlLine(o),ALTAR_W-6)}</button>`));
@@ -5330,7 +5333,7 @@ function renderLevelUp(){ const el=document.getElementById('altarp'); if(!el)ret
   if(!el.dataset.lvBound){ el.dataset.lvBound='1'; el.addEventListener('mouseover',e=>{ if(!lvlOpen)return; const b=e.target.closest&&e.target.closest('button[data-lk]'); setLevelDetail(b?lvlOpts[+b.dataset.lk]:null); }); el.addEventListener('click',e=>{ if(!lvlOpen)return; const b=e.target.closest&&e.target.closest('button[data-lk]'); if(!b)return; e.stopPropagation(); if(performance.now()-lvlOpenT<400)return; chooseLevel(+b.dataset.lk); }); } }
 function setLevelDetail(o){ const el=document.getElementById('altarp'); if(!el)return; let L;
   if(!o)L=['<span class="lab">選択肢にマウスを乗せると、ここに説明が出る</span>','','',''];
-  else if(o.kind==='bless'){ const B=BLESS[o.k], l=BL(o.k)+1, w=wrapPlain(B.d(l),ALTAR_W-10); L=[`<span style="color:${B.cost?'#ff9a8a':'#ffe3a0'}">${B.name}${l>1?' Ⅱ（2回目で強まる）':''}</span>　<span class="lab">（恩恵${B.cost?'・代償あり':''}）</span>`,...w.slice(0,3).map(t=>`    <span class="lab">${t}</span>`)]; }
+  else if(o.kind==='bless'){ const B=BLESS[o.k], l=BL(o.k)+1, w=wrapPlain(B.d(l),ALTAR_W-10); L=[`<span style="color:${B.cost?'#ff9a8a':'#ffe3a0'}">${B.name}${l>1?' II（2回目で強まる）':''}</span>　<span class="lab">（恩恵${B.cost?'・代償あり':''}）</span>`,...w.slice(0,3).map(t=>`    <span class="lab">${t}</span>`)]; }
   else L=detailLines(o.ru).slice(0,4);
   el.querySelectorAll('.ldet').forEach((sp,i)=>{ sp.innerHTML=padTo(clipHtml(L[i]||'',ALTAR_W-4),ALTAR_W-3); }); }
 function openLevelUp(){ const el=document.getElementById('altarp'); if(!el||lvlOpen)return; lvlOpen=true; lvlOpenT=performance.now(); lvlOpts=levelChoices(); document.body.classList.toggle('paused',true);
@@ -6261,7 +6264,7 @@ function runeDest(ru){ const def=RUNE_DEF[ru.type], cat=def.cat;
   if(cat==='body'){ const i=[0,1].slice(0,runState.bodyOpen||0).find(i=>!hands.B['b'+i]); return i!==undefined?'身の護符の枠へ':'袋へ'; }
   if(cat==='atk'){ const h=['R','L'].find(h=>!hands[h].atk); return h?`${h==='L'?'左':'右'}手へ`:'袋へ'; }
   const p=freeSlotFor(ru); return p?`${p[0]==='L'?'左':'右'}手のルーンの枠へ`:'袋へ'; }
-function altarLine(o){ const K=t=>t+'　'.repeat(Math.max(1,7-t.length));
+function altarLine(o){ const K=t=>t+' '.repeat(Math.max(2,12-visW(t))); // the label column is 12 wide (the longest, 枠を開ける, is 10)
   if(o.opt==='heal')return `${K('癒し')}<b style="color:#ff9aa8">+</b> 体力 ${Math.round(player.hp)} → ${Math.round(Math.min(PLAYER_MAX,player.hp+PLAYER_MAX*0.7))}`;
   if(o.opt==='open')return `${K('枠を開ける')}<b style="color:#ffe3a0">{ }</b> ${o.label}`;
   if(o.opt==='forge'){ const w=o.forgeW, cur=(trList(w).find(t=>t.k===o.forgeK)||{lv:0}).lv; return `${K('鍛える')}<span style="color:#bcdcff">${RUNE_DEF[w.type].name}</span>の ${trName(w.type,{k:o.forgeK})}　<span class="lab">${cur?`Lv${cur} → Lv${o.forgeTo}`:`を足す（Lv1）`}</span>`; }
@@ -7510,6 +7513,10 @@ if(TEST)window.__test={
   // step and draw n frames (one per animation frame)
   frames(n){ if(TESTQ.done)return Promise.reject(new Error('__test.frames: the previous call has not finished'));
     return new Promise(ok=>{ TESTQ.n=Math.max(0,n|0); if(!TESTQ.n)ok(); else TESTQ.done=ok; }); },
+  // give every blessing at level n (default 1), so a level-up offers their next level (shown with II)
+  bless(n=1){ for(const k in BLESS)lvl.bless[k]=n; return Object.keys(BLESS).length; },
+  // how many columns the panels count for a piece of text (visW)
+  width(text){ return visW(text); },
   // a plain copy of what matters, to compare runs
   state(){ const f=v=>+(+v||0).toFixed(3);
     return {time:f(time),seed:runSeed,place:placeLabel(),depth,started,dead,hp:f(player.hp),pos:[f(player.x),f(player.z)],yaw:f(player.yaw),lvl:lvl.n,
@@ -7537,7 +7544,7 @@ if(TEST)window.__test={
 
 // ---------------------------------------------------------------- init
 async function init(){
-  try{ if(document.fonts&&document.fonts.load)await Promise.race([Promise.all([document.fonts.load('800 96px "JetBrains Mono"'),document.fonts.load('500 96px "Noto Sans Runic"','ᚦᛏᛜᛞᚲᛁᛊᚾᚱᚺ')]),new Promise(r=>(TEST?TESTCLK.realTimeout:setTimeout)(r,2500))]); }catch(e){}
+  try{ if(document.fonts&&document.fonts.load)await Promise.race([Promise.all([document.fonts.load('800 96px "JetBrains Mono"'),document.fonts.load('500 96px "Noto Sans Runic"','ᚦᛏᛜᛞᚲᛁᛊᚾᚱᚺ'),document.fonts.load('400 14px "BIZ UDGothic"','←→！：？［］')]),new Promise(r=>(TEST?TESTCLK.realTimeout:setTimeout)(r,2500))]); }catch(e){}
   U.uAtlas.value=buildAtlas();
   staticMat=new T.ShaderMaterial({uniforms:{uAtlas:U.uAtlas,uTime:U.uTime,uSL:U.uSL,uDLP:U.uDLP,uDLC:U.uDLC,uFogDen:U.uFogDen,uFogColor:U.uFogColor,uRamp:U.uRamp,uAmb:U.uAmb,uCell:U.uCell,uCollT:U.uCollT,uCamP:U.uCamP,uCutP:U.uCutP,uCut:U.uCut},
     vertexShader:STATIC_VS,fragmentShader:GLYPH_FS,side:T.DoubleSide,alphaToCoverage:true});

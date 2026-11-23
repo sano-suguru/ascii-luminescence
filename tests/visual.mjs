@@ -9,7 +9,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
-import { withBrowser, newPage, openTest, frames, advance, arg, ROOT, OUT } from './lib.mjs';
+import { withBrowser, newPage, openTest, frames, advance, nearAltar, arg, ROOT, OUT } from './lib.mjs';
 
 const SIZE = [640, 360]; // 場面ごとに size で変えられる
 const MAX_RATIO = 0.002; // 違う画素が 0.2% を超えたら失敗
@@ -30,8 +30,10 @@ const SCENES = [
   { name: 'blade', q: 'seed=202&depth=1&god=1', go: async (pg) => { await enter(pg); await ev(pg, () => __test.press('L')); await advance(pg, 0.1); } },
   { name: 'bow', q: 'seed=202&depth=1&god=1', go: async (pg) => { await enter(pg); await ev(pg, () => __test.equip('L', 'bolt')); await advance(pg, 0.6); await ev(pg, () => __test.press('R')); await advance(pg, 0.7); } },
   { name: 'staff', q: 'seed=202&depth=1&god=1', go: async (pg) => { await enter(pg); await ev(pg, () => __test.press('R')); await advance(pg, 1.8); await ev(pg, () => __test.release('R')); await advance(pg, 0.1); } }, // 溜めの間はゲームの時間が半分の速さ
-  // 画面：パネルと日本語の幅
+  // 画面：パネルと日本語の幅（レベルアップは全部の加護を1段目にして、2段目の「II」の印を出す）
   { name: 'equip', q: 'seed=202&depth=1&god=1', size: [1280, 720], go: async (pg) => { await enter(pg); await pg.keyboard.press('Tab'); await advance(pg, 0.2); } },
+  { name: 'levelup', q: 'seed=202&depth=1&god=1', size: [960, 540], go: async (pg) => { await enter(pg); await ev(pg, () => { __test.bless(1); dbg.exp(60); }); await advance(pg, 0.3); } },
+  { name: 'altar', q: 'seed=202&depth=3&god=1', size: [960, 540], go: async (pg) => { await enter(pg); await nearAltar(pg); await advance(pg, 0.5); } },
 ];
 
 mkdirSync(BASE, { recursive: true });
