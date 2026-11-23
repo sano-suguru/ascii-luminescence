@@ -39,10 +39,12 @@ tests/lib.mjs        テストの共通部分（組み立て・配信・ブラ�
 tests/smoke.mjs      ふだんのページの起動 ＋ 開発用の冒険で dbg が動くか（画面写真は tests/out/）
 tests/determinism.mjs  同じシードで同じ結果になるか
 tests/levels.mjs     全部の階（20シード×30か所）をブラウザで生成し、例外と、歩いて行けるかを確かめる
-tests/reach.mjs      歩いて行けるかの調べ方（levels.mjs と generate.test.mjs が使う）
+tests/reach.mjs      歩いて行けるかの調べ方（levels.mjs と tests/unit/reach.test.mjs が使う）
+tests/gen-places.mjs 迷宮の生成のテストの共通部分（全部の場所・決まった入力で生成する gen）
 tests/visual.mjs     画面写真の比較（12場面。基準は tests/baseline/）
 tests/panels.mjs     枠のテスト（全部の文字の幅が visW どおりか、操作・装備・メニュー・レベルアップ・祭壇・結果の縦線と、一覧の名前の列が揃うか）
-tests/unit/generate.test.mjs  迷宮の生成の単体テスト（同じ入力なら同じ迷宮・生き物の表に書き込まない・全部の場所の指紋・5シードで歩いて行けるか。Node で数秒）。
+tests/unit/generate.test.mjs  迷宮の生成の単体テスト（同じ入力なら同じ迷宮・生き物の表に書き込まない・全部の場所の指紋。Node で数秒）。
+                     歩いて行けるか（5シード）は reach.test.mjs（ファイルを分けて、並べて走らせる）。
                      generate.js に型が付くまでは .mjs のまま（型を確かめる対象の tests/unit/*.ts に入れると、型の無い JS を読んで落ちる）
 tests/glyphs.mjs     使う文字が、パネルのフォント（M PLUS 1 Code ＋ BIZ UDGothic の補い）で描けるか（ブラウザ不要）
 .oxlintrc.json       lint（Oxlint）の設定（エラー＝不具合、警告＝整理の候補）
