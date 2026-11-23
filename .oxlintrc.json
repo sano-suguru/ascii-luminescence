@@ -1,0 +1,42 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // エラー＝不具合（hook と CI を止める）、警告＝整理の候補。
+  "env": { "es2024": true },
+  "categories": { "correctness": "error" },
+  "rules": {
+    "no-undef": "error",
+    "no-unused-vars": ["warn", { "caughtErrors": "none", "args": "none" }],
+    "no-empty": ["warn", { "allowEmptyCatch": true }]
+  },
+  "overrides": [
+    {
+      // 道具・テスト・hooks（Node の ESM）
+      "files": ["tools/**", "tests/**", ".claude/hooks/**", "*.config.mjs"],
+      "env": { "node": true }
+    },
+    {
+      // テストの page.evaluate の中はブラウザで動く
+      "files": ["tests/**"],
+      "env": { "browser": true },
+      "globals": { "dbg": "readonly", "__test": "readonly" }
+    },
+    {
+      // ゲーム本体：src/game/*.js をつないだもの（tools/lint-game.mjs が書き出して調べる）。
+      // ブラウザの普通の <script>。THREE は CDN の <script> から来る。
+      "files": [".build/lint/game.js"],
+      "env": { "browser": true },
+      "globals": { "THREE": "readonly" },
+      "rules": {
+        // 同じスコープで、宣言より前に let/const を使う（TDZ）のを見つける。関数の中から外の変数を読むのは許す
+        "no-use-before-define": ["error", { "functions": false, "classes": true, "variables": false }],
+        // 以下は不具合ではない書き方（調整用の *0.0、a&&a()、if(false) で止めたコード、好みの書き方）。整理の候補として警告にする
+        "oxc/erasing-op": "warn",
+        "no-unused-expressions": "warn",
+        "no-constant-condition": "warn",
+        "unicorn/no-useless-spread": "warn",
+        "unicorn/prefer-string-starts-ends-with": "warn",
+        "unicorn/prefer-set-size": "warn"
+      }
+    }
+  ]
+}

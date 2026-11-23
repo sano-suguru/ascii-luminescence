@@ -1,0 +1,10 @@
+# pnpm の設定（このリポジトリは1つのパッケージだけ）。サプライチェーンを守るための設定を入れている。
+# 公開から24時間未満の版は入れない。条件に合う版が無ければ、黙って古い版にせず失敗する（緊急の修正は、版を指定して例外を検討する）
+minimumReleaseAge: 1440
+minimumReleaseAgeStrict: true
+# 前の版より、公開の信頼の水準が下がったパッケージを入れない
+trustPolicy: no-downgrade
+# 依存の依存が、レジストリ以外（git・URL など）から来るのを止める
+blockExoticSubdeps: true
+# 依存のインストール時のスクリプトは、承認したもの（onlyBuiltDependencies）だけ動かす。承認は pnpm approve-builds で、中身を確かめてから
+strictDepBuilds: true

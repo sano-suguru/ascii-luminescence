@@ -13,27 +13,33 @@ const rel = relative(root, file);
 if (rel.startsWith('..') || /^(node_modules|dist|\.build|tests\/out)\//.test(rel)) process.exit(0);
 
 const run = (cmd, args) => {
-  try { execFileSync(cmd, args, { cwd: root, stdio: 'pipe', encoding: 'utf8' }); return null; }
-  catch (e) { return ((e.stdout || '') + (e.stderr || '')).trim(); }
+  try {
+    execFileSync(cmd, args, { cwd: root, stdio: 'pipe', encoding: 'utf8' });
+    return null;
+  } catch (e) {
+    return ((e.stdout || '') + (e.stderr || '')).trim();
+  }
 };
 const fail = (title, out) => {
   const lines = out.split('\n');
-  process.stderr.write(`${title}: ${rel}\n${lines.slice(0, 40).join('\n')}${lines.length > 40 ? `\n…（ほか ${lines.length - 40} 行）` : ''}\n`);
+  process.stderr.write(
+    `${title}: ${rel}\n${lines.slice(0, 40).join('\n')}${lines.length > 40 ? `\n…（ほか ${lines.length - 40} 行）` : ''}\n`,
+  );
   process.exit(2);
 };
 
 // ゲーム本体（src/game/*.js）は1つだけでは調べられないので、つないだものを調べる（場所は元のファイルの行で出る）
+const oxlint = join(root, 'node_modules/.bin/oxlint');
 if (/^src\/game\/[^/]+\.js$/.test(rel)) {
-  if (!existsSync(join(root, 'node_modules/eslint'))) process.exit(0);
+  if (!existsSync(oxlint)) process.exit(0);
   const out = run(process.execPath, [join(root, 'tools/lint-game.mjs'), '--quiet']);
-  if (out) fail('構文か lint のエラー（src/game/ をつないで調べた。npm run lint で警告も見られる）', out);
+  if (out) fail('構文か lint のエラー（src/game/ をつないで調べた。pnpm lint で警告も見られる）', out);
   process.exit(0);
 }
 
 const syn = run(process.execPath, ['--check', file]);
 if (syn) fail('構文エラー', syn);
-const eslint = join(root, 'node_modules/.bin/eslint');
-if (existsSync(eslint)) {
-  const lint = run(eslint, ['--quiet', '--no-warn-ignored', file]);
-  if (lint) fail('lint のエラー（npx eslint で全体を確かめられる）', lint);
+if (existsSync(oxlint)) {
+  const lint = run(oxlint, ['-c', join(root, '.oxlintrc.json'), '--quiet', file]);
+  if (lint && /error/.test(lint)) fail('lint のエラー（pnpm lint で全体を確かめられる）', lint);
 }
