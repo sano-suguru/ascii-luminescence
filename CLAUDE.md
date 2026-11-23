@@ -31,6 +31,7 @@ tools/vite-plugins.mjs  Vite のプラグイン：legacyGame（src/game をつ�
 tools/game-source.mjs   ゲーム本体をつなぐ処理（gameSource）・行の対応・ソースマップ・テスト版のフォント
 tools/sourcemap.mjs  ソースマップの読み書き（自前の小さな道具）
 tools/lint-game.mjs  src/game/ をつないで構文と lint を調べ、場所を元のファイルの行で出す
+tools/legacy-eval.mjs  テストの道具：古い JS のトップレベルの宣言を名前で取り出して評価する（まだ古い JS にある MTYPES などを、単体テストで本物のまま使う）
 tools/where.mjs      組み立てた JS の場所 → src/game/ のどのファイルの何行目か（ソースマップで戻す）
 tools/map.mjs        ゲーム本体の地図（ファイルごとの行の数と見出し）
 tools/serve.mjs      静的ファイルの小さなサーバー
@@ -40,6 +41,7 @@ tests/determinism.mjs  同じシードで同じ結果になるか
 tests/levels.mjs     全部の階（20シード×30か所）を生成し、例外と、歩いて行けるかを確かめる
 tests/visual.mjs     画面写真の比較（12場面。基準は tests/baseline/）
 tests/panels.mjs     枠のテスト（全部の文字の幅が visW どおりか、操作・装備・メニュー・レベルアップ・祭壇・結果の縦線と、一覧の名前の列が揃うか）
+tests/unit/generate.test.mjs  迷宮の生成の単体テスト（同じ入力なら同じ迷宮・生き物の表に書き込まない・全部の場所の指紋。Node で数秒）
 tests/glyphs.mjs     使う文字が、パネルのフォント（M PLUS 1 Code ＋ BIZ UDGothic の補い）で描けるか（ブラウザ不要）
 .oxlintrc.json       lint（Oxlint）の設定（エラー＝不具合、警告＝整理の候補）
 .oxfmtrc.json        整形（Oxfmt）の設定。src/game/（古い JS）と index.html 以外。古い JS はまとめては整形しない（行が約4倍になる）。TypeScript に移した物から整形する
@@ -122,6 +124,8 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
    （関数の中で同じ名前を使い直すのは、その中だけのことなので止めない。色の名前の `EYE` など）。
 3. 移す前の実装と、たくさんの入力で同じ結果になることを確かめる（Node 26 は .ts をそのまま動かせる。古い関数は git の版から取り出す）。
    乱数を引く順番を変えると、同じシードで違う結果になる。移す前の値を、単体テスト（tests/unit/*.test.ts）に残す。
+   移した物が、まだ古い JS にある表や関数（MTYPES・makeRune など）を使う時は、テストで `tools/legacy-eval.mjs` の legacyValues から本物を取り出す。
+   迷宮の生成に関わる変更は、前の版とこの版で `__test.gen` の階を作り比べる（シードごとにページを分ける。続けて作ると、前からある揺れが出る）。
 4. `pnpm fmt`・`pnpm check`・`pnpm test`・`pnpm test:visual`（画素まで同じはず）。
 - 型を外すだけで組み立てる（Vite）。enum・namespace など、型を外すだけでは動かない書き方は使わない（`erasableSyntaxOnly`）。
 - import は `.ts` まで書く（`./rng.ts`）。`noUncheckedIndexedAccess` なので、配列の要素は `undefined` かもしれない物として扱う。
