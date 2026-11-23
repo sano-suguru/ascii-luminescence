@@ -1,7 +1,8 @@
 // src/lib/bodies/ の単体テスト（生き物の形）
 import { afterEach, describe, expect, it } from 'vitest';
 import * as beasts from '../../src/lib/bodies/beasts.ts';
-import { type Body, type BodyType, hsl2rgb } from '../../src/lib/bodies/kit.ts';
+import { type Body, type BodyType } from '../../src/lib/bodies/kit.ts';
+import { hsl2rgb } from '../../src/lib/color.ts';
 import * as lords from '../../src/lib/bodies/lords.ts';
 import * as small from '../../src/lib/bodies/small.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';

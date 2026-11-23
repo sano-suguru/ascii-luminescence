@@ -59,9 +59,9 @@ describe('移す前と同じ値', () => {
   });
   it('特性の値と説明・反応・装備の画面の括弧', () => {
     const texts: string[] = [];
-    for (const k of Object.keys(R.TRAIT_V) as R.TraitKey[]) for (let lv = 0; lv <= 5; lv++) texts.push(R.TD[k](lv, '矢'));
+    for (const k of Object.keys(R.TRAIT_V) as R.TraitKey[]) for (const lv of R.TRAIT_LVS) texts.push(R.TD[k](lv, '矢'));
     for (const [, ts] of Object.entries(R.TRAITS))
-      for (const t of Object.values(ts)) for (let lv = 0; lv <= 5; lv++) texts.push(t.name + t.d(lv));
+      for (const t of Object.values(ts)) for (const lv of R.TRAIT_LVS) texts.push(t.name + t.d(lv));
     const v = [
       R.TRAIT_V,
       texts,

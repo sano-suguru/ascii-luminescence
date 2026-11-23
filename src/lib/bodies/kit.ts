@@ -53,16 +53,6 @@ export interface BodyType {
 // 配列の i 番目（範囲の中だと分かっている所だけで使う）
 const nth = <T>(a: readonly T[], i: number): T => a[i] as T;
 
-/** 色相・彩度・明るさ（どれも 0 から 1）から RGB */
-export function hsl2rgb(h: number, s: number, l: number): Color {
-  const f = (n: number): number => {
-    const k = (n + h * 12) % 12,
-      a = s * Math.min(l, 1 - l);
-    return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
-  };
-  return [f(0), f(8), f(4)];
-}
-
 /** 点を1つ足す（大きさ s・明るさ b をそのまま） */
 export function cpt(
   pts: Glyph[],

@@ -6,7 +6,7 @@ import { boxText, padTo, visW, wrapPlain } from '../lib/text.ts';
 import { makeHistory } from '../lib/history.ts';
 import { G, RUNE_CHARS } from '../lib/glyphs.ts';
 import { mpick, mr } from '../lib/random.ts';
-import { BONE, FUR, GOLD, HRAMP, PALE, SCALE, SKINR, hsl2rgb, q3 } from '../lib/bodies/kit.ts';
+import { BONE, FUR, GOLD, HRAMP, PALE, SCALE, SKINR, q3 } from '../lib/bodies/kit.ts';
 import { bloatForm, bogForm, crabForm, critterForm, eelForm, fishForm, jellyForm, krakenForm, robotForm, shroomForm, snakeForm, spiderForm, wispForm } from '../lib/bodies/small.ts';
 import {
   batForm,
@@ -45,7 +45,7 @@ import {
   TW, TX, VAULT_WALL_H, VEIN_COL, VEIN_NAME, blocksWalk, depthProfile, } from '../lib/world.ts';
 import { computeVis, topLights } from '../lib/light.ts';
 import { lerpAngle, sstep, turnDir } from '../lib/math.ts';
-import { css } from '../lib/color.ts';
+import { css, hsl2rgb } from '../lib/color.ts';
 import {
   CAT_BR, CAT_NAME, ELEM_POW, REACT, RUNE_FONT, SLOT_MAX, TIER_COL, TL, TRAITS, TRAIT_V, TWO_SLOTS, elemCount, emptyChip, handRunes, serRune, trList, trName, tv, weaponCol,
 } from '../lib/runes.ts';

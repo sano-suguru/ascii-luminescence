@@ -1,6 +1,11 @@
 // ルーンと武器の特性・反応・手の枠（もとは src/game/19-hands-runes.js と、18・27 の一部）。
 import { css } from './color.ts';
 
+/** 特性の段（0 から 5）。古い JS は数のまま渡すので、範囲の外の段が来ると、移す前と同じく undefined や NaN の文字になる */
+export type TraitLv = 0 | 1 | 2 | 3 | 4 | 5;
+/** 段の一覧（0 から 5） */
+export const TRAIT_LVS: readonly TraitLv[] = [0, 1, 2, 3, 4, 5];
+type Six = readonly [number, number, number, number, number, number];
 /** 特性の段（0 から 5）ごとの値 */
 export const TRAIT_V = {
   count: [0, 1, 1, 2, 2, 3],
@@ -24,38 +29,38 @@ export const TRAIT_V = {
   area: [1, 1.15, 1.3, 1.45, 1.6, 1.8],
   span: [1, 1.25, 1.5, 1.75, 2, 2.3],
   accuracy: [0, 1, 2, 3, 4, 5],
-};
+} satisfies Record<string, Six>;
 export type TraitKey = keyof typeof TRAIT_V;
 /** 1 を基準にした割合を、増える % にする（1.2 → 20） */
 export const pct = (v: number): number => Math.round((v - 1) * 100);
-/** 特性の説明（段 lv、増える物の名前 what）。段は 0 から 5（範囲の外は、移す前と同じく undefined や NaN の文字になる） */
-export const TD: Record<TraitKey, (lv: number, what?: string) => string> = {
-  count: (lv, what) => `${what}が ${TRAIT_V.count[lv] as number} つ増える`,
-  pierce: (lv) => `敵を ${TRAIT_V.pierce[lv] as number} 体貫く`,
-  bounce: (lv) => `壁で ${TRAIT_V.bounce[lv] as number} 回跳ねる`,
-  homing: (lv) => `飛びながら敵の方へ曲がる（${TRAIT_V.homing[lv] as number}度）`,
-  range: (lv) => `${pct(TRAIT_V.range[lv] as number)}% 遠くまで飛ぶ`,
-  speed: (lv) => `${pct(TRAIT_V.speed[lv] as number)}% 速く飛ぶ`,
-  width: (lv) => `当たる幅が ${Math.round((TRAIT_V.width[lv] as number) * 100)}cm 広がる`,
-  knock: (lv) => `当たった敵を、${TRAIT_V.knock[lv] as number}倍の強さで押し返す`,
-  stagger: (lv) => `当たった敵の攻撃の構えを、${Math.round((TRAIT_V.stagger[lv] as number) * 100)}% で崩す`,
-  charge: (lv) => `詠唱が ${Math.round((1 - (TRAIT_V.charge[lv] as number)) * 100)}% 速い`,
-  length: (lv) => `帯が ${pct(TRAIT_V.length[lv] as number)}% 長く届く`,
-  focus: (lv) => `照らし続けるほど強まる（最大 +${Math.round((TRAIT_V.focus[lv] as number) * 100)}%）`,
-  size: (lv) => `${pct(TRAIT_V.size[lv] as number)}% 大きい`,
-  pull: (lv) => `周りの敵を引き寄せる（${TRAIT_V.pull[lv] as number}m）`,
-  fall: (lv) => `降るまでが ${Math.round((1 - (TRAIT_V.fall[lv] as number)) * 100)}% 短い`,
-  stride: (lv) => `駆ける距離が ${TRAIT_V.stride[lv] as number}m 伸びる`,
-  link: (lv) => `次に駆けるまでの間が ${Math.round((1 - (TRAIT_V.link[lv] as number)) * 100)}% 短い`,
-  after: (lv) => `駆けた跡に、刃の残像が ${TRAIT_V.after[lv] as number} つ残って当たる`,
-  area: (lv) => `雨の範囲が ${pct(TRAIT_V.area[lv] as number)}% 広い`,
-  span: (lv) => `雨が ${pct(TRAIT_V.span[lv] as number)}% 長く降る`,
+/** 特性の説明（段 lv、増える物の名前 what） */
+export const TD: Record<TraitKey, (lv: TraitLv, what?: string) => string> = {
+  count: (lv, what) => `${what}が ${TRAIT_V.count[lv]} つ増える`,
+  pierce: (lv) => `敵を ${TRAIT_V.pierce[lv]} 体貫く`,
+  bounce: (lv) => `壁で ${TRAIT_V.bounce[lv]} 回跳ねる`,
+  homing: (lv) => `飛びながら敵の方へ曲がる（${TRAIT_V.homing[lv]}度）`,
+  range: (lv) => `${pct(TRAIT_V.range[lv])}% 遠くまで飛ぶ`,
+  speed: (lv) => `${pct(TRAIT_V.speed[lv])}% 速く飛ぶ`,
+  width: (lv) => `当たる幅が ${Math.round(TRAIT_V.width[lv] * 100)}cm 広がる`,
+  knock: (lv) => `当たった敵を、${TRAIT_V.knock[lv]}倍の強さで押し返す`,
+  stagger: (lv) => `当たった敵の攻撃の構えを、${Math.round(TRAIT_V.stagger[lv] * 100)}% で崩す`,
+  charge: (lv) => `詠唱が ${Math.round((1 - TRAIT_V.charge[lv]) * 100)}% 速い`,
+  length: (lv) => `帯が ${pct(TRAIT_V.length[lv])}% 長く届く`,
+  focus: (lv) => `照らし続けるほど強まる（最大 +${Math.round(TRAIT_V.focus[lv] * 100)}%）`,
+  size: (lv) => `${pct(TRAIT_V.size[lv])}% 大きい`,
+  pull: (lv) => `周りの敵を引き寄せる（${TRAIT_V.pull[lv]}m）`,
+  fall: (lv) => `降るまでが ${Math.round((1 - TRAIT_V.fall[lv]) * 100)}% 短い`,
+  stride: (lv) => `駆ける距離が ${TRAIT_V.stride[lv]}m 伸びる`,
+  link: (lv) => `次に駆けるまでの間が ${Math.round((1 - TRAIT_V.link[lv]) * 100)}% 短い`,
+  after: (lv) => `駆けた跡に、刃の残像が ${TRAIT_V.after[lv]} つ残って当たる`,
+  area: (lv) => `雨の範囲が ${pct(TRAIT_V.area[lv])}% 広い`,
+  span: (lv) => `雨が ${pct(TRAIT_V.span[lv])}% 長く降る`,
   accuracy: (_lv) => `ばらつきが小さく、少し敵へ曲がる`,
 };
 /** 武器の特性（名前と、段ごとの説明） */
 export interface Trait {
   name: string;
-  d: (lv: number) => string;
+  d: (lv: TraitLv) => string;
 }
 export const TR = (k: TraitKey, name: string, what?: string): Trait => ({ name, d: (lv) => TD[k](lv, what) });
 /** 武器ごとに付きうる特性 */
