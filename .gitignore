@@ -1,0 +1,4 @@
+dist/three/
+dist/*.local.html
+tests/out/
+__pycache__/
