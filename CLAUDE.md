@@ -14,30 +14,47 @@
 
 ## ファイル
 ```
-src/head.html      画面の作りとCSS（three.js を CDN から読む <script> を含む）
-src/game.js        ゲーム本体（約7,500行、1ファイル）
-tools/build.py     src から dist/ascii-luminescence.html を組み立てる
-dist/              組み立て済みの1ファイル版（これを公開している）
-tests/smoke_test.py  組み立て → 起動 → エラー確認 → 画面写真の最小テスト
-docs/DESIGN.md     設計の全体、決めた方針、残っている課題
+src/head.html        画面の作りとCSS（three.js を CDN から読む <script> を含む）
+src/game.js          ゲーム本体（約7,500行、1ファイル）
+tools/build.mjs      src から dist/index.html を組み立てる（--test でオフラインのテスト用）
+tools/serve.mjs      静的ファイルの小さなサーバー
+tests/smoke.mjs      組み立て → 起動 → エラー確認 → 画面写真の最小テスト（Playwright）
+eslint.config.js     lint の設定（エラー＝不具合、警告＝整理の候補）
+wrangler.jsonc       Cloudflare Workers（静的アセット）の設定。公開は dist/
+.claude/settings.json  権限と hooks
+.github/workflows/ci.yml  確かめるだけの CI（lint・組み立て・スモークテスト）
+docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 ```
-`dist/ascii-luminescence.html` = `head.html` + `<script>` + `game.js` + `</script></body></html>`。
+`dist/index.html` = `head.html` + `<script>` + `game.js` + `</script></body></html>`。
+`dist/` と `.build/` は生成物なので git に入れない。直接編集もしない（権限で止めている）。
 
-## 組み立て・実行・テスト
+## 組み立て・実行・テスト（Node 22）
 ```
-python3 tools/build.py                  # dist/ascii-luminescence.html
-python3 tools/build.py --local-three    # three.js を ./three/ から読む版（オフラインのテスト用）
-node --check src/game.js                # 構文チェック
-python3 tests/smoke_test.py [--local]   # Playwright（pip install playwright && playwright install chromium）
+npm install           # 依存を入れる（クラウドのセッションでは SessionStart hook が自動で行う）
+npm run check         # 構文 + lint（エラーだけ） + 組み立て。数秒。編集のたびにこれ
+npm run lint          # 警告も含めて lint を見る
+npm test              # スモークテスト（three.js は node_modules から。オフラインで動く。30秒ほど）
+npm test -- --cdn     # 公開用と同じく CDN から three.js を読む版でテスト
+npm run verify        # check + test
+npm run serve         # dist/ を組み立てて http://127.0.0.1:8000/ で配信
+npm run deploy        # 手元から Cloudflare に公開（ふだんは Workers Builds が git から公開する）
 ```
-- ブラウザで直接開くより、`python3 -m http.server` などで `dist/` を配信して開く方が確実。
 - ヘッドレスのChromiumは、`--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader --ignore-gpu-blocklist` で動く。
   とても遅い（960x540で1秒に1フレームくらい）。ゲームの時間もゆっくり進むので、実時間ではなくゲームの時間で待つこと。
-  画面写真には `timeout=90000` を付ける。長いテストは分ける（1回300秒くらいまで）。
+  画面写真には `timeout: 90000` を付ける。長いテストは分ける（1回300秒くらいまで）。
 - ポインタロックは、テストでは `HTMLCanvasElement.prototype.requestPointerLock` を差し替えて止める。
 - 日本語の幅を確かめる時は、等幅のCJKフォント（例：Noto Sans Mono CJK JP）をテスト側のCSSで当てる。
 - テストから内部を触る時は、組み立てたHTMLの `\ninit();` の直前に `window.__g={...}` を差し込む形を使ってきた
   （`let`/`const` の変数は `window` から見えないため）。
+- Playwright は 1.63.0 に固定（クラウド環境の /opt/pw-browsers の Chromium と版を合わせている）。上げる時はそろえること。
+
+## 自動の確かめ（hooks、.claude/settings.json）
+- **編集の直後**（PostToolUse）：`src/` などの JS を編集すると、構文と lint を確かめる。エラーなら差し戻されるので、その場で直す。
+- **終える前**（Stop）：`src/`・`tools/`・`tests/`・設定が変わっていれば `npm run check` を通す。通らなければ終われない。
+- **セッションの始め**（SessionStart、クラウドのみ）：依存が変わっていれば `npm install`。
+- 権限：`npm run`・lint・git の読み書きは確認なし。公開（wrangler）・`rm -rf`・`git reset --hard` は確認あり。
+  force push、`dist/` と `package-lock.json` の直接編集、`.env`・`.dev.vars` を読むことは禁止。
+- スモークテストは遅いので hooks では走らせない。見た目や動きに関わる変更の後は、自分で `npm test` を走らせて画面写真を見る。
 
 ## 開発用の道具
 **URLの指定**：`?dev=1`（開発用モード：すべて解放済み、dbg が使える）、`seed=`、`depth=`、`god=1`、
@@ -90,6 +107,7 @@ python3 tests/smoke_test.py [--local]   # Playwright（pip install playwright &&
 ## 落とし穴（過去に踏んだもの）
 - **宣言の順番（TDZ）**：`buildIntroPanel()` はスクリプトの途中で呼ばれる。そこで使う `let`/`const`（META など）は、
   それより前で宣言すること。`DEVALL` は後で宣言されるので、`devAllSafe()` 経由で読む。
+- **lint の警告**：使っていない関数・変数が約60か所ある（古い仕組みの残り）。消す時は、図鑑や dbg から文字列で呼ばれていないか確かめる。
 - **sed の区切り文字**：差し込む文に `|`（`||` など）があると壊れる。置き換えは Python で行う方が安全。
 - **/bin/sh**：`mkdir -p a/{b,c}` は展開されない。
 - **乱数とシフト**：32bitの値を `>>` で右シフトすると負になりうる。符号なしにしたい時は `>>>`。
