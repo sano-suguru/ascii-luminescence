@@ -18,6 +18,8 @@ export const TW = 0,
 export const NSL = 96,
   NDL = 6;
 export const PR = 0.3;
+/** 一番深い階（王の影がいる最深部） */
+export const FINAL_DEPTH = 13;
 /** 上下左右の4方向 */
 export const D4 = [
   [1, 0],

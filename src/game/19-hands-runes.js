@@ -1,8 +1,8 @@
 // ---------------------------------------------------------------- the weapons in hand: drawn in glyphs as if held, entering from the lower edges of the view and cut off by them;
 // near parts large, far parts small; filled shapes with bright rims; a hand where a hand would be (a fist on a hilt or shaft, the bow hand and the drawing hand,
 // two hands on a two-handed weapon, an open hand when bare). Long weapons show only their upper part. Near a wall the picture shrinks toward the eye.
-// VM_ST・vmGlyphS・vmGlyph など 5 個は src/lib/hands.ts（読む名前の一覧は src/game/imports.mjs）
-// RUNE_FONT・TRAIT_V・pct など 18 個は src/lib/runes.ts（読む名前の一覧は src/game/imports.mjs）
+// VM_ST・vmGlyphS・vmGlyph など 5 個は src/lib/hands.ts（古い JS が読むのは、そのうち src/game/imports.mjs にある物）
+// RUNE_FONT・TRAIT_V・pct など 18 個は src/lib/runes.ts（古い JS が読むのは、そのうち src/game/imports.mjs にある物）
 const VM_MODELS=(()=>{ const TV=Math.tan(37*Math.PI/180), AS=16/9, SZ=0.03, K=VM_K;
   const S=(sx,sy,z)=>[sx*TV*AS*z,sy*TV*z,z];
   const L3=(A,B,t)=>[0,1,2].map(k=>A[k]+(B[k]-A[k])*t);
@@ -141,7 +141,7 @@ const wTL=(h,k)=>{ const H=effHand(h); for(const t of trList(H.atk))if(t.k===k)r
 const WEAPON_SIG=t=>Object.keys(TRAITS[t]||{}).slice(0,2);
 function rollTraits(ru,r,d,bonus){ if(!ru||RUNE_DEF[ru.type].cat!=='atk'||!TRAITS[ru.type])return ru; const tier=Math.min(4,clamp(Math.floor(((d||1)-1)/3),0,3)+(bonus||0));
   ru.traits=tier>0?WEAPON_SIG(ru.type).map(k=>({k,lv:tier})):[]; return ru; }
-const RUNE_TYPES={atk:['blade','bolt','orb','beam','dash','rain','rapid','star','gsword','mstaff'], elem:['fire','ice','thunder','poison'], trig:['dodge','kill'], mod:['m_chain','m_area','m_dur'], body:['swift','roll','quick','lamp','mend','linger','hush','ward']};
+// RUNE_TYPES は src/lib/runes.ts（src/game/imports.mjs で読む）
 const AFFIX={
   count: {name:'弾数',       roll:r=>1+(r()<0.3?1:0),          fmt:v=>`弾数 +${v}`},
   bounce:{name:'跳ね返り',   roll:r=>1+Math.floor(r()*3),       fmt:v=>`跳ね返り +${v}`},

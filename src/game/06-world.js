@@ -9,16 +9,8 @@ let hintHTML='';
 function showHint(h){ if(h===hintHTML)return; hintHTML=h; const el=document.getElementById('hint'); if(el)el.innerHTML=h; }
 const ceilAt=(x,z)=>{ const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL); if(cx<0||cz<0||cx>=MW||cz>=MH)return BASE_H; return D.ceil[cz*MW+cx]; };
 
-// value noise (deterministic per level)
-let noiseSeed=1;
-const hash3=(x,y,z)=>{ let h=Math.imul(x,374761393)^Math.imul(y,668265263)^Math.imul(z,1274126177)^noiseSeed; h=Math.imul(h^(h>>>13),1274126177); h^=h>>>16; return (h>>>0)/4294967296; };
-function vnoise(x,y,z){
-  const xi=Math.floor(x), yi=Math.floor(y), zi=Math.floor(z), xf=x-xi, yf=y-yi, zf=z-zi;
-  const u=xf*xf*(3-2*xf), v=yf*yf*(3-2*yf), w=zf*zf*(3-2*zf);
-  const l=(a,b,t)=>a+(b-a)*t;
-  return l(l(l(hash3(xi,yi,zi),hash3(xi+1,yi,zi),u),l(hash3(xi,yi+1,zi),hash3(xi+1,yi+1,zi),u),v),
-           l(l(hash3(xi,yi,zi+1),hash3(xi+1,yi,zi+1),u),l(hash3(xi,yi+1,zi+1),hash3(xi+1,yi+1,zi+1),u),v),w);
-}
+// vnoise は src/lib/noise.ts（src/game/imports.mjs で読む）
+// hash3 は src/lib/noise.ts（古い JS は使わない。src/lib/ の生成などが使う）
 // sstep は src/lib/math.ts（src/game/imports.mjs で読む）
 // CHUNK・CXN・CZN は src/lib/world.ts（src/game/imports.mjs で読む）
 
@@ -51,7 +43,7 @@ function buildWorld(){
   chunks=[];
   if(occMesh){ scene.remove(occMesh); occMesh.geometry.dispose(); }
   const {tile,liquid,surface,roomOf,rooms,lights,ceil}=D;
-  noiseSeed=D.noiseSeed;
+  setNoiseSeed(D.noiseSeed);
   const cap=360000;
   const M=new Float32Array(cap*16), GL=new Float32Array(cap), CO=new Float32Array(cap*3), EM=new Float32Array(cap*4), LI=new Float32Array(cap*3), LW=new Float32Array(cap*3);
   const CK=new Int16Array(cap), PY=new Float32Array(cap);

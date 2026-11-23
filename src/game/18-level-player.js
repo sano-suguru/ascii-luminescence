@@ -143,7 +143,7 @@ const statOf=m=>{ const st=MSTAT[m.ty.sk||m.key]||[12,2,5,1.2]; return trialOn('
 const hostile=m=>!m.ty.critter&&!m.ty.peaceful&&!m.ty.watcher&&m.ty.form!=='bloat'&&!m.dead;
 const hittable=m=>!m.dead&&!m.ty.peaceful;
 const foe=m=>hittable(m)&&(hostile(m)||m.ty.watcher||m.ty.form==='bloat'||m.ty.form==='shroom'||(m.ty.critter==='mimic'&&!m.hidden));
-// angDiff は src/lib/math.ts（src/game/imports.mjs で読む）
+// angDiff は src/lib/math.ts（古い JS は使わない。src/lib/ の生成などが使う）
 // expNeed・expOf は src/lib/progress.ts（src/game/imports.mjs で読む）
 // serRune は src/lib/runes.ts（src/game/imports.mjs で読む）
 function initMonsterLife(m){ const st=statOf(m); m.maxHp=Math.round(st[0]*(m.ty.boss?1.5:1)); m.hp=m.maxHp; m.atkCd=0.5+mr(); m.wind=0; }

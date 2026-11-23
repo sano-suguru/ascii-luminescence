@@ -21,7 +21,9 @@ src/game/imports.mjs ゲーム本体が使う TypeScript のモジュールを�
 src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整形もする
                      rng：シードの乱数を作る mulberry32 と clamp、random：見た目の乱数 mr・mpick と迷宮の乱数 rand・R・RI・pick（入れ替えは setRand）、glyphs：文字の図鑑の番号 G、color：css・hsl2rgb、math：角度など、
                      text：パネルの文字の幅と枠、history：年代記、world：迷宮の大きさ・タイル・液体と地面・支道と異界・層ごとの変化・岩、
-                     light：灯りの計算、runes：特性・反応・手の枠、progress：経験・伝承・解放、hands：手元の武器の文字
+                     light：灯りの計算、runes：特性・反応・手の枠、progress：経験・伝承・解放、hands：手元の武器の文字、
+                     strata：層・テーマ・特別な階・支道と異界の中身・地形・群れ、noise：ノイズ（種は setNoiseSeed）、vaults：洞窟と宝物庫の絵
+src/lib/generate.js  迷宮の生成（generateLevel。「入力 → 結果」の形。今は JS のまま。段階6c の後半で TypeScript にする）
 src/lib/bodies/*.ts  生き物の形（kit：点の型と道具 q2・q3、small・beasts・lords：各生き物の形）
 tsconfig.json        TypeScript 7 の設定（strict・noUncheckedIndexedAccess・exactOptionalPropertyTypes など）。対象は src/lib/ と tests/unit/*.ts
 vite.config.mjs      組み立て（Vite 8）。公開用は dist/、テスト用（--mode test）は .build/test/
@@ -29,6 +31,7 @@ tools/vite-plugins.mjs  Vite のプラグイン：legacyGame（src/game をつ�
 tools/game-source.mjs   ゲーム本体をつなぐ処理（gameSource）・行の対応・ソースマップ・テスト版のフォント
 tools/sourcemap.mjs  ソースマップの読み書き（自前の小さな道具）
 tools/lint-game.mjs  src/game/ をつないで構文と lint を調べ、場所を元のファイルの行で出す
+tools/legacy-eval.mjs  テストの道具：古い JS のトップレベルの宣言を名前で取り出して評価する（まだ古い JS にある MTYPES などを、単体テストで本物のまま使う）
 tools/where.mjs      組み立てた JS の場所 → src/game/ のどのファイルの何行目か（ソースマップで戻す）
 tools/map.mjs        ゲーム本体の地図（ファイルごとの行の数と見出し）
 tools/serve.mjs      静的ファイルの小さなサーバー
@@ -38,6 +41,8 @@ tests/determinism.mjs  同じシードで同じ結果になるか
 tests/levels.mjs     全部の階（20シード×30か所）を生成し、例外と、歩いて行けるかを確かめる
 tests/visual.mjs     画面写真の比較（12場面。基準は tests/baseline/）
 tests/panels.mjs     枠のテスト（全部の文字の幅が visW どおりか、操作・装備・メニュー・レベルアップ・祭壇・結果の縦線と、一覧の名前の列が揃うか）
+tests/unit/generate.test.mjs  迷宮の生成の単体テスト（同じ入力なら同じ迷宮・生き物の表に書き込まない・全部の場所の指紋。Node で数秒）。
+                     generate.js に型が付くまでは .mjs のまま（型を確かめる対象の tests/unit/*.ts に入れると、型の無い JS を読んで落ちる）
 tests/glyphs.mjs     使う文字が、パネルのフォント（M PLUS 1 Code ＋ BIZ UDGothic の補い）で描けるか（ブラウザ不要）
 .oxlintrc.json       lint（Oxlint）の設定（エラー＝不具合、警告＝整理の候補）
 .oxfmtrc.json        整形（Oxfmt）の設定。src/game/（古い JS）と index.html 以外。古い JS はまとめては整形しない（行が約4倍になる）。TypeScript に移した物から整形する
@@ -120,6 +125,8 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
    （関数の中で同じ名前を使い直すのは、その中だけのことなので止めない。色の名前の `EYE` など）。
 3. 移す前の実装と、たくさんの入力で同じ結果になることを確かめる（Node 26 は .ts をそのまま動かせる。古い関数は git の版から取り出す）。
    乱数を引く順番を変えると、同じシードで違う結果になる。移す前の値を、単体テスト（tests/unit/*.test.ts）に残す。
+   移した物が、まだ古い JS にある表や関数（MTYPES・makeRune など）を使う時は、テストで `tools/legacy-eval.mjs` の legacyValues から本物を取り出す。
+   迷宮の生成に関わる変更は、前の版とこの版で `__test.gen` の階を作り比べる（シードごとにページを分ける。続けて作ると、前からある揺れが出る）。
 4. `pnpm fmt`・`pnpm check`・`pnpm test`・`pnpm test:visual`（画素まで同じはず）。
 - 型を外すだけで組み立てる（Vite）。enum・namespace など、型を外すだけでは動かない書き方は使わない（`erasableSyntaxOnly`）。
 - import は `.ts` まで書く（`./rng.ts`）。`noUncheckedIndexedAccess` なので、配列の要素は `undefined` かもしれない物として扱う。
@@ -172,14 +179,14 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 ## ゲーム本体の地図（src/game/）
 ファイルは名前の順につながる（後のファイルは、前のファイルの変数や関数を使える。トップレベルで実行する文は順番に気をつける）。
 ファイル名は「2桁の番号-名前.js」（違う名前や、改行で終わらないファイルがあると、組み立てが止まる）。
-細かい見出しと行は `pnpm map` で見る。TypeScript に移した名前の全部の一覧は `src/game/imports.mjs`。ブラウザのエラーの場所は `pnpm where <JS:行:列>` で元のファイルに直す（テストのエラーには自動で付く）。
+細かい見出しと行は `pnpm map` で見る。TypeScript に移した名前のうち、古い JS が読む物の一覧は `src/game/imports.mjs`（生成だけが使う物は載らない。古い JS の「〜は src/lib/…」の行も見る）。ブラウザのエラーの場所は `pnpm where <JS:行:列>` で元のファイルに直す（テストのエラーには自動で付く）。
 | ファイル | 中身 |
 |---|---|
 | 00-test-mode | テスト用モード（`TEST`、時計、乱数） |
 | 01-title | タイトルのロゴ |
-| 02-constants | 層・異界の中身（STRATA・テーマ・MTYPES など）。迷宮の乱数（rand・R・RI・pick）・迷宮の大きさ・タイル・支道・灯りの計算などは src/lib/ |
-| 03-vaults-history | 洞窟の形、宝物庫の絵（VAULTS）、歴史の飾り。makeHistory は src/lib/history.ts、岩・鉱脈・宝物庫の壁の高さは src/lib/world.ts |
-| 04-generate | 迷宮の生成（levelDims、generate。1つの関数で約920行） |
+| 02-constants | 生き物の表（MTYPES）、特別な階の場所（interAt）。層・テーマ・支道と異界の中身・迷宮の乱数・迷宮の大きさ・タイル・灯りの計算などは src/lib/ |
+| 03-vaults-history | 歴史の飾り（壁の絵 ARTS）と、冒険の歴史の入れ物（HIST）。洞窟の形と宝物庫の絵は src/lib/vaults.ts、makeHistory は src/lib/history.ts、岩・鉱脈・宝物庫の壁の高さは src/lib/world.ts |
+| 04-generate | 迷宮の生成の包み（generate）：今のゲームの状態から入力を作り、src/lib/generate.js の generateLevel を呼び、結果（階・主の種類・忘れられた獣）をゲームの状態に入れる |
 | 05-renderer | 描画（シェーダー、水面、文字の図鑑、dyn、粒子の入れ物） |
 | 06-world | 世界の状態（D・depth・monsters・player など）、世界の組み立て（buildWorld）。sstep は src/lib/math.ts、CHUNK は src/lib/world.ts |
 | 07-bodies-lords | 生き物の形：忘れられた獣の型、トロル、人型の見た目、主（不死の王、蜘蛛の女王、ナーガ、竜）。古い獣・ゴーレムの形は src/lib/bodies/ |

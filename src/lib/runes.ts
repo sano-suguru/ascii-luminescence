@@ -167,6 +167,14 @@ export const handRunes = (H: Hand): Rune[] => (H.slots || []).slice(0, H.slotN |
 /** 手に付けた、性質 el のルーンの数 */
 export const elemCount = (H: Hand, el: string): number => handRunes(H).filter((r) => r.type === el).length;
 
+/** ルーンの種類（武器・性質・発動・効き方・護符） */
+export const RUNE_TYPES = {
+  atk: ['blade', 'bolt', 'orb', 'beam', 'dash', 'rain', 'rapid', 'star', 'gsword', 'mstaff'],
+  elem: ['fire', 'ice', 'thunder', 'poison'],
+  trig: ['dodge', 'kill'],
+  mod: ['m_chain', 'm_area', 'm_dur'],
+  body: ['swift', 'roll', 'quick', 'lamp', 'mend', 'linger', 'hush', 'ward'],
+};
 /** ルーン文字を描くフォント */
 export const RUNE_FONT = '"Noto Sans Runic","Segoe UI Historic","Segoe UI Symbol",FreeMono,Unifont,serif';
 /** ルーンを保存する形（種類・強い印・特性） */

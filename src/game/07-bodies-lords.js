@@ -1,17 +1,9 @@
 // ---------------------------------------------------------------- monsters
 // ---------------------------------------------------------------- the forgotten beast (after Dwarf Fortress): the beast of this world's chronicle, built from its description
-// hsl2rgb は src/lib/color.ts、GOLD・BONE・PALE は src/lib/bodies/kit.ts（src/game/imports.mjs で読む）
+// BONE・PALE は src/lib/bodies/kit.ts（src/game/imports.mjs で読む）
+// hsl2rgb は src/lib/color.ts、GOLD は src/lib/bodies/kit.ts（古い JS は使わない。src/lib/ の生成などが使う）
 // beastForm・golemForm・HUM_PROP・LOOK_PROP は src/lib/bodies/lords.ts（src/game/imports.mjs で読む）
-function makeBeastType(H){
-  const sp=H.beastSpec, rnd=mulberry32((runSeed^0x1234567)>>>0);
-  const plan={'獣':'quad','竜':'quad','大蛇':'serpent','蛾':'moth','百足':'centipede'}[sp.kind]||'quad';
-  const spec={plan,kind:sp.kind,legs:sp.feat==='六本脚の'?6:4,wings:(sp.kind==='竜'||sp.kind==='蛾')&&sp.feat!=='翼なき',eyes:sp.feat==='千の眼を持つ'?26:0,
-    fire:sp.feat==='燃える鱗の',shadow:sp.feat==='影を喰らう',sing:sp.feat==='歌う',glyphs:[['#','%','&'],['=','~','x'],['%','*','#'],['&','8','%']][Math.floor(rnd()*4)]};
-  const col=spec.fire?[1.0,0.42,0.14]:spec.shadow?[0.5,0.32,0.8]:hsl2rgb(rnd(),0.75,0.6);
-  const lore=(H.events.find(e=>e.art==='serpent')||{}).text||`その名は、年代記の隅にだけ記されている。`;
-  return {ch:'X',name:H.beast,col,form:'beast',spec,lore,scale:plan==='moth'?3.0:3.6,speed:plan==='moth'?1.0:0.55,fl:plan==='moth'?2.4:0,light:9,trail:spec.fire?8:3,flier:plan==='moth',beast:true,
-    verb:'洞窟の奥で、身じろぎもせずに眠っている'};
-}
+// makeBeastType（忘れられた獣の種類）は src/lib/bodies/lords.ts
 
 // troll: hunched, with arms that nearly reach the ground and moss hanging from the shoulders
 function trollForm(){
