@@ -113,7 +113,7 @@ export function gameSource({ dir = GAME_DIR } = {}) {
 // 文字を調べるテスト（使う文字・文字の幅）のための、ゲームの文言を含む全部の文：ゲーム本体と、TypeScript に移した物（src/lib/）。
 // lib は、本物の src/game の時だけ src/lib（テストで別のフォルダを渡した時に、その近くの関係のない .ts を読まないように）
 export function gameText({ dir = GAME_DIR, lib = dir === GAME_DIR ? join(root, 'src/lib') : null } = {}) {
-  const ts = lib && existsSync(lib) ? readdirSync(lib, { recursive: true }).filter((f) => String(f).endsWith('.ts')) : [];
+  const ts = lib && existsSync(lib) ? readdirSync(lib, { recursive: true }).filter((f) => /\.(ts|js)$/.test(String(f))) : [];
   return gameSource({ dir }) + ts.map((f) => readFileSync(join(lib, String(f)), 'utf8')).join('');
 }
 

@@ -5,7 +5,7 @@ import { clamp, mulberry32 } from '../lib/rng.ts';
 import { boxText, padTo, visW, wrapPlain } from '../lib/text.ts';
 import { makeHistory } from '../lib/history.ts';
 import { G, RUNE_CHARS } from '../lib/glyphs.ts';
-import { R, RI, mpick, mr, pick, rand, setRand } from '../lib/random.ts';
+import { R, RI, mpick, mr, pick, rand } from '../lib/random.ts';
 import { BONE, FUR, GOLD, HRAMP, PALE, SCALE, SKINR, q3 } from '../lib/bodies/kit.ts';
 import { bloatForm, bogForm, crabForm, critterForm, eelForm, fishForm, jellyForm, krakenForm, robotForm, shroomForm, snakeForm, spiderForm, wispForm } from '../lib/bodies/small.ts';
 import {
@@ -40,10 +40,10 @@ import {
   watcherForm,
 } from '../lib/bodies/lords.ts';
 import {
-  BASE_H, BRANCHES, CELL, CH_D, CHUNK, CXN, CZN, D4, EYE, FOGS, FORT_KIND_MSG, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MH, MW, NCELL, NDL, NSL, PR, PROPHECIES,
-  REALMS, ROCKS, RUIN_KIND_MSG, SF_BRIM, SF_DEAD, SF_FOLIAGE, SF_FUNGFOR, SF_GRASS, SF_HAY, SF_ICE, SF_LUMEN, SF_MUD, SF_OBSIDIAN, SF_RUBBLE, TC, TF, TP,
-  TW, TX, VAULT_WALL_H, FINAL_DEPTH, VEIN_COL, VEIN_NAME, blocksWalk, depthProfile, } from '../lib/world.ts';
-import { computeVis, topLights } from '../lib/light.ts';
+  BASE_H, BRANCHES, CELL, CH_D, CHUNK, CXN, CZN, D4, EYE, FOGS, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MH, MW, NCELL, NDL, NSL, PR, PROPHECIES,
+  REALMS, SF_BRIM, SF_DEAD, SF_FOLIAGE, SF_FUNGFOR, SF_GRASS, SF_HAY, SF_ICE, SF_LUMEN, SF_MUD, SF_OBSIDIAN, SF_RUBBLE, TC, TF, TP,
+  TW, TX, VAULT_WALL_H, FINAL_DEPTH, VEIN_COL, VEIN_NAME, blocksWalk, } from '../lib/world.ts';
+import { topLights } from '../lib/light.ts';
 import { lerpAngle, sstep, turnDir } from '../lib/math.ts';
 import { css, hsl2rgb } from '../lib/color.ts';
 import {
@@ -52,8 +52,7 @@ import {
 import { META_DEF, UNLOCKS, expNeed, expOf } from '../lib/progress.ts';
 import { VM_K, VM_MIRROR, VM_ST, vmGlyph, vmGlyphS } from '../lib/hands.ts';
 import {
-  BIOMES, BRANCH_STRATA, FORT_THEMES, HORDES, REALM_STRATA, RUIN_THEMES, SPECIALS, STRATA, THEMES,
-  branchAtDepth, levelDims, stratumOf,
-} from '../lib/strata.ts';
+  SPECIALS, STRATA, } from '../lib/strata.ts';
 import { setNoiseSeed, vnoise } from '../lib/noise.ts';
-import { VAULTS, makeCave, vaultCells } from '../lib/vaults.ts';
+import { VAULTS } from '../lib/vaults.ts';
+import { generateLevel } from '../lib/generate.js';

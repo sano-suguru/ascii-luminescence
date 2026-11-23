@@ -21,7 +21,9 @@ src/game/imports.mjs ゲーム本体が使う TypeScript のモジュールを�
 src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整形もする
                      rng：シードの乱数を作る mulberry32 と clamp、random：見た目の乱数 mr・mpick と迷宮の乱数 rand・R・RI・pick（入れ替えは setRand）、glyphs：文字の図鑑の番号 G、color：css・hsl2rgb、math：角度など、
                      text：パネルの文字の幅と枠、history：年代記、world：迷宮の大きさ・タイル・液体と地面・支道と異界・層ごとの変化・岩、
-                     light：灯りの計算、runes：特性・反応・手の枠、progress：経験・伝承・解放、hands：手元の武器の文字
+                     light：灯りの計算、runes：特性・反応・手の枠、progress：経験・伝承・解放、hands：手元の武器の文字、
+                     strata：層・テーマ・特別な階・支道と異界の中身・地形・群れ、noise：ノイズ（種は setNoiseSeed）、vaults：洞窟と宝物庫の絵
+src/lib/generate.js  迷宮の生成（generateLevel。「入力 → 結果」の形。今は JS のまま。段階6c の後半で TypeScript にする）
 src/lib/bodies/*.ts  生き物の形（kit：点の型と道具 q2・q3、small・beasts・lords：各生き物の形）
 tsconfig.json        TypeScript 7 の設定（strict・noUncheckedIndexedAccess・exactOptionalPropertyTypes など）。対象は src/lib/ と tests/unit/*.ts
 vite.config.mjs      組み立て（Vite 8）。公開用は dist/、テスト用（--mode test）は .build/test/
@@ -177,9 +179,9 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 |---|---|
 | 00-test-mode | テスト用モード（`TEST`、時計、乱数） |
 | 01-title | タイトルのロゴ |
-| 02-constants | 層・異界の中身（STRATA・テーマ・MTYPES など）。迷宮の乱数（rand・R・RI・pick）・迷宮の大きさ・タイル・支道・灯りの計算などは src/lib/ |
+| 02-constants | 生き物の表（MTYPES）、特別な階の場所（interAt）。層・テーマ・支道と異界の中身・迷宮の乱数・迷宮の大きさ・タイル・灯りの計算などは src/lib/ |
 | 03-vaults-history | 洞窟の形、宝物庫の絵（VAULTS）、歴史の飾り。makeHistory は src/lib/history.ts、岩・鉱脈・宝物庫の壁の高さは src/lib/world.ts |
-| 04-generate | 迷宮の生成（levelDims、generate。1つの関数で約920行） |
+| 04-generate | 迷宮の生成の包み（generate）：今のゲームの状態から入力を作り、src/lib/generate.js の generateLevel を呼び、結果（階・主の種類・忘れられた獣）をゲームの状態に入れる |
 | 05-renderer | 描画（シェーダー、水面、文字の図鑑、dyn、粒子の入れ物） |
 | 06-world | 世界の状態（D・depth・monsters・player など）、世界の組み立て（buildWorld）。sstep は src/lib/math.ts、CHUNK は src/lib/world.ts |
 | 07-bodies-lords | 生き物の形：忘れられた獣の型、トロル、人型の見た目、主（不死の王、蜘蛛の女王、ナーガ、竜）。古い獣・ゴーレムの形は src/lib/bodies/ |
