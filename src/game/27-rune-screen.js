@@ -3,8 +3,7 @@ const CAT_BR={atk:['',''],elem:['(',')'],trig:['&lt;','&gt;'],mod:['{','}'],body
 const CAT_NAME={atk:'武器',elem:'性質',trig:'発動',mod:'効き方',body:'護符'};
 const PACK_W=84, PACK_SLOT=14, BAG_LINES=2;
 let packHover=null, packClick={u:0,t:0}, bagPage={atk:0,elem:0,trig:0}, bagPageN={atk:1,elem:1,trig:1};
-const padTo=(html,w)=>html+' '.repeat(Math.max(0,w-visW(html)));
-function wrapPlain(str,w){ const out=[]; let line='', lw=0; for(const ch of str){ const cw=visW(ch); if(lw+cw>w){ out.push(line); line=''; lw=0; } line+=ch; lw+=cw; } if(line)out.push(line); return out; }
+// padTo・wrapPlain は src/lib/text.ts（src/game/imports.mjs で読む）
 function reactionOf(a,b){ const k=[a,b].sort().join('+'); return {'fire+ice':'steam','fire+poison':'blast','fire+thunder':'overload','ice+thunder':'shatter','ice+poison':'frostbite','poison+thunder':'contagion'}[k]||null; }
 function runeChip(ru,attrs){ const d=RUNE_DEF[ru.type], br=CAT_BR[d.cat]||['',''];
   if(d.cat==='atk')return `<button class="row rs" data-u="${ru.uid}" ${attrs}><span class="mk"> </span><span${weaponCol(ru)?` style="color:${weaponCol(ru)}"`:''}>${d.name}</span></button>`;

@@ -1,0 +1,28 @@
+{
+  // TypeScript（7）の型の確かめ（pnpm check の tsc）。組み立ては Vite が型を外すだけなので、tsc は何も出力しない。
+  // ゲーム本体の古い JS（src/game/*.js）は対象にしない。TypeScript に移した物（src/lib/）と、その単体テストだけ
+  "compilerOptions": {
+    "target": "esnext",
+    "lib": ["esnext", "dom"],
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "erasableSyntaxOnly": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": ["src/lib/**/*.ts", "tests/unit/**/*.ts"]
+}

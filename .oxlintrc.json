@@ -40,9 +40,17 @@
     "use-isnan": "error",
     "valid-typeof": "error",
     "getter-return": "error",
-    "no-inner-declarations": "error"
+    "no-inner-declarations": "error",
+    // 型の情報を使う規則（--type-aware）のうち、外すもの。文字列を [...s] で1文字ずつ（コードポイントごと）に分けるのは、
+    // パネルの文字の幅をコードポイントごとに数えるための、わざとの書き方（絵文字などの合成文字は使わない）
+    "typescript/no-misused-spread": "off"
   },
   "overrides": [
+    {
+      // TypeScript に移した物（src/lib/）とその単体テスト。名前が定義されているかは tsc が確かめる
+      "files": ["**/*.ts"],
+      "rules": { "no-undef": "off" }
+    },
     {
       // 道具・テスト・hooks（Node の ESM）
       "files": ["tools/**", "tests/**", ".claude/hooks/**", "*.config.mjs"],

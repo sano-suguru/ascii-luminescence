@@ -223,39 +223,6 @@ const ROCKS={maze:{name:'花崗岩',a:[0.62,0.56,0.62],b:[0.48,0.46,0.6]},cavern
   magma:{name:'玄武岩',a:[0.36,0.3,0.32],b:[0.52,0.32,0.28]},abyss:{name:'黒曜石',a:[0.3,0.25,0.42],b:[0.46,0.34,0.62]},bigroom:{name:'大理石',a:[0.86,0.86,0.92],b:[0.7,0.72,0.82]},
   oracle:{name:'大理石',a:[0.86,0.86,0.92],b:[0.7,0.72,0.82]},town:{name:'花崗岩',a:[0.62,0.56,0.62],b:[0.48,0.46,0.6]},fortress:{name:'花崗岩',a:[0.62,0.56,0.62],b:[0.48,0.46,0.6]}};
 const VEIN_COL={1:[1.0,0.82,0.35],2:[1.0,0.22,0.32],3:[0.35,0.55,1.0],4:[0.25,1.0,0.55]}, VEIN_NAME={1:'金',2:'紅玉',3:'青玉',4:'翠玉'};
-function makeHistory(seed){
-  const rnd=mulberry32((seed^0x9e3779b9)>>>0), pk=a=>a[Math.floor(rnd()*a.length)];
-  const SY=['ア','カ','サ','タ','ナ','ハ','マ','ラ','ザ','ル','ネ','ケ','セ','オ','ヴァ','イ','エ','ク','シ','ト','ミ','ヤ','ゼ','ド','グ','ベ','ラン','ヌ','ホ','ジ'];
-  const nm=(a,b)=>{ let s=''; const n=a+Math.floor(rnd()*(b-a+1)); for(let k=0;k<n;k++)s+=pk(SY); if(rnd()<0.3)s+=pk(['ン','ル','ス','ト']); return s; };
-  const civ={name:nm(2,3), ep:pk(['光を編む民','石を歌う民','星を数える民','水底に祈る民','灰を纏う民','碑文を刻む民','茸を育てる民','鐘を鳴らす民'])};
-  const foe=nm(2,3)+'の民', beastSpec={name:nm(2,3),feat:pk(['六本脚の','千の眼を持つ','燃える鱗の','翼なき','影を喰らう','歌う']),kind:pk(['獣','大蛇','蛾','竜','百足'])}, beast=beastSpec.name+'、'+beastSpec.feat+beastSpec.kind;
-  const ORD=['一','二','三','四','五','六','七'], N=5+Math.floor(rnd()*3);
-  const rulers=ORD.slice(0,N).map(o=>({title:`第${o}の王`,name:nm(2,3)}));
-  const EV={
-    found:   R=>({art:'tower',   text:`${R}は、石の迷宮の上に${civ.name}の最初の都を築いた。`}),
-    discover:R=>({art:'star',    text:`${R}の民は大洞窟を見いだし、その天井に星を見た。`}),
-    forge:   R=>({art:'hammer',  text:`ドワーフたちは${R}のために、溶岩の熱で千の剣を鍛えた。`}),
-    festival:R=>({art:'lantern', text:`${R}の治世、民は百日のあいだ灯りの祭りを続けた。`}),
-    migrate: R=>({art:'tower',   text:`${R}は民を率いて、さらに深い層へと移り住んだ。`}),
-    bridge:  R=>({art:'bridge',  text:`${R}は、燃える海に黒い石の橋を架けた。`}),
-    oracle:  R=>({art:'fountain',text:`${R}は泉のほとりで神託を受け、都の名を改めた。`}),
-    flood:   R=>({art:'wave',    text:`${R}の時代、地底の川があふれ、下の都が水に沈んだ。`}),
-    grove:   R=>({art:'tree',    text:`${R}は茸の巨木を植え、その森を聖域とした。`}),
-    war:     R=>({art:'swords',  text:`${R}は${foe}との戦いに勝ち、敵の王冠を深淵に投げ入れた。`}),
-    beast:   R=>({art:'serpent', text:`${R}の治世、${beast}が地の底より現れ、三つの都を呑んだ。`}),
-    betray:  R=>({art:'crown',   text:`${R}は弟に裏切られ、王冠を奪われた。`}),
-    plague:  R=>({art:'skull',   text:`${R}の治世、灰色の病が都を覆い、灯りがひとつずつ消えていった。`}),
-    fall:    R=>({art:'skull',   text:`${R}は光を失い、${civ.name}の民は散り散りになった。`}),
-    abyss:   R=>({art:'eye',     text:`${R}は深淵を覗き込み、二度と戻らなかった。`}),
-    starfall:R=>({art:'star',    text:`${R}の最期の夜、天井の星がすべて地に落ちた。`}),
-    sleep:   R=>({art:'moon',    text:`${R}は眠りについた。いつか目覚めると言い残して。`}),
-  };
-  const GROW=['discover','forge','festival','migrate'], MID=['bridge','oracle','flood','grove','discover'], CONF=['war','beast','betray','plague'], END=['fall','abyss','starfall','sleep'];
-  const plan=N===5?[['found'],GROW,MID,CONF,END]:N===6?[['found'],GROW,MID,CONF,CONF,END]:[['found'],GROW,GROW,MID,CONF,CONF,END];
-  const used=new Set();
-  const events=rulers.map((r,k)=>{ let key; for(let t=0;t<8;t++){ key=pk(plan[k]); if(!used.has(key))break; } used.add(key); const e=EV[key](`${r.title}${r.name}`); e.ruler=k; return e; });
-  const crowns=rulers.map((r,k)=>({art:'crown',ruler:k,text:`${r.title}${r.name}の戴冠を描いた彫刻。`}));
-  return {civ,foe,beast,beastSpec,rulers,events,crowns};
-}
+// makeHistory（歴史を作る）は src/lib/history.ts（src/game/imports.mjs で読む）
 
 // how much of the 70x46 frame a level uses

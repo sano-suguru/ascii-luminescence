@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, readdirSync, writeFileSync, rmSync } from 'n
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { gameLayout, gameParts, gameSource, gameSourceMap, locate } from '../../tools/game-source.mjs';
+import { gameLayout, gameParts, gameSource, gameSourceMap, gameText, locate } from '../../tools/game-source.mjs';
 import { decodeMappings, encodeMappings, findMap, originalPosition } from '../../tools/sourcemap.mjs';
 
 const ROOT = join(import.meta.dirname, '../..');
@@ -67,16 +67,19 @@ describe('ソースマップ', () => {
       map = gameSourceMap(),
       cache = {};
     let checked = 0;
-    for (let n = 3; n <= lines.length - 2; n += 13)
-      // 包みの2行と、末尾の '})();' を除く
+    for (let n = 1; n <= lines.length; n += 13)
       for (const m of lines[n - 1].matchAll(/[A-Za-z_$][\w$]*/g)) {
         const p = originalPosition(map, n, m.index);
+        if (!p) continue; // 包みの行
         const src = (cache[p.source] ??= readFileSync(p.source, 'utf8').split('\n'))[p.line - 1];
         expect(src.slice(p.column, p.column + m[0].length)).toBe(m[0]);
         checked++;
       }
     expect(checked).toBeGreaterThan(1000);
-    expect(originalPosition(map, 1, 0)).toBeNull(); // 包みの行
+    const wrap = lines.indexOf('(function(){') + 1;
+    expect(wrap).toBeGreaterThan(1); // 包みの前に imports.mjs の import の文がある
+    expect(originalPosition(map, wrap, 0)).toBeNull(); // 包みの行
+    expect(originalPosition(map, 1, 0)?.source).toMatch(/src\/game\/imports\.mjs$/);
   });
 });
 
@@ -100,7 +103,9 @@ describe('Vite の組み立て（公開用と同じ設定）', () => {
       const map = findMap(js, maps),
         lines = code.split('\n'),
         cache = {};
-      expect(map.sources.every((f) => /^src\/game\/\d{2}-[a-z0-9-]+\.js$/.test(f))).toBe(true);
+      // 元のファイルは、ゲーム本体（src/game/）と TypeScript に移した物（src/lib/）だけ
+      expect(map.sources.filter((f) => !/^src\/game\/\d{2}-[a-z0-9-]+\.js$|^src\/lib\/[a-z0-9-]+\.ts$/.test(f))).toEqual([]);
+      expect(map.sources).toContain('src/lib/text.ts');
       // 関数の名前（function xx）は、元のファイルの同じ場所に戻る
       let checked = 0;
       lines.forEach((l, i) => {
@@ -114,8 +119,9 @@ describe('Vite の組み立て（公開用と同じ設定）', () => {
       });
       expect(checked).toBeGreaterThan(300);
       // 使っていない関数も消さない（消すかどうかは人が決める。vite.config.mjs の rolldownOptions）
-      const fnNames = (t) => [...t.matchAll(/function\s+([A-Za-z_$][\w$]*)/g)].map((x) => x[1]).sort();
-      expect(fnNames(code)).toEqual(fnNames(gameSource()));
+      const fnNames = (t) =>
+        [...t.matchAll(/function\s+([A-Za-z_$][\w$]*)/g)].map((x) => x[1]).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+      expect(fnNames(code)).toEqual(fnNames(gameText()));
     } finally {
       process.env.NODE_ENV = env;
       rmSync(out, { recursive: true, force: true });

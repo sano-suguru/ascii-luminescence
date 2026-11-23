@@ -11,9 +11,10 @@ import { CDN, TEST_FONTS, cjkFallback, gameSource, gameSourceMap } from './game-
 const root = join(import.meta.dirname, '..');
 const GAME_DIR = join(root, 'src/game');
 // 解決した名前は、ファイルの形にする（'\0' で始まる仮の名前のモジュールには、Rolldown がソースマップを作らないため）。
-// このファイルは実際には無く、中身は load が返す
+// このファイルは実際には無く、中身は load が返す。src/game/ の中の名前にして、imports.mjs の相対パス（'../lib/…'）が、
+// エディタで開いた時と同じ所を指すようにしている
 const ID = 'virtual:legacy-game',
-  RID = join(root, 'src/legacy-game.js');
+  RID = join(GAME_DIR, 'index.js');
 
 // 開発用サーバーだけで、ゲーム本体の後ろに足す。テスト用モード（?test=1）は時計（setTimeout）を止めるので、Vite の読み直し
 // （setTimeout で少し待ってから読み直す）が動かない。読み直しの合図を受けたら、すぐ読み直す。組み立てた物には入れない

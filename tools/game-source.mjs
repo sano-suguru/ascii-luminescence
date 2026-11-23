@@ -1,6 +1,6 @@
 // ゲーム本体（src/game/*.js）をつなぐ処理と、行の対応・ソースマップ。テスト版のページに使う物（フォントの組み合わせ）もここに置く。
 // 組み立ては Vite（vite.config.mjs と tools/vite-plugins.mjs）。ここは Vite にも lint にもテストにも使う、ただの関数の集まり。
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { encodeMappings } from './sourcemap.mjs';
@@ -70,10 +70,11 @@ export function cjkFallback() {
 }
 
 // ゲーム本体は src/game/ のファイルを、名前の順につないで、一番外側の関数で包む（ファイルの間で変数を共有するため）。
-// 分ける前の src/game.js は、この包み＋全部のファイルと1バイトも違わない。
+// 包みの前（モジュールの一番上）には src/game/imports.mjs を置く（TypeScript に移した物を読む import の文。import は関数の中に書けない）。
 const GAME_DIR = join(root, 'src/game');
 const WRAP_HEAD = "(function(){\n'use strict';\n",
-  WRAP_TAIL = '})();\n';
+  WRAP_TAIL = '})();\n',
+  IMPORTS = 'imports.mjs';
 // ファイル名は「2桁の番号-名前.js」。つなぐ順は名前の順なので、番号の無い名前は最後（初期化の後ろ）に回ってしまう
 const PART_NAME = /^\d{2}-[a-z0-9-]+\.js$/;
 export function gameParts(dir = GAME_DIR) {
@@ -91,9 +92,16 @@ function readPart(f, dir = GAME_DIR) {
     throw new Error(`src/game/${f} が改行で終わっていない（次のファイルの1行目とつながってしまう）。最後に改行を足すこと`);
   return t;
 }
+// 包みの前に置くもの（imports.mjs が無ければ空）と、包みの中につなぐもの
+const hasImports = (dir) => existsSync(join(dir, IMPORTS));
+function pieces(dir = GAME_DIR) {
+  return [...(hasImports(dir) ? [IMPORTS] : []), ...gameParts(dir)];
+}
 
 export function gameSource({ dir = GAME_DIR } = {}) {
+  const head = hasImports(dir) ? readPart(IMPORTS, dir) : '';
   return (
+    head +
     WRAP_HEAD +
     gameParts(dir)
       .map((f) => readPart(f, dir))
@@ -102,16 +110,26 @@ export function gameSource({ dir = GAME_DIR } = {}) {
   );
 }
 
-// gameSource() の中で、各ファイルが何行目から何行あるか
+// 文字を調べるテスト（使う文字・文字の幅）のための、ゲームの文言を含む全部の文：ゲーム本体と、TypeScript に移した物（src/lib/）
+export function gameText({ dir = GAME_DIR } = {}) {
+  const lib = join(dir, '../lib'),
+    ts = existsSync(lib) ? readdirSync(lib, { recursive: true }).filter((f) => String(f).endsWith('.ts')) : [];
+  return gameSource({ dir }) + ts.map((f) => readFileSync(join(lib, String(f)), 'utf8')).join('');
+}
+
+// gameSource() の中で、各ファイルが何行目から何行あるか（imports.mjs は1行目から。包みの2行は、その後ろ）
 export function gameLayout({ dir = GAME_DIR } = {}) {
-  let at = WRAP_HEAD.split('\n').length; // 最初のファイルが始まる行
-  return gameParts(dir).map((f) => {
+  let at = 1;
+  return pieces(dir).map((f) => {
+    if (f !== IMPORTS && at === firstPartLine(dir)) at += WRAP_HEAD.split('\n').length - 1;
     const n = readPart(f, dir).split('\n').length - 1,
       e = { file: `src/game/${f}`, start: at, n };
     at += n;
     return e;
   });
 }
+// 包みの関数の1行目が何行目か（＝ imports.mjs の行の数 + 1）
+const firstPartLine = (dir) => (hasImports(dir) ? readPart(IMPORTS, dir).split('\n').length - 1 : 0) + 1;
 
 // gameSource() の行（1始まり）が、どのファイルの何行目かを返す。包みの行なら null。何度も呼ぶ時は layout を渡す
 export function locate(line, { layout = gameLayout() } = {}) {
@@ -124,10 +142,10 @@ export function locate(line, { layout = gameLayout() } = {}) {
 // 包みの行は対応なし。sources は絶対パス（Vite が出力の場所からの相対に直す）
 const TOKEN = /[A-Za-z_$][\w$]*|\d[\w.]*|\S/g;
 export function gameSourceMap({ dir = GAME_DIR } = {}) {
-  const parts = gameParts(dir),
+  const files = pieces(dir),
     lines = [];
-  for (let k = 0; k < WRAP_HEAD.split('\n').length - 1; k++) lines.push([]);
-  parts.forEach((f, src) => {
+  files.forEach((f, src) => {
+    if (f !== IMPORTS && lines.length === firstPartLine(dir) - 1) for (let k = 1; k < WRAP_HEAD.split('\n').length; k++) lines.push([]); // 包みの2行
     const text = readPart(f, dir).split('\n');
     text.pop(); // 最後の改行の後ろ
     text.forEach((t, l) => {
@@ -136,5 +154,5 @@ export function gameSourceMap({ dir = GAME_DIR } = {}) {
     });
   });
   lines.push([]); // WRAP_TAIL
-  return { version: 3, sources: parts.map((f) => join(dir, f)), names: [], mappings: encodeMappings(lines) };
+  return { version: 3, sources: files.map((f) => join(dir, f)), names: [], mappings: encodeMappings(lines) };
 }
