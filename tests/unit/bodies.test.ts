@@ -110,6 +110,11 @@ describe('生き物の形', () => {
     expect(z.some((p) => p.part === 'legL' || p.part === 'legR')).toBe(false);
     expect(Math.max(...z.map((p) => p.y))).toBeLessThan(Math.max(...b.map((p) => p.y)));
   });
+  it('深みの主の触手：体のそばの4本と、水面から出る10本。移す前と同じ値', () => {
+    expect(lords.KRAKEN_T.length).toBe(14);
+    expect(lords.KRAKEN_W.length).toBe(14);
+    expect(fnv(JSON.stringify([lords.KRAKEN_T, lords.KRAKEN_W]))).toBe('1128adb5'); // 移す前の実装で出した値
+  });
   it('hsl2rgb：色相 0 は赤、1/3 は緑、2/3 は青', () => {
     expect(hsl2rgb(0, 1, 0.5)).toEqual([1, 0, 0]);
     expect(hsl2rgb(1 / 3, 1, 0.5).map((v) => Math.round(v * 1000) / 1000)).toEqual([0, 1, 0]);

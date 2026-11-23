@@ -318,8 +318,8 @@ export function shadowKingForm(): Body {
   return pts;
 }
 
-/** 深みの主の触手の通り道と太さ */
-export const KRAKEN_T: readonly (readonly Vec3[])[] = [
+/** 深みの主の触手の通り道（制御点）と太さ。初めの4本は体のそばの触手、残りの10本は水面から出る触手 */
+const krakenT: Vec3[][] = [
     [
       [-0.45, 0, 0.1],
       [-0.9, 1.2, 0.0],
@@ -351,7 +351,32 @@ export const KRAKEN_T: readonly (readonly Vec3[])[] = [
       [0.6, 0.82, 1.66],
     ],
   ],
-  KRAKEN_W: readonly number[] = [0.22, 0.22, 0.2, 0.2];
+  krakenW: number[] = [0.22, 0.22, 0.2, 0.2];
+// tentacles breaking the water at different distances: some arch high, some curl in or out, a few show only their tips
+for (let k = 0; k < 10; k++) {
+  const a = (k / 10) * Math.PI * 2 + 0.3 * (k % 3) + 0.15,
+    r = 1.35 + 0.95 * ((k * 0.618) % 1),
+    tipOnly = k % 4 === 3,
+    h = tipOnly ? 0.35 + 0.15 * ((k * 0.41) % 1) : 0.6 + 1.5 * ((k * 0.37 + 0.2) % 1),
+    sd = k % 2 ? 1 : -1;
+  const bx = Math.cos(a) * r,
+    bz = Math.sin(a) * r,
+    tx = -Math.sin(a) * sd,
+    tz = Math.cos(a) * sd,
+    ox = Math.cos(a) * (k % 3 ? 1 : -1),
+    oz = Math.sin(a) * (k % 3 ? 1 : -1),
+    L = tipOnly ? 0.4 : 1;
+  krakenT.push([
+    [bx, 0, bz],
+    [bx + tx * 0.15 * L, h * 0.45, bz + tz * 0.15 * L],
+    [bx + tx * 0.3 * L + ox * 0.1 * L, h * 0.9, bz + tz * 0.3 * L + oz * 0.1 * L],
+    [bx + tx * 0.15 * L + ox * 0.35 * L, h, bz + tz * 0.15 * L + oz * 0.35 * L],
+    [bx + ox * 0.4 * L, h * 0.78, bz + oz * 0.4 * L],
+  ]);
+  krakenW.push(tipOnly ? 0.09 : 0.13 + 0.04 * ((k * 0.29) % 1));
+}
+export const KRAKEN_T: readonly (readonly Vec3[])[] = krakenT,
+  KRAKEN_W: readonly number[] = krakenW;
 
 // the ancient machines, each its own body: old brass with light leaking from the seams (readable glyphs; S about 0.28 local)
 // ---- 古い機械（真鍮）

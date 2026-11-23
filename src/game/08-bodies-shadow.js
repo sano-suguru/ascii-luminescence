@@ -9,7 +9,7 @@ function shadowAura(m,t){ const sc=m.ty.scale||1, dp=Math.hypot(m.x-player.x,m.z
       dyn(x,0.05,z,G(edge?'.':'~'),0.2,edge?0.75:0.24,edge?0.72:0.16,edge?0.95:0.4); } }
   if(mr()<0.2){ const a=mr()*6.28, r=mr()*0.9*sc; spawn(m.x+Math.cos(a)*r,0.2,m.z+Math.sin(a)*r,Math.cos(a)*0.2,0.25,Math.sin(a)*0.2,2.6,G(mpick(['~','%'])),0.26,0.16,0.1,0.26,0); } }
 
-// shadowKingForm・KRAKEN_T・KRAKEN_W・cleanerForm・repairerForm・watcherForm は src/lib/bodies/lords.ts（src/game/imports.mjs で読む）
+// shadowKingForm・KRAKEN_T・KRAKEN_W など 6 個は src/lib/bodies/lords.ts（読む名前の一覧は src/game/imports.mjs）
 // BRASS・BRASS_R・mPut・mLit は src/lib/bodies/kit.ts（src/game/imports.mjs で読む）
 // the second form: the seal broken. The cloak twisted into a long body, the wing bones grown into two great arms with torn membrane hanging,
 // the crown's shards grown into horns, the same single eye in a hollow skull with an open jaw; the starry dark and the trapped faces of the kings inside;
@@ -123,11 +123,7 @@ function drawMorph(m,t){ const M=m.morph, f=clamp((time-M.t0)/M.dur,0,1); if(f>=
 // many small red eyes in pairs and a diamond eye on the brow, a fringe of short tentacles hanging from the mouth into the water,
 // eight tentacles - two rising above the head and hooking over it, two arching out to the sides, two curling up toward you, two behind - suckers on the inside of each curl;
 // two broken temple pillars stuck in its back
-// tentacles breaking the water at different distances: some arch high, some curl in or out, a few show only their tips
-for(let k=0;k<10;k++){ const a=k/10*Math.PI*2+0.3*(k%3)+0.15, r=1.35+0.95*((k*0.618)%1), tipOnly=k%4===3, h=tipOnly?0.35+0.15*((k*0.41)%1):0.6+1.5*((k*0.37+0.2)%1), sd=k%2?1:-1;
-  const bx=Math.cos(a)*r, bz=Math.sin(a)*r, tx=-Math.sin(a)*sd, tz=Math.cos(a)*sd, ox=Math.cos(a)*(k%3?1:-1), oz=Math.sin(a)*(k%3?1:-1), L=tipOnly?0.4:1;
-  KRAKEN_T.push([[bx,0,bz],[bx+tx*0.15*L,h*0.45,bz+tz*0.15*L],[bx+tx*0.3*L+ox*0.1*L,h*0.9,bz+tz*0.3*L+oz*0.1*L],[bx+tx*0.15*L+ox*0.35*L,h,bz+tz*0.15*L+oz*0.35*L],[bx+ox*0.4*L,h*0.78,bz+oz*0.4*L]]);
-  KRAKEN_W.push(tipOnly?0.09:0.13+0.04*((k*0.29)%1)); }
+// 水面から出る10本の触手も、KRAKEN_T・KRAKEN_W に入っている（src/lib/bodies/lords.ts）
 function deepKrakenForm(){
   const pts=[], S=0.08, LD=[0.42,0.72,0.55];
   const COL={skin:[0.36,0.5,0.62], dark:[0.2,0.26,0.36], stone:[0.64,0.66,0.6], moss:[0.42,0.72,0.4], eye:[1.0,0.32,0.24], sucker:[0.7,0.85,0.95], ridge:[0.6,0.72,0.85]};

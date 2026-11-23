@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------- the small and simple creatures, each its own body: an outline that reads at a glance and one standing feature (glyphs about 0.22 m)
-// cpt・HRAMP・q2・FUR・SCALE・q3・SKINR・STONE・MUD は src/lib/bodies/kit.ts（src/game/imports.mjs で読む）
-// jellyForm・bloatForm・wispForm・eelForm・snakeForm・fishForm・shroomForm・crabForm は src/lib/bodies/small.ts（src/game/imports.mjs で読む）
-// ratForm・jackalForm・grazerForm・salamanderForm・trollForm2・golemForm2・bogForm2・nagaForm・krakenForm2・caveSpiderForm・batForm・dragonSleepForm・wraithForm2・phantomForm は src/lib/bodies/beasts.ts（src/game/imports.mjs で読む）
+// cpt・HRAMP・q2 など 9 個は src/lib/bodies/kit.ts（読む名前の一覧は src/game/imports.mjs）
+// jellyForm・bloatForm・wispForm など 8 個は src/lib/bodies/small.ts（読む名前の一覧は src/game/imports.mjs）
+// ratForm・jackalForm・grazerForm など 14 個は src/lib/bodies/beasts.ts（読む名前の一覧は src/game/imports.mjs）
 
 // ---------------------------------------------------------------- humanoids, rebuilt: a body made of readable glyphs with shading by material, proportions by kind, and each kind's own features
 function humanoid2(ty){

@@ -48,10 +48,23 @@ const imported = new Set(
     ),
   ),
 );
-// 包みの関数の一番外の宣言のうち、imports.mjs で読んだ名前と同じもの（構文が壊れている時は、上の Oxlint が知らせるので飛ばす）
+// 包みの関数の一番外の宣言のうち、imports.mjs で読んだ名前と同じもの。
+// 構文が壊れている時は、上の Oxlint が知らせるので飛ばす。包みの関数が見つからない時（構文の木の形が変わった時など）は、
+// 黙って確かめをやめずに、エラーにする
 const hides = [];
+const fail = (message) => hides.push({ severity: 'error', message, code: 'lint-game' });
+let ast = null;
 try {
-  const top = parseAst(code, { lang: 'js' }).body.at(-1)?.expression?.callee?.body?.body ?? [];
+  ast = parseAst(code, { lang: 'js' });
+} catch {}
+if (ast) {
+  let fn = ast.body.at(-1)?.expression?.callee;
+  while (fn?.type === 'ParenthesizedExpression') fn = fn.expression;
+  const top = fn?.type === 'FunctionExpression' ? fn.body.body : null;
+  if (!top)
+    fail(
+      '包みの関数 (function(){ … })(); が構文の木に見つからない。tools/lint-game.mjs の読み方を直すこと（読んだ名前の宣言し直しを確かめられない）',
+    );
   // 宣言される名前（分割代入 {a, b: c, ...d} = … や [x, y = 1] = … も、名前になる所だけをたどる）
   const bound = (p) =>
     !p
@@ -73,7 +86,7 @@ try {
       : st.type === 'VariableDeclaration'
         ? st.declarations.flatMap((d) => bound(d.id))
         : [];
-  for (const st of top)
+  for (const st of top ?? [])
     for (const id of names(st))
       if (imported.has(id.name))
         hides.push({
@@ -82,7 +95,7 @@ try {
           code: 'imports.mjs',
           labels: [{ span: { offset: Buffer.byteLength(code.slice(0, id.start)) } }],
         });
-} catch {}
+}
 const diags = [...(JSON.parse(out).diagnostics ?? []), ...hides];
 // Oxlint の位置はバイト数なので、バイトで行と列を数える
 const buf = Buffer.from(code),
