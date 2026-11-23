@@ -1,5 +1,5 @@
 // src/lib/random.ts と src/lib/glyphs.ts の単体テスト
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { G, RUNE_CHARS } from '../../src/lib/glyphs.ts';
 import { R, RI, mpick, mr, pick, rand, setRand } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
@@ -7,6 +7,7 @@ import { mulberry32 } from '../../src/lib/rng.ts';
 const random = Math.random;
 afterEach(() => {
   Math.random = random;
+  setRand(mr); // 迷宮の乱数は、このモジュールの中の状態。テストの並び順に頼らないように、毎回初めの形に戻す
 });
 
 const fnv = (s: string): string => {
@@ -15,11 +16,12 @@ const fnv = (s: string): string => {
   return h.toString(16);
 };
 
-// 迷宮の乱数は、このモジュールの中の状態（setRand で入れ替える）。初めの形を見るテストを先に置く
 describe('rand・R・RI・pick（迷宮の乱数）', () => {
-  it('setRand する前は、見た目の乱数（Math.random）と同じ', () => {
+  it('setRand する前は、見た目の乱数（Math.random）と同じ（読み直した新しいモジュールで確かめる）', async () => {
+    vi.resetModules();
+    const fresh = await import('../../src/lib/random.ts');
     Math.random = () => 0.5;
-    expect([rand(), R(0, 10), RI(0, 9), pick(['a', 'b', 'c', 'd'])]).toEqual([0.5, 5, 5, 'c']);
+    expect([fresh.rand(), fresh.R(0, 10), fresh.RI(0, 9), fresh.pick(['a', 'b', 'c', 'd'])]).toEqual([0.5, 5, 5, 'c']);
   });
   it('setRand した乱数を使い、TypeScript に移す前と同じ並びになる', () => {
     const LIST = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
