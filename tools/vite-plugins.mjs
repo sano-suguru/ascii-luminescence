@@ -4,6 +4,7 @@
 //   testPage(outDir) テスト版：three.js とフォントを、CDN と Google Fonts の代わりに node_modules から読む（オフラインで動き、
 //                    どのマシンでも同じ文字の形になる）
 //   privateMaps(dir) ソースマップを出力の外（.build/maps/）へ移す。公開物には入れない（tools/where.mjs とテストだけが読む）
+//   noCssStub()      ページの中の <style> から Vite が作る、空の JS の部品を消す
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { CDN, TEST_FONTS, cjkFallback, gameSource, gameSourceMap } from './game-source.mjs';
@@ -11,9 +12,10 @@ import { CDN, TEST_FONTS, cjkFallback, gameSource, gameSourceMap } from './game-
 const root = join(import.meta.dirname, '..');
 const GAME_DIR = join(root, 'src/game');
 // 解決した名前は、ファイルの形にする（'\0' で始まる仮の名前のモジュールには、Rolldown がソースマップを作らないため）。
-// このファイルは実際には無く、中身は load が返す
+// このファイルは実際には無く、中身は load が返す。src/game/ の中の名前にして、imports.mjs の相対パス（'../lib/…'）が、
+// エディタで開いた時と同じ所を指すようにしている
 const ID = 'virtual:legacy-game',
-  RID = join(root, 'src/legacy-game.js');
+  RID = join(GAME_DIR, 'index.js');
 
 // 開発用サーバーだけで、ゲーム本体の後ろに足す。テスト用モード（?test=1）は時計（setTimeout）を止めるので、Vite の読み直し
 // （setTimeout で少し待ってから読み直す）が動かない。読み直しの合図を受けたら、すぐ読み直す。組み立てた物には入れない
@@ -47,6 +49,20 @@ export function legacyGame() {
         if (mod) env.moduleGraph.invalidateModule(mod);
         env.hot.send({ type: 'full-reload' });
       });
+    },
+  };
+}
+
+// ページの中の <style> を、Vite は一度 CSS の部品（index.html?html-proxy&inline-css…）として扱い、中身を HTML に戻す。
+// 残った部品は空の文字列を返すだけの JS になる（var index_html_html_proxy_… = ""）。使っていないコードを消さない設定
+// （vite.config.mjs の rolldownOptions）なので、そのまま出力に残ってしまう。中身を HTML に戻した後なので、空にしてよい
+export function noCssStub() {
+  return {
+    name: 'no-css-stub',
+    apply: 'build',
+    transform: {
+      order: 'post',
+      handler: (_code, id) => (/[?&]html-proxy&inline-css/.test(id) ? { code: '', map: null } : null),
     },
   };
 }

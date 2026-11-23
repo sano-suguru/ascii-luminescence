@@ -8,12 +8,11 @@ const G=ch=>{ const c=ch.charCodeAt(0); if(c<128)return c-32; const k=RUNE_CHARS
 const D4=[[1,0],[-1,0],[0,1],[0,-1]];
 const mr=Math.random;
 let rand=mr;
-function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+// mulberry32・clamp は src/lib/rng.ts（src/game/imports.mjs で読む）
 const R=(a,b)=>a+rand()*(b-a);
 const RI=(a,b)=>Math.floor(a+rand()*(b-a+1));
 const pick=a=>a[Math.floor(rand()*a.length)];
 const mpick=a=>a[Math.floor(mr()*a.length)];
-const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const RUNESET=['&','%','$','?','!','#','+','x','Y','Z','8','0','*','~','^','=','<','>','{','}','/','\\'];
 const SWAPSET='#$%&*+=?@0123456789ABCDEFGHJKLMNPQRSTUVWXYZ<>{}[]~^';
 const WG='###########%%&8HX=+#$#';

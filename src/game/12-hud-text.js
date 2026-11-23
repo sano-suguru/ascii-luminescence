@@ -32,19 +32,7 @@ function renderStatus(){
 }
 let perfOn=false, pfFrames=0, pfT=0, pfFps=0;
 let chronOn=false;
-// how many columns a piece of panel text takes. The panels use M PLUS 1 Code (half width = 1, full width = 2);
-// the few characters it lacks (← → and full-width ！：？［］) come from BIZ UDGothic, where they are full width (2).
-// Note: the ideographic space (U+3000) is half width in M PLUS 1 Code, so it counts 1. tests/panels.mjs checks this against the fonts.
-const visW=html=>{ const t=html.replace(/<input[^>]*size="(\d+)"[^>]*>/g,(m,n)=>' '.repeat(+n)).replace(/<[^>]*>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'"); let w=0;
-  for(const ch of t){ const c=ch.codePointAt(0); w+=c===0x3000?1:(c===0x2190||c===0x2192)?2:(c>=0x1100&&(c<=0x115f||(c>=0x2e80&&c<=0xa4cf)||(c>=0xac00&&c<=0xd7a3)||(c>=0xf900&&c<=0xfaff)||(c>=0xfe30&&c<=0xfe4f)||(c>=0xff00&&c<=0xff60)||(c>=0xffe0&&c<=0xffe6)||(c>=0x3000&&c<=0x30ff)))?2:1; } return w; };
-function boxText(lines,fixedW){
-  const f=t=>`<span class="f">${t}</span>`, all=lines.join('\n').split('\n'), top=all[0], body=all.slice(1,-1);
-  const title=top.replace(/<[^>]*>/g,'').replace(/^\+-+\s*/,'').replace(/\s*-*\+?\s*$/,'');
-  const T=fixedW?Math.max(fixedW,...body.map(visW)):Math.max(visW(`+-- ${title} `)+4,...body.map(visW));
-  const head=`+-- ${title} `; const out=[f(head+'-'.repeat(Math.max(1,T+1-visW(head)))+'+')];
-  for(const l of body)out.push(l+' '.repeat(Math.max(0,T-visW(l)))+' '+f('|'));
-  out.push(f('+'+'-'.repeat(T)+'+')); return out.join('\n');
-}
+// パネルの文字の幅（visW）と枠（boxText）は src/lib/text.ts（src/game/imports.mjs で読む）
 function renderChron(){
   const el=document.getElementById('help'); if(!el||!HIST)return;
   const f=t=>`<span class="f">${t}</span>`;

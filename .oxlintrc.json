@@ -44,6 +44,11 @@
   },
   "overrides": [
     {
+      // TypeScript に移した物（src/lib/）とその単体テスト。名前が定義されているかは tsc が確かめる
+      "files": ["**/*.ts"],
+      "rules": { "no-undef": "off" }
+    },
+    {
       // 道具・テスト・hooks（Node の ESM）
       "files": ["tools/**", "tests/**", ".claude/hooks/**", "*.config.mjs"],
       "env": { "node": true }

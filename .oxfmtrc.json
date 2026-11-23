@@ -2,6 +2,15 @@
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "printWidth": 140,
   "singleQuote": true,
-  // ゲーム本体（src/）は、まとめては整形しない（行が約4倍に増えて読みにくくなるため）。TypeScript に移す時に、移した物から整形する。文書と生成物も整形しない
-  "ignorePatterns": ["src/**", "**/*.md", "dist/**", ".build/**", "tests/out/**", "tests/baseline/**", "pnpm-lock.yaml"]
+  // ゲーム本体の古い JS（src/game/）は、まとめては整形しない（行が約4倍に増えて読みにくくなるため）。TypeScript に移した物（src/lib/）から整形する。文書と生成物も整形しない
+  "ignorePatterns": [
+    "src/game/**",
+    "src/index.html",
+    "**/*.md",
+    "dist/**",
+    ".build/**",
+    "tests/out/**",
+    "tests/baseline/**",
+    "pnpm-lock.yaml"
+  ]
 }

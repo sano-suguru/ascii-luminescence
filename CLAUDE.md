@@ -16,9 +16,12 @@
 ```
 src/index.html       画面の作りとCSS（Vite の入口。three.js を CDN から読む <script> を含む）
 src/main.js          ページの入口のモジュール（ゲーム本体 virtual:legacy-game を読むだけ）
-src/game/*.js        ゲーム本体（31ファイル、合わせて約7,500行。下の「ゲーム本体の地図」）
+src/game/*.js        ゲーム本体の古い JS（31ファイル、合わせて約7,500行。下の「ゲーム本体の地図」）
+src/game/imports.mjs ゲーム本体が使う TypeScript のモジュールを読む import の文（包みの関数の前に置かれる）
+src/lib/*.ts         TypeScript に移した物（rng：乱数と clamp、text：パネルの文字の幅と枠、history：年代記）。厳しい型で確かめ、整形もする
+tsconfig.json        TypeScript 7 の設定（strict・noUncheckedIndexedAccess・exactOptionalPropertyTypes など）。対象は src/lib/ と tests/unit/*.ts
 vite.config.mjs      組み立て（Vite 8）。公開用は dist/、テスト用（--mode test）は .build/test/
-tools/vite-plugins.mjs  Vite のプラグイン：legacyGame（src/game をつないで1つのモジュールに）・testPage（テスト版）・privateMaps（ソースマップを公開物の外へ）
+tools/vite-plugins.mjs  Vite のプラグイン：legacyGame（src/game をつないで1つのモジュールに）・testPage（テスト版）・privateMaps（ソースマップを公開物の外へ）・noCssStub（ページの <style> の空の部品を消す）
 tools/game-source.mjs   ゲーム本体をつなぐ処理（gameSource）・行の対応・ソースマップ・テスト版のフォント
 tools/sourcemap.mjs  ソースマップの読み書き（自前の小さな道具）
 tools/lint-game.mjs  src/game/ をつないで構文と lint を調べ、場所を元のファイルの行で出す
@@ -33,8 +36,8 @@ tests/visual.mjs     画面写真の比較（12場面。基準は tests/baseline
 tests/panels.mjs     枠のテスト（全部の文字の幅が visW どおりか、操作・装備・メニュー・レベルアップ・祭壇・結果の縦線と、一覧の名前の列が揃うか）
 tests/glyphs.mjs     使う文字が、パネルのフォント（M PLUS 1 Code ＋ BIZ UDGothic の補い）で描けるか（ブラウザ不要）
 .oxlintrc.json       lint（Oxlint）の設定（エラー＝不具合、警告＝整理の候補）
-.oxfmtrc.json        整形（Oxfmt）の設定。tools・tests・hooks・設定だけ。src/game/ はまとめては整形しない（行が約4倍になる）。TypeScript に移す物から、移す時に整形する
-vitest.config.mjs    単体テスト（Vitest）の設定。テストは tests/unit/*.test.mjs
+.oxfmtrc.json        整形（Oxfmt）の設定。src/game/（古い JS）と index.html 以外。古い JS はまとめては整形しない（行が約4倍になる）。TypeScript に移した物から整形する
+vitest.config.mjs    単体テスト（Vitest）の設定。テストは tests/unit/*.test.{mjs,ts}
 package.json         スクリプトと依存。packageManager で pnpm の版を固定（pnpm@12.22.0）
 pnpm-workspace.yaml  pnpm のサプライチェーン対策（公開24時間未満は入れない、信頼の低下を拒む、インストール時のスクリプトは承認制）
 .node-version        Node の版（26.13.1）。CI・SessionStart hook・Cloudflare が読む
@@ -46,8 +49,8 @@ wrangler.jsonc       Cloudflare Workers（静的アセット）の設定。公�
 .github/dependabot.yml  依存の更新の PR（Dependabot。毎週。公開から1日たった版だけ。three.js と Playwright は手で上げる）
 docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 ```
-組み立ては Vite 8。`src/game/*.js` を名前の順につなぎ、`(function(){ 'use strict'; … })();` で包んだものを、1つのモジュール
-（`virtual:legacy-game`）にする（`tools/vite-plugins.mjs` の legacyGame）。公開物は `dist/index.html` と `dist/assets/index-<hash>.js`。
+組み立ては Vite 8。`src/game/imports.mjs`（import の文）の後ろに、`src/game/*.js` を名前の順につなぎ、`(function(){ 'use strict'; … })();` で
+包んだものを置いて、1つのモジュール（`virtual:legacy-game`）にする（`tools/vite-plugins.mjs` の legacyGame）。公開物は `dist/index.html` と `dist/assets/index-<hash>.js`。
 - Vite（Rolldown）は JS を書き直して出す（字下げ・引用符・`undefined`→`void 0` など。縮めはしない。コメントは消える）。なので、組み立てた JS の行は元のファイルと違う。
   場所はソースマップで戻す。ソースマップは**公開しない**ので、出力には残さず `.build/maps/<mode>/` に移している（privateMaps）。
 - 開発用サーバー（`pnpm dev`）は、src/game/ が変わるとページを読み直す（HMR はしない）。テスト用モード（`?test=1`）は時計が止まっていて
@@ -58,9 +61,10 @@ docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 ## 組み立て・実行・テスト（Node 26・pnpm 12）
 ```
 pnpm install --frozen-lockfile   # 依存を入れる（クラウドのセッションでは SessionStart hook が Node・pnpm ごと自動で行う）
-pnpm check            # 構文 + lint（エラーだけ） + 整形の確かめ + 単体テスト（Vite の組み立ても試す） + 使う文字 + 組み立て。数秒。編集のたびにこれ
+pnpm check            # 構文 + lint（エラーだけ。型の情報も使う） + 型（tsc） + 整形の確かめ + 単体テスト（Vite の組み立ても試す） + 使う文字 + 組み立て。数秒。編集のたびにこれ
 pnpm lint             # 警告も含めて lint を見る（src/game/ はつないで調べる）
-pnpm fmt              # 整形する（Oxfmt。今は tools・tests・hooks・設定だけ）
+pnpm fmt              # 整形する（Oxfmt。src/game/ の古い JS と index.html 以外）
+pnpm typecheck        # 型を確かめる（TypeScript 7 の tsc。src/lib/ と tests/unit/*.ts。1秒かからない）
 pnpm test:unit        # 単体テスト（Vitest。tests/unit/）
 pnpm map [語]         # ゲーム本体の地図。語を付けると、見出しにその語を含むファイルだけ（例：pnpm map fire）
 pnpm where index-D0mETEmY.js:4321:12   # 組み立てた JS のその場所が、src/game/ のどこか（行だけも可。--test でテスト版）
@@ -100,6 +104,19 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
   上げると描き方が少し変わりうるので、`pnpm test:visual` が落ちたら、違いの画像を見てから基準を作り直す（コミットを分ける）。
 - CI では画面写真の比較も失敗にする。CI とクラウド環境の差は数画素（0.01%以下）で、失敗の基準は0.2%。
 
+## TypeScript に移す（段階6で少しずつ）
+古い JS（src/game/）の関数を、1つずつ src/lib/*.ts に移す。動きを変えないことが一番大事。
+1. src/lib/ に、型を付けて書き直す（`export` する）。古い JS の外の名前に頼る物（`rand`・`D` など、ゲームの状態）は、まだ移さない。
+2. `src/game/imports.mjs` に import を足し、src/game/ から元の定義を消す（「〜は src/lib/xx.ts」と1行残す）。
+   消し忘れると、包みの中の古い定義が import を黙って隠す。lint-game（pnpm check と編集直後の hook）が、読んだ名前の宣言をエラーにして止める。
+3. 移す前の実装と、たくさんの入力で同じ結果になることを確かめる（Node 26 は .ts をそのまま動かせる。古い関数は git の版から取り出す）。
+   乱数を引く順番を変えると、同じシードで違う結果になる。移す前の値を、単体テスト（tests/unit/*.test.ts）に残す。
+4. `pnpm fmt`・`pnpm check`・`pnpm test`・`pnpm test:visual`（画素まで同じはず）。
+- 型を外すだけで組み立てる（Vite）。enum・namespace など、型を外すだけでは動かない書き方は使わない（`erasableSyntaxOnly`）。
+- import は `.ts` まで書く（`./rng.ts`）。`noUncheckedIndexedAccess` なので、配列の要素は `undefined` かもしれない物として扱う。
+- 文字を調べるテスト（使う文字・文字の幅）は、src/lib/*.ts の文も見る（`gameText`）。コメントの文字も調べるので、フォントに無い文字（＝ など）は
+  コメントにも書かない（落ちた時は、場所と「コメント」の印が出る）。
+
 ## テスト用モード（`?test=1`）
 同じ手順なら、いつも同じ結果になるモード。開発用モードも含む（`seed=`・`depth=`・`god=1` などがそのまま使える）。
 ふだんの遊びには影響しない（`src/game/00-test-mode.js` の `TEST` で分けている）。
@@ -116,7 +133,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
   - パネルの文字の幅を測る時は、`document.fonts.ready` を待つ（文字の範囲ごとのフォントは、使う時に読まれる）。
 
 ## 自動の確かめ（hooks、.claude/settings.json）
-- **編集の直後**（PostToolUse）：`src/` などの JS を編集すると、構文と lint を確かめる（`src/game/` は全部をつないで調べる）。エラーなら差し戻されるので、その場で直す。
+- **編集の直後**（PostToolUse）：`src/` などの JS を編集すると、構文と lint を確かめる（`src/game/` は全部をつないで調べる）。TypeScript は型（tsc）と、型の情報を使う lint。エラーなら差し戻されるので、その場で直す。
 - **終える前**（Stop）：`src/`・`tools/`・`tests/`・設定が変わっていれば `pnpm check` を通す。通らなければ終われない。
 - **セッションの始め**（SessionStart、クラウドのみ）：.node-version の Node と packageManager の pnpm を用意し（~/.cache）、依存が変わっていれば `pnpm install --frozen-lockfile`。
 - 権限：`pnpm` のスクリプト（check・lint・test など）・git の読み取り・commit・push・ブランチの切り替えは確認なし。
@@ -151,8 +168,8 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 |---|---|
 | 00-test-mode | テスト用モード（`TEST`、時計、乱数） |
 | 01-title | タイトルのロゴ |
-| 02-constants | 定数（層・支道・異界・特別な階、MTYPES など）、乱数と小さな道具（mr・rand・mulberry32・clamp） |
-| 03-vaults-history | 洞窟の形、宝物庫の絵（VAULTS）、歴史（makeHistory） |
+| 02-constants | 定数（層・支道・異界・特別な階、MTYPES など）、乱数と小さな道具（mr・rand。mulberry32・clamp は src/lib/rng.ts） |
+| 03-vaults-history | 洞窟の形、宝物庫の絵（VAULTS）、歴史の飾り（makeHistory は src/lib/history.ts） |
 | 04-generate | 迷宮の生成（levelDims、generate。1つの関数で約920行） |
 | 05-renderer | 描画（シェーダー、水面、文字の図鑑、dyn、粒子の入れ物） |
 | 06-world | 世界の状態（D・depth・monsters・player など）、世界の組み立て（buildWorld） |
@@ -161,7 +178,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 | 09-bodies-creatures | 生き物の形：小さな生き物、人型、オーガ、四つ足、大きな生き物、死者 |
 | 10-bodies-beast | 忘れられた獣の組み立て（buildForm）、獣の記録 |
 | 11-monster-move | 生き物を作る（makeMonster）、歩ける所（canStep）、行き先（chooseNext） |
-| 12-hud-text | 忍び足と灯り、状態の表示（renderStatus）、**パネルの文字の幅（visW）と枠（boxText）**、操作・年代記の画面、物音 |
+| 12-hud-text | 忍び足と灯り、状態の表示（renderStatus）、操作・年代記の画面、物音（**パネルの文字の幅 visW と枠 boxText は src/lib/text.ts**） |
 | 13-creatures | 小さな生き物、群れ、大きな生き物の動き（updateMonster）、描く（drawMonster） |
 | 14-lights-fixtures | 灯り、備品、扉 |
 | 15-sound-fire | 音、ガス、火、火花 |
@@ -176,7 +193,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 | 24-goal | 目的（伝説の物、最深部、王の影）、勝利、稲妻、タイトルへ戻る |
 | 25-gallery | 見た物の記録、図鑑、試しの間 |
 | 26-spells-hud | 術と世界（扉・氷・雷）、詠唱の声、下の HUD（renderHotbar）、止まっているか（isPaused） |
-| 27-rune-screen | 装備の画面（renderInv、packSlot、equipWeapon、ビルド）、魔導書、メニュー |
+| 27-rune-screen | 装備の画面（renderInv、packSlot、equipWeapon、ビルド）、魔導書、メニュー（padTo・wrapPlain は src/lib/text.ts） |
 | 28-camera-player | 1人称・3人称、プレイヤーの動き（updatePlayer）、空気（updateAtmosphere） |
 | 29-look | 見た時の説明（look） |
 | 30-loop-init | 大きさ、メインループ（frame・tick）、テスト用の `__test`、初期化（init） |
@@ -185,7 +202,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 ## 落とし穴（過去に踏んだもの）
 - **宣言の順番（TDZ）**：`buildIntroPanel()` はスクリプトの途中で呼ばれる。そこで使う `let`/`const`（META など）は、
   それより前で宣言すること。`DEVALL` は後で宣言されるので、`devAllSafe()` 経由で読む。
-- **パネルの枠と文字の幅**：枠（boxText）は `visW` で幅を数えて縦線を揃える。パネルのフォントは M PLUS 1 Code
+- **パネルの枠と文字の幅**：枠（boxText）は `visW` で幅を数えて縦線を揃える（どちらも src/lib/text.ts）。パネルのフォントは M PLUS 1 Code
   （半角1マス・全角2マス。ただし全角スペース「　」は1マス。なので、列を揃える時は全角スペースで埋めず、visW で数えた半角スペースで埋める）。M PLUS 1 Code に無い文字（← → ！：？［］）は、
   index.html で BIZ UDGothic をその文字だけ読んで補っている（全角2マス）。新しい記号を使う時は、M PLUS 1 Code にあるかを
   `pnpm check`（tests/glyphs.mjs）で確かめ、無ければ別の文字にするか、index.html の text= と visW に足す。
