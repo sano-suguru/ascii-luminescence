@@ -1,44 +1,13 @@
 // src/lib/generate.js（迷宮の生成）の単体テスト。Node で動くので、ブラウザの「全部の階」のテストより速い。
-// まだ古い JS にある物（生き物の表 MTYPES・ルーンを作る makeRune など）は、本物を古い JS の文から取り出して使う（tools/legacy-eval.mjs）。
+// 共通部分（全部の場所・gen）は tests/gen-places.mjs。歩いて行けるかは reach.test.mjs（別のファイルにして、並べて走らせる）
 import { beforeAll, describe, expect, it } from 'vitest';
-import { legacyValues } from '../../tools/legacy-eval.mjs';
-import { generateLevel } from '../../src/lib/generate.js';
-import { makeHistory } from '../../src/lib/history.ts';
-import { RUNE_TYPES } from '../../src/lib/runes.ts';
-import { SPECIALS } from '../../src/lib/strata.ts';
-import { BRANCHES, FINAL_DEPTH, REALMS } from '../../src/lib/world.ts';
+import { PLACES, gen as gen0, loadEnv } from '../gen-places.mjs';
 
 let env;
 beforeAll(async () => {
-  env = await legacyValues(['MTYPES', 'RUNE_DEF', 'WEAPON_SIG', 'runeUid', 'makeRune', 'rollTraits']);
+  env = await loadEnv();
 });
-
-// 全部の場所（ブラウザの __test.places と同じ並び。特別な階の深さは、冒険のシードで少し変わるので、ここでは決まった深さにする）
-const SPECIAL_AT = { town: 2, bigroom: 3, oracle: 5, fortress: 9 };
-const PLACES = [
-  ...Array.from({ length: FINAL_DEPTH }, (_, i) => ({ depth: i + 1 })),
-  ...Object.keys(SPECIALS).map((k) => ({ depth: SPECIAL_AT[k], inter: { key: k, after: SPECIAL_AT[k] } })),
-  ...Object.values(BRANCHES).flatMap((B) =>
-    Array.from({ length: B.len }, (_, i) => ({ depth: B.at[0], branch: { key: B.key, lvl: i + 1, len: B.len, ret: B.at[0] + 1 } })),
-  ),
-  ...Object.values(REALMS).map((R) => ({ depth: R.minD + 2, realm: { key: R.key, ret: R.minD + 3 } })),
-];
-const gen = (seed, place, runSeed = 42) =>
-  generateLevel(
-    seed,
-    place.depth,
-    {
-      runSeed,
-      branch: place.branch ?? null,
-      realm: place.realm ?? null,
-      inter: place.inter ?? null,
-      showroom: false,
-      hist: makeHistory(runSeed),
-      trials: [],
-      weapons: RUNE_TYPES.atk.slice(),
-    },
-    env,
-  );
+const gen = (seed, place, runSeed) => gen0(env, seed, place, runSeed);
 // 階を文字にする。ルーンの番号 uid は、全体の数え上げなので除く。日本語の文（伝言・名前・碑文など）も、言い回しを直すたびに
 // 指紋が変わらないように、印に置き換える（かなを含むか、漢字が2字以上の文字列。1字の漢字は、描く文字のことがあるので残す）
 const PROSE = /[\u3040-\u30ff]|[\u4e00-\u9fff].*[\u4e00-\u9fff]/u;
@@ -83,10 +52,11 @@ describe('迷宮の生成', () => {
       expect(level.stairs).toBeGreaterThanOrEqual(0);
     }
   });
-  // 移す前と同じ迷宮になることは、ブラウザで main と 150 の階を作り比べて確かめた。その時の生成の指紋（日本語の文は除く）
-  it('移した時と同じ迷宮になる（全部の場所の指紋）', () => {
+  // ブラウザ（Chromium）と Node で同じ迷宮になることを、190 の階を作り比べて確かめた（混ぜるのを shuffle にした時）。その時の生成の指紋（日本語の文は除く）。
+  // 生成を変えると変わる。意図して変えた時は、ブラウザでも同じになることを確かめてから作り直す
+  it('今の迷宮と同じになる（全部の場所の指紋）', () => {
     let all = '';
     for (const pl of PLACES) all += text(gen(202, pl));
-    expect([fnv(all), all.length]).toEqual(['291d61c3', 19904412]);
+    expect([fnv(all), all.length]).toEqual(['1bf236b2', 20044633]);
   }, 30000);
 });

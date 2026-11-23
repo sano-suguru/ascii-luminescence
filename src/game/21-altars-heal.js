@@ -19,7 +19,7 @@ function altarFill(grp){ const its=(D.items||[]).filter(o=>o.grp===grp&&o.altar)
   const heal=()=>player.hp<PLAYER_MAX*0.85?{opt:'heal',rune:{uid:-1,type:'mend',aff:{}}}:null;
   const forge=()=>{ const f=forgeOptions(1)[0]; return f?{opt:'forge',forgeW:f.w,forgeK:f.k,forgeTo:f.to,rune:{uid:-1,type:'forgeopt',aff:{}}}:null; };
   opts.push((lord||mr()<0.08)?(weapon()||newRune()):newRune()); opts.push(lord?(forge()||newRune()):newRune()); opts.push(heal()||newRune()); for(let k=0;k<3;k++)if(!opts[k])opts[k]={opt:'heal',rune:{uid:-1,type:'mend',aff:{}}};
-  opts.sort(()=>mr()-0.5); its.forEach((it,k)=>Object.assign(it,opts[k])); }
+  shuffle(opts,mr); its.forEach((it,k)=>Object.assign(it,opts[k])); }
 // guards for altars and the strong one's room: groups added to this level's spawns, kept in their room; an altar or prize is dark until its guards are gone
 function hostileKeys(){ const n={}; for(const s of (D.spawns||[])){ const ty=MTYPES[s.key]; if(!ty||ty.critter||ty.peaceful||ty.boss||s.key==='lord'||s.key==='final'||ty.habitat||ty.form==='eel')continue; n[s.key]=(n[s.key]||0)+1; } return n; }
 function nextGroup(){ return (D.spawns||[]).reduce((a,s)=>Math.max(a,s.g||0),0)+1; }
@@ -135,13 +135,13 @@ function placeRunesForLevel(){
   const free=c=>c>=0&&c<NCELL&&D.tile[c]===TF&&!D.liquid[c]&&!D.solid.has(c)&&c!==D.stairs&&c!==D.upstairs&&!D.items.some(it=>it.i===c);
   if(depth===1&&!branch&&!realm&&!runState.startChosen){
     const s=D.start, cand=[]; for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){ const d=Math.hypot(dx,dz); if(d<1.8||d>3.2)continue; const c=s+dx+dz*MW; if(free(c))cand.push([Math.atan2(dz,dx),c]); }
-    cand.sort((a,b)=>a[0]-b[0]); const els=RUNE_TYPES.elem.slice().sort(()=>r()-0.5).slice(0,3);
+    cand.sort((a,b)=>a[0]-b[0]); const els=shuffle(RUNE_TYPES.elem.slice(),r).slice(0,3);
     if(cand.length>=3){ const step=cand.length/3; for(let k=0;k<3;k++)D.items.push({i:cand[Math.floor(k*step+step/2)][1],kind:'rune',rune:makeRune(els[k],0,r),grp:'start',pedestal:true,taken:false}); }
   }
   if(depth===1&&!branch&&!realm&&!runState.altar1){
     const rooms=D.rooms.filter((ro,ri)=>ri>0&&!ro.cave&&ro.cells.length>12); const ro=rooms.length?rooms[Math.floor(r()*rooms.length)]:null;
     const c=ro?ro.cells.filter(free):[]; if(c.length){ const at=c[Math.floor(c.length/2)];
-      const opts=[...RUNE_TYPES.elem.slice().sort(()=>r()-0.5).slice(0,2),RUNE_TYPES.trig[Math.floor(r()*2)]];
+      const opts=[...shuffle(RUNE_TYPES.elem.slice(),r).slice(0,2),RUNE_TYPES.trig[Math.floor(r()*2)]];
       opts.forEach((t,k)=>D.items.push({i:at,kind:'rune',rune:makeRune(t,rollAffN(r,0.1),r),grp:'altar1',altar:true,slot:k,taken:false})); } }
   else if(depth>1||branch||realm)mainPathAltars(r,free);
   for(const it of D.items)if(it.vault&&!it.ev)it.ev=r()<0.5?'guard':'collapse';
