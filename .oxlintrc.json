@@ -40,10 +40,7 @@
     "use-isnan": "error",
     "valid-typeof": "error",
     "getter-return": "error",
-    "no-inner-declarations": "error",
-    // 型の情報を使う規則（--type-aware）のうち、外すもの。文字列を [...s] で1文字ずつ（コードポイントごと）に分けるのは、
-    // パネルの文字の幅をコードポイントごとに数えるための、わざとの書き方（絵文字などの合成文字は使わない）
-    "typescript/no-misused-spread": "off"
+    "no-inner-declarations": "error"
   },
   "overrides": [
     {

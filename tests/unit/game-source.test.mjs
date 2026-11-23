@@ -100,6 +100,8 @@ describe('Vite の組み立て（公開用と同じ設定）', () => {
         code = readFileSync(join(out, 'assets', js), 'utf8');
       expect(readFileSync(join(out, 'index.html'), 'utf8')).toContain(`src="./assets/${js}"`);
       expect(code).not.toContain('sourceMappingURL');
+      expect(code).not.toContain('html_proxy'); // ページの <style> の空の部品（noCssStub）
+      expect(readFileSync(join(out, 'index.html'), 'utf8')).toContain('--void:#030209'); // <style> は HTML に残っている
       const map = findMap(js, maps),
         lines = code.split('\n'),
         cache = {};

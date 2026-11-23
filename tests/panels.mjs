@@ -8,6 +8,7 @@ import { gameText } from '../tools/game-source.mjs';
 import { withBrowser, newPage, openTest, advance, nearAltar } from './lib.mjs';
 
 const src = gameText();
+// oxlint-disable-next-line typescript/no-misused-spread -- visW はコードポイントごとに数えるので、わざとコードポイントに分ける
 const chars = [...new Set([...src].filter((c) => c.codePointAt(0) >= 0x20 && c !== '\u007f'))].sort();
 const errs = [];
 let fails = 0;

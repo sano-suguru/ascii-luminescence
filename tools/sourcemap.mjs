@@ -6,6 +6,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+// oxlint-disable-next-line typescript/no-misused-spread -- B64 は ASCII だけ
 const B64I = Object.fromEntries([...B64].map((c, i) => [c, i]));
 
 function vlq(n) {

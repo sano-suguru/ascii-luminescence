@@ -4,7 +4,7 @@
 //   - 入っていない → index.html の BIZ UDGothic の text=（補いの文字の一覧）に入っていなければ失敗
 //   - ルーン文字（U+16A0–16FF）は Noto Sans Runic で描くので対象外
 // 一覧に足した文字は、BIZ UDGothic に入っているかも確かめる。幅の数え方（visW）は tests/panels.mjs が確かめる。
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import * as fontkit from 'fontkit';
 import { gameText } from '../tools/game-source.mjs';
@@ -58,6 +58,7 @@ const hasAll = (sets, cp) => sets.every((list) => has(list, cp));
 
 // index.html は、コメントを除いた本文（CSS の content なども描かれうるので残す）
 const headText = head.replace(/<!--[\s\S]*?-->/g, '');
+// oxlint-disable-next-line typescript/no-misused-spread -- フォントの字形はコードポイントごとなので、わざとコードポイントに分ける
 const chars = [...new Set([...game, ...headText].filter((c) => c.codePointAt(0) >= 0x80))];
 const missing = [],
   unused = new Set(extra);
@@ -73,11 +74,29 @@ for (const c of chars) {
 }
 const notInBiz = [...extra].filter((c) => !hasAll(biz, c.codePointAt(0)));
 const hex = (c) => `U+${c.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`;
+// 文字が出てくる場所（ファイル:行）。コメントの行には印を付ける（コメントの文字も調べているので、言い換えれば済むことが多い）
+const SRC = [
+  'src/index.html',
+  ...readdirSync(join(ROOT, 'src/game')).map((f) => `src/game/${f}`),
+  ...readdirSync(join(ROOT, 'src/lib'), { recursive: true })
+    .filter((f) => String(f).endsWith('.ts'))
+    .map((f) => `src/lib/${f}`),
+];
+const whereIs = (c) => {
+  const at = [];
+  for (const f of SRC)
+    readFileSync(join(ROOT, f), 'utf8')
+      .split('\n')
+      .forEach((l, i) => {
+        if (l.includes(c)) at.push(`${f}:${i + 1}${/^\s*(\/\/|\/?\*|<!--)/.test(l) ? '（コメント）' : ''}`);
+      });
+  return at.length > 3 ? `${at.slice(0, 3).join(' ')} ほか ${at.length - 3} か所` : at.join(' ');
+};
 let fail = false;
 if (missing.length) {
   fail = true;
   console.log(
-    `✗ M PLUS 1 Code に無く、BIZ UDGothic の一覧にも無い文字：${missing.map((c) => `${c}（${hex(c)}）`).join(' ')}\n  → 別の文字にするか、index.html の text= に足して visW の幅も合わせる`,
+    `✗ M PLUS 1 Code に無く、BIZ UDGothic の一覧にも無い文字：\n${missing.map((c) => `  ${c}（${hex(c)}）  ${whereIs(c)}`).join('\n')}\n  → 別の文字にするか、index.html の text= に足して visW の幅も合わせる（コメントだけなら、言い換える）`,
   );
 }
 if (notInBiz.length) {

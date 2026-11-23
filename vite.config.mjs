@@ -5,7 +5,7 @@
 // ソースマップは、どの mode でも .build/maps/<mode>/ に置き、出力には残さない（公開しない）。
 import { join } from 'node:path';
 import { defineConfig } from 'vite';
-import { legacyGame, privateMaps, testPage } from './tools/vite-plugins.mjs';
+import { legacyGame, noCssStub, privateMaps, testPage } from './tools/vite-plugins.mjs';
 
 const root = import.meta.dirname;
 
@@ -30,5 +30,5 @@ export default defineConfig(({ mode }) => ({
     sourcemap: 'hidden',
     reportCompressedSize: false,
   },
-  plugins: [legacyGame(), mode === 'test' && testPage(), privateMaps(join(root, '.build/maps', mode))],
+  plugins: [legacyGame(), noCssStub(), mode === 'test' && testPage(), privateMaps(join(root, '.build/maps', mode))],
 }));
