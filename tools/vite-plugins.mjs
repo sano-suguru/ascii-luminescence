@@ -15,15 +15,25 @@ const GAME_DIR = join(root, 'src/game');
 const ID = 'virtual:legacy-game',
   RID = join(root, 'src/legacy-game.js');
 
+// 開発用サーバーだけで、ゲーム本体の後ろに足す。テスト用モード（?test=1）は時計（setTimeout）を止めるので、Vite の読み直し
+// （setTimeout で少し待ってから読み直す）が動かない。読み直しの合図を受けたら、すぐ読み直す。組み立てた物には入れない
+const DEV_TAIL = `if (import.meta.hot && new URLSearchParams(location.search).get('test') === '1')
+  import.meta.hot.on('vite:beforeFullReload', () => location.reload());
+`;
+
 export function legacyGame() {
+  let serve = false;
   return {
     name: 'legacy-game',
+    configResolved(config) {
+      serve = config.command === 'serve';
+    },
     resolveId: (id) => (id === ID ? RID : null),
     load(id) {
       if (id !== RID) return null;
       const map = gameSourceMap();
       for (const f of map.sources) this.addWatchFile(f);
-      return { code: gameSource(), map };
+      return { code: gameSource() + (serve ? DEV_TAIL : ''), map };
     },
     // 開発用サーバー：ゲームは HMR に対応していないので、ページを読み直す。
     // 変えた時は、Vite が自分で読み直す（load の addWatchFile で、つないだファイルを見張っている）。
