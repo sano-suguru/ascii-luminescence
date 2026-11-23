@@ -2,36 +2,40 @@
   "name": "ascii-luminescence",
   "private": true,
   "type": "module",
-  "engines": {
-    "node": ">=22"
-  },
   "scripts": {
     "build": "node tools/build.mjs",
     "build:test": "node tools/build.mjs --test",
-    "lint": "eslint . && node tools/lint-game.mjs",
-    "check": "node tools/lint-game.mjs --quiet && eslint --quiet . && node tests/glyphs.mjs && node tools/build.mjs",
+    "lint": "oxlint -c .oxlintrc.json tools tests .claude/hooks vitest.config.mjs && node tools/lint-game.mjs",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "test:unit": "vitest run",
+    "check": "node tools/lint-game.mjs --quiet && oxlint -c .oxlintrc.json tools tests .claude/hooks vitest.config.mjs --quiet && oxfmt --check && vitest run && node tests/glyphs.mjs && node tools/build.mjs",
     "test": "node tests/smoke.mjs && node tests/determinism.mjs && node tests/levels.mjs && node tests/panels.mjs",
     "test:visual": "node tests/visual.mjs",
-    "test:all": "npm test && npm run test:visual",
-    "verify": "npm run check && npm run test:all",
+    "test:all": "pnpm test && pnpm test:visual",
+    "verify": "pnpm check && pnpm test:all",
     "serve": "node tools/build.mjs && node tools/serve.mjs",
     "where": "node tools/where.mjs",
     "map": "node tools/map.mjs",
-    "deploy": "node tools/build.mjs && npx wrangler@4 deploy"
+    "deploy": "node tools/build.mjs && pnpm dlx wrangler@4 deploy"
   },
   "devDependencies": {
-    "@eslint/js": "10.0.1",
     "@fontsource/biz-udgothic": "5.3.0",
     "@fontsource/jetbrains-mono": "5.3.0",
     "@fontsource/m-plus-1-code": "5.3.1",
     "@fontsource/noto-sans-runic": "5.3.0",
     "dejavu-fonts-ttf": "2.37.3",
-    "eslint": "10.15.0",
     "fontkit": "3.0.0",
-    "globals": "17.14.0",
+    "oxfmt": "0.79.0",
+    "oxlint": "1.94.0",
     "pixelmatch": "8.0.0",
     "playwright": "1.63.0",
     "pngjs": "7.0.0",
-    "three": "0.147.0"
-  }
+    "three": "0.147.0",
+    "vitest": "5.1.1"
+  },
+  "engines": {
+    "node": ">=26"
+  },
+  "packageManager": "pnpm@12.22.0"
 }

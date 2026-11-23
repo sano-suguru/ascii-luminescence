@@ -6,10 +6,14 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gameParts } from './build.mjs';
 
-const root = join(import.meta.dirname, '..'), q = process.argv[2]?.toLowerCase();
+const root = join(import.meta.dirname, '..'),
+  q = process.argv[2]?.toLowerCase();
 for (const f of gameParts()) {
   const lines = readFileSync(join(root, 'src/game', f), 'utf8').split('\n');
-  const heads = lines.map((l, i) => [i + 1, l]).filter(([, l]) => l.startsWith('// -----')).map(([n, l]) => [n, l.replace(/^\/\/ -+ */, '')]);
+  const heads = lines
+    .map((l, i) => [i + 1, l])
+    .filter(([, l]) => l.startsWith('// -----'))
+    .map(([n, l]) => [n, l.replace(/^\/\/ -+ */, '')]);
   if (q && !f.includes(q) && !heads.some(([, h]) => h.toLowerCase().includes(q))) continue;
   console.log(`src/game/${f}  (${lines.length - 1} 行)`);
   for (const [n, h] of heads) console.log(`  ${String(n).padStart(4)}  ${h.slice(0, 110)}`);

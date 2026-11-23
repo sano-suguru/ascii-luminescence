@@ -6,22 +6,39 @@ import { readFile } from 'node:fs/promises';
 import { dirname, extname, join, relative, resolve, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.json': 'application/json' };
+const TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css',
+  '.png': 'image/png',
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.json': 'application/json',
+};
 
 export function serve(dir, port = 0) {
   const base = resolve(dir);
   const srv = createServer(async (req, res) => {
     let p;
-    try { p = decodeURIComponent(new URL(req.url, 'http://x').pathname); }
-    catch { res.writeHead(400).end('bad request'); return; }
+    try {
+      p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+    } catch {
+      res.writeHead(400).end('bad request');
+      return;
+    }
     if (p.endsWith('/')) p += 'index.html';
     const file = resolve(base, '.' + p);
     const rel = relative(base, file);
-    if (rel.startsWith('..') || isAbsolute(rel)) { res.writeHead(403).end(); return; }
+    if (rel.startsWith('..') || isAbsolute(rel)) {
+      res.writeHead(403).end();
+      return;
+    }
     try {
       const body = await readFile(file);
       res.writeHead(200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream' }).end(body);
-    } catch { res.writeHead(404).end('not found'); }
+    } catch {
+      res.writeHead(404).end('not found');
+    }
   });
   return new Promise((ok) => srv.listen(port, '127.0.0.1', () => ok({ port: srv.address().port, close: () => srv.close() })));
 }

@@ -1,0 +1,7 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 140,
+  "singleQuote": true,
+  // ゲーム本体（src/）は、段階5の初めに1つのコミットでまとめて整形する（.git-blame-ignore-revs に入れる）。文書と生成物は整形しない
+  "ignorePatterns": ["src/**", "**/*.md", "dist/**", ".build/**", "tests/out/**", "tests/baseline/**", "pnpm-lock.yaml"]
+}

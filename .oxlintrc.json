@@ -1,0 +1,76 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // エラー＝不具合（hook と CI を止める）、警告＝整理の候補。
+  "env": { "es2024": true },
+  "categories": { "correctness": "error" },
+  "rules": {
+    "no-undef": "error",
+    "no-unused-vars": ["warn", { "caughtErrors": "none", "args": "none" }],
+    "no-empty": ["warn", { "allowEmptyCatch": true }],
+    // ESLint の recommended にあって、Oxlint の correctness に入っていない規則を足す。
+    // 特に no-redeclare：src/game/ は31ファイルを1つにつなぐので、別のファイルの同じ名前の関数が、黙って前のものを上書きしてしまう
+    "no-redeclare": "error",
+    "no-fallthrough": "error",
+    "no-case-declarations": "error",
+    "no-prototype-builtins": "error",
+    "no-unused-labels": "error",
+    "no-regex-spaces": "error",
+    "no-empty-static-block": "error",
+    "no-extra-boolean-cast": "error",
+    "no-useless-escape": "error",
+    "no-cond-assign": "error",
+    "no-shadow-restricted-names": "error",
+    "no-delete-var": "error",
+    "no-global-assign": "error",
+    "no-with": "error",
+    "no-unsafe-optional-chaining": "error",
+    "no-self-assign": "error",
+    "no-sparse-arrays": "error",
+    "no-unexpected-multiline": "error",
+    "no-useless-catch": "error",
+    "no-dupe-else-if": "error",
+    "no-empty-pattern": "error",
+    "no-loss-of-precision": "error",
+    "no-misleading-character-class": "error",
+    "no-nonoctal-decimal-escape": "error",
+    "no-unsafe-finally": "error",
+    "no-unsafe-negation": "error",
+    "no-useless-backreference": "error",
+    "require-yield": "error",
+    "use-isnan": "error",
+    "valid-typeof": "error",
+    "getter-return": "error",
+    "no-inner-declarations": "error"
+  },
+  "overrides": [
+    {
+      // 道具・テスト・hooks（Node の ESM）
+      "files": ["tools/**", "tests/**", ".claude/hooks/**", "*.config.mjs"],
+      "env": { "node": true }
+    },
+    {
+      // テストの page.evaluate の中はブラウザで動く
+      "files": ["tests/**"],
+      "env": { "browser": true },
+      "globals": { "dbg": "readonly", "__test": "readonly" }
+    },
+    {
+      // ゲーム本体：src/game/*.js をつないだもの（tools/lint-game.mjs が書き出して調べる）。
+      // ブラウザの普通の <script>。THREE は CDN の <script> から来る。
+      "files": [".build/lint/*.js"],
+      "env": { "browser": true },
+      "globals": { "THREE": "readonly" },
+      "rules": {
+        // 同じスコープで、宣言より前に let/const を使う（TDZ）のを見つける。関数の中から外の変数を読むのは許す
+        "no-use-before-define": ["error", { "functions": false, "classes": true, "variables": false }],
+        // 以下は不具合ではない書き方（調整用の *0.0、a&&a()、if(false) で止めたコード、好みの書き方）。整理の候補として警告にする
+        "oxc/erasing-op": "warn",
+        "no-unused-expressions": "warn",
+        "no-constant-condition": "warn",
+        "unicorn/no-useless-spread": "warn",
+        "unicorn/prefer-string-starts-ends-with": "warn",
+        "unicorn/prefer-set-size": "warn"
+      }
+    }
+  ]
+}

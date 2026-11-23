@@ -28,43 +28,55 @@ tests/levels.mjs     全部の階（20シード×30か所）を生成し、例�
 tests/visual.mjs     画面写真の比較（12場面。基準は tests/baseline/）
 tests/panels.mjs     枠のテスト（全部の文字の幅が visW どおりか、操作・装備・メニュー・レベルアップ・祭壇・結果の縦線と、一覧の名前の列が揃うか）
 tests/glyphs.mjs     使う文字が、パネルのフォント（M PLUS 1 Code ＋ BIZ UDGothic の補い）で描けるか（ブラウザ不要）
-eslint.config.js     lint の設定（エラー＝不具合、警告＝整理の候補）
+.oxlintrc.json       lint（Oxlint）の設定（エラー＝不具合、警告＝整理の候補）
+.oxfmtrc.json        整形（Oxfmt）の設定。今は tools・tests・hooks・設定だけ（src/ は段階5で整形する）
+vitest.config.mjs    単体テスト（Vitest）の設定。テストは tests/unit/*.test.mjs
+package.json         スクリプトと依存。packageManager で pnpm の版を固定（pnpm@12.22.0）
+pnpm-workspace.yaml  pnpm のサプライチェーン対策（公開24時間未満は入れない、信頼の低下を拒む、インストール時のスクリプトは承認制）
+.node-version        Node の版（26.13.1）。CI・SessionStart hook・Cloudflare が読む
+renovate.json        依存の更新の PR（Renovate。公開から1日たった版だけ）
 wrangler.jsonc       Cloudflare Workers（静的アセット）の設定。公開は dist/
 .claude/settings.json  権限と hooks
-.github/workflows/ci.yml  確かめるだけの CI（check・npm test・画面写真の比較。どれも違えば失敗）
+.github/workflows/ci.yml  確かめるだけの CI（check・test・画面写真の比較。どれも違えば失敗）
+.github/workflows/dependency-review.yml  PR で増える依存の脆弱性とライセンス
+.github/workflows/codeql.yml  CodeQL（JavaScript の静的解析。PR と毎週）
 docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 ```
 `dist/index.html` = `head.html` + `<script>` + （`src/game/*.js` を名前の順につなぎ、`(function(){ 'use strict'; … })();` で包んだもの）+ `</script></body></html>`。
 組み立てたページには、ファイルの境目に `// ===== src/game/xx.js =====` の行が入る。
 `dist/` と `.build/` は生成物なので git に入れない。直接編集もしない（権限で止めている）。
 
-## 組み立て・実行・テスト（Node 22）
+## 組み立て・実行・テスト（Node 26・pnpm 12）
 ```
-npm install           # 依存を入れる（クラウドのセッションでは SessionStart hook が自動で行う）
-npm run check         # 構文 + lint（エラーだけ） + 使う文字のチェック + 組み立て。数秒。編集のたびにこれ
-npm run lint          # 警告も含めて lint を見る（src/game/ はつないで調べる）
-npm run map [語]      # ゲーム本体の地図。語を付けると、見出しにその語を含むファイルだけ（例：npm run map fire）
-npm run where 4321    # 組み立てたページの 4321 行目が、src/game/ のどこか（index.html:4321:12 の形も可。--test でテスト版）
-npm test              # スモーク・同じ結果・全部の階・枠（オフラインで動く。40秒ほど）
-npm run test:visual   # 画面写真の比較（30秒ほど）。違えば tests/out/visual/ に違いの画像
+pnpm install --frozen-lockfile   # 依存を入れる（クラウドのセッションでは SessionStart hook が Node・pnpm ごと自動で行う）
+pnpm check            # 構文 + lint（エラーだけ） + 整形の確かめ + 単体テスト + 使う文字 + 組み立て。数秒。編集のたびにこれ
+pnpm lint             # 警告も含めて lint を見る（src/game/ はつないで調べる）
+pnpm fmt              # 整形する（Oxfmt。今は tools・tests・hooks・設定だけ）
+pnpm test:unit        # 単体テスト（Vitest。tests/unit/）
+pnpm map [語]         # ゲーム本体の地図。語を付けると、見出しにその語を含むファイルだけ（例：pnpm map fire）
+pnpm where 4321       # 組み立てたページの 4321 行目が、src/game/ のどこか（index.html:4321:12 の形も可。--test でテスト版）
+pnpm test             # スモーク・同じ結果・全部の階・枠（オフラインで動く。40秒ほど）
+pnpm test:visual      # 画面写真の比較（30秒ほど）。違えば tests/out/visual/ に違いの画像
 node tests/visual.mjs --update [--only 場面]   # 基準の画像を作り直す（見た目を意図して変えた時だけ）
 node tests/levels.mjs --seed 202               # 1つのシードだけ（--seeds 100 で数を変える）
 node tests/smoke.mjs --cdn                     # 公開用と同じく CDN の three.js と Google Fonts で起動
-npm run verify        # check + test + test:visual
-npm run serve         # dist/ を組み立てて http://127.0.0.1:8000/ で配信
-npm run deploy        # 手元から Cloudflare に公開（ふだんは Workers Builds が git から公開する）
+pnpm verify           # check + test + test:visual
+pnpm serve            # dist/ を組み立てて http://127.0.0.1:8000/ で配信
+pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers Builds が git から公開する）。pnpm deploy は pnpm 組み込みの別のコマンドなので使わない
 ```
+- **依存を足す・上げる時**：`pnpm add -D --save-exact 名前@版`（確認が出る）。公開から24時間未満の版は入らない（pnpm-workspace.yaml）。
+  インストール時にスクリプトを動かす依存は、中身を確かめてから `pnpm approve-builds` で許可する。npm で入れない（権限で止めている）。
 - ヘッドレスのChromiumは、`--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader --ignore-gpu-blocklist` で動く。
   とても遅い（960x540で1秒に1フレームくらい）。**テストはテスト用モードで書き、実時間では待たない**。
   例外は、スモークテストの「ふだんのページが描けるか」の確認だけ（テスト用モードではないので、ゲームを止めて進められない）。
   画面写真には `timeout: 90000` を付ける。
 - テスト版（`build --test`）は、three.js とフォント（@fontsource）を node_modules から読む。Google Fonts は読まない。
-  テストのブラウザには、システムのフォントを見せない（`tests/fonts.conf`、最後の頼みは npm の DejaVu だけ）。
+  テストのブラウザには、システムのフォントを見せない（`tests/fonts.conf`、最後の頼みは npm パッケージの DejaVu だけ）。
   JetBrains Mono を指定した所の日本語は、ふだんはシステムの日本語フォントで描かれるが、テスト版では M PLUS 1 Code
   （全角の ！？ などは BIZ UDGothic）を組み合わせて描く（`tools/build.mjs` の `cjkFallback`）。マシンが違っても同じ画素になる。
 - ポインタロックは、テストでは `HTMLCanvasElement.prototype.requestPointerLock` を差し替えて止める（tests/lib.mjs）。
 - Playwright は 1.63.0 に固定（クラウド環境の /opt/pw-browsers の Chromium と版を合わせている）。上げる時はそろえること。
-  上げると描き方が少し変わりうるので、`npm run test:visual` が落ちたら、違いの画像を見てから基準を作り直す（コミットを分ける）。
+  上げると描き方が少し変わりうるので、`pnpm test:visual` が落ちたら、違いの画像を見てから基準を作り直す（コミットを分ける）。
 - CI では画面写真の比較も失敗にする。CI とクラウド環境の差は数画素（0.01%以下）で、失敗の基準は0.2%。
 
 ## テスト用モード（`?test=1`）
@@ -84,13 +96,13 @@ npm run deploy        # 手元から Cloudflare に公開（ふだんは Workers
 
 ## 自動の確かめ（hooks、.claude/settings.json）
 - **編集の直後**（PostToolUse）：`src/` などの JS を編集すると、構文と lint を確かめる（`src/game/` は全部をつないで調べる）。エラーなら差し戻されるので、その場で直す。
-- **終える前**（Stop）：`src/`・`tools/`・`tests/`・設定が変わっていれば `npm run check` を通す。通らなければ終われない。
-- **セッションの始め**（SessionStart、クラウドのみ）：依存が変わっていれば `npm install`。
-- 権限：`npm run`・lint・git の読み取り・commit・push・ブランチの切り替えは確認なし。
-  公開（`npm run deploy`・wrangler）・`rm -rf`・`git reset --hard`・`git clean`・変更を捨てる `git checkout` は確認あり。
-  force push（`+ブランチ` の形も）・リモートのブランチの削除、`dist/` と `package-lock.json` の直接編集、`.env`・`.dev.vars` を読むことは禁止。
+- **終える前**（Stop）：`src/`・`tools/`・`tests/`・設定が変わっていれば `pnpm check` を通す。通らなければ終われない。
+- **セッションの始め**（SessionStart、クラウドのみ）：.node-version の Node と packageManager の pnpm を用意し（~/.cache）、依存が変わっていれば `pnpm install --frozen-lockfile`。
+- 権限：`pnpm` のスクリプト（check・lint・test など）・git の読み取り・commit・push・ブランチの切り替えは確認なし。
+  依存の追加と更新（`pnpm add`・`pnpm update`・`pnpm approve-builds`・`pnpm dlx`）・公開（`pnpm run deploy`・wrangler）・`rm -rf`・`git reset --hard`・`git clean`・変更を捨てる `git checkout` は確認あり。
+  force push（`+ブランチ` の形も）・リモートのブランチの削除、npm での依存のインストール、`dist/` と `pnpm-lock.yaml` の直接編集、`.env`・`.dev.vars` を読むことは禁止。
   ただし権限は文字列の一致で見るだけなので、完全な安全柵ではない（別の書き方ならすり抜けうる）。
-- テストは遅めなので hooks では走らせない。動きに関わる変更の後は `npm test`、見た目に関わる変更の後は `npm run test:visual` を自分で走らせる。
+- テストは遅めなので hooks では走らせない。動きに関わる変更の後は `pnpm test`、見た目に関わる変更の後は `pnpm test:visual` を自分で走らせる。
   画面写真の比較が違ったら、違いの画像を元の大きさで見てから、意図した変更なら `--update` で作り直す（作り直しはコミットを分ける）。
 
 ## 開発用の道具
@@ -113,7 +125,7 @@ npm run deploy        # 手元から Cloudflare に公開（ふだんは Workers
 ## ゲーム本体の地図（src/game/）
 ファイルは名前の順につながる（後のファイルは、前のファイルの変数や関数を使える。トップレベルで実行する文は順番に気をつける）。
 ファイル名は「2桁の番号-名前.js」（違う名前や、改行で終わらないファイルがあると、組み立てが止まる）。
-細かい見出しと行は `npm run map` で見る。ブラウザのエラーの行は `npm run where <行>` で元のファイルに直す。
+細かい見出しと行は `pnpm map` で見る。ブラウザのエラーの行は `pnpm where <行>` で元のファイルに直す（テストのエラーには自動で付く）。
 | ファイル | 中身 |
 |---|---|
 | 00-test-mode | テスト用モード（`TEST`、時計、乱数） |
@@ -155,7 +167,7 @@ npm run deploy        # 手元から Cloudflare に公開（ふだんは Workers
 - **パネルの枠と文字の幅**：枠（boxText）は `visW` で幅を数えて縦線を揃える。パネルのフォントは M PLUS 1 Code
   （半角1マス・全角2マス。ただし全角スペース「　」は1マス。なので、列を揃える時は全角スペースで埋めず、visW で数えた半角スペースで埋める）。M PLUS 1 Code に無い文字（← → ！：？［］）は、
   head.html で BIZ UDGothic をその文字だけ読んで補っている（全角2マス）。新しい記号を使う時は、M PLUS 1 Code にあるかを
-  `npm run check`（tests/glyphs.mjs）で確かめ、無ければ別の文字にするか、head.html の text= と visW に足す。
+  `pnpm check`（tests/glyphs.mjs）で確かめ、無ければ別の文字にするか、head.html の text= と visW に足す。
   Ⅱ などは、BIZ UDGothic にも無いので使わない（II にする）。
 - **lint の警告**：使っていない関数・変数が約60か所ある（古い仕組みの残り）。消す時は、図鑑や dbg から文字列で呼ばれていないか確かめる。
 - **sed の区切り文字**：差し込む文に `|`（`||` など）があると壊れる。置き換えは Python で行う方が安全。
