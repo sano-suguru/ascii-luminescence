@@ -44,25 +44,62 @@ function cjkFallback() {
 const GAME_DIR = join(root, 'src/game');
 const WRAP_HEAD = "(function(){\n'use strict';\n", WRAP_TAIL = '})();\n';
 export const MARK = '// ===== ';
-export const gameParts = () => readdirSync(GAME_DIR).filter((f) => f.endsWith('.js')).sort();
+// ファイル名は「2桁の番号-名前.js」。つなぐ順は名前の順なので、番号の無い名前は最後（初期化の後ろ）に回ってしまう
+const PART_NAME = /^\d{2}-[a-z0-9-]+\.js$/;
+export function gameParts() {
+  const files = readdirSync(GAME_DIR).filter((f) => f.endsWith('.js')).sort();
+  const bad = files.filter((f) => !PART_NAME.test(f));
+  if (bad.length) throw new Error(`src/game/ のファイル名は「2桁の番号-名前.js」にする（つなぐ順が番号で決まるため）：${bad.join(', ')}`);
+  return files;
+}
+// 改行で終わらないファイルは、次のファイルの1行目とつながってしまう（最後の行がコメントなら、次の行が消える）ので止める
+function readPart(f) {
+  const t = readFileSync(join(GAME_DIR, f), 'utf8');
+  if (!t.endsWith('\n')) throw new Error(`src/game/${f} が改行で終わっていない（次のファイルの1行目とつながってしまう）。最後に改行を足すこと`);
+  return t;
+}
 
 // markers: ファイルの境目に「// ===== src/game/xx.js =====」の行を入れる（組み立てたページで、どのファイルか分かるように）
 export function gameSource({ markers = false } = {}) {
   let out = WRAP_HEAD;
-  for (const f of gameParts()) { if (markers) out += `${MARK}src/game/${f} =====\n`; out += readFileSync(join(GAME_DIR, f), 'utf8'); }
+  for (const f of gameParts()) { if (markers) out += `${MARK}src/game/${f} =====\n`; out += readPart(f); }
   return out + WRAP_TAIL;
 }
 
-// gameSource() の行（1始まり）が、どのファイルの何行目かを返す。包みの行なら null
-export function locate(line, { markers = false } = {}) {
+// gameSource() の中で、各ファイルが何行目から何行あるか
+export function gameLayout({ markers = false } = {}) {
   let at = WRAP_HEAD.split('\n').length; // 最初のファイルが始まる行
-  for (const f of gameParts()) {
+  return gameParts().map((f) => {
     if (markers) at++;
-    const n = readFileSync(join(GAME_DIR, f), 'utf8').split('\n').length - 1;
-    if (line >= at && line < at + n) return { file: `src/game/${f}`, line: line - at + 1 };
+    const n = readPart(f).split('\n').length - 1, e = { file: `src/game/${f}`, start: at, n };
     at += n;
+    return e;
+  });
+}
+
+// gameSource() の行（1始まり）が、どのファイルの何行目かを返す。包みの行なら null。何度も呼ぶ時は layout を渡す
+export function locate(line, { markers = false, layout = gameLayout({ markers }) } = {}) {
+  const e = layout.find((e) => line >= e.start && line < e.start + e.n);
+  return e ? { file: e.file, line: line - e.start + 1 } : null;
+}
+
+// 組み立てたページ（の中身）の行が、どのファイルの何行目かを返す。ページの中の印を頼りにする。
+// ファイルの外なら { outside: 'head' | 'marker' | 'tail' | 'range' }
+export function locateInPage(pageText, line) {
+  const lines = pageText.split('\n');
+  if (!(line >= 1 && line <= lines.length)) return { outside: 'range' };
+  let i = line - 1;
+  while (i >= 0 && !lines[i].startsWith(MARK)) i--;
+  if (i < 0) return { outside: 'head' };
+  if (i === line - 1) return { outside: 'marker' };
+  // このファイルの終わり：次の印か、包みの終わり（'})();' の行。その2行あとが '</script>'）
+  let end = lines.length;
+  for (let k = i + 1; k < lines.length; k++) {
+    if (lines[k].startsWith(MARK)) { end = k; break; }
+    if (lines[k] === '</script>') { end = k - 2; break; }
   }
-  return null;
+  if (line - 1 >= end) return { outside: 'tail' };
+  return { file: lines[i].slice(MARK.length).replace(/ =+$/, ''), line: line - 1 - i, text: lines[line - 1] };
 }
 
 export function assemble() {

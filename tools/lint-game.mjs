@@ -5,7 +5,7 @@
 //   node tools/lint-game.mjs --quiet   エラーだけ（npm run check、編集直後の hook）
 import { join } from 'node:path';
 import { ESLint } from 'eslint';
-import { gameSource, locate } from './build.mjs';
+import { gameSource, gameLayout, locate } from './build.mjs';
 
 const root = join(import.meta.dirname, '..');
 const quiet = process.argv.includes('--quiet');
@@ -13,9 +13,10 @@ const eslint = new ESLint({ cwd: root });
 // 設定（eslint.config.js の src/**/*.js）を当てるため、仮の名前 src/game.js で調べる
 const [res] = await eslint.lintText(gameSource(), { filePath: join(root, 'src/game.js'), warnIgnored: true });
 if (!res) { console.error('lint の結果が返らない（eslint.config.js の設定を確かめること）'); process.exit(2); }
-const msgs = res.messages.filter((m) => !quiet || m.severity === 2);
+const msgs = res.messages.filter((m) => !quiet || m.severity === 2), layout = gameLayout();
 for (const m of msgs) {
-  const at = locate(m.line), where = at ? `${at.file}:${at.line}:${m.column}` : `（包みの行 ${m.line}）`;
+  const at = m.line ? locate(m.line, { layout }) : null;
+  const where = at ? `${at.file}:${at.line}:${m.column}` : m.line ? `（包みの行 ${m.line}）` : '（全体）';
   console.log(`${where}  ${m.severity === 2 ? 'error' : 'warning'}  ${m.message}${m.ruleId ? `  ${m.ruleId}` : ''}`);
 }
 const e = res.errorCount, w = res.warningCount;

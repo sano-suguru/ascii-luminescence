@@ -31,7 +31,7 @@ tests/glyphs.mjs     使う文字が、パネルのフォント（M PLUS 1 Code 
 eslint.config.js     lint の設定（エラー＝不具合、警告＝整理の候補）
 wrangler.jsonc       Cloudflare Workers（静的アセット）の設定。公開は dist/
 .claude/settings.json  権限と hooks
-.github/workflows/ci.yml  確かめるだけの CI（lint・組み立て・スモークテスト）
+.github/workflows/ci.yml  確かめるだけの CI（check・npm test・画面写真の比較。どれも違えば失敗）
 docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 ```
 `dist/index.html` = `head.html` + `<script>` + （`src/game/*.js` を名前の順につなぎ、`(function(){ 'use strict'; … })();` で包んだもの）+ `</script></body></html>`。
@@ -112,6 +112,7 @@ npm run deploy        # 手元から Cloudflare に公開（ふだんは Workers
 
 ## ゲーム本体の地図（src/game/）
 ファイルは名前の順につながる（後のファイルは、前のファイルの変数や関数を使える。トップレベルで実行する文は順番に気をつける）。
+ファイル名は「2桁の番号-名前.js」（違う名前や、改行で終わらないファイルがあると、組み立てが止まる）。
 細かい見出しと行は `npm run map` で見る。ブラウザのエラーの行は `npm run where <行>` で元のファイルに直す。
 | ファイル | 中身 |
 |---|---|
