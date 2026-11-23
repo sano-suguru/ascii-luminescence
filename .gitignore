@@ -1,4 +1,9 @@
-dist/three/
-dist/*.local.html
+node_modules/
+dist/
+.build/
 tests/out/
+.wrangler/
+.dev.vars*
+.env
+.env.*
 __pycache__/

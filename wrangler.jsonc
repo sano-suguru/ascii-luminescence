@@ -1,0 +1,9 @@
+// Cloudflare Workers（静的アセットのみ）。dist/ は npm run build で作る（git には入れない）。
+// Workers Builds の設定：Build command = npm run build、Deploy command = npx wrangler deploy
+{
+  "name": "ascii-luminescence",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist"
+  }
+}
