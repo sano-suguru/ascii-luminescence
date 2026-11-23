@@ -4,7 +4,7 @@
 //   node tools/map.mjs 火       見出しに「火」を含むファイルだけ（英語の見出しにも当たる。例：fire）
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { gameParts } from './build.mjs';
+import { gameParts } from './game-source.mjs';
 
 const root = join(import.meta.dirname, '..'),
   q = process.argv[2]?.toLowerCase();

@@ -14,11 +14,15 @@
 
 ## ファイル
 ```
-src/head.html        画面の作りとCSS（three.js を CDN から読む <script> を含む）
+src/index.html       画面の作りとCSS（Vite の入口。three.js を CDN から読む <script> を含む）
+src/main.js          ページの入口のモジュール（ゲーム本体 virtual:legacy-game を読むだけ）
 src/game/*.js        ゲーム本体（31ファイル、合わせて約7,500行。下の「ゲーム本体の地図」）
-tools/build.mjs      src から dist/index.html を組み立てる（--test でオフラインのテスト用）
+vite.config.mjs      組み立て（Vite 8）。公開用は dist/、テスト用（--mode test）は .build/test/
+tools/vite-plugins.mjs  Vite のプラグイン：legacyGame（src/game をつないで1つのモジュールに）・testPage（テスト版）・privateMaps（ソースマップを公開物の外へ）
+tools/game-source.mjs   ゲーム本体をつなぐ処理（gameSource）・行の対応・ソースマップ・テスト版のフォント
+tools/sourcemap.mjs  ソースマップの読み書き（自前の小さな道具）
 tools/lint-game.mjs  src/game/ をつないで構文と lint を調べ、場所を元のファイルの行で出す
-tools/where.mjs      組み立てたページの行 → src/game/ のどのファイルの何行目か
+tools/where.mjs      組み立てた JS の場所 → src/game/ のどのファイルの何行目か（ソースマップで戻す）
 tools/map.mjs        ゲーム本体の地図（ファイルごとの行の数と見出し）
 tools/serve.mjs      静的ファイルの小さなサーバー
 tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ・テスト用モードのページ）
@@ -29,7 +33,7 @@ tests/visual.mjs     画面写真の比較（12場面。基準は tests/baseline
 tests/panels.mjs     枠のテスト（全部の文字の幅が visW どおりか、操作・装備・メニュー・レベルアップ・祭壇・結果の縦線と、一覧の名前の列が揃うか）
 tests/glyphs.mjs     使う文字が、パネルのフォント（M PLUS 1 Code ＋ BIZ UDGothic の補い）で描けるか（ブラウザ不要）
 .oxlintrc.json       lint（Oxlint）の設定（エラー＝不具合、警告＝整理の候補）
-.oxfmtrc.json        整形（Oxfmt）の設定。今は tools・tests・hooks・設定だけ（src/ は段階5で整形する）
+.oxfmtrc.json        整形（Oxfmt）の設定。tools・tests・hooks・設定だけ。src/game/ はまとめては整形しない（行が約4倍になる）。TypeScript に移す物から、移す時に整形する
 vitest.config.mjs    単体テスト（Vitest）の設定。テストは tests/unit/*.test.mjs
 package.json         スクリプトと依存。packageManager で pnpm の版を固定（pnpm@12.22.0）
 pnpm-workspace.yaml  pnpm のサプライチェーン対策（公開24時間未満は入れない、信頼の低下を拒む、インストール時のスクリプトは承認制）
@@ -42,25 +46,30 @@ wrangler.jsonc       Cloudflare Workers（静的アセット）の設定。公�
 .github/dependabot.yml  依存の更新の PR（Dependabot。毎週。公開から1日たった版だけ。three.js と Playwright は手で上げる）
 docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 ```
-`dist/index.html` = `head.html` + `<script>` + （`src/game/*.js` を名前の順につなぎ、`(function(){ 'use strict'; … })();` で包んだもの）+ `</script></body></html>`。
-組み立てたページには、ファイルの境目に `// ===== src/game/xx.js =====` の行が入る。
+組み立ては Vite 8。`src/game/*.js` を名前の順につなぎ、`(function(){ 'use strict'; … })();` で包んだものを、1つのモジュール
+（`virtual:legacy-game`）にする（`tools/vite-plugins.mjs` の legacyGame）。公開物は `dist/index.html` と `dist/assets/index-<hash>.js`。
+- Vite（Rolldown）は JS を書き直して出す（字下げ・引用符・`undefined`→`void 0` など。縮めはしない）。なので、組み立てた JS の行は元のファイルと違う。
+  場所はソースマップで戻す。ソースマップは**公開しない**ので、出力には残さず `.build/maps/<mode>/` に移している（privateMaps）。
+- 開発用サーバー（`pnpm dev`）は、src/game/ が変わるとページを読み直す（HMR はしない）。
 `dist/` と `.build/` は生成物なので git に入れない。直接編集もしない（権限で止めている）。
 
 ## 組み立て・実行・テスト（Node 26・pnpm 12）
 ```
 pnpm install --frozen-lockfile   # 依存を入れる（クラウドのセッションでは SessionStart hook が Node・pnpm ごと自動で行う）
-pnpm check            # 構文 + lint（エラーだけ） + 整形の確かめ + 単体テスト + 使う文字 + 組み立て。数秒。編集のたびにこれ
+pnpm check            # 構文 + lint（エラーだけ） + 整形の確かめ + 単体テスト（Vite の組み立ても試す） + 使う文字 + 組み立て。数秒。編集のたびにこれ
 pnpm lint             # 警告も含めて lint を見る（src/game/ はつないで調べる）
 pnpm fmt              # 整形する（Oxfmt。今は tools・tests・hooks・設定だけ）
 pnpm test:unit        # 単体テスト（Vitest。tests/unit/）
 pnpm map [語]         # ゲーム本体の地図。語を付けると、見出しにその語を含むファイルだけ（例：pnpm map fire）
-pnpm where 4321       # 組み立てたページの 4321 行目が、src/game/ のどこか（index.html:4321:12 の形も可。--test でテスト版）
+pnpm where index-D0mETEmY.js:4321:12   # 組み立てた JS のその場所が、src/game/ のどこか（行だけも可。--test でテスト版）
 pnpm test             # スモーク・同じ結果・全部の階・枠（オフラインで動く。40秒ほど）
 pnpm test:visual      # 画面写真の比較（30秒ほど）。違えば tests/out/visual/ に違いの画像
 node tests/visual.mjs --update [--only 場面]   # 基準の画像を作り直す（見た目を意図して変えた時だけ）
 node tests/levels.mjs --seed 202               # 1つのシードだけ（--seeds 100 で数を変える）
 node tests/smoke.mjs --cdn                     # 公開用と同じく CDN の three.js と Google Fonts で起動
 pnpm verify           # check + test + test:visual
+pnpm dev              # Vite の開発用サーバー（http://localhost:5173/。src/game/ を変えると読み直す）
+pnpm build            # 公開用を dist/ に組み立てる（pnpm build:test でテスト用を .build/test/ に）
 pnpm serve            # dist/ を組み立てて http://127.0.0.1:8000/ で配信
 pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers Builds が git から公開する）。pnpm deploy は pnpm 組み込みの別のコマンドなので使わない
 ```
@@ -80,10 +89,10 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
   とても遅い（960x540で1秒に1フレームくらい）。**テストはテスト用モードで書き、実時間では待たない**。
   例外は、スモークテストの「ふだんのページが描けるか」の確認だけ（テスト用モードではないので、ゲームを止めて進められない）。
   画面写真には `timeout: 90000` を付ける。
-- テスト版（`build --test`）は、three.js とフォント（@fontsource）を node_modules から読む。Google Fonts は読まない。
+- テスト版（`vite build --mode test`。テストが自分で組み立てる）は、three.js とフォント（@fontsource）を node_modules から読む。Google Fonts は読まない。
   テストのブラウザには、システムのフォントを見せない（`tests/fonts.conf`、最後の頼みは npm パッケージの DejaVu だけ）。
   JetBrains Mono を指定した所の日本語は、ふだんはシステムの日本語フォントで描かれるが、テスト版では M PLUS 1 Code
-  （全角の ！？ などは BIZ UDGothic）を組み合わせて描く（`tools/build.mjs` の `cjkFallback`）。マシンが違っても同じ画素になる。
+  （全角の ！？ などは BIZ UDGothic）を組み合わせて描く（`tools/game-source.mjs` の `cjkFallback`）。マシンが違っても同じ画素になる。
 - ポインタロックは、テストでは `HTMLCanvasElement.prototype.requestPointerLock` を差し替えて止める（tests/lib.mjs）。
 - Playwright は 1.63.0 に固定（クラウド環境の /opt/pw-browsers の Chromium と版を合わせている）。上げる時はそろえること。
   上げると描き方が少し変わりうるので、`pnpm test:visual` が落ちたら、違いの画像を見てから基準を作り直す（コミットを分ける）。
@@ -135,7 +144,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 ## ゲーム本体の地図（src/game/）
 ファイルは名前の順につながる（後のファイルは、前のファイルの変数や関数を使える。トップレベルで実行する文は順番に気をつける）。
 ファイル名は「2桁の番号-名前.js」（違う名前や、改行で終わらないファイルがあると、組み立てが止まる）。
-細かい見出しと行は `pnpm map` で見る。ブラウザのエラーの行は `pnpm where <行>` で元のファイルに直す（テストのエラーには自動で付く）。
+細かい見出しと行は `pnpm map` で見る。ブラウザのエラーの場所は `pnpm where <JS:行:列>` で元のファイルに直す（テストのエラーには自動で付く）。
 | ファイル | 中身 |
 |---|---|
 | 00-test-mode | テスト用モード（`TEST`、時計、乱数） |
@@ -176,8 +185,8 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
   それより前で宣言すること。`DEVALL` は後で宣言されるので、`devAllSafe()` 経由で読む。
 - **パネルの枠と文字の幅**：枠（boxText）は `visW` で幅を数えて縦線を揃える。パネルのフォントは M PLUS 1 Code
   （半角1マス・全角2マス。ただし全角スペース「　」は1マス。なので、列を揃える時は全角スペースで埋めず、visW で数えた半角スペースで埋める）。M PLUS 1 Code に無い文字（← → ！：？［］）は、
-  head.html で BIZ UDGothic をその文字だけ読んで補っている（全角2マス）。新しい記号を使う時は、M PLUS 1 Code にあるかを
-  `pnpm check`（tests/glyphs.mjs）で確かめ、無ければ別の文字にするか、head.html の text= と visW に足す。
+  index.html で BIZ UDGothic をその文字だけ読んで補っている（全角2マス）。新しい記号を使う時は、M PLUS 1 Code にあるかを
+  `pnpm check`（tests/glyphs.mjs）で確かめ、無ければ別の文字にするか、index.html の text= と visW に足す。
   Ⅱ などは、BIZ UDGothic にも無いので使わない（II にする）。
 - **lint の警告**：使っていない関数・変数が約60か所ある（古い仕組みの残り）。消す時は、図鑑や dbg から文字列で呼ばれていないか確かめる。
 - **sed の区切り文字**：差し込む文に `|`（`||` など）があると壊れる。置き換えは Python で行う方が安全。

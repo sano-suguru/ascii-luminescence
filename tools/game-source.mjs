@@ -1,15 +1,14 @@
-#!/usr/bin/env node
-// src/head.html + src/game/*.js を、1ファイルのページに組み立てる。
-//   node tools/build.mjs          -> dist/index.html（three.js は CDN から。公開用）
-//   node tools/build.mjs --test   -> .build/test/index.html（three.js は node_modules からコピー。オフラインのテスト用）
-import { readFileSync, writeFileSync, mkdirSync, copyFileSync, rmSync, symlinkSync, readdirSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
+// ゲーム本体（src/game/*.js）をつなぐ処理と、行の対応・ソースマップ。テスト版のページに使う物（フォントの組み合わせ）もここに置く。
+// 組み立ては Vite（vite.config.mjs と tools/vite-plugins.mjs）。ここは Vite にも lint にもテストにも使う、ただの関数の集まり。
+import { readFileSync, readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { encodeMappings } from './sourcemap.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const CDN = 'https://cdn.jsdelivr.net/npm/three@0.147.0/';
+export const CDN = 'https://cdn.jsdelivr.net/npm/three@0.147.0/';
 // テスト版では、Google Fonts の代わりに npm の @fontsource を読む（どのマシンでも同じ文字の形にするため）
-const TEST_FONTS = [
+export const TEST_FONTS = [
   'jetbrains-mono/400',
   'jetbrains-mono/700',
   'jetbrains-mono/800',
@@ -25,7 +24,7 @@ const TEST_FONTS = [
 // 描かれる（マシンごとに違う）。テスト版では、M PLUS 1 Code の面を「JetBrains Mono」の名前でも登録して、日本語をそれで描く。
 // 同じ名前の面は後に書いた方が先に使われるので、本物の JetBrains Mono（後の <link>）が英数字では勝つ。
 // M PLUS 1 Code を指定した所の補い（BIZ UDGothic）は、ゲームの CSS の指定どおり、その名前のまま読み込む（TEST_FONTS）。
-function cjkFallback() {
+export function cjkFallback() {
   // 日本語の範囲だけ（記号と句読点・かな・漢字・全角）。罫線（タイトルのロゴ）などは含めない
   const CJK = [
     [0x3000, 0x30ff],
@@ -75,7 +74,6 @@ function cjkFallback() {
 const GAME_DIR = join(root, 'src/game');
 const WRAP_HEAD = "(function(){\n'use strict';\n",
   WRAP_TAIL = '})();\n';
-export const MARK = '// ===== ';
 // ファイル名は「2桁の番号-名前.js」。つなぐ順は名前の順なので、番号の無い名前は最後（初期化の後ろ）に回ってしまう
 const PART_NAME = /^\d{2}-[a-z0-9-]+\.js$/;
 export function gameParts(dir = GAME_DIR) {
@@ -94,21 +92,20 @@ function readPart(f, dir = GAME_DIR) {
   return t;
 }
 
-// markers: ファイルの境目に「// ===== src/game/xx.js =====」の行を入れる（組み立てたページで、どのファイルか分かるように）
-export function gameSource({ markers = false, dir = GAME_DIR } = {}) {
-  let out = WRAP_HEAD;
-  for (const f of gameParts(dir)) {
-    if (markers) out += `${MARK}src/game/${f} =====\n`;
-    out += readPart(f, dir);
-  }
-  return out + WRAP_TAIL;
+export function gameSource({ dir = GAME_DIR } = {}) {
+  return (
+    WRAP_HEAD +
+    gameParts(dir)
+      .map((f) => readPart(f, dir))
+      .join('') +
+    WRAP_TAIL
+  );
 }
 
 // gameSource() の中で、各ファイルが何行目から何行あるか
-export function gameLayout({ markers = false, dir = GAME_DIR } = {}) {
+export function gameLayout({ dir = GAME_DIR } = {}) {
   let at = WRAP_HEAD.split('\n').length; // 最初のファイルが始まる行
   return gameParts(dir).map((f) => {
-    if (markers) at++;
     const n = readPart(f, dir).split('\n').length - 1,
       e = { file: `src/game/${f}`, start: at, n };
     at += n;
@@ -117,68 +114,27 @@ export function gameLayout({ markers = false, dir = GAME_DIR } = {}) {
 }
 
 // gameSource() の行（1始まり）が、どのファイルの何行目かを返す。包みの行なら null。何度も呼ぶ時は layout を渡す
-export function locate(line, { markers = false, layout = gameLayout({ markers }) } = {}) {
+export function locate(line, { layout = gameLayout() } = {}) {
   const e = layout.find((e) => line >= e.start && line < e.start + e.n);
   return e ? { file: e.file, line: line - e.start + 1 } : null;
 }
 
-// 組み立てたページ（の中身）の行が、どのファイルの何行目かを返す。ページの中の印を頼りにする。
-// ファイルの外なら { outside: 'head' | 'marker' | 'tail' | 'range' }
-export function locateInPage(pageText, line) {
-  const lines = pageText.split('\n');
-  if (!(line >= 1 && line <= lines.length)) return { outside: 'range' };
-  let i = line - 1;
-  while (i >= 0 && !lines[i].startsWith(MARK)) i--;
-  if (i < 0) return { outside: 'head' };
-  if (i === line - 1) return { outside: 'marker' };
-  // このファイルの終わり：次の印か、包みの終わり（'})();' の行。その2行あとが '</script>'）
-  let end = lines.length;
-  for (let k = i + 1; k < lines.length; k++) {
-    if (lines[k].startsWith(MARK)) {
-      end = k;
-      break;
-    }
-    if (lines[k] === '</script>') {
-      end = k - 2;
-      break;
-    }
-  }
-  if (line - 1 >= end) return { outside: 'tail' };
-  return { file: lines[i].slice(MARK.length).replace(/ =+$/, ''), line: line - 1 - i, text: lines[line - 1] };
+// gameSource() のソースマップ。区切りは、各行の語（名前・数・記号）の頭ごとに置き、元のファイルの同じ行・同じ列に対応させる。
+// Vite（Rolldown）は書き直した（字下げなどを整えた）JS を出すが、語の頭ごとに区切りがあるので、列まで正しく引き継がれる。
+// 包みの行は対応なし。sources は絶対パス（Vite が出力の場所からの相対に直す）
+const TOKEN = /[A-Za-z_$][\w$]*|\d[\w.]*|\S/g;
+export function gameSourceMap({ dir = GAME_DIR } = {}) {
+  const parts = gameParts(dir),
+    lines = [];
+  for (let k = 0; k < WRAP_HEAD.split('\n').length - 1; k++) lines.push([]);
+  parts.forEach((f, src) => {
+    const text = readPart(f, dir).split('\n');
+    text.pop(); // 最後の改行の後ろ
+    text.forEach((t, l) => {
+      const segs = [...t.matchAll(TOKEN)].map((m) => [m.index, src, l, m.index]);
+      lines.push(segs.length ? segs : [[0, src, l, 0]]);
+    });
+  });
+  lines.push([]); // WRAP_TAIL
+  return { version: 3, sources: parts.map((f) => join(dir, f)), names: [], mappings: encodeMappings(lines) };
 }
-
-export function assemble() {
-  const head = readFileSync(join(root, 'src/head.html'), 'utf8');
-  return head + '<script>\n' + gameSource({ markers: true }) + '\n</script>\n</body>\n</html>\n';
-}
-
-export function build({ test = false } = {}) {
-  let page = assemble();
-  const outDir = join(root, test ? '.build/test' : 'dist');
-  rmSync(outDir, { recursive: true, force: true });
-  mkdirSync(outDir, { recursive: true });
-  if (test) {
-    const files = [...page.matchAll(/src="https:\/\/cdn\.jsdelivr\.net\/npm\/three@0\.147\.0\/([^"]+)"/g)].map((m) => m[1]);
-    if (!files.length) throw new Error('three.js の <script> が head.html に見つからない');
-    for (const f of files) {
-      const dst = join(outDir, 'three', f);
-      mkdirSync(dirname(dst), { recursive: true });
-      copyFileSync(join(root, 'node_modules/three', f), dst);
-    }
-    page = page.replaceAll(CDN, 'three/');
-    const links = page.match(/<link[^>]*fonts\.(googleapis|gstatic)\.com[^>]*>\n?/g) || [];
-    if (!links.some((l) => l.includes('stylesheet'))) throw new Error('Google Fonts の <link> が head.html に見つからない');
-    page = page.replace(
-      links[0],
-      `<style>\n${cjkFallback()}</style>\n` + TEST_FONTS.map((f) => `<link rel="stylesheet" href="fonts/${f}.css">\n`).join(''),
-    );
-    for (const l of links.slice(1)) page = page.replace(l, '');
-    symlinkSync(join(root, 'node_modules/@fontsource'), join(outDir, 'fonts'), 'junction');
-  }
-  const out = join(outDir, 'index.html');
-  writeFileSync(out, page);
-  console.log(`built ${relative(root, out)} (${Math.round(Buffer.byteLength(page) / 1024)} KB)`);
-  return outDir;
-}
-
-if (process.argv[1] === fileURLToPath(import.meta.url)) build({ test: process.argv.includes('--test') });
