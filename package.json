@@ -19,9 +19,11 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@fontsource/biz-udgothic": "5.3.0",
     "@fontsource/jetbrains-mono": "5.3.0",
     "@fontsource/m-plus-1-code": "5.3.1",
     "@fontsource/noto-sans-runic": "5.3.0",
+    "dejavu-fonts-ttf": "2.37.3",
     "eslint": "10.15.0",
     "globals": "17.14.0",
     "pixelmatch": "8.0.0",

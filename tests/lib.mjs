@@ -11,13 +11,16 @@ export const OUT = join(ROOT, 'tests/out');
 export const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 
 // ヘッドレスの Chromium はソフトウェアGL（swiftshader）で描く。とても遅い（960x540 で1秒に1フレームほど）。
-const GL_ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'];
+const GL_ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--font-render-hinting=none'];
 
 // 組み立てて配信し、ブラウザを開く。fn が終わったら必ず閉じる。
 export async function withBrowser(fn, { cdn = false } = {}) {
   mkdirSync(OUT, { recursive: true });
   const srv = await serve(build({ test: !cdn }));
-  const browser = await chromium.launch({ args: GL_ARGS });
+  // システムのフォントを見せない（tests/fonts.conf）。テスト版は Web フォントを同梱しているので、どのマシンでも同じ文字になる。
+  // 公開用の版（cdn）は Google Fonts を読むので、ふつうの設定のままにする。
+  const env = cdn ? process.env : { ...process.env, FONTCONFIG_FILE: join(ROOT, 'tests/fonts.conf') };
+  const browser = await chromium.launch({ args: GL_ARGS, env });
   try { return await fn({ browser, base: `http://127.0.0.1:${srv.port}/index.html` }); }
   finally { await browser.close(); srv.close(); }
 }

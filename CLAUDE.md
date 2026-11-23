@@ -50,6 +50,9 @@ npm run deploy        # 手元から Cloudflare に公開（ふだんは Workers
   とても遅い（960x540で1秒に1フレームくらい）。**テストはテスト用モードで書き、実時間では待たない**。
   画面写真には `timeout: 90000` を付ける。
 - テスト版（`build --test`）は、three.js とフォント（@fontsource）を node_modules から読む。Google Fonts は読まない。
+  テストのブラウザには、システムのフォントを見せない（`tests/fonts.conf`、最後の頼みは npm の DejaVu だけ）。
+  JetBrains Mono を指定した所の日本語は、ふだんはシステムの日本語フォントで描かれるが、テスト版では M PLUS 1 Code
+  （全角の ！？ などは BIZ UDGothic）を組み合わせて描く（`tools/build.mjs` の `cjkFallback`）。マシンが違っても同じ画素になる。
 - ポインタロックは、テストでは `HTMLCanvasElement.prototype.requestPointerLock` を差し替えて止める（tests/lib.mjs）。
 - Playwright は 1.63.0 に固定（クラウド環境の /opt/pw-browsers の Chromium と版を合わせている）。上げる時はそろえること。
 
