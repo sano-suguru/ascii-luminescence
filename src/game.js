@@ -1,5 +1,25 @@
 (function(){
 'use strict';
+// ---------------------------------------------------------------- test mode (?test=1): the same result every time, for automated checks
+// Math.random is seeded, and the clock (performance.now / setTimeout / setInterval) only moves when the game steps.
+// The game does not step by itself: window.__test.frames(n) draws n frames, __test.advance(sec) steps without drawing.
+const TEST=(()=>{ try{ return new URLSearchParams(location.search).get('test')==='1'; }catch(e){ return false; } })();
+const TEST_STEP=1/30;
+const TESTCLK=TEST?(()=>{
+  const q=new URLSearchParams(location.search), sd=Number(q.get('seed'))>>>0||1;
+  let a=(sd^0x9e3779b9)>>>0; Math.random=()=>{ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; };
+  let now=0, nextId=1; const timers=new Map(); const realTimeout=window.setTimeout.bind(window);
+  performance.now=()=>now;
+  window.setTimeout=(fn,ms,...args)=>{ const id=nextId++; timers.set(id,{at:now+Math.max(0,+ms||0),fn,args}); return id; };
+  window.setInterval=(fn,ms,...args)=>{ const id=nextId++; const every=Math.max(1,+ms||0); timers.set(id,{at:now+every,fn,args,every}); return id; };
+  window.clearTimeout=window.clearInterval=id=>{ timers.delete(id); };
+  return { advance(ms){ const end=now+ms;
+    for(;;){ let id=-1, e=null; for(const [k,v] of timers)if(v.at<=end&&(!e||v.at<e.at||(v.at===e.at&&k<id))){ id=k; e=v; }
+      if(!e)break; now=Math.max(now,e.at); if(e.every)e.at+=e.every; else timers.delete(id);
+      // like a real browser: one failing timer is reported (a page error) and the others still run
+      if(typeof e.fn==='function')try{ e.fn(...e.args); }catch(err){ queueMicrotask(()=>{ throw err; }); } }
+    now=end; }, realTimeout };
+})():null;
 const errEl=document.getElementById('err');
 if(!window.THREE||!THREE.EffectComposer||!THREE.UnrealBloomPass){ errEl.textContent='描画ライブラリを読み込めませんでした。ページを再読み込みしてください。'; return; }
 const T=THREE;
@@ -186,7 +206,8 @@ const SPECIALS={
 // special levels come between depths (they no longer take a depth's place): the town after the stone labyrinth, the great hall within the great cavern,
 // the oracle before the ruins, the abandoned fortress within the lava sea
 let inter=null, showroomGen=false;
-function interAfter(d){ const h=Math.imul(runSeed^0x5bd1e995,2654435761)>>>0; const at={town:2, bigroom:3+(h&1), oracle:5, fortress:9+((h>>2)&1)}; for(const k in at)if(at[k]===d)return k; return null; }
+function interAt(key){ const h=Math.imul(runSeed^0x5bd1e995,2654435761)>>>0; return {town:2, bigroom:3+(h&1), oracle:5, fortress:9+((h>>2)&1)}[key]; }
+function interAfter(d){ for(const k in SPECIALS)if(interAt(k)===d)return k; return null; }
 const specialAt=d=>null;
 const FORT_THEMES=[
  {k:'f_forge',col:[1.0,0.55,0.2], fix:'brazier',ruin:true,msg:'鍛冶の炎の名残が、煤けた壁を赤く照らしている。'},
@@ -6545,7 +6566,7 @@ const dbg={
     altars:[...new Set((D.items||[]).filter(o=>o.altar&&!o.taken).map(o=>o.grp))].length, springs:(D.items||[]).filter(o=>o.kind==='spring'&&!o.taken).length, startPos:D?cpos(D.start).map(v=>+v.toFixed(1)):null, hub:D&&D.hub?[+(D.hub.cx*CELL+1).toFixed(1),+(D.hub.cz*CELL+1).toFixed(1)]:null, hubNear:D?D.hubNear:null, stairGuard:D&&D.stairGuard!==undefined?stairsGuarded():null, stairsPos:D&&D.stairs>=0?cpos(D.stairs).map(v=>+v.toFixed(1)):null, guarded:[...new Set((D.items||[]).filter(o=>o.altar&&!o.taken&&o.guardG!==undefined&&guardedNow(o)).map(o=>o.grp))].length, elite:monsters.some(m=>m.elite&&!m.dead), elitePrize:(D.items||[]).some(o=>o.elitePrize&&!o.taken), eliteWhy:D.eliteWhy||null, looseRunes:(D.items||[]).filter(o=>o.kind==='rune'&&!o.altar&&!o.vault&&!o.pedestal&&!o.taken).length, vault:(()=>{ const v=(D.items||[]).find(o=>o.vault); return v?{ev:v.ev,taken:v.taken,gateOpen:!!(D.gate&&D.gate.open)}:null; })()}; },
   go(d){ branch=null; realm=null; inter=null; depth=clamp(d|0,1,FINAL_DEPTH); dbgEnter(); return dbg.info(); },
   branch(key,lvl){ const B=BRANCHES[key]; if(!B)return 'no such branch: '+Object.keys(BRANCHES).join(','); realm=null; inter=null; const at=B.at[0]; branch={key,lvl:clamp(lvl||1,1,B.len),len:B.len,ret:at+1}; depth=at; dbgEnter(); return dbg.info(); },
-  inter(key){ if(!SPECIALS[key])return 'no such place: '+Object.keys(SPECIALS).join(','); const h=Math.imul(runSeed^0x5bd1e995,2654435761)>>>0, at={town:2,bigroom:3+(h&1),oracle:5,fortress:9+((h>>2)&1)}; branch=null; realm=null; depth=at[key]; inter={key,after:at[key]}; dbgEnter(); return dbg.info(); },
+  inter(key){ if(!SPECIALS[key])return 'no such place: '+Object.keys(SPECIALS).join(','); const at=interAt(key); branch=null; realm=null; depth=at; inter={key,after:at}; dbgEnter(); return dbg.info(); },
   realm(key){ if(!REALMS[key])return 'no such realm: '+Object.keys(REALMS).join(','); branch=null; realm={key,ret:depth+1}; dbgEnter(); return dbg.info(); },
   to(what){ if(!D)return false; const cell=what==='forge'?((D.items||[]).find(o=>o.forge&&!o.taken)||{i:-1}).i:what==='hub'?(D.hub?((Math.round(D.hub.cz))*MW+Math.round(D.hub.cx)):-1):what==='spring'?((D.items||[]).find(o=>o.kind==='spring'&&!o.taken)||{i:-1}).i:what==='altar'?((D.items||[]).find(o=>o.altar&&!o.taken)||{i:-1}).i:what==='elite'?((D.items||[]).find(o=>o.elitePrize&&!o.taken)||{i:-1}).i:what==='vault'?(D.gate?D.gate.cell:-1):what==='stairs'?D.stairs:what==='branch'?(D.bstairs&&D.bstairs.cell):what==='portal'?(D.portal&&D.portal.cell):what==='lord'?(()=>{ const m=monsters.find(m=>(m.key==='lord'||m.key==='final')&&!m.dead); return m?m.cz*MW+m.cx:-1; })():-1; return dbgNear(cell); },
   god(on){ godMode=on===undefined?!godMode:!!on; return godMode; },
@@ -6587,7 +6608,7 @@ function renderDbg(){ const el=document.getElementById('dbgp'); if(!el)return; c
     if(c==='go')dbg.go(+a); else if(c==='br')dbg.branch(a,+b2); else if(c==='re')dbg.realm(a); else if(c==='to')dbg.to(a); else if(c==='god')dbg.god(); else if(c==='heal')dbg.heal(); else if(c==='reveal')dbg.reveal(); else if(c==='give')dbg.give(a); else if(c==='clear')dbg.clear(); else if(c==='kill')dbg.kill(a); else if(c==='open')dbg.open();
     if(['go','br','re','to'].includes(c))setDbg(false); else renderDbg(); }; }
 // URL options: ?dev=1&seed=123&depth=8 | branch=crypt:2 | realm=ice &to=stairs &god=1 &reveal=1 &give=slot,body
-function dbgUrl(){ let q; try{ q=new URLSearchParams(location.search); }catch(e){ return; } if(q.get('dev')==='1'){ DEVALL=true; try{ localStorage.setItem('al_dev','1'); }catch(e){} buildIntroPanel(); }
+function dbgUrl(){ let q; try{ q=new URLSearchParams(location.search); }catch(e){ return; } if(q.get('dev')==='1'||TEST){ DEVALL=true; try{ localStorage.setItem('al_dev','1'); }catch(e){} buildIntroPanel(); }
   if(!DEVALL)return; const sd=q.get('seed'); if(sd&&/^[0-9]{1,10}$/.test(sd)){ runSeed=Number(sd)>>>0; const si=document.getElementById('seedIn'); if(si)si.value=sd; }
   const dp=q.get('depth'), br=q.get('branch'), re=q.get('realm'); if(!dp&&!br&&!re&&!q.get('to'))return;
   if(br){ const [k,l]=br.split(':'); dbg.branch(k,+l||1); } else if(re){ if(dp)depth=+dp; dbg.realm(re); } else dbg.go(+dp||1);
@@ -7435,7 +7456,13 @@ window.addEventListener('resize',()=>{ applySize(); sizeMap(); });
 let last=0, time=0, fovT=0, mapT=0, perfT=0, perfAcc=0, perfN=0, warm=0;
 function frame(nowMs){
   requestAnimationFrame(frame);
+  if(TEST){ if(TESTQ.n>0){ TESTQ.n--; try{ testTick(true); } finally{ if(!TESTQ.n&&TESTQ.done){ const d=TESTQ.done; TESTQ.done=null; d(); } } } return; }
   const now=nowMs/1000; let raw=last?now-last:0.016; last=now;
+  tick(raw,true);
+}
+const TESTQ={n:0,done:null};
+function testTick(draw){ TESTCLK.advance(TEST_STEP*1000); tick(TEST_STEP,draw); }
+function tick(raw,draw){
   if(isPaused()&&started){ if(frame.stillDrawn)return; frame.stillDrawn=true; } else frame.stillDrawn=false; const dt=isPaused()?0:clamp(raw,0,0.05)*timeScale();
   time+=dt; const t=time;
   U.uTime.value=t;
@@ -7466,14 +7493,51 @@ function frame(nowMs){
   updateProjs(dt);
   sndUpdate(dt); updateEvents(dt,t);
   cullChunks();
-  composer.render(dt);
+  if(draw)composer.render(dt);
+  if(TEST)return; // keep the resolution fixed in tests
   warm+=raw; if(warm>3&&!document.hidden){ perfAcc+=raw; perfN++; perfT+=raw;
     if(perfT>2.5){ const avg=perfAcc/perfN; if(avg>1/48&&pixelRatio>0.75){ pixelRatio=Math.max(0.75,pixelRatio-0.2); applySize(); } perfT=perfAcc=perfN=0; } }
 }
 
+// ---------------------------------------------------------------- test hooks (only with ?test=1; see the test mode block at the top)
+let testBoot=false;
+if(TEST)window.__test={
+  step:TEST_STEP,
+  ready(){ return testBoot===true&&!!D; },
+  error(){ return typeof testBoot==='string'?testBoot:null; },
+  // step the game without drawing (fast); returns the game time
+  advance(sec){ const n=Math.max(0,Math.round(sec/TEST_STEP)); for(let i=0;i<n;i++)testTick(false); return +time.toFixed(4); },
+  // step and draw n frames (one per animation frame)
+  frames(n){ if(TESTQ.done)return Promise.reject(new Error('__test.frames: the previous call has not finished'));
+    return new Promise(ok=>{ TESTQ.n=Math.max(0,n|0); if(!TESTQ.n)ok(); else TESTQ.done=ok; }); },
+  // a plain copy of what matters, to compare runs
+  state(){ const f=v=>+(+v||0).toFixed(3);
+    return {time:f(time),seed:runSeed,place:placeLabel(),depth,started,dead,hp:f(player.hp),pos:[f(player.x),f(player.z)],yaw:f(player.yaw),lvl:lvl.n,
+      monsters:monsters.map(m=>[m.key,f(m.x),f(m.z),f(m.hp),m.sleep?1:0]),projs:projs.length,
+      trans:trans?trans.phase:null,cast:castSt?{h:castSt.h,t:f(castSt.t),need:f(castSt.need),full:castSt.full}:null,recover:f(player.recover),paused:isPaused()}; },
+  // hold a weapon (a RUNE_DEF key such as 'blade', 'bolt', 'orb'), and press / release a hand's button ('L' or 'R')
+  equip(h,type){ if(!RUNE_DEF[type]||RUNE_DEF[type].cat!=='atk')return 'no such weapon: '+type; equipWeapon(h,makeRune(type,0)); renderHotbar(); return type; },
+  // true when the hand started charging, or attacked at once (a weapon with no charge, such as the short sword)
+  press(h){ const r0=player.recover||0; beginCast(h); return !!castSt||(player.recover||0)>r0; },
+  release(h){ releaseCast(h); },
+  // every place a run can visit, for generation checks
+  places(){ return [...Array.from({length:FINAL_DEPTH},(_,i)=>({depth:i+1})), ...Object.keys(SPECIALS).map(k=>({inter:k})),
+    ...Object.values(BRANCHES).flatMap(B=>Array.from({length:B.len},(_,i)=>({branch:B.key,lvl:i+1}))), ...Object.values(REALMS).map(R=>({realm:R.key,depth:R.minD+2}))]; },
+  // generate one level only (no meshes). It restores where the run is (seed, depth, branch, realm, special level),
+  // but not what generate() rewrites (the history HIST, the level random rand, the light tables): use it on a page of its own
+  gen(seed,pl){ const keep={runSeed,depth,branch,realm,inter};
+    try{ runSeed=seed>>>0; branch=null; realm=null; inter=null;
+      if(pl.branch){ const B=BRANCHES[pl.branch]; depth=B.at[0]; branch={key:B.key,lvl:pl.lvl||1,len:B.len,ret:depth+1}; }
+      else if(pl.inter){ depth=interAt(pl.inter); inter={key:pl.inter,after:depth}; }
+      else if(pl.realm){ depth=pl.depth||4; realm={key:pl.realm,ret:depth+1}; }
+      else depth=pl.depth;
+      const L=generate(levelSeed(),depth); L.place=placeLabel(); L.final=depth===FINAL_DEPTH&&!branch&&!realm&&!inter; return L; }
+    finally{ ({runSeed,depth,branch,realm,inter}=keep); } },
+};
+
 // ---------------------------------------------------------------- init
 async function init(){
-  try{ if(document.fonts&&document.fonts.load)await Promise.race([Promise.all([document.fonts.load('800 96px "JetBrains Mono"'),document.fonts.load('500 96px "Noto Sans Runic"','ᚦᛏᛜᛞᚲᛁᛊᚾᚱᚺ')]),new Promise(r=>setTimeout(r,2500))]); }catch(e){}
+  try{ if(document.fonts&&document.fonts.load)await Promise.race([Promise.all([document.fonts.load('800 96px "JetBrains Mono"'),document.fonts.load('500 96px "Noto Sans Runic"','ᚦᛏᛜᛞᚲᛁᛊᚾᚱᚺ')]),new Promise(r=>(TEST?TESTCLK.realTimeout:setTimeout)(r,2500))]); }catch(e){}
   U.uAtlas.value=buildAtlas();
   staticMat=new T.ShaderMaterial({uniforms:{uAtlas:U.uAtlas,uTime:U.uTime,uSL:U.uSL,uDLP:U.uDLP,uDLC:U.uDLC,uFogDen:U.uFogDen,uFogColor:U.uFogColor,uRamp:U.uRamp,uAmb:U.uAmb,uCell:U.uCell,uCollT:U.uCollT,uCamP:U.uCamP,uCutP:U.uCutP,uCut:U.uCut},
     vertexShader:STATIC_VS,fragmentShader:GLYPH_FS,side:T.DoubleSide,alphaToCoverage:true});
@@ -7490,6 +7554,6 @@ async function init(){
   newLevel();
   requestAnimationFrame(frame);
 }
-init();
-setTimeout(()=>{ try{ dbgUrl(); }catch(e){ console.error(e); } },400);
+if(TEST)init().then(()=>{ dbgUrl(); testBoot=true; }).catch(e=>{ console.error(e); testBoot='error: '+e; });
+else { init(); setTimeout(()=>{ try{ dbgUrl(); }catch(e){ console.error(e); } },400); }
 })();
