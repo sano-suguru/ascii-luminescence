@@ -1,44 +1,78 @@
 #!/usr/bin/env node
-// 組み立てたページの行が、src/game/ のどのファイルの何行目かを調べる（ブラウザのエラーの場所を、元のファイルに直す）。
-//   node tools/where.mjs 4321                 dist/index.html の 4321 行目
-//   node tools/where.mjs index.html:4321:12   エラーに出た場所をそのまま貼ってよい
-//   node tools/where.mjs 4321 --test          テスト版（.build/test/index.html）の行。テストのエラーはテストが自動で直して出す
-// 組み立てたページには、ファイルの境目に「// ===== src/game/xx.js =====」の行が入っている。
+// 組み立てた JS の場所が、src/game/ のどのファイルの何行目かを調べる（ブラウザのエラーの場所を、元のファイルに直す）。
+//   node tools/where.mjs index-D0mETEmY.js:4321:12   エラーに出た場所をそのまま貼ってよい（assets/… や URL の形も可）
+//   node tools/where.mjs 4321                        dist/assets/ の JS（1つだけのはず）の 4321 行目
+//   node tools/where.mjs 4321 --test                 テスト版（.build/test/）。テストのエラーはテストが自動で直して出す
+// 組み立てた JS は Vite が書き直している（字下げなど）ので、行は元のファイルと違う。ソースマップ（.build/maps/。公開しない）で戻す。
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { locateInPage } from './build.mjs';
+import { findMap, originalPosition } from './sourcemap.mjs';
 
 const root = join(import.meta.dirname, '..');
-const arg = process.argv.slice(2).find((a) => !a.startsWith('--'));
-const m = arg && arg.match(/(?:^|:)(\d+)(?::(\d+))?$/);
-if (!m) {
-  console.log('使い方：node tools/where.mjs <行> [--test]   例：node tools/where.mjs index.html:4321:12');
+const test = process.argv.includes('--test');
+const arg = process.argv
+  .slice(2)
+  .find((a) => !a.startsWith('--'))
+  ?.replace(/\)$/, '');
+// 「ファイル:行:列」「ファイル:行」「行」。ファイルは URL や assets/… の形でもよい（最後の名前だけを使う）
+const m = arg && (arg.match(/^(.*):(\d+):(\d+)$/) || arg.match(/^(.*):(\d+)()$/) || arg.match(/^()(\d+)()$/));
+const usage = () => {
+  console.log('使い方：node tools/where.mjs <JS:行:列 か 行> [--test]   例：node tools/where.mjs index-D0mETEmY.js:4321:12');
+  process.exit(1);
+};
+if (!m) usage();
+const name = m[1].replace(/\?.*$/, '').split('/').pop();
+if (name && !name.endsWith('.js')) {
+  // 昔の組み立て（1ファイルの index.html）の場所は、今の JS の行とは違うので答えない
+  console.log(`${name} は JS ではない。今の組み立てでは、ゲーム本体は assets/index-<hash>.js にある（エラーに出たその場所を貼ること）`);
+  usage();
+}
+const outDir = join(root, test ? '.build/test' : 'dist'),
+  mapDir = join(root, '.build/maps', test ? 'test' : 'production'),
+  build = test ? 'pnpm build:test' : 'pnpm build';
+let js = name;
+if (!js) {
+  let list = [];
+  try {
+    list = readdirSync(join(outDir, 'assets')).filter((f) => f.endsWith('.js'));
+  } catch {}
+  if (list.length !== 1) {
+    console.log(
+      list.length ? `JS が ${list.length} 個ある。ファイル名も付けること：${list.join(' ')}` : `${outDir} が無い（先に ${build}）`,
+    );
+    process.exit(1);
+  }
+  js = list[0];
+}
+const map = findMap(js, mapDir);
+if (!map) {
+  console.log(`${js} のソースマップが無い（組み立て直したので名前が変わったのかもしれない。${build} をして、エラーを出し直すこと）`);
   process.exit(1);
 }
-const line = Number(m[1]),
-  col = m[2];
-const page = join(root, process.argv.includes('--test') ? '.build/test/index.html' : 'dist/index.html');
-let text;
+const line = Number(m[2]),
+  col = m[3] ? Number(m[3]) - 1 : 0;
+let total = 0;
 try {
-  text = readFileSync(page, 'utf8');
+  total = readFileSync(join(outDir, 'assets', js), 'utf8').split('\n').length;
 } catch {
-  console.log(`${page} が無い（先に組み立てること：pnpm build、テスト版は pnpm build:test）`);
+  console.log(`${join(outDir, 'assets', js)} が無い（${build} をして、エラーを出し直すこと）`);
   process.exit(1);
+}
+if (!(line >= 1 && line <= total)) {
+  console.log(`${js} は ${total} 行しかない`);
+  process.exit(1);
+}
+const p = originalPosition(map, line, col);
+if (!p) {
+  console.log('ゲーム本体の外（包みの行など、元のファイルに対応する行が無い）');
+  process.exit(0);
 }
 // 組み立てた後に src を変えていたら、行がずれているかもしれない
-const srcs = [join(root, 'src/head.html'), ...readdirSync(join(root, 'src/game')).map((f) => join(root, 'src/game', f))];
-if (srcs.some((f) => statSync(f).mtimeMs > statSync(page).mtimeMs))
-  console.log(`注意：${page} は src より古い。組み立て直さないと、行がずれているかもしれない`);
-const r = locateInPage(text, line);
-const OUT = {
-  range: `${page} は ${text.split('\n').length} 行しかない`,
-  head: 'ゲーム本体の外（head.html の部分）',
-  marker: 'ファイルの境目の行（印のコメント）',
-  tail: 'ゲーム本体の外（包みの終わりより後ろ）',
-};
-if (r.outside) {
-  console.log(OUT[r.outside]);
-  process.exit(r.outside === 'range' ? 1 : 0);
-}
-console.log(`${r.file}:${r.line}${col ? ':' + col : ''}`);
-console.log(`  ${r.text.trim().slice(0, 160)}`);
+try {
+  if (statSync(join(root, p.source)).mtimeMs > statSync(join(outDir, 'assets', js)).mtimeMs)
+    console.log(`注意：${p.source} は組み立てた後に変わっている。行がずれているかもしれない`);
+} catch {}
+console.log(`${p.source}:${p.line}${m[3] ? ':' + (p.column + 1) : ''}`);
+try {
+  console.log(`  ${readFileSync(join(root, p.source), 'utf8').split('\n')[p.line - 1].trim().slice(0, 160)}`);
+} catch {}

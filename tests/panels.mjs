@@ -4,7 +4,7 @@
 //      （ルーン文字は、パネルと同じく <b class="rn"> の中で測る）
 //   2. 実際の画面（操作・装備・メニュー・レベルアップ・祭壇・結果）で、右の縦線が全部の行で同じ位置にあるか
 //      レベルアップと祭壇は、一覧の見出しの後ろの名前の列も揃っているか
-import { gameSource } from '../tools/build.mjs';
+import { gameSource } from '../tools/game-source.mjs';
 import { withBrowser, newPage, openTest, advance, nearAltar } from './lib.mjs';
 
 const src = gameSource();

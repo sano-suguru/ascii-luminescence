@@ -1,20 +1,20 @@
 #!/usr/bin/env node
-// 使う文字のもれのチェック（ブラウザ不要、数秒）：ゲームの文言（src/game/ と head.html）に出る文字が、パネルのフォントで描けるか。
+// 使う文字のもれのチェック（ブラウザ不要、数秒）：ゲームの文言（src/game/ と index.html）に出る文字が、パネルのフォントで描けるか。
 //   - M PLUS 1 Code（パネルのフォント。太さ400・600・700のすべて）に入っている → よい
-//   - 入っていない → head.html の BIZ UDGothic の text=（補いの文字の一覧）に入っていなければ失敗
+//   - 入っていない → index.html の BIZ UDGothic の text=（補いの文字の一覧）に入っていなければ失敗
 //   - ルーン文字（U+16A0–16FF）は Noto Sans Runic で描くので対象外
 // 一覧に足した文字は、BIZ UDGothic に入っているかも確かめる。幅の数え方（visW）は tests/panels.mjs が確かめる。
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as fontkit from 'fontkit';
-import { gameSource } from '../tools/build.mjs';
+import { gameSource } from '../tools/game-source.mjs';
 import { ROOT } from './lib.mjs';
 
-const head = readFileSync(join(ROOT, 'src/head.html'), 'utf8'),
+const head = readFileSync(join(ROOT, 'src/index.html'), 'utf8'),
   game = gameSource();
 const m = head.match(/family=BIZ\+UDGothic[^"]*?[?&]text=([^&"]+)/);
 if (!m) {
-  console.log('✗ head.html に BIZ UDGothic の text= が見つからない');
+  console.log('✗ index.html に BIZ UDGothic の text= が見つからない');
   process.exit(1);
 }
 const extra = new Set(decodeURIComponent(m[1]));
@@ -56,7 +56,7 @@ const mplus = [400, 600, 700].map((w) => faces('m-plus-1-code', w)),
   biz = [400, 700].map((w) => faces('biz-udgothic', w));
 const hasAll = (sets, cp) => sets.every((list) => has(list, cp));
 
-// head.html は、コメントを除いた本文（CSS の content なども描かれうるので残す）
+// index.html は、コメントを除いた本文（CSS の content なども描かれうるので残す）
 const headText = head.replace(/<!--[\s\S]*?-->/g, '');
 const chars = [...new Set([...game, ...headText].filter((c) => c.codePointAt(0) >= 0x80))];
 const missing = [],
@@ -77,7 +77,7 @@ let fail = false;
 if (missing.length) {
   fail = true;
   console.log(
-    `✗ M PLUS 1 Code に無く、BIZ UDGothic の一覧にも無い文字：${missing.map((c) => `${c}（${hex(c)}）`).join(' ')}\n  → 別の文字にするか、head.html の text= に足して visW の幅も合わせる`,
+    `✗ M PLUS 1 Code に無く、BIZ UDGothic の一覧にも無い文字：${missing.map((c) => `${c}（${hex(c)}）`).join(' ')}\n  → 別の文字にするか、index.html の text= に足して visW の幅も合わせる`,
   );
 }
 if (notInBiz.length) {

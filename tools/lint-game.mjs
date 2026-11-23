@@ -7,7 +7,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { gameSource, gameLayout, locate } from './build.mjs';
+import { gameSource, gameLayout, locate } from './game-source.mjs';
 
 const root = join(import.meta.dirname, '..');
 const quiet = process.argv.includes('--quiet');

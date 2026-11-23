@@ -1,8 +1,8 @@
-// Cloudflare Workers（静的アセットのみ）。dist/ は pnpm build で作る（git には入れない）。
+// Cloudflare Workers（静的アセットのみ）。dist/ は pnpm build（Vite）で作る（git には入れない）。ソースマップは dist/ に入れない（.build/maps/）。
 // Workers Builds の設定：Build command = pnpm build、Deploy command = npx wrangler deploy
 // Node の版は .node-version で決まる。pnpm の版は、Workers Builds が Corepack を通して package.json の packageManager から決めるが、
 // Node 25 からは Corepack が Node に入っていないので、効かないおそれがある。Workers Builds の変数で PNPM_VERSION=12.22.0 も指定しておく。
-// Workers Builds の資料に Node 26 の記載が無い。組み立てに失敗したら、Workers Builds の変数で NODE_VERSION=24 にする（組み立ては Node 22 以上で動く）
+// Workers Builds の資料に Node 26 の記載が無い。組み立てに失敗したら、Workers Builds の変数で NODE_VERSION=24 にする（組み立ては Node 22.12 以上で動く。Vite 8 の条件）
 {
   "name": "ascii-luminescence",
   "compatibility_date": "2026-11-01",
