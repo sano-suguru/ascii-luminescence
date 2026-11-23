@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------- the goal (stage C): three legendary things held by lords, a sealed descent, the deepest place, the last king's shadow
-const FINAL_DEPTH=13;
+// FINAL_DEPTH は src/lib/world.ts（src/game/imports.mjs で読む）
 const LEGEND_KINDS={candle:{name:'燭台',ch:'i',col:[1.0,0.78,0.42]}, bell:{name:'鐘',ch:'A',col:[0.98,0.9,0.55]}, mirror:{name:'鏡',ch:'O',col:[0.72,0.9,1.0]}};
 const LEGEND_ORDER=['candle','bell','mirror'];
 const BRANCH_HINT={crypt:'死者の眠る回廊の奥',lair:'獣の匂う洞窟の奥',sunken:'水に沈んだ神殿の底',nest:'糸の張りめぐらされた闇の奥',snake:'這うものたちの水場の奥'};

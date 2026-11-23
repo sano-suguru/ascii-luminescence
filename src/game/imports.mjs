@@ -42,12 +42,18 @@ import {
 import {
   BASE_H, BRANCHES, CELL, CH_D, CHUNK, CXN, CZN, D4, EYE, FOGS, FORT_KIND_MSG, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MH, MW, NCELL, NDL, NSL, PR, PROPHECIES,
   REALMS, ROCKS, RUIN_KIND_MSG, SF_BRIM, SF_DEAD, SF_FOLIAGE, SF_FUNGFOR, SF_GRASS, SF_HAY, SF_ICE, SF_LUMEN, SF_MUD, SF_OBSIDIAN, SF_RUBBLE, TC, TF, TP,
-  TW, TX, VAULT_WALL_H, VEIN_COL, VEIN_NAME, blocksWalk, depthProfile, } from '../lib/world.ts';
+  TW, TX, VAULT_WALL_H, FINAL_DEPTH, VEIN_COL, VEIN_NAME, blocksWalk, depthProfile, } from '../lib/world.ts';
 import { computeVis, topLights } from '../lib/light.ts';
 import { lerpAngle, sstep, turnDir } from '../lib/math.ts';
 import { css, hsl2rgb } from '../lib/color.ts';
 import {
-  CAT_BR, CAT_NAME, ELEM_POW, REACT, RUNE_FONT, SLOT_MAX, TIER_COL, TL, TRAITS, TRAIT_V, TWO_SLOTS, elemCount, emptyChip, handRunes, serRune, trList, trName, tv, weaponCol,
+  CAT_BR, CAT_NAME, ELEM_POW, REACT, RUNE_FONT, RUNE_TYPES, SLOT_MAX, TIER_COL, TL, TRAITS, TRAIT_V, TWO_SLOTS, elemCount, emptyChip, handRunes, serRune, trList, trName, tv, weaponCol,
 } from '../lib/runes.ts';
 import { META_DEF, UNLOCKS, expNeed, expOf } from '../lib/progress.ts';
 import { VM_K, VM_MIRROR, VM_ST, vmGlyph, vmGlyphS } from '../lib/hands.ts';
+import {
+  BIOMES, BRANCH_STRATA, FORT_THEMES, HORDES, REALM_STRATA, RUIN_THEMES, SPECIALS, STRATA, THEMES,
+  branchAtDepth, levelDims, stratumOf,
+} from '../lib/strata.ts';
+import { setNoiseSeed, vnoise } from '../lib/noise.ts';
+import { VAULTS, makeCave, vaultCells } from '../lib/vaults.ts';

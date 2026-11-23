@@ -141,7 +141,7 @@ const wTL=(h,k)=>{ const H=effHand(h); for(const t of trList(H.atk))if(t.k===k)r
 const WEAPON_SIG=t=>Object.keys(TRAITS[t]||{}).slice(0,2);
 function rollTraits(ru,r,d,bonus){ if(!ru||RUNE_DEF[ru.type].cat!=='atk'||!TRAITS[ru.type])return ru; const tier=Math.min(4,clamp(Math.floor(((d||1)-1)/3),0,3)+(bonus||0));
   ru.traits=tier>0?WEAPON_SIG(ru.type).map(k=>({k,lv:tier})):[]; return ru; }
-const RUNE_TYPES={atk:['blade','bolt','orb','beam','dash','rain','rapid','star','gsword','mstaff'], elem:['fire','ice','thunder','poison'], trig:['dodge','kill'], mod:['m_chain','m_area','m_dur'], body:['swift','roll','quick','lamp','mend','linger','hush','ward']};
+// RUNE_TYPES は src/lib/runes.ts（src/game/imports.mjs で読む）
 const AFFIX={
   count: {name:'弾数',       roll:r=>1+(r()<0.3?1:0),          fmt:v=>`弾数 +${v}`},
   bounce:{name:'跳ね返り',   roll:r=>1+Math.floor(r()*3),       fmt:v=>`跳ね返り +${v}`},

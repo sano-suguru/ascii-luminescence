@@ -1,10 +1,4 @@
-function levelDims(st,d){ if(st.k==='bigroom'&&!showroomGen)return [56,34]; if(st.k==='fortress')return [56,36]; if(realm||st.special||st.realm)return [MW,MH]; if(branch)return [46,32];
-  const k=st.k; let w=MW, h=MH;
-  if(k==='maze'){ if(d<=1){ w=40; h=28; } else { w=50; h=34; } }
-  else if(k==='cavern'){ const f=clamp((d-3)/2,0,1); w=Math.round(60+10*f); h=Math.round(40+6*f); }
-  else if(k==='magma'){ w=70; h=30; }
-  else if(k==='abyss'){ w=52; h=36; }
-  return [Math.min(MW,w),Math.min(MH,h)]; }
+// levelDims は src/lib/strata.ts（src/game/imports.mjs で読む）
 function generate(seed,depth){
   if(HIST_SEED!==runSeed){ HIST=makeHistory(runSeed); HIST_SEED=runSeed; }
   setRand(mulberry32(seed));
@@ -13,12 +7,12 @@ function generate(seed,depth){
   const tile=new Uint8Array(N), liquid=new Uint8Array(N), surface=new Uint8Array(N), roomOf=new Int16Array(N).fill(-1);
   const walk=j=>tile[j]===TF&&!blocksWalk(liquid[j]);
   const bridge=new Uint8Array(N), bridgeDir=new Uint8Array(N), xtalCol=new Map();
-  const ns=(rand()*1e9)|0; noiseSeed=ns;
+  const ns=(rand()*1e9)|0; setNoiseSeed(ns);
   const ceil=new Float32Array(N).fill(BASE_H), dfield=new Int16Array(N), flow=new Float32Array(N);
   const overlaps=(list,x,y,w,h,m)=>list.some(r=>x<r.x+r.w+m&&x+w+m>r.x&&y<r.y+r.h+m&&y+h+m>r.y);
 
   const stratum=realm?REALM_STRATA[realm.key]:branch?BRANCH_STRATA[branch.key]:inter?SPECIALS[inter.key]:stratumOf(depth);
-  const [UW,UH]=levelDims(stratum,depth);
+  const [UW,UH]=levelDims(stratum,depth,{showroom:showroomGen,realm,branch});
   let caves=[], normals=[], rooms;
   if(stratum.k==='ruins'||stratum.k==='fortress'){
     const fort=stratum.k==='fortress';
@@ -583,7 +577,7 @@ function generate(seed,depth){
     if(c!==undefined){ addFix('upstairs',c,stratum.realm?REALMS[realm.key].col:BRANCHES[branch.key].col,1.6,1.5,7,'<'); upstairs=c; } }
   if(!stratum.branch&&!stratum.realm&&!stratum.special){
     const pickSpot=()=>{ const cand=[]; rooms.forEach((r,ri)=>{ if(ri===0||!r.cells.length||r.shell)return; for(const i of r.cells)if(walk(i)&&!liquid[i]&&!used.has(i)&&!solid.has(i)&&cd(i,stI)>36&&cd(i,startI)>25)cand.push(i); }); return cand.length?cand[Math.floor(rand()*cand.length)]:-1; };
-    const bk=branchAtDepth(depth);
+    const bk=branchAtDepth(depth,runSeed);
     if(bk){ const c=pickSpot(); if(c>=0){ addFix('bstairs',c,BRANCHES[bk].col,1.7,1.8,8.5,'>'); bstairs={cell:c,key:bk}; } }
     if(depth>=2&&rand()<0.3){ const ks=Object.keys(REALMS).filter(k=>depth>=REALMS[k].minD), rk=ks[Math.floor(rand()*ks.length)], c=pickSpot();
       if(c>=0){ addFix('portal',c,REALMS[rk].col,1.6,2.0,9,'0'); portal={cell:c,key:rk}; } }
