@@ -6,7 +6,41 @@
   "rules": {
     "no-undef": "error",
     "no-unused-vars": ["warn", { "caughtErrors": "none", "args": "none" }],
-    "no-empty": ["warn", { "allowEmptyCatch": true }]
+    "no-empty": ["warn", { "allowEmptyCatch": true }],
+    // ESLint の recommended にあって、Oxlint の correctness に入っていない規則を足す。
+    // 特に no-redeclare：src/game/ は31ファイルを1つにつなぐので、別のファイルの同じ名前の関数が、黙って前のものを上書きしてしまう
+    "no-redeclare": "error",
+    "no-fallthrough": "error",
+    "no-case-declarations": "error",
+    "no-prototype-builtins": "error",
+    "no-unused-labels": "error",
+    "no-regex-spaces": "error",
+    "no-empty-static-block": "error",
+    "no-extra-boolean-cast": "error",
+    "no-useless-escape": "error",
+    "no-cond-assign": "error",
+    "no-shadow-restricted-names": "error",
+    "no-delete-var": "error",
+    "no-global-assign": "error",
+    "no-with": "error",
+    "no-unsafe-optional-chaining": "error",
+    "no-self-assign": "error",
+    "no-sparse-arrays": "error",
+    "no-unexpected-multiline": "error",
+    "no-useless-catch": "error",
+    "no-dupe-else-if": "error",
+    "no-empty-pattern": "error",
+    "no-loss-of-precision": "error",
+    "no-misleading-character-class": "error",
+    "no-nonoctal-decimal-escape": "error",
+    "no-unsafe-finally": "error",
+    "no-unsafe-negation": "error",
+    "no-useless-backreference": "error",
+    "require-yield": "error",
+    "use-isnan": "error",
+    "valid-typeof": "error",
+    "getter-return": "error",
+    "no-inner-declarations": "error"
   },
   "overrides": [
     {
@@ -23,7 +57,7 @@
     {
       // ゲーム本体：src/game/*.js をつないだもの（tools/lint-game.mjs が書き出して調べる）。
       // ブラウザの普通の <script>。THREE は CDN の <script> から来る。
-      "files": [".build/lint/game.js"],
+      "files": [".build/lint/*.js"],
       "env": { "browser": true },
       "globals": { "THREE": "readonly" },
       "rules": {

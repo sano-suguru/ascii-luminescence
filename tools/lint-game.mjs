@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 // ゲーム本体（src/game/*.js）の構文と lint（Oxlint）。1つのファイルだけでは、ほかのファイルの名前が分からないので、
-// つないだもの（gameSource）を .build/lint/game.js に書き出してまとめて調べ、場所を「src/game/xx.js:行:列」に直して出す。
+// つないだもの（gameSource）を .build/lint/ の一時ファイルに書き出してまとめて調べ、場所を「src/game/xx.js:行:列」に直して出す。
+// 一時ファイルは毎回違う名前にして、終わったら消す（編集直後の hook と pnpm check が同時に動いても、途中まで書いたファイルを読まないように）。
 //   node tools/lint-game.mjs           エラーと警告
-//   node tools/lint-game.mjs --quiet   エラーだけ（npm run check、編集直後の hook）
+//   node tools/lint-game.mjs --quiet   エラーだけ（pnpm check、編集直後の hook）
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gameSource, gameLayout, locate } from './build.mjs';
 
 const root = join(import.meta.dirname, '..');
 const quiet = process.argv.includes('--quiet');
 const code = gameSource(),
-  file = join(root, '.build/lint/game.js');
+  file = join(root, `.build/lint/game-${process.pid}-${Date.now()}.js`);
 mkdirSync(join(root, '.build/lint'), { recursive: true });
 writeFileSync(file, code);
 let out;
@@ -25,9 +26,12 @@ try {
   out = e.stdout;
   if (!out) {
     console.error(e.stderr || String(e));
-    process.exit(2);
+    process.exitCode = 2;
   }
+} finally {
+  rmSync(file, { force: true });
 }
+if (!out) process.exit(2);
 const diags = JSON.parse(out).diagnostics ?? [];
 // Oxlint の位置はバイト数なので、バイトで行と列を数える
 const buf = Buffer.from(code),

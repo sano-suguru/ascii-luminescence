@@ -29,8 +29,12 @@ try {
 } catch {
   process.exit(0);
 }
-if (!/(^|\s)(src\/|tools\/|tests\/|\.claude\/|\.oxlintrc\.json|\.oxfmtrc\.json|vitest\.config\.mjs|package\.json|pnpm-)/m.test(changed))
-  process.exit(0);
+// pnpm check は、整形の確かめでリポジトリの JSON・YAML なども見るので、check が見ない物（文書・画面写真の基準）だけの変更の時に飛ばす
+const paths = changed
+  .split('\n')
+  .filter(Boolean)
+  .map((l) => l.slice(3).split(' -> ').pop());
+if (!paths.some((p) => !/^(docs\/|tests\/baseline\/)|\.md$/.test(p))) process.exit(0);
 try {
   sh('pnpm --silent check');
 } catch (e) {

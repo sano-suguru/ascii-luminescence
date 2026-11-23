@@ -22,7 +22,7 @@ let text;
 try {
   text = readFileSync(page, 'utf8');
 } catch {
-  console.log(`${page} が無い（先に組み立てること：npm run build、テスト版は npm run build:test）`);
+  console.log(`${page} が無い（先に組み立てること：pnpm build、テスト版は pnpm build:test）`);
   process.exit(1);
 }
 // 組み立てた後に src を変えていたら、行がずれているかもしれない

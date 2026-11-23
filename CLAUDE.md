@@ -62,7 +62,7 @@ node tests/levels.mjs --seed 202               # 1つのシードだけ（--seed
 node tests/smoke.mjs --cdn                     # 公開用と同じく CDN の three.js と Google Fonts で起動
 pnpm verify           # check + test + test:visual
 pnpm serve            # dist/ を組み立てて http://127.0.0.1:8000/ で配信
-pnpm deploy           # 手元から Cloudflare に公開（ふだんは Workers Builds が git から公開する）
+pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers Builds が git から公開する）。pnpm deploy は pnpm 組み込みの別のコマンドなので使わない
 ```
 - **依存を足す・上げる時**：`pnpm add -D --save-exact 名前@版`（確認が出る）。公開から24時間未満の版は入らない（pnpm-workspace.yaml）。
   インストール時にスクリプトを動かす依存は、中身を確かめてから `pnpm approve-builds` で許可する。npm で入れない（権限で止めている）。
@@ -99,7 +99,7 @@ pnpm deploy           # 手元から Cloudflare に公開（ふだんは Workers
 - **終える前**（Stop）：`src/`・`tools/`・`tests/`・設定が変わっていれば `pnpm check` を通す。通らなければ終われない。
 - **セッションの始め**（SessionStart、クラウドのみ）：.node-version の Node と packageManager の pnpm を用意し（~/.cache）、依存が変わっていれば `pnpm install --frozen-lockfile`。
 - 権限：`pnpm` のスクリプト（check・lint・test など）・git の読み取り・commit・push・ブランチの切り替えは確認なし。
-  依存の追加と更新（`pnpm add`・`pnpm update`・`pnpm approve-builds`・`pnpm dlx`）・公開（`pnpm deploy`・wrangler）・`rm -rf`・`git reset --hard`・`git clean`・変更を捨てる `git checkout` は確認あり。
+  依存の追加と更新（`pnpm add`・`pnpm update`・`pnpm approve-builds`・`pnpm dlx`）・公開（`pnpm run deploy`・wrangler）・`rm -rf`・`git reset --hard`・`git clean`・変更を捨てる `git checkout` は確認あり。
   force push（`+ブランチ` の形も）・リモートのブランチの削除、npm での依存のインストール、`dist/` と `pnpm-lock.yaml` の直接編集、`.env`・`.dev.vars` を読むことは禁止。
   ただし権限は文字列の一致で見るだけなので、完全な安全柵ではない（別の書き方ならすり抜けうる）。
 - テストは遅めなので hooks では走らせない。動きに関わる変更の後は `pnpm test`、見た目に関わる変更の後は `pnpm test:visual` を自分で走らせる。
