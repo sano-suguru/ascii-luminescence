@@ -2,12 +2,14 @@
 // src/head.html + src/game.js を、1ファイルのページに組み立てる。
 //   node tools/build.mjs          -> dist/index.html（three.js は CDN から。公開用）
 //   node tools/build.mjs --test   -> .build/test/index.html（three.js は node_modules からコピー。オフラインのテスト用）
-import { readFileSync, writeFileSync, mkdirSync, copyFileSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync, rmSync, symlinkSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CDN = 'https://cdn.jsdelivr.net/npm/three@0.147.0/';
+// テスト版では、Google Fonts の代わりに npm の @fontsource を読む（どのマシンでも同じ文字の形にするため）
+const TEST_FONTS = ['jetbrains-mono/400', 'jetbrains-mono/700', 'jetbrains-mono/800', 'm-plus-1-code/400', 'm-plus-1-code/600', 'm-plus-1-code/700', 'noto-sans-runic/400'];
 
 export function assemble() {
   const head = readFileSync(join(root, 'src/head.html'), 'utf8');
@@ -29,6 +31,11 @@ export function build({ test = false } = {}) {
       copyFileSync(join(root, 'node_modules/three', f), dst);
     }
     page = page.replaceAll(CDN, 'three/');
+    const links = page.match(/<link[^>]*fonts\.(googleapis|gstatic)\.com[^>]*>\n?/g) || [];
+    if (!links.some((l) => l.includes('stylesheet'))) throw new Error('Google Fonts の <link> が head.html に見つからない');
+    page = page.replace(links[0], TEST_FONTS.map((f) => `<link rel="stylesheet" href="fonts/${f}.css">\n`).join(''));
+    for (const l of links.slice(1)) page = page.replace(l, '');
+    symlinkSync(join(root, 'node_modules/@fontsource'), join(outDir, 'fonts'), 'junction');
   }
   const out = join(outDir, 'index.html');
   writeFileSync(out, page);
