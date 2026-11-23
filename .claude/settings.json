@@ -29,6 +29,7 @@
       "Bash(pnpm test:*)",
       "Bash(pnpm build)",
       "Bash(pnpm build:test)",
+      "Bash(pnpm typecheck)",
       "Bash(pnpm dev)",
       "Bash(pnpm dev *)",
       "Bash(pnpm where *)",

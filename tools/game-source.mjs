@@ -110,26 +110,27 @@ export function gameSource({ dir = GAME_DIR } = {}) {
   );
 }
 
-// 文字を調べるテスト（使う文字・文字の幅）のための、ゲームの文言を含む全部の文：ゲーム本体と、TypeScript に移した物（src/lib/）
-export function gameText({ dir = GAME_DIR } = {}) {
-  const lib = join(dir, '../lib'),
-    ts = existsSync(lib) ? readdirSync(lib, { recursive: true }).filter((f) => String(f).endsWith('.ts')) : [];
+// 文字を調べるテスト（使う文字・文字の幅）のための、ゲームの文言を含む全部の文：ゲーム本体と、TypeScript に移した物（src/lib/）。
+// lib は、本物の src/game の時だけ src/lib（テストで別のフォルダを渡した時に、その近くの関係のない .ts を読まないように）
+export function gameText({ dir = GAME_DIR, lib = dir === GAME_DIR ? join(root, 'src/lib') : null } = {}) {
+  const ts = lib && existsSync(lib) ? readdirSync(lib, { recursive: true }).filter((f) => String(f).endsWith('.ts')) : [];
   return gameSource({ dir }) + ts.map((f) => readFileSync(join(lib, String(f)), 'utf8')).join('');
 }
 
 // gameSource() の中で、各ファイルが何行目から何行あるか（imports.mjs は1行目から。包みの2行は、その後ろ）
+const WRAP_LINES = WRAP_HEAD.split('\n').length - 1; // 包みの最初の2行
 export function gameLayout({ dir = GAME_DIR } = {}) {
-  let at = 1;
-  return pieces(dir).map((f) => {
-    if (f !== IMPORTS && at === firstPartLine(dir)) at += WRAP_HEAD.split('\n').length - 1;
-    const n = readPart(f, dir).split('\n').length - 1,
-      e = { file: `src/game/${f}`, start: at, n };
-    at += n;
-    return e;
-  });
+  const lines = (f) => readPart(f, dir).split('\n').length - 1,
+    head = hasImports(dir) ? [{ file: `src/game/${IMPORTS}`, start: 1, n: lines(IMPORTS) }] : [];
+  let at = (head[0]?.n ?? 0) + WRAP_LINES + 1; // 包みの2行の次から
+  return head.concat(
+    gameParts(dir).map((f) => {
+      const e = { file: `src/game/${f}`, start: at, n: lines(f) };
+      at += e.n;
+      return e;
+    }),
+  );
 }
-// 包みの関数の1行目が何行目か（＝ imports.mjs の行の数 + 1）
-const firstPartLine = (dir) => (hasImports(dir) ? readPart(IMPORTS, dir).split('\n').length - 1 : 0) + 1;
 
 // gameSource() の行（1始まり）が、どのファイルの何行目かを返す。包みの行なら null。何度も呼ぶ時は layout を渡す
 export function locate(line, { layout = gameLayout() } = {}) {
@@ -144,15 +145,19 @@ const TOKEN = /[A-Za-z_$][\w$]*|\d[\w.]*|\S/g;
 export function gameSourceMap({ dir = GAME_DIR } = {}) {
   const files = pieces(dir),
     lines = [];
-  files.forEach((f, src) => {
-    if (f !== IMPORTS && lines.length === firstPartLine(dir) - 1) for (let k = 1; k < WRAP_HEAD.split('\n').length; k++) lines.push([]); // 包みの2行
-    const text = readPart(f, dir).split('\n');
+  const add = (f) => {
+    const src = files.indexOf(f),
+      text = readPart(f, dir).split('\n');
     text.pop(); // 最後の改行の後ろ
     text.forEach((t, l) => {
       const segs = [...t.matchAll(TOKEN)].map((m) => [m.index, src, l, m.index]);
       lines.push(segs.length ? segs : [[0, src, l, 0]]);
     });
-  });
+  };
+  // gameSource() と同じ並び：imports.mjs、包みの2行、つなぐファイル、包みの終わり
+  if (hasImports(dir)) add(IMPORTS);
+  for (let k = 0; k < WRAP_LINES; k++) lines.push([]);
+  gameParts(dir).forEach(add);
   lines.push([]); // WRAP_TAIL
   return { version: 3, sources: files.map((f) => join(dir, f)), names: [], mappings: encodeMappings(lines) };
 }

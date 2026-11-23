@@ -66,20 +66,66 @@ describe('ソースマップ', () => {
     const lines = gameSource().split('\n'),
       map = gameSourceMap(),
       cache = {};
+    // 包みの行（最初の2行と、末尾の '})();'）だけは対応が無い。それ以外の行で対応が無ければ失敗にする
+    const wrap = lines.indexOf('(function(){') + 1,
+      skip = new Set([wrap, wrap + 1, lines.length - 1, lines.length]);
     let checked = 0;
     for (let n = 1; n <= lines.length; n += 13)
       for (const m of lines[n - 1].matchAll(/[A-Za-z_$][\w$]*/g)) {
+        if (skip.has(n)) continue;
         const p = originalPosition(map, n, m.index);
-        if (!p) continue; // 包みの行
+        expect(p, `${n} 行目`).toBeTruthy();
         const src = (cache[p.source] ??= readFileSync(p.source, 'utf8').split('\n'))[p.line - 1];
         expect(src.slice(p.column, p.column + m[0].length)).toBe(m[0]);
         checked++;
       }
     expect(checked).toBeGreaterThan(1000);
-    const wrap = lines.indexOf('(function(){') + 1;
     expect(wrap).toBeGreaterThan(1); // 包みの前に imports.mjs の import の文がある
     expect(originalPosition(map, wrap, 0)).toBeNull(); // 包みの行
     expect(originalPosition(map, 1, 0)?.source).toMatch(/src\/game\/imports\.mjs$/);
+  });
+});
+
+describe('imports.mjs（包みの前の import の文）', () => {
+  // 行の対応（gameLayout）とソースマップが、gameSource のどの行でも同じファイル・同じ行を指すか
+  const agree = (dir) => {
+    const lines = gameSource({ dir }).split('\n'),
+      layout = gameLayout({ dir }),
+      map = gameSourceMap({ dir });
+    for (let n = 1; n <= lines.length; n++) {
+      const a = locate(n, { layout }),
+        p = originalPosition(map, n, 0);
+      if (!a) {
+        expect(p ?? null, `${n} 行目`).toBeNull();
+        continue;
+      }
+      expect(p?.source, `${n} 行目`).toBe(join(dir, a.file.replace('src/game/', '')));
+      expect(p?.line, `${n} 行目`).toBe(a.line);
+      expect(readFileSync(join(dir, a.file.replace('src/game/', '')), 'utf8').split('\n')[a.line - 1]).toBe(lines[n - 1]);
+    }
+  };
+  it('包みの前に置かれ、行の対応とソースマップが合う', () => {
+    const dir = fixture({
+      'imports.mjs': "import { x } from './x.ts';\nimport { y } from './y.ts';\n",
+      '00-a.js': 'a1\na2\n',
+      '01-b.js': 'b1\n',
+    });
+    expect(gameSource({ dir })).toBe(
+      "import { x } from './x.ts';\nimport { y } from './y.ts';\n(function(){\n'use strict';\na1\na2\nb1\n})();\n",
+    );
+    agree(dir);
+  });
+  it('つなぐファイルが1つも無くても、包みの2行の位置がずれない', () => {
+    const dir = fixture({ 'imports.mjs': "import { x } from './x.ts';\n" });
+    expect(gameSource({ dir })).toBe("import { x } from './x.ts';\n(function(){\n'use strict';\n})();\n");
+    agree(dir);
+    expect(decodeMappings(gameSourceMap({ dir }).mappings).length).toBe(gameSource({ dir }).split('\n').length - 1);
+  });
+  it('本物の src/game でも合う', () => agree(join(ROOT, 'src/game')));
+  it('gameText は、本物の src/game の時だけ src/lib を読む（ほかのフォルダの近くの .ts を混ぜない）', () => {
+    const dir = fixture({ '00-a.js': 'a1\n' });
+    expect(gameText({ dir })).toBe(gameSource({ dir }));
+    expect(gameText()).toContain('export function visW');
   });
 });
 
