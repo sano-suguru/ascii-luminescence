@@ -15,8 +15,11 @@
 ## ファイル
 ```
 src/head.html        画面の作りとCSS（three.js を CDN から読む <script> を含む）
-src/game.js          ゲーム本体（約7,500行、1ファイル）
+src/game/*.js        ゲーム本体（31ファイル、合わせて約7,500行。下の「ゲーム本体の地図」）
 tools/build.mjs      src から dist/index.html を組み立てる（--test でオフラインのテスト用）
+tools/lint-game.mjs  src/game/ をつないで構文と lint を調べ、場所を元のファイルの行で出す
+tools/where.mjs      組み立てたページの行 → src/game/ のどのファイルの何行目か
+tools/map.mjs        ゲーム本体の地図（ファイルごとの行の数と見出し）
 tools/serve.mjs      静的ファイルの小さなサーバー
 tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ・テスト用モードのページ）
 tests/smoke.mjs      ふだんのページの起動 ＋ 開発用の冒険で dbg が動くか（画面写真は tests/out/）
@@ -31,14 +34,17 @@ wrangler.jsonc       Cloudflare Workers（静的アセット）の設定。公�
 .github/workflows/ci.yml  確かめるだけの CI（lint・組み立て・スモークテスト）
 docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 ```
-`dist/index.html` = `head.html` + `<script>` + `game.js` + `</script></body></html>`。
+`dist/index.html` = `head.html` + `<script>` + （`src/game/*.js` を名前の順につなぎ、`(function(){ 'use strict'; … })();` で包んだもの）+ `</script></body></html>`。
+組み立てたページには、ファイルの境目に `// ===== src/game/xx.js =====` の行が入る。
 `dist/` と `.build/` は生成物なので git に入れない。直接編集もしない（権限で止めている）。
 
 ## 組み立て・実行・テスト（Node 22）
 ```
 npm install           # 依存を入れる（クラウドのセッションでは SessionStart hook が自動で行う）
 npm run check         # 構文 + lint（エラーだけ） + 使う文字のチェック + 組み立て。数秒。編集のたびにこれ
-npm run lint          # 警告も含めて lint を見る
+npm run lint          # 警告も含めて lint を見る（src/game/ はつないで調べる）
+npm run map [語]      # ゲーム本体の地図。語を付けると、見出しにその語を含むファイルだけ（例：npm run map fire）
+npm run where 4321    # 組み立てたページの 4321 行目が、src/game/ のどこか（index.html:4321:12 の形も可。--test でテスト版）
 npm test              # スモーク・同じ結果・全部の階・枠（オフラインで動く。40秒ほど）
 npm run test:visual   # 画面写真の比較（30秒ほど）。違えば tests/out/visual/ に違いの画像
 node tests/visual.mjs --update [--only 場面]   # 基準の画像を作り直す（見た目を意図して変えた時だけ）
@@ -63,7 +69,7 @@ npm run deploy        # 手元から Cloudflare に公開（ふだんは Workers
 
 ## テスト用モード（`?test=1`）
 同じ手順なら、いつも同じ結果になるモード。開発用モードも含む（`seed=`・`depth=`・`god=1` などがそのまま使える）。
-ふだんの遊びには影響しない（game.js の先頭の `TEST` で分けている）。
+ふだんの遊びには影響しない（`src/game/00-test-mode.js` の `TEST` で分けている）。
 - `Math.random` はシードで決まる。時計（`performance.now`・`setTimeout`・`setInterval`）は、ゲームが進む時だけ進む。
 - ゲームは自分では進まない。`__test.advance(秒)`（描かずに進める。速い）か `__test.frames(n)`（描いて進める）で進める。1フレーム＝ゲームの1/30秒。
 - `window.__test`：`ready()`、`error()`、`advance(秒)`、`frames(n)`、`state()`（体力・位置・敵・飛ぶ物・溜め・切り替え など）、
@@ -77,7 +83,7 @@ npm run deploy        # 手元から Cloudflare に公開（ふだんは Workers
   - パネルの文字の幅を測る時は、`document.fonts.ready` を待つ（文字の範囲ごとのフォントは、使う時に読まれる）。
 
 ## 自動の確かめ（hooks、.claude/settings.json）
-- **編集の直後**（PostToolUse）：`src/` などの JS を編集すると、構文と lint を確かめる。エラーなら差し戻されるので、その場で直す。
+- **編集の直後**（PostToolUse）：`src/` などの JS を編集すると、構文と lint を確かめる（`src/game/` は全部をつないで調べる）。エラーなら差し戻されるので、その場で直す。
 - **終える前**（Stop）：`src/`・`tools/`・`tests/`・設定が変わっていれば `npm run check` を通す。通らなければ終われない。
 - **セッションの始め**（SessionStart、クラウドのみ）：依存が変わっていれば `npm install`。
 - 権限：`npm run`・lint・git の読み取り・commit・push・ブランチの切り替えは確認なし。
@@ -104,35 +110,42 @@ npm run deploy        # 手元から Cloudflare に公開（ふだんは Workers
 `al_meta`（伝承・解放・墓・試練）、`al_book`（魔導書：記した反応）、`al_beasts`（忘れられた獣）、
 `al_runes`（見たルーン）、`al_seen`（見た生き物）、`al_cam`（1人称/3人称）、`al_dev`（開発用モード）
 
-## game.js の地図（行番号はおおよそ。`// -----` の見出しで探す）
-| 行 | 中身 |
+## ゲーム本体の地図（src/game/）
+ファイルは名前の順につながる（後のファイルは、前のファイルの変数や関数を使える。トップレベルで実行する文は順番に気をつける）。
+細かい見出しと行は `npm run map` で見る。ブラウザのエラーの行は `npm run where <行>` で元のファイルに直す。
+| ファイル | 中身 |
 |---|---|
-| 63 | 定数（RUNE_DEF、RUNE_TYPES、TRAITS/TRAIT_V、MSTAT など） |
-| 326 | 迷宮の生成（generate、部屋、交差点、支道、層ごとの大きさ） |
-| 527 | 歴史と碑文 |
-| 1516–1849 | 描画（シェーダー、文字の図鑑、dyn、粒子） |
-| 1849 | 世界の状態 |
-| 2429–3744 | 生き物の形（主、忘れられた獣、各種の体） |
-| 3744–4146 | 小さな生き物、群れ、大きな生き物、主 |
-| 4146–4860 | 灯り、備品、扉、音、ガス、火、粒子の更新 |
-| 4860 | 視界とミニマップ |
-| 5004 | 段階D：伝承・解放・墓・試練（META、UNLOCKS、weaponPool、trialOn） |
-| 5125 | 階の切り替え（newLevel） |
-| 5256–5436 | 生と死、レベルアップ（BLESS、gainExp、levelChoices、openLevelUp） |
-| 5436 | 手元の武器（VM_MODELS、drawViewWeapons、vmGlyph） |
-| 5535 | ルーン、両手持ち（effHand、atkType、equipWeapon、canPutAt、specOf） |
-| 5707 | 詠唱（beginCast、castNow、meleeCast、fireWave、dashCast、castStar、startRain、castRapid） |
-| 5872 | 当たり・性質・反応（applyHit、react、hitReact） |
-| 5957 | 飛ぶ物（updateProjs、drawWave、moonBurst） |
-| 6058–6164 | ルーンの手に入れ方、祭壇（altarFill、forgeOptions、placeAltar、mainPathAltars） |
-| 6164 | 回復（取り戻せる傷、泉） |
-| 6360 | 方向の矢印 |
-| 6532 | デバッグ（dbg） |
-| 6596–6758 | 目的（伝説の物、最深部、王の影）、タイトルへ戻る |
-| 6803 | 図鑑、試しの間 |
-| 6995–7169 | 装備の画面（renderInv、packSlot、ビルド）、祭壇の画面（renderAltar） |
-| 7285 | 見た時の説明（look） |
-| 7434 | メインループ（frame）、7474 初期化 |
+| 00-test-mode | テスト用モード（`TEST`、時計、乱数） |
+| 01-title | タイトルのロゴ |
+| 02-constants | 定数（層・支道・異界・特別な階、MTYPES など）、乱数と小さな道具（mr・rand・mulberry32・clamp） |
+| 03-vaults-history | 洞窟の形、宝物庫の絵（VAULTS）、歴史（makeHistory） |
+| 04-generate | 迷宮の生成（levelDims、generate。1つの関数で約920行） |
+| 05-renderer | 描画（シェーダー、水面、文字の図鑑、dyn、粒子の入れ物） |
+| 06-world | 世界の状態（D・depth・monsters・player など）、世界の組み立て（buildWorld） |
+| 07-bodies-lords | 生き物の形：忘れられた獣の型、トロル・ゴーレム、人型の見た目、主（不死の王、蜘蛛の女王、ナーガ、竜） |
+| 08-bodies-shadow | 生き物の形：王の影、深みの主、機械 |
+| 09-bodies-creatures | 生き物の形：小さな生き物、人型、オーガ、四つ足、大きな生き物、死者 |
+| 10-bodies-beast | 忘れられた獣の組み立て（buildForm）、獣の記録 |
+| 11-monster-move | 生き物を作る（makeMonster）、歩ける所（canStep）、行き先（chooseNext） |
+| 12-hud-text | 忍び足と灯り、状態の表示（renderStatus）、**パネルの文字の幅（visW）と枠（boxText）**、操作・年代記の画面、物音 |
+| 13-creatures | 小さな生き物、群れ、大きな生き物の動き（updateMonster）、描く（drawMonster） |
+| 14-lights-fixtures | 灯り、備品、扉 |
+| 15-sound-fire | 音、ガス、火、火花 |
+| 16-view-input | 視界とミニマップ、伝言（msg）、当たり（solidAt）、入力の状態 |
+| 17-meta | 段階D：伝承・解放・墓・試練（META、UNLOCKS、weaponPool、trialOn）、タイトルの画面（buildIntroPanel） |
+| 18-level-player | 階の切り替え（newLevel）、罠、生き物の強さ（MSTAT）、生と死、レベルアップ（BLESS、levelChoices、lvlLine） |
+| 19-hands-runes | 手元の武器（VM_MODELS、drawViewWeapons）、ルーンの定義（RUNE_DEF、TRAITS）、性質と反応 |
+| 20-chant-hits | 詠唱（beginCast、castNow…）、当たり（applyHit）、反応、飛ぶ物 |
+| 21-altars-heal | ルーンの手に入れ方、祭壇（altarFill、forgeOptions、mainPathAltars、altarLine）、回復、拾う |
+| 22-world-hints | 先にある物の気配、方向の矢印、床のルーン、詠唱の見た目、照準 |
+| 23-debug | デバッグ（dbg、F2 の画面、URL の指定） |
+| 24-goal | 目的（伝説の物、最深部、王の影）、勝利、稲妻、タイトルへ戻る |
+| 25-gallery | 見た物の記録、図鑑、試しの間 |
+| 26-spells-hud | 術と世界（扉・氷・雷）、詠唱の声、下の HUD（renderHotbar）、止まっているか（isPaused） |
+| 27-rune-screen | 装備の画面（renderInv、packSlot、equipWeapon、ビルド）、魔導書、メニュー |
+| 28-camera-player | 1人称・3人称、プレイヤーの動き（updatePlayer）、空気（updateAtmosphere） |
+| 29-look | 見た時の説明（look） |
+| 30-loop-init | 大きさ、メインループ（frame・tick）、テスト用の `__test`、初期化（init） |
 結果の画面は `die()` / `victory()` / `newRun()`、タイトルは `buildIntroPanel()` / `buildUnlockPanel()`。
 
 ## 落とし穴（過去に踏んだもの）

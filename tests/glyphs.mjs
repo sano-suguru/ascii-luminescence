@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 使う文字のもれのチェック（ブラウザ不要、数秒）：ゲームの文言（game.js と head.html）に出る文字が、パネルのフォントで描けるか。
+// 使う文字のもれのチェック（ブラウザ不要、数秒）：ゲームの文言（src/game/ と head.html）に出る文字が、パネルのフォントで描けるか。
 //   - M PLUS 1 Code（パネルのフォント。太さ400・600・700のすべて）に入っている → よい
 //   - 入っていない → head.html の BIZ UDGothic の text=（補いの文字の一覧）に入っていなければ失敗
 //   - ルーン文字（U+16A0–16FF）は Noto Sans Runic で描くので対象外
@@ -7,9 +7,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as fontkit from 'fontkit';
+import { gameSource } from '../tools/build.mjs';
 import { ROOT } from './lib.mjs';
 
-const head = readFileSync(join(ROOT, 'src/head.html'), 'utf8'), game = readFileSync(join(ROOT, 'src/game.js'), 'utf8');
+const head = readFileSync(join(ROOT, 'src/head.html'), 'utf8'), game = gameSource();
 const m = head.match(/family=BIZ\+UDGothic[^"]*?[?&]text=([^&"]+)/);
 if (!m) { console.log('✗ head.html に BIZ UDGothic の text= が見つからない'); process.exit(1); }
 const extra = new Set([...decodeURIComponent(m[1])]);

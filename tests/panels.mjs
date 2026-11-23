@@ -4,11 +4,10 @@
 //      （ルーン文字は、パネルと同じく <b class="rn"> の中で測る）
 //   2. 実際の画面（操作・装備・メニュー・レベルアップ・祭壇・結果）で、右の縦線が全部の行で同じ位置にあるか
 //      レベルアップと祭壇は、一覧の見出しの後ろの名前の列も揃っているか
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { withBrowser, newPage, openTest, advance, nearAltar, ROOT } from './lib.mjs';
+import { gameSource } from '../tools/build.mjs';
+import { withBrowser, newPage, openTest, advance, nearAltar } from './lib.mjs';
 
-const src = readFileSync(join(ROOT, 'src/game.js'), 'utf8');
+const src = gameSource();
 const chars = [...new Set([...src].filter((c) => c.codePointAt(0) >= 0x20 && c !== '\u007f'))].sort();
 const errs = [];
 let fails = 0;

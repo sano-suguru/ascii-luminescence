@@ -8,13 +8,15 @@
   "scripts": {
     "build": "node tools/build.mjs",
     "build:test": "node tools/build.mjs --test",
-    "lint": "eslint .",
-    "check": "node --check src/game.js && eslint --quiet . && node tests/glyphs.mjs && node tools/build.mjs",
+    "lint": "eslint . && node tools/lint-game.mjs",
+    "check": "node tools/lint-game.mjs --quiet && eslint --quiet . && node tests/glyphs.mjs && node tools/build.mjs",
     "test": "node tests/smoke.mjs && node tests/determinism.mjs && node tests/levels.mjs && node tests/panels.mjs",
     "test:visual": "node tests/visual.mjs",
     "test:all": "npm test && npm run test:visual",
     "verify": "npm run check && npm run test:all",
     "serve": "node tools/build.mjs && node tools/serve.mjs",
+    "where": "node tools/where.mjs",
+    "map": "node tools/map.mjs",
     "deploy": "node tools/build.mjs && npx wrangler@4 deploy"
   },
   "devDependencies": {

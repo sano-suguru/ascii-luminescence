@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// src/head.html + src/game.js を、1ファイルのページに組み立てる。
+// src/head.html + src/game/*.js を、1ファイルのページに組み立てる。
 //   node tools/build.mjs          -> dist/index.html（three.js は CDN から。公開用）
 //   node tools/build.mjs --test   -> .build/test/index.html（three.js は node_modules からコピー。オフラインのテスト用）
-import { readFileSync, writeFileSync, mkdirSync, copyFileSync, rmSync, symlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync, rmSync, symlinkSync, readdirSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -39,10 +39,35 @@ function cjkFallback() {
   return set('biz-udgothic') + set('m-plus-1-code');
 }
 
+// ゲーム本体は src/game/ のファイルを、名前の順につないで、一番外側の関数で包む（ファイルの間で変数を共有するため）。
+// 分ける前の src/game.js は、この包み＋全部のファイルと1バイトも違わない。
+const GAME_DIR = join(root, 'src/game');
+const WRAP_HEAD = "(function(){\n'use strict';\n", WRAP_TAIL = '})();\n';
+export const MARK = '// ===== ';
+export const gameParts = () => readdirSync(GAME_DIR).filter((f) => f.endsWith('.js')).sort();
+
+// markers: ファイルの境目に「// ===== src/game/xx.js =====」の行を入れる（組み立てたページで、どのファイルか分かるように）
+export function gameSource({ markers = false } = {}) {
+  let out = WRAP_HEAD;
+  for (const f of gameParts()) { if (markers) out += `${MARK}src/game/${f} =====\n`; out += readFileSync(join(GAME_DIR, f), 'utf8'); }
+  return out + WRAP_TAIL;
+}
+
+// gameSource() の行（1始まり）が、どのファイルの何行目かを返す。包みの行なら null
+export function locate(line, { markers = false } = {}) {
+  let at = WRAP_HEAD.split('\n').length; // 最初のファイルが始まる行
+  for (const f of gameParts()) {
+    if (markers) at++;
+    const n = readFileSync(join(GAME_DIR, f), 'utf8').split('\n').length - 1;
+    if (line >= at && line < at + n) return { file: `src/game/${f}`, line: line - at + 1 };
+    at += n;
+  }
+  return null;
+}
+
 export function assemble() {
   const head = readFileSync(join(root, 'src/head.html'), 'utf8');
-  const game = readFileSync(join(root, 'src/game.js'), 'utf8');
-  return head + '<script>\n' + game + '\n</script>\n</body>\n</html>\n';
+  return head + '<script>\n' + gameSource({ markers: true }) + '\n</script>\n</body>\n</html>\n';
 }
 
 export function build({ test = false } = {}) {
