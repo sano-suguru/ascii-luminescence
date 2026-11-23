@@ -1,5 +1,6 @@
 // 層・テーマ・特別な階・支道と異界の中身・地形・群れ（もとは src/game/02-constants.js と 04-generate.js の levelDims）。
-// 迷宮の生成が読む表。関数を含まない（生き物の表 MTYPES は、まだ古い JS にある）。
+// 迷宮の生成が読む表と、層・支道・階の大きさを決める小さな関数（stratumOf・branchAtDepth・levelDims）。
+// 生き物の表 MTYPES は、まだ古い JS にある。
 import { clamp } from './rng.ts';
 import { BRANCHES, type Branch, MH, MW } from './world.ts';
 

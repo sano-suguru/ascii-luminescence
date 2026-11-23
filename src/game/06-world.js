@@ -9,7 +9,8 @@ let hintHTML='';
 function showHint(h){ if(h===hintHTML)return; hintHTML=h; const el=document.getElementById('hint'); if(el)el.innerHTML=h; }
 const ceilAt=(x,z)=>{ const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL); if(cx<0||cz<0||cx>=MW||cz>=MH)return BASE_H; return D.ceil[cz*MW+cx]; };
 
-// hash3・vnoise は src/lib/noise.ts（src/game/imports.mjs で読む）
+// vnoise は src/lib/noise.ts（src/game/imports.mjs で読む）
+// hash3 は src/lib/noise.ts（古い JS は使わない。src/lib/ の生成などが使う）
 // sstep は src/lib/math.ts（src/game/imports.mjs で読む）
 // CHUNK・CXN・CZN は src/lib/world.ts（src/game/imports.mjs で読む）
 

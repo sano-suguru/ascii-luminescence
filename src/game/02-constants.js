@@ -1,7 +1,8 @@
 // ---------------------------------------------------------------- constants
-// CELL・BASE_H・EYE など 40 個は src/lib/world.ts（読む名前の一覧は src/game/imports.mjs）
+// CELL・BASE_H・EYE など 40 個は src/lib/world.ts（古い JS が読むのは、そのうち src/game/imports.mjs にある物）
 // css は src/lib/color.ts（src/game/imports.mjs で読む）
-// computeVis・topLights は src/lib/light.ts（src/game/imports.mjs で読む）
+// topLights は src/lib/light.ts（src/game/imports.mjs で読む）
+// computeVis は src/lib/light.ts（古い JS は使わない。src/lib/ の生成などが使う）
 // RUNE_CHARS・G は src/lib/glyphs.ts（src/game/imports.mjs で読む）
 // mr・mpick・rand・R・RI・pick は src/lib/random.ts（迷宮の乱数の入れ替えは setRand。src/game/imports.mjs で読む）
 // mulberry32・clamp は src/lib/rng.ts（src/game/imports.mjs で読む）
@@ -24,7 +25,7 @@ const MACHINE_INFO={
  statues:{ch:'&',col:[0.8,0.8,0.95],msg:'石を刻んだ彫像たちが、部屋の中央を見つめている。'},
 };
 
-// THEMES・RUIN_THEMES・BIOMES など 14 個は src/lib/strata.ts（読む名前の一覧は src/game/imports.mjs）
+// THEMES・RUIN_THEMES・BIOMES など 14 個は src/lib/strata.ts（古い JS が読むのは、そのうち src/game/imports.mjs にある物）
 const MTYPES={
  r:{ch:'r',name:'ネズミ',col:[0.8,0.66,0.52],form:'quad',scale:0.55,speed:1.9,fl:0,light:3.2,trail:0.5,verb:'物陰をちょろちょろと走り回っている'},
  k:{ch:'k',name:'コボルト',col:[0.9,0.55,0.3],form:'humanoid',scale:0.62,speed:1.3,fl:0,light:3,trail:1,verb:'小さな槍を抱えて、辺りを嗅ぎ回っている'},

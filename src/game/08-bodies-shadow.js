@@ -9,8 +9,8 @@ function shadowAura(m,t){ const sc=m.ty.scale||1, dp=Math.hypot(m.x-player.x,m.z
       dyn(x,0.05,z,G(edge?'.':'~'),0.2,edge?0.75:0.24,edge?0.72:0.16,edge?0.95:0.4); } }
   if(mr()<0.2){ const a=mr()*6.28, r=mr()*0.9*sc; spawn(m.x+Math.cos(a)*r,0.2,m.z+Math.sin(a)*r,Math.cos(a)*0.2,0.25,Math.sin(a)*0.2,2.6,G(mpick(['~','%'])),0.26,0.16,0.1,0.26,0); } }
 
-// shadowKingForm・KRAKEN_T・KRAKEN_W など 6 個は src/lib/bodies/lords.ts（読む名前の一覧は src/game/imports.mjs）
-// BRASS・BRASS_R・mPut・mLit は src/lib/bodies/kit.ts（src/game/imports.mjs で読む）
+// shadowKingForm・KRAKEN_T・KRAKEN_W など 6 個は src/lib/bodies/lords.ts（古い JS が読むのは、そのうち src/game/imports.mjs にある物）
+// BRASS・BRASS_R・mPut・mLit は src/lib/bodies/kit.ts（古い JS は使わない。src/lib/ の生成などが使う）
 // the second form: the seal broken. The cloak twisted into a long body, the wing bones grown into two great arms with torn membrane hanging,
 // the crown's shards grown into horns, the same single eye in a hollow skull with an open jaw; the starry dark and the trapped faces of the kings inside;
 // top-heavy (the chest the thickest), flared ribs, muscle bands, great back fins, a thick double coil on the floor, leaning hard forward; the heart in the chest with light running down the belly

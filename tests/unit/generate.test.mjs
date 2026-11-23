@@ -39,10 +39,22 @@ const gen = (seed, place, runSeed = 42) =>
     },
     env,
   );
-// 階を文字にする（ルーンの番号 uid は、全体の数え上げなので除く）
+// 階を文字にする。ルーンの番号 uid は、全体の数え上げなので除く。日本語の文（伝言・名前・碑文など）も、言い回しを直すたびに
+// 指紋が変わらないように、印に置き換える（かなを含むか、漢字が2字以上の文字列。1字の漢字は、描く文字のことがあるので残す）
+const PROSE = /[\u3040-\u30ff]|[\u4e00-\u9fff].*[\u4e00-\u9fff]/u;
 const text = (r) =>
   JSON.stringify(r, (k, v) =>
-    k === 'uid' ? 0 : ArrayBuffer.isView(v) ? Array.from(v) : v instanceof Map ? [...v] : v instanceof Set ? [...v] : v,
+    k === 'uid'
+      ? 0
+      : typeof v === 'string' && PROSE.test(v)
+        ? '文'
+        : ArrayBuffer.isView(v)
+          ? Array.from(v)
+          : v instanceof Map
+            ? [...v]
+            : v instanceof Set
+              ? [...v]
+              : v,
   );
 const fnv = (s) => {
   let h = 0x811c9dc5;
@@ -71,10 +83,10 @@ describe('迷宮の生成', () => {
       expect(level.stairs).toBeGreaterThanOrEqual(0);
     }
   });
-  // 移す前と同じ迷宮になることは、ブラウザで main と 150 の階を作り比べて確かめた。その時の生成の指紋
+  // 移す前と同じ迷宮になることは、ブラウザで main と 150 の階を作り比べて確かめた。その時の生成の指紋（日本語の文は除く）
   it('移した時と同じ迷宮になる（全部の場所の指紋）', () => {
     let all = '';
     for (const pl of PLACES) all += text(gen(202, pl));
-    expect([fnv(all), all.length]).toEqual(['43db869', 19917081]);
+    expect([fnv(all), all.length]).toEqual(['291d61c3', 19904412]);
   }, 30000);
 });

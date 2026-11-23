@@ -41,7 +41,8 @@ tests/determinism.mjs  同じシードで同じ結果になるか
 tests/levels.mjs     全部の階（20シード×30か所）を生成し、例外と、歩いて行けるかを確かめる
 tests/visual.mjs     画面写真の比較（12場面。基準は tests/baseline/）
 tests/panels.mjs     枠のテスト（全部の文字の幅が visW どおりか、操作・装備・メニュー・レベルアップ・祭壇・結果の縦線と、一覧の名前の列が揃うか）
-tests/unit/generate.test.mjs  迷宮の生成の単体テスト（同じ入力なら同じ迷宮・生き物の表に書き込まない・全部の場所の指紋。Node で数秒）
+tests/unit/generate.test.mjs  迷宮の生成の単体テスト（同じ入力なら同じ迷宮・生き物の表に書き込まない・全部の場所の指紋。Node で数秒）。
+                     generate.js に型が付くまでは .mjs のまま（型を確かめる対象の tests/unit/*.ts に入れると、型の無い JS を読んで落ちる）
 tests/glyphs.mjs     使う文字が、パネルのフォント（M PLUS 1 Code ＋ BIZ UDGothic の補い）で描けるか（ブラウザ不要）
 .oxlintrc.json       lint（Oxlint）の設定（エラー＝不具合、警告＝整理の候補）
 .oxfmtrc.json        整形（Oxfmt）の設定。src/game/（古い JS）と index.html 以外。古い JS はまとめては整形しない（行が約4倍になる）。TypeScript に移した物から整形する
@@ -178,13 +179,13 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 ## ゲーム本体の地図（src/game/）
 ファイルは名前の順につながる（後のファイルは、前のファイルの変数や関数を使える。トップレベルで実行する文は順番に気をつける）。
 ファイル名は「2桁の番号-名前.js」（違う名前や、改行で終わらないファイルがあると、組み立てが止まる）。
-細かい見出しと行は `pnpm map` で見る。TypeScript に移した名前の全部の一覧は `src/game/imports.mjs`。ブラウザのエラーの場所は `pnpm where <JS:行:列>` で元のファイルに直す（テストのエラーには自動で付く）。
+細かい見出しと行は `pnpm map` で見る。TypeScript に移した名前のうち、古い JS が読む物の一覧は `src/game/imports.mjs`（生成だけが使う物は載らない。古い JS の「〜は src/lib/…」の行も見る）。ブラウザのエラーの場所は `pnpm where <JS:行:列>` で元のファイルに直す（テストのエラーには自動で付く）。
 | ファイル | 中身 |
 |---|---|
 | 00-test-mode | テスト用モード（`TEST`、時計、乱数） |
 | 01-title | タイトルのロゴ |
 | 02-constants | 生き物の表（MTYPES）、特別な階の場所（interAt）。層・テーマ・支道と異界の中身・迷宮の乱数・迷宮の大きさ・タイル・灯りの計算などは src/lib/ |
-| 03-vaults-history | 洞窟の形、宝物庫の絵（VAULTS）、歴史の飾り。makeHistory は src/lib/history.ts、岩・鉱脈・宝物庫の壁の高さは src/lib/world.ts |
+| 03-vaults-history | 歴史の飾り（壁の絵 ARTS）と、冒険の歴史の入れ物（HIST）。洞窟の形と宝物庫の絵は src/lib/vaults.ts、makeHistory は src/lib/history.ts、岩・鉱脈・宝物庫の壁の高さは src/lib/world.ts |
 | 04-generate | 迷宮の生成の包み（generate）：今のゲームの状態から入力を作り、src/lib/generate.js の generateLevel を呼び、結果（階・主の種類・忘れられた獣）をゲームの状態に入れる |
 | 05-renderer | 描画（シェーダー、水面、文字の図鑑、dyn、粒子の入れ物） |
 | 06-world | 世界の状態（D・depth・monsters・player など）、世界の組み立て（buildWorld）。sstep は src/lib/math.ts、CHUNK は src/lib/world.ts |

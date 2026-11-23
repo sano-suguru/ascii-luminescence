@@ -69,10 +69,20 @@ export async function legacyValues(names) {
         if (k in lib) return lib[k];
         throw new Error(`legacyValues：古い JS の ${String(k)} も要る（names に足すこと）`);
       },
+      // 外の名前への代入は止める（src/lib の export は読むだけの物。古い JS の、挙げていない名前は上と同じ）
+      set: (_t, k) => {
+        throw new Error(
+          k in lib
+            ? `legacyValues：src/lib の ${String(k)} に代入している（import は読むだけ。入れ替えは setRand などで）`
+            : `legacyValues：古い JS の ${String(k)} も要る（names に足すこと）`,
+        );
+      },
     },
   );
   const code = picked.map((d) => d.src).join('\n');
-  // with は strict でない関数でしか使えないので、new Function（strict でない）で評価する
+  // with は strict でない関数でしか使えないので、new Function（strict でない）の中で with を使い、その内側の関数を strict にする
+  // （ゲームの本物は 'use strict' の包みの中なので、同じ決まりで評価する。宣言の無い名前への代入などを、ここでも止める）
+  const body = `with (scope) {\nreturn (function () {\n'use strict';\n${code}\nreturn { ${names.join(', ')} };\n})();\n}`;
   // oxlint-disable-next-line typescript/no-implied-eval -- テストのために、このリポジトリの古い JS（src/game/）だけを評価する道具
-  return new Function('scope', `with (scope) {\n${code}\nreturn { ${names.join(', ')} };\n}`)(scope);
+  return new Function('scope', body)(scope);
 }

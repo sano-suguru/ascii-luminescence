@@ -1,6 +1,8 @@
-// makeCave・VAULTS・vaultCells は src/lib/vaults.ts（src/game/imports.mjs で読む）
+// VAULTS は src/lib/vaults.ts（src/game/imports.mjs で読む）
+// makeCave・vaultCells は src/lib/vaults.ts（古い JS は使わない。src/lib/ の生成などが使う）
 
-// VAULT_WALL_H・ROCKS・VEIN_COL・VEIN_NAME は src/lib/world.ts（src/game/imports.mjs で読む）
+// VAULT_WALL_H・VEIN_COL・VEIN_NAME は src/lib/world.ts（src/game/imports.mjs で読む）
+// ROCKS は src/lib/world.ts（古い JS は使わない。src/lib/ の生成などが使う）
 
 // ---------------------------------------------------------------- history and engravings (after Caves of Qud's histories and Dwarf Fortress's engravings)
 // ASCII-art motifs carved into walls; each row is exactly 7 characters
@@ -22,5 +24,3 @@ const ARTS={
 };
 let HIST=null, HIST_SEED=-1;
 // makeHistory（歴史を作る）は src/lib/history.ts（src/game/imports.mjs で読む）
-
-// how much of the 70x46 frame a level uses

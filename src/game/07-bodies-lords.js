@@ -1,6 +1,7 @@
 // ---------------------------------------------------------------- monsters
 // ---------------------------------------------------------------- the forgotten beast (after Dwarf Fortress): the beast of this world's chronicle, built from its description
-// hsl2rgb は src/lib/color.ts、GOLD・BONE・PALE は src/lib/bodies/kit.ts（src/game/imports.mjs で読む）
+// BONE・PALE は src/lib/bodies/kit.ts（src/game/imports.mjs で読む）
+// hsl2rgb は src/lib/color.ts、GOLD は src/lib/bodies/kit.ts（古い JS は使わない。src/lib/ の生成などが使う）
 // beastForm・golemForm・HUM_PROP・LOOK_PROP は src/lib/bodies/lords.ts（src/game/imports.mjs で読む）
 // makeBeastType（忘れられた獣の種類）は src/lib/bodies/lords.ts
 
