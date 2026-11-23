@@ -1,6 +1,7 @@
 // ---------------------------------------------------------------- monsters
 // ---------------------------------------------------------------- the forgotten beast (after Dwarf Fortress): the beast of this world's chronicle, built from its description
-function hsl2rgb(h,s,l){ const f=n=>{ const k=(n+h*12)%12, a=s*Math.min(l,1-l); return l-a*Math.max(-1,Math.min(k-3,9-k,1)); }; return [f(0),f(8),f(4)]; }
+// hsl2rgb・GOLD・BONE・PALE は src/lib/bodies/kit.ts（src/game/imports.mjs で読む）
+// beastForm・golemForm・HUM_PROP・LOOK_PROP は src/lib/bodies/lords.ts（src/game/imports.mjs で読む）
 function makeBeastType(H){
   const sp=H.beastSpec, rnd=mulberry32((runSeed^0x1234567)>>>0);
   const plan={'獣':'quad','竜':'quad','大蛇':'serpent','蛾':'moth','百足':'centipede'}[sp.kind]||'quad';
@@ -10,35 +11,6 @@ function makeBeastType(H){
   const lore=(H.events.find(e=>e.art==='serpent')||{}).text||`その名は、年代記の隅にだけ記されている。`;
   return {ch:'X',name:H.beast,col,form:'beast',spec,lore,scale:plan==='moth'?3.0:3.6,speed:plan==='moth'?1.0:0.55,fl:plan==='moth'?2.4:0,light:9,trail:spec.fire?8:3,flier:plan==='moth',beast:true,
     verb:'洞窟の奥で、身じろぎもせずに眠っている'};
-}
-function beastForm(spec){
-  const pts=[], add=(x,y,z,ch,s,b,part,piv,pz)=>pts.push({x,y,z,g:G(ch),s,b,part:part||'body',ph:mr()*6.28,piv:piv||0,pz:pz||0});
-  const B=spec.glyphs, fib=(n,r,cx,cy,cz,set,s,b,part)=>{ for(let i=0;i<n;i++){ const y=1-2*(i+0.5)/n, rr=Math.sqrt(1-y*y), a=i*2.39996; add(cx+Math.cos(a)*rr*r,cy+y*r,cz+Math.sin(a)*rr*r,mpick(set),s,b,part); } };
-  let head=[0,0.8,0.7];
-  if(spec.plan==='quad'){
-    for(let k=0;k<8;k++){ const z=-0.45+k*0.13; for(let j=0;j<7;j++){ const a=j/7*Math.PI*2; add(Math.cos(a)*0.2,0.55+Math.sin(a)*0.15,z,mpick(B),0.14,1.0,'body'); } }
-    if(spec.kind==='竜'){ for(let k=0;k<4;k++)add(0,0.68+k*0.1,0.5+k*0.07,mpick(B),0.13,1.0,'head'); head=[0,1.08,0.8]; }
-    fib(8,0.15,head[0],head[1],head[2],B,0.13,1.3,'head');
-    const lz=spec.legs===6?[0.38,0,-0.38]:[0.36,-0.36];
-    lz.forEach((z,k)=>{ for(const sx of [1,-1]){ const part=((k%2===0)===(sx>0))?'legL':'legR'; for(let q=0;q<4;q++)add(sx*0.17,0.42-q*0.13,z,mpick(['|','!','/']),0.12,0.9,part,0.45,z); } });
-    for(let k=0;k<6;k++)add(0,0.6-k*0.03,-0.55-k*0.12,mpick(['~','-',B[0]]),0.12,0.9,'tail',k);
-    if(spec.wings)for(const sd of [-1,1])for(let k=0;k<7;k++)pts.push({x:0,y:0.85,z:0.1,g:G(mpick(['^','v','/','\\','~'])),s:0.15,b:1.1,part:'wing',ph:mr()*6.28,piv:0,pz:0,sd,r:0.18+k*0.12});
-  } else if(spec.plan==='serpent'||spec.plan==='centipede'){
-    const n=spec.plan==='serpent'?18:14;
-    for(let i=0;i<n;i++){ const zc=0.9-i*0.2, yc=0.22+(i<2?0.35-i*0.15:0), rr=0.16*(1-i/(n*1.4));
-      for(let k=0;k<5;k++){ const a=k/5*Math.PI*2+i*0.4; add(Math.cos(a)*rr,yc+Math.sin(a)*rr,zc,mpick(B),0.15,1.0,'seg',i); }
-      if(spec.plan==='centipede')for(const sd of [-1,1])add(sd*0.3,0.08,zc,sd<0?'/':'\\',0.13,0.9,'seg',i); }
-    head=[0,0.62,1.0];
-  } else {
-    for(let k=0;k<6;k++)add(0,-0.1+k*0.1,0,mpick(B),0.13,1.1,'body');
-    head=[0,0.55,0.05];
-    if(spec.wings)for(const sd of [-1,1])for(const [yo,n] of [[0.18,8],[-0.08,6]])for(let k=0;k<n;k++)pts.push({x:0,y:yo,z:0,g:G(mpick(['^','v','~','*','o'])),s:0.16,b:1.2,part:'wing',ph:mr()*6.28,piv:0,pz:0,sd,r:0.14+k*0.11});
-  }
-  add(head[0],head[1],head[2]+0.05,spec.core||'X',0.42,3.2,spec.plan==='quad'||spec.plan==='moth'?'core':'shead',0);
-  const eyes=spec.eyes||2;
-  for(let k=0;k<eyes;k++){ const onHead=k<2||!spec.eyes; const p=onHead?[head[0]+(k%2?0.07:-0.07),head[1]+0.05,head[2]+0.13]:pts[Math.floor(mr()*pts.length)];
-    add(p.x!==undefined?p.x:p[0],(p.y!==undefined?p.y:p[1])+0.05,p.z!==undefined?p.z:p[2],'o',0.11,3.0,onHead?'head':'body'); }
-  return pts;
 }
 
 // troll: hunched, with arms that nearly reach the ground and moss hanging from the shoulders
@@ -56,18 +28,6 @@ function trollForm(){
   return pts;
 }
 // golem: stacked stone blocks with a rune pulsing in its chest
-function golemForm(){
-  const L='Y', pts=[], add=(x,y,z,ch,s,b,part,piv,pz)=>pts.push({x,y,z,g:G(ch),s,b,part:part||'body',ph:mr()*6.28,piv:piv||0,pz:pz||0});
-  for(let a=0;a<3;a++)for(let b=0;b<4;b++)for(let c=0;c<2;c++){ if(a===1&&b===2&&c===1)continue; add((a-1)*0.17,0.92+b*0.15,(c-0.5)*0.17,(a+b+c)%2?'#':'=',0.19,0.85,'body'); }
-  for(let a=0;a<2;a++)for(let b=0;b<2;b++)add((a-0.5)*0.15,1.58+b*0.13,0,b?'[':']',0.17,0.9,'head');
-  add(0.07,1.64,0.1,'*',0.1,3.0,'head'); add(-0.07,1.64,0.1,'*',0.1,3.0,'head');
-  for(const sd of [-1,1]){
-    for(let k=0;k<4;k++)add(sd*0.38,1.32-k*0.17,0,k===3?'#':'[',0.2,0.85,sd<0?'armL':'armR',1.32);
-    for(let k=0;k<4;k++)add(sd*0.14,0.8-k*0.2,0,'#',0.2,0.85,sd<0?'legL':'legR',0.8);
-  }
-  add(0,1.24,0.12,L,0.36,3.4,'core');
-  return pts;
-}
 // ---------------------------------------------------------------- each creature's own features on the shared bodies (kept short: proportions and a few held things)
 function lookHumanoid(look,pts,add,L){
   const mv=(parts,f)=>{ for(const p of pts)if(parts.includes(p.part))f(p); };
@@ -89,9 +49,6 @@ function lookHumanoid(look,pts,add,L){
     for(let k=0;k<4;k++)add((k-1.5)*0.05,1.36,0.15,'"',0.11,1.1,'head'); }
 }
 // body proportions by kind: the hip, the shoulder and the head are moved, everything between follows (held things included)
-const HUM_PROP={base:{hip:0.75,sh:1.30,hc:1.47,hk:1.0}, small:{hip:0.6,sh:1.12,hc:1.36,hk:1.25}, monkey:{hip:0.52,sh:1.1,hc:1.28,hk:1.1},
-  snapjaw:{hip:0.68,sh:1.24,hc:1.43,hk:1.05,lean:0.12}, ogre:{hip:0.6,sh:1.26,hc:1.4,hk:0.9,legW:1.3}};
-const LOOK_PROP={kobold:'small',goblin:'small',gnome:'small',conjurer:'small',monkey:'monkey',snapjaw:'snapjaw',ogre:'ogre'};
 function shapeHumanoid(pts,look){ const P=HUM_PROP[LOOK_PROP[look]||'base'];
   const map=y=>y<=0.86?y*(P.hip/0.86):P.hip+(y-0.86)*((P.sh-P.hip)/(1.37-0.86));
   for(const p of pts){ const head=p.part==='head'||p.part==='core';
@@ -141,7 +98,6 @@ MTYPES.Zf.trail=0; MTYPES.Zi.trail=0; MTYPES.Zl.trail=0;
 MTYPES.Zf.lcol=MTYPES.Zf.col; MTYPES.Zf.col=[0.42,0.3,0.26]; MTYPES.Zi.lcol=MTYPES.Zi.col; MTYPES.Zi.col=[0.32,0.42,0.56]; MTYPES.Zl.col=[1.0,0.95,0.78];
 
 // ---------------------------------------------------------------- bosses and the dead: their own features on top of the shared bodies (crowns, staves, hoods, horns, torn cloth); parts may carry their own colour
-const GOLD=[1.0,0.82,0.38], BONE=[0.85,0.8,0.66], PALE=[0.75,0.9,1.0];
 function extraLook(ty,pts){
   const look=ty.look; if(!look||pts.noExtra)return;
   const add=(x,y,z,ch,s,b,part,col,extra)=>pts.push(Object.assign({x,y,z,g:G(ch),s,b,part:part||'body',ph:mr()*6.28,piv:0,pz:0,col},extra||{}));

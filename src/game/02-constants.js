@@ -3,16 +3,14 @@ const CELL=2, BASE_H=3.2, EYE=1.62, MW=70, MH=46, NCELL=MW*MH, CH_D=9;
 const TW=0, TF=1, TP=2, TC=3, TX=4;
 const NSL=96, NDL=6;
 const PR=0.3;
-const RUNE_CHARS='ᚦᛏᛜᛞᚲᛁᛊᚾᚱᚺ';
-const G=ch=>{ const c=ch.charCodeAt(0); if(c<128)return c-32; const k=RUNE_CHARS.indexOf(ch); return k>=0?96+k:31; };
+// RUNE_CHARS・G は src/lib/glyphs.ts（src/game/imports.mjs で読む）
+// mr・mpick は src/lib/random.ts（src/game/imports.mjs で読む）
 const D4=[[1,0],[-1,0],[0,1],[0,-1]];
-const mr=Math.random;
 let rand=mr;
 // mulberry32・clamp は src/lib/rng.ts（src/game/imports.mjs で読む）
 const R=(a,b)=>a+rand()*(b-a);
 const RI=(a,b)=>Math.floor(a+rand()*(b-a+1));
 const pick=a=>a[Math.floor(rand()*a.length)];
-const mpick=a=>a[Math.floor(mr()*a.length)];
 const RUNESET=['&','%','$','?','!','#','+','x','Y','Z','8','0','*','~','^','=','<','>','{','}','/','\\'];
 const SWAPSET='#$%&*+=?@0123456789ABCDEFGHJKLMNPQRSTUVWXYZ<>{}[]~^';
 const WG='###########%%&8HX=+#$#';

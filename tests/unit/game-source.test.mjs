@@ -152,7 +152,7 @@ describe('Vite の組み立て（公開用と同じ設定）', () => {
         lines = code.split('\n'),
         cache = {};
       // 元のファイルは、ゲーム本体（src/game/）と TypeScript に移した物（src/lib/）だけ
-      expect(map.sources.filter((f) => !/^src\/game\/\d{2}-[a-z0-9-]+\.js$|^src\/lib\/[a-z0-9-]+\.ts$/.test(f))).toEqual([]);
+      expect(map.sources.filter((f) => !/^src\/game\/\d{2}-[a-z0-9-]+\.js$|^src\/lib\/[a-z0-9/-]+\.ts$/.test(f))).toEqual([]);
       expect(map.sources).toContain('src/lib/text.ts');
       // 関数の名前（function xx）は、元のファイルの同じ場所に戻る
       let checked = 0;
