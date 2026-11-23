@@ -2,6 +2,7 @@
 // まだ古い JS にある物（生き物の表 MTYPES・ルーンを作る makeRune など）は、本物を古い JS の文から取り出して使う（tools/legacy-eval.mjs）。
 import { beforeAll, describe, expect, it } from 'vitest';
 import { legacyValues } from '../../tools/legacy-eval.mjs';
+import { reachProblems } from '../reach.mjs';
 import { generateLevel } from '../../src/lib/generate.js';
 import { makeHistory } from '../../src/lib/history.ts';
 import { RUNE_TYPES } from '../../src/lib/runes.ts';
@@ -83,10 +84,35 @@ describe('迷宮の生成', () => {
       expect(level.stairs).toBeGreaterThanOrEqual(0);
     }
   });
-  // 移す前と同じ迷宮になることは、ブラウザで main と 150 の階を作り比べて確かめた。その時の生成の指紋（日本語の文は除く）
-  it('移した時と同じ迷宮になる（全部の場所の指紋）', () => {
+  // ブラウザ（Chromium）と Node で同じ迷宮になることを、190 の階を作り比べて確かめた（混ぜるのを shuffle にした時）。その時の生成の指紋（日本語の文は除く）。
+  // 生成を変えると変わる。意図して変えた時は、ブラウザでも同じになることを確かめてから作り直す
+  it('今の迷宮と同じになる（全部の場所の指紋）', () => {
     let all = '';
     for (const pl of PLACES) all += text(gen(202, pl));
-    expect([fnv(all), all.length]).toEqual(['291d61c3', 19904412]);
+    expect([fnv(all), all.length]).toEqual(['1bf236b2', 20044633]);
+  }, 30000);
+  it('歩いて行けるかの調べ方：壁や深い水の向こうの物を見つける（作った小さな階で）', () => {
+    // 70 マス×3 行。1 行目だけが床で、x=5 が壁、x=8 が深い水
+    const tile = new Uint8Array(210),
+      liquid = new Uint8Array(210);
+    for (let x = 0; x < 70; x++) tile[70 + x] = 1;
+    tile[75] = 0;
+    liquid[78] = 2;
+    const L = { tile, liquid, start: 71, stairs: 74, bstairs: null, portal: null, upstairs: -1, items: [{ kind: 'rune', i: 77 }] };
+    expect(reachProblems(L, false)).toEqual(['物（rune） @7,1']);
+    expect(reachProblems({ ...L, stairs: 80, items: [] }, false)).toEqual(['階段 @10,1']);
+    expect(reachProblems({ ...L, stairs: -1, items: [] }, false)).toEqual(['階段が無い']);
+    expect(reachProblems({ ...L, stairs: -1, items: [] }, true)).toEqual([]);
+  });
+  // ブラウザの tests/levels.mjs（20 シード）と同じ決まり。ここでは少ないシードで、編集のたびに確かめる
+  it('始まりの場所から、階段・入口・門・置かれた物まで歩いて行ける（5 シード）', () => {
+    const fails = [];
+    for (const seed of [3, 58, 777, 4096, 31337])
+      for (const pl of PLACES) {
+        const final = pl.depth === FINAL_DEPTH && !pl.branch && !pl.realm && !pl.inter;
+        const missing = reachProblems(gen(seed, pl, seed).level, final);
+        if (missing.length) fails.push(`シード ${seed} ${JSON.stringify(pl)}：${missing.join('、')}`);
+      }
+    expect(fails).toEqual([]);
   }, 30000);
 });

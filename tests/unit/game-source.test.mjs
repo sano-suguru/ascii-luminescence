@@ -177,3 +177,19 @@ describe('Vite の組み立て（公開用と同じ設定）', () => {
     }
   }, 60000);
 });
+
+describe('src/ の書き方', () => {
+  // でたらめな値を返す比べる関数での並べ替え（.sort(() => rand() - 0.5)）は、エンジンと最適化の段階で並びが変わる。混ぜるのは shuffle で
+  it('src/ に、でたらめな比べる関数での並べ替えが無い', () => {
+    const root = join(ROOT, 'src');
+    const bad = readdirSync(root, { recursive: true })
+      .map(String)
+      .filter((f) => /\.(js|ts|mjs)$/.test(f))
+      .flatMap((f) =>
+        readFileSync(join(root, f), 'utf8')
+          .split('\n')
+          .flatMap((l, i) => (/\.sort\(\s*\(\s*\)\s*=>/.test(l) && !/^\s*(\/\/|\*)/.test(l) ? [`src/${f}:${i + 1}`] : [])),
+      );
+    expect(bad).toEqual([]);
+  });
+});

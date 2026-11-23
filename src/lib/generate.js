@@ -6,7 +6,7 @@
 // 迷宮の乱数（setRand）とノイズの種（setNoiseSeed）は、ここで階のシードから入れ替える。
 // 今は JS のまま（段階6c の後半で TypeScript にして型を付ける）。
 import { computeVis, topLights } from './light.ts';
-import { R, RI, pick, rand, setRand } from './random.ts';
+import { R, RI, pick, rand, setRand, shuffle } from './random.ts';
 import { clamp, mulberry32 } from './rng.ts';
 import { RUNE_TYPES } from './runes.ts';
 import { setNoiseSeed, vnoise } from './noise.ts';
@@ -1168,11 +1168,9 @@ export function generateLevel(seed, depth, input, env) {
     const want = stratum.k === 'ruins' ? RI(2, 3) : RI(1, 2),
       opts = VAULTS.filter((v) => (stratum.vaults ? stratum.vaults.includes(v.k) : v.strata.includes(sk) && depth >= v.minD));
     let placed = 0;
-    const order = rooms
-      .map((_, i) => i)
-      .filter((i) => i > 0)
-      .sort(() => rand() - 0.5)
-      .sort((a2, b2) => (rooms[b2].vaultPref ? 1 : 0) - (rooms[a2].vaultPref ? 1 : 0));
+    const order = shuffle(rooms.map((_, i) => i).filter((i) => i > 0)).sort(
+      (a2, b2) => (rooms[b2].vaultPref ? 1 : 0) - (rooms[a2].vaultPref ? 1 : 0),
+    );
     for (const ri of order) {
       if (placed >= want || !opts.length) break;
       const r = rooms[ri];
@@ -1873,9 +1871,14 @@ export function generateLevel(seed, depth, input, env) {
     if (okc) solid.set(i, rad);
     return okc;
   };
-  const mlist = ['camp', 'altar', 'library', 'crypt', 'statues', 'collapse', 'bloodwort', 'flood']
-    .concat(depth >= 4 ? ['lavaflow'] : [], depth <= 5 ? ['idyll'] : [], depth >= 3 ? ['dismal'] : [], depth >= 4 ? ['remnant'] : [])
-    .sort(() => rand() - 0.5);
+  const mlist = shuffle(
+    ['camp', 'altar', 'library', 'crypt', 'statues', 'collapse', 'bloodwort', 'flood'].concat(
+      depth >= 4 ? ['lavaflow'] : [],
+      depth <= 5 ? ['idyll'] : [],
+      depth >= 3 ? ['dismal'] : [],
+      depth >= 4 ? ['remnant'] : [],
+    ),
+  );
   let mk = 0;
   normals.forEach((r, ri) => {
     if (ri === 0 || r === sroom || r.vault || r.special || r.cells.length < 14) return;
@@ -2432,10 +2435,7 @@ export function generateLevel(seed, depth, input, env) {
   const teles = [],
     erupts = [];
   if (stratum.realm && realm && realm.key === 'lab') {
-    const rs = rooms
-      .map((r, ri) => ri)
-      .filter((ri) => ri > 0 && rooms[ri].cells.length > 12)
-      .sort(() => rand() - 0.5);
+    const rs = shuffle(rooms.map((r, ri) => ri).filter((ri) => ri > 0 && rooms[ri].cells.length > 12));
     for (let k = 0; k + 1 < rs.length && teles.length < 3; k += 2) {
       const pick2 = (ri) => {
         const c = rooms[ri].cells.filter((i) => walk(i) && !liquid[i] && !used.has(i) && !solid.has(i) && i !== stI);
@@ -2460,10 +2460,7 @@ export function generateLevel(seed, depth, input, env) {
   if (stratum.realm && realm && realm.key === 'volcano') {
     const cand = [];
     for (let i = 0; i < N; i++) if (walk(i) && !liquid[i] && !used.has(i) && !solid.has(i) && i !== stI && cd(i, startI) > 30) cand.push(i);
-    const tried = cand
-      .slice()
-      .sort(() => rand() - 0.5)
-      .slice(0, 60);
+    const tried = shuffle(cand.slice()).slice(0, 60);
     for (const src of tried) {
       if (erupts.length >= 3) break;
       if (erupts.some((e) => cd(e.src, src) < 64)) continue;
@@ -2916,7 +2913,7 @@ export function generateLevel(seed, depth, input, env) {
       }
       const cand = q.filter((i) => !liquid[i] && i !== stI && !used.has(i) && !solid.has(i));
       let nW = 0;
-      for (const i of cand.sort(() => rand() - 0.5)) {
+      for (const i of shuffle(cand)) {
         if (nW >= (dense ? 12 : 7)) break;
         let n = 0;
         const ew = walk(i + 1) && walk(i - 1),
@@ -3220,7 +3217,7 @@ export function generateLevel(seed, depth, input, env) {
   // a vault behind a portcullis, opened by a lever somewhere else on the level
   let gate = null;
   if (!stratum.special && !stratum.realm && stratum.k !== 'abyss' && stratum.k !== 'magma' && rand() < 0.55) {
-    for (const ri of rooms.map((_, k) => k).sort(() => rand() - 0.5)) {
+    for (const ri of shuffle(rooms.map((_, k) => k))) {
       const r = rooms[ri];
       if (
         ri === 0 ||

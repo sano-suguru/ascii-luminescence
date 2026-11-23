@@ -1,7 +1,7 @@
 // src/lib/random.ts と src/lib/glyphs.ts の単体テスト
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { G, RUNE_CHARS } from '../../src/lib/glyphs.ts';
-import { R, RI, mpick, mr, pick, rand, setRand } from '../../src/lib/random.ts';
+import { R, RI, mpick, mr, pick, rand, setRand, shuffle } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 
 const random = Math.random;
@@ -64,5 +64,33 @@ describe('G（文字の図鑑の番号）', () => {
     expect(RUNE_CHARS.split('').map((c) => G(c))) // ルーン文字は、どれも UTF-16 の1単位
       .toEqual([96, 97, 98, 99, 100, 101, 102, 103, 104, 105]);
     expect(G('日')).toBe(31);
+  });
+});
+
+describe('shuffle（混ぜる）', () => {
+  it('その場で混ぜて同じ配列を返し、中身は変わらない。乱数は長さより1回少なく引く', () => {
+    const a = [1, 2, 3, 4, 5, 6, 7, 8];
+    let n = 0;
+    const g = mulberry32(5),
+      r = () => (n++, g());
+    expect(shuffle(a, r)).toBe(a);
+    expect(a.toSorted((x, y) => x - y)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(n).toBe(7);
+    expect(shuffle([], r)).toEqual([]);
+  });
+  it('同じ乱数なら同じ並び（今の並びを残す。変わると、全部の階の形が変わる）', () => {
+    setRand(mulberry32(202));
+    const out = Array.from({ length: 50 }, (_, k) => shuffle(Array.from({ length: k }, (_, i) => i)).join(','));
+    expect(fnv(out.join(';'))).toBe('30ef5ebc');
+  });
+  it('どの並びも、ほぼ同じ割合で出る（4つの物の24通り）', () => {
+    const g = mulberry32(7),
+      count = new Map<string, number>();
+    for (let i = 0; i < 24000; i++) {
+      const k = shuffle(['a', 'b', 'c', 'd'], g).join('');
+      count.set(k, (count.get(k) ?? 0) + 1);
+    }
+    expect(count.size).toBe(24);
+    for (const c of count.values()) expect(Math.abs(c - 1000)).toBeLessThan(150);
   });
 });

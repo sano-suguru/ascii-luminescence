@@ -26,3 +26,17 @@ export const R = (a: number, b: number): number => a + rand() * (b - a);
 export const RI = (a: number, b: number): number => Math.floor(a + rand() * (b - a + 1));
 /** 配列から1つ選ぶ（迷宮の乱数）。空の配列は渡さないこと */
 export const pick = <T>(a: readonly T[]): T => a[Math.floor(rand() * a.length)] as T;
+/**
+ * 配列をその場で混ぜて、同じ配列を返す（フィッシャー・イェーツ。乱数を配列の長さより1回少なく引く）。
+ * 混ぜるのに .sort(() => r() - 0.5) は使わない：でたらめな値を返す比べる関数での並びは、JS の決まりでは
+ * エンジン次第で、Chromium では最適化の前と後でも変わる（同じシードで違う迷宮になっていた）
+ */
+export const shuffle = <T>(a: T[], r: () => number = rand): T[] => {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1));
+    const t = a[i] as T;
+    a[i] = a[j] as T;
+    a[j] = t;
+  }
+  return a;
+};
