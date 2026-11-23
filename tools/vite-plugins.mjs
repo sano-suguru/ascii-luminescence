@@ -25,11 +25,13 @@ export function legacyGame() {
       for (const f of map.sources) this.addWatchFile(f);
       return { code: gameSource(), map };
     },
-    // 開発用サーバー：ファイルを足した・消した・変えた時に、つなぎ直してページを読み直す（ゲームは HMR に対応していない）
+    // 開発用サーバー：ゲームは HMR に対応していないので、ページを読み直す。
+    // 変えた時は、Vite が自分で読み直す（load の addWatchFile で、つないだファイルを見張っている）。
+    // 足した・消した時は Vite が知らないファイルなので、ここでつなぎ直して読み直させる（変えた時にもここで送ると、2回読み直してしまう）
     configureServer(server) {
       server.watcher.add(GAME_DIR);
-      server.watcher.on('all', (_ev, file) => {
-        if (dirname(resolve(file)) !== GAME_DIR) return;
+      server.watcher.on('all', (ev, file) => {
+        if ((ev !== 'add' && ev !== 'unlink') || dirname(resolve(file)) !== GAME_DIR) return;
         const env = server.environments.client,
           mod = env.moduleGraph.getModuleById(RID);
         if (mod) env.moduleGraph.invalidateModule(mod);

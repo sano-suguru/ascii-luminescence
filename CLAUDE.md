@@ -48,9 +48,11 @@ docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 ```
 組み立ては Vite 8。`src/game/*.js` を名前の順につなぎ、`(function(){ 'use strict'; … })();` で包んだものを、1つのモジュール
 （`virtual:legacy-game`）にする（`tools/vite-plugins.mjs` の legacyGame）。公開物は `dist/index.html` と `dist/assets/index-<hash>.js`。
-- Vite（Rolldown）は JS を書き直して出す（字下げ・引用符・`undefined`→`void 0` など。縮めはしない）。なので、組み立てた JS の行は元のファイルと違う。
+- Vite（Rolldown）は JS を書き直して出す（字下げ・引用符・`undefined`→`void 0` など。縮めはしない。コメントは消える）。なので、組み立てた JS の行は元のファイルと違う。
   場所はソースマップで戻す。ソースマップは**公開しない**ので、出力には残さず `.build/maps/<mode>/` に移している（privateMaps）。
-- 開発用サーバー（`pnpm dev`）は、src/game/ が変わるとページを読み直す（HMR はしない）。
+- 開発用サーバー（`pnpm dev`）は、src/game/ が変わるとページを読み直す（HMR はしない）。テスト用モード（`?test=1`）では時計が止まっていて、
+  Vite の読み直し（setTimeout を使う）が動かないので、手で読み直す。
+- 使っていない関数も消さない（`vite.config.mjs` の `rolldownOptions`。Vite は minify: false でも、使っていないコードを消す設定を渡すため）。
 `dist/` と `.build/` は生成物なので git に入れない。直接編集もしない（権限で止めている）。
 
 ## 組み立て・実行・テスト（Node 26・pnpm 12）

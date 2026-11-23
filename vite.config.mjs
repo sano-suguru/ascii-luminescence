@@ -19,9 +19,13 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: mode === 'production' ? join(root, 'dist') : join(root, '.build', mode),
     emptyOutDir: true,
-    // ゲームのコードは、そのまま出す（古い書き方の変換も、縮めることもしない。見た目と動きを今までと同じにするため）
+    // ゲームのコードは、なるべくそのまま出す（古い書き方の変換も、縮めることも、使っていないコードを消すこともしない）。
+    // ただし Rolldown は JS を書き直して出す（字下げ・引用符・undefined→void 0 など。意味は同じ）。場所はソースマップで戻す
     target: 'esnext',
     minify: false,
+    // 使っていない関数を消さない。消すかどうかは人が決める（図鑑や dbg から文字列で呼ばれていないか確かめてから。CLAUDE.md）。
+    // Vite は minify: false の時も Rolldown に minify: 'dce-only'（使っていないコードだけ消す）を渡すので、出力の側で止める
+    rolldownOptions: { treeshake: false, output: { minify: false } },
     modulePreload: false,
     sourcemap: 'hidden',
     reportCompressedSize: false,

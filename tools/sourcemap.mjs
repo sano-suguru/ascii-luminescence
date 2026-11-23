@@ -61,11 +61,15 @@ export function decodeMappings(str) {
   });
 }
 
-// 行（1始まり）と列（0始まり）の直前の区切りを探す。ゲーム本体は行の中身を変えずに組み立てるので、列は区切りからの差で数える
+// 行（1始まり）と列（0始まり）の直前の区切りを探す。区切りの後ろの列は、区切りからの差で数える。
+// 組み立てた JS は Vite が書き直しているが、ゲーム本体のソースマップは語の頭ごとに区切りを置いている（gameSourceMap）ので、
+// 語の頭なら正しい列になる。語の途中や、書き直された所（undefined→void 0、`}catch` の catch など）は、近い値でしかない。
+// 行が範囲外（ソースマップの行より後ろ）なら undefined、対応する行が無ければ null
 export function originalPosition(map, line, column = 0) {
   map._decoded ??= decodeMappings(map.mappings);
+  if (!(line >= 1 && line <= map._decoded.length)) return undefined;
   const segs = map._decoded[line - 1];
-  if (!segs?.length) return null;
+  if (!segs.length) return null;
   let s = null;
   for (const t of segs) if (t[0] <= column && t.length >= 4) s = t;
   s ??= segs.find((t) => t.length >= 4);

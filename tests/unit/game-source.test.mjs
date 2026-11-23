@@ -81,11 +81,14 @@ describe('ソースマップ', () => {
 });
 
 describe('Vite の組み立て（公開用と同じ設定）', () => {
-  it('ソースマップを出力に残さず、組み立てた JS の名前が src/game の同じ名前に戻る', async () => {
+  it('ソースマップを出力に残さず、関数を1つも消さず、組み立てた JS の名前が src/game の同じ名前に戻る', async () => {
     const { build } = await import('vite');
     const mode = `unit-${process.pid}`,
       out = join(ROOT, '.build', mode),
       maps = join(ROOT, '.build/maps', mode);
+    // Vitest の中では NODE_ENV=test。Vite は NODE_ENV が既にあると上書きしないので、公開用と同じ production にして組み立てる
+    const env = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
     try {
       await build({ configFile: join(ROOT, 'vite.config.mjs'), mode, logLevel: 'silent' });
       const files = readdirSync(join(out, 'assets'));
@@ -110,7 +113,11 @@ describe('Vite の組み立て（公開用と同じ設定）', () => {
         }
       });
       expect(checked).toBeGreaterThan(300);
+      // 使っていない関数も消さない（消すかどうかは人が決める。vite.config.mjs の rolldownOptions）
+      const fnNames = (t) => [...t.matchAll(/function\s+([A-Za-z_$][\w$]*)/g)].map((x) => x[1]).sort();
+      expect(fnNames(code)).toEqual(fnNames(gameSource()));
     } finally {
+      process.env.NODE_ENV = env;
       rmSync(out, { recursive: true, force: true });
       rmSync(maps, { recursive: true, force: true });
     }

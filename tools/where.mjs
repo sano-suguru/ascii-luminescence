@@ -10,16 +10,27 @@ import { findMap, originalPosition } from './sourcemap.mjs';
 
 const root = join(import.meta.dirname, '..');
 const test = process.argv.includes('--test');
-const arg = process.argv.slice(2).find((a) => !a.startsWith('--'));
-const m = arg && arg.match(/(?:([\w.-]+\.js)(?:\?[^:]*)?:)?(\d+)(?::(\d+))?\)?$/);
-if (!m) {
+const arg = process.argv
+  .slice(2)
+  .find((a) => !a.startsWith('--'))
+  ?.replace(/\)$/, '');
+// 「ファイル:行:列」「ファイル:行」「行」。ファイルは URL や assets/… の形でもよい（最後の名前だけを使う）
+const m = arg && (arg.match(/^(.*):(\d+):(\d+)$/) || arg.match(/^(.*):(\d+)()$/) || arg.match(/^()(\d+)()$/));
+const usage = () => {
   console.log('使い方：node tools/where.mjs <JS:行:列 か 行> [--test]   例：node tools/where.mjs index-D0mETEmY.js:4321:12');
   process.exit(1);
+};
+if (!m) usage();
+const name = m[1].replace(/\?.*$/, '').split('/').pop();
+if (name && !name.endsWith('.js')) {
+  // 昔の組み立て（1ファイルの index.html）の場所は、今の JS の行とは違うので答えない
+  console.log(`${name} は JS ではない。今の組み立てでは、ゲーム本体は assets/index-<hash>.js にある（エラーに出たその場所を貼ること）`);
+  usage();
 }
 const outDir = join(root, test ? '.build/test' : 'dist'),
   mapDir = join(root, '.build/maps', test ? 'test' : 'production'),
   build = test ? 'pnpm build:test' : 'pnpm build';
-let js = m[1];
+let js = name;
 if (!js) {
   let list = [];
   try {
@@ -40,6 +51,17 @@ if (!map) {
 }
 const line = Number(m[2]),
   col = m[3] ? Number(m[3]) - 1 : 0;
+let total = 0;
+try {
+  total = readFileSync(join(outDir, 'assets', js), 'utf8').split('\n').length;
+} catch {
+  console.log(`${join(outDir, 'assets', js)} が無い（${build} をして、エラーを出し直すこと）`);
+  process.exit(1);
+}
+if (!(line >= 1 && line <= total)) {
+  console.log(`${js} は ${total} 行しかない`);
+  process.exit(1);
+}
 const p = originalPosition(map, line, col);
 if (!p) {
   console.log('ゲーム本体の外（包みの行など、元のファイルに対応する行が無い）');
