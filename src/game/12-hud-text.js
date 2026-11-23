@@ -75,6 +75,6 @@ function drawMark(m,t,dp){
   else if(m.noticed){ const pop=1+Math.max(0,1-m.mark*3)*0.6; dyn(m.x,y+Math.sin(t*6)*0.03,m.z,G('!'),0.36*pop,2.4*near,0.55*near,0.3*near); }
   else if(m.aware>0.35){ dyn(m.x,y+Math.sin(t*3)*0.04,m.z,G('?'),0.32,2.0*near,1.7*near,0.5*near); }
 }
-const lerpAngle=(a,b,k)=>{ let d=b-a; while(d>Math.PI)d-=Math.PI*2; while(d<-Math.PI)d+=Math.PI*2; return a+d*k; };
+// lerpAngle は src/lib/math.ts（src/game/imports.mjs で読む）
 const flyOpen=(x,z)=>{ const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL); if(cx<0||cz<0||cx>=MW||cz>=MH)return false; const tt=D.tile[cz*MW+cx]; return tt!==TW&&tt!==TX; };
 const mname=m=>`<span style="color:${css(m.ty.col)}">${m.ty.name}（${m.ty.ch}）</span>`;

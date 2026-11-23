@@ -1,11 +1,9 @@
 // ---------------------------------------------------------------- constants
-const CELL=2, BASE_H=3.2, EYE=1.62, MW=70, MH=46, NCELL=MW*MH, CH_D=9;
-const TW=0, TF=1, TP=2, TC=3, TX=4;
-const NSL=96, NDL=6;
-const PR=0.3;
+// CELL・BASE_H・EYE など 40 個は src/lib/world.ts（読む名前の一覧は src/game/imports.mjs）
+// css は src/lib/color.ts（src/game/imports.mjs で読む）
+// computeVis・topLights は src/lib/light.ts（src/game/imports.mjs で読む）
 // RUNE_CHARS・G は src/lib/glyphs.ts（src/game/imports.mjs で読む）
 // mr・mpick は src/lib/random.ts（src/game/imports.mjs で読む）
-const D4=[[1,0],[-1,0],[0,1],[0,-1]];
 let rand=mr;
 // mulberry32・clamp は src/lib/rng.ts（src/game/imports.mjs で読む）
 const R=(a,b)=>a+rand()*(b-a);
@@ -45,7 +43,6 @@ const RUIN_THEMES=[
  {k:'r_rose',  col:[1.0,0.42,0.62], fix:'orb',     ruin:true, msg:'薔薇色に灯る古代の球体が、壁一面の碑文を照らしている。'},
  {k:'r_violet',col:[0.62,0.45,1.0], fix:'crystal', ruin:true, msg:'菫色の光の中で、誰のものとも知れぬ文明の名残が眠っている。'},
 ];
-const RUIN_KIND_MSG={atrium:'吹き抜けの遥か上から、青白い光が降り注いでいる。',plaza:'広場の中央に、石を刻んだ巨像がそびえている。',garden:'廃墟を呑み込むように、草木が生い茂っている。'};
 const BIOMES={
  lake:     {k:'lake',     col:[0.25,0.82,1.0], base:13.2, slope:2.0, cave:true, msg:'天井の見えない大空洞に出た。光る湖の上を、無数の光の粒が星のように漂っている。'},
  chasm:    {k:'chasm',    col:[1.0,0.34,0.14], base:10.4, slope:1.8, cave:true, msg:'足元に底知れぬ裂け目が口を開けている。深淵の奥から、燃える火の粉が立ち昇ってくる。'},
@@ -123,16 +120,11 @@ const SPECIALS={
 let inter=null, showroomGen=false;
 function interAt(key){ const h=Math.imul(runSeed^0x5bd1e995,2654435761)>>>0; return {town:2, bigroom:3+(h&1), oracle:5, fortress:9+((h>>2)&1)}[key]; }
 function interAfter(d){ for(const k in SPECIALS)if(interAt(k)===d)return k; return null; }
-const specialAt=d=>null;
 const FORT_THEMES=[
  {k:'f_forge',col:[1.0,0.55,0.2], fix:'brazier',ruin:true,msg:'鍛冶の炎の名残が、煤けた壁を赤く照らしている。'},
  {k:'f_hall', col:[1.0,0.75,0.4], fix:'brazier',ruin:true,msg:'ドワーフの大広間。石に刻まれた紋様が、炎の光に浮かぶ。'},
  {k:'f_deep', col:[0.45,0.75,1.0],fix:'orb',    ruin:true,msg:'冷たい青い灯が、砦の奥の静けさを照らしている。'},
 ];
-const FORT_KIND_MSG={dining:'長い石の食卓が並ぶ食堂。皿も杯も、埃をかぶったままだ。',forge:'冷えた炉と金床が並ぶ鍛冶場。槌の音は、とうに途絶えている。',flooded:'この広間は水に沈んでいる。上の階から、ゆっくりと水が染み出してきたのだろう。'};
-const PROPHECIES=['石の回廊の先で大地は口を開け、星のような光が天井を覆うだろう。','水底の影に気をつけよ。光る湖は、何かを抱いて眠っている。','巨像の眼はまだ見ている。名を失った王たちの時代を。','やがて足元は燃える海となり、黒い島々だけが道を示す。','最後には何もない闇がある。そこでは落ちることだけが、先へ進む道だ。','灯りを絞れ。闇は、見つからぬ者の味方だ。','火は草を走り、沼の息はそれを待っている。'];
-// branches (after DCSS): short side-dungeons that leave the main path and rejoin it one level further down
-// portal realms (after DCSS's portal vaults): one-level places behind a shimmering gate
 const CRYPT_THEMES=[
  {k:'c_cold',  col:[0.45,0.6,1.0], fix:'crystal',msg:'冷たい青い光の中に、石の棺が並んでいる。'},
  {k:'c_violet',col:[0.62,0.4,1.0], fix:'rune',   msg:'菫色の魔法陣が、死者の眠りを見守っている。'},
@@ -144,24 +136,12 @@ const LAB_THEMES=[
  {k:'l_violet', col:[0.65,0.45,1.0],fix:'orb',   msg:'灯の下に、書きかけの羊皮紙が散らばっている。'},
 ];
 const SUNKEN_THEMES=[RUIN_THEMES[0],RUIN_THEMES[3]];
-const BRANCHES={
- crypt: {key:'crypt', name:'墓所',     len:2, at:[2,3], col:[0.6,0.5,1.0]},
- lair:  {key:'lair',  name:'獣の巣',   len:2, at:[4,5], col:[0.4,1.0,0.5]},
- sunken:{key:'sunken',name:'水没神殿', len:2, at:[6,8], col:[0.35,0.85,1.0]},
- nest:  {key:'nest',  name:'蜘蛛の巣', len:2, at:[5,7], col:[0.82,0.7,1.0]},
- snake: {key:'snake', name:'蛇の穴',   len:2, at:[7,9], col:[0.6,0.85,0.4]},
-};
 const BRANCH_STRATA={
  crypt: {k:'maze',  branch:true,name:'墓所',    msg:'冷たい石段を下りた。ここは死者のための回廊だ。',themes:CRYPT_THEMES,machines:['crypt','crypt','statues','dismal','library'],vaults:['ossuary','temple','labyrinth','throne'],hordes:['W','P','w','k','J'],hordeMul:1,torchMul:0.25,fog:[0.004,0.004,0.012]},
  lair:  {k:'cavern',branch:true,name:'獣の巣',  msg:'獣の匂いが立ちこめる洞窟に入った。あちこちで何かが息づいている。',cw:{towercap:2.5,fungal:2,mossfield:1.5,swamp:1.2,lake:0.8},hordes:['r','j','v','m','b'],hordeMul:1.25,fog:[0.006,0.008,0.004]},
  nest:  {k:'cavern',branch:true,name:'蜘蛛の巣',msg:'糸が幾重にも張りめぐらされた洞窟に入った。どこかで、何かが糸を伝って動いている。',cw:{fungal:2,mossfield:1,swamp:1,crystal:0.6},denseWebs:true,hordes:['S'],hordeMul:1.3,fog:[0.008,0.006,0.012]},
  snake: {k:'cavern',branch:true,name:'蛇の穴',  msg:'乾いた砂地と、湿った水場が交互に続く洞窟。足元で、何かが這う音がする。',cw:{lake:2.5,swamp:1.5,mossfield:1,crystal:0.4},hordes:['n','N'],hordeMul:1.2,fog:[0.012,0.01,0.004]},
  sunken:{k:'ruins', branch:true,name:'水没神殿',msg:'足元を水が満たしている。神殿は、ゆっくりと水の底へ沈みつつある。',themes:SUNKEN_THEMES,flood:true,hordes:['e','w','J','b'],hordeMul:0.9,fog:[0.002,0.008,0.014]},
-};
-const REALMS={
- ice:    {key:'ice',    name:'氷の洞窟',      minD:2, col:[0.6,0.85,1.0]},
- lab:    {key:'lab',    name:'魔術師の研究所', minD:2, col:[1.0,0.35,0.85]},
- volcano:{key:'volcano',name:'火山',          minD:4, col:[1.0,0.45,0.12]},
 };
 const REALM_STRATA={
  ice:    {k:'cavern',realm:true,name:'氷の洞窟',      msg:'門をくぐると、凍てついた空気が肺を刺した。すべてが氷に閉ざされている。',cw:{crystal:2.5,lake:2,mossfield:0.6},freeze:true,fall:'snow',hordes:['w','b','v'],fog:[0.012,0.016,0.026]},
@@ -208,54 +188,5 @@ const HORDES=[
  {lead:'n',fol:[['n',1,3]],d:[6,99],w:0.6}, {lead:'S',fol:[['S',0,1]],d:[99,99],w:1.0}, {lead:'N',fol:[['n',1,2]],d:[99,99],w:1.0},
  {lead:'T',fol:[],d:[6,99],w:1.0}, {lead:'T',fol:[['T',1,1]],d:[9,99],w:0.5}, {lead:'L',fol:[['W',1,2]],d:[9,99],w:0.5}, {lead:'D',fol:[],d:[10,99],w:0.35},
 ];
-// terrain layers (after Brogue's dungeon / liquid / surface layers)
-const LQ_WATER=1, LQ_DEEP=2, LQ_LAVA=3, LQ_BOG=4;
-const blocksWalk=l=>l===LQ_LAVA||l===LQ_DEEP;
-const SF_GRASS=1, SF_LUMEN=2, SF_OBSIDIAN=3, SF_DEAD=4, SF_RUBBLE=5, SF_ICE=6, SF_FOLIAGE=7, SF_FUNGFOR=8, SF_BRIM=9, SF_MUD=10, SF_HAY=11;
-// what changes as you descend: bright, torch-lit halls near the surface; dark fungus, crystal and lava below
-function depthProfile(d){
-  const t=clamp((d-1)/7,0,1);
-  return {t,
-    torch:1.15-t*0.85, grass:1-t*0.55, lumen:0.3+t*0.9, ambient:1-t*0.42, door:0.8-t*0.3,
-    lavaPool:d>=4?0.18+t*0.22:0, bogPool:d>=2?0.12+t*0.1:0, fogDark:1-t*0.4,
-    biomes:{lake:3-1.8*t, fungal:1.6+t, chasm:d>=2?1+1.5*t:0.4, cathedral:d>=2?1.4:0.5, magma:d>=2?1.2+5*t:0, swamp:d>=2?1.3+t:0.5, crystal:d>=2?0.9+1.8*t:0.4}};
-}
-const FOGS=[[0.0035,0.0024,0.011],[0.0018,0.0038,0.0105],[0.0058,0.0018,0.0085],[0.003,0.0028,0.012]];
-const css=c=>`rgb(${Math.round(255*Math.min(1,c[0]*0.85+0.15))},${Math.round(255*Math.min(1,c[1]*0.85+0.15))},${Math.round(255*Math.min(1,c[2]*0.85+0.15))})`;
 
-// ---------------------------------------------------------------- light helpers
-function computeVis(L,tile){
-  const vis=new Uint8Array(NCELL);
-  const lcx=Math.floor(L.x/CELL), lcz=Math.floor(L.z/CELL), r=Math.ceil(L.rad/CELL)+1;
-  for(let dz=-r;dz<=r;dz++)for(let dx=-r;dx<=r;dx++){
-    const cx=lcx+dx, cz=lcz+dz; if(cx<0||cz<0||cx>=MW||cz>=MH)continue;
-    const tx=(cx+0.5)*CELL, tz=(cz+0.5)*CELL, ddx=tx-L.x, ddz=tz-L.z, dist=Math.hypot(ddx,ddz);
-    if(dist>L.rad+CELL)continue;
-    const steps=Math.max(1,Math.ceil(dist/0.3)); let ok=true;
-    for(let s=1;s<steps;s++){
-      const f=s/steps, sx=L.x+ddx*f, sz=L.z+ddz*f, ccx=Math.floor(sx/CELL), ccz=Math.floor(sz/CELL);
-      if(ccx===cx&&ccz===cz)break;
-      const tt=tile[ccz*MW+ccx];
-      if(tt===TW){ok=false;break;}
-      if(tt===TP&&Math.hypot(sx-(ccx+0.5)*CELL,sz-(ccz+0.5)*CELL)<0.5){ok=false;break;}
-    }
-    if(ok)vis[cz*MW+cx]=1;
-  }
-  return vis;
-}
-function topLights(lights,x,y,z,nx,ny,nz,ref,outI,outW,o){
-  let i0=-1,i1=-1,i2=-1,w0=0,w1=0,w2=0;
-  for(let li=0;li<lights.length;li++){
-    const L=lights[li], dx=L.x-x, dy=L.y-y, dz=L.z-z, d2=dx*dx+dy*dy+dz*dz;
-    if(d2>=L.rad*L.rad)continue;
-    if(ref>=0&&!L.vis[ref])continue;
-    const d=Math.sqrt(d2), f=1-d/L.rad; let w=f*f*(1+0.5*f*f);
-    if(nx!==null){ const nd=(nx*dx+ny*dy+nz*dz)/Math.max(d,1e-3); w*=Math.max(0,nd*0.62+0.38); }
-    if(w<=0.002)continue;
-    if(w>w0){i2=i1;w2=w1;i1=i0;w1=w0;i0=li;w0=w;}
-    else if(w>w1){i2=i1;w2=w1;i1=li;w1=w;}
-    else if(w>w2){i2=li;w2=w;}
-  }
-  outI[o]=i0;outI[o+1]=i1;outI[o+2]=i2;outW[o]=w0;outW[o+1]=w1;outW[o+2]=w2;
-}
 

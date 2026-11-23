@@ -55,7 +55,7 @@ function castNow(h,opt){
       const v=12*tv(sp,'speed'); projs.push({kind:'orb',auto:!!opt.auto,x:HP[0],y:HP[1],z:HP[2],vx:d[0]*v,vy:d[1]*v+2.6,vz:d[2]*v,t:0,sp,bounce:sp.aff.bounce||0,homing:sp.aff.homing||0,hit:new Set()}); } }
   else if(sp.atk==='beam'){ fireBeam(h,opt.dir||null,opt.dir?HP:null,!!opt.auto); beamRun={h,t:opt.auto?0.5:1.5,tick:0.15,auto:!!opt.auto,dir:opt.dir||null}; if(!opt.auto)player.recover=Math.max(player.recover||0,1.6); }
 }
-function turnDir(d,a){ const c=Math.cos(a), s=Math.sin(a); return [d[0]*c-d[2]*s,d[1],d[0]*s+d[2]*c]; }
+// turnDir は src/lib/math.ts（src/game/imports.mjs で読む）
 // the rapier: a dash that cuts through
 function dashCast(sp,dir,auto){ const hx=dir[0], hz=dir[2], l=Math.hypot(hx,hz)||1, dist=3+TRAIT_V.stride[TL(sp,'stride')], dur=0.2, x0=player.x, z0=player.z, af=TRAIT_V.after[TL(sp,'after')];
   player.swingH=sp.h; player.swing=0.22; player.swingCol=elemCol(sp.elem); sWhoosh();

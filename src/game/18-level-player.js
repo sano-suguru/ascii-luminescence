@@ -143,7 +143,9 @@ const statOf=m=>{ const st=MSTAT[m.ty.sk||m.key]||[12,2,5,1.2]; return trialOn('
 const hostile=m=>!m.ty.critter&&!m.ty.peaceful&&!m.ty.watcher&&m.ty.form!=='bloat'&&!m.dead;
 const hittable=m=>!m.dead&&!m.ty.peaceful;
 const foe=m=>hittable(m)&&(hostile(m)||m.ty.watcher||m.ty.form==='bloat'||m.ty.form==='shroom'||(m.ty.critter==='mimic'&&!m.hidden));
-const angDiff=(a,b)=>{ let d=a-b; while(d>Math.PI)d-=Math.PI*2; while(d<-Math.PI)d+=Math.PI*2; return d; };
+// angDiff は src/lib/math.ts（src/game/imports.mjs で読む）
+// expNeed・expOf は src/lib/progress.ts（src/game/imports.mjs で読む）
+// serRune は src/lib/runes.ts（src/game/imports.mjs で読む）
 function initMonsterLife(m){ const st=statOf(m); m.maxHp=Math.round(st[0]*(m.ty.boss?1.5:1)); m.hp=m.maxHp; m.atkCd=0.5+mr(); m.wind=0; }
 // ---------------------------------------------------------------- levelling: defeating creatures gives experience; at each level time stops and you choose one of three
 // (two blessings - strengths tied to actions and elements, some with a price - and one rune or charm). Max health does not grow with level: it grows by 4 on entering each new stratum.
@@ -166,8 +168,6 @@ const BL=k=>lvl.bless[k]||0;
 // a cold snap: the creatures around are chilled (and fire goes out, water freezes)
 function coldSnap(x,z,r){ chillArea(x,z,r); for(const m of monsters){ if(m.dead||m.ty.critter)continue; if(Math.hypot(m.x-x,m.z-z)<r+0.3*m.ty.scale){ const st=m.st||(m.st={}); st.chill=Math.max(st.chill||0,4); } }
   for(let q=0;q<28;q++){ const a=q/28*Math.PI*2; spawn(x+Math.cos(a)*r*0.9,0.15,z+Math.sin(a)*r*0.9,Math.cos(a)*0.6,0.4,Math.sin(a)*0.6,0.6,G(mpick(['*','.','+'])),0.14,1.2,1.7,2.2,0); } }
-const expNeed=n=>n<=1?4:8+14*(n-2);
-function expOf(m){ if(m.ty.dummy||m.ty.critter||m.ty.peaceful)return 0; return Math.min(60,(1+Math.floor(Math.sqrt(m.maxHp||10)/3))*(m.elite?3:1)*(m.key==='lord'||m.key==='final'?10:1)); }
 function gainExp(e){ if(!(e>0)||dead)return; lvl.exp+=e; let up=0; while(lvl.exp>=expNeed(lvl.n)){ lvl.exp-=expNeed(lvl.n); lvl.n++; lvl.pending++; up++; }
   renderStatus(); if(up){ sChime(player.x,player.z,0.6); setTimeout(()=>sChime(player.x,player.z,0.45),180); for(let q=0;q<40;q++){ const a=mr()*6.28, r=1.6+mr(); spawn(player.x+Math.cos(a)*r,0.4+mr()*1.6,player.z+Math.sin(a)*r,-Math.cos(a)*r*2.2,0.2,-Math.sin(a)*r*2.2,0.45,G(mpick(['*','+','.'])),0.14,2.6,2.3,1.5,0); } } }
 function levelChoices(){ const BEHAVE=['quickdodge','counter','momentum','devour','shatter','charge','swapedge','branch']; let pool=Object.keys(BLESS).filter(k=>BL(k)<2&&!lockedOf('bless',k)), out=[];
@@ -225,7 +225,6 @@ function loreRows(R,f){ if(!R)return []; const rows=[`${f('|')}  <b>伝承</b>`]
   else { const nx=UNLOCKS.filter(u=>!unlocked(u.id)).sort((a,b)=>a.cost-b.cost)[0]; if(nx)rows.push(`${f('|')}    <span class="lab">次の解放まで あと ${nx.cost-loreLeft()}（${nx.name} ${nx.cost}）</span>`); } return rows; }
 // the grave: what the fallen adventurer leaves (one thing, chosen on the results screen)
 let graveSel=0, graveCands=[];
-const serRune=ru=>({type:ru.type,strong:!!ru.strong,traits:(ru.traits||[]).map(t=>({k:t.k,lv:t.lv}))});
 function graveRune(g){ const ru=makeRune(g.type,0); ru.strong=false; if(g.traits&&g.traits.length)ru.traits=g.traits.map(t=>({k:t.k,lv:t.lv-1})).filter(t=>t.lv>0); return ru; }
 function graveCandidates(){ const out=[], seen=new Set(), add=ru=>{ if(ru&&!seen.has(ru)){ seen.add(ru); out.push(ru); } };
   add(hands.L.atk); add(hands.R.atk); for(const h of ['L','R'])for(const r of hands[h].slots)add(r); if(hands.B){ add(hands.B.b0); add(hands.B.b1); } for(const r of bag)add(r); return out.slice(0,10); }
