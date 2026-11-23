@@ -3,18 +3,21 @@
 //   node tools/serve.mjs [dir] [port]   （既定：dist/、8000）
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { dirname, extname, join, normalize, sep } from 'node:path';
+import { dirname, extname, join, relative, resolve, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json' };
 
 export function serve(dir, port = 0) {
-  const base = normalize(dir) + sep;
+  const base = resolve(dir);
   const srv = createServer(async (req, res) => {
-    let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+    let p;
+    try { p = decodeURIComponent(new URL(req.url, 'http://x').pathname); }
+    catch { res.writeHead(400).end('bad request'); return; }
     if (p.endsWith('/')) p += 'index.html';
-    const file = normalize(join(base, p));
-    if (!file.startsWith(base)) { res.writeHead(403).end(); return; }
+    const file = resolve(base, '.' + p);
+    const rel = relative(base, file);
+    if (rel.startsWith('..') || isAbsolute(rel)) { res.writeHead(403).end(); return; }
     try {
       const body = await readFile(file);
       res.writeHead(200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream' }).end(body);
@@ -27,5 +30,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const root = join(dirname(fileURLToPath(import.meta.url)), '..');
   const dir = process.argv[2] || join(root, 'dist');
   const { port } = await serve(dir, Number(process.argv[3] || 8000));
-  console.log(`serving ${dir} at http://127.0.0.1:${port}/`);
+  console.log(`serving ${resolve(dir)} at http://127.0.0.1:${port}/`);
 }

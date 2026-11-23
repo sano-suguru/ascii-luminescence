@@ -16,15 +16,26 @@
       "Bash(git show *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git branch *)"
+      "Bash(git branch *)",
+      "Bash(git push)",
+      "Bash(git push -u origin *)",
+      "Bash(git push origin *)",
+      "Bash(git fetch *)",
+      "Bash(git switch *)",
+      "Bash(git checkout *)",
+      "Bash(git merge *)",
+      "Bash(git stash *)"
     ],
     "ask": [
-      "Bash(npm run deploy)",
+      "Bash(npm run deploy*)",
+      "Bash(npm run-script deploy*)",
       "Bash(npx wrangler *)",
       "Bash(npx wrangler@4 *)",
       "Bash(rm -rf *)",
       "Bash(git reset --hard *)",
-      "Bash(git clean *)"
+      "Bash(git clean *)",
+      "Bash(git checkout -- *)",
+      "Bash(git checkout .)"
     ],
     "deny": [
       "Bash(git push --force *)",
@@ -41,7 +52,11 @@
       "Read(/.env)",
       "Read(/.env.*)",
       "Read(/.dev.vars)",
-      "Read(/.dev.vars.*)"
+      "Read(/.dev.vars.*)",
+      "Bash(git push * +*)",
+      "Bash(git push origin --delete *)",
+      "Bash(git push * --delete *)",
+      "Bash(git push --mirror *)"
     ]
   },
   "hooks": {

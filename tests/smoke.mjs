@@ -17,7 +17,8 @@ mkdirSync(out, { recursive: true });
 const dir = build({ test: !process.argv.includes('--cdn') });
 const srv = await serve(dir);
 const url = (q = '') => `http://127.0.0.1:${srv.port}/index.html${q}`;
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 実時間ではなく、描いたフレームの数で待つ（遅いマシンでも、ゲームが同じだけ進む）。
+const frames = (pg, n) => pg.evaluate((n) => new Promise((ok) => { const f = () => (--n <= 0 ? ok() : requestAnimationFrame(f)); requestAnimationFrame(f); }), n);
 
 const browser = await chromium.launch({
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
@@ -32,16 +33,17 @@ try {
   // 1. タイトル
   await pg.goto(url(), { waitUntil: 'commit', timeout: 120000 });
   await pg.waitForSelector('#enter', { timeout: 90000 });
-  await sleep(2000);
+  await frames(pg, 3);
   await pg.screenshot({ path: join(out, 'title.png'), timeout: 90000 });
 
   // 2. 開発用の冒険（すべて解放済み、dbg が使える）
   await pg.goto(url('?dev=1&seed=202&depth=3&god=1'), { waitUntil: 'commit', timeout: 120000 });
-  await pg.waitForFunction(() => typeof window.dbg === 'object', null, { timeout: 90000 });
-  await sleep(10000);
+  // window.dbg は読み込んだ時点で入るので、階ができて info() が深度3を返すまで待つ。
+  await pg.waitForFunction(() => { try { const i = dbg.info(); return i && i.depth === 3 && i.monsters > 0; } catch { return false; } }, null, { timeout: 90000, polling: 500 });
+  await frames(pg, 8);
   console.log('info:', await pg.evaluate(() => JSON.stringify(dbg.info()).slice(0, 300)));
   await pg.evaluate(() => { dbg.to('altar'); });
-  await sleep(2000);
+  await frames(pg, 3);
   await pg.screenshot({ path: join(out, 'run.png'), timeout: 90000 });
 } finally {
   await browser.close();

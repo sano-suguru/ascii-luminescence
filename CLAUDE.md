@@ -52,8 +52,10 @@ npm run deploy        # 手元から Cloudflare に公開（ふだんは Workers
 - **編集の直後**（PostToolUse）：`src/` などの JS を編集すると、構文と lint を確かめる。エラーなら差し戻されるので、その場で直す。
 - **終える前**（Stop）：`src/`・`tools/`・`tests/`・設定が変わっていれば `npm run check` を通す。通らなければ終われない。
 - **セッションの始め**（SessionStart、クラウドのみ）：依存が変わっていれば `npm install`。
-- 権限：`npm run`・lint・git の読み書きは確認なし。公開（wrangler）・`rm -rf`・`git reset --hard` は確認あり。
-  force push、`dist/` と `package-lock.json` の直接編集、`.env`・`.dev.vars` を読むことは禁止。
+- 権限：`npm run`・lint・git の読み取り・commit・push・ブランチの切り替えは確認なし。
+  公開（`npm run deploy`・wrangler）・`rm -rf`・`git reset --hard`・`git clean`・変更を捨てる `git checkout` は確認あり。
+  force push（`+ブランチ` の形も）・リモートのブランチの削除、`dist/` と `package-lock.json` の直接編集、`.env`・`.dev.vars` を読むことは禁止。
+  ただし権限は文字列の一致で見るだけなので、完全な安全柵ではない（別の書き方ならすり抜けうる）。
 - スモークテストは遅いので hooks では走らせない。見た目や動きに関わる変更の後は、自分で `npm test` を走らせて画面写真を見る。
 
 ## 開発用の道具
