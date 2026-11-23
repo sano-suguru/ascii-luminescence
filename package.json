@@ -10,8 +10,10 @@
     "build:test": "node tools/build.mjs --test",
     "lint": "eslint .",
     "check": "node --check src/game.js && eslint --quiet . && node tools/build.mjs",
-    "test": "node tests/smoke.mjs",
-    "verify": "npm run check && npm test",
+    "test": "node tests/smoke.mjs && node tests/determinism.mjs && node tests/levels.mjs",
+    "test:visual": "node tests/visual.mjs",
+    "test:all": "npm test && npm run test:visual",
+    "verify": "npm run check && npm run test:all",
     "serve": "node tools/build.mjs && node tools/serve.mjs",
     "deploy": "node tools/build.mjs && npx wrangler@4 deploy"
   },

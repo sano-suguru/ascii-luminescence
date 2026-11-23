@@ -24,8 +24,10 @@ jobs:
         run: npm run check
       - name: Chromium を入れる
         run: npx playwright install --with-deps chromium
-      - name: スモークテスト
+      - name: スモーク・同じ結果・全部の階
         run: npm test
+      - name: 画面写真の比較（最初のうちは失敗にしない。違いの画像を残す）
+        run: node tests/visual.mjs --soft
       - name: 画面写真を残す
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

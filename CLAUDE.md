@@ -18,7 +18,11 @@ src/head.html        画面の作りとCSS（three.js を CDN から読む <scri
 src/game.js          ゲーム本体（約7,500行、1ファイル）
 tools/build.mjs      src から dist/index.html を組み立てる（--test でオフラインのテスト用）
 tools/serve.mjs      静的ファイルの小さなサーバー
-tests/smoke.mjs      組み立て → 起動 → エラー確認 → 画面写真の最小テスト（Playwright）
+tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ・テスト用モードのページ）
+tests/smoke.mjs      ふだんのページの起動 ＋ 開発用の冒険で dbg が動くか（画面写真は tests/out/）
+tests/determinism.mjs  同じシードで同じ結果になるか
+tests/levels.mjs     全部の階（20シード×30か所）を生成し、例外と、歩いて行けるかを確かめる
+tests/visual.mjs     画面写真の比較（10場面。基準は tests/baseline/）
 eslint.config.js     lint の設定（エラー＝不具合、警告＝整理の候補）
 wrangler.jsonc       Cloudflare Workers（静的アセット）の設定。公開は dist/
 .claude/settings.json  権限と hooks
@@ -33,20 +37,34 @@ docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 npm install           # 依存を入れる（クラウドのセッションでは SessionStart hook が自動で行う）
 npm run check         # 構文 + lint（エラーだけ） + 組み立て。数秒。編集のたびにこれ
 npm run lint          # 警告も含めて lint を見る
-npm test              # スモークテスト（three.js は node_modules から。オフラインで動く。30秒ほど）
-npm test -- --cdn     # 公開用と同じく CDN から three.js を読む版でテスト
-npm run verify        # check + test
+npm test              # スモーク・同じ結果・全部の階（オフラインで動く。40秒ほど）
+npm run test:visual   # 画面写真の比較（30秒ほど）。違えば tests/out/visual/ に違いの画像
+node tests/visual.mjs --update [--only 場面]   # 基準の画像を作り直す（見た目を意図して変えた時だけ）
+node tests/levels.mjs --seed 202               # 1つのシードだけ（--seeds 100 で数を変える）
+node tests/smoke.mjs --cdn                     # 公開用と同じく CDN の three.js と Google Fonts で起動
+npm run verify        # check + test + test:visual
 npm run serve         # dist/ を組み立てて http://127.0.0.1:8000/ で配信
 npm run deploy        # 手元から Cloudflare に公開（ふだんは Workers Builds が git から公開する）
 ```
 - ヘッドレスのChromiumは、`--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader --ignore-gpu-blocklist` で動く。
-  とても遅い（960x540で1秒に1フレームくらい）。ゲームの時間もゆっくり進むので、実時間ではなくゲームの時間で待つこと。
-  画面写真には `timeout: 90000` を付ける。長いテストは分ける（1回300秒くらいまで）。
-- ポインタロックは、テストでは `HTMLCanvasElement.prototype.requestPointerLock` を差し替えて止める。
-- 日本語の幅を確かめる時は、等幅のCJKフォント（例：Noto Sans Mono CJK JP）をテスト側のCSSで当てる。
-- テストから内部を触る時は、組み立てたHTMLの `\ninit();` の直前に `window.__g={...}` を差し込む形を使ってきた
-  （`let`/`const` の変数は `window` から見えないため）。
+  とても遅い（960x540で1秒に1フレームくらい）。**テストはテスト用モードで書き、実時間では待たない**。
+  画面写真には `timeout: 90000` を付ける。
+- テスト版（`build --test`）は、three.js とフォント（@fontsource）を node_modules から読む。Google Fonts は読まない。
+- ポインタロックは、テストでは `HTMLCanvasElement.prototype.requestPointerLock` を差し替えて止める（tests/lib.mjs）。
 - Playwright は 1.63.0 に固定（クラウド環境の /opt/pw-browsers の Chromium と版を合わせている）。上げる時はそろえること。
+
+## テスト用モード（`?test=1`）
+同じ手順なら、いつも同じ結果になるモード。開発用モードも含む（`seed=`・`depth=`・`god=1` などがそのまま使える）。
+ふだんの遊びには影響しない（game.js の先頭の `TEST` で分けている）。
+- `Math.random` はシードで決まる。時計（`performance.now`・`setTimeout`・`setInterval`）は、ゲームが進む時だけ進む。
+- ゲームは自分では進まない。`__test.advance(秒)`（描かずに進める。速い）か `__test.frames(n)`（描いて進める）で進める。1フレーム＝ゲームの1/30秒。
+- `window.__test`：`ready()`、`error()`、`advance(秒)`、`frames(n)`、`state()`（体力・位置・敵・飛ぶ物・溜め・切り替え など）、
+  `equip(手, 武器)`（例：`equip('L','bolt')`）、`press(手)`・`release(手)`（ボタンを押す・離す）、`places()`、`gen(シード, 場所)`（生成だけ。描画の状態を壊すので専用のページで）
+- 気をつけること：
+  - 溜めている間は、ゲームの時間が半分の速さで進む。ヒットストップ中は1/20。
+  - 階に入ると、約1.25秒かけて明るくなる。写す前に `advance(2)` する。
+  - CSS のアニメーション（タイトルが消える、など）は実時間で進む。画面写真の比較では止めている（`newPage(…, {still:true})`）。
+  - `let`/`const` の変数は `window` から見えない。テストに必要な物は `__test` に足す（HTMLに差し込む昔のやり方は使わない）。
 
 ## 自動の確かめ（hooks、.claude/settings.json）
 - **編集の直後**（PostToolUse）：`src/` などの JS を編集すると、構文と lint を確かめる。エラーなら差し戻されるので、その場で直す。
@@ -56,7 +74,8 @@ npm run deploy        # 手元から Cloudflare に公開（ふだんは Workers
   公開（`npm run deploy`・wrangler）・`rm -rf`・`git reset --hard`・`git clean`・変更を捨てる `git checkout` は確認あり。
   force push（`+ブランチ` の形も）・リモートのブランチの削除、`dist/` と `package-lock.json` の直接編集、`.env`・`.dev.vars` を読むことは禁止。
   ただし権限は文字列の一致で見るだけなので、完全な安全柵ではない（別の書き方ならすり抜けうる）。
-- スモークテストは遅いので hooks では走らせない。見た目や動きに関わる変更の後は、自分で `npm test` を走らせて画面写真を見る。
+- テストは遅めなので hooks では走らせない。動きに関わる変更の後は `npm test`、見た目に関わる変更の後は `npm run test:visual` を自分で走らせる。
+  画面写真の比較が違ったら、違いの画像を元の大きさで見てから、意図した変更なら `--update` で作り直す（作り直しはコミットを分ける）。
 
 ## 開発用の道具
 **URLの指定**：`?dev=1`（開発用モード：すべて解放済み、dbg が使える）、`seed=`、`depth=`、`god=1`、
