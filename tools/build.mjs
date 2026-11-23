@@ -29,8 +29,8 @@ function cjkFallback() {
   };
   const faces = (pkg, w, weight) => readFileSync(join(root, `node_modules/@fontsource/${pkg}/${w}.css`), 'utf8')
     .split('@font-face').slice(1).map((f) => {
-      const r = narrow(f.match(/unicode-range:\s*([^;]+);/)[1]);
-      const src = f.match(/url\(\.\/files\/([^)]+\.woff2)\)/)[1];
+      const range = f.match(/unicode-range:\s*([^;]+);/), src = f.match(/url\(\.\/files\/([^)]+\.woff2)\)/)?.[1];
+      const r = range && src ? narrow(range[1]) : ''; // 読めない面は飛ばす（@fontsource の書き方が変わった時に落ちないように）
       return r ? `@font-face{font-family:'JetBrains Mono';font-style:normal;font-display:swap;font-weight:${weight};src:url(fonts/${pkg}/files/${src}) format('woff2');unicode-range:${r};}\n` : '';
     }).join('');
   // M PLUS 1 Code には全角の ！？：［］ などが無いので、BIZ UDGothic（ゲームの CSS でも次の候補）で補う。

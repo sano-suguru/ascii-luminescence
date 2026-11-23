@@ -20,10 +20,12 @@ const results = await withBrowser(async ({ browser, base }) => {
       let L;
       try { L = __test.gen(seed, pl); } catch (e) { out.fails.push({ seed, pl, error: String(e && e.stack || e).slice(0, 300) }); continue; }
       const N = L.tile.length, ok = (i) => i >= 0 && i < N && L.tile[i] === 1 && L.liquid[i] !== 2 && L.liquid[i] !== 3;
+      // 上下左右の隣（左右は行の端で回り込まない）
+      const nb = (c) => [c % W > 0 ? c - 1 : -1, c % W < W - 1 ? c + 1 : -1, c - W, c + W].filter((j) => j >= 0 && j < N);
       const d = new Int32Array(N).fill(-1), q = [L.start]; d[L.start] = 0;
-      for (let h = 0; h < q.length; h++) { const c = q[h]; for (const o of [1, -1, W, -W]) { const j = c + o; if (ok(j) && d[j] < 0) { d[j] = d[c] + 1; q.push(j); } } }
+      for (let h = 0; h < q.length; h++) { const c = q[h]; for (const j of nb(c)) { if (ok(j) && d[j] < 0) { d[j] = d[c] + 1; q.push(j); } } }
       // 目印のマスそのものが歩けなくても（柱や台）、隣まで行ければよい
-      const reach = (i) => d[i] >= 0 || [1, -1, W, -W].some((o) => d[i + o] >= 0);
+      const reach = (i) => d[i] >= 0 || nb(i).some((j) => d[j] >= 0);
       const goals = [];
       if (L.stairs >= 0) goals.push(['階段', L.stairs]);
       if (L.bstairs) goals.push(['支道の入口', L.bstairs.cell]);

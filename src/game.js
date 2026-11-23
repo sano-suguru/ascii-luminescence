@@ -8,7 +8,7 @@ const TEST_STEP=1/30;
 const TESTCLK=TEST?(()=>{
   const q=new URLSearchParams(location.search), sd=Number(q.get('seed'))>>>0||1;
   let a=(sd^0x9e3779b9)>>>0; Math.random=()=>{ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; };
-  let now=0, nextId=1; const timers=new Map();
+  let now=0, nextId=1; const timers=new Map(); const realTimeout=window.setTimeout.bind(window);
   performance.now=()=>now;
   window.setTimeout=(fn,ms,...args)=>{ const id=nextId++; timers.set(id,{at:now+Math.max(0,+ms||0),fn,args}); return id; };
   window.setInterval=(fn,ms,...args)=>{ const id=nextId++; const every=Math.max(1,+ms||0); timers.set(id,{at:now+every,fn,args,every}); return id; };
@@ -16,8 +16,9 @@ const TESTCLK=TEST?(()=>{
   return { advance(ms){ const end=now+ms;
     for(;;){ let id=-1, e=null; for(const [k,v] of timers)if(v.at<=end&&(!e||v.at<e.at||(v.at===e.at&&k<id))){ id=k; e=v; }
       if(!e)break; now=Math.max(now,e.at); if(e.every)e.at+=e.every; else timers.delete(id);
-      if(typeof e.fn==='function')e.fn(...e.args); }
-    now=end; } };
+      // like a real browser: one failing timer is reported (a page error) and the others still run
+      if(typeof e.fn==='function')try{ e.fn(...e.args); }catch(err){ queueMicrotask(()=>{ throw err; }); } }
+    now=end; }, realTimeout };
 })():null;
 const errEl=document.getElementById('err');
 if(!window.THREE||!THREE.EffectComposer||!THREE.UnrealBloomPass){ errEl.textContent='描画ライブラリを読み込めませんでした。ページを再読み込みしてください。'; return; }
@@ -7455,7 +7456,7 @@ window.addEventListener('resize',()=>{ applySize(); sizeMap(); });
 let last=0, time=0, fovT=0, mapT=0, perfT=0, perfAcc=0, perfN=0, warm=0;
 function frame(nowMs){
   requestAnimationFrame(frame);
-  if(TEST){ if(TESTQ.n>0){ TESTQ.n--; testTick(true); if(!TESTQ.n&&TESTQ.done){ const d=TESTQ.done; TESTQ.done=null; d(); } } return; }
+  if(TEST){ if(TESTQ.n>0){ TESTQ.n--; try{ testTick(true); } finally{ if(!TESTQ.n&&TESTQ.done){ const d=TESTQ.done; TESTQ.done=null; d(); } } } return; }
   const now=nowMs/1000; let raw=last?now-last:0.016; last=now;
   tick(raw,true);
 }
@@ -7507,7 +7508,8 @@ if(TEST)window.__test={
   // step the game without drawing (fast); returns the game time
   advance(sec){ const n=Math.max(0,Math.round(sec/TEST_STEP)); for(let i=0;i<n;i++)testTick(false); return +time.toFixed(4); },
   // step and draw n frames (one per animation frame)
-  frames(n){ return new Promise(ok=>{ TESTQ.n=Math.max(0,n|0); if(!TESTQ.n)ok(); else TESTQ.done=ok; }); },
+  frames(n){ if(TESTQ.done)return Promise.reject(new Error('__test.frames: the previous call has not finished'));
+    return new Promise(ok=>{ TESTQ.n=Math.max(0,n|0); if(!TESTQ.n)ok(); else TESTQ.done=ok; }); },
   // a plain copy of what matters, to compare runs
   state(){ const f=v=>+(+v||0).toFixed(3);
     return {time:f(time),seed:runSeed,place:placeLabel(),depth,started,dead,hp:f(player.hp),pos:[f(player.x),f(player.z)],yaw:f(player.yaw),lvl:lvl.n,
@@ -7515,12 +7517,14 @@ if(TEST)window.__test={
       trans:trans?trans.phase:null,cast:castSt?{h:castSt.h,t:f(castSt.t),need:f(castSt.need),full:castSt.full}:null,recover:f(player.recover),paused:isPaused()}; },
   // hold a weapon (a RUNE_DEF key such as 'blade', 'bolt', 'orb'), and press / release a hand's button ('L' or 'R')
   equip(h,type){ if(!RUNE_DEF[type]||RUNE_DEF[type].cat!=='atk')return 'no such weapon: '+type; equipWeapon(h,makeRune(type,0)); renderHotbar(); return type; },
-  press(h){ beginCast(h); return !!castSt; },
+  // true when the hand started charging, or attacked at once (a weapon with no charge, such as the short sword)
+  press(h){ const r0=player.recover||0; beginCast(h); return !!castSt||(player.recover||0)>r0; },
   release(h){ releaseCast(h); },
   // every place a run can visit, for generation checks
   places(){ return [...Array.from({length:FINAL_DEPTH},(_,i)=>({depth:i+1})), ...Object.keys(SPECIALS).map(k=>({inter:k})),
     ...Object.values(BRANCHES).flatMap(B=>Array.from({length:B.len},(_,i)=>({branch:B.key,lvl:i+1}))), ...Object.values(REALMS).map(R=>({realm:R.key,depth:R.minD+2}))]; },
-  // generate one level only (no meshes); breaks the drawn world, so use it on a page of its own
+  // generate one level only (no meshes). It restores where the run is (seed, depth, branch, realm, special level),
+  // but not what generate() rewrites (the history HIST, the level random rand, the light tables): use it on a page of its own
   gen(seed,pl){ const keep={runSeed,depth,branch,realm,inter};
     try{ runSeed=seed>>>0; branch=null; realm=null; inter=null;
       if(pl.branch){ const B=BRANCHES[pl.branch]; depth=B.at[0]; branch={key:B.key,lvl:pl.lvl||1,len:B.len,ret:depth+1}; }
@@ -7533,7 +7537,7 @@ if(TEST)window.__test={
 
 // ---------------------------------------------------------------- init
 async function init(){
-  try{ if(document.fonts&&document.fonts.load)await Promise.race([Promise.all([document.fonts.load('800 96px "JetBrains Mono"'),document.fonts.load('500 96px "Noto Sans Runic"','ᚦᛏᛜᛞᚲᛁᛊᚾᚱᚺ')]),new Promise(r=>setTimeout(r,2500))]); }catch(e){}
+  try{ if(document.fonts&&document.fonts.load)await Promise.race([Promise.all([document.fonts.load('800 96px "JetBrains Mono"'),document.fonts.load('500 96px "Noto Sans Runic"','ᚦᛏᛜᛞᚲᛁᛊᚾᚱᚺ')]),new Promise(r=>(TEST?TESTCLK.realTimeout:setTimeout)(r,2500))]); }catch(e){}
   U.uAtlas.value=buildAtlas();
   staticMat=new T.ShaderMaterial({uniforms:{uAtlas:U.uAtlas,uTime:U.uTime,uSL:U.uSL,uDLP:U.uDLP,uDLC:U.uDLC,uFogDen:U.uFogDen,uFogColor:U.uFogColor,uRamp:U.uRamp,uAmb:U.uAmb,uCell:U.uCell,uCollT:U.uCollT,uCamP:U.uCamP,uCutP:U.uCutP,uCut:U.uCut},
     vertexShader:STATIC_VS,fragmentShader:GLYPH_FS,side:T.DoubleSide,alphaToCoverage:true});

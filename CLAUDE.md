@@ -48,6 +48,7 @@ npm run deploy        # 手元から Cloudflare に公開（ふだんは Workers
 ```
 - ヘッドレスのChromiumは、`--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader --ignore-gpu-blocklist` で動く。
   とても遅い（960x540で1秒に1フレームくらい）。**テストはテスト用モードで書き、実時間では待たない**。
+  例外は、スモークテストの「ふだんのページが描けるか」の確認だけ（テスト用モードではないので、ゲームを止めて進められない）。
   画面写真には `timeout: 90000` を付ける。
 - テスト版（`build --test`）は、three.js とフォント（@fontsource）を node_modules から読む。Google Fonts は読まない。
   テストのブラウザには、システムのフォントを見せない（`tests/fonts.conf`、最後の頼みは npm の DejaVu だけ）。
@@ -55,6 +56,8 @@ npm run deploy        # 手元から Cloudflare に公開（ふだんは Workers
   （全角の ！？ などは BIZ UDGothic）を組み合わせて描く（`tools/build.mjs` の `cjkFallback`）。マシンが違っても同じ画素になる。
 - ポインタロックは、テストでは `HTMLCanvasElement.prototype.requestPointerLock` を差し替えて止める（tests/lib.mjs）。
 - Playwright は 1.63.0 に固定（クラウド環境の /opt/pw-browsers の Chromium と版を合わせている）。上げる時はそろえること。
+  上げると描き方が少し変わりうるので、`npm run test:visual` が落ちたら、違いの画像を見てから基準を作り直す（コミットを分ける）。
+- CI では画面写真の比較も失敗にする。CI とクラウド環境の差は数画素（0.01%以下）で、失敗の基準は0.2%。
 
 ## テスト用モード（`?test=1`）
 同じ手順なら、いつも同じ結果になるモード。開発用モードも含む（`seed=`・`depth=`・`god=1` などがそのまま使える）。

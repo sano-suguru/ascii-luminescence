@@ -51,7 +51,8 @@ await withBrowser(async ({ browser, base }) => {
     const shot = PNG.sync.read(await pg.screenshot({ timeout: 90000 }));
     await pg.close();
     const file = join(BASE, `${sc.name}.png`);
-    if (update || !existsSync(file)) { save(file, shot); rows.push([sc.name, update ? '作り直した' : '新しく作った', '']); continue; }
+    if (update) { save(file, shot); rows.push([sc.name, '作り直した', '']); continue; }
+    if (!existsSync(file)) { save(join(DIFF, `${sc.name}.png`), shot); rows.push([sc.name, '✗ 基準が無い', '--update で作る']); continue; }
     const ref = PNG.sync.read(readFileSync(file));
     if (ref.width !== shot.width || ref.height !== shot.height) { rows.push([sc.name, '✗ 大きさが違う', `${ref.width}x${ref.height} → ${shot.width}x${shot.height}`]); continue; }
     const diff = new PNG({ width: W, height: H });

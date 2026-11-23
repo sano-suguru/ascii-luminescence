@@ -30,6 +30,7 @@ export async function withBrowser(fn, { cdn = false } = {}) {
 export async function newPage(browser, errs, { width = 960, height = 540, still = false } = {}) {
   const pg = await browser.newPage({ viewport: { width, height } });
   pg.on('pageerror', (e) => errs.push(String(e.stack || e).slice(0, 400)));
+  pg.on('requestfailed', (r) => console.log('request failed:', r.url(), r.failure()?.errorText || ''));
   await pg.addInitScript(() => { HTMLCanvasElement.prototype.requestPointerLock = () => Promise.reject(new Error('no')); });
   if (still) await pg.addInitScript(() => {
     document.addEventListener('DOMContentLoaded', () => { const st = document.createElement('style'); st.textContent = '*,*::before,*::after{transition:none!important;animation:none!important;}'; document.head.appendChild(st); });
