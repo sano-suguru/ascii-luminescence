@@ -1,6 +1,5 @@
 // ---------------------------------------------------------------- the rune screen, fixed in size: built once per change; hovering and choosing only touch the detail lines and the slot highlights
-const CAT_BR={atk:['',''],elem:['(',')'],trig:['&lt;','&gt;'],mod:['{','}'],body:['','']};
-const CAT_NAME={atk:'武器',elem:'性質',trig:'発動',mod:'効き方',body:'護符'};
+// CAT_BR・CAT_NAME・emptyChip は src/lib/runes.ts（src/game/imports.mjs で読む）
 const PACK_W=84, PACK_SLOT=14, BAG_LINES=2;
 let packHover=null, packClick={u:0,t:0}, bagPage={atk:0,elem:0,trig:0}, bagPageN={atk:1,elem:1,trig:1};
 // padTo・wrapPlain は src/lib/text.ts（src/game/imports.mjs で読む）
@@ -18,7 +17,6 @@ function handSummary(h){ const H=effHand(h); syncHand(H); const rs=handRunes(H),
   if(H.trig)parts.push(`${RUNE_DEF[H.trig.type].name}、ひとりでに撃つ`);
   const no=rs.filter(r=>RUNE_DEF[r.type].cat==='mod'&&!modWorks(RUNE_DEF[r.type].mk,H)).map(r=>runeName(r)); if(no.length)parts.push(`<span class="dim">${no.join('・')}はこの手には効かない</span>`);
   return parts.join('　'); }
-function emptyChip(cat,attrs){ const br=cat==='atk'?['',''] :cat==='body'?['"','']:cat==='rune'?['[',']']:(CAT_BR[cat]||['','']); return `<button class="row rs empty" ${attrs}><span class="mk"> </span><span class="dim">${br[0]} 空き ${br[1]}</span></button>`; }
 const handResult=h=>{ const H=hands[h]; return (H.trig?`${RUNE_DEF[H.trig.type].name}：`:'')+handName(H); };
 function detailLines(ru){ const W=PACK_W-4;
   if(!ru)return ['<span class="lab">武器・ルーン・護符にマウスを乗せると、ここに説明が出る</span>','','','',''];

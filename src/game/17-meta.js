@@ -1,21 +1,8 @@
 // ---------------------------------------------------------------- stage D: lore (points kept between adventures), unlocks, the last adventurer's grave, trials
-const META_DEF={lore:0,spent:0,unl:[],grave:null,trials:[]};
+// META_DEF・UNLOCKS は src/lib/progress.ts（src/game/imports.mjs で読む）
 function loadMeta(){ try{ return Object.assign({},META_DEF,JSON.parse(localStorage.getItem('al_meta')||'{}')); }catch(e){ return Object.assign({},META_DEF); } }
 let META=loadMeta();
 function saveMeta(){ try{ localStorage.setItem('al_meta',JSON.stringify(META)); }catch(e){} }
-const UNLOCKS=[
-  {id:'w_star',kind:'weapon',t:'star',name:'星降りの杖',cost:15,desc:'狙った所に、遅れて光の柱が降る杖'},
-  {id:'w_rain',kind:'weapon',t:'rain',name:'雨降らしの長弓',cost:20,desc:'両手で持つ長弓。狙った所に、矢の雨を降らせる'},
-  {id:'w_gsword',kind:'weapon',t:'gsword',name:'遠鳴りの両手剣',cost:25,desc:'両手で持つ大剣。広い斬撃と、溜めた大きな斬撃'},
-  {id:'w_mstaff',kind:'weapon',t:'mstaff',name:'満ち月の長杖',cost:25,desc:'両手で持つ長杖。溜めるほど育つ光の月'},
-  {id:'r_poison',kind:'rune',t:'poison',name:'毒のルーン',cost:15,desc:'性質のルーン「毒」が、祭壇などに出るようになる'},
-  {id:'b_shatter',kind:'bless',t:'shatter',name:'恩恵「冷え込み」',cost:10,desc:'レベルアップの恩恵に加わる'},
-  {id:'b_swapedge',kind:'bless',t:'swapedge',name:'恩恵「持ち替えの冴え」',cost:10,desc:'レベルアップの恩恵に加わる'},
-  {id:'b_scorch',kind:'bless',t:'scorch',name:'恩恵「焦熱」',cost:10,desc:'レベルアップの恩恵に加わる（代償あり）'},
-  {id:'b_reckless',kind:'bless',t:'reckless',name:'恩恵「捨て身」',cost:10,desc:'レベルアップの恩恵に加わる（代償あり）'},
-  {id:'build3',kind:'build',name:'三つ目のビルド',cost:30,desc:'保存できるビルドが3つになる'},
-  {id:'t_dusk',kind:'trial',t:'dusk',name:'試練「薄明」',cost:20,desc:'灯りが約6割しか届かない。代わりに、敵にも見つかりにくい'},
-  {id:'t_fury',kind:'trial',t:'fury',name:'試練「猛り」',cost:30,desc:'敵の体力と攻撃が約3割強く、群れが少し増える'} ];
 const devAllSafe=()=>{ try{ return DEVALL; }catch(e){ return false; } };
 const unlocked=id=>devAllSafe()||META.unl.includes(id);
 const lockedOf=(kind,t)=>{ const u=UNLOCKS.find(x=>x.kind===kind&&x.t===t); return !!u&&!unlocked(u.id); };

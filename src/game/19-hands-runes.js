@@ -1,11 +1,8 @@
 // ---------------------------------------------------------------- the weapons in hand: drawn in glyphs as if held, entering from the lower edges of the view and cut off by them;
 // near parts large, far parts small; filled shapes with bright rims; a hand where a hand would be (a fist on a hilt or shaft, the bow hand and the drawing hand,
 // two hands on a two-handed weapon, an open hand when bare). Long weapons show only their upper part. Near a wall the picture shrinks toward the eye.
-const VM_ST=0.022;
-// the glyph for a stroke going this way on screen
-const vmGlyphS=(A,B)=>vmGlyph(B[0]/B[2]-A[0]/A[2],B[1]/B[2]-A[1]/A[2]);
-const vmGlyph=(dx,dy)=>{ const a=Math.atan2(dy,dx); let d=((a*180/Math.PI)+360)%180; return d<22.5||d>=157.5?'-':d<67.5?'/':d<112.5?'|':'\\'; };
-const VM_K=1.95;
+// VM_ST・vmGlyphS・vmGlyph など 5 個は src/lib/hands.ts（読む名前の一覧は src/game/imports.mjs）
+// RUNE_FONT・TRAIT_V・pct など 18 個は src/lib/runes.ts（読む名前の一覧は src/game/imports.mjs）
 const VM_MODELS=(()=>{ const TV=Math.tan(37*Math.PI/180), AS=16/9, SZ=0.03, K=VM_K;
   const S=(sx,sy,z)=>[sx*TV*AS*z,sy*TV*z,z];
   const L3=(A,B,t)=>[0,1,2].map(k=>A[k]+(B[k]-A[k])*t);
@@ -54,7 +51,6 @@ const VM_MODELS=(()=>{ const TV=Math.tan(37*Math.PI/180), AS=16/9, SZ=0.03, K=VM
 const VM_PART={fill:[0.46,0.48,0.56],edge:[0.86,0.89,0.96],metal:[0.7,0.72,0.8],wood:[0.42,0.3,0.19],woodedge:[0.66,0.49,0.32],hand:[0.5,0.35,0.25],knuckle:[0.66,0.48,0.34],arm:[0.3,0.22,0.18],head:[0.95,0.9,0.75],glow:[1,0.95,0.82],string:[0.7,0.66,0.58]};
 const VM_BRIGHT={fill:0.8,edge:1.1,metal:0.95,wood:0.78,woodedge:1.0,hand:0.75,knuckle:0.9,arm:0.45,head:1.25,glow:1.3,string:0.6};
 const VM_TINT={edge:0.7,head:0.85,glow:0.85,fill:0.25};
-const VM_MIRROR={'/':'\\','\\':'/','(':')',')':'(','<':'>','>':'<'};
 const vmKick={L:-9,R:-9};
 function drawViewWeapons(t){ if(camMode==='tps'||!started||dead||!hands||!D)return; if(gallery&&gallery.mode==='beast')return;
   const [f,r,u]=handUp(), [ex,ey,ez]=aimOrigin(); let dw=0.62;
@@ -98,7 +94,6 @@ function drawSwing(){
 }
 
 // ---------------------------------------------------------------- runes (stage B): attacks and elements held in each hand, random modifiers, chanting, reactions
-const RUNE_FONT='"Noto Sans Runic","Segoe UI Historic","Segoe UI Symbol",FreeMono,Unifont,serif';
 const RUNE_DEF={
   blade:  {cat:'atk', ch:')', name:'小剣',     wk:'剣', chant:0,   dmg:[4,6], rec:0.42, aff:['count'],                desc:'目の前を薙ぐ。詠唱はいらない'},
   bolt:   {cat:'atk', ch:'}', name:'短弓',     wk:'弓', two:true, L:'bolt', R:'bpower', chant:0.4, dmg:[3,5], rec:0.12, aff:['count','bounce','homing'], desc:'両手で持つ。左：素早く射る　右：引き絞って、強く貫く一矢'},
@@ -139,35 +134,9 @@ const RUNE_DEF={
   m_dur:   {cat:'mod',ch:'ᚠ', col:[0.85,0.8,1.0], sh:'長さ', nm:'長さ', unit:'%', name:'長さ +50%', mk:'dur', val:50, aff:[], desc:'性質の効果が長く続く。燃焼や凍えなど'},
   ward:    {cat:'body',ch:'"', col:[1.0,0.86,0.62], name:'守りの護符', aff:[], desc:'受ける傷が 15% 軽くなる'},
 };
-const TRAIT_V={count:[0,1,1,2,2,3],pierce:[0,1,1,2,3,3],bounce:[0,1,2,2,3,3],homing:[0,10,15,20,25,30],range:[1,1.2,1.35,1.5,1.65,1.8],speed:[1,1.15,1.25,1.35,1.45,1.6],
-  width:[0,0.15,0.25,0.35,0.45,0.6],knock:[1,1.5,1.8,2.1,2.4,2.8],stagger:[0,0.3,0.45,0.6,0.75,0.9],charge:[1,0.9,0.82,0.75,0.68,0.6],length:[1,1.2,1.35,1.5,1.65,1.8],focus:[0,0.2,0.4,0.6,0.8,1.0],
-  size:[1,1.15,1.3,1.45,1.6,1.8],pull:[0,2.5,3,3.5,4,4.5],fall:[1,0.85,0.75,0.65,0.55,0.45],stride:[0,0.6,1.0,1.4,1.8,2.2],link:[1,0.85,0.75,0.65,0.55,0.45],after:[0,1,1,2,2,3],area:[1,1.15,1.3,1.45,1.6,1.8],span:[1,1.25,1.5,1.75,2,2.3],accuracy:[0,1,2,3,4,5]};
-const pct=v=>Math.round((v-1)*100);
-const TD={ count:(lv,what)=>`${what}が ${TRAIT_V.count[lv]} つ増える`, pierce:lv=>`敵を ${TRAIT_V.pierce[lv]} 体貫く`, bounce:lv=>`壁で ${TRAIT_V.bounce[lv]} 回跳ねる`, homing:lv=>`飛びながら敵の方へ曲がる（${TRAIT_V.homing[lv]}度）`,
-  range:lv=>`${pct(TRAIT_V.range[lv])}% 遠くまで飛ぶ`, speed:lv=>`${pct(TRAIT_V.speed[lv])}% 速く飛ぶ`, width:lv=>`当たる幅が ${Math.round(TRAIT_V.width[lv]*100)}cm 広がる`, knock:lv=>`当たった敵を、${TRAIT_V.knock[lv]}倍の強さで押し返す`,
-  stagger:lv=>`当たった敵の攻撃の構えを、${Math.round(TRAIT_V.stagger[lv]*100)}% で崩す`, charge:lv=>`詠唱が ${Math.round((1-TRAIT_V.charge[lv])*100)}% 速い`, length:lv=>`帯が ${pct(TRAIT_V.length[lv])}% 長く届く`, focus:lv=>`照らし続けるほど強まる（最大 +${Math.round(TRAIT_V.focus[lv]*100)}%）`,
-  size:lv=>`${pct(TRAIT_V.size[lv])}% 大きい`, pull:lv=>`周りの敵を引き寄せる（${TRAIT_V.pull[lv]}m）`, fall:lv=>`降るまでが ${Math.round((1-TRAIT_V.fall[lv])*100)}% 短い`, stride:lv=>`駆ける距離が ${TRAIT_V.stride[lv]}m 伸びる`,
-  link:lv=>`次に駆けるまでの間が ${Math.round((1-TRAIT_V.link[lv])*100)}% 短い`, after:lv=>`駆けた跡に、刃の残像が ${TRAIT_V.after[lv]} つ残って当たる`, area:lv=>`雨の範囲が ${pct(TRAIT_V.area[lv])}% 広い`, span:lv=>`雨が ${pct(TRAIT_V.span[lv])}% 長く降る`, accuracy:lv=>`ばらつきが小さく、少し敵へ曲がる` };
-const TR=(k,name,what)=>({name,d:lv=>TD[k](lv,what)});
-const TRAITS={
-  blade: {count:TR('count','数','風の刃'),range:TR('range','飛距離'),width:TR('width','刃の幅'),knock:TR('knock','押し返し')},
-  dash:  {stride:TR('stride','駆ける距離'),link:TR('link','駆ける間'),after:TR('after','残像'),range:TR('range','突きの飛距離')},
-  gsword:{width:TR('width','刃の幅'),charge:TR('charge','溜めの速さ'),knock:TR('knock','押し返し'),stagger:TR('stagger','よろめき')},
-  bolt:  {count:TR('count','数','矢'),pierce:TR('pierce','貫き'),homing:TR('homing','ホーミング'),speed:TR('speed','矢の速さ')},
-  rain:  {area:TR('area','雨の広さ'),charge:TR('charge','引きの速さ'),span:TR('span','降る長さ'),count:TR('count','数','矢')},
-  rapid: {count:TR('count','数','矢'),accuracy:TR('accuracy','精密'),charge:TR('charge','装填の速さ'),knock:TR('knock','押し返し')},
-  orb:   {count:TR('count','数','弾'),bounce:TR('bounce','跳ね返り'),speed:TR('speed','弾の速さ'),knock:TR('knock','押し返し')},
-  beam:  {length:TR('length','帯の長さ'),bounce:TR('bounce','跳ね返り'),focus:TR('focus','収束')},
-  star:  {count:TR('count','数','光の柱'),size:TR('size','柱の大きさ'),fall:TR('fall','降る速さ'),pull:TR('pull','引き寄せ')},
-  mstaff:{charge:TR('charge','満ちる速さ'),size:TR('size','月の大きさ'),pull:TR('pull','潮'),count:TR('count','数','光の弾')} };
-const trName=(w,t)=>(TRAITS[w]&&TRAITS[w][t.k])?TRAITS[w][t.k].name:t.k;
 // what a trait does at its level: its first or third step, and the fifth when reached
 const trDesc=(w,t)=>{ const T=TRAITS[w]&&TRAITS[w][t.k]; return T?T.d(t.lv):''; };
-const tv=(sp,k)=>TRAIT_V[k][TL(sp,k)];
 const wTL=(h,k)=>{ const H=effHand(h); for(const t of trList(H.atk))if(t.k===k)return t.lv; return 0; };
-const trList=ru=>(ru&&ru.traits)||[];
-const weaponCol=ru=>{ const tr=trList(ru); if(!tr.length)return ''; return tr.some(t=>t.lv>=5)||ru.named?css(TIER_COL[3]):'#9fdcf0'; };
-const TL=(sp,k)=>(sp&&sp.tr&&sp.tr[k])||0;
 // a found weapon may carry 0-2 of its own traits; deeper, treasuries and the strong give higher levels
 const WEAPON_SIG=t=>Object.keys(TRAITS[t]||{}).slice(0,2);
 function rollTraits(ru,r,d,bonus){ if(!ru||RUNE_DEF[ru.type].cat!=='atk'||!TRAITS[ru.type])return ru; const tier=Math.min(4,clamp(Math.floor(((d||1)-1)/3),0,3)+(bonus||0));
@@ -181,7 +150,6 @@ const AFFIX={
   area:  {name:'範囲',       roll:r=>25+Math.floor(r()*8)*5,    fmt:v=>`範囲 +${v}%`},
   dur:   {name:'持続',       roll:r=>30+Math.floor(r()*6)*10,   fmt:v=>`持続 +${v}%`},
 };
-const TIER_COL=[[0.9,0.9,0.95],[0.45,0.72,1.0],[0.45,1.0,0.55],[1.0,0.82,0.3]];
 // what each kind of creature tends to drop, and how much each element hurts it (0 = no effect, 2 = badly)
 const ELEM_OF={l:'fire',Zf:'fire',D:'fire',Zi:'ice',L:'ice',K:'ice',Zl:'thunder',Rc:'thunder',Re:'thunder',Rw:'thunder',S:'poison',n:'poison',N:'poison',B:'poison'};
 const RES={
@@ -195,14 +163,6 @@ const RES={
 let runeUid=1, hands=null, bag=[], builds=[null,null], buildIdx=-1, runState={startChosen:false,altar1:false,taken:new Set(),lordsDone:new Set()};
 let castSt=null, swapSt=null, packSnap=null, packSel=null, trigCd={L:0,R:0}, beamSegs=[], clouds=[];
 let BOOK=new Set(); try{ BOOK=new Set(JSON.parse(localStorage.getItem('al_book')||'[]')); }catch(e){}
-const REACT={
-  steam:    {name:'蒸気',     pair:'火 × 氷', desc:'凍えたものを焼くと、蒸気が噴き出して周りを巻き込む'},
-  blast:    {name:'爆炎',     pair:'火 × 毒', desc:'毒に蝕まれたものに火をつけると、弾けて燃え広がる'},
-  overload: {name:'過熱',     pair:'火 × 雷', desc:'燃えるものと雷が重なると、周りを吹き飛ばす'},
-  shatter:  {name:'砕氷',     pair:'氷 × 雷', desc:'凍えたものに雷を落とすと、氷ごと砕ける'},
-  frostbite:{name:'凍える毒', pair:'氷 × 毒', desc:'凍えと毒が重なると、毒が長く深く残る'},
-  contagion:{name:'毒の伝播', pair:'雷 × 毒', desc:'毒に蝕まれたものに雷が走ると、毒が周りへ移る'},
-};
 function makeRune(type,nAff,r){ r=r||mr; const def=RUNE_DEF[type], pool=def.aff.slice(), aff={}; let n=0;
   while(n-->0){ const k=pool.splice(Math.floor(r()*pool.length),1)[0]; aff[k]=AFFIX[k].roll(r); }
   return {uid:runeUid++,type,aff}; }
@@ -227,12 +187,9 @@ function resetRunes(){
   runState={startChosen:false,altar1:false,taken:new Set(),lordsDone:new Set(),bodyOpen:0}; LEGEND=null; finalSt=null; won=false; renderHotbar();
   try{ if(!RSEEN.has('blade')||!RSEEN.has('bolt')){ RSEEN.add('blade'); RSEEN.add('bolt'); saveSet('al_runes',RSEEN); } }catch(e){}
 }
-const SLOT_MAX=4;
 function newHand(w){ return {atk:makeRune(w,0),slots:[null,null],slotN:2,turn:0,elem:null,trig:null}; }
-const handRunes=H=>(H.slots||[]).slice(0,H.slotN||2).filter(Boolean);
 // the element to be cast next (two different elements take turns) and the hand's trigger
 function syncHand(H){ const rs=handRunes(H), els=[...new Set(rs.filter(r=>RUNE_DEF[r.type].cat==='elem').map(r=>r.type))]; const et=els.length?els[(H.turn||0)%els.length]:null; H.elem=et?rs.find(r=>r.type===et):null; H.trig=rs.find(r=>RUNE_DEF[r.type].cat==='trig')||null; }
-const TWO_SLOTS=6;
 const isTwo=()=>!!(hands&&hands.R&&hands.R.atk&&hands.L.atk===hands.R.atk&&RUNE_DEF[hands.R.atk.type].two);
 function effHand(h){ if(!isTwo())return hands[h]; const sl=[...hands.L.slots.slice(0,hands.L.slotN||2),...hands.R.slots.slice(0,hands.R.slotN||2)].slice(0,TWO_SLOTS); return {atk:hands.R.atk,slots:sl,slotN:sl.length,turn:hands.R.turn||0,two:true}; }
 const atkType=h=>{ const H=hands[h]; if(!H||!H.atk)return 'bare'; const d=RUNE_DEF[H.atk.type]; return d.two?d[h]:H.atk.type; };
@@ -250,9 +207,6 @@ function canPutAt(h,i,ru){ if(!isTwo())return canPut(hands[h],i,ru); const H=han
   if(d.cat==='elem'){ const el=new Set(others.filter(r=>RUNE_DEF[r.type].cat==='elem').map(r=>r.type)); el.add(ru.type); if(el.size>2)return false; }
   if(d.cat==='trig'&&others.some(r=>RUNE_DEF[r.type].cat==='trig'))return false;
   if(d.cat==='mod'&&others.filter(r=>r.type===ru.type).length>=2)return false; return true; }
-// the same element twice or more in one hand resonates
-const ELEM_POW=[1,1,1.4,1.7,1.9];
-const elemCount=(H,el)=>handRunes(H).filter(r=>r.type===el).length;
 const allRunes=()=>[...new Set([hands.L.atk,...hands.L.slots,hands.R.atk,...hands.R.slots,...(hands.B?[hands.B.b0,hands.B.b1]:[]),...bag].filter(Boolean))];
 const handsKey=()=>['L','R'].map(h=>[hands[h].atk,...hands[h].slots].map(r=>r?r.uid:0).join(',')+':'+(hands[h].slotN||2)).join('|')+'|'+(hands.B?[hands.B.b0,hands.B.b1].map(r=>r?r.uid:0).join(','):'');
 function snapHands(){ return {L:{...hands.L,slots:hands.L.slots.slice()},R:{...hands.R,slots:hands.R.slots.slice()},B:{...(hands.B||{b0:null,b1:null})},bag:bag.slice()}; }

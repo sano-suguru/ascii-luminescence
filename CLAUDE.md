@@ -18,8 +18,10 @@ src/index.html       画面の作りとCSS（Vite の入口。three.js を CDN �
 src/main.js          ページの入口のモジュール（ゲーム本体 virtual:legacy-game を読むだけ）
 src/game/*.js        ゲーム本体の古い JS（31ファイル、合わせて約7,500行。下の「ゲーム本体の地図」）
 src/game/imports.mjs ゲーム本体が使う TypeScript のモジュールを読む import の文（包みの関数の前に置かれる）
-src/lib/*.ts         TypeScript に移した物（rng：シードの乱数と clamp、random：見た目の乱数 mr・mpick、glyphs：文字の図鑑の番号 G、
-                     text：パネルの文字の幅と枠、history：年代記）。厳しい型で確かめ、整形もする
+src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整形もする
+                     rng：シードの乱数と clamp、random：見た目の乱数 mr・mpick、glyphs：文字の図鑑の番号 G、color：css、math：角度など、
+                     text：パネルの文字の幅と枠、history：年代記、world：迷宮の大きさ・タイル・液体と地面・支道と異界・層ごとの変化・岩、
+                     light：灯りの計算、runes：特性・反応・手の枠、progress：経験・伝承・解放、hands：手元の武器の文字
 src/lib/bodies/*.ts  生き物の形（kit：点の型と道具 q2・q3、small・beasts・lords：各生き物の形）
 tsconfig.json        TypeScript 7 の設定（strict・noUncheckedIndexedAccess・exactOptionalPropertyTypes など）。対象は src/lib/ と tests/unit/*.ts
 vite.config.mjs      組み立て（Vite 8）。公開用は dist/、テスト用（--mode test）は .build/test/
@@ -174,7 +176,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 |---|---|
 | 00-test-mode | テスト用モード（`TEST`、時計、乱数） |
 | 01-title | タイトルのロゴ |
-| 02-constants | 定数（層・支道・異界・特別な階、MTYPES など）、シードの乱数（rand・R・RI・pick）。mr・mpick・G・mulberry32・clamp は src/lib/ |
+| 02-constants | 層・異界の中身（STRATA・テーマ・MTYPES など）、シードの乱数（rand・R・RI・pick）。迷宮の大きさ・タイル・支道・灯りの計算などは src/lib/ |
 | 03-vaults-history | 洞窟の形、宝物庫の絵（VAULTS）、歴史の飾り（makeHistory は src/lib/history.ts） |
 | 04-generate | 迷宮の生成（levelDims、generate。1つの関数で約920行） |
 | 05-renderer | 描画（シェーダー、水面、文字の図鑑、dyn、粒子の入れ物） |
@@ -189,9 +191,9 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 | 14-lights-fixtures | 灯り、備品、扉 |
 | 15-sound-fire | 音、ガス、火、火花 |
 | 16-view-input | 視界とミニマップ、伝言（msg）、当たり（solidAt）、入力の状態 |
-| 17-meta | 段階D：伝承・解放・墓・試練（META、UNLOCKS、weaponPool、trialOn）、タイトルの画面（buildIntroPanel） |
+| 17-meta | 段階D：伝承・解放・墓・試練（META、weaponPool、trialOn）、タイトルの画面（buildIntroPanel）。UNLOCKS・META_DEF は src/lib/progress.ts |
 | 18-level-player | 階の切り替え（newLevel）、罠、生き物の強さ（MSTAT）、生と死、レベルアップ（BLESS、levelChoices、lvlLine） |
-| 19-hands-runes | 手元の武器（VM_MODELS、drawViewWeapons）、ルーンの定義（RUNE_DEF、TRAITS）、性質と反応 |
+| 19-hands-runes | 手元の武器（VM_MODELS、drawViewWeapons）、ルーンの定義（RUNE_DEF）、性質と反応。TRAITS・REACT・手の枠は src/lib/runes.ts |
 | 20-chant-hits | 詠唱（beginCast、castNow…）、当たり（applyHit）、反応、飛ぶ物 |
 | 21-altars-heal | ルーンの手に入れ方、祭壇（altarFill、forgeOptions、mainPathAltars、altarLine）、回復、拾う |
 | 22-world-hints | 先にある物の気配、方向の矢印、床のルーン、詠唱の見た目、照準 |

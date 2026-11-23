@@ -19,7 +19,8 @@ function vnoise(x,y,z){
   return l(l(l(hash3(xi,yi,zi),hash3(xi+1,yi,zi),u),l(hash3(xi,yi+1,zi),hash3(xi+1,yi+1,zi),u),v),
            l(l(hash3(xi,yi,zi+1),hash3(xi+1,yi,zi+1),u),l(hash3(xi,yi+1,zi+1),hash3(xi+1,yi+1,zi+1),u),v),w);
 }
-const sstep=(a,b,x)=>{ const t=clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); };
+// sstep は src/lib/math.ts（src/game/imports.mjs で読む）
+// CHUNK・CXN・CZN は src/lib/world.ts（src/game/imports.mjs で読む）
 
 let chunks=[];
 let waterMesh=null, waterTex=null, waterLTex=null;
@@ -45,7 +46,6 @@ function updateWater(){
 }
 
 const flowW=f=>((((f-10)%(Math.PI*2))+Math.PI*2)%(Math.PI*2))/(Math.PI*2)*0.998+0.001;
-const CHUNK=8, CXN=Math.ceil(MW/CHUNK), CZN=Math.ceil(MH/CHUNK);
 function buildWorld(){
   for(const c of chunks){ scene.remove(c.mesh); c.mesh.geometry.dispose(); }
   chunks=[];

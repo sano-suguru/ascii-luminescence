@@ -29,7 +29,7 @@ function makeCave(w,h){
 // legend: # wall  H hedge  . floor  0 pillar  ~ shallow water  W deep water  L lava  : chasm  X crystal  " moss  c carpet
 //         * light  & statue  _ altar  x rubble  (space) leave as is
 // wall / wcol: the glyphs and colour of the vault's own masonry, so its outline reads from inside
-const VAULT_WALL_H=3.0;
+// VAULT_WALL_H・ROCKS・VEIN_COL・VEIN_NAME は src/lib/world.ts（src/game/imports.mjs で読む）
 const VAULTS=[
  {k:'temple', name:'円形神殿', strata:['maze','ruins'], minD:1, wall:'|I=#', wcol:[0.95,0.8,0.5], msg:'円形の神殿に足を踏み入れた。中央の像が、静かにこちらを見下ろしている。', map:[
   "...#####...",
@@ -218,11 +218,6 @@ const ARTS={
  lantern:["   |   ","  _|_  "," |   | "," | * | "," |___| "],
 };
 let HIST=null, HIST_SEED=-1;
-// rock of each stratum: two tones for the banded layers, and a name for the look text
-const ROCKS={maze:{name:'花崗岩',a:[0.62,0.56,0.62],b:[0.48,0.46,0.6]},cavern:{name:'石灰岩',a:[0.74,0.72,0.62],b:[0.52,0.6,0.72]},ruins:{name:'砂岩',a:[0.88,0.7,0.48],b:[0.68,0.52,0.44]},
-  magma:{name:'玄武岩',a:[0.36,0.3,0.32],b:[0.52,0.32,0.28]},abyss:{name:'黒曜石',a:[0.3,0.25,0.42],b:[0.46,0.34,0.62]},bigroom:{name:'大理石',a:[0.86,0.86,0.92],b:[0.7,0.72,0.82]},
-  oracle:{name:'大理石',a:[0.86,0.86,0.92],b:[0.7,0.72,0.82]},town:{name:'花崗岩',a:[0.62,0.56,0.62],b:[0.48,0.46,0.6]},fortress:{name:'花崗岩',a:[0.62,0.56,0.62],b:[0.48,0.46,0.6]}};
-const VEIN_COL={1:[1.0,0.82,0.35],2:[1.0,0.22,0.32],3:[0.35,0.55,1.0],4:[0.25,1.0,0.55]}, VEIN_NAME={1:'金',2:'紅玉',3:'青玉',4:'翠玉'};
 // makeHistory（歴史を作る）は src/lib/history.ts（src/game/imports.mjs で読む）
 
 // how much of the 70x46 frame a level uses
