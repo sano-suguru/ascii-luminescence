@@ -32,6 +32,6 @@ export default [
   {
     // スモークテストの page.evaluate の中はブラウザで動く。
     files: ['tests/**/*.mjs'],
-    languageOptions: { globals: { ...globals.browser, dbg: 'readonly' } },
+    languageOptions: { globals: { ...globals.browser, dbg: 'readonly', __test: 'readonly' } },
   },
 ];

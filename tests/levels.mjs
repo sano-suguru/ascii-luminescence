@@ -4,23 +4,15 @@
 //   - スタートから、階段・支道の入口・異界の門・戻りの階段・置かれた物まで歩いて行ける
 //     （歩けるマス＝床で、深い水でも溶岩でもない。上下左右。ゲームの mainPathAltars の bfs と同じ決まり）
 // 使い方：node tests/levels.mjs [--seeds 20] [--seed 202]
-import { chromium } from 'playwright';
-import { build } from '../tools/build.mjs';
-import { serve } from '../tools/serve.mjs';
+import { withBrowser, newPage, openTest, arg } from './lib.mjs';
 
-const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const seeds = arg('--seed') ? [Number(arg('--seed'))] : Array.from({ length: Number(arg('--seeds', 20)) }, (_, i) => (Math.imul(i + 1, 2654435761) >>> 0) % 1e9);
 
-const srv = await serve(build({ test: true }));
-const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const errs = [];
-let results;
-try {
-  const pg = await browser.newPage({ viewport: { width: 320, height: 180 } });
-  pg.on('pageerror', (e) => errs.push(String(e.stack || e).slice(0, 400)));
-  await pg.goto(`http://127.0.0.1:${srv.port}/index.html?test=1`, { waitUntil: 'commit', timeout: 120000 });
-  await pg.waitForFunction(() => window.__test && (window.__test.ready() || window.__test.error()), null, { timeout: 90000, polling: 200 });
-  results = await pg.evaluate((seeds) => {
+const results = await withBrowser(async ({ browser, base }) => {
+  const pg = await newPage(browser, errs, { width: 320, height: 180 });
+  await openTest(pg, base);
+  return pg.evaluate((seeds) => {
     const W = 70; // MW
     const out = { levels: 0, fails: [] };
     for (const seed of seeds) for (const pl of __test.places()) {
@@ -45,10 +37,7 @@ try {
     }
     return out;
   }, seeds);
-} finally {
-  await browser.close();
-  srv.close();
-}
+});
 const how = (f) => {
   const p = f.pl;
   if (p.branch) return `?dev=1&seed=${f.seed}&branch=${p.branch}:${p.lvl}`;
