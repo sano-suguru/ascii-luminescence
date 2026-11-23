@@ -1,5 +1,6 @@
-// 見た目のための乱数（もとは src/game/02-constants.js の mr・mpick）。
-// 迷宮の生成に使う、シードで決まる乱数（rand・R・RI・pick）は、まだ src/game/02-constants.js にある。
+// 乱数（もとは src/game/02-constants.js の mr・mpick・rand・R・RI・pick）。
+//   見た目の乱数（mr・mpick）：Math.random。テスト用モードでは、シードで決まる物に入れ替わる
+//   迷宮の乱数（rand・R・RI・pick）：迷宮の生成が、階ごとのシードで setRand して使う。同じシードなら同じ迷宮になる
 
 /**
  * Math.random を呼ぶ。呼んだ時の Math.random を使う（テスト用モードは、ゲームの最初に Math.random をシードで決まる物に入れ替える。
@@ -9,3 +10,19 @@ export const mr = (): number => Math.random();
 
 /** 配列から1つ選ぶ（mr を使う）。空の配列は渡さないこと */
 export const mpick = <T>(a: readonly T[]): T => a[Math.floor(mr() * a.length)] as T;
+
+// 今の迷宮の乱数。初めは見た目の乱数と同じ（迷宮の生成が、階ごとに setRand で入れ替える）
+let current: () => number = mr;
+
+/** 迷宮の乱数（0 以上 1 未満） */
+export const rand = (): number => current();
+/** 迷宮の乱数を入れ替える（例：setRand(mulberry32(seed))） */
+export const setRand = (f: () => number): void => {
+  current = f;
+};
+/** a 以上 b 未満の数（迷宮の乱数） */
+export const R = (a: number, b: number): number => a + rand() * (b - a);
+/** a 以上 b 以下の整数（迷宮の乱数） */
+export const RI = (a: number, b: number): number => Math.floor(a + rand() * (b - a + 1));
+/** 配列から1つ選ぶ（迷宮の乱数）。空の配列は渡さないこと */
+export const pick = <T>(a: readonly T[]): T => a[Math.floor(rand() * a.length)] as T;

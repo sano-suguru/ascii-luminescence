@@ -5,7 +5,7 @@ import { clamp, mulberry32 } from '../lib/rng.ts';
 import { boxText, padTo, visW, wrapPlain } from '../lib/text.ts';
 import { makeHistory } from '../lib/history.ts';
 import { G, RUNE_CHARS } from '../lib/glyphs.ts';
-import { mpick, mr } from '../lib/random.ts';
+import { R, RI, mpick, mr, pick, rand, setRand } from '../lib/random.ts';
 import { BONE, FUR, GOLD, HRAMP, PALE, SCALE, SKINR, q3 } from '../lib/bodies/kit.ts';
 import { bloatForm, bogForm, crabForm, critterForm, eelForm, fishForm, jellyForm, krakenForm, robotForm, shroomForm, snakeForm, spiderForm, wispForm } from '../lib/bodies/small.ts';
 import {

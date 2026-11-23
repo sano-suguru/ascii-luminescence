@@ -3,12 +3,8 @@
 // css は src/lib/color.ts（src/game/imports.mjs で読む）
 // computeVis・topLights は src/lib/light.ts（src/game/imports.mjs で読む）
 // RUNE_CHARS・G は src/lib/glyphs.ts（src/game/imports.mjs で読む）
-// mr・mpick は src/lib/random.ts（src/game/imports.mjs で読む）
-let rand=mr;
+// mr・mpick・rand・R・RI・pick は src/lib/random.ts（迷宮の乱数の入れ替えは setRand。src/game/imports.mjs で読む）
 // mulberry32・clamp は src/lib/rng.ts（src/game/imports.mjs で読む）
-const R=(a,b)=>a+rand()*(b-a);
-const RI=(a,b)=>Math.floor(a+rand()*(b-a+1));
-const pick=a=>a[Math.floor(rand()*a.length)];
 const RUNESET=['&','%','$','?','!','#','+','x','Y','Z','8','0','*','~','^','=','<','>','{','}','/','\\'];
 const SWAPSET='#$%&*+=?@0123456789ABCDEFGHJKLMNPQRSTUVWXYZ<>{}[]~^';
 const WG='###########%%&8HX=+#$#';
