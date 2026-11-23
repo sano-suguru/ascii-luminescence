@@ -34,12 +34,12 @@ vitest.config.mjs    単体テスト（Vitest）の設定。テストは tests/u
 package.json         スクリプトと依存。packageManager で pnpm の版を固定（pnpm@12.22.0）
 pnpm-workspace.yaml  pnpm のサプライチェーン対策（公開24時間未満は入れない、信頼の低下を拒む、インストール時のスクリプトは承認制）
 .node-version        Node の版（26.13.1）。CI・SessionStart hook・Cloudflare が読む
-renovate.json        依存の更新の PR（Renovate。公開から1日たった版だけ）
 wrangler.jsonc       Cloudflare Workers（静的アセット）の設定。公開は dist/
 .claude/settings.json  権限と hooks
 .github/workflows/ci.yml  確かめるだけの CI（check・test・画面写真の比較。どれも違えば失敗）
 .github/workflows/dependency-review.yml  PR で増える依存の脆弱性とライセンス
 .github/workflows/codeql.yml  CodeQL（JavaScript の静的解析。PR と毎週）
+.github/dependabot.yml  依存の更新の PR（Dependabot。毎週。公開から1日たった版だけ。three.js と Playwright は手で上げる）
 docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 ```
 `dist/index.html` = `head.html` + `<script>` + （`src/game/*.js` を名前の順につなぎ、`(function(){ 'use strict'; … })();` で包んだもの）+ `</script></body></html>`。
@@ -66,6 +66,16 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 ```
 - **依存を足す・上げる時**：`pnpm add -D --save-exact 名前@版`（確認が出る）。公開から24時間未満の版は入らない（pnpm-workspace.yaml）。
   インストール時にスクリプトを動かす依存は、中身を確かめてから `pnpm approve-builds` で許可する。npm で入れない（権限で止めている）。
+- **依存の更新（Dependabot）**：毎週月曜に PR が来る（npm と GitHub Actions。公開から1日たった版だけ）。自動マージはしない。
+  - three.js と Playwright は minor 以上を止めている（patch とセキュリティの更新は来る）。Playwright の patch は、中の Chromium の版が
+    変わっていないか確かめてからマージする。minor 以上は手で上げる（上の Playwright の項）。
+  - Dependabot は自分の pnpm で lockfile を作る。pnpm 12 や保護の設定に合わない lockfile は、CI の `pnpm install --frozen-lockfile` が止める
+    （lockfile の中の依存の公開日なども確かめ直す）。Dependabot の処理そのものの失敗は PR にならず、GitHub の Insights → Dependency graph →
+    Dependabot にしか出ないので、PR が長く来ない時はそこを見る。
+  - **pnpm（`package.json` の `packageManager`）と Node（`.node-version`）は Dependabot では上がらない**。手で上げる：
+    新しい版が公開から24時間以上たっていることを確かめ、版を書き換えて `pnpm install`（Node は SessionStart hook が入れ直す）、
+    `pnpm verify` を通してから、専用のコミットにする。CI（setup-node・pnpm/action-setup）も同じ版を読む。
+  - ワークフローのアクションは、コミットのハッシュで固定する（`uses: owner/name@<40文字> # vX.Y.Z`）。`pnpm check` の単体テストが確かめる。
 - ヘッドレスのChromiumは、`--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader --ignore-gpu-blocklist` で動く。
   とても遅い（960x540で1秒に1フレームくらい）。**テストはテスト用モードで書き、実時間では待たない**。
   例外は、スモークテストの「ふだんのページが描けるか」の確認だけ（テスト用モードではないので、ゲームを止めて進められない）。

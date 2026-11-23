@@ -1,0 +1,42 @@
+# 依存の更新の PR（Dependabot。GitHub に組み込まれているので、アプリは要らない）。自動マージはしない
+version: 2
+updates:
+  # pnpm も、Dependabot では npm の扱い（package.json と pnpm-lock.yaml を更新する）
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: Asia/Tokyo
+    # 公開から1日たった版だけ（pnpm-workspace.yaml の minimumReleaseAge: 1440 と合わせる）
+    cooldown:
+      default-days: 1
+    open-pull-requests-limit: 5
+    groups:
+      # フォントはまとめて更新する（画面写真の基準を作り直すことがある）
+      test-fonts:
+        patterns: ['@fontsource/*', 'dejavu-fonts-ttf']
+    # 大きな更新（minor・major）だけ止める。patch の更新とセキュリティの更新は来る（update-types はバージョンの更新だけに効く）
+    ignore:
+      # three.js は r147 に固定（0.147 → 0.148 は minor。上げると見た目が変わるので、別の作業として行う）
+      - dependency-name: three
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+      # Playwright は、クラウド環境の Chromium（/opt/pw-browsers）と版を合わせているので、minor 以上は手で上げる。
+      # patch の PR が来たら、中の Chromium の版が変わっていないか確かめてからマージする
+      - dependency-name: playwright
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+  # GitHub Actions（コミットのハッシュで固定したまま、ハッシュと版のコメントを更新する）
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: Asia/Tokyo
+    # 公開から1日たった版だけ（書かなくても既定で3日待つが、npm と合わせて明示する）
+    cooldown:
+      default-days: 1
+    groups:
+      actions:
+        patterns: ['*']
