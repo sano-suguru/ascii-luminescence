@@ -18,7 +18,9 @@ src/index.html       画面の作りとCSS（Vite の入口。three.js を CDN �
 src/main.js          ページの入口のモジュール（ゲーム本体 virtual:legacy-game を読むだけ）
 src/game/*.js        ゲーム本体の古い JS（31ファイル、合わせて約7,500行。下の「ゲーム本体の地図」）
 src/game/imports.mjs ゲーム本体が使う TypeScript のモジュールを読む import の文（包みの関数の前に置かれる）
-src/lib/*.ts         TypeScript に移した物（rng：乱数と clamp、text：パネルの文字の幅と枠、history：年代記）。厳しい型で確かめ、整形もする
+src/lib/*.ts         TypeScript に移した物（rng：シードの乱数と clamp、random：見た目の乱数 mr・mpick、glyphs：文字の図鑑の番号 G、
+                     text：パネルの文字の幅と枠、history：年代記）。厳しい型で確かめ、整形もする
+src/lib/bodies/*.ts  生き物の形（kit：点の型と道具 q2・q3、small・beasts・lords：各生き物の形）
 tsconfig.json        TypeScript 7 の設定（strict・noUncheckedIndexedAccess・exactOptionalPropertyTypes など）。対象は src/lib/ と tests/unit/*.ts
 vite.config.mjs      組み立て（Vite 8）。公開用は dist/、テスト用（--mode test）は .build/test/
 tools/vite-plugins.mjs  Vite のプラグイン：legacyGame（src/game をつないで1つのモジュールに）・testPage（テスト版）・privateMaps（ソースマップを公開物の外へ）・noCssStub（ページの <style> の空の部品を消す）
@@ -107,8 +109,12 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 ## TypeScript に移す（段階6で少しずつ）
 古い JS（src/game/）の関数を、1つずつ src/lib/*.ts に移す。動きを変えないことが一番大事。
 1. src/lib/ に、型を付けて書き直す（`export` する）。古い JS の外の名前に頼る物（`rand`・`D` など、ゲームの状態）は、まだ移さない。
+   `const` でも中身が変わる入れ物（`player`・`keys`・`msgs` など）は状態なので、移さない。
+   TypeScript のモジュールは、古い JS より先に読まれる。読んだ時に値を覚える書き方（`const mr=Math.random` など）は、
+   テスト用モードの入れ替えより前の値を覚えてしまうので、呼んだ時に読む形にする（`mr = () => Math.random()`）。
 2. `src/game/imports.mjs` に import を足し、src/game/ から元の定義を消す（「〜は src/lib/xx.ts」と1行残す）。
-   消し忘れると、包みの中の古い定義が import を黙って隠す。lint-game（pnpm check と編集直後の hook）が、読んだ名前の宣言をエラーにして止める。
+   消し忘れると、包みの中の古い定義が import を黙って隠す。lint-game（pnpm check と編集直後の hook）が、包みの一番外での宣言をエラーにして止める
+   （関数の中で同じ名前を使い直すのは、その中だけのことなので止めない。色の名前の `EYE` など）。
 3. 移す前の実装と、たくさんの入力で同じ結果になることを確かめる（Node 26 は .ts をそのまま動かせる。古い関数は git の版から取り出す）。
    乱数を引く順番を変えると、同じシードで違う結果になる。移す前の値を、単体テスト（tests/unit/*.test.ts）に残す。
 4. `pnpm fmt`・`pnpm check`・`pnpm test`・`pnpm test:visual`（画素まで同じはず）。
@@ -168,18 +174,18 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 |---|---|
 | 00-test-mode | テスト用モード（`TEST`、時計、乱数） |
 | 01-title | タイトルのロゴ |
-| 02-constants | 定数（層・支道・異界・特別な階、MTYPES など）、乱数と小さな道具（mr・rand。mulberry32・clamp は src/lib/rng.ts） |
+| 02-constants | 定数（層・支道・異界・特別な階、MTYPES など）、シードの乱数（rand・R・RI・pick）。mr・mpick・G・mulberry32・clamp は src/lib/ |
 | 03-vaults-history | 洞窟の形、宝物庫の絵（VAULTS）、歴史の飾り（makeHistory は src/lib/history.ts） |
 | 04-generate | 迷宮の生成（levelDims、generate。1つの関数で約920行） |
 | 05-renderer | 描画（シェーダー、水面、文字の図鑑、dyn、粒子の入れ物） |
 | 06-world | 世界の状態（D・depth・monsters・player など）、世界の組み立て（buildWorld） |
-| 07-bodies-lords | 生き物の形：忘れられた獣の型、トロル・ゴーレム、人型の見た目、主（不死の王、蜘蛛の女王、ナーガ、竜） |
-| 08-bodies-shadow | 生き物の形：王の影、深みの主、機械 |
-| 09-bodies-creatures | 生き物の形：小さな生き物、人型、オーガ、四つ足、大きな生き物、死者 |
-| 10-bodies-beast | 忘れられた獣の組み立て（buildForm）、獣の記録 |
+| 07-bodies-lords | 生き物の形：忘れられた獣の型、トロル、人型の見た目、主（不死の王、蜘蛛の女王、ナーガ、竜）。古い獣・ゴーレムの形は src/lib/bodies/ |
+| 08-bodies-shadow | 生き物の形：王の影（二つ目の姿・変身）、深みの主。一つ目の姿と機械の形は src/lib/bodies/lords.ts |
+| 09-bodies-creatures | 生き物の形：人型、オーガ、リッチ、気配の動き。小さな生き物・四つ足・大きな生き物・亡霊・幻影の形は src/lib/bodies/ |
+| 10-bodies-beast | 忘れられた獣の組み立て（buildForm）、獣の記録（眠った姿 beastSleep は src/lib/bodies/lords.ts） |
 | 11-monster-move | 生き物を作る（makeMonster）、歩ける所（canStep）、行き先（chooseNext） |
 | 12-hud-text | 忍び足と灯り、状態の表示（renderStatus）、操作・年代記の画面、物音（**パネルの文字の幅 visW と枠 boxText は src/lib/text.ts**） |
-| 13-creatures | 小さな生き物、群れ、大きな生き物の動き（updateMonster）、描く（drawMonster） |
+| 13-creatures | 小さな生き物、群れ、大きな生き物の動き（updateMonster）、描く（drawMonster）。古い形は src/lib/bodies/small.ts |
 | 14-lights-fixtures | 灯り、備品、扉 |
 | 15-sound-fire | 音、ガス、火、火花 |
 | 16-view-input | 視界とミニマップ、伝言（msg）、当たり（solidAt）、入力の状態 |

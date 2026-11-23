@@ -9,40 +9,8 @@ function shadowAura(m,t){ const sc=m.ty.scale||1, dp=Math.hypot(m.x-player.x,m.z
       dyn(x,0.05,z,G(edge?'.':'~'),0.2,edge?0.75:0.24,edge?0.72:0.16,edge?0.95:0.4); } }
   if(mr()<0.2){ const a=mr()*6.28, r=mr()*0.9*sc; spawn(m.x+Math.cos(a)*r,0.2,m.z+Math.sin(a)*r,Math.cos(a)*0.2,0.25,Math.sin(a)*0.2,2.6,G(mpick(['~','%'])),0.26,0.16,0.1,0.26,0); } }
 
-function shadowKingForm(){
-  // the first form, kept simple: a king's cloak and wings, a crown of light, one cold eye, the heart; the dark held inside this shape like a seal.
-  // cracks of cold light (part 'crack', each with a health threshold) open as it weakens, letting the starry dark show through
-  const pts=[], S=0.08;
-  const EDGE=[0.88,0.84,1.0], DARK=[0.26,0.18,0.42], SHARD=[0.92,0.9,1.0], EYE=[0.75,0.92,1.0], HEART=[1.0,0.86,0.55], CRACK=[0.8,0.9,1.0], STAR=[0.7,0.72,1.0];
-  const lit=(x,y,z,ch,s,b,col,part,extra)=>pts.push(Object.assign({x,y,z,g:G(ch),s,b,part:part||'body',ph:mr()*6.28,piv:0,pz:0,col},extra||{}));
-  const strokeCh=(dx,dy)=>Math.abs(dy)>Math.abs(dx)*2?'|':Math.abs(dx)>Math.abs(dy)*2?'-':(dx*dy>0?'/':'\\');
-  const stroke=(a,b,col,bri,s,part,step)=>{ const dx=b[0]-a[0], dy=b[1]-a[1], dz=b[2]-a[2], L=Math.hypot(dx,dy,dz), n=Math.max(1,Math.round(L/(step||0.1))), ch=strokeCh(dx,dy);
-    for(let k=0;k<=n;k++){ const f=k/n; lit(a[0]+dx*f,a[1]+dy*f,a[2]+dz*f,ch,s||S,bri,col,part); } };
-  const skin=(x,y,z,nx,nz,part,slope)=>{ const rim=1-Math.abs(nz)/(Math.hypot(nx,nz)||1);
-    if(rim>0.72)lit(x,y,z,slope>0.35?'/':slope<-0.35?'\\':'|',S,1.6+1.2*rim,EDGE,part); else if(mr()<0.6)lit(x,y,z,mpick(['%',':','.']),S,0.3+0.2*rim,DARK,part); };
-  const prof=y=>y<1.0?0.92-0.47*Math.pow(y/1.0,0.8):y<1.78?0.45+0.27*Math.sin((y-1.0)/0.78*Math.PI/2):0.72-0.52*Math.min(1,(y-1.78)/0.18);
-  for(let y=0.04;y<1.96;y+=0.12){ const r=prof(y), slope=(prof(y+0.05)-prof(y-0.05))/0.1, n=Math.max(8,Math.round(2*Math.PI*r/0.13));
-    for(let k=0;k<n;k++){ const a=k/n*Math.PI*2+y*2, nx=Math.cos(a), nz=Math.sin(a); if(y<0.25&&mr()<0.4){ lit(nx*r*(1+mr()*0.3),0.03,nz*r*(1+mr()*0.3),'~',S,0.6,DARK,'robe'); continue; } skin(nx*r,y,nz*r*0.8,nx,nz,y<1.0?'robe':'body',nx>0?-slope:slope); } }
-  // wings: two finger bones each, edges bright
-  for(const sd of [1,-1]){ const root=[sd*0.45,1.75,-0.25], top=[sd*1.35,2.65,-0.55], far=[sd*2.1,1.95,-0.6];
-    stroke(root,top,EDGE,1.9,S,'wing2',0.1); stroke(top,far,EDGE,1.8,S,'wing2',0.1);
-    const lows=[[sd*1.0,0.7,-0.45],[sd*1.7,1.05,-0.5]]; for(const e of lows){ stroke(top,e,[0.66,0.6,0.86],1.2,S*0.9,'wing2',0.12); lit(e[0],e[1]-0.06,e[2],'\'',S,1.4,EDGE,'wing2'); }
-    for(let q=0;q<26;q++){ const u=mr(), v=mr()*(1-u), A=top, B=lows[0], C=far; if(mr()<0.3)continue; lit(A[0]+(B[0]-A[0])*u+(C[0]-A[0])*v,A[1]+(B[1]-A[1])*u+(C[1]-A[1])*v,A[2]-0.03,mpick([':','.','%']),S,0.32,DARK,'wing2'); } }
-  for(const sd of [1,-1])for(let k=0;k<2;k++){ const b=[sd*(0.62+k*0.1),1.8,(k-0.5)*0.16], tp=[sd*(0.74+k*0.12),2.02,(k-0.5)*0.2]; stroke(b,tp,EDGE,1.8,S*0.85,'body',0.08); }
-  // the hollow head, one cold eye
-  for(let i=0;i<34;i++){ const y=1-2*(i+0.5)/34, rr=Math.sqrt(1-y*y), a=i*2.39996, nx=Math.cos(a)*rr, nz=Math.sin(a)*rr; skin(nx*0.22,2.16+y*0.24,nz*0.2,nx,nz,'head',0); }
-  lit(0,2.16,0.12,'*',S*2.2,4.4,EYE,'eye');
-  // the crown: one ring of broken light and a spire
-  for(let k=0;k<11;k++)lit(0,2.64+0.05*Math.sin(k*2),0,mpick(['/','\\','<','>','|']),S*1.3,3.4,SHARD,'orbit',{r:0.38,sp:0.4,ph:k/11*Math.PI*2});
-  for(let k=0;k<6;k++)lit((mr()-0.5)*0.04,2.8+k*0.07,0,k===5?'^':'|',S*1.2,3.6-k*0.1,SHARD,'head');
-  // the heart (seen in the light)
-  lit(0,1.55,0.08,'*',S*2.6,4.0,HEART,'heart'); for(let k=0;k<8;k++){ const a=k/8*Math.PI*2; lit(Math.cos(a)*0.1,1.55+Math.sin(a)*0.1,0.1,'+',S*0.9,2.4,HEART,'heart'); }
-  // cracks of the seal: each opens below its threshold of health, with the starry dark behind it
-  for(let c=0;c<7;c++){ const th=0.95-c*0.06; let a=mr()*Math.PI*2*0.8-0.4*Math.PI+Math.PI/2, y=0.3+mr()*1.4;
-    for(let k=0;k<9;k++){ const r=prof(y)+0.01, x=Math.cos(a)*r, z=Math.sin(a)*r*0.8; const na=a+(mr()-0.5)*0.35, ny=y+0.07+(mr()-0.3)*0.06, dx=Math.cos(na)*r-x, dy=ny-y;
-      lit(x,y,z,strokeCh(dx,dy),S*1.05,3.0,CRACK,'crack',{th}); if(k%3===1)lit(x*0.92,y,z*0.92,mpick(['.','+']),S*0.8,2.2,STAR,'crack',{th}); a=na; y=ny; } }
-  return pts;
-}
+// shadowKingForm・KRAKEN_T・KRAKEN_W など 6 個は src/lib/bodies/lords.ts（読む名前の一覧は src/game/imports.mjs）
+// BRASS・BRASS_R・mPut・mLit は src/lib/bodies/kit.ts（src/game/imports.mjs で読む）
 // the second form: the seal broken. The cloak twisted into a long body, the wing bones grown into two great arms with torn membrane hanging,
 // the crown's shards grown into horns, the same single eye in a hollow skull with an open jaw; the starry dark and the trapped faces of the kings inside;
 // top-heavy (the chest the thickest), flared ribs, muscle bands, great back fins, a thick double coil on the floor, leaning hard forward; the heart in the chest with light running down the belly
@@ -155,16 +123,7 @@ function drawMorph(m,t){ const M=m.morph, f=clamp((time-M.t0)/M.dur,0,1); if(f>=
 // many small red eyes in pairs and a diamond eye on the brow, a fringe of short tentacles hanging from the mouth into the water,
 // eight tentacles - two rising above the head and hooking over it, two arching out to the sides, two curling up toward you, two behind - suckers on the inside of each curl;
 // two broken temple pillars stuck in its back
-const KRAKEN_T=[
-  [[-0.45,0,0.1],[-0.9,1.2,0.0],[-0.85,2.4,-0.1],[-0.25,2.95,0.1],[0.12,2.65,0.32],[0.02,2.35,0.36]],
-  [[0.5,0,0.05],[1.0,1.05,-0.1],[1.1,2.05,-0.2],[0.8,2.65,0.0],[0.45,2.55,0.22],[0.55,2.28,0.32]],
-  [[-0.42,0,0.62],[-0.75,0.42,1.3],[-0.62,0.95,1.8],[-0.3,1.12,1.92],[-0.18,0.88,1.78]],
-  [[0.38,0,0.66],[0.82,0.32,1.22],[0.96,0.78,1.62],[0.7,1.02,1.76],[0.6,0.82,1.66]]], KRAKEN_W=[0.22,0.22,0.2,0.2];
-// tentacles breaking the water at different distances: some arch high, some curl in or out, a few show only their tips
-for(let k=0;k<10;k++){ const a=k/10*Math.PI*2+0.3*(k%3)+0.15, r=1.35+0.95*((k*0.618)%1), tipOnly=k%4===3, h=tipOnly?0.35+0.15*((k*0.41)%1):0.6+1.5*((k*0.37+0.2)%1), sd=k%2?1:-1;
-  const bx=Math.cos(a)*r, bz=Math.sin(a)*r, tx=-Math.sin(a)*sd, tz=Math.cos(a)*sd, ox=Math.cos(a)*(k%3?1:-1), oz=Math.sin(a)*(k%3?1:-1), L=tipOnly?0.4:1;
-  KRAKEN_T.push([[bx,0,bz],[bx+tx*0.15*L,h*0.45,bz+tz*0.15*L],[bx+tx*0.3*L+ox*0.1*L,h*0.9,bz+tz*0.3*L+oz*0.1*L],[bx+tx*0.15*L+ox*0.35*L,h,bz+tz*0.15*L+oz*0.35*L],[bx+ox*0.4*L,h*0.78,bz+oz*0.4*L]]);
-  KRAKEN_W.push(tipOnly?0.09:0.13+0.04*((k*0.29)%1)); }
+// 水面から出る10本の触手も、KRAKEN_T・KRAKEN_W に入っている（src/lib/bodies/lords.ts）
 function deepKrakenForm(){
   const pts=[], S=0.08, LD=[0.42,0.72,0.55];
   const COL={skin:[0.36,0.5,0.62], dark:[0.2,0.26,0.36], stone:[0.64,0.66,0.6], moss:[0.42,0.72,0.4], eye:[1.0,0.32,0.24], sucker:[0.7,0.85,0.95], ridge:[0.6,0.72,0.85]};
@@ -210,36 +169,6 @@ function krakenAura(m,t){ const sc=m.ty.scale||1, dp=Math.hypot(m.x-player.x,m.z
   for(const L of m.lamps){ const b=0.6+0.4*Math.sin(t*0.9+L[2]); dyn(L[0],0.12+0.04*Math.sin(t+L[2]),L[1],G('*'),0.2,1.2*b,0.95*b,0.5*b); }
   if(mr()<0.12){ const c=KRAKEN_T[Math.floor(mr()*KRAKEN_T.length)][0], p=at(c[0],c[2]); for(let q=0;q<6;q++)spawn(p[0],0.1,p[1],(mr()-0.5)*1.2,1+mr()*1.5,(mr()-0.5)*1.2,0.8,G(mpick(['\'','.',','])),0.14,0.7,0.85,0.95,1); } }
 
-// ---------------------------------------------------------------- the ancient machines, each its own body: old brass with light leaking from the seams (readable glyphs; S about 0.28 local)
-const BRASS=[0.85,0.68,0.38], BRASS_R=['.','-','=','#','@'];
-function mPut(pts,x,y,z,nx,ny,nz,col,ramp,s,part,extra){ const LD=[0.42,0.72,0.55], l=Math.hypot(nx,ny,nz)||1, d=(nx*LD[0]+ny*LD[1]+nz*LD[2])/l, i=clamp(0.2+0.8*Math.max(0,d),0,1);
-  pts.push(Object.assign({x,y,z,g:G(ramp[Math.min(ramp.length-1,Math.floor(i*ramp.length))]),s,b:0.45+0.95*i,part:part||'body',ph:mr()*6.28,piv:0,pz:0,col},extra||{})); }
-function mLit(pts,x,y,z,ch,s,b,col,part,extra){ pts.push(Object.assign({x,y,z,g:G(ch),s,b,part:part||'body',ph:mr()*6.28,piv:0,pz:0,col},extra||{})); }
-function cleanerForm(ty){ const pts=[], S=0.28, C=ty.col;
-  for(const [y,r] of [[0.1,0.56],[0.22,0.56],[0.32,0.46],[0.42,0.3],[0.5,0.12]]){ const n=Math.max(5,Math.round(2*Math.PI*r/0.3)); for(let k=0;k<n;k++){ const a=k/n*Math.PI*2; mPut(pts,Math.cos(a)*r,y,Math.sin(a)*r,Math.cos(a),y>0.3?0.8:0.1,Math.sin(a),BRASS,BRASS_R,S); } }
-  for(let k=0;k<14;k++){ const a=k/14*Math.PI*2; mLit(pts,Math.cos(a)*0.57,0.27,Math.sin(a)*0.57,'-',S*0.8,2.2,C); }
-  for(const sd of [1,-1])for(let k=0;k<3;k++)mLit(pts,0,0.05,0,k?'x':'*',S*0.9,1.6,[0.9,0.9,0.85],'spin',{cx:sd*0.3,cz:0.32,r:0.1+k*0.05,sp:7*sd,ph:k*2.1});
-  for(let k=0;k<4;k++)mLit(pts,(k-1.5)*0.1,0.12,0.58,'=',S*0.8,1.8,C);
-  mLit(pts,0,0.44,0.24,'.',S,3.2,C,'eye'); return pts; }
-function repairerForm(ty){ const pts=[], S=0.27, C=ty.col;
-  for(let i=0;i<30;i++){ const y=1-2*(i+0.5)/30, rr=Math.sqrt(1-y*y), a=i*2.39996; mPut(pts,Math.cos(a)*rr*0.36,0.78+y*0.32,Math.sin(a)*rr*0.36,Math.cos(a)*rr,y,Math.sin(a)*rr,BRASS,BRASS_R,S); }
-  for(let k=0;k<5;k++)mLit(pts,(k-2)*0.08,0.84,0.36,'=',S*0.85,2.6,C,'eye');
-  for(let k=0;k<12;k++){ const a=k/12*Math.PI*2; mLit(pts,Math.cos(a)*0.37,0.66,Math.sin(a)*0.37,'-',S*0.75,1.9,C); }
-  for(const [a,part] of [[Math.PI/2,'legL'],[Math.PI*7/6,'legR'],[-Math.PI/6,'legL']]){ const fx=Math.cos(a)*0.34, fz=Math.sin(a)*0.34; for(let k=0;k<4;k++){ const f=k/3; mLit(pts,fx*(0.5+0.5*f),0.5-0.48*f,fz*(0.5+0.5*f),k===3?'^':'|',S,1.1,BRASS,part,{piv:0.5,pz:fz*0.5}); } }
-  const tools=['>','+','=','%'];
-  [[0.36,0.84,1,'armR'],[0.34,0.66,1,'armR'],[-0.36,0.84,-1,'armL'],[-0.34,0.66,-1,'armL']].forEach(([x,y,sd,part],j)=>{ const el=[x+sd*0.22,y+0.05,0.18], tp=[x+sd*0.12,y-0.08,0.48];
-    for(let k=0;k<=3;k++){ const f=k/3; mLit(pts,x+(el[0]-x)*f,y+(el[1]-y)*f,0.05+(el[2]-0.05)*f,'-',S*0.85,1.2,BRASS,part,{piv:y}); }
-    mLit(pts,el[0],el[1],el[2],'o',S*0.9,1.5,BRASS,part,{piv:y}); for(let k=1;k<=3;k++){ const f=k/3; mLit(pts,el[0]+(tp[0]-el[0])*f,el[1]+(tp[1]-el[1])*f,el[2]+(tp[2]-el[2])*f,'/',S*0.85,1.2,BRASS,part,{piv:y}); }
-    mLit(pts,tp[0],tp[1],tp[2]+0.05,tools[j],S*1.05,2.6,[0.95,0.95,0.9],part,{piv:y}); });
-  for(let k=0;k<8;k++)mLit(pts,(k%3-1)*0.14,0.86+Math.floor(k/3)*0.13,-0.42,'#',S,0.9,[0.6,0.6,0.58]); return pts; }
-function watcherForm(ty){ const pts=[], S=0.26, C=ty.col;
-  for(const [a,part] of [[Math.PI/2,'legL'],[Math.PI*7/6,'legR'],[-Math.PI/6,'legL']]){ const fx=Math.cos(a)*0.55, fz=Math.sin(a)*0.55, kx=Math.cos(a)*0.32, kz=Math.sin(a)*0.32;
-    for(let k=0;k<=4;k++){ const f=k/4; mLit(pts,kx*f,1.3-(1.3-0.75)*f,kz*f,fx>0?'/':'\\',S*0.9,1.1,BRASS,part,{piv:1.3,pz:0}); }
-    mLit(pts,kx,0.75,kz,'o',S,1.4,BRASS,part,{piv:1.3}); for(let k=1;k<=4;k++){ const f=k/4; mLit(pts,kx+(fx-kx)*f,0.75-0.73*f,kz+(fz-kz)*f,'|',S*0.9,1.1,BRASS,part,{piv:1.3}); } }
-  for(let k=0;k<10;k++){ const a=k/10*Math.PI*2; mLit(pts,Math.cos(a)*0.2,1.3,Math.sin(a)*0.2,'=',S*0.85,1.3,BRASS); }
-  for(let i=0;i<34;i++){ const y=1-2*(i+0.5)/34, rr=Math.sqrt(1-y*y), a=i*2.39996, nz=Math.sin(a)*rr; if(nz>0.55)continue; mPut(pts,Math.cos(a)*rr*0.3,1.62+y*0.3,nz*0.3,Math.cos(a)*rr,y,nz,BRASS,BRASS_R,S); }
-  for(let k=0;k<12;k++){ const a=k/12*Math.PI*2; mLit(pts,Math.cos(a)*0.2,1.62+Math.sin(a)*0.2,0.25,Math.abs(Math.cos(a))>0.7?'|':'-',S*0.9,1.6,BRASS,'ap',{cx:0,cy:1.62}); mLit(pts,Math.cos(a)*0.13,1.62+Math.sin(a)*0.13,0.28,a<Math.PI?'<':'>',S*0.8,1.8,[0.8,0.6,0.5],'ap',{cx:0,cy:1.62}); }
-  mLit(pts,0,1.62,0.3,'@',S*1.5,4.2,C,'eye'); return pts; }
 // the hounds' trails: sparks behind the fire hound, frozen breath from the ice hound, afterimages behind the light hound
 function houndAura(m,t){ const sc=m.ty.scale||1, mv=m.moving||0, h=m.ty.hound, cy=Math.cos(m.yaw), sy=Math.sin(m.yaw);
   if(Math.hypot(m.x-player.x,m.z-player.z)>26)return;

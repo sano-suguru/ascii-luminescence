@@ -1,21 +1,5 @@
 // ---------------------------------------------------------------- small creatures (the living layer of the world; they never hunt you)
-function critterForm(ty){
-  const pts=[], add=(x,y,z,ch,s,b,part,piv,pz)=>pts.push({x,y,z,g:G(ch),s,b,part:part||'body',ph:mr()*6.28,piv:piv||0,pz:pz||0});
-  if(ty.form==='fish'){
-    add(0,0,0.32,'>',0.22,2.0,'head');
-    for(let k=0;k<4;k++)add(0,0,0.18-k*0.12,k%2?'=':'-',0.2,1.5,'body');
-    add(0,0,-0.36,'<',0.24,1.4,'tail',1); add(0.09,0.02,0.05,'.',0.1,1.6,'body'); add(-0.09,0.02,0.05,'.',0.1,1.6,'body');
-  } else if(ty.form==='shroom'){
-    for(let k=0;k<3;k++)add(0,0.1+k*0.16,0,'|',0.18,0.8,'body');
-    for(let k=0;k<8;k++){ const a=k/8*Math.PI*2; add(Math.cos(a)*0.22,0.58,Math.sin(a)*0.22,k%2?'^':'n',0.17,1.5,'head'); }
-    add(0,0.66,0,'*',0.2,2.4,'core'); for(let k=0;k<5;k++){ const a=k/5*Math.PI*2; add(Math.cos(a)*0.12,0.5,Math.sin(a)*0.12,'.',0.1,2.2,'head'); }
-  } else {
-    for(let i=0;i<10;i++){ const y=1-2*(i+0.5)/10, rr=Math.sqrt(1-y*y), a=i*2.39996; add(Math.cos(a)*rr*0.2,0.28+y*0.1,Math.sin(a)*rr*0.2,mpick(['&','%','o']),0.14,1.1,'body'); }
-    add(0.07,0.38,0.18,'o',0.1,2.4,'head'); add(-0.07,0.38,0.18,'o',0.1,2.4,'head');
-    for(const sx of [1,-1])for(const z of [0.15,0,-0.15]){ const part=((z>0)===(sx>0))?'legL':'legR'; add(sx*0.28,0.12,z,sx>0?'\\':'/',0.14,0.9,part,0.25,z); }
-  }
-  return pts;
-}
+// critterForm・spiderForm・robotForm など 5 個は src/lib/bodies/small.ts（読む名前の一覧は src/game/imports.mjs）
 function critterStep(m,away){
   const opts=[]; for(const d of D4){ const i=(m.cz+d[1])*MW+m.cx+d[0]; if(canStep(m,i))opts.push(d); }
   if(!opts.length)return;
@@ -79,22 +63,6 @@ function sShriek(x,z){ if(!sndReady())return; const t=SND.ctx.currentTime, o=sOu
     g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.1,t+0.03); g.gain.exponentialRampToValueAtTime(0.001,t+1.0); os.connect(g); g.connect(o); os.start(t); os.stop(t+1.05); } }
 
 // ---------------------------------------------------------------- packs and hunters: spiders and their webs, hounds on your scent, snapjaw camps, ancient machines
-function spiderForm(){
-  const pts=[], add=(x,y,z,ch,s,b,part,piv,pz)=>pts.push({x,y,z,g:G(ch),s,b,part:part||'body',ph:mr()*6.28,piv:piv||0,pz:pz||0});
-  for(let i=0;i<10;i++){ const y=1-2*(i+0.5)/10, rr=Math.sqrt(1-y*y), a=i*2.39996; add(Math.cos(a)*rr*0.22,0.42+y*0.16,-0.18+Math.sin(a)*rr*0.26,mpick(['%','&','o']),0.15,1.0,'body'); }
-  for(let i=0;i<6;i++){ const a=i/6*Math.PI*2; add(Math.cos(a)*0.12,0.42,0.16+Math.sin(a)*0.08,'o',0.12,1.1,'head'); }
-  add(0.05,0.48,0.26,'*',0.08,2.6,'head'); add(-0.05,0.48,0.26,'*',0.08,2.6,'head'); add(0.02,0.52,0.24,'.',0.06,2.4,'head'); add(-0.02,0.52,0.24,'.',0.06,2.4,'head');
-  for(const sx of [1,-1])for(let k=0;k<4;k++){ const z=0.2-k*0.13, part=((k%2===0)===(sx>0))?'legL':'legR';
-    add(sx*0.24,0.5,z,sx>0?'/':'\\',0.14,0.8,part,0.42,z); add(sx*0.4,0.34,z+0.02,sx>0?'\\':'/',0.14,0.8,part,0.42,z); add(sx*0.5,0.12,z+0.04,'|',0.12,0.7,part,0.42,z); }
-  return pts;
-}
-function robotForm(){
-  const pts=[], add=(x,y,z,ch,s,b,part)=>pts.push({x,y,z,g:G(ch),s,b,part:part||'body',ph:mr()*6.28,piv:0,pz:0});
-  for(let a=0;a<3;a++)for(let b=0;b<2;b++)for(let c=0;c<3;c++){ if(a===1&&c===1&&b===0)continue; add((a-1)*0.16,0.42+b*0.18,(c-1)*0.16,(a+b+c)%2?'#':'=',0.17,0.85,'body'); }
-  add(0,0.56,0.26,'o',0.2,3.0,'core'); add(0,0.82,0,'|',0.14,0.8,'head'); add(0,0.96,0,'*',0.12,2.4,'head');
-  for(const sx of [1,-1])for(let k=0;k<3;k++)add(sx*0.27,0.14,(k-1)*0.16,'=',0.15,0.7,'body');
-  return pts;
-}
 let scent=new Float32Array(NCELL), webMsg=false, webBurnMsg=false, repairMsg=false;
 function drawWebs(t){
   if(!D.webs)return;
@@ -157,19 +125,6 @@ function sAlarm(x,z){ if(!sndReady())return; const t=SND.ctx.currentTime, o=sOut
     g.gain.setValueAtTime(0,t+k*0.22); g.gain.linearRampToValueAtTime(0.06,t+k*0.22+0.02); g.gain.linearRampToValueAtTime(0,t+k*0.22+0.2); os.connect(g); g.connect(o); os.start(t+k*0.22); os.stop(t+k*0.22+0.21); } }
 
 // ---------------------------------------------------------------- large creatures of the terrain, mighty ones of the deep, and the lords of the branches
-function bogForm(){
-  const pts=[], add=(x,y,z,ch,s,b,part)=>pts.push({x,y,z,g:G(ch),s,b,part:part||'body',ph:mr()*6.28,piv:0,pz:0});
-  for(let i=0;i<22;i++){ const y=(i+0.5)/22, rr=Math.sqrt(1-y*y)*0.55, a=i*2.39996; add(Math.cos(a)*rr,y*0.75,Math.sin(a)*rr,mpick(['%','&','#','~','o']),0.2,0.9,'body'); }
-  add(0.14,0.62,0.4,'o',0.14,3.0,'head'); add(-0.14,0.62,0.4,'o',0.14,3.0,'head');
-  for(let k=0;k<5;k++)add((k-2)*0.12,0.18,0.5,'|',0.14,0.8,'body');
-  return pts;
-}
-function krakenForm(){
-  const pts=[], add=(x,y,z,ch,s,b,part)=>pts.push({x,y,z,g:G(ch),s,b,part:part||'body',ph:mr()*6.28,piv:0,pz:0});
-  for(let i=0;i<16;i++){ const y=1-2*(i+0.5)/16, rr=Math.sqrt(1-y*y), a=i*2.39996; add(Math.cos(a)*rr*0.6,y*0.35,Math.sin(a)*rr*0.6,mpick(['%','&','o','8']),0.24,0.7,'body'); }
-  add(0.2,0.15,0.45,'O',0.22,3.0,'head'); add(-0.2,0.15,0.45,'O',0.22,3.0,'head');
-  return pts;
-}
 // kraken tentacles: columns of glyphs rising out of the water around the body, swaying
 function drawTentacles(m,t){
   const ty=m.ty, sc=ty.scale, c=ty.col, rise=m.rise||0; if(rise<0.05)return;

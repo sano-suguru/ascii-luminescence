@@ -1,7 +1,6 @@
 // ---------------------------------------------------------------- the forgotten beast, built from parts by its chronicle: a body by kind (beast, dragon, serpent, moth, centipede),
 // features laid over it (six legs, wingless, a thousand eyes, burning scales, shadow-eating, singing), a main colour and an accent; it sleeps crouched and rises when it wakes
-const BEAST_S={scale:2.35};   // glyphs of about 0.3 m at the beast's size
-function beastAcc(col){ return [Math.min(1,col[2]*0.9+0.25),Math.min(1,col[0]*0.9+0.15),Math.min(1,col[1]*0.9+0.2)]; }
+// BEAST_S・beastAcc・beastSleep は src/lib/bodies/lords.ts（src/game/imports.mjs で読む）
 function beastForm2(ty){
   const spec=ty.spec, C=ty.col, A=beastAcc(C), H=q3(BEAST_S), {S,pts,lit,stroke,ell,tube,put}=H;
   const R=['.',':',...spec.glyphs.slice(0,2),'#'], BONE=[0.9,0.86,0.76], EYE=[1,0.85,0.35];
@@ -43,11 +42,6 @@ function beastForm2(ty){
   if(spec.sing){ const tops=bodyPts.slice().sort((a,b)=>b.y-a.y).slice(0,7); for(const p of tops){ for(let q=0;q<3;q++){ const dx=(q-1)*0.06; for(let j=1;j<=3;j++)lit(p.x+dx*j/3,p.y+j*0.07,p.z,j===3?'*':'|',1,2.4,[0.6,0.95,1.0],'pulse'); } } }
   pts.noExtra=true; return pts;
 }
-// the beast asleep: crouched low, head down, wings folded
-function beastSleep(form,ty){ const out=[]; for(const p of form){ const q={...p};
-    if(ty.spec.plan==='moth'){ if(p.part==='wing')q.r=(p.r||0)*0.35; }
-    else if(ty.spec.plan!=='serpent'){ if(p.part==='legL'||p.part==='legR'){ q.y=p.y*0.35; q.piv=(p.piv||0)*0.35; q.part='body'; } else if(p.part==='head'){ q.y=Math.max(0.08,p.y*0.38); q.z=p.z*0.95; } else if(p.part==='wing'){ q.r=(p.r||0)*0.4; q.y=(p.y||0)*0.6; } else q.y=p.y*0.6; }
-    out.push(q); } return out; }
 // the beasts met, kept across adventures (the bestiary lists each by name)
 function loadBeasts(){ try{ return JSON.parse(localStorage.getItem('al_beasts')||'[]'); }catch(e){ return []; } }
 function recordBeast(ty){ try{ const all=loadBeasts(); if(all.some(b=>b.seed===runSeed&&b.name===ty.name))return; all.push({seed:runSeed,name:ty.name,col:ty.col,spec:ty.spec,lore:ty.lore,scale:ty.scale,fl:ty.fl,flier:ty.flier}); if(runStats)runStats.beastsNew=(runStats.beastsNew||0)+1; localStorage.setItem('al_beasts',JSON.stringify(all.slice(-60))); }catch(e){} }

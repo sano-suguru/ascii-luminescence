@@ -10,6 +10,9 @@
     // ESLint の recommended にあって、Oxlint の correctness に入っていない規則を足す。
     // 特に no-redeclare：src/game/ は31ファイルを1つにつなぐので、別のファイルの同じ名前の関数が、黙って前のものを上書きしてしまう
     "no-redeclare": "error",
+    // import した名前への代入（correctness に入っているが、はっきり書いておく）。src/game/imports.mjs で読んだ名前（TypeScript に移した物）に
+    // 古い JS で代入すると、その行が動いた時に初めてブラウザで止まるので、lint で止める
+    "no-import-assign": "error",
     "no-fallthrough": "error",
     "no-case-declarations": "error",
     "no-prototype-builtins": "error",
