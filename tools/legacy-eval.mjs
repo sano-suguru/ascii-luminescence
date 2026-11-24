@@ -1,6 +1,6 @@
 // テストのための道具：古い JS（src/game/*.js）のトップレベルの宣言を、名前で取り出して評価する。
-// まだ古い JS にある表や関数（生き物の表 MTYPES、ルーンを作る makeRune など）を、Node の単体テストで本物のまま使うため。
-//   const { MTYPES, makeRune } = await legacyValues(['MTYPES', 'RUNE_DEF', 'runeUid', 'makeRune']);
+// まだ古い JS にある表や関数（ルーンを作る makeRune など）を、Node の単体テストで本物のまま使うため。
+//   const { makeRune } = await legacyValues(['WEAPON_SIG', 'runeUid', 'makeRune']);
 // - 名前を挙げた宣言を、元のファイルの順につないで評価する（関数を挙げたら、その関数が使う古い宣言も挙げること）
 // - TypeScript に移した物（src/lib/ の export）は、本物を渡す
 // - 挙げていない古い名前を、評価の途中で読んだら止める（黙って undefined にしない）。関数の中から読む名前は、呼ばれるまで読まれない

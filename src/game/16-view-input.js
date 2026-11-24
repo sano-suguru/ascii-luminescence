@@ -131,7 +131,7 @@ function solidAt(x,z,r){
 }
 
 // ---------------------------------------------------------------- input
-const keys={};
+// keys は src/lib/state.ts（src/game/imports.mjs で読む。丸ごと入れ替えないので、名前はそのまま）
 let dragging=false, lmx=0, lmy=0, plFailed=false;
 const introEl=document.getElementById('intro'), resumeEl=document.getElementById('resume');
 function updateResume(){ resumeEl.style.display='none'; }

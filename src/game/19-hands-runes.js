@@ -94,46 +94,7 @@ function drawSwing(){
 }
 
 // ---------------------------------------------------------------- runes (stage B): attacks and elements held in each hand, random modifiers, chanting, reactions
-const RUNE_DEF={
-  blade:  {cat:'atk', ch:')', name:'小剣',     wk:'剣', chant:0,   dmg:[4,6], rec:0.42, aff:['count'],                desc:'目の前を薙ぐ。詠唱はいらない'},
-  bolt:   {cat:'atk', ch:'}', name:'短弓',     wk:'弓', two:true, L:'bolt', R:'bpower', chant:0.4, dmg:[3,5], rec:0.12, aff:['count','bounce','homing'], desc:'両手で持つ。左：素早く射る　右：引き絞って、強く貫く一矢'},
-  orb:    {cat:'atk', ch:'/', name:'樫の杖',   wk:'杖', chant:0.8, dmg:[5,8], rec:0.15, aff:['count','bounce','homing'], desc:'光の弾を放つ。弧を描いて飛び、落ちた所で弾ける'},
-  beam:   {cat:'atk', ch:'/', name:'水晶の杖', wk:'杖', chant:0.3, dmg:[1,2], rec:0.25, aff:['count','bounce'],          desc:'押している間、光の帯で照らし続ける'},
-  dash:   {cat:'atk', ch:')', name:'風走りの細剣', wk:'剣', chant:0,   dmg:[4,6], rec:0.55, aff:[],                     desc:'斬りながら、前へ駆け抜ける。通り抜けた敵を斬る'},
-  rain:   {cat:'atk', ch:'}', name:'雨降らしの長弓', wk:'弓', two:true, L:'rshot', R:'rain', chant:0.9, dmg:[2,3], rec:0.3, aff:['count','bounce','homing'], desc:'両手で持つ。左：遠くへ一矢を射る　右：狙った所に、壁を越えて矢の雨を降らせる'},
-  bpower: {cat:'sub', name:'強弓', chant:0.8, dmg:[6,9], rec:0.4, aff:['count','bounce','homing']},
-  rshot:  {cat:'sub', name:'遠矢', chant:0.5, dmg:[4,6], rec:0.3, aff:['count','bounce','homing']},
-  rapid:  {cat:'atk', ch:'}', name:'早撃ちの連弩', wk:'弓', chant:0.3, dmg:[2,3], rec:0.35, aff:['count','bounce','homing'], desc:'矢を、素早く3本続けて撃つ'},
-  star:   {cat:'atk', ch:'/', name:'星降りの杖', wk:'杖', chant:0.7, dmg:[6,9], rec:0.25, aff:['count'],               desc:'狙った所に、少し遅れて光の柱が降る'},
-  gsword: {cat:'atk', ch:')', name:'遠鳴りの両手剣', wk:'剣', two:true, L:'gsweep', R:'gwave', chant:0, dmg:[7,10], rec:0.8, aff:['count'], desc:'両手で持つ。左：大きく薙ぐ　右：溜めて、加速する大きな風の刃を飛ばす'},
-  mstaff: {cat:'atk', ch:'/', name:'満ち月の長杖', wk:'杖', two:true, L:'mshot', R:'mmoon', chant:0.3, dmg:[3,4], rec:0.25, aff:['count','bounce','homing'], desc:'両手で持つ。左：光の弾を撃つ　右：溜めるほど大きな光の月を放つ'},
-  gsweep: {cat:'sub', name:'薙ぎ', chant:0, dmg:[7,10], rec:0.8, reach:2.7, arc:0.75, aff:['count']},
-  gwave:  {cat:'sub', name:'遠鳴りの刃', chant:1.0, dmg:[8,12], rec:0.6, aff:['count']},
-  mshot:  {cat:'sub', name:'光の弾', chant:0.3, dmg:[3,4], rec:0.25, aff:['count','bounce','homing']},
-  mmoon:  {cat:'sub', name:'光の月', chant:0.8, dmg:[6,9], rec:0.5, aff:['count']},
-  fire:   {cat:'elem',ch:'ᚲ', name:'火', pre:'炎の', col:[1.0,0.5,0.16],  aff:['chain','area','dur'], desc:'燃え移り、草や干し草にも火をつける'},
-  ice:    {cat:'elem',ch:'ᛁ', name:'氷', pre:'氷の', col:[0.55,0.86,1.0], aff:['chain','area','dur'], desc:'凍えさせ、動きを鈍らせる'},
-  thunder:{cat:'elem',ch:'ᛊ', name:'雷', pre:'雷の', col:[1.0,0.92,0.45], aff:['chain','area','dur'], desc:'痺れさせ、近くの敵へ跳ぶ。水の中の敵によく通る'},
-  poison: {cat:'elem',ch:'ᚾ', name:'毒', pre:'毒の', col:[0.45,1.0,0.35], aff:['chain','area','dur'], desc:'じわじわと蝕む'},
-  dodge:  {cat:'trig',ch:'ᚱ', name:'攻撃をかわした時', short:'かわした時', aff:[], desc:'敵の攻撃を転がってかわした瞬間、この手の攻撃が、かわした相手へひとりでに放たれる'},
-  kill:   {cat:'trig',ch:'ᚺ', name:'敵を倒した時', short:'倒した時', aff:[], desc:'敵を倒した時、この手の攻撃が近くの敵へひとりでに放たれる'},
-  swift:   {cat:'body',ch:'"', col:[1.0,0.86,0.62], name:'疾風の護符', aff:[], desc:'走る速さが 15% 上がる'},
-  roll:    {cat:'body',ch:'"', col:[1.0,0.86,0.62], name:'身軽の護符', aff:[], desc:'転がってかわす距離が 35% 伸びる'},
-  quick:   {cat:'body',ch:'"', col:[1.0,0.86,0.62], name:'早口の護符', aff:[], desc:'詠唱の時間が 30% 短くなる'},
-  lamp:    {cat:'body',ch:'"', col:[1.0,0.86,0.62], name:'灯火の護符', aff:[], desc:'灯りの届く距離が 35% 伸びる'},
-  mend:    {cat:'body',ch:'"', col:[1.0,0.86,0.62], name:'癒しの護符', aff:[], desc:'取り戻せる傷が長く残り、攻めて取り戻す量も増える'},
-  linger:  {cat:'body',ch:'"', col:[1.0,0.86,0.62], name:'余韻の護符', aff:[], desc:'燃焼・凍え・痺れ・毒が 50% 長く続く'},
-  hush:    {cat:'body',ch:'"', col:[1.0,0.86,0.62], name:'忍び足の護符', aff:[], desc:'足音が静かになり、敵に気づかれる距離が 25% 縮む'},
-  slotopt: {cat:'open',ch:'{', col:[1.0,0.9,0.6], name:'枠', aff:[], desc:''},
-  forgeopt:{cat:'open',ch:'T', col:[0.7,0.85,1.0], name:'鍛え', aff:[], desc:''},
-  m_count: {cat:'mod', sh:'数', nm:'数', unit:'',ch:'ᚷ', col:[0.85,0.8,1.0], name:'数 +1',          mk:'count', val:1,  aff:[], desc:'その手の攻撃の数が 1 増える。短弓なら矢が2本、樫の杖なら弾が2つ、小剣なら2度薙ぐ'},
-  m_bounce:{cat:'mod', sh:'跳返', nm:'跳ね返り', unit:'',ch:'ᚢ', col:[0.85,0.8,1.0], name:'跳ね返り +2',     mk:'bounce',val:2,  aff:[], desc:'壁で 2 回多く跳ねる'},
-  m_homing:{cat:'mod', sh:'追尾', nm:'ホーミング', unit:'度',ch:'ᛉ', col:[0.85,0.8,1.0], name:'ホーミング +20度', mk:'homing',val:20, aff:[], desc:'飛びながら、敵の方へ曲がる'},
-  m_chain: {cat:'mod', sh:'連鎖', nm:'連鎖', unit:'',ch:'ᚹ', col:[0.85,0.8,1.0], name:'連鎖 +1',         mk:'chain', val:1,  aff:[], desc:'性質の連鎖が 1 増える。雷なら、もう1体へ跳ぶ'},
-  m_area:  {cat:'mod',ch:'ᛈ', col:[0.85,0.8,1.0], sh:'広がり', nm:'広がり', unit:'%', name:'広がり +30%', mk:'area', val:30, aff:[], desc:'性質の効果が広がる。炎の燃え広がりや、霧の広さなど'},
-  m_dur:   {cat:'mod',ch:'ᚠ', col:[0.85,0.8,1.0], sh:'長さ', nm:'長さ', unit:'%', name:'長さ +50%', mk:'dur', val:50, aff:[], desc:'性質の効果が長く続く。燃焼や凍えなど'},
-  ward:    {cat:'body',ch:'"', col:[1.0,0.86,0.62], name:'守りの護符', aff:[], desc:'受ける傷が 15% 軽くなる'},
-};
+// RUNE_DEF は src/lib/runes.ts（src/game/imports.mjs で読む）
 // what a trait does at its level: its first or third step, and the fifth when reached
 const trDesc=(w,t)=>{ const T=TRAITS[w]&&TRAITS[w][t.k]; return T?T.d(t.lv):''; };
 const wTL=(h,k)=>{ const H=effHand(h); for(const t of trList(H.atk))if(t.k===k)return t.lv; return 0; };
@@ -145,14 +106,7 @@ function rollTraits(ru,r,d,bonus){ if(!ru||RUNE_DEF[ru.type].cat!=='atk'||!TRAIT
 // AFFIX は src/lib/runes.ts（src/game/imports.mjs で読む）
 // what each kind of creature tends to drop, and how much each element hurts it (0 = no effect, 2 = badly)
 const ELEM_OF={l:'fire',Zf:'fire',D:'fire',Zi:'ice',L:'ice',K:'ice',Zl:'thunder',Rc:'thunder',Re:'thunder',Rw:'thunder',S:'poison',n:'poison',N:'poison',B:'poison'};
-const RES={
-  L:{poison:0.2,fire:2}, lord:{poison:0.5},
-  Y:{poison:0.2,thunder:2}, Rc:{poison:0.2,thunder:2}, Re:{poison:0.2,thunder:2}, Rw:{poison:0.2,thunder:2},
-  l:{fire:0.2,ice:2}, Zf:{fire:0.2,ice:2}, D:{fire:0.2,ice:1.5},
-  Zi:{ice:0.2,fire:2}, Zl:{thunder:0.2},
-  N:{fire:0.5,thunder:2}, K:{fire:0.5,thunder:2}, f:{thunder:2},
-  n:{poison:0.25}, B:{poison:0.2,fire:2}, S:{fire:2}, j:{}, T:{fire:1.5},
-};
+// RES は src/lib/runes.ts（src/game/imports.mjs で読む）
 let runeUid=1;
 let packSnap=null, packSel=null;
 try{ saved.BOOK=new Set(JSON.parse(localStorage.getItem('al_book')||'[]')); }catch(e){}
@@ -174,6 +128,7 @@ function clipHtml(html,w){ if(visW(html)<=w)return html; const box=document.crea
 function makeStrong(t){ const ru=makeRune(t,0); if(RUNE_DEF[t].cat==='mod')ru.strong=true; return ru; }
 const runeLabel=ru=>RUNE_DEF[ru.type].name;
 function handName(H){ if(!H.atk)return H.elem?`${RUNE_DEF[H.elem.type].pre}素手`:'素手'; return (H.elem?RUNE_DEF[H.elem.type].pre:'')+RUNE_DEF[H.atk.type].name; }
+// called only when a run starts, after the page has loaded (saved.RSEEN is filled from al_runes in 25-gallery.js; before that it is an empty placeholder)
 function resetRunes(){ fight.trigCd={L:0,R:0}; fight.hitSrcPoint=null;
   gear.hands={L:newHand('blade'), R:newHand('orb'), B:{b0:null,b1:null}};
   gear.bag=[]; gear.builds=[null,null,null]; gear.buildIdx=-1; gear.castSt=null; gear.swapSt=null; packSel=null; fight.beamSegs=[]; fight.clouds=[];

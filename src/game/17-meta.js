@@ -2,8 +2,9 @@
 // META_DEF・UNLOCKS は src/lib/progress.ts（src/game/imports.mjs で読む）
 function loadMeta(){ try{ return Object.assign({},META_DEF,JSON.parse(localStorage.getItem('al_meta')||'{}')); }catch(e){ return Object.assign({},META_DEF); } }
 saved.META=loadMeta();
+// developer mode (al_dev) is read here, before the title is built below (it was read later, in 25-gallery.js, so the first title missed the trials)
+try{ saved.DEVALL=localStorage.getItem('al_dev')==='1'; }catch(e){}
 function saveMeta(){ try{ localStorage.setItem('al_meta',JSON.stringify(saved.META)); }catch(e){} }
-// saved.DEVALL (src/lib/state.ts) is false until 25-gallery.js reads it from localStorage, as the old let DEVALL was unreadable (TDZ) until then
 const unlocked=id=>saved.DEVALL||saved.META.unl.includes(id);
 const lockedOf=(kind,t)=>{ const u=UNLOCKS.find(x=>x.kind===kind&&x.t===t); return !!u&&!unlocked(u.id); };
 const weaponPool=()=>RUNE_TYPES.atk.filter(t=>!lockedOf('weapon',t));
@@ -20,12 +21,12 @@ function buildUnlockPanel(){ const el=document.getElementById('intropanel'); if(
   document.getElementById('unlBack').addEventListener('click',()=>{ introMode='main'; buildIntroPanel(); });
   for(const b of el.querySelectorAll('button[data-unl]'))b.addEventListener('click',()=>{ const u=UNLOCKS.find(x=>x.id===b.dataset.unl); if(!u||unlocked(u.id)||u.cost>loreLeft())return; saved.META.unl=[...(saved.META.unl||[]),u.id]; saved.META.spent=(saved.META.spent||0)+u.cost; saveMeta(); sndInit(); sChime(0,0,0.5); buildUnlockPanel(); }); }
 function buildIntroPanel(){
-  const devOn=(()=>{ try{ return localStorage.getItem('al_dev')==='1'; }catch(e){ return false; } })(); if(!devOn)startDepth=1; const seedKeep=(document.getElementById('seedIn')||{}).value||'';
+  const devOn=saved.DEVALL; if(!devOn)startDepth=1; const seedKeep=(document.getElementById('seedIn')||{}).value||'';
   const el=document.getElementById('intropanel'); if(!el)return; const f=t=>`<span class="f">${t}</span>`;
   if(introMode==='unlock'){ buildUnlockPanel(); return; }
-  const keys=[['WASD','移動'],['マウス','視点'],['左クリック','左手'],['右クリック','右手'],['ホイール','ビルド切替'],['Space','回避'],['Shift','走る'],['Tab','装備'],['Esc','メニュー']];
+  const keyList=[['WASD','移動'],['マウス','視点'],['左クリック','左手'],['右クリック','右手'],['ホイール','ビルド切替'],['Space','回避'],['Shift','走る'],['Tab','装備'],['Esc','メニュー']];
   const cell=([k,v])=>{ const s=`<b>[${k}]</b> ${v}`; return s+' '.repeat(Math.max(1,24-visW(s))); };
-  const keyRows=[]; for(let i=0;i<keys.length;i+=2)keyRows.push(`${f('|')} ${cell(keys[i])}${keys[i+1]?cell(keys[i+1]):''}`);
+  const keyRows=[]; for(let i=0;i<keyList.length;i+=2)keyRows.push(`${f('|')} ${cell(keyList[i])}${keyList[i+1]?cell(keyList[i+1]):''}`);
   const seen=new Set(), layers=[]; for(const st of STRATA){ if(seen.has(st.n))continue; seen.add(st.n); layers.push(st); }
   const layerRows=devOn?[`${f('|')} 開始する層`,...layers.map(st=>`${f('|')}   <button class="sl${st.from===startDepth?' on':''}" type="button" data-d="${st.from}"><span class="mk">${st.from===startDepth?'&gt;':' '}</span> 第${st.n}層 ${st.name}</button>`),f('|')]:[];
   el.innerHTML=boxText([f('+-- 地下迷宮へ ---'),

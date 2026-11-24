@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------- ambient sound (procedural, Web Audio)
 // SND_LV・SND_NAME は src/lib/sound.ts（src/game/imports.mjs で読む）
-const SND={lv:1,ctx:null,on:true,master:null,inp:null,wet:null,noise:null,L:{},envT:0,env:{water:0,lava:0,chasm:0,bog:0,xtal:0,burn:0,fire:0,fx:0,fz:0,cave:false}};
+// SND は src/lib/state.ts（src/game/imports.mjs で読む。丸ごと入れ替えないので、名前はそのまま）
 const sndReady=()=>SND.ctx&&SND.ctx.state==='running'&&SND.on;
 function sndInit(){
   try{

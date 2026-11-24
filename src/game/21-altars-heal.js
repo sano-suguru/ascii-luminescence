@@ -23,10 +23,10 @@ function altarFill(grp){ const its=(here.D.items||[]).filter(o=>o.grp===grp&&o.a
 // guards for altars and the strong one's room: groups added to this level's spawns, kept in their room; an altar or prize is dark until its guards are gone
 function hostileKeys(){ const n={}; for(const s of (here.D.spawns||[])){ const ty=MTYPES[s.key]; if(!ty||ty.critter||ty.peaceful||ty.boss||s.key==='lord'||s.key==='final'||ty.habitat||ty.form==='eel')continue; n[s.key]=(n[s.key]||0)+1; } return n; }
 function nextGroup(){ return (here.D.spawns||[]).reduce((a,s)=>Math.max(a,s.g||0),0)+1; }
-function addGuards(at,r){ const ri=here.D.roomOf[at]; if(ri<0)return undefined; const hk=hostileKeys(), keys=Object.keys(hk); if(!keys.length)return undefined;
-  const key=keys.sort((a,b)=>hk[b]-hk[a])[0], cells=here.D.rooms[ri].cells.filter(c=>here.D.tile[c]===TF&&!here.D.liquid[c]&&!here.D.solid.has(c)&&Math.hypot((c%MW)-(at%MW),((c/MW)|0)-((at/MW)|0))>=2), g=nextGroup(), n=2+(r()<0.5?1:0);
+function addGuards(at,r){ const ri=here.D.roomOf[at]; if(ri<0)return undefined; const hk=hostileKeys(), kinds=Object.keys(hk); if(!kinds.length)return undefined;
+  const key=kinds.sort((a,b)=>hk[b]-hk[a])[0], cells=here.D.rooms[ri].cells.filter(c=>here.D.tile[c]===TF&&!here.D.liquid[c]&&!here.D.solid.has(c)&&Math.hypot((c%MW)-(at%MW),((c/MW)|0)-((at/MW)|0))>=2), g=nextGroup(), n=2+(r()<0.5?1:0);
   if(cells.length<n)return undefined; for(let k=0;k<n;k++){ const c=cells.splice(Math.floor(r()*cells.length),1)[0]; here.D.spawns.push({key,cx:c%MW,cz:(c/MW)|0,g,lead:k===0,home:ri}); } return g; }
-function strongestKey(){ const keys=Object.keys(hostileKeys()).filter(k=>!MTYPES[k].beast&&!MTYPES[k].dragon&&k!=='X'&&k!=='D'); let best=null, bh=-1; for(const k of keys){ let h=0; try{ h=statOf({ty:MTYPES[k],key:k})[0]; }catch(e){} if(h>bh){ bh=h; best=k; } } return best; }
+function strongestKey(){ const kinds=Object.keys(hostileKeys()).filter(k=>!MTYPES[k].beast&&!MTYPES[k].dragon&&k!=='X'&&k!=='D'); let best=null, bh=-1; for(const k of kinds){ let h=0; try{ h=statOf({ty:MTYPES[k],key:k})[0]; }catch(e){} if(h>bh){ bh=h; best=k; } } return best; }
 
 function forgeOptions(n){ const ws=[...new Set([gear.hands.L.atk,gear.hands.R.atk].filter(Boolean))], cands=[];
   for(const w of ws){ const pool=Object.keys(TRAITS[w.type]||{}), tr=trList(w);
@@ -84,7 +84,7 @@ function mainPathAltars(r,free){ if(here.D.stratum.special||here.D.finalVault)re
     for(const [g,list] of groups){ const c0=list[0].cz*W+list[0].cx; if(!(dS[c0]>=0&&dS[c0]<L*0.3)||r()>=0.5||!late.length)continue; const nc=late[Math.floor(r()*late.length)];
       for(const sp of list){ let best=nc; for(let k=0;k<8;k++){ const c=nc+Math.round((r()-0.5)*4)+Math.round((r()-0.5)*4)*W; if(free(c)&&dS[c]>=0){ best=c; break; } } sp.cx=best%W; sp.cz=(best/W)|0; } } }
   // 4: on some levels a small band waits in the room before the stairs; the stairs stay sealed until it falls
-  if(L>0&&here.D.stairs>=0&&!here.D.finalVault&&!here.D.stratum.special&&(here.branch?here.branch.lvl<here.branch.len:here.depth>=2&&here.depth<FINAL_DEPTH)&&!here.realm&&r()<0.3){ const hk=hostileKeys(), keys=Object.keys(hk); if(keys.length){ const key=keys.sort((a,b)=>hk[b]-hk[a])[0], g=nextGroup();
+  if(L>0&&here.D.stairs>=0&&!here.D.finalVault&&!here.D.stratum.special&&(here.branch?here.branch.lvl<here.branch.len:here.depth>=2&&here.depth<FINAL_DEPTH)&&!here.realm&&r()<0.3){ const hk=hostileKeys(), kinds=Object.keys(hk); if(kinds.length){ const key=kinds.sort((a,b)=>hk[b]-hk[a])[0], g=nextGroup();
       const cells=[]; for(let c=0;c<N;c++)if(dT[c]>=2&&dT[c]<=5&&free(c))cells.push(c); const n=2+(r()<0.5?1:0);
       if(cells.length>=n){ for(let k=0;k<n;k++){ const c=cells.splice(Math.floor(r()*cells.length),1)[0]; here.D.spawns.push({key,cx:c%W,cz:(c/W)|0,g,lead:k===0}); } here.D.stairGuard=g; } } }
   }
