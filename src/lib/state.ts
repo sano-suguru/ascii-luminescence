@@ -450,3 +450,53 @@ export const saved: Saved = {
   DEVALL: false,
   LEGEND: null,
 };
+
+/** 音（音量の段 lv・音の仕組み ctx と、その部品・鳴り続ける音 L・まわりの音の様子 env）。丸ごと入れ替えないので、古い JS は今までどおり SND.lv のように読む。
+ * 部品は、最初に音を鳴らす時（15-sound-fire.js の sndInit）に作る */
+export interface SoundState {
+  /** 音量の段（src/lib/sound.ts の SND_LV の番号） */
+  lv: number;
+  ctx: AudioContext | null;
+  on: boolean;
+  master: GainNode | null;
+  inp: GainNode | null;
+  wet: GainNode | null;
+  noise: AudioBuffer | null;
+  /** 鳴り続ける音（地鳴り・水・火・風・低い音）。型は、音の処理を移す時に作る */
+  L: Record<string, unknown>;
+  /** まわりの音の様子を数え直すまでの秒 */
+  envT: number;
+  /** まわりの音の様子（水・溶岩・崖・沼・水晶・燃えている所・火の強さと位置・洞窟か） */
+  env: {
+    water: number;
+    lava: number;
+    chasm: number;
+    bog: number;
+    xtal: number;
+    burn: number;
+    fire: number;
+    fx: number;
+    fz: number;
+    cave: boolean;
+  };
+}
+export const SND: SoundState = {
+  lv: 1,
+  ctx: null,
+  on: true,
+  master: null,
+  inp: null,
+  wet: null,
+  noise: null,
+  L: {},
+  envT: 0,
+  env: { water: 0, lava: 0, chasm: 0, bog: 0, xtal: 0, burn: 0, fire: 0, fx: 0, fz: 0, cave: false },
+};
+/** 忍び足と灯り（明るさ lum・見つかりやすさの段 level・物音の届く距離 range・忍び足か・表示を描き直すかの印 hudKey）。丸ごと入れ替えない */
+export const stealth = { lum: 0, level: 1, range: 8, sneak: false, hudKey: '' };
+/** 手元の灯り（届く距離 r・強さ k）。丸ごと入れ替えない */
+export const lantern = { r: 8.2, k: 1 };
+/** 状態の表示の数（見たマスの割合 explored）。丸ごと入れ替えない */
+export const hudInfo = { explored: 0 };
+/** 押しているキー（キーの code → 押しているか）。丸ごと入れ替えない */
+export const keys: Record<string, boolean> = {};
