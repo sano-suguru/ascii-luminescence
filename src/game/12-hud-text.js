@@ -18,7 +18,7 @@ function updateStealth(dt){
 }
 // ---- the HUD is drawn with glyphs only: depth, light, sparks, and state when it matters
 const hudInfo={explored:0};
-let uiMode=0, helpOn=false, helpT=0;
+let helpT=0;
 function renderStatus(){
   const el=document.getElementById('status'); if(!el||!D)return;
   const lv=stealth.level, lc=LIGHT_COLS[lv];
@@ -28,10 +28,9 @@ function renderStatus(){
   const hpR=clamp((player.hp||0)/PLAYER_MAX,0,1), hpN=Math.round(hpR*20), rlN=Math.max(0,Math.min(20-hpN,Math.round(clamp(((player.hp||0)+(player.rally||0))/PLAYER_MAX,0,1)*20)-hpN)), hpC=vfx.hpFlash>0?'#fff0d8':hpR>0.5?'#ff8a7a':hpR>0.25?'#ffb05a':'#ff4a3a';
   const hpLine=`<span class="glow" style="color:${hpC}">${'#'.repeat(hpN)}</span><span style="color:#d9874a">${'='.repeat(rlN)}</span><span class="dim">${'.'.repeat(20-hpN-rlN)}</span>  <span class="lab">体力 ${Math.ceil(player.hp||0)}/${PLAYER_MAX}</span>`;
   const xf=Math.round(clamp(lvl.exp/expNeed(lvl.n),0,1)*20), xpLine=`<span style="color:#c8b6ff">${'-'.repeat(xf)}</span><span class="dim">${'.'.repeat(20-xf)}</span>  <span class="lab">Lv${lvl.n}</span>`;
-  el.innerHTML=hpLine+'\n'+xpLine+`\n<span class="glow" style="color:#ffbf6a">&gt; ${placeLabel()}</span>\n${meter}  <span class="lab">${LIGHT_NAMES[lv]}</span>`+(started?'\n'+legendLine():'')+(l4?'\n'+l4:'')+(perfOn?`\n<span class="lab">${pfFps} fps   文字 ${(glyphCount/10000).toFixed(1)}万   描画 ${(chunksDrawn/10000).toFixed(1)}万   生き物 ${monsters.length}</span>`:'');
+  el.innerHTML=hpLine+'\n'+xpLine+`\n<span class="glow" style="color:#ffbf6a">&gt; ${placeLabel()}</span>\n${meter}  <span class="lab">${LIGHT_NAMES[lv]}</span>`+(ui.started?'\n'+legendLine():'')+(l4?'\n'+l4:'')+(ui.perfOn?`\n<span class="lab">${pfFps} fps   文字 ${(glyphCount/10000).toFixed(1)}万   描画 ${(chunksDrawn/10000).toFixed(1)}万   生き物 ${monsters.length}</span>`:'');
 }
-let perfOn=false, pfFrames=0, pfT=0, pfFps=0;
-let chronOn=false;
+let pfFrames=0, pfT=0, pfFps=0;
 // パネルの文字の幅（visW）と枠（boxText）は src/lib/text.ts（src/game/imports.mjs で読む）
 function renderChron(){
   const el=document.getElementById('help'); if(!el||!HIST)return;
@@ -48,9 +47,9 @@ function renderHelp(){
     `${f('|')} <b>WASD</b>     移動        <b>マウス</b>  視点`,`${f('|')} <b>左クリック</b> 左手      <b>右クリック</b> 右手`,`${f('|')} 押して詠唱、満ちたら離して放つ`,`${f('|')} <b>ホイール</b> ビルド切替  <b>Space</b>  回避`,`${f('|')} <b>Shift</b>    走る`,`${f('|')} <b>Tab</b>      装備        <b>Esc</b>    メニュー`,`${f('|')} 立ち止まると、辺りを自動で調べる`,f('|'),
     `${f('|')} 深度 ${depth}${branch||realm?`（${placeLabel()}）`:''}    探索 ${hudInfo.explored}%`,`${f('|')} シード ${runSeed}`,f('+------------------------------')]);
 }
-function setHelp(on){ helpOn=on; chronOn=false; const el=document.getElementById('help'); if(!el)return; if(on)renderHelp(); el.classList.toggle('off',!on); }
-function cycleUi(){ uiMode=(uiMode+1)%3; document.body.classList.toggle('ui-min',uiMode===1); document.body.classList.toggle('ui-none',uiMode===2);
-  if(uiMode<2){ showHint(uiMode===0?'表示：通常':'表示：最小'); setTimeout(()=>showHint(''),1200); } }
+function setHelp(on){ ui.helpOn=on; ui.chronOn=false; const el=document.getElementById('help'); if(!el)return; if(on)renderHelp(); el.classList.toggle('off',!on); }
+function cycleUi(){ ui.uiMode=(ui.uiMode+1)%3; document.body.classList.toggle('ui-min',ui.uiMode===1); document.body.classList.toggle('ui-none',ui.uiMode===2);
+  if(ui.uiMode<2){ showHint(ui.uiMode===0?'表示：通常':'表示：最小'); setTimeout(()=>showHint(''),1200); } }
 function toggleSneak(){ stealth.sneak=!stealth.sneak; showHint(stealth.sneak?'ランタンを絞った。忍び足で、気配を殺して進む':'ランタンの灯りを戻した'); setTimeout(()=>showHint(''),1600); }
 let noticeMsgT={};
 function onNoticed(m){

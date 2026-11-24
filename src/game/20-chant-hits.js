@@ -3,7 +3,7 @@ let beamRun=null;
 let hitStopUntil=0;
 const timeScale=()=>performance.now()<hitStopUntil?0.05:(castSt?0.5:1);
 function beginCast(h){
-  if(dead||trans||!started||isPaused()||swapSt||castSt||(beamRun&&!beamRun.auto)||player.netT>0||player.roll)return;
+  if(dead||trans||!ui.started||isPaused()||swapSt||castSt||(beamRun&&!beamRun.auto)||player.netT>0||player.roll)return;
   if((player.recover||0)>0)return;
   const H=hands[h]; if(!H.atk){ castNow(h); return; }
   const at=atkType(h), def=RUNE_DEF[at]; if(def.chant<=0){ castNow(h); return; }
@@ -23,7 +23,7 @@ function updateCast(dt){
   trigCd.L=Math.max(0,trigCd.L-dt); trigCd.R=Math.max(0,trigCd.R-dt); player.recover=Math.max(0,(player.recover||0)-dt);
   if(swapSt){ swapSt.t+=dt; if(swapSt.t>=swapSt.dur){ swapSt=null; if(BL('swapedge'))player.swapEdgeUntil=time+3; sChime(player.x,player.z,0.25); renderHotbar(); } else if(((swapSt.t*10)|0)!==swapSt.last){ swapSt.last=(swapSt.t*10)|0; renderHotbar(); } }
   if(!castSt)return;
-  if(!started||dead||trans){ castSt=null; beamSegs=[]; return; }
+  if(!ui.started||dead||trans){ castSt=null; beamSegs=[]; return; }
   castSt.t+=dt;
   if(!castSt.full&&castSt.t>=castSt.need){ castSt.full=true;
     const P=castPoint(castSt.h,1), c=elemCol(hands[castSt.h].elem?hands[castSt.h].elem.type:null); for(let q=0;q<14;q++){ const a=mr()*6.28; spawn(P[0],P[1],P[2],Math.cos(a)*1.2,(mr()-0.4)*1.2,Math.sin(a)*1.2,0.35,G('*'),0.05,c[0]*3,c[1]*3,c[2]*3,0); } }

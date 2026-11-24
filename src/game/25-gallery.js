@@ -6,7 +6,7 @@ let SEEN=loadSet('al_seen'), RSEEN=loadSet('al_runes'), DEVALL=false; try{ DEVAL
 let seenT=0, gallery=null;
 const seenKey=m=>m.ty.beast?'beast:'+runSeed+':'+m.ty.name:m.key==='lord'?'lord:'+(branch?branch.key:m.ty.sk):(m.key==='final'&&m.phase2)?'final2':m.key;
 function trackSeen(dt){
-  if(!started||gallery)return; seenT-=dt; if(seenT>0)return; seenT=0.5; const n0=SEEN.size;
+  if(!ui.started||gallery)return; seenT-=dt; if(seenT>0)return; seenT=0.5; const n0=SEEN.size;
   for(const m of monsters){ if(m.dead||m.hidden||!m.visible||m.ty.dummy)continue; if(Math.hypot(m.x-player.x,m.z-player.z)<26){ SEEN.add(seenKey(m)); if(m.ty.beast)recordBeast(m.ty); } }
   if(SEEN.size!==n0)saveSet('al_seen',SEEN);
 }
@@ -95,7 +95,7 @@ function openRange(){
   for(const h of ['L','R']){ hands[h].slotN=SLOT_MAX; while(hands[h].slots.length<SLOT_MAX)hands[h].slots.push(null); } for(const t of RUNE_TYPES.mod)bag.push(makeStrong(t)); for(const w of RUNE_TYPES.atk)for(const k of Object.keys(TRAITS[w]))for(const lv of [3,5]){ const ru=makeRune(w,0); ru.traits=[{k,lv}]; bag.push(ru); } hands.B=hands.B||{b0:null,b1:null}; runState.bodyOpen=2;
   DUMMY_KINDS.forEach((dk,j)=>{ const d={k:dk.k,x:room.x+(j-1.5)*2.4,z:room.z-5}; gallery.dummies.push(d); spawnDummy(d); });
   player.x=room.x; player.z=room.z+3; player.yaw=0; player.pitch=-0.05; player.hp=PLAYER_MAX;
-  dead=false; started=true; document.body.classList.add('started'); runStats={kills:0,t0:time};
+  dead=false; ui.started=true; document.body.classList.add('started'); runStats={kills:0,t0:time};
   canvas.focus(); tryLock(); updateResume(); renderHotbar(); renderStatus();
   setTimeout(()=>{ msg('<b style="color:#bfe4ff">+</b>試しの間。<b>Tab</b> で武器・ルーン・護符を自由に付け替えられる（ここでは付け替えが一瞬で済む）。'); msg('<span class="lab">的の人形は動かず、何度倒れても起き上がる。頭の上の数字は、直前に与えたダメージの合計。メニューからタイトルへ戻れる。</span>'); },400);
 }

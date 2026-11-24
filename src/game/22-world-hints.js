@@ -64,7 +64,7 @@ function drawOmens(t,dt){ if(!D||gallery)return; const o=omenOf(); if(!o)return;
 // ---------------------------------------------------------------- direction arrows: from a point just above the hands, arrows spread out toward places - straight-line direction only, never the way;
 // near ones short and thick, far ones long and thin. The stairs are always known; gates once seen; altars from 20 m; springs, treasuries and guarded prizes from 12 m. A place in plain sight needs no arrow.
 const arrowCv=document.getElementById('arrows'), arrowCtx=arrowCv?arrowCv.getContext('2d'):null;
-function arrowTargets(){ const out=[]; if(!D||!started||dead)return out; const pc=((player.z/CELL)|0)*MW+((player.x/CELL)|0), atHub=D.hub&&D.roomOf[pc]===D.hub.ri, far=atHub?1.5:1;
+function arrowTargets(){ const out=[]; if(!D||!ui.started||dead)return out; const pc=((player.z/CELL)|0)*MW+((player.x/CELL)|0), atHub=D.hub&&D.roomOf[pc]===D.hub.ri, far=atHub?1.5:1;
   // standing at the crossroads, presences around are felt from farther off
   const P=(cell,ch,col,range,seenOnly,vague)=>{ if(cell==null||cell<0)return; if(seenOnly&&!explored[cell])return; const [x,z]=cpos(cell), d=Math.hypot(x-player.x,z-player.z); if(range&&d>range*far)return;
     // a thing not yet seen is only a presence: a '?' in the colour of its light
@@ -83,7 +83,7 @@ function inPlainSight(t){ if(t.d>22)return false; const [ox,oy,oz]=aimOrigin(), 
   if((dx*vx+dy*vy+dz*vz)/L<Math.cos(0.5))return false; return losClear(ox,oy,oz,t.x,0.9,t.z); }
 let arrowsDrawn=false;
 function drawArrows(){ if(!arrowCtx)return; const W=Math.round(arrowCv.clientWidth*devicePixelRatio), H=Math.round(arrowCv.clientHeight*devicePixelRatio), c=arrowCtx; if(arrowCv.width!==W||arrowCv.height!==H){ arrowCv.width=W; arrowCv.height=H; } if(arrowsDrawn){ c.clearRect(0,0,W,H); arrowsDrawn=false; }
-  if(!started||dead||isPaused()||gallery)return; const ts=arrowTargets().filter(t=>!inPlainSight(t)); if(!ts.length)return; arrowsDrawn=true;
+  if(!ui.started||dead||isPaused()||gallery)return; const ts=arrowTargets().filter(t=>!inPlainSight(t)); if(!ts.length)return; arrowsDrawn=true;
   const k=devicePixelRatio, ox=W/2, oy=H*0.66, r0=46*k, ps=player.yaw, fx=-Math.sin(ps), fz=-Math.cos(ps), rx=Math.cos(ps), rz=-Math.sin(ps), FONT='"M PLUS 1 Code","BIZ UDGothic",monospace';
   c.textAlign='center'; c.textBaseline='middle'; c.lineJoin='round';
   // the ring the arrows spread from
@@ -142,7 +142,7 @@ function drawRunesWorld(t){
   if(castSt||swapSt){ const [ox,oy,oz]=aimOrigin(), [fx,fy,fz]=viewDir(), rx=Math.cos(player.yaw), rz=-Math.sin(player.yaw);
     if(castSt){ const H=hands[castSt.h], side=castSt.h==='L'?-0.35:0.35, k=Math.min(1,castSt.t/Math.max(0.01,castSt.need)), c=elemCol(H.elem?H.elem.type:null), list=[H.elem].filter(Boolean);
       list.forEach((ru,j)=>{ const a=t*3+j*Math.PI, r=0.12+0.06*k; dyn(ox+fx*0.8+rx*(side+Math.cos(a)*r),oy-0.3+fy*0.8+Math.sin(a)*r,oz+fz*0.8+rz*(side+Math.cos(a)*r),G(RUNE_DEF[ru.type].ch),0.1+0.05*k,c[0]*(1+2*k),c[1]*(1+2*k),c[2]*(1+2*k)); }); }
-    if(swapSt){ const rs=allRunes().filter(r=>['elem','trig','mod'].includes(RUNE_DEF[r.type].cat)).slice(0,8), k=swapSt.t/swapSt.dur; rs.forEach((ru,j)=>{ const a=t*2+j/rs.length*Math.PI*2; dyn(player.x+Math.cos(a)*0.9,(camMode==='tps'?1.0:player.eye-0.5)+Math.sin(t*3+j)*0.08,player.z+Math.sin(a)*0.9,G(RUNE_DEF[ru.type].ch),0.2,0.6+k,0.6+k,0.9+k); }); } }
+    if(swapSt){ const rs=allRunes().filter(r=>['elem','trig','mod'].includes(RUNE_DEF[r.type].cat)).slice(0,8), k=swapSt.t/swapSt.dur; rs.forEach((ru,j)=>{ const a=t*2+j/rs.length*Math.PI*2; dyn(player.x+Math.cos(a)*0.9,(ui.camMode==='tps'?1.0:player.eye-0.5)+Math.sin(t*3+j)*0.08,player.z+Math.sin(a)*0.9,G(RUNE_DEF[ru.type].ch),0.2,0.6+k,0.6+k,0.9+k); }); } }
 }
 
 // ---------------------------------------------------------------- the feel of a chant: a circle of runes at the hand, light gathering, the lantern taking the element's colour, a rising hum
@@ -223,7 +223,7 @@ function updateCross(dt){
   const el=document.getElementById('cross'); if(!el)return;
   slowFx+=((castSt?1:0)-slowFx)*Math.min(1,(dt||0.016)*8); finalPass.uniforms.uSlow.value=slowFx;
   if(castSt){ const c=elemCol(hands[castSt.h].elem?hands[castSt.h].elem.type:null); finalPass.uniforms.uTint.value.set(c[0],c[1],c[2]); }
-  const tg=started&&!dead&&!isPaused()?aimTarget():null;
+  const tg=ui.started&&!dead&&!isPaused()?aimTarget():null;
   // the sight: a small dot; it is flanked when it holds a creature; while chanting, the runes of that hand close in on it and, when the chant is full, rest beside it and pulse
   let txt='·', col='rgba(225,215,255,.55)', cls='';
   if(castSt){ const H=hands[castSt.h], k=Math.min(1,castSt.t/Math.max(0.01,castSt.need)), c0=elemCol(H.elem?H.elem.type:null), c=c0.map(v=>v*0.72+0.25), gap=castSt.full?0:Math.max(0,3-Math.round(k*3));

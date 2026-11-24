@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------- first / third person (chosen in the menu)
-let camMode='fps'; try{ camMode=localStorage.getItem('al_cam')||'fps'; }catch(e){}
+try{ ui.camMode=localStorage.getItem('al_cam')||'fps'; }catch(e){}
 // AVATAR_TY は src/lib/names.ts（src/game/imports.mjs で読む）
 let avatar=null, camPos=null;
 function headPos(){ return [player.x,player.eye+0.05-(player.roll?Math.sin(Math.PI*player.roll.t/0.32)*0.55:0),player.z]; }
 // where attacks and thrown things start: the eye in first person, the head of the avatar in third person
-function aimOrigin(){ return camMode==='tps'?headPos():[camera.position.x,camera.position.y,camera.position.z]; }
+function aimOrigin(){ return ui.camMode==='tps'?headPos():[camera.position.x,camera.position.y,camera.position.z]; }
 function camBlocked(x,y,z){
   for(const [ox,oz] of [[0,0],[0.22,0],[-0.22,0],[0,0.22],[0,-0.22]]){ const cx=Math.floor((x+ox)/CELL), cz=Math.floor((z+oz)/CELL); if(cx<0||cz<0||cx>=MW||cz>=MH)return true;
     const i=cz*MW+cx, tt=D.tile[i]; if(tt===TW||tt===TX)return true; if(y>D.ceil[i]-0.25)return true; if(tt!==TC&&y<0.3)return true;
@@ -34,7 +34,7 @@ function rockAt(x,y,z){
   if(y>D.ceil[i])return true; if(y<0&&tt!==TC)return true; return false;
 }
 function drawSection(){
-  if(camMode!=='tps'||!camPos)return;
+  if(ui.camMode!=='tps'||!camPos)return;
   const C=camPos, h=headPos(), P=[h[0],h[1]-0.25,h[2]], sx=P[0]-C[0], sy=P[1]-C[1], sz=P[2]-C[2], L=Math.hypot(sx,sy,sz)||1, ax=sx/L, ay=sy/L, az=sz/L;
   // two directions perpendicular to the line from the camera to you
   let ux=-az, uy=0, uz=ax; const ul=Math.hypot(ux,uz)||1; ux/=ul; uz/=ul;
@@ -44,11 +44,11 @@ function drawSection(){
       if(!rockAt(px,py,pz))continue; const hsh=((k*73+r*151)%7), b=0.2+0.06*(hsh%3);
       dyn(px,py,pz,G(hsh<3?'#':hsh<5?'%':':'),0.38,b*1.25,b*1.1,b*1.35); } }
 }
-function setCamMode(m){ camMode=m; camPos=null; try{ localStorage.setItem('al_cam',m); }catch(e){} }
+function setCamMode(m){ ui.camMode=m; camPos=null; try{ localStorage.setItem('al_cam',m); }catch(e){} }
 
 function updatePlayer(dt){
   if(dead)return;
-  if(!started){ player.yaw+=dt*0.07; }
+  if(!ui.started){ player.yaw+=dt*0.07; }
   else{
     const k=keys;
     const fw=((k.KeyW||k.ArrowUp)?1:0)-((k.KeyS||k.ArrowDown)?1:0), st=(k.KeyD?1:0)-(k.KeyA?1:0);
@@ -91,7 +91,7 @@ function updatePlayer(dt){
   const spd=Math.min(1,Math.hypot(player.vx,player.vz)/3.2);
   const sk=vfx.shake*0.08; vfx.shake=Math.max(0,vfx.shake-dt*1.2);
   { const pci=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL), deep=D.liquid[pci]===LQ_DEEP&&!D.bridge[pci]; player.eye+=((deep?0.62:EYE)-player.eye)*Math.min(1,dt*3); }
-  if(camMode==='tps'){ placeThirdPerson(dt,sk); return; }
+  if(ui.camMode==='tps'){ placeThirdPerson(dt,sk); return; }
   U.uCut.value=0;
   camera.position.set(player.x+(mr()-0.5)*sk,(mr()-0.5)*sk+player.eye-(player.roll?Math.sin(Math.PI*player.roll.t/0.32)*0.55:0)+Math.sin(player.bob*2)*0.035*spd*(player.eye<1?0.3:1)+(player.eye<1?Math.sin(time*1.8)*0.04:0),player.z);
   camera.rotation.set(player.pitch,player.yaw,Math.sin(player.bob)*0.004*spd);
@@ -111,6 +111,6 @@ function updateAtmosphere(dt){
   finalPass.uniforms.uExposure.value=expo*(1+vfx.flash*1.6);
   let heat=0; for(const f of fixtures){ if(f.type!=='lava'&&!(f.type==='crater'&&f.active))continue; heat=Math.max(heat,1-Math.hypot(f.x-player.x,f.z-player.z)/10); }
   const hu=finalPass.uniforms.uHeat; hu.value+=(heat-hu.value)*Math.min(1,dt*2);
-  finalPass.uniforms.uSwim.value=camMode==='tps'?0:clamp((EYE-player.eye)/(EYE-0.62),0,1);
+  finalPass.uniforms.uSwim.value=ui.camMode==='tps'?0:clamp((EYE-player.eye)/(EYE-0.62),0,1);
 }
 

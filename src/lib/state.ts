@@ -22,3 +22,45 @@ export interface Vfx {
   zapFlash: ZapFlash | null;
 }
 export const vfx: Vfx = { shake: 0, flash: 0, hurtFlash: 0, hpFlash: 0, zapFlash: null };
+
+/** 画面の開け閉め（冒険が始まったか、1人称・3人称、マウスを捕まえているか、各画面が開いているか、表示の量） */
+export interface Ui {
+  /** 冒険が始まったか（タイトルの画面を閉じたか） */
+  started: boolean;
+  /** 装備の画面 */
+  invOpen: boolean;
+  /** メニュー */
+  menuOpen: boolean;
+  /** 操作の案内 */
+  helpOn: boolean;
+  /** マウスを捕まえているか（ポインタロック） */
+  locked: boolean;
+  /** 1人称（'fps'）か3人称 */
+  camMode: string;
+  /** レベルアップの画面 */
+  lvlOpen: boolean;
+  /** 祭壇の画面 */
+  altarOpen: boolean;
+  /** デバッグの画面（F2） */
+  dbgOpen: boolean;
+  /** 年代記の画面 */
+  chronOn: boolean;
+  /** 表示の量（0：全部、1：少し、2：なし） */
+  uiMode: number;
+  /** 速さの表示 */
+  perfOn: boolean;
+}
+export const ui: Ui = {
+  started: false,
+  invOpen: false,
+  menuOpen: false,
+  helpOn: false,
+  locked: false,
+  camMode: 'fps',
+  lvlOpen: false,
+  altarOpen: false,
+  dbgOpen: false,
+  chronOn: false,
+  uiMode: 0,
+  perfOn: false,
+};

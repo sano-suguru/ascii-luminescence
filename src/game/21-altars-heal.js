@@ -115,7 +115,7 @@ function rallyOnHit(m,n,how){ if(!(player.rally>0)||!RALLY_FROM.has(how)||m.ty.c
     rallyMotes.push({x0:x,y0:y,z0:z,t:-q*0.03,dur:0.38+mr()*0.12,amt:per,c:m.ty.col||[1,0.9,0.7],wob:mr()*6.28}); } }
 function updateRally(dt){ if(dead)return; const mn=bodyN('mend');
   if(player.rally>0&&time-(player.lastHurt||-99)>0.6){ player.rally=Math.max(0,player.rally-dt*(player.rallyRate||2)); }
-  const tx=player.x, ty=(camMode==='tps'?1.0:player.eye-0.35), tz=player.z;
+  const tx=player.x, ty=(ui.camMode==='tps'?1.0:player.eye-0.35), tz=player.z;
   for(const p of rallyMotes){ p.t+=dt; if(p.t<0)continue; const f=Math.min(1,p.t/p.dur), e=f*f*(3-2*f), arc=Math.sin(f*Math.PI)*0.35;
     const x=p.x0+(tx-p.x0)*e+Math.cos(p.wob)*arc*0.4, y=p.y0+(ty-p.y0)*e+arc, z=p.z0+(tz-p.z0)*e+Math.sin(p.wob)*arc*0.4, b=1.6+1.2*f;
     dyn(x,y,z,G(f<0.5?'*':'.'),0.12,(p.c[0]*0.5+0.6)*b,(p.c[1]*0.5+0.55)*b,(p.c[2]*0.5+0.4)*b,0,0);
@@ -167,18 +167,18 @@ function grabItem(it,k,x,z,dest){
     if(it.grp){ D.items.forEach((o,j)=>{ if(o!==it&&o.grp===it.grp&&!o.taken){ o.taken=true; runState.taken.add(levelSeed()+':'+j+':rune'); const [ox,oz]=cpos(o.i); for(let q=0;q<12;q++){ const a=mr()*6.28; spawn(ox+(o.altar?(o.slot-1)*0.55:0),0.95,oz,Math.cos(a)*0.8,0.3+mr()*0.6,Math.sin(a)*0.8,0.9,G('.'),0.1,0.8,0.75,1.0,0); } } }); }
     if(it.grp==='start')runState.startChosen=true; if(it.grp==='altar1')runState.altar1=true;
     if(it.opt==='forge'){ const w=it.forgeW, t=trList(w).find(t=>t.k===it.forgeK); if(t)t.lv=it.forgeTo; else { w.traits=w.traits||[]; w.traits.push({k:it.forgeK,lv:it.forgeTo}); }
-      msg(`<b style="color:#bcdcff">T</b>${RUNE_DEF[w.type].name}の「${trName(w.type,{k:it.forgeK})}」が Lv${it.forgeTo} になった。`); sChime(x,z,0.5); renderHotbar(); if(invOpen)renderInv(); return; }
+      msg(`<b style="color:#bcdcff">T</b>${RUNE_DEF[w.type].name}の「${trName(w.type,{k:it.forgeK})}」が Lv${it.forgeTo} になった。`); sChime(x,z,0.5); renderHotbar(); if(ui.invOpen)renderInv(); return; }
     if(it.opt==='open'){ applyOpen(it.target); if(runState.slotPend===it.grp)runState.slotPend=null; msg(`<b style="color:#ffe3a0">{ }</b>${it.label}が開いた。`); sChime(x,z,0.5); return; }
     if(it.opt==='heal'){ player.hp=Math.min(PLAYER_MAX,player.hp+PLAYER_MAX*0.7); renderStatus(); msg('<b style="color:#ff9aa8">+</b>温かな光が、傷を塞いでいく。'); sChime(x,z,0.45); return; }
-    if(it.opt==='hone'){ const ru=allRunes().find(o=>o.uid===it.hone.uid); if(ru){ ru.aff[it.hone.k]=it.hone.v; msg(`<b class="rn" style="color:${css(runeCol(ru))}">${RUNE_DEF[ru.type].ch}</b>${RUNE_DEF[ru.type].name}のルーンに、${AFFIX[it.hone.k].fmt(it.hone.v)} が宿った。`); renderHotbar(); if(invOpen)renderInv(); } else msg('<span class="lab">宿すはずのルーンは、もう手元にない。光は静かに消えた。</span>'); sChime(x,z,0.45); return; }
+    if(it.opt==='hone'){ const ru=allRunes().find(o=>o.uid===it.hone.uid); if(ru){ ru.aff[it.hone.k]=it.hone.v; msg(`<b class="rn" style="color:${css(runeCol(ru))}">${RUNE_DEF[ru.type].ch}</b>${RUNE_DEF[ru.type].name}のルーンに、${AFFIX[it.hone.k].fmt(it.hone.v)} が宿った。`); renderHotbar(); if(ui.invOpen)renderInv(); } else msg('<span class="lab">宿すはずのルーンは、もう手元にない。光は静かに消えた。</span>'); sChime(x,z,0.45); return; }
     if(dest){ placeChosen(it.rune,dest,!!it.altar); sChime(x,z,0.45); return; }
     takeRune(it.rune,it.grp==='start'?'R':null,!!it.altar); sChime(x,z,0.45); if(it.vault)vaultSprung(it);
 }
 // a rune put where the player chose: into a hand (what was there goes to the bag), or into the bag
 function placeChosen(ru,dest,fromAltar){ if(!RSEEN.has(ru.type)){ RSEEN.add(ru.type); saveSet('al_runes',RSEEN); } if(mergeMod(ru))return; const def=RUNE_DEF[ru.type], col=runeCol(ru);
-  bag.push(ru); msg(`<b class="rn" style="color:${css(col)}">${def.ch}</b>${thingLabel(ru)}を手にした。袋に収めた。Tab で付け替えられる（祭壇のそばなら詠唱はいらない）。`); renderHotbar(); if(invOpen)renderInv(); }
+  bag.push(ru); msg(`<b class="rn" style="color:${css(col)}">${def.ch}</b>${thingLabel(ru)}を手にした。袋に収めた。Tab で付け替えられる（祭壇のそばなら詠唱はいらない）。`); renderHotbar(); if(ui.invOpen)renderInv(); }
 // the altar's comparison panel: near a lit altar, its three choices side by side; 1, 2, 3 choose (touching still works). The game does not pause.
-let altarNear=null, altarPanelKey='', altarSel=null, altarAim=-1, altarOpen=false, altarDismissed=null;
+let altarNear=null, altarPanelKey='', altarSel=null, altarAim=-1, altarDismissed=null;
 function runeDest(ru){ const def=RUNE_DEF[ru.type], cat=def.cat;
   if(cat==='body'){ const i=[0,1].slice(0,runState.bodyOpen||0).find(i=>!hands.B['b'+i]); return i!==undefined?'身の護符の枠へ':'袋へ'; }
   if(cat==='atk'){ const h=['R','L'].find(h=>!hands[h].atk); return h?`${h==='L'?'左':'右'}手へ`:'袋へ'; }
@@ -207,27 +207,27 @@ function renderAltar(){ const el=document.getElementById('altarp'); if(!el)retur
   rows.push(f('+---'));
   el.innerHTML=boxText(rows,ALTAR_W); setAltarDetail(null);
   if(!el.dataset.bound){ el.dataset.bound='1';
-    el.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('button'); if(!b||!altarOpen)return; e.stopPropagation();
+    el.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('button'); if(!b||!ui.altarOpen)return; e.stopPropagation();
       if(b.dataset.cancel){ closeAltar(true); return; } if(b.dataset.k!==undefined)chooseAltar(+b.dataset.k); });
-    el.addEventListener('mouseover',e=>{ if(!altarOpen)return; const b=e.target.closest&&e.target.closest('button[data-k]'); setAltarDetail(b?altarOpts().find(o=>o.slot===+b.dataset.k):null); });
-    el.addEventListener('contextmenu',e=>{ e.preventDefault(); if(altarOpen)closeAltar(true); }); } }
+    el.addEventListener('mouseover',e=>{ if(!ui.altarOpen)return; const b=e.target.closest&&e.target.closest('button[data-k]'); setAltarDetail(b?altarOpts().find(o=>o.slot===+b.dataset.k):null); });
+    el.addEventListener('contextmenu',e=>{ e.preventDefault(); if(ui.altarOpen)closeAltar(true); }); } }
 function setAltarDetail(o){ const el=document.getElementById('altarp'); if(!el)return; const L=altarDetail(o); el.querySelectorAll('.adet').forEach((sp,i)=>{ sp.innerHTML=padTo(clipHtml(L[i]||'',ALTAR_W-4),ALTAR_W-3); }); }
-function openAltar(){ const el=document.getElementById('altarp'); if(!el)return; altarOpen=true; document.body.classList.toggle('paused',true);
-  if(castSt){ castSt=null; beamSegs=[]; } if(locked&&document.exitPointerLock)document.exitPointerLock(); renderAltar(); el.classList.add('show','open'); renderHotbar(); }
-function closeAltar(dismiss){ const el=document.getElementById('altarp'); altarOpen=false; if(dismiss)altarDismissed=altarNear; if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused());
-  if(!plFailed&&started&&!dead)tryLock(); updateResume(); }
-function updateAltarPanel(){ const el=document.getElementById('altarp'); if(!el)return; if(lvlOpen)return; if(lvl.pending>0&&started&&!dead&&!isPaused()){ openLevelUp(); return; }
-  if(altarOpen){ if(!D||!started||dead||!altarOpts().length)closeAltar(false); return; }
+function openAltar(){ const el=document.getElementById('altarp'); if(!el)return; ui.altarOpen=true; document.body.classList.toggle('paused',true);
+  if(castSt){ castSt=null; beamSegs=[]; } if(ui.locked&&document.exitPointerLock)document.exitPointerLock(); renderAltar(); el.classList.add('show','open'); renderHotbar(); }
+function closeAltar(dismiss){ const el=document.getElementById('altarp'); ui.altarOpen=false; if(dismiss)altarDismissed=altarNear; if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused());
+  if(!plFailed&&ui.started&&!dead)tryLock(); updateResume(); }
+function updateAltarPanel(){ const el=document.getElementById('altarp'); if(!el)return; if(ui.lvlOpen)return; if(lvl.pending>0&&ui.started&&!dead&&!isPaused()){ openLevelUp(); return; }
+  if(ui.altarOpen){ if(!D||!ui.started||dead||!altarOpts().length)closeAltar(false); return; }
   altarNear=null;
-  if(started&&!dead&&!isPaused()&&D){ let best=null, bd=1.5; for(const it of (D.items||[])){ if(it.taken||!it.altar||!it.rune||it.slot!==1)continue; if(it.guardG!==undefined&&guardedNow(it))continue; const [x,z]=cpos(it.i), d=Math.hypot(x-player.x,z-player.z); if(d<bd){ bd=d; best=it; } } if(best)altarNear=best.grp; }
+  if(ui.started&&!dead&&!isPaused()&&D){ let best=null, bd=1.5; for(const it of (D.items||[])){ if(it.taken||!it.altar||!it.rune||it.slot!==1)continue; if(it.guardG!==undefined&&guardedNow(it))continue; const [x,z]=cpos(it.i), d=Math.hypot(x-player.x,z-player.z); if(d<bd){ bd=d; best=it; } } if(best)altarNear=best.grp; }
   if(!altarNear){ altarDismissed=null; if(el.classList.contains('show'))el.classList.remove('show','open'); return; }
   if(altarDismissed===altarNear)return;
   openAltar(); }
 function chooseAltar(n){ if(!altarNear)return false; const k=D.items.findIndex(o=>o.grp===altarNear&&o.slot===n&&!o.taken); if(k<0)return false; const it=D.items[k];
-  const [x,z]=cpos(it.i); if(!it.opt||it.opt==='rune')grabItem(it,k,x+(it.slot-1)*0.55,z,'bag'); else grabItem(it,k,x+(it.slot-1)*0.55,z); altarSel=null; altarPanelKey=''; if(altarOpen)closeAltar(false); return true; }
+  const [x,z]=cpos(it.i); if(!it.opt||it.opt==='rune')grabItem(it,k,x+(it.slot-1)*0.55,z,'bag'); else grabItem(it,k,x+(it.slot-1)*0.55,z); altarSel=null; altarPanelKey=''; if(ui.altarOpen)closeAltar(false); return true; }
 function altarPlace(dest){ if(!altarSel)return false; const k=D.items.findIndex(o=>o.grp===altarSel.grp&&o.slot===altarSel.slot&&!o.taken); altarSel=null; altarPanelKey=''; if(k<0)return false; const it=D.items[k], [x,z]=cpos(it.i); grabItem(it,k,x+(it.slot-1)*0.55,z,dest); return true; }
 
-function mergeMod(ru){ if(RUNE_DEF[ru.type].cat!=='mod'||ru.strong)return false; const tw=bag.find(b=>b.type===ru.type&&!b.strong); if(!tw)return false; tw.strong=true; msg(`<b class="rn" style="color:${css(TIER_COL[3])}">${RUNE_DEF[ru.type].ch}</b>2つの「${RUNE_DEF[ru.type].nm}」のルーンが、ひとつの強い版にまとまった（${runeName(tw)}）。`); renderHotbar(); if(invOpen)renderInv(); return true; }
+function mergeMod(ru){ if(RUNE_DEF[ru.type].cat!=='mod'||ru.strong)return false; const tw=bag.find(b=>b.type===ru.type&&!b.strong); if(!tw)return false; tw.strong=true; msg(`<b class="rn" style="color:${css(TIER_COL[3])}">${RUNE_DEF[ru.type].ch}</b>2つの「${RUNE_DEF[ru.type].nm}」のルーンが、ひとつの強い版にまとまった（${runeName(tw)}）。`); renderHotbar(); if(ui.invOpen)renderInv(); return true; }
 function takeRune(ru,prefer,fromAltar){
   if(!RSEEN.has(ru.type)){ RSEEN.add(ru.type); saveSet('al_runes',RSEEN); }
   if(mergeMod(ru))return;
@@ -235,5 +235,5 @@ function takeRune(ru,prefer,fromAltar){
   if(def.cat==='body'){ const i=[0,1].slice(0,runState.bodyOpen||0).find(i=>!hands.B['b'+i]); if(i!==undefined){ hands.B['b'+i]=ru; where='身に着けた'; } else { bag.push(ru); where='袋に収めた'; } }
   else if(def.cat==='atk'){ const two=def.two, h=two?(!hands.L.atk&&!hands.R.atk?'R':null):(isTwo()?null:order.find(h=>!hands[h].atk)); if(h){ equipWeapon(h,ru); where=two?'両手で持った':`${h==='L'?'左':'右'}手に持った`; } else { bag.push(ru); where='袋に収めた'; } }
   else { const p=freeSlotFor(ru,order); if(p){ slotSet(p[0],p[1],ru); where=`${p[0]==='L'?'左':'右'}手に宿った`; } else { bag.push(ru); where='袋に収めた'; } }
-  syncHands(); msg(`<b class="rn" style="color:${css(col)}">${def.ch}</b>${thingLabel(ru)}を手にした。${where}。`); renderHotbar(); if(invOpen)renderInv();
+  syncHands(); msg(`<b class="rn" style="color:${css(col)}">${def.ch}</b>${thingLabel(ru)}を手にした。${where}。`); renderHotbar(); if(ui.invOpen)renderInv();
 }

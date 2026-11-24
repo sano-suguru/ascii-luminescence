@@ -42,7 +42,7 @@ function lordFell(m){
     msg(`<b style="color:${css(c)}">${LEGEND_KINDS[k].ch}</b>${mname(m)}が崩れ落ちた。その胸の奥から、ひとつの光がこぼれ落ちた。`); }
 }
 let slotPickN=0;
-function applyOpen(t){ if(t==='slotR'||t==='slotL'){ const H=hands[t.slice(4)]; H.slotN=Math.min(SLOT_MAX,(H.slotN||2)+1); while(H.slots.length<H.slotN)H.slots.push(null); } else if(t==='body')runState.bodyOpen=Math.min(2,(runState.bodyOpen||0)+1); syncHands(); renderHotbar(); if(invOpen)renderInv(); }
+function applyOpen(t){ if(t==='slotR'||t==='slotL'){ const H=hands[t.slice(4)]; H.slotN=Math.min(SLOT_MAX,(H.slotN||2)+1); while(H.slots.length<H.slotN)H.slots.push(null); } else if(t==='body')runState.bodyOpen=Math.min(2,(runState.bodyOpen||0)+1); syncHands(); renderHotbar(); if(ui.invOpen)renderInv(); }
 function openSlot(cell){ const opts=[];
   for(const h of ['R','L'])if((hands[h].slotN||2)<SLOT_MAX)opts.push({target:'slot'+h,label:`${h==='L'?'左':'右'}手に、ルーンの枠をもう1つ`});
   if((runState.bodyOpen||0)<2)opts.push({target:'body',label:'身の護符の枠'});
@@ -87,7 +87,7 @@ const pedLit=p=>{ const L=getLegend(); return !!L&&L.placed.has(p.kind); };
 function finalExposed(m){ if(!finalSt)return true; return finalSt.peds.some(p=>{ if(!pedLit(p))return false; const [x,z]=cpos(p.i); return Math.hypot(m.x-x,m.z-z)<4.5; }); }
 function updateFinal(dt){
   if(!finalSt||!isFinal()||dead)return; const L=getLegend();
-  if(!finalSt.said&&started){ finalSt.said=true; setTimeout(()=>msg('<b style="color:#bfe4ff">.</b>底に着いた。光の届かない、静かな闇だ。三つの台座が、何かを待っている。'),1600); }
+  if(!finalSt.said&&ui.started){ finalSt.said=true; setTimeout(()=>msg('<b style="color:#bfe4ff">.</b>底に着いた。光の届かない、静かな闇だ。三つの台座が、何かを待っている。'),1600); }
   for(const p of finalSt.peds){ if(L.placed.has(p.kind)||!L.have.has(p.kind))continue; const [x,z]=cpos(p.i); if(Math.hypot(x-player.x,z-player.z)>1.4)continue;
     L.have.delete(p.kind); L.placed.add(p.kind); renderStatus(); const c=LEGEND_KINDS[p.kind].col;
     for(let q=0;q<70;q++){ const a=mr()*6.28; spawn(x,0.5+mr()*4,z,Math.cos(a)*1.2,0.6+mr()*2.5,Math.sin(a)*1.2,1.4+mr(),G(mpick(['|','*','.','\''])),0.2,c[0]*3,c[1]*3,c[2]*3,0); }
@@ -159,8 +159,8 @@ function drawBoltFx(t,dt){
 // ---------------------------------------------------------------- back to the title (the adventure ends)
 let titleArm=0;
 function returnToTitle(){
-  setMenu(false); if(invOpen)setInv(false); if(locked&&document.exitPointerLock)document.exitPointerLock();
-  started=false; dead=false; won=false; gallery=null; castSt=null; swapSt=null; vfx.zapFlash=null;
+  setMenu(false); if(ui.invOpen)setInv(false); if(ui.locked&&document.exitPointerLock)document.exitPointerLock();
+  ui.started=false; dead=false; won=false; gallery=null; castSt=null; swapSt=null; vfx.zapFlash=null;
   document.body.classList.remove('started'); const de=document.getElementById('death'); if(de)de.classList.remove('show','won');
   const gp=document.getElementById('gal'); if(gp)gp.classList.remove('show');
   runSeed=(Math.random()*1e9)>>>0; depth=startDepth; branch=null; realm=null; placeMem.clear(); arrive=null;

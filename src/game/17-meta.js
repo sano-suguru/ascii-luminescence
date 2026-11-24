@@ -60,26 +60,26 @@ document.getElementById('intropanel').addEventListener('click',e=>{
   dead=false; { const de=document.getElementById('death'); if(de)de.classList.remove('show','won'); }
   PLAYER_MAX=40; lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; runTrials=(META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=PLAYER_MAX; runStats={kills:0,t0:time,maxDepth:depth,book0:BOOK.size,beastsNew:0}; resetRunes();
   if(regen)newLevel();
-  started=true; document.body.classList.add('started'); if(D)showStratum(D.stratum); setHelp(true); helpT=25; introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume();
+  ui.started=true; document.body.classList.add('started'); if(D)showStratum(D.stratum); setHelp(true); helpT=25; introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume();
 });
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 window.addEventListener('mousedown',e=>{
-  if(!menuOpen&&!invOpen)return;
-  if(dbgOpen){ if(!(e.target&&e.target.closest&&e.target.closest('#dbgp'))){ e.preventDefault(); e.stopPropagation(); setDbg(false); } return; }
+  if(!ui.menuOpen&&!ui.invOpen)return;
+  if(ui.dbgOpen){ if(!(e.target&&e.target.closest&&e.target.closest('#dbgp'))){ e.preventDefault(); e.stopPropagation(); setDbg(false); } return; }
   const inside=e.target&&e.target.closest&&e.target.closest('#menu,#pack');
   if(inside)return;
   e.preventDefault(); e.stopPropagation();
-  if(menuOpen){ setMenu(false); if(!plFailed)tryLock(); }
-  if(invOpen)setInv(false);
+  if(ui.menuOpen){ setMenu(false); if(!plFailed)tryLock(); }
+  if(ui.invOpen)setInv(false);
 },true);
-canvas.addEventListener('wheel',e=>{ if(!started||isPaused()||!hands)return; e.preventDefault(); const have=(unlocked('build3')?[0,1,2]:[0,1]).filter(k=>builds[k]); if(!have.length||time-(canvas.wheelT||-9)<0.35)return; canvas.wheelT=time;
+canvas.addEventListener('wheel',e=>{ if(!ui.started||isPaused()||!hands)return; e.preventDefault(); const have=(unlocked('build3')?[0,1,2]:[0,1]).filter(k=>builds[k]); if(!have.length||time-(canvas.wheelT||-9)<0.35)return; canvas.wheelT=time;
   const pos=Math.max(0,have.indexOf(buildIdx)), next=have[(pos+1)%have.length]; const prev=snapHands(); if(applyBuild(next)){ startSwap(prev); showHint(`ビルド${next+1}`); setTimeout(()=>showHint(''),900); } renderHotbar(); },{passive:false});
 let downAt=null;
-canvas.addEventListener('mousedown',e=>{ if(!started||isPaused())return; if(e.button===2){ beginCast('R'); return; } if(locked&&e.button===0){ beginCast('L'); return; } if(e.button===0){ downAt=[e.clientX,e.clientY]; beginCast('L'); } dragging=true; lmx=e.clientX; lmy=e.clientY; if(!locked)tryLock(); canvas.focus(); updateResume(); });
+canvas.addEventListener('mousedown',e=>{ if(!ui.started||isPaused())return; if(e.button===2){ beginCast('R'); return; } if(ui.locked&&e.button===0){ beginCast('L'); return; } if(e.button===0){ downAt=[e.clientX,e.clientY]; beginCast('L'); } dragging=true; lmx=e.clientX; lmy=e.clientY; if(!ui.locked)tryLock(); canvas.focus(); updateResume(); });
 window.addEventListener('mouseup',e=>{ if(hands){ if(e.button===0)releaseCast('L'); if(e.button===2)releaseCast('R'); } downAt=null; dragging=false; updateResume(); });
 window.addEventListener('mousemove',e=>{
-  if(!started)return;
-  if(locked){ player.yaw-=e.movementX*0.0022; player.pitch-=e.movementY*0.0022; }
+  if(!ui.started)return;
+  if(ui.locked){ player.yaw-=e.movementX*0.0022; player.pitch-=e.movementY*0.0022; }
   else if(dragging){ player.yaw-=(e.clientX-lmx)*0.0045; player.pitch-=(e.clientY-lmy)*0.0045; lmx=e.clientX; lmy=e.clientY; }
   player.pitch=clamp(player.pitch,-1.35,1.35);
 });
@@ -88,20 +88,20 @@ window.addEventListener('keydown',e=>{
   if(e.target&&e.target.tagName==='INPUT'){ if(e.code==='Enter'){ e.preventDefault(); document.getElementById('enter').click(); } return; }
   keys[e.code]=true;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
-  if(!started&&(e.code==='Enter'||e.code==='Space')){ document.getElementById('enter').click(); return; }
-  if(e.code==='F2'){ e.preventDefault(); if(started&&!dead&&DEVALL){ if(menuOpen)setMenu(false); if(invOpen)setInv(false); setDbg(!dbgOpen); } return; }
-  if(e.code==='Escape'&&dbgOpen){ setDbg(false); return; }
-  if(altarOpen&&(e.code==='Escape'||e.code==='Tab')){ e.preventDefault(); closeAltar(true); if(e.code==='Tab'&&started&&!dead)setInv(true); return; }
-  if(e.code==='Tab'){ e.preventDefault(); if(started&&!dead){ if(menuOpen)setMenu(false); setInv(!invOpen); } return; }
-  if(e.code==='Escape'){ if(invOpen){ setInv(false); return; } if(started&&!dead&&plFailed){ setMenu(!menuOpen); return; } }
+  if(!ui.started&&(e.code==='Enter'||e.code==='Space')){ document.getElementById('enter').click(); return; }
+  if(e.code==='F2'){ e.preventDefault(); if(ui.started&&!dead&&DEVALL){ if(ui.menuOpen)setMenu(false); if(ui.invOpen)setInv(false); setDbg(!ui.dbgOpen); } return; }
+  if(e.code==='Escape'&&ui.dbgOpen){ setDbg(false); return; }
+  if(ui.altarOpen&&(e.code==='Escape'||e.code==='Tab')){ e.preventDefault(); closeAltar(true); if(e.code==='Tab'&&ui.started&&!dead)setInv(true); return; }
+  if(e.code==='Tab'){ e.preventDefault(); if(ui.started&&!dead){ if(ui.menuOpen)setMenu(false); setInv(!ui.invOpen); } return; }
+  if(e.code==='Escape'){ if(ui.invOpen){ setInv(false); return; } if(ui.started&&!dead&&plFailed){ setMenu(!ui.menuOpen); return; } }
   if(isPaused())return;
-  if(started&&e.code==='KeyM'){ sndToggle(); }
-  if(started&&e.code==='KeyH'){ cycleUi(); }
+  if(ui.started&&e.code==='KeyM'){ sndToggle(); }
+  if(ui.started&&e.code==='KeyH'){ cycleUi(); }
   if(dead&&(e.code==='Enter'||e.code==='KeyR')){ newRun(); return; }
-  if(started&&e.code==='Space'){ startRoll(); }
-  if(started&&e.code==='KeyP'){ perfOn=!perfOn; renderStatus(); }
-  if(started&&e.code==='KeyJ'){ chronOn=!chronOn; helpOn=false; helpT=0; const el=document.getElementById('help'); if(el){ if(chronOn)renderChron(); el.classList.toggle('off',!chronOn); } }
-  if(started&&(e.key==='?'||e.code==='Slash')){ setHelp(!helpOn); helpT=0; }
+  if(ui.started&&e.code==='Space'){ startRoll(); }
+  if(ui.started&&e.code==='KeyP'){ ui.perfOn=!ui.perfOn; renderStatus(); }
+  if(ui.started&&e.code==='KeyJ'){ ui.chronOn=!ui.chronOn; ui.helpOn=false; helpT=0; const el=document.getElementById('help'); if(el){ if(ui.chronOn)renderChron(); el.classList.toggle('off',!ui.chronOn); } }
+  if(ui.started&&(e.key==='?'||e.code==='Slash')){ setHelp(!ui.helpOn); helpT=0; }
 });
 window.addEventListener('keyup',e=>{ keys[e.code]=false; });
 window.addEventListener('blur',()=>{ for(const k in keys)keys[k]=false; dragging=false; });

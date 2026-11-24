@@ -5,7 +5,7 @@ const lookEl=document.getElementById('look'); let lookHTML='';
 // lookLine は src/lib/names.ts（src/game/imports.mjs で読む）
 function look(){
   aimMon=null;
-  if(!started||trans){ if(lookHTML){ lookHTML=''; lookEl.innerHTML=''; } return; }
+  if(!ui.started||trans){ if(lookHTML){ lookHTML=''; lookEl.innerHTML=''; } return; }
   const cp=Math.cos(player.pitch), dx=-Math.sin(player.yaw)*cp, dy=Math.sin(player.pitch), dz=-Math.cos(player.yaw)*cp;
   const ox=camera.position.x, oy=camera.position.y, oz=camera.position.z;
   let best=null, bt=18;

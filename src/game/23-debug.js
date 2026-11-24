@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------- debugging (developer mode): one set of commands behind both the F2 screen and window.dbg (for automated checks), plus URL options
-let godMode=false, dbgOpen=false;
+let godMode=false;
 function dbgEnter(){ const keepB=branch, keepR=realm, keepD=depth;
-  if(!started){ startDepth=keepD; document.getElementById('enter').click(); }
+  if(!ui.started){ startDepth=keepD; document.getElementById('enter').click(); }
   branch=keepB; realm=keepR; depth=keepD; newLevel(); if(D)showStratum(D.stratum); }
 function dbgNear(cell){ if(cell==null||cell<0)return false; let best=-1, bd=1e9; const cx=cell%MW, cz=(cell/MW)|0;
   for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){ const i=(cz+dz)*MW+cx+dx; if(i<0||i>=D.tile.length||i===cell||D.tile[i]!==TF||D.liquid[i]===LQ_DEEP)continue; const d=Math.abs(Math.hypot(dx,dz)-2); if(d<bd){ bd=d; best=i; } }
@@ -37,7 +37,7 @@ const dbg={
 };
 window.dbg=new Proxy(dbg,{get(o,k){ const v=o[k]; if(typeof v!=='function')return v; return (...a)=>DEVALL?v(...a):'開発用モードがオフです（タイトルでオンにするか、URL に ?dev=1 を付けてください）'; }});
 // the F2 screen
-function setDbg(on){ if(on===dbgOpen)return; if(on&&(!DEVALL||!started||dead))return; dbgOpen=on; document.body.classList.toggle('paused',isPaused()); const el=document.getElementById('dbgp'); if(!el)return; el.classList.toggle('show',on); if(on){ renderDbg(); if(document.pointerLockElement)document.exitPointerLock(); } else tryLock(); }
+function setDbg(on){ if(on===ui.dbgOpen)return; if(on&&(!DEVALL||!ui.started||dead))return; ui.dbgOpen=on; document.body.classList.toggle('paused',isPaused()); const el=document.getElementById('dbgp'); if(!el)return; el.classList.toggle('show',on); if(on){ renderDbg(); if(document.pointerLockElement)document.exitPointerLock(); } else tryLock(); }
 function renderDbg(){ const el=document.getElementById('dbgp'); if(!el)return; const f=t=>`<span class="f">${t}</span>`, I=dbg.info(), B=(c,t)=>`<button class="row" data-c="${c}">[${t}]</button>`;
   const where=I.realm?`異界：${REALMS[I.realm.key].name}`:I.branch?`支道：${BRANCHES[I.branch.key].name} ${I.branch.lvl}/${I.branch.len}階`:`深度 ${I.depth}`;
   const nx=I.next?(()=>{ const [k,v]=I.next.split(':'); const key=v.replace(' (strong)',''); return k==='stratum'?(STRATA.find(s=>s.k===key)||{}).name:k==='special'?SPECIALS[key].name:BRANCHES[key].name+(v.includes('strong')?'（主の階へ）':''); })():'変わらない';

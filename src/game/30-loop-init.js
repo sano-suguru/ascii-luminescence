@@ -21,7 +21,7 @@ function frame(nowMs){
 const TESTQ={n:0,done:null};
 function testTick(draw){ TESTCLK.advance(TEST_STEP*1000); tick(TEST_STEP,draw); }
 function tick(raw,draw){
-  if(isPaused()&&started){ if(frame.stillDrawn)return; frame.stillDrawn=true; } else frame.stillDrawn=false; const dt=isPaused()?0:clamp(raw,0,0.05)*timeScale();
+  if(isPaused()&&ui.started){ if(frame.stillDrawn)return; frame.stillDrawn=true; } else frame.stillDrawn=false; const dt=isPaused()?0:clamp(raw,0,0.05)*timeScale();
   time+=dt; const t=time;
   U.uTime.value=t;
   if(trans){
@@ -34,17 +34,17 @@ function tick(raw,draw){
   updateStatuses(dt);
   for(const m of monsters)if(!m.galShow&&!m.ty.dummy)updateMonster(m,dt*monTimeK(m),t);
   if(monsters.some(m=>m.dead))monsters=monsters.filter(m=>!m.dead);
-  pfFrames++; pfT+=raw; if(pfT>=0.5){ pfFps=Math.round(pfFrames/pfT); pfFrames=0; pfT=0; if(perfOn)renderStatus(); }
+  pfFrames++; pfT+=raw; if(pfT>=0.5){ pfFps=Math.round(pfFrames/pfT); pfFrames=0; pfT=0; if(ui.perfOn)renderStatus(); }
   regrow(); brimRecover(dt); if(!dead){ updateTraps(dt); updateSearch(dt); } updateLife(dt);
   updateLights(t);
   updateAtmosphere(dt);
-  dn=0; drawFixtures(t,dt); drawDoors(t,dt); drawFire(t,dt); drawWebs(t); drawTraps(t); drawSwing(); drawViewWeapons(t); drawOmens(t,dt); drawRunesWorld(t); updateAltarPanel(); drawArrows(); drawLegendWorld(t); drawBoltFx(t,dt); drawGallery(t); drawFrozen(t); drawCastFx(t); if(camMode==='tps'&&D&&!gallery){ updateAvatar(dt); drawMonster0(avatar,t); drawSection(); } for(const m of monsters)drawMonster(m,t); flushDyn();
+  dn=0; drawFixtures(t,dt); drawDoors(t,dt); drawFire(t,dt); drawWebs(t); drawTraps(t); drawSwing(); drawViewWeapons(t); drawOmens(t,dt); drawRunesWorld(t); updateAltarPanel(); drawArrows(); drawLegendWorld(t); drawBoltFx(t,dt); drawGallery(t); drawFrozen(t); drawCastFx(t); if(ui.camMode==='tps'&&D&&!gallery){ updateAvatar(dt); drawMonster0(avatar,t); drawSection(); } for(const m of monsters)drawMonster(m,t); flushDyn();
   updateParticles(dt,t);
   fovT+=dt; if(fovT>0.1){ fovT=0; computeFOV(); checkEvents(false); look(); stepGas(); stepFire(); }
-  mapT+=dt; if(mapT>0.11){ mapT=0; if(uiMode===0)drawMap(); }
-  if(helpT>0){ helpT-=dt; if(helpT<=0&&helpOn)setHelp(false); }
+  mapT+=dt; if(mapT>0.11){ mapT=0; if(ui.uiMode===0)drawMap(); }
+  if(helpT>0){ helpT-=dt; if(helpT<=0&&ui.helpOn)setHelp(false); }
   finalPass.uniforms.uTime.value=t; finalPass.uniforms.uFade.value=clamp(fade,0,1); finalPass.uniforms.uHurt.value=vfx.hurtFlash+(player.hp<PLAYER_MAX*0.25&&!dead?0.18+0.08*Math.sin(t*4):0);
-  if(started&&!trans&&!dead&&!isPaused())pickupItems();
+  if(ui.started&&!trans&&!dead&&!isPaused())pickupItems();
   if(hands)updateCast(dt);
   updateFinal(dt); updateGallery(dt); trackSeen(dt); updateFrozen(dt); cloudsMeetFire();
   updateCross(raw);
@@ -74,7 +74,7 @@ if(TEST)window.__test={
   width(text){ return visW(text); },
   // a plain copy of what matters, to compare runs
   state(){ const f=v=>+(+v||0).toFixed(3);
-    return {time:f(time),seed:runSeed,place:placeLabel(),depth,started,dead,hp:f(player.hp),pos:[f(player.x),f(player.z)],yaw:f(player.yaw),lvl:lvl.n,
+    return {time:f(time),seed:runSeed,place:placeLabel(),depth,started:ui.started,dead,hp:f(player.hp),pos:[f(player.x),f(player.z)],yaw:f(player.yaw),lvl:lvl.n,
       monsters:monsters.map(m=>[m.key,f(m.x),f(m.z),f(m.hp),m.sleep?1:0]),projs:projs.length,
       trans:trans?trans.phase:null,cast:castSt?{h:castSt.h,t:f(castSt.t),need:f(castSt.need),full:castSt.full}:null,recover:f(player.recover),paused:isPaused()}; },
   // hold a weapon (a RUNE_DEF key such as 'blade', 'bolt', 'orb'), and press / release a hand's button ('L' or 'R')
