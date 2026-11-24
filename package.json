@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "dejavu-fonts-ttf": "2.37.3",
+    "eslint-scope": "9.1.2",
     "fontkit": "3.0.0",
     "oxfmt": "0.79.0",
     "oxlint": "1.94.0",
