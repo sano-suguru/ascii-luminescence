@@ -213,12 +213,12 @@ function runLore(victory){ const L=getLegend(), parts=[], add=(lab,n,v)=>{ if(v>
   add('到達した深さ',`深度${md}`,md*2); const lords=adv.runState.lordsDone?adv.runState.lordsDone.size:0; add('倒した支道の主',`${lords}体`,lords*8);
   const pl=L?L.placed.size:0; add('捧げた伝説の物',`${pl}つ`,pl*6); if(victory)add('最後の王の影に勝った','',30);
   const lg=Math.max(0,(adv.lvl.n||1)-1); add('上がったレベル',`${lg}つ`,lg);
-  const nb=Math.max(0,BOOK.size-((adv.runStats&&adv.runStats.book0)||0)); add('新しく記した反応',`${nb}つ`,nb*3); const nbe=(adv.runStats&&adv.runStats.beastsNew)||0; add('初めて出会った忘れられた獣',`${nbe}体`,nbe*4);
+  const nb=Math.max(0,saved.BOOK.size-((adv.runStats&&adv.runStats.book0)||0)); add('新しく記した反応',`${nb}つ`,nb*3); const nbe=(adv.runStats&&adv.runStats.beastsNew)||0; add('初めて出会った忘れられた獣',`${nbe}体`,nbe*4);
   const base=parts.reduce((a,p)=>a+p[2],0), mult=1+0.25*adv.runTrials.length; return {parts,base,mult,total:Math.round(base*mult)}; }
-function awardLore(victory){ if(!adv.runStats||gallery)return null; if(adv.runStats.loreRes)return adv.runStats.loreRes; const R=runLore(victory); META.lore=(META.lore||0)+R.total; saveMeta(); adv.runStats.loreRes=R; return R; }
+function awardLore(victory){ if(!adv.runStats||gallery)return null; if(adv.runStats.loreRes)return adv.runStats.loreRes; const R=runLore(victory); saved.META.lore=(saved.META.lore||0)+R.total; saveMeta(); adv.runStats.loreRes=R; return R; }
 function loreRows(R,f){ if(!R)return []; const rows=[`${f('|')}  <b>伝承</b>`]; for(const [lab,n,v] of R.parts)rows.push(`${f('|')}    ${padTo(lab+(n?`（${n}）`:''),34)}${String(v).padStart(4)}`);
   if(R.mult>1)rows.push(`${f('|')}    ${padTo(`試練（${adv.runTrials.map(k=>({dusk:'薄明',fury:'猛り'})[k]).join('・')}）`,34)}  ×${R.mult.toFixed(2)}`);
-  rows.push(`${f('|')}    ${padTo('合計',34)}<b style="color:#ffe3a0">${String('+'+R.total).padStart(4)}</b>`, `${f('|')}    <span class="lab">累計 ${META.lore}　　使える伝承 ${loreLeft()}</span>`);
+  rows.push(`${f('|')}    ${padTo('合計',34)}<b style="color:#ffe3a0">${String('+'+R.total).padStart(4)}</b>`, `${f('|')}    <span class="lab">累計 ${saved.META.lore}　　使える伝承 ${loreLeft()}</span>`);
   if(UNLOCKS.some(u=>!unlocked(u.id)&&u.cost<=loreLeft()))rows.push(`${f('|')}    <span style="color:#ffe3a0">解放できるものがある（タイトルの［解放］から）</span>`);
   else { const nx=UNLOCKS.filter(u=>!unlocked(u.id)).sort((a,b)=>a.cost-b.cost)[0]; if(nx)rows.push(`${f('|')}    <span class="lab">次の解放まで あと ${nx.cost-loreLeft()}（${nx.name} ${nx.cost}）</span>`); } return rows; }
 // the grave: what the fallen adventurer leaves (one thing, chosen on the results screen)
@@ -226,7 +226,7 @@ let graveSel=0, graveCands=[];
 function graveRune(g){ const ru=makeRune(g.type,0); ru.strong=false; if(g.traits&&g.traits.length)ru.traits=g.traits.map(t=>({k:t.k,lv:t.lv-1})).filter(t=>t.lv>0); return ru; }
 function graveCandidates(){ const out=[], seen=new Set(), add=ru=>{ if(ru&&!seen.has(ru)){ seen.add(ru); out.push(ru); } };
   add(gear.hands.L.atk); add(gear.hands.R.atk); for(const h of ['L','R'])for(const r of gear.hands[h].slots)add(r); if(gear.hands.B){ add(gear.hands.B.b0); add(gear.hands.B.b1); } for(const r of gear.bag)add(r); return out.slice(0,10); }
-function saveGrave(){ if(adv.won||!graveCands)return; const ru=graveSel>0?graveCands[graveSel-1]:null; META.grave=ru?{k:(STRATA.find(st=>here.depth>=st.from&&here.depth<=st.to)||{}).k||'',depth:here.depth,cause:adv.runStats.cause||'',item:serRune(ru)}:null; saveMeta(); graveCands=[]; }
+function saveGrave(){ if(adv.won||!graveCands)return; const ru=graveSel>0?graveCands[graveSel-1]:null; saved.META.grave=ru?{k:(STRATA.find(st=>here.depth>=st.from&&here.depth<=st.to)||{}).k||'',depth:here.depth,cause:adv.runStats.cause||'',item:serRune(ru)}:null; saveMeta(); graveCands=[]; }
 function graveRows(f){ const rows=[`${f('|')}  <b>墓に遺すもの</b>　<span class="lab">（ひとつ選ぶ。次の冒険で、同じ深さに墓が現れる）</span>`];
   const opt=(i,label)=>`${f('|')}    <button class="row gv" data-gv="${i}"><span class="mk">${graveSel===i?'&gt;':' '}</span> ${label}</button>`;
   rows.push(opt(0,'<span class="lab">遺さない</span>')); graveCands.forEach((ru,i)=>rows.push(opt(i+1,clipHtml(thingLabel(ru),48)))); return rows; }
@@ -247,7 +247,7 @@ function newRun(){
   const el=document.getElementById('death'); if(el)el.classList.remove('show','won');
   adv.dead=false; adv.runSeed=(Math.random()*1e9)>>>0; here.depth=1; here.branch=null; here.realm=null; here.inter=null; placeMem.clear(); here.arrive=null;
   here.trans=null; player.fall=false; gallery=null; { const gp=document.getElementById('gal'); if(gp)gp.classList.remove('show'); }
-  adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:clock.time,maxDepth:here.depth,book0:BOOK.size,beastsNew:0}; resetRunes(); newLevel();
+  adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(saved.META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:clock.time,maxDepth:here.depth,book0:saved.BOOK.size,beastsNew:0}; resetRunes(); newLevel();
 }
 function hitReact(m,n){ const ty=m.ty, boss=ty.boss||m.key==='lord'||m.key==='final', now=performance.now();
   m.flinchUntil=clock.time+Math.min(0.26,0.08+n*0.015);

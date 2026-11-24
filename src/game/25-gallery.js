@@ -1,19 +1,21 @@
 // ---------------------------------------------------------------- what has been met and found (kept across adventures); a developer switch shows everything
 const loadSet=k=>{ try{ return new Set(JSON.parse(localStorage.getItem(k)||'[]')); }catch(e){ return new Set(); } };
 const saveSet=(k,s)=>{ try{ localStorage.setItem(k,JSON.stringify([...s])); }catch(e){} };
-let SEEN=loadSet('al_seen'), RSEEN=loadSet('al_runes'), DEVALL=false; try{ DEVALL=localStorage.getItem('al_dev')==='1'; }catch(e){}
+saved.SEEN=loadSet('al_seen');
+saved.RSEEN=loadSet('al_runes');
+try{ saved.DEVALL=localStorage.getItem('al_dev')==='1'; }catch(e){}
 
 let seenT=0, gallery=null;
 const seenKey=m=>m.ty.beast?'beast:'+adv.runSeed+':'+m.ty.name:m.key==='lord'?'lord:'+(here.branch?here.branch.key:m.ty.sk):(m.key==='final'&&m.phase2)?'final2':m.key;
 function trackSeen(dt){
-  if(!ui.started||gallery)return; seenT-=dt; if(seenT>0)return; seenT=0.5; const n0=SEEN.size;
-  for(const m of here.monsters){ if(m.dead||m.hidden||!m.visible||m.ty.dummy)continue; if(Math.hypot(m.x-player.x,m.z-player.z)<26){ SEEN.add(seenKey(m)); if(m.ty.beast)recordBeast(m.ty); } }
-  if(SEEN.size!==n0)saveSet('al_seen',SEEN);
+  if(!ui.started||gallery)return; seenT-=dt; if(seenT>0)return; seenT=0.5; const n0=saved.SEEN.size;
+  for(const m of here.monsters){ if(m.dead||m.hidden||!m.visible||m.ty.dummy)continue; if(Math.hypot(m.x-player.x,m.z-player.z)<26){ saved.SEEN.add(seenKey(m)); if(m.ty.beast)recordBeast(m.ty); } }
+  if(saved.SEEN.size!==n0)saveSet('al_seen',saved.SEEN);
 }
 // LORD_GAL は src/lib/names.ts（src/game/imports.mjs で読む）
 function galleryList(){
   const out=[]; for(const k of Object.keys(MTYPES)){ if(k==='lord'||k==='final'||k==='final2'||k==='X'||k.startsWith('__')||k.startsWith('dummy'))continue; out.push({key:k,ty:MTYPES[k]}); }
-  for(const rec of loadBeasts().concat(DEVALL?beastSamples():[]))out.push({key:'beast:'+rec.seed+':'+rec.name,ty:{...rec,ch:'X',form:'beast',beast:true,light:9,boss:false,verb:rec.lore}});
+  for(const rec of loadBeasts().concat(saved.DEVALL?beastSamples():[]))out.push({key:'beast:'+rec.seed+':'+rec.name,ty:{...rec,ch:'X',form:'beast',beast:true,light:9,boss:false,verb:rec.lore}});
   for(const [bk,L] of Object.entries(LORD_GAL)){ const base=MTYPES[L.base]; if(!base)continue; out.push({key:'lord:'+bk,ty:{...base,sk:L.base,name:L.name,scale:L.scale,verb:L.verb,boss:true,col:L.base==='L'?[0.75,0.9,1.0]:base.col,look:({crypt:null,lair:null,nest:null,snake:null})[bk]||base.look,...(bk==='lair'?{form:'olddragon',light:5}:bk==='sunken'?{form:'deepkraken',light:5}:bk==='crypt'?{form:'lichking',light:7}:bk==='nest'?{form:'spiderqueen',light:6}:bk==='snake'?{form:'nagaqueen',light:6}:{})}}); }
   out.push({key:'final',ty:{...MTYPES.L,ch:'&',look:null,form:'shadowking',sk:'final',name:'最後の王の影',scale:3.6,col:[0.62,0.48,1.0],boss:true,lich:false,light:6,verb:'光の届かない底で、王冠の形をした影が揺れている'}});
   out.push({key:'final2',ty:{...MTYPES.L,ch:'&',look:null,form:'shadowserpent',sk:'final2',name:'最後の王の影（底の闇）',scale:3.0,col:[0.62,0.48,1.0],boss:true,lich:false,light:6,verb:'冠と外套を失い、底の闇から長い体をもたげた影'}});
@@ -45,7 +47,7 @@ function showroom(){
   return {cx,cz,x,z,dir,far};
 }
 function openBestiary(){
-  const all=galleryList(), list=DEVALL?all:all.filter(e=>SEEN.has(e.key));
+  const all=galleryList(), list=saved.DEVALL?all:all.filter(e=>saved.SEEN.has(e.key));
   introEl.classList.add('gone'); const room=showroom();
   gallery={mode:'beast',list,all:all.length,idx:0,room,m:null,t:0};
   showBeast(0); renderGallery(); document.getElementById('gal').classList.add('show');
@@ -77,7 +79,7 @@ function renderGallery(){
     const head=ty?`<b style="color:${css(ty.col||[1,1,1])}">${ty.ch==='&'?'&amp;':ty.ch}</b> <b>${ty.name}</b>`:'<span class="lab">まだ、何にも出会っていない</span>';
     const desc=wrapPlain(ty?ty.verb||'':'冒険で出会ったものが、ここに並ぶ',GW-4); while(desc.length<2)desc.push('');
     el.innerHTML=boxText([f('+-- 図鑑 ---'),`${f('|')} ${head}`,`${f('|')} <span class="lab">${desc[0]}</span>`,`${f('|')} <span class="lab">${desc[1]}</span>`,f('|'),
-      `${f('|')} <button class="row" data-g="prev">[&lt;]</button> ${String(g.list.length?g.idx+1:0).padStart(2,' ')} / ${String(g.list.length).padStart(2,' ')}  <span class="lab">（見つけた数 ${String([...SEEN].filter(k=>k).length).padStart(2,' ')} / ${g.all}）</span> <button class="row" data-g="next">[&gt;]</button>`,
+      `${f('|')} <button class="row" data-g="prev">[&lt;]</button> ${String(g.list.length?g.idx+1:0).padStart(2,' ')} / ${String(g.list.length).padStart(2,' ')}  <span class="lab">（見つけた数 ${String([...saved.SEEN].filter(k=>k).length).padStart(2,' ')} / ${g.all}）</span> <button class="row" data-g="next">[&gt;]</button>`,
       `${f('|')} <button class="row" data-g="back">[タイトルへ戻る]</button>   <span class="lab">← → で切り替え　Esc で戻る</span>`,f('+---')],GW);
     for(const b of el.querySelectorAll('button[data-g]'))b.onclick=()=>{ const k=b.dataset.g; if(k==='prev')showBeast(g.idx-1); else if(k==='next')showBeast(g.idx+1); else returnToTitle(); }; }
 }
@@ -90,7 +92,7 @@ function spawnDummy(d){ const m=makeMonster({key:d.k,cx:Math.floor(d.x/CELL),cz:
 function openRange(){
   introEl.classList.add('gone'); sndInit(); resetRunes(); const room=galleryRoom(52571);
   gallery={mode:'range',room,dummies:[]};
-  const types=Object.keys(RUNE_DEF).filter(t=>RUNE_DEF[t].cat!=='open'&&RUNE_DEF[t].cat!=='sub'&&(RUNE_DEF[t].cat!=='mod'||RUNE_TYPES.mod.includes(t))&&(DEVALL||RSEEN.has(t)||t==='blade'||t==='bolt'||RUNE_DEF[t].cat==='mod'));
+  const types=Object.keys(RUNE_DEF).filter(t=>RUNE_DEF[t].cat!=='open'&&RUNE_DEF[t].cat!=='sub'&&(RUNE_DEF[t].cat!=='mod'||RUNE_TYPES.mod.includes(t))&&(saved.DEVALL||saved.RSEEN.has(t)||t==='blade'||t==='bolt'||RUNE_DEF[t].cat==='mod'));
   gear.bag=[]; for(const t of types)gear.bag.push(makeRune(t,0));
   for(const h of ['L','R']){ gear.hands[h].slotN=SLOT_MAX; while(gear.hands[h].slots.length<SLOT_MAX)gear.hands[h].slots.push(null); } for(const t of RUNE_TYPES.mod)gear.bag.push(makeStrong(t)); for(const w of RUNE_TYPES.atk)for(const k of Object.keys(TRAITS[w]))for(const lv of [3,5]){ const ru=makeRune(w,0); ru.traits=[{k,lv}]; gear.bag.push(ru); } gear.hands.B=gear.hands.B||{b0:null,b1:null}; adv.runState.bodyOpen=2;
   DUMMY_KINDS.forEach((dk,j)=>{ const d={k:dk.k,x:room.x+(j-1.5)*2.4,z:room.z-5}; gallery.dummies.push(d); spawnDummy(d); });

@@ -67,7 +67,7 @@ function mainPathAltars(r,free){ if(here.D.stratum.special||here.D.finalVault)re
   if(er&&key&&roll<0.35){ const cells=er.ro.cells.filter(free); if(cells.length>3){ const at=cells[Math.floor(cells.length/2)], g=nextGroup(), sc=cells.filter(c=>c!==at&&Math.hypot((c%MW)-(at%MW),((c/MW)|0)-((at/MW)|0))>=1.5)[0];
     if(sc!==undefined){ here.D.spawns.push({key,cx:sc%MW,cz:(sc/MW)|0,g,lead:true,home:er.ri,elite:true}); { const wp=weaponPool(); here.D.items.push({i:at,kind:'rune',rune:rollTraits(makeRune(wp[Math.floor(r()*wp.length)],0,r),r,here.depth,1),taken:false,elitePrize:true,guardG:g}); } } } }
   placeSpring(r,free,here.D.hub?scored.filter(o=>sidePool(o)):scored,spreadPick);
-  if(META.grave&&!here.branch&&!here.realm&&!here.inter&&!gallery&&META.grave.depth===here.depth&&!(here.D.items||[]).some(o=>o.kind==='grave')){ const pool=scored.filter(o=>sidePool(o)), ro=(pool[pool.length-1]||scored[scored.length-1]||{}).ro; if(ro){ const c=ro.cells.filter(free); if(c.length)here.D.items.push({i:c[Math.floor(c.length/2)],kind:'grave',g:META.grave,rune:graveRune(META.grave.item),taken:false}); } }
+  if(saved.META.grave&&!here.branch&&!here.realm&&!here.inter&&!gallery&&saved.META.grave.depth===here.depth&&!(here.D.items||[]).some(o=>o.kind==='grave')){ const pool=scored.filter(o=>sidePool(o)), ro=(pool[pool.length-1]||scored[scored.length-1]||{}).ro; if(ro){ const c=ro.cells.filter(free); if(c.length)here.D.items.push({i:c[Math.floor(c.length/2)],kind:'grave',g:saved.META.grave,rune:graveRune(saved.META.grave.item),taken:false}); } }
   if(!here.branch&&!here.realm&&!here.inter&&forgeDepthOf(here.D.stratum.k)===here.depth){ const ro=here.D.hub?here.D.rooms[here.D.hub.ri]:(scored.find(o=>o.det>=3)||scored[0]||{}).ro; if(ro){ const c=ro.cells.filter(free); if(c.length){ const at=c[Math.floor(c.length*0.3)]; placeAltar(at,'forge'+levelSeed(),{forge:true}); } } }
   // at the crossroads there should be somewhere to choose: at least two side places within reach of its arrows
   if(here.D.hub){ const near=()=>(here.D.items||[]).filter(it=>!it.taken&&(it.kind==='spring'||it.elitePrize||it.vault||(it.altar&&it.slot===1&&/s$/.test(it.grp)))&&hubDist[it.i]<=11).length;
@@ -155,7 +155,7 @@ const guardedNow=it=>it.guardG!==undefined&&here.monsters.some(m=>!m.dead&&m.g==
 function pickupItems(){
   for(let k=0;k<(here.D.items||[]).length;k++){ const it=here.D.items[k]; if(it.taken)continue; if(it.kind==='rune'&&it.guardG!==undefined){ const gd=guardedNow(it); if(it.wasGuarded&&!gd&&!(here.D.lit||(here.D.lit=new Set())).has(it.grp||it.i)){ here.D.lit.add(it.grp||it.i); const [lx,lz]=cpos(it.i); sChime(lx,lz,0.5); msg(it.elitePrize?'<b style="color:#ffd27a">*</b>番人が倒れた。守られていたルーンが、手の届く光になった。':'<b style="color:#ffd27a">_</b>祭壇に光が灯った。'); } it.wasGuarded=gd; if(gd)continue; }
     if(it.kind==='legend'){ if(it.born&&clock.time-it.born<1)continue; const [lx,lz]=cpos(it.i); if(Math.hypot(lx-player.x,lz-player.z)<0.9){ it.taken=true; pickLegend(it); } continue; }
-    if(it.kind==='grave'){ const [gx,gz]=cpos(it.i); if(Math.hypot(gx-player.x,gz-player.z)<0.9){ it.taken=true; takeRune(it.rune); msg(`<b style="color:#c8c8d8">+</b>前の冒険者の形見を、墓から拾った：${thingLabel(it.rune)}`); META.grave=null; saveMeta(); sChime(gx,gz,0.4); } continue; }
+    if(it.kind==='grave'){ const [gx,gz]=cpos(it.i); if(Math.hypot(gx-player.x,gz-player.z)<0.9){ it.taken=true; takeRune(it.rune); msg(`<b style="color:#c8c8d8">+</b>前の冒険者の形見を、墓から拾った：${thingLabel(it.rune)}`); saved.META.grave=null; saveMeta(); sChime(gx,gz,0.4); } continue; }
     if(it.kind==='spring'){ const [sx,sz]=cpos(it.i); if(player.hp<adv.PLAYER_MAX-0.5&&Math.hypot(sx-player.x,sz-player.z)<0.9){ it.taken=true; adv.runState.taken.add(levelSeed()+':'+k+':spring'); player.hp=adv.PLAYER_MAX; player.rally=0; vfx.hpFlash=0.6; renderStatus(); sChime(sx,sz,0.5); setTimeout(()=>sChime(sx,sz,0.35),200); msg('<b style="color:#8fe0ff">~</b>泉の光が体を満たし、傷がすっかり癒えた。泉は静かに光を失った。'); for(let q=0;q<30;q++){ const a=mr()*6.28; spawn(player.x+Math.cos(a)*0.5,0.2+mr(),player.z+Math.sin(a)*0.5,Math.cos(a)*0.4,0.8+mr(),Math.sin(a)*0.4,1.0,G(mpick(['*','.','~'])),0.12,0.8,1.8,2.2,0); } } continue; }
     if(it.kind==='slot'){ if(it.born&&clock.time-it.born<1)continue; const [sx,sz]=cpos(it.i); if(Math.hypot(sx-player.x,sz-player.z)<0.9){ it.taken=true; openSlot(it.i); } continue; }
     if(it.kind!=='rune'||!it.rune)continue; if(it.born&&clock.time-it.born<0.6)continue; const [x,z]=cpos(it.i);
@@ -175,7 +175,7 @@ function grabItem(it,k,x,z,dest){
     takeRune(it.rune,it.grp==='start'?'R':null,!!it.altar); sChime(x,z,0.45); if(it.vault)vaultSprung(it);
 }
 // a rune put where the player chose: into a hand (what was there goes to the bag), or into the bag
-function placeChosen(ru,dest,fromAltar){ if(!RSEEN.has(ru.type)){ RSEEN.add(ru.type); saveSet('al_runes',RSEEN); } if(mergeMod(ru))return; const def=RUNE_DEF[ru.type], col=runeCol(ru);
+function placeChosen(ru,dest,fromAltar){ if(!saved.RSEEN.has(ru.type)){ saved.RSEEN.add(ru.type); saveSet('al_runes',saved.RSEEN); } if(mergeMod(ru))return; const def=RUNE_DEF[ru.type], col=runeCol(ru);
   gear.bag.push(ru); msg(`<b class="rn" style="color:${css(col)}">${def.ch}</b>${thingLabel(ru)}を手にした。袋に収めた。Tab で付け替えられる（祭壇のそばなら詠唱はいらない）。`); renderHotbar(); if(ui.invOpen)renderInv(); }
 // the altar's comparison panel: near a lit altar, its three choices side by side; 1, 2, 3 choose (touching still works). The game does not pause.
 let altarNear=null, altarPanelKey='', altarSel=null, altarAim=-1, altarDismissed=null;
@@ -229,7 +229,7 @@ function altarPlace(dest){ if(!altarSel)return false; const k=here.D.items.findI
 
 function mergeMod(ru){ if(RUNE_DEF[ru.type].cat!=='mod'||ru.strong)return false; const tw=gear.bag.find(b=>b.type===ru.type&&!b.strong); if(!tw)return false; tw.strong=true; msg(`<b class="rn" style="color:${css(TIER_COL[3])}">${RUNE_DEF[ru.type].ch}</b>2つの「${RUNE_DEF[ru.type].nm}」のルーンが、ひとつの強い版にまとまった（${runeName(tw)}）。`); renderHotbar(); if(ui.invOpen)renderInv(); return true; }
 function takeRune(ru,prefer,fromAltar){
-  if(!RSEEN.has(ru.type)){ RSEEN.add(ru.type); saveSet('al_runes',RSEEN); }
+  if(!saved.RSEEN.has(ru.type)){ saved.RSEEN.add(ru.type); saveSet('al_runes',saved.RSEEN); }
   if(mergeMod(ru))return;
   const def=RUNE_DEF[ru.type], col=runeCol(ru), order=prefer?[prefer,prefer==='R'?'L':'R']:['R','L']; let where='';
   if(def.cat==='body'){ const i=[0,1].slice(0,adv.runState.bodyOpen||0).find(i=>!gear.hands.B['b'+i]); if(i!==undefined){ gear.hands.B['b'+i]=ru; where='身に着けた'; } else { gear.bag.push(ru); where='袋に収めた'; } }

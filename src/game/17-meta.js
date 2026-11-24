@@ -1,13 +1,13 @@
 // ---------------------------------------------------------------- stage D: lore (points kept between adventures), unlocks, the last adventurer's grave, trials
 // META_DEF・UNLOCKS は src/lib/progress.ts（src/game/imports.mjs で読む）
 function loadMeta(){ try{ return Object.assign({},META_DEF,JSON.parse(localStorage.getItem('al_meta')||'{}')); }catch(e){ return Object.assign({},META_DEF); } }
-let META=loadMeta();
-function saveMeta(){ try{ localStorage.setItem('al_meta',JSON.stringify(META)); }catch(e){} }
-const devAllSafe=()=>{ try{ return DEVALL; }catch(e){ return false; } };
-const unlocked=id=>devAllSafe()||META.unl.includes(id);
+saved.META=loadMeta();
+function saveMeta(){ try{ localStorage.setItem('al_meta',JSON.stringify(saved.META)); }catch(e){} }
+// saved.DEVALL (src/lib/state.ts) is false until 25-gallery.js reads it from localStorage, as the old let DEVALL was unreadable (TDZ) until then
+const unlocked=id=>saved.DEVALL||saved.META.unl.includes(id);
 const lockedOf=(kind,t)=>{ const u=UNLOCKS.find(x=>x.kind===kind&&x.t===t); return !!u&&!unlocked(u.id); };
 const weaponPool=()=>RUNE_TYPES.atk.filter(t=>!lockedOf('weapon',t));
-const loreLeft=()=>Math.max(0,(META.lore||0)-(META.spent||0));
+const loreLeft=()=>Math.max(0,(saved.META.lore||0)-(saved.META.spent||0));
 const trialOn=k=>adv.runTrials.includes(k);
 let introMode='main';
 function buildUnlockPanel(){ const el=document.getElementById('intropanel'); if(!el)return; const f=t=>`<span class="f">${t}</span>`, KIND={weapon:'武器',rune:'ルーン',bless:'恩恵',build:'ビルド',trial:'試練'};
@@ -18,7 +18,7 @@ function buildUnlockPanel(){ const el=document.getElementById('intropanel'); if(
   rows.push(f('|'),`${f('|')} <button class="sl" id="unlBack" type="button">[ もどる ]</button>`,f('+---'));
   el.innerHTML=boxText(rows);
   document.getElementById('unlBack').addEventListener('click',()=>{ introMode='main'; buildIntroPanel(); });
-  for(const b of el.querySelectorAll('button[data-unl]'))b.addEventListener('click',()=>{ const u=UNLOCKS.find(x=>x.id===b.dataset.unl); if(!u||unlocked(u.id)||u.cost>loreLeft())return; META.unl=[...(META.unl||[]),u.id]; META.spent=(META.spent||0)+u.cost; saveMeta(); sndInit(); sChime(0,0,0.5); buildUnlockPanel(); }); }
+  for(const b of el.querySelectorAll('button[data-unl]'))b.addEventListener('click',()=>{ const u=UNLOCKS.find(x=>x.id===b.dataset.unl); if(!u||unlocked(u.id)||u.cost>loreLeft())return; saved.META.unl=[...(saved.META.unl||[]),u.id]; saved.META.spent=(saved.META.spent||0)+u.cost; saveMeta(); sndInit(); sChime(0,0,0.5); buildUnlockPanel(); }); }
 function buildIntroPanel(){
   const devOn=(()=>{ try{ return localStorage.getItem('al_dev')==='1'; }catch(e){ return false; } })(); if(!devOn)startDepth=1; const seedKeep=(document.getElementById('seedIn')||{}).value||'';
   const el=document.getElementById('intropanel'); if(!el)return; const f=t=>`<span class="f">${t}</span>`;
@@ -32,15 +32,15 @@ function buildIntroPanel(){
     `${f('|')} 壁も床も天井も、そこに棲むものも、`,`${f('|')} すべてが光る文字でできた地下迷宮。`,`${f('|')} 深く潜るほど闇は濃く、溶岩の光が強くなる。`,f('|'),
     ...keyRows,f('|'),...layerRows,
     `${f('|')} シード [<input id="seedIn" type="text" inputmode="numeric" autocomplete="off" maxlength="10" size="10" placeholder="ランダム" aria-label="シード">]`,f('|'),
-    ...(UNLOCKS.some(u=>u.kind==='trial'&&unlocked(u.id))?[`${f('|')} 試練 `+UNLOCKS.filter(u=>u.kind==='trial'&&unlocked(u.id)).map(u=>`<button class="sl${(META.trials||[]).includes(u.t)?' on':''}" type="button" data-trial="${u.t}"><span class="mk">${(META.trials||[]).includes(u.t)?'&gt;':' '}</span> ${u.name.replace(/試練|「|」/g,'')}</button>`).join('  '),f('|')]:[]),
-    `${f('|')} 伝承 <b style="color:#ffe3a0">${loreLeft()}</b> <span class="lab">（累計 ${META.lore||0}）</span>  <button class="sl" id="unlockB" type="button">[ 解放 ]</button>`,f('|'),
+    ...(UNLOCKS.some(u=>u.kind==='trial'&&unlocked(u.id))?[`${f('|')} 試練 `+UNLOCKS.filter(u=>u.kind==='trial'&&unlocked(u.id)).map(u=>`<button class="sl${(saved.META.trials||[]).includes(u.t)?' on':''}" type="button" data-trial="${u.t}"><span class="mk">${(saved.META.trials||[]).includes(u.t)?'&gt;':' '}</span> ${u.name.replace(/試練|「|」/g,'')}</button>`).join('  '),f('|')]:[]),
+    `${f('|')} 伝承 <b style="color:#ffe3a0">${loreLeft()}</b> <span class="lab">（累計 ${saved.META.lore||0}）</span>  <button class="sl" id="unlockB" type="button">[ 解放 ]</button>`,f('|'),
     `${f('|')}               <button id="enter" type="button">[ 迷宮に入る ]</button>`,f('|'),
     `${f('|')} <button class="sl" id="galB" type="button">[ 図鑑 ]</button>  <button class="sl" id="galR" type="button">[ 試しの間 ]</button>   <button class="sl" id="galDev" type="button">[開発用モード：${devOn?'オン':'オフ'}]</button>`,f('+---')]);
   document.getElementById('galB').addEventListener('click',()=>{ sndInit(); openBestiary(); });
   document.getElementById('unlockB').addEventListener('click',()=>{ introMode='unlock'; buildIntroPanel(); });
-  for(const b of el.querySelectorAll('button[data-trial]'))b.addEventListener('click',()=>{ const k=b.dataset.trial, T=new Set(META.trials||[]); if(T.has(k))T.delete(k); else T.add(k); META.trials=[...T]; saveMeta(); buildIntroPanel(); });
+  for(const b of el.querySelectorAll('button[data-trial]'))b.addEventListener('click',()=>{ const k=b.dataset.trial, T=new Set(saved.META.trials||[]); if(T.has(k))T.delete(k); else T.add(k); saved.META.trials=[...T]; saveMeta(); buildIntroPanel(); });
   document.getElementById('galR').addEventListener('click',()=>openRange());
-  document.getElementById('galDev').addEventListener('click',()=>{ DEVALL=!DEVALL; try{ localStorage.setItem('al_dev',DEVALL?'1':'0'); }catch(er){} buildIntroPanel(); });
+  document.getElementById('galDev').addEventListener('click',()=>{ saved.DEVALL=!saved.DEVALL; try{ localStorage.setItem('al_dev',saved.DEVALL?'1':'0'); }catch(er){} buildIntroPanel(); });
   for(const b of el.querySelectorAll('button.sl[data-d]'))b.addEventListener('click',()=>{ startDepth=+b.dataset.d; for(const o of el.querySelectorAll('button.sl[data-d]')){ const on=o===b; o.classList.toggle('on',on); o.querySelector('.mk').innerHTML=on?'&gt;':' '; } });
   const si=document.getElementById('seedIn'); if(si)si.value=seedKeep;
 }
@@ -57,7 +57,7 @@ document.getElementById('intropanel').addEventListener('click',e=>{
   if(regen){ here.branch=null; here.realm=null; here.inter=null; }
   fight.rains=[]; fight.marks=[]; fight.zones=[]; fight.laters=[];
   adv.dead=false; { const de=document.getElementById('death'); if(de)de.classList.remove('show','won'); }
-  adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:clock.time,maxDepth:here.depth,book0:BOOK.size,beastsNew:0}; resetRunes();
+  adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(saved.META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:clock.time,maxDepth:here.depth,book0:saved.BOOK.size,beastsNew:0}; resetRunes();
   if(regen)newLevel();
   ui.started=true; document.body.classList.add('started'); if(here.D)showStratum(here.D.stratum); setHelp(true); helpT=25; introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume();
 });
@@ -88,7 +88,7 @@ window.addEventListener('keydown',e=>{
   keys[e.code]=true;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
   if(!ui.started&&(e.code==='Enter'||e.code==='Space')){ document.getElementById('enter').click(); return; }
-  if(e.code==='F2'){ e.preventDefault(); if(ui.started&&!adv.dead&&DEVALL){ if(ui.menuOpen)setMenu(false); if(ui.invOpen)setInv(false); setDbg(!ui.dbgOpen); } return; }
+  if(e.code==='F2'){ e.preventDefault(); if(ui.started&&!adv.dead&&saved.DEVALL){ if(ui.menuOpen)setMenu(false); if(ui.invOpen)setInv(false); setDbg(!ui.dbgOpen); } return; }
   if(e.code==='Escape'&&ui.dbgOpen){ setDbg(false); return; }
   if(ui.altarOpen&&(e.code==='Escape'||e.code==='Tab')){ e.preventDefault(); closeAltar(true); if(e.code==='Tab'&&ui.started&&!adv.dead)setInv(true); return; }
   if(e.code==='Tab'){ e.preventDefault(); if(ui.started&&!adv.dead){ if(ui.menuOpen)setMenu(false); setInv(!ui.invOpen); } return; }

@@ -3,6 +3,7 @@
 // 移す時は tools/state-move.mjs を使う（同じ名前の局所の変数は書き換えない）。初めの値は、古い JS の宣言のまま。
 // 入れ物の名前は、古い JS の局所の名前とぶつからない物にする（道具が確かめる。fx は座標の fx とぶつかるので vfx にした）。
 import { type BranchPlace, type InterPlace, type Level, type RealmPlace } from './generate.ts';
+import { type Meta } from './progress.ts';
 import { type Rune } from './runes.ts';
 import { NCELL } from './world.ts';
 
@@ -420,3 +421,31 @@ export const here: Here = {
 };
 /** 行った階の覚え（場所の名前 → 見えた所と覚えた色の写し）。丸ごと入れ替えないので、古い JS は今までどおり placeMem で読む */
 export const placeMem = new Map<string, { explored: Uint8Array; mem: Float32Array }>();
+
+/** 今の冒険の伝説の物（シード・物の一覧・持っている物・置いた物）。冒険が伝説の物を選ぶまでは null。物の型は、目的の処理を移す時に作る */
+export interface Legend {
+  seed: number;
+  items: unknown[];
+  have: Set<string>;
+  placed: Set<string>;
+}
+/** 保存する記録（localStorage）：伝承・解放・墓・試練 META、魔導書に記した反応 BOOK、見たルーン RSEEN、見た生き物 SEEN、開発用モード DEVALL、
+ * それと今の冒険の伝説の物 LEGEND（これは保存しない）。
+ * META・SEEN・RSEEN の本当の初めの値は、古い JS が読み込みの関数で作ってその場で入れる（17-meta.js・25-gallery.js）。ここの値は仮。
+ * BOOK と DEVALL も、古い JS が localStorage から読んで入れ直す（19-hands-runes.js・25-gallery.js） */
+export interface Saved {
+  META: Meta;
+  BOOK: Set<string>;
+  RSEEN: Set<string>;
+  SEEN: Set<string>;
+  DEVALL: boolean;
+  LEGEND: Legend | null;
+}
+export const saved: Saved = {
+  META: { lore: 0, spent: 0, unl: [], grave: null, trials: [] },
+  BOOK: new Set(),
+  RSEEN: new Set(),
+  SEEN: new Set(),
+  DEVALL: false,
+  LEGEND: null,
+};
