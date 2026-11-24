@@ -207,7 +207,7 @@ export interface Spark {
   vz: number;
   t: number;
 }
-/** 火と地面のマス（マスごとの火・燃える物・灰・印・火の明かり・匂い）と、燃えているマスの一覧・ガス・投げた火花。マスごとの配列は、階に入るたびに作り直す（15-sound-fire.js） */
+/** 火と地面のマス（マスごとの火・燃える物・灰・印・火の明かり・匂い）と、燃えているマスの一覧・ガス・投げた火花。階に入るたびに作り直す（火・燃える物・灰・印・明かりと燃えているマスは 15-sound-fire.js の initFire、匂い・ガス・火花は 18-level-player.js の newLevel） */
 export interface Blaze {
   /** マスごとの火の強さ */
   fire: Float32Array;
