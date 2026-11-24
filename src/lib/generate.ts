@@ -1,7 +1,7 @@
 // 迷宮の生成（もとは src/game/04-generate.js の generate）。「入力 → 結果」の形：
 //   generateLevel(seed, depth, input, env) → { level, lordType, beastType }
 //   input：冒険のシード runSeed、場所（branch・realm・inter）、図鑑の見本か（showroom）、年代記（hist）、試練（trials）、使える武器（weapons）
-//   env：まだ古い JS にある物（生き物の表 MTYPES は読むだけ、ルーンを作る makeRune・rollTraits）
+//   env：生き物の表 MTYPES（src/lib/creatures.ts。読むだけ）と、まだ古い JS にある物（ルーンを作る makeRune・rollTraits）
 //   結果：階（level）と、その階の主の種類（lordType）・忘れられた獣（beastType）。生き物の表への書き込みは、古い JS の包み（generate）が行う
 // 迷宮の乱数（setRand）とノイズの種（setNoiseSeed）は、ここで階のシードから入れ替える。
 import { lookup, must, nth } from './array.ts';
@@ -14,6 +14,7 @@ import { VAULTS, makeCave, vaultCells } from './vaults.ts';
 import { makeBeastType } from './bodies/lords.ts';
 import type { Art, History, HistoryEvent } from './history.ts';
 import type { Rune } from './runes.ts';
+import type { MonsterType } from './creatures.ts';
 import {
   type Horde,
   type Stratum,
@@ -104,13 +105,9 @@ export interface GenInput {
 export type Engraving = (HistoryEvent & { wide?: boolean; pi?: number }) | { skip: true; mi: number; art: Art };
 /** 上下左右の向き（D4 の1つ） */
 type Dir = (typeof D4)[number];
-/** 生き物の種類（生き物の表 MTYPES の1つ。まだ古い JS にあるので、生成が読む所だけ） */
-export interface MonsterType {
-  readonly col?: unknown;
-  readonly look?: unknown;
-  readonly [k: string]: unknown;
-}
-/** まだ古い JS にある物 */
+/** 生き物の種類（src/lib/creatures.ts） */
+export type { MonsterType } from './creatures.ts';
+/** 生成に外から渡す物（生き物の表と、まだ古い JS にある物） */
 export interface GenEnv {
   /** 生き物の表（読むだけ） */
   MTYPES: Readonly<Record<string, MonsterType>>;
@@ -268,19 +265,8 @@ export interface Item {
   rune?: Rune;
   vault?: boolean;
 }
-/** その階の主の種類（生き物の表の1つを元に、名前や形を変えた物） */
-export interface LordType {
-  sk: string;
-  name: string;
-  scale: number;
-  verb: string;
-  boss: boolean;
-  col: unknown;
-  look: unknown;
-  form?: string;
-  light?: number;
-  readonly [k: string]: unknown;
-}
+/** その階の主の種類（生き物の表の1つを元に、名前や形を変えた物。古い JS が MTYPES.lord に入れる） */
+export type LordType = MonsterType & { sk: string; boss: boolean };
 
 /**
  * 部屋を作る。必須の欄（床のマス cells、深い水 deep などの中の配列）をすべてそろえて作る。
@@ -3221,7 +3207,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       LORD = LORDS[bk];
     if (LORD) {
       lordType = {
-        ...MTYPES[LORD.base],
+        ...lookup(MTYPES, LORD.base),
         sk: LORD.base,
         name: LORD.name,
         scale: LORD.scale,
