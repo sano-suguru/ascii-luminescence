@@ -129,8 +129,9 @@ export interface Player {
 }
 export const player: Player = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, pitch: -0.04, bob: 0, eye: 1.62, hp: 40 };
 
-/** 片手（L・R）：武器のルーン atk と、付けたルーンの枠 slots（枠の数 slotN）。elem・trig は、その手の性質と引き金のルーン。後から足される欄は、使う処理を移す時に型を足す */
-export interface Hand {
+/** 片手（L・R）の状態：武器のルーン atk と、付けたルーンの枠 slots（枠の数 slotN）。elem・trig は、その手の性質と引き金のルーン。後から足される欄は、使う処理を移す時に型を足す。
+ * runes.ts の Hand（handRunes などが読む、枠だけの形）とは別の物 */
+export interface HandState {
   atk: Rune | null;
   slots: (Rune | null)[];
   slotN: number;
@@ -140,8 +141,8 @@ export interface Hand {
 }
 /** 両手と、体のルーンの枠 B（b0・b1） */
 export interface Hands {
-  L: Hand;
-  R: Hand;
+  L: HandState;
+  R: HandState;
   B: { b0: Rune | null; b1: Rune | null };
 }
 /** 詠唱（溜め）の途中：どちらの手か h、経った時間 t と要る時間 need、溜めきったか full、光線か beam など */
@@ -155,6 +156,10 @@ export interface CastState {
   firing: boolean;
   tick: number;
   beamT: number;
+  /** 今の音節の番号（詠唱の声が鳴るたびに入る。26-spells-hud.js の chantStart） */
+  syl?: number;
+  /** 今の音節が鳴った時刻（詠唱の見た目が、鳴った直後だけ文字を光らせる） */
+  sylT?: number;
 }
 /** 武器の持ち替えの途中（経った時間 t・かかる時間 dur・持ち替える前の形 snap） */
 export interface SwapState {
@@ -163,10 +168,10 @@ export interface SwapState {
   snap: unknown;
   last: number;
 }
-/** 覚えておいた組み合わせ（両手の武器と枠、名前） */
+/** 覚えておいた組み合わせ（両手の武器と枠、名前）。atk・slots はルーンそのものではなく、ルーンの uid（空は 0）。使う時に uid から持ち物を探す */
 export interface Build {
-  L: { atk: Rune | null; slots: (Rune | null)[] };
-  R: { atk: Rune | null; slots: (Rune | null)[] };
+  L: { atk: number; slots: number[] };
+  R: { atk: number; slots: number[] };
   label: string;
 }
 /** 手と詠唱（両手・持ち物・詠唱の途中・持ち替えの途中・覚えておいた組み合わせと、今どれか） */
