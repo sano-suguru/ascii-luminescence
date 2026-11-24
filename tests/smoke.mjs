@@ -159,7 +159,7 @@ await withBrowser(
           try {
             const r0 = __test.galleryShow(e.n, { yaw: 0.6, pose });
             if (typeof r0 === 'string') throw new Error(r0);
-            __test.advance(0.5);
+            __test.advance(pose === 'walk' ? 1.5 : 0.5); // 歩く姿は、歩幅がいっぱいになるまで（約1秒）
             const r = __test.galleryDraw();
             if (r.glyphs + r.sparks < 15) bad.push(`${e.name}（${pose}）が、ほとんど描かれていない：文字 ${r.glyphs}・火花 ${r.sparks}`);
             if (r.bad) bad.push(`${e.name}（${pose}）の文字と火花のうち ${r.bad} 個に、数でない値（NaN など）がある`);

@@ -112,11 +112,12 @@ if(TEST)window.__test={
   gallery(){ if(!(gallery&&gallery.mode==='beast')){ if(ui.started)return 'the bestiary opens from the title'; openBestiary(); }
     return gallery.list.map((e,i)=>({n:i+1,key:e.key,name:e.ty.name,form:e.ty.form})); },
   // show entry n held still: yaw 0 faces the camera, + turns it to the right as seen from the camera; pose 'stand' | 'walk' | 'sleep'.
-  // It steps one tick so the angle and pose take hold (a walk needs about 1 s more to reach its full stride). Returns what galleryDraw() returns
+  // It empties the sparks first (so a full pool does not swallow the sparks of a phantom, which is mostly sparks), then steps one tick so the angle
+  // and pose take hold (a walk needs about 1 s more to reach its full stride). Returns what galleryDraw() returns
   galleryShow(n,{yaw=0,pose='stand'}={}){ const list=this.gallery(); if(typeof list==='string')return list;
-    if(!(n>=1&&n<=list.length))return 'no such entry: '+n+' (1-'+list.length+')'; if(!['stand','walk','sleep'].includes(pose))return 'no such pose: '+pose;
+    if(!(Number.isInteger(n)&&n>=1&&n<=list.length))return 'no such entry: '+n+' (1-'+list.length+')'; if(!['stand','walk','sleep'].includes(pose))return 'no such pose: '+pose;
     if(typeof yaw!=='number'||!Number.isFinite(yaw))return 'no such yaw: '+yaw+' (a number of radians)';
-    showBeast(n-1); gallery.fix={yaw,pose}; testTick(false); return this.galleryDraw(); },
+    pN=0; showBeast(n-1); gallery.fix={yaw,pose}; testTick(false); return this.galleryDraw(); },
   // draw the creature on show once more and look at what it drew (then drop it again, even when the drawing throws): how many glyphs,
   // how many sparks it threw (a phantom is mostly sparks: its glyphs show only now and then), how many of those glyphs and sparks hold
   // a number that is not finite (place, colour, glyph, size, speed, life), and the box the glyphs fill (width and depth across the floor, the lowest and highest point)

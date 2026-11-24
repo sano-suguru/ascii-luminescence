@@ -65,10 +65,15 @@
       "env": { "node": true }
     },
     {
-      // テストと、テストのページを使う道具（tools/shots.mjs）の page.evaluate の中はブラウザで動く
-      "files": ["tests/**", "tools/shots.mjs"],
+      // テストの page.evaluate の中はブラウザで動く
+      "files": ["tests/**"],
       "env": { "browser": true },
       "globals": { "dbg": "readonly", "__test": "readonly" }
+    },
+    {
+      // テストのページを使う道具：page.evaluate の中で __test だけを使う（ファイルは Node で動くので、ブラウザの名前は許さない）
+      "files": ["tools/shots.mjs"],
+      "globals": { "__test": "readonly" }
     },
     {
       // ゲーム本体：src/game/*.js をつないだもの（tools/lint-game.mjs が書き出して調べる）。

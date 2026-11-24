@@ -42,10 +42,17 @@ const POSE_NAME = { stand: '', walk: '-歩く', sleep: '-眠り' };
 const WAIT = 3; // 出してから写すまでのゲームの秒（灯りと姿が落ち着くまで。眠りから起きる時の形の移り変わりは約1秒）
 
 const argv = process.argv.slice(2);
-const outDir = resolve(arg('--out', join(OUT, 'shots')));
+const usage = (why) => {
+  console.log(`${why}\n使い方：pnpm shots [名前…] [--all] [--bare] [--out <ディレクトリ>]`);
+  process.exit(1);
+};
+const outArg = arg('--out', join(OUT, 'shots'));
+if (!outArg || outArg.startsWith('--')) usage('--out の後に、置き場所のディレクトリを書いてください');
+const outDir = resolve(outArg);
 const names = argv.filter((a, i) => !a.startsWith('--') && argv[i - 1] !== '--out');
 const all = argv.includes('--all'),
   bare = argv.includes('--bare');
+if (all && names.length) usage(`--all と名前（${names.join('、')}）は一緒に使えません。どちらかにしてください`);
 mkdirSync(outDir, { recursive: true });
 
 const errs = [];
