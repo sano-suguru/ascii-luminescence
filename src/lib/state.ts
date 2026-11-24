@@ -432,8 +432,8 @@ export interface Legend {
 }
 /** 保存する記録（localStorage）：伝承・解放・墓・試練 META、魔導書に記した反応 BOOK、見たルーン RSEEN、見た生き物 SEEN、開発用モード DEVALL、
  * それと今の冒険の伝説の物 LEGEND（これは保存しない）。
- * META・SEEN・RSEEN の本当の初めの値は、古い JS が読み込みの関数で作ってその場で入れる（17-meta.js・25-gallery.js）。ここの値は仮。
- * BOOK と DEVALL も、古い JS が localStorage から読んで入れ直す（19-hands-runes.js・25-gallery.js） */
+ * 本当の初めの値は、古い JS が localStorage から読んでその場で入れる（META・DEVALL は 17-meta.js、BOOK は 19-hands-runes.js、
+ * SEEN・RSEEN は 25-gallery.js）。ここの値は仮 */
 export interface Saved {
   META: Meta;
   BOOK: Set<string>;

@@ -174,7 +174,7 @@ function clipHtml(html,w){ if(visW(html)<=w)return html; const box=document.crea
 function makeStrong(t){ const ru=makeRune(t,0); if(RUNE_DEF[t].cat==='mod')ru.strong=true; return ru; }
 const runeLabel=ru=>RUNE_DEF[ru.type].name;
 function handName(H){ if(!H.atk)return H.elem?`${RUNE_DEF[H.elem.type].pre}素手`:'素手'; return (H.elem?RUNE_DEF[H.elem.type].pre:'')+RUNE_DEF[H.atk.type].name; }
-// called only when a run starts (never while the page is loading: saved.RSEEN is filled from al_runes in 25-gallery.js, and saving it before that would overwrite the record)
+// called only when a run starts, after the page has loaded (saved.RSEEN is filled from al_runes in 25-gallery.js; before that it is an empty placeholder)
 function resetRunes(){ fight.trigCd={L:0,R:0}; fight.hitSrcPoint=null;
   gear.hands={L:newHand('blade'), R:newHand('orb'), B:{b0:null,b1:null}};
   gear.bag=[]; gear.builds=[null,null,null]; gear.buildIdx=-1; gear.castSt=null; gear.swapSt=null; packSel=null; fight.beamSegs=[]; fight.clouds=[];
