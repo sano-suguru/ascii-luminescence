@@ -40,9 +40,16 @@ export interface Glyph {
   cz?: number;
   ti?: number;
   fh?: number;
+  // 爪（王の影の二つ目の姿の手）：握る先の手首の位置と、指のどこか（0 から 1）
+  hx?: number;
+  hy?: number;
+  hz?: number;
+  cf?: number;
 }
 /** 点に足す値（Object.assign で上書きする） */
-export type Extra = Partial<Pick<Glyph, 'piv' | 'pz' | 'ph' | 'sd' | 'r' | 'th' | 'sp' | 'cx' | 'cy' | 'cz' | 'ti' | 'fh'>>;
+export type Extra = Partial<
+  Pick<Glyph, 'piv' | 'pz' | 'ph' | 'sd' | 'r' | 'th' | 'sp' | 'cx' | 'cy' | 'cz' | 'ti' | 'fh' | 'hx' | 'hy' | 'hz' | 'cf'>
+>;
 /** 形。noExtra は、描画で飾りの点を足さない印 */
 export type Body = Glyph[] & { noExtra?: boolean };
 /** 形を作るのに使う、生き物の種類の値（MTYPES の一部） */

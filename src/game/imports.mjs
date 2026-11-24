@@ -6,18 +6,20 @@ import { boxText, padTo, visW, wrapPlain } from '../lib/text.ts';
 import { makeHistory } from '../lib/history.ts';
 import { G, RUNE_CHARS } from '../lib/glyphs.ts';
 import { R, RI, mpick, mr, pick, rand, shuffle } from '../lib/random.ts';
-import { BONE, FUR, GOLD, HRAMP, PALE, SCALE, SKINR, q3 } from '../lib/bodies/kit.ts';
-import { bloatForm, bogForm, crabForm, critterForm, eelForm, fishForm, jellyForm, krakenForm, robotForm, shroomForm, snakeForm, spiderForm, wispForm } from '../lib/bodies/small.ts';
+import { BONE, FUR, GOLD, HRAMP, PALE, SKINR, q3 } from '../lib/bodies/kit.ts';
+import { bloatForm, bogForm, crabForm, critterForm, eelForm, fishForm, jellyForm, krakenForm, robotForm, shroomForm, snakeForm, spiderForm, trollForm, wispForm } from '../lib/bodies/small.ts';
 import {
   batForm,
   bogForm2,
   caveSpiderForm,
+  dragonForm,
   dragonSleepForm,
   golemForm2,
   grazerForm,
   jackalForm,
   krakenForm2,
   nagaForm,
+  ogreForm,
   phantomForm,
   ratForm,
   salamanderForm,
@@ -39,6 +41,7 @@ import {
   shadowKingForm,
   watcherForm,
 } from '../lib/bodies/lords.ts';
+import { lichKingForm, nagaQueenForm, oldDragonForm, shadowSerpentForm, spiderQueenForm } from '../lib/bodies/bosses.ts';
 import {
   BASE_H, BRANCHES, CELL, CH_D, CHUNK, CXN, CZN, D4, EYE, FOGS, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MH, MW, NCELL, NDL, NSL, PR, PROPHECIES,
   REALMS, SF_BRIM, SF_DEAD, SF_FOLIAGE, SF_FUNGFOR, SF_GRASS, SF_HAY, SF_ICE, SF_LUMEN, SF_MUD, SF_OBSIDIAN, SF_RUBBLE, TC, TF, TP,
