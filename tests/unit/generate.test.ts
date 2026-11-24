@@ -10,21 +10,35 @@ beforeAll(async () => {
 });
 const gen = (seed: number, place: Place, runSeed?: number): GenResult => gen0(env, seed, place, runSeed);
 // 階を文字にする。ルーンの番号 uid は、全体の数え上げなので除く。日本語の文（伝言・名前・碑文など）も、言い回しを直すたびに
-// 指紋が変わらないように、印に置き換える（かなを含むか、漢字が2字以上の文字列。1字の漢字は、描く文字のことがあるので残す）
+// 指紋が変わらないように、印に置き換える（かなを含むか、漢字が2字以上の文字列。1字の漢字は、描く文字のことがあるので残す）。
+// オブジェクトの欄は名前の順に並べ直す。欄の並び（部屋を作る時にどの欄から書いたか など）は迷宮に関係しないので、指紋も並びによらない
 const PROSE = /[\u3040-\u30ff]|[\u4e00-\u9fff].*[\u4e00-\u9fff]/u;
+/** 型付き配列（Uint8Array など。DataView は除く） */
+const isTyped = (v: unknown): v is ArrayLike<number> => ArrayBuffer.isView(v) && !(v instanceof DataView);
+/** ふつうのオブジェクト（配列・型付き配列・Map・Set 以外） */
+const isPlain = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v) && !ArrayBuffer.isView(v) && !(v instanceof Map) && !(v instanceof Set);
+const sortKeys = (o: Record<string, unknown>): Record<string, unknown> =>
+  Object.fromEntries(
+    Object.keys(o)
+      .sort()
+      .map((k) => [k, o[k]]),
+  );
 const text = (r: unknown): string =>
   JSON.stringify(r, (k: string, v: unknown): unknown =>
     k === 'uid'
       ? 0
       : typeof v === 'string' && PROSE.test(v)
         ? '文'
-        : ArrayBuffer.isView(v)
-          ? Array.from(v as unknown as ArrayLike<number>) // 階の中の型付き配列（Uint8Array など）
+        : isTyped(v)
+          ? Array.from(v)
           : v instanceof Map
             ? [...v]
             : v instanceof Set
               ? [...v]
-              : v,
+              : isPlain(v)
+                ? sortKeys(v)
+                : v,
   );
 const fnv = (s: string): string => {
   let h = 0x811c9dc5;
@@ -53,11 +67,11 @@ describe('迷宮の生成', () => {
       expect(level.stairs).toBeGreaterThanOrEqual(0);
     }
   });
-  // ブラウザ（Chromium）と Node で同じ迷宮になることを、190 の階を作り比べて確かめた（混ぜるのを shuffle にした時）。その時の生成の指紋（日本語の文は除く）。
-  // 生成を変えると変わる。意図して変えた時は、ブラウザでも同じになることを確かめてから作り直す
+  // ブラウザ（Chromium）と Node で同じ迷宮になることを、190 の階を作り比べて確かめた（混ぜるのを shuffle にした時）。その時の生成の指紋（日本語の文は除く。
+  // 欄の並びによらない形にした時に作り直した。前の generate.js からも同じ値になる）。生成を変えると変わる。意図して変えた時は、ブラウザでも同じになることを確かめてから作り直す
   it('今の迷宮と同じになる（全部の場所の指紋）', () => {
     let all = '';
     for (const pl of PLACES) all += text(gen(202, pl));
-    expect([fnv(all), all.length]).toEqual(['1bf236b2', 20044633]);
+    expect([fnv(all), all.length]).toEqual(['98fac18e', 20044633]);
   }, 30000);
 });
