@@ -4,6 +4,7 @@
 // 入れ物の名前は、古い JS の局所の名前とぶつからない物にする（道具が確かめる。fx は座標の fx とぶつかるので vfx にした）。
 import { type BranchPlace, type InterPlace, type Level, type RealmPlace } from './generate.ts';
 import { type Rune } from './runes.ts';
+import { NCELL } from './world.ts';
 
 /** 稲妻の光り（灯りの1つとして描く。t は残りの秒。900 より大きいと消えない） */
 export interface ZapFlash {
@@ -213,13 +214,13 @@ export interface Here {
   fade: number;
   /** 図鑑の見本の階を作っているか */
   showroomGen: boolean;
-  /** 今の階の中身（generate.ts の generateLevel の結果）。冒険が始まるまでは null。後から足される欄（hub・doorAt など）は、使う処理を移す時に型を足す */
+  /** 今の階の中身（generate.ts の generateLevel の結果）。初期化（30-loop-init.js の init）で1つ目の階を作るまでは null。後から足される欄（hub など）は、使う処理を移す時に型を足す */
   D: Level | null;
-  /** 見たことのあるマス。本当の初めの値（マスの数の長さ）は古い JS（06-world.js）が入れる。ここの空の配列は仮 */
+  /** 見たことのあるマス（階に入るたびに作り直す。18-level-player.js の newLevel） */
   explored: Uint8Array;
-  /** マスごとの覚えた色（マスの数×3）。本当の初めの値は古い JS が入れる。ここの空の配列は仮 */
+  /** マスごとの覚えた色（マスの数×3） */
   mem: Float32Array;
-  /** 今見えているマスの印（fovStamp と同じなら見えている）。本当の初めの値は古い JS が入れる。ここの空の配列は仮 */
+  /** 今見えているマスの印（fovStamp と同じなら見えている） */
   fovVis: Uint32Array;
   /** 見えるマスを数え直すたびに増える印 */
   fovStamp: number;
@@ -236,9 +237,9 @@ export const here: Here = {
   fade: 0,
   showroomGen: false,
   D: null,
-  explored: new Uint8Array(0),
-  mem: new Float32Array(0),
-  fovVis: new Uint32Array(0),
+  explored: new Uint8Array(NCELL),
+  mem: new Float32Array(NCELL * 3),
+  fovVis: new Uint32Array(NCELL),
   fovStamp: 1,
 };
 /** 行った階の覚え（場所の名前 → 見えた所と覚えた色の写し）。丸ごと入れ替えないので、古い JS は今までどおり placeMem で読む */

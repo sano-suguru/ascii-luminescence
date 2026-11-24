@@ -1,8 +1,5 @@
 // ---------------------------------------------------------------- world state
 let staticMesh=null, occMesh=null, glyphCount=0;
-here.explored=new Uint8Array(NCELL);
-here.mem=new Float32Array(NCELL*3);
-here.fovVis=new Uint32Array(NCELL);
 let visitedRooms=new Set(), stairsSeen=false, fogBase=0.05;
 // player は src/lib/state.ts（src/game/imports.mjs で読む。丸ごと入れ替えないので、名前はそのまま）
 const edge={t:0,k:'',idle:0};
