@@ -1,5 +1,4 @@
-const stealth={lum:0,level:1,range:8,sneak:false,hudKey:''};
-const lantern={r:8.2,k:1};
+// stealth・lantern・hudInfo は src/lib/state.ts（src/game/imports.mjs で読む。丸ごと入れ替えないので、名前はそのまま）
 // LIGHT_NAMES・LIGHT_COLS は src/lib/hud.ts（src/game/imports.mjs で読む）
 function updateStealth(dt){
   const l=cellLight(player.x,player.z); let L=0.3*l[0]+0.55*l[1]+0.15*l[2];
@@ -17,7 +16,6 @@ function updateStealth(dt){
   if(key!==stealth.hudKey){ stealth.hudKey=key; renderStatus(); }
 }
 // ---- the HUD is drawn with glyphs only: depth, light, sparks, and state when it matters
-const hudInfo={explored:0};
 let helpT=0;
 function renderStatus(){
   const el=document.getElementById('status'); if(!el||!here.D)return;

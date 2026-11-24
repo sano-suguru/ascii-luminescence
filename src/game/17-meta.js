@@ -24,9 +24,9 @@ function buildIntroPanel(){
   const devOn=saved.DEVALL; if(!devOn)startDepth=1; const seedKeep=(document.getElementById('seedIn')||{}).value||'';
   const el=document.getElementById('intropanel'); if(!el)return; const f=t=>`<span class="f">${t}</span>`;
   if(introMode==='unlock'){ buildUnlockPanel(); return; }
-  const keys=[['WASD','移動'],['マウス','視点'],['左クリック','左手'],['右クリック','右手'],['ホイール','ビルド切替'],['Space','回避'],['Shift','走る'],['Tab','装備'],['Esc','メニュー']];
+  const keyList=[['WASD','移動'],['マウス','視点'],['左クリック','左手'],['右クリック','右手'],['ホイール','ビルド切替'],['Space','回避'],['Shift','走る'],['Tab','装備'],['Esc','メニュー']];
   const cell=([k,v])=>{ const s=`<b>[${k}]</b> ${v}`; return s+' '.repeat(Math.max(1,24-visW(s))); };
-  const keyRows=[]; for(let i=0;i<keys.length;i+=2)keyRows.push(`${f('|')} ${cell(keys[i])}${keys[i+1]?cell(keys[i+1]):''}`);
+  const keyRows=[]; for(let i=0;i<keyList.length;i+=2)keyRows.push(`${f('|')} ${cell(keyList[i])}${keyList[i+1]?cell(keyList[i+1]):''}`);
   const seen=new Set(), layers=[]; for(const st of STRATA){ if(seen.has(st.n))continue; seen.add(st.n); layers.push(st); }
   const layerRows=devOn?[`${f('|')} 開始する層`,...layers.map(st=>`${f('|')}   <button class="sl${st.from===startDepth?' on':''}" type="button" data-d="${st.from}"><span class="mk">${st.from===startDepth?'&gt;':' '}</span> 第${st.n}層 ${st.name}</button>`),f('|')]:[];
   el.innerHTML=boxText([f('+-- 地下迷宮へ ---'),
