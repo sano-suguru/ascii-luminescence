@@ -1,5 +1,6 @@
 // ルーンと武器の特性・反応・手の枠（もとは src/game/19-hands-runes.js と、18・27 の一部）。
-import { nth } from './array.ts';
+import { lookup, nth } from './array.ts';
+import { clamp } from './rng.ts';
 import { css } from './color.ts';
 
 /** 特性の段（0 から 5）。古い JS は数のまま渡すので、範囲の外の段が来ると、移す前と同じく undefined や NaN の文字になる */
@@ -110,7 +111,11 @@ export interface RuneTrait {
 }
 /** ルーン（武器も、性質・発動・効き方・護符も） */
 export interface Rune {
+  /** 冒険の中で通しの番号（src/lib/gear.ts の makeRune が付ける） */
+  uid: number;
   type: string;
+  /** 飾り（今は付かないので、いつも空。AFFIX の種類 → 値） */
+  aff: Partial<Record<string, number>>;
   strong?: boolean;
   traits?: RuneTrait[];
   named?: unknown;
@@ -563,3 +568,87 @@ export const RES: Record<string, Record<string, number>> = {
   j: {},
   T: { fire: 1.5 },
 };
+
+// ---------------------------------------------------------------- ルーンの名前・色・付け方（もとは src/game/19-hands-runes.js）。表だけに頼る物
+/** 武器に付きうる、その武器の特性（初めの2つ） */
+export const WEAPON_SIG = (t: string): string[] => Object.keys(TRAITS[t] || {}).slice(0, 2);
+/**
+ * 見つけた武器の特性を決める（深さ d・宝物庫や強い物は bonus で段が上がる）。武器でないルーン、特性の無い武器はそのまま返す。
+ * 乱数 r は受け取るだけで使わない（移す前と同じ）
+ */
+export function rollTraits<T extends Rune | null | undefined>(ru: T, _r: () => number, d: number, bonus?: number): T {
+  if (!ru || lookup(RUNE_DEF, ru.type).cat !== 'atk' || !TRAITS[ru.type]) return ru;
+  const tier = Math.min(4, clamp(Math.floor(((d || 1) - 1) / 3), 0, 3) + (bonus || 0));
+  ru.traits = tier > 0 ? WEAPON_SIG(ru.type).map((k) => ({ k, lv: tier })) : [];
+  return ru;
+}
+/** ルーンの段（飾りの数） */
+export const runeTier = (ru: Rune): number => Object.keys(ru.aff).length;
+/** ルーンの色（強い物は金、色の決まったルーンはその色、ほかは段の色。段が表の外なら、移す前と同じく undefined） */
+export const runeCol = (ru: Rune): readonly number[] | undefined => {
+  if (ru.strong) return TIER_COL[3]; // 表を引く前に見る（移す前と同じ順）
+  return lookup(RUNE_DEF, ru.type).col || TIER_COL[runeTier(ru)];
+};
+/** 効き方のルーンの値（強い物は2倍。効き方でないルーンは、移す前と同じく NaN） */
+export const modVal = (ru: Rune): number => (lookup(RUNE_DEF, ru.type).val ?? NaN) * (ru.strong ? 2 : 1);
+/** ルーンの名前（効き方のルーンは「連鎖 +1」のように値も） */
+export const runeName = (ru: Rune): string => {
+  const d = lookup(RUNE_DEF, ru.type);
+  return d.cat === 'mod' ? `${d.nm} +${modVal(ru)}${d.unit}` : d.name;
+};
+/** 手に入れた時の呼び方（武器と護符は名前、ほかは名前のあとに「のルーン」） */
+export const thingLabel = (ru: Rune): string => {
+  const d = lookup(RUNE_DEF, ru.type);
+  return d.cat === 'atk' || d.cat === 'body' ? d.name : runeName(ru) + 'のルーン';
+};
+/** ルーンの短い名前 */
+export const runeShort = (ru: Rune): string => {
+  const d = lookup(RUNE_DEF, ru.type);
+  return d.cat === 'mod' ? `${d.sh} +${modVal(ru)}${d.unit === '%' ? '%' : ''}` : d.short || d.name;
+};
+/** ルーンの定義の名前 */
+export const runeLabel = (ru: Rune): string => lookup(RUNE_DEF, ru.type).name;
+/** 手の名前（性質の前置きと武器の名前。武器が無ければ素手） */
+export function handName(H: { atk: Rune | null; elem: Rune | null }): string {
+  if (!H.atk) return H.elem ? `${lookup(RUNE_DEF, H.elem.type).pre}素手` : '素手';
+  return `${H.elem ? lookup(RUNE_DEF, H.elem.type).pre : ''}${lookup(RUNE_DEF, H.atk.type).name}`;
+}
+/** 性質の色（性質が無ければ白っぽい紫） */
+export const elemCol = (el: string | null | undefined): readonly number[] | undefined => (el ? lookup(RUNE_DEF, el).col : [0.85, 0.8, 1.0]);
+/** 効き方 mk のルーンが効く武器の名前（無ければ性質のルーン） */
+export const modTargets = (mk: string): string => {
+  const w = RUNE_TYPES.atk.filter((t) => lookup(RUNE_DEF, t).aff.includes(mk)).map((t) => lookup(RUNE_DEF, t).name);
+  return w.length ? w.join('・') : '性質のルーン（炎・氷・雷・毒）';
+};
+/** 効き方 mk のルーンが、手 H で効くか（武器か、手の性質がその効き方を受ける時） */
+export function modWorks(mk: string, H: Hand & { atk?: Rune | null }): boolean {
+  const A = H.atk ? lookup(RUNE_DEF, H.atk.type) : null;
+  if (A && A.aff.includes(mk)) return true;
+  return handRunes(H).some((r) => lookup(RUNE_DEF, r.type).cat === 'elem' && lookup(RUNE_DEF, r.type).aff.includes(mk));
+}
+/** 手 H の枠 i に、ルーン ru を付けられるか（性質は2種類まで、発動は1つ、同じ効き方は2つまで） */
+export function canPut(H: Hand, i: number, ru: Rune): boolean {
+  const d = lookup(RUNE_DEF, ru.type);
+  if (!['elem', 'trig', 'mod'].includes(d.cat) || i >= (H.slotN || 2)) return false;
+  const others = (H.slots || []).slice(0, H.slotN || 2).filter((r, j): r is Rune => !!r && j !== i && r !== ru);
+  return slotsAllow(others, ru, d.cat);
+}
+/** ほかのルーン others と並べて、ru を付けられるか（canPut と canPutAt の共通の決まり） */
+export function slotsAllow(others: readonly Rune[], ru: Rune, cat: string): boolean {
+  if (cat === 'elem') {
+    const el = new Set(others.filter((r) => lookup(RUNE_DEF, r.type).cat === 'elem').map((r) => r.type));
+    el.add(ru.type);
+    if (el.size > 2) return false;
+  }
+  if (cat === 'trig' && others.some((r) => lookup(RUNE_DEF, r.type).cat === 'trig')) return false;
+  if (cat === 'mod' && others.filter((r) => r.type === ru.type).length >= 2) return false;
+  return true;
+}
+/** 手 H の、次に放つ性質（二つの性質は turn で交代）と、発動のルーンを決める */
+export function syncHand(H: Hand & { turn?: number; elem?: Rune | null; trig?: Rune | null }): void {
+  const rs = handRunes(H),
+    els = [...new Set(rs.filter((r) => lookup(RUNE_DEF, r.type).cat === 'elem').map((r) => r.type))];
+  const et = els.length ? els[(H.turn || 0) % els.length] : null;
+  H.elem = et ? (rs.find((r) => r.type === et) ?? null) : null;
+  H.trig = rs.find((r) => lookup(RUNE_DEF, r.type).cat === 'trig') || null;
+}

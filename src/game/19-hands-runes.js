@@ -95,39 +95,19 @@ function drawSwing(){
 
 // ---------------------------------------------------------------- runes (stage B): attacks and elements held in each hand, random modifiers, chanting, reactions
 // RUNE_DEF は src/lib/runes.ts（src/game/imports.mjs で読む）
+// ルーンの名前・色・付けられるか（runeName・canPut など）は src/lib/runes.ts、手と持ち物の処理（makeRune・effHand・isTwo など）は src/lib/gear.ts
 // what a trait does at its level: its first or third step, and the fifth when reached
 const trDesc=(w,t)=>{ const T=TRAITS[w]&&TRAITS[w][t.k]; return T?T.d(t.lv):''; };
-const wTL=(h,k)=>{ const H=effHand(h); for(const t of trList(H.atk))if(t.k===k)return t.lv; return 0; };
-// a found weapon may carry 0-2 of its own traits; deeper, treasuries and the strong give higher levels
-const WEAPON_SIG=t=>Object.keys(TRAITS[t]||{}).slice(0,2);
-function rollTraits(ru,r,d,bonus){ if(!ru||RUNE_DEF[ru.type].cat!=='atk'||!TRAITS[ru.type])return ru; const tier=Math.min(4,clamp(Math.floor(((d||1)-1)/3),0,3)+(bonus||0));
-  ru.traits=tier>0?WEAPON_SIG(ru.type).map(k=>({k,lv:tier})):[]; return ru; }
 // RUNE_TYPES は src/lib/runes.ts（src/game/imports.mjs で読む）
 // AFFIX は src/lib/runes.ts（src/game/imports.mjs で読む）
 // what each kind of creature tends to drop, and how much each element hurts it (0 = no effect, 2 = badly)
 const ELEM_OF={l:'fire',Zf:'fire',D:'fire',Zi:'ice',L:'ice',K:'ice',Zl:'thunder',Rc:'thunder',Re:'thunder',Rw:'thunder',S:'poison',n:'poison',N:'poison',B:'poison'};
 // RES は src/lib/runes.ts（src/game/imports.mjs で読む）
-let runeUid=1;
 let packSnap=null, packSel=null;
 try{ saved.BOOK=new Set(JSON.parse(localStorage.getItem('al_book')||'[]')); }catch(e){}
-function makeRune(type,nAff,r){ r=r||mr; const def=RUNE_DEF[type], pool=def.aff.slice(), aff={}; let n=0;
-  while(n-->0){ const k=pool.splice(Math.floor(r()*pool.length),1)[0]; aff[k]=AFFIX[k].roll(r); }
-  return {uid:runeUid++,type,aff}; }
-function rollAffN(r,bonus){ const x=r()+(bonus||0)+Math.min(0.25,here.depth*0.015); return x<0.55?0:x<0.82?1:x<0.96?2:3; }
 function randomRuneType(r,weights){ const w=weights||{elem:0.45,trig:0.12,mod:0.33,body:0.1}; let x=r(); for(const c of ['atk','elem','trig','mod','body']){ if(!w[c])continue; if(x<w[c]){ const a=(c==='atk'?weaponPool():RUNE_TYPES[c].filter(t=>!lockedOf('rune',t))); return a[Math.floor(r()*a.length)]||'fire'; } x-=w[c]; } return 'fire'; }
-const runeTier=ru=>Object.keys(ru.aff).length;
-const runeCol=ru=>{ const d=RUNE_DEF[ru.type]; if(ru.strong)return TIER_COL[3]; return d.col||TIER_COL[runeTier(ru)]; };
-// a change rune is named by its value; a strong one doubles it
-const modVal=ru=>RUNE_DEF[ru.type].val*(ru.strong?2:1);
-const runeName=ru=>{ const d=RUNE_DEF[ru.type]; return d.cat==='mod'?`${d.nm} +${modVal(ru)}${d.unit}`:d.name; };
-// what to call a thing when it is taken: a weapon or a charm by its name, a rune as a rune
-const thingLabel=ru=>{ const d=RUNE_DEF[ru.type]; return d.cat==='atk'||d.cat==='body'?d.name:runeName(ru)+'のルーン'; };
-const runeShort=ru=>{ const d=RUNE_DEF[ru.type]; return d.cat==='mod'?`${d.sh} +${modVal(ru)}${d.unit==='%'?'%':''}`:(d.short||d.name); };
 // cut html to a visible width (text beyond it is dropped), so a long line never widens a fixed box
 function clipHtml(html,w){ if(visW(html)<=w)return html; const box=document.createElement('span'); box.innerHTML=html; let left=w; const walk=n=>{ for(const c of [...n.childNodes]){ if(left<=0){ n.removeChild(c); continue; } if(c.nodeType===3){ let out=''; for(const ch of c.textContent){ const cw=visW(ch); if(cw>left){ left=0; break; } out+=ch; left-=cw; } c.textContent=out; } else walk(c); } }; walk(box); return box.innerHTML; }
-function makeStrong(t){ const ru=makeRune(t,0); if(RUNE_DEF[t].cat==='mod')ru.strong=true; return ru; }
-const runeLabel=ru=>RUNE_DEF[ru.type].name;
-function handName(H){ if(!H.atk)return H.elem?`${RUNE_DEF[H.elem.type].pre}素手`:'素手'; return (H.elem?RUNE_DEF[H.elem.type].pre:'')+RUNE_DEF[H.atk.type].name; }
 // called only when a run starts, after the page has loaded (saved.RSEEN is filled from al_runes in 25-gallery.js; before that it is an empty placeholder)
 function resetRunes(){ fight.trigCd={L:0,R:0}; fight.hitSrcPoint=null;
   gear.hands={L:newHand('blade'), R:newHand('orb'), B:{b0:null,b1:null}};
@@ -135,30 +115,6 @@ function resetRunes(){ fight.trigCd={L:0,R:0}; fight.hitSrcPoint=null;
   adv.runState={startChosen:false,altar1:false,taken:new Set(),lordsDone:new Set(),bodyOpen:0}; saved.LEGEND=null; finalSt=null; adv.won=false; renderHotbar();
   try{ if(!saved.RSEEN.has('blade')||!saved.RSEEN.has('bolt')){ saved.RSEEN.add('blade'); saved.RSEEN.add('bolt'); saveSet('al_runes',saved.RSEEN); } }catch(e){}
 }
-function newHand(w){ return {atk:makeRune(w,0),slots:[null,null],slotN:2,turn:0,elem:null,trig:null}; }
-// the element to be cast next (two different elements take turns) and the hand's trigger
-function syncHand(H){ const rs=handRunes(H), els=[...new Set(rs.filter(r=>RUNE_DEF[r.type].cat==='elem').map(r=>r.type))]; const et=els.length?els[(H.turn||0)%els.length]:null; H.elem=et?rs.find(r=>r.type===et):null; H.trig=rs.find(r=>RUNE_DEF[r.type].cat==='trig')||null; }
-const isTwo=()=>!!(gear.hands&&gear.hands.R&&gear.hands.R.atk&&gear.hands.L.atk===gear.hands.R.atk&&RUNE_DEF[gear.hands.R.atk.type].two);
-function effHand(h){ if(!isTwo())return gear.hands[h]; const sl=[...gear.hands.L.slots.slice(0,gear.hands.L.slotN||2),...gear.hands.R.slots.slice(0,gear.hands.R.slotN||2)].slice(0,TWO_SLOTS); return {atk:gear.hands.R.atk,slots:sl,slotN:sl.length,turn:gear.hands.R.turn||0,two:true}; }
-const atkType=h=>{ const H=gear.hands[h]; if(!H||!H.atk)return 'bare'; const d=RUNE_DEF[H.atk.type]; return d.two?d[h]:H.atk.type; };
-function syncHands(){ if(!gear.hands)return; if(isTwo()){ const v=effHand('R'); syncHand(v); for(const h of ['L','R']){ gear.hands[h].elem=v.elem; gear.hands[h].trig=v.trig; } return; } syncHand(gear.hands.L); syncHand(gear.hands.R); }
-function turnElem(h){ if(isTwo()){ gear.hands.R.turn=(gear.hands.R.turn||0)+1; gear.hands.L.turn=gear.hands.R.turn; syncHands(); return; } const H=gear.hands[h]; if(!H)return; H.turn=(H.turn||0)+1; syncHand(H); }
-// a hand holds at most two elements, one trigger, and two of the same change
-function canPut(H,i,ru){ const d=RUNE_DEF[ru.type]; if(!['elem','trig','mod'].includes(d.cat)||i>=(H.slotN||2))return false;
-  const others=(H.slots||[]).slice(0,H.slotN||2).filter((r,j)=>r&&j!==i&&r!==ru);
-  if(d.cat==='elem'){ const el=new Set(others.filter(r=>RUNE_DEF[r.type].cat==='elem').map(r=>r.type)); el.add(ru.type); if(el.size>2)return false; }
-  if(d.cat==='trig'&&others.some(r=>RUNE_DEF[r.type].cat==='trig'))return false;
-  if(d.cat==='mod'&&others.filter(r=>r.type===ru.type).length>=2)return false; return true; }
-function canPutAt(h,i,ru){ if(!isTwo())return canPut(gear.hands[h],i,ru); const H=gear.hands[h]; if(i>=(H.slotN||2))return false; const d=RUNE_DEF[ru.type]; if(!['elem','trig','mod'].includes(d.cat))return false;
-  const others=[]; for(const k of ['L','R'])gear.hands[k].slots.slice(0,gear.hands[k].slotN||2).forEach((r,j)=>{ if(r&&!(k===h&&j===i)&&r!==ru)others.push(r); });
-  if(!H.slots[i]&&others.length>=TWO_SLOTS)return false;
-  if(d.cat==='elem'){ const el=new Set(others.filter(r=>RUNE_DEF[r.type].cat==='elem').map(r=>r.type)); el.add(ru.type); if(el.size>2)return false; }
-  if(d.cat==='trig'&&others.some(r=>RUNE_DEF[r.type].cat==='trig'))return false;
-  if(d.cat==='mod'&&others.filter(r=>r.type===ru.type).length>=2)return false; return true; }
-const allRunes=()=>[...new Set([gear.hands.L.atk,...gear.hands.L.slots,gear.hands.R.atk,...gear.hands.R.slots,...(gear.hands.B?[gear.hands.B.b0,gear.hands.B.b1]:[]),...gear.bag].filter(Boolean))];
-const handsKey=()=>['L','R'].map(h=>[gear.hands[h].atk,...gear.hands[h].slots].map(r=>r?r.uid:0).join(',')+':'+(gear.hands[h].slotN||2)).join('|')+'|'+(gear.hands.B?[gear.hands.B.b0,gear.hands.B.b1].map(r=>r?r.uid:0).join(','):'');
-function snapHands(){ return {L:{...gear.hands.L,slots:gear.hands.L.slots.slice()},R:{...gear.hands.R,slots:gear.hands.R.slots.slice()},B:{...(gear.hands.B||{b0:null,b1:null})},bag:gear.bag.slice()}; }
-function restoreHands(sn){ gear.hands.L={...sn.L,slots:sn.L.slots.slice()}; gear.hands.R={...sn.R,slots:sn.R.slots.slice()}; gear.hands.B={...(sn.B||{b0:null,b1:null})}; gear.bag=sn.bag.slice(); syncHands(); }
 function specOf(h){ const H=effHand(h); syncHand(H); if(H.two){ gear.hands.L.elem=gear.hands.R.elem=H.elem; gear.hands.L.trig=gear.hands.R.trig=H.trig; } const aff={};
   for(const ru of handRunes(H)){ const d=RUNE_DEF[ru.type]; if(d.cat==='mod'&&modWorks(d.mk,H))aff[d.mk]=(aff[d.mk]||0)+modVal(ru); }
   const el=H.elem?H.elem.type:null;
@@ -166,8 +122,4 @@ function specOf(h){ const H=effHand(h); syncHand(H); if(H.two){ gear.hands.L.ele
   if(el0==='thunder'&&BL('branch'))aff.chain=(aff.chain||0)+BL('branch');
   if(tr.count)aff.count=(aff.count||0)+TRAIT_V.count[tr.count]; if(tr.bounce)aff.bounce=(aff.bounce||0)+TRAIT_V.bounce[tr.bounce]; if(tr.homing)aff.homing=(aff.homing||0)+TRAIT_V.homing[tr.homing]; if(tr.accuracy)aff.homing=(aff.homing||0)+tr.accuracy*4;
   return {h,atk:atkType(h),elem:el,aff,tr,pow:el?(ELEM_POW[Math.min(4,elemCount(H,el))]||1):1}; }
-const elemCol=el=>el?RUNE_DEF[el].col:[0.85,0.8,1.0];
-// a change rune works when the weapon (or the hand's element) takes that change
-function modWorks(mk,H){ const A=H.atk?RUNE_DEF[H.atk.type]:null; if(A&&A.aff.includes(mk))return true; return handRunes(H).some(r=>RUNE_DEF[r.type].cat==='elem'&&RUNE_DEF[r.type].aff.includes(mk)); }
-const modTargets=mk=>{ const w=RUNE_TYPES.atk.filter(t=>RUNE_DEF[t].aff.includes(mk)).map(t=>RUNE_DEF[t].name); return w.length?w.join('・'):'性質のルーン（炎・氷・雷・毒）'; };
 
