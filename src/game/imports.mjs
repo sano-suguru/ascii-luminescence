@@ -51,8 +51,9 @@ import { flowW, jagged, lerpAngle, mCenter, sstep, turnDir } from '../lib/math.t
 import { css, hsl2rgb } from '../lib/color.ts';
 import {
   AFFIX, CAT_BR, CAT_NAME, ELEM_POW, REACT, RUNE_FONT, RUNE_TYPES, RALLY_FROM, SLEEP_MULT, SLOT_MAX, TIER_COL, TL, TRAITS, TRAIT_V, TWO_SLOTS, WEAPON, elemCount, emptyChip, handRunes, serRune, sp_elem, trList, trName, tv, weaponCol,
-} from '../lib/runes.ts';
-import { META_DEF, UNLOCKS, expNeed, expOf } from '../lib/progress.ts';
+  RES, RUNE_DEF, } from '../lib/runes.ts';
+import { BLESS, META_DEF, UNLOCKS, expNeed, expOf } from '../lib/progress.ts';
+import { MTYPES } from '../lib/creatures.ts';
 import { VM_K, VM_MIRROR, VM_ST, vmGlyph, vmGlyphS } from '../lib/hands.ts';
 import {
   SPECIALS, STRATA, stratumAtDepth, } from '../lib/strata.ts';
