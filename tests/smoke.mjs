@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // スモークテスト：ふだんのページが起動するか、開発用の冒険で dbg が動くか、冒険の始め直しで前の場所や状態が残らないか
-// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの確かめの受付が切れるか。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
+// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの確かめの受付が切れるか、開発用モードのまま読み直した時・保存が使えない時のタイトル。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
 //   node tests/smoke.mjs          テスト版（.build/test/。既定）
 //   node tests/smoke.mjs --prod   公開用の版（dist/）。JetBrains Mono を指定した所の日本語は、システムのフォントで描く
 import { join } from 'node:path';
@@ -110,6 +110,37 @@ await withBrowser(
         );
       else await pg.keyboard.press('Escape');
     }
+
+    // 7. 開発用モードをオンにしたまま（localStorage の al_dev が '1'）、?dev=1 を付けずにふだんのページを読み直しても、
+    //    タイトルは開発用モードの形で出る（試練の行がある。ボタンは「オン」）。テスト用モードではないので、タイトルが出るまでだけ待つ
+    const dev = await newPage(browser, errs);
+    await dev.addInitScript(() => {
+      try {
+        localStorage.setItem('al_dev', '1');
+      } catch {}
+    });
+    await dev.goto(base, { waitUntil: 'commit', timeout: 120000 });
+    await dev.waitForSelector('#enter', { timeout: 90000 });
+    const title = await dev.evaluate(() => document.getElementById('intropanel').innerText);
+    if (!title.includes('開発用モード：オン')) errs.push('開発用モードのまま読み直したのに、タイトルのボタンが「オン」でない');
+    if (!title.includes('試練'))
+      errs.push('開発用モードのまま読み直したのに、タイトルに試練の行が出ない（開発用モードではすべて解放済みのはず）');
+    await dev.close();
+    // 8. localStorage が使えない時（保存を止めたブラウザ）も、開発用モードのボタンを押すと、表示が「オン」に変わる
+    const blocked = await newPage(browser, errs);
+    await blocked.addInitScript(() => {
+      const no = () => {
+        throw new Error('storage blocked');
+      };
+      Storage.prototype.getItem = no;
+      Storage.prototype.setItem = no;
+    });
+    await blocked.goto(base, { waitUntil: 'commit', timeout: 120000 });
+    await blocked.waitForSelector('#galDev', { timeout: 90000 });
+    await blocked.evaluate(() => document.getElementById('galDev').click());
+    const label = await blocked.evaluate(() => document.getElementById('galDev').innerText);
+    if (!label.includes('オン')) errs.push(`保存が使えない時、開発用モードを押しても表示が「オン」にならない：${label}`);
+    await blocked.close();
   },
   { prod: process.argv.includes('--prod') },
 );

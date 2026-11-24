@@ -3,7 +3,7 @@ const loadSet=k=>{ try{ return new Set(JSON.parse(localStorage.getItem(k)||'[]')
 const saveSet=(k,s)=>{ try{ localStorage.setItem(k,JSON.stringify([...s])); }catch(e){} };
 saved.SEEN=loadSet('al_seen');
 saved.RSEEN=loadSet('al_runes');
-try{ saved.DEVALL=localStorage.getItem('al_dev')==='1'; }catch(e){}
+// developer mode (saved.DEVALL) is read in 17-meta.js, before the title is built
 
 let seenT=0, gallery=null;
 const seenKey=m=>m.ty.beast?'beast:'+adv.runSeed+':'+m.ty.name:m.key==='lord'?'lord:'+(here.branch?here.branch.key:m.ty.sk):(m.key==='final'&&m.phase2)?'final2':m.key;
