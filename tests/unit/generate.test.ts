@@ -1,31 +1,32 @@
 // src/lib/generate.ts（迷宮の生成）の単体テスト。Node で動くので、ブラウザの「全部の階」のテストより速い。
-// 共通部分（全部の場所・gen）は tests/gen-places.mjs。歩いて行けるかは reach.test.mjs（別のファイルにして、並べて走らせる）
+// 共通部分（全部の場所・gen）は gen-places.ts。歩いて行けるかは reach.test.ts（別のファイルにして、並べて走らせる）
 import { beforeAll, describe, expect, it } from 'vitest';
-import { PLACES, gen as gen0, loadEnv } from '../gen-places.mjs';
+import type { GenEnv, GenResult } from '../../src/lib/generate.ts';
+import { PLACES, type Place, gen as gen0, loadEnv } from './gen-places.ts';
 
-let env;
+let env: GenEnv;
 beforeAll(async () => {
   env = await loadEnv();
 });
-const gen = (seed, place, runSeed) => gen0(env, seed, place, runSeed);
+const gen = (seed: number, place: Place, runSeed?: number): GenResult => gen0(env, seed, place, runSeed);
 // 階を文字にする。ルーンの番号 uid は、全体の数え上げなので除く。日本語の文（伝言・名前・碑文など）も、言い回しを直すたびに
 // 指紋が変わらないように、印に置き換える（かなを含むか、漢字が2字以上の文字列。1字の漢字は、描く文字のことがあるので残す）
 const PROSE = /[\u3040-\u30ff]|[\u4e00-\u9fff].*[\u4e00-\u9fff]/u;
-const text = (r) =>
-  JSON.stringify(r, (k, v) =>
+const text = (r: unknown): string =>
+  JSON.stringify(r, (k: string, v: unknown): unknown =>
     k === 'uid'
       ? 0
       : typeof v === 'string' && PROSE.test(v)
         ? '文'
         : ArrayBuffer.isView(v)
-          ? Array.from(v)
+          ? Array.from(v as unknown as ArrayLike<number>) // 階の中の型付き配列（Uint8Array など）
           : v instanceof Map
             ? [...v]
             : v instanceof Set
               ? [...v]
               : v,
   );
-const fnv = (s) => {
+const fnv = (s: string): string => {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
   return h.toString(16);

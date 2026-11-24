@@ -1,4 +1,4 @@
-// 階に、歩いて行けない所が無いかを調べる（tests/levels.mjs のブラウザのテストと、tests/unit/generate.test.mjs の Node のテストが使う）。
+// 階に、歩いて行けない所が無いかを調べる（tests/levels.mjs のブラウザのテストと、tests/unit/reach.test.ts の Node のテストが使う。型は reach.d.mts）。
 //   歩けるマス＝床（タイル 1）で、深い水（液体 2）でも溶岩（液体 3）でもない。上下左右。ゲームの mainPathAltars の bfs と同じ決まり
 //   スタートから、階段・支道の入口・異界の門・戻りの階段・置かれた物まで行けること。目印のマスそのものが歩けなくても（柱や台）、隣まで行ければよい
 const W = 70; // MW
