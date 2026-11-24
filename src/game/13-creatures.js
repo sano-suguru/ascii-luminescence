@@ -17,7 +17,7 @@ function updateCritter(m,dt,t,dp){
   if(ty.critter==='shrieker'){
     m.glow=1.2+0.7*Math.pow(0.5+0.5*Math.sin(t*1.1+m.ph),2);
     if(dp<3.2&&lit&&m.visible&&time-(m.shriekT||-99)>12){
-      m.shriekT=time; m.glow=3; sShriek(m.x,m.z); shake=Math.max(shake,0.12);
+      m.shriekT=time; m.glow=3; sShriek(m.x,m.z); vfx.shake=Math.max(vfx.shake,0.12);
       for(let q=0;q<36;q++){ const a=q/36*Math.PI*2; spawn(m.x,0.7,m.z,Math.cos(a)*2.2,0.2,Math.sin(a)*2.2,0.9,G(q%2?'!':'.'),0.18,ty.col[0]*2.4,ty.col[1]*2.4,ty.col[2]*2.4,1); }
       let woke=0; for(const o of monsters){ if(o===m||o.ty.critter||o.dead)continue; if(Math.hypot(o.x-m.x,o.z-m.z)<15){ if(o.sleep||!o.noticed)woke++; o.sleep=false; o.aware=Math.max(o.aware,1.05); } }
       if(time-shriekMsgT>8){ shriekMsgT=time; msg(`<b style="color:${css(ty.col)}">p</b>${mname(m)}が甲高い叫び声を上げた！${woke?' 周りの獣たちが目を覚ます。':''}`); }
@@ -26,7 +26,7 @@ function updateCritter(m,dt,t,dp){
   }
   if(ty.critter==='cleaner'||ty.critter==='engineer'){ if(machineWork(m,dt)){ m.yaw=lerpAngle(m.yaw,m.dirYaw,1-Math.exp(-dt*4)); return; } }
   if(ty.critter==='mimic'&&m.hidden){
-    if(dp<2.3||m.revealNow){ m.hidden=false; m.flee=8; sSqueak(m.x,m.z); sChime(m.x,m.z,0.25); shake=Math.max(shake,0.1);
+    if(dp<2.3||m.revealNow){ m.hidden=false; m.flee=8; sSqueak(m.x,m.z); sChime(m.x,m.z,0.25); vfx.shake=Math.max(vfx.shake,0.1);
       msg(`<b style="color:${css(ty.col)}">q</b>浮かんでいた巻物が脚を生やし、すばやく走り去った！ ${mname(m)}だ。`);
       for(let q=0;q<24;q++){ const a=mr()*6.28; spawn(m.x,1.2,m.z,Math.cos(a)*1.2,mr(),Math.sin(a)*1.2,1,G(mpick(['?','.','*'])),0.14,1.6,1.3,0.6,1); } }
     return;
@@ -138,7 +138,7 @@ function updateMonster(m,dt,t){
   const inView=fovVis[cell]===fovStamp&&dp<28;
   if(ty.habitat==='bog'||ty.habitat==='deep'){ const tgt=(dp<(ty.habitat==='bog'?4:9)||m.noticed)?1:0; m.rise=(m.rise||0)+(tgt-(m.rise||0))*Math.min(1,dt*(tgt?1.4:0.5));
     if(ty.habitat==='bog'){ m.y=-0.9+0.9*m.rise; if(mr()<dt*3&&dp<24)spawn(m.x+(mr()-0.5)*1.2,0.06,m.z+(mr()-0.5)*1.2,0,0.25,0,0.9,G('o'),0.14,0.35,0.42,0.15,1); if(m.rise>0.3&&!m.riseMsg&&inView){ m.riseMsg=true; msg(`<b style="color:${css(ty.col)}">B</b>沼が盛り上がり、${mname(m)}が姿を現した！`); sBubble(m.x,m.z,0.5,false); } }
-    else { m.y=-0.7; if(m.rise>0.3&&!m.riseMsg&&inView){ m.riseMsg=true; msg(`<b style="color:${css(ty.col)}">K</b>水面が割れ、${mname(m)}の触手が立ち上がった！`); sSplash(0.5); shake=Math.max(shake,0.2); } } }
+    else { m.y=-0.7; if(m.rise>0.3&&!m.riseMsg&&inView){ m.riseMsg=true; msg(`<b style="color:${css(ty.col)}">K</b>水面が割れ、${mname(m)}の触手が立ち上がった！`); sSplash(0.5); vfx.shake=Math.max(vfx.shake,0.2); } } }
   m.visible=inView&&!ty.invisible&&(ty.form!=='eel'||m.surf>0.08)&&(ty.habitat!=='bog'||(m.rise||0)>0.25)&&!(tallAt(cell)&&dp>3);
   if(tallAt(cell)&&!ty.flier&&m.moving>0.5&&mr()<dt*0.5)trample(cell);
   if(D.surface[cell]===SF_BRIM&&!ty.flier&&m.moving>0.5)brimFlare(cell);
@@ -228,7 +228,7 @@ function updateMonster(m,dt,t){
     else if(ty.invisible&&inView&&dp<7){ m.seen=true; msg(`<b style="color:${css(c)}">?</b>何かが、すぐ近くで空気を揺らしている……。`); }
   }
   monsterStrike(m,dt,dp); if(m.hitT>0)m.hitT-=dt;
-  if(ty.heavy&&!m.sleep&&m.moving>0.4&&dp<16){ m.stepT=(m.stepT||0)+dt*m.moving*ty.speed*1.6; if(m.stepT>1){ m.stepT=0; shake=Math.max(shake,0.12*(1-dp/16)); sRumble(0.12*(1-dp/16),0.4); } }
+  if(ty.heavy&&!m.sleep&&m.moving>0.4&&dp<16){ m.stepT=(m.stepT||0)+dt*m.moving*ty.speed*1.6; if(m.stepT>1){ m.stepT=0; vfx.shake=Math.max(vfx.shake,0.12*(1-dp/16)); sRumble(0.12*(1-dp/16),0.4); } }
   if(ty.habitat==='lava'&&m.moving>0.5){ const ci=m.cz*MW+m.cx; if(!D.liquid[ci]&&fuel[ci]>0&&fire[ci]<=0&&mr()<dt*0.8)ignite(ci,0.5,false); }
   if(ty.hound&&m.moving>0.5){ const ci=m.cz*MW+m.cx; if(ty.hound==='fire'&&fuel[ci]>0&&fire[ci]<=0&&mr()<dt*0.4)ignite(ci,0.4,false); if(ty.hound==='ice'&&fire[ci]>0)fire[ci]=0; }
   if(ty.beast&&!m.sleep){

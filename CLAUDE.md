@@ -25,6 +25,7 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      strata：層・テーマ・特別な階・支道と異界の中身・地形・群れ、noise：ノイズ（種は setNoiseSeed）、vaults：洞窟と宝物庫の絵、
                      shaders：描画のシェーダーの文と入れ物の大きさ、title：タイトルのロゴ、hud：表示の大きさ（ミニマップ・装備の画面など）、
                      names：名前と説明の表（見た時の説明・罠・伝説の物・図鑑の主）、sound：音の小さな表と道具
+src/lib/state.ts     ゲームの状態の入れ物（段階7b。分野ごと：vfx＝揺れと光り。古い JS は vfx.shake のように欄で読み書きする）
 src/lib/generate.ts  迷宮の生成（generateLevel。「入力 → 結果」の形。入力 GenInput・古い JS の物 GenEnv・結果 GenResult と、部屋 Room などの型）
 src/lib/bodies/*.ts  生き物の形（kit：点の型と道具 q2・q3、small・beasts・lords：各生き物の形、bosses：主の形（不死の王・蜘蛛の女王・ナーガの女王・古竜・王の影の二つ目の姿））
 tsconfig.json        TypeScript 7 の設定（strict・noUncheckedIndexedAccess・exactOptionalPropertyTypes など）。対象は src/lib/ と tests/unit/*.ts
@@ -32,7 +33,8 @@ vite.config.mjs      組み立て（Vite 8）。公開用は dist/、テスト�
 tools/vite-plugins.mjs  Vite のプラグイン：legacyGame（src/game をつないで1つのモジュールに）・testPage（テスト版）・privateMaps（ソースマップを公開物の外へ）・noCssStub（ページの <style> の空の部品を消す）・fontCss（@fontsource の CSS を絞る：woff を外し、BIZ UDGothic は BIZ_CHARS を含む面だけ）
 tools/game-source.mjs   ゲーム本体をつなぐ処理（gameSource）・行の対応・ソースマップ・テスト版のフォント
 tools/sourcemap.mjs  ソースマップの読み書き（自前の小さな道具）
-tools/lint-game.mjs  src/game/ をつないで構文と lint を調べ、場所を元のファイルの行で出す
+tools/lint-game.mjs  src/game/ をつないで構文と lint を調べ、場所を元のファイルの行で出す（読んだ名前の宣言し直しと、状態の入れ物の名前の宣言も止める）
+tools/state-move.mjs 段階7b の道具：古い JS の一番外の状態を、src/lib/state.ts の入れ物の欄に移す書き換え（名前の見分けは eslint-scope）
 tools/legacy-eval.mjs  テストの道具：古い JS のトップレベルの宣言を名前で取り出して評価する（まだ古い JS にある MTYPES などを、単体テストで本物のまま使う。型は .d.mts）
 tools/where.mjs      組み立てた JS の場所 → src/game/ のどのファイルの何行目か（ソースマップで戻す）
 tools/map.mjs        ゲーム本体の地図（ファイルごとの行の数と見出し）
@@ -138,6 +140,10 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 - 型の言い切り（`as`。`as const` は除く）と後ろの `!` は使わない（lint がエラーにする。間違っていても tsc が黙って通すため）。
   配列と表は src/lib/array.ts の `nth`・`lookup`、無いかもしれない値は `must` で読む（無ければその場で止まる）。範囲の外や無い欄を
   わざと読む所は、無い時の扱いをその場で書く（`?? 0` など、元と同じ値になる形）。どうしても要る所だけ `oxlint-disable-next-line` と理由。
+- **状態を入れ物に移す（段階7b）**：`node tools/state-move.mjs <入れ物> <名前>…`（`--dry` で一覧だけ）。eslint-scope で、ゲームの状態を指す所だけを
+  `入れ物.名前` に書き換え、元の宣言を消す（初めの値は一覧に出るので、src/lib/state.ts の入れ物に書く。入れ物は src/game/imports.mjs で読む）。
+  書き漏れは lint（定義されていない名前）が止める。入れ物の名前は、古い JS の局所の名前とぶつからない物にする（道具が確かめ、lint-game も
+  関数の中での宣言し直しを止める。`fx` は座標の `fx` とぶつかったので `vfx` にした）。書き換えた後は、変わった行が「名前に入れ物を付けただけ」か確かめる。
 - 関数の多重定義（同じ名前の function を型ごとに並べる書き方）は使わない。組み立てた JS では1つになり、ソースマップのテストの関数の数が合わなくなる。
 - 文字を調べるテスト（使う文字・文字の幅）は、src/lib/*.ts の文も見る（`gameText`）。コメントの文字も調べるので、フォントに無い文字（＝ など）は
   コメントにも書かない（落ちた時は、場所と「コメント」の印が出る）。

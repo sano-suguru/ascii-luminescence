@@ -58,8 +58,8 @@ function updateLights(t){
   DLC[0]=LANTERN[0]*lf*lantern.k; DLC[1]=LANTERN[1]*lf*lantern.k; DLC[2]=LANTERN[2]*lf*lantern.k;
   if(castSt&&hands){ const kk=Math.min(1,castSt.t/Math.max(0.01,castSt.need))*(castSt.full?1+0.15*Math.sin(time*14):1), cc=elemCol(hands[castSt.h].elem?hands[castSt.h].elem.type:null); for(let q=0;q<3;q++)DLC[q]=DLC[q]*(1-0.55*kk)+cc[q]*2.6*kk; }
   const list=monsters.filter(m=>m.ty.light>0&&!m.ty.invisible&&(m.ty.form!=='eel'||m.surf>0)).map(m=>[(m.x-player.x)**2+(m.z-player.z)**2,m]).sort((a,b)=>a[0]-b[0]);
-  const flOn=zapFlash&&zapFlash.t>0;
-  if(flOn){ const s5=(NDL-1), k5=zapFlash.t>900?1:Math.min(1,zapFlash.t/0.16); DLP[s5*4]=zapFlash.x; DLP[s5*4+1]=zapFlash.y; DLP[s5*4+2]=zapFlash.z; DLP[s5*4+3]=(zapFlash.r||6); DLC[s5*3]=zapFlash.col[0]*3*k5; DLC[s5*3+1]=zapFlash.col[1]*3*k5; DLC[s5*3+2]=zapFlash.col[2]*3*k5; }
+  const flOn=vfx.zapFlash&&vfx.zapFlash.t>0;
+  if(flOn){ const s5=(NDL-1), k5=vfx.zapFlash.t>900?1:Math.min(1,vfx.zapFlash.t/0.16); DLP[s5*4]=vfx.zapFlash.x; DLP[s5*4+1]=vfx.zapFlash.y; DLP[s5*4+2]=vfx.zapFlash.z; DLP[s5*4+3]=(vfx.zapFlash.r||6); DLC[s5*3]=vfx.zapFlash.col[0]*3*k5; DLC[s5*3+1]=vfx.zapFlash.col[1]*3*k5; DLC[s5*3+2]=vfx.zapFlash.col[2]*3*k5; }
   else if(spark){ const s5=(NDL-1); DLP[s5*4]=spark.x; DLP[s5*4+1]=spark.y; DLP[s5*4+2]=spark.z; DLP[s5*4+3]=5; DLC[s5*3]=2.4; DLC[s5*3+1]=1.3; DLC[s5*3+2]=0.4; }
   for(let k=0;k<NDL-((spark||flOn)?2:1)&&k<list.length;k++){
     const m=list[k][1], s=k+1, ty=m.ty;

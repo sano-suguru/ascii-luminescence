@@ -95,6 +95,48 @@ if (ast) {
           code: 'imports.mjs',
           labels: [{ span: { offset: Buffer.byteLength(code.slice(0, id.start)) } }],
         });
+  // 状態の入れ物（src/lib/state.ts から読む名前。vfx など）は、関数の中でも宣言し直さない。同じ名前の局所の変数・引数があると、
+  // その中の「vfx.shake」が入れ物ではなくその変数を指し、構文は正しいまま、動かした時に初めて壊れる
+  const boxes = new Set(
+    [...code.matchAll(/import\s*\{([^}]*)\}\s*from\s*'\.\.\/lib\/state\.ts'/g)].flatMap((m) =>
+      m[1]
+        .split(',')
+        .map((n) =>
+          n
+            .trim()
+            .split(/\s+as\s+/)
+            .pop(),
+        )
+        .filter(Boolean),
+    ),
+  );
+  const declared = (n) =>
+    n.type === 'VariableDeclarator'
+      ? bound(n.id)
+      : n.type === 'FunctionDeclaration' || n.type === 'FunctionExpression' || n.type === 'ArrowFunctionExpression'
+        ? [...(n.id ? [n.id] : []), ...n.params.flatMap(bound)]
+        : n.type === 'CatchClause'
+          ? bound(n.param)
+          : n.type === 'ClassDeclaration' || n.type === 'ClassExpression'
+            ? n.id
+              ? [n.id]
+              : []
+            : [];
+  const visit = (n) => {
+    if (!n || typeof n !== 'object') return;
+    if (Array.isArray(n)) return n.forEach(visit);
+    if (typeof n.type === 'string')
+      for (const id of declared(n))
+        if (boxes.has(id.name))
+          hides.push({
+            severity: 'error',
+            message: `${id.name} は状態の入れ物（src/lib/state.ts）の名前。関数の中でも、同じ名前を宣言しないこと（別の名前にする）`,
+            code: 'state.ts',
+            labels: [{ span: { offset: Buffer.byteLength(code.slice(0, id.start)) } }],
+          });
+    for (const k in n) if (k !== 'parent') visit(n[k]);
+  };
+  if (boxes.size) visit(fn);
 }
 const diags = [...(JSON.parse(out).diagnostics ?? []), ...hides];
 // Oxlint の位置はバイト数なので、バイトで行と列を数える

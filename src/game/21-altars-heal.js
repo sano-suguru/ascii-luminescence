@@ -106,7 +106,7 @@ function updateRockfall(dt){ if(!rockfall)return; const R=rockfall; R.t+=dt; R.n
 
 // ---------------------------------------------------------------- healing: no regeneration over time. Part of each wound lingers as recoverable (shown on the bar); strike back before it fades
 // and the light of what you strike flows into you; a kill gives more. Altars, a little on going down, rare healing springs, and the town and the oracle heal.
-let rallyMotes=[], hpFlash=0, rallyShown=-1, rallyChime=0;
+let rallyMotes=[], rallyShown=-1, rallyChime=0;
 // RALLY_FROM は src/lib/runes.ts（src/game/imports.mjs で読む）
 function rallyOnHit(m,n,how){ if(!(player.rally>0)||!RALLY_FROM.has(how)||m.ty.critter||!(time-(m.playerT||-99)<1.2))return; const mn=bodyN('mend');
   let gain=Math.min(player.rally,n*0.5*(1+0.5*mn)); const kill=m.hp<=0; if(kill)gain=Math.min(player.rally,gain+3+2*mn+3*BL('devour')); if(gain<=0.05)return; player.rally-=gain;
@@ -119,10 +119,10 @@ function updateRally(dt){ if(dead)return; const mn=bodyN('mend');
   for(const p of rallyMotes){ p.t+=dt; if(p.t<0)continue; const f=Math.min(1,p.t/p.dur), e=f*f*(3-2*f), arc=Math.sin(f*Math.PI)*0.35;
     const x=p.x0+(tx-p.x0)*e+Math.cos(p.wob)*arc*0.4, y=p.y0+(ty-p.y0)*e+arc, z=p.z0+(tz-p.z0)*e+Math.sin(p.wob)*arc*0.4, b=1.6+1.2*f;
     dyn(x,y,z,G(f<0.5?'*':'.'),0.12,(p.c[0]*0.5+0.6)*b,(p.c[1]*0.5+0.55)*b,(p.c[2]*0.5+0.4)*b,0,0);
-    if(f>=1&&!p.done){ p.done=true; player.hp=Math.min(PLAYER_MAX,player.hp+p.amt); hpFlash=0.35; if(sndReady()&&time-rallyChime>0.12){ rallyChime=time; sChime(player.x,player.z,0.12); } } }
+    if(f>=1&&!p.done){ p.done=true; player.hp=Math.min(PLAYER_MAX,player.hp+p.amt); vfx.hpFlash=0.35; if(sndReady()&&time-rallyChime>0.12){ rallyChime=time; sChime(player.x,player.z,0.12); } } }
   rallyMotes=rallyMotes.filter(p=>!p.done);
-  hpFlash=Math.max(0,hpFlash-dt);
-  const rs=Math.round((player.rally||0)*4)+(hpFlash>0?1000:0); if(rs!==rallyShown){ rallyShown=rs; renderStatus(); } }
+  vfx.hpFlash=Math.max(0,vfx.hpFlash-dt);
+  const rs=Math.round((player.rally||0)*4)+(vfx.hpFlash>0?1000:0); if(rs!==rallyShown){ rallyShown=rs; renderStatus(); } }
 // healing springs: rare, off the path; one use heals fully
 function placeSpring(r,free,scored,spreadPick){ if(D.stratum.special||D.finalVault||r()>=0.25)return; const pool=(scored||[]).filter(o=>o.det>=5&&!D.items.some(it=>D.roomOf[it.i]===o.ri)); const pick=spreadPick?spreadPick(pool.length?pool:(scored||[])):(pool.length?pool:(scored||[]))[Math.floor(r()*Math.max(1,(pool.length?pool:(scored||[])).length))];
   if(!pick)return; const c=pick.ro.cells.filter(free); if(!c.length)return; D.items.push({i:c[Math.floor(c.length/2)],kind:'spring',taken:false}); }
@@ -156,7 +156,7 @@ function pickupItems(){
   for(let k=0;k<(D.items||[]).length;k++){ const it=D.items[k]; if(it.taken)continue; if(it.kind==='rune'&&it.guardG!==undefined){ const gd=guardedNow(it); if(it.wasGuarded&&!gd&&!(D.lit||(D.lit=new Set())).has(it.grp||it.i)){ D.lit.add(it.grp||it.i); const [lx,lz]=cpos(it.i); sChime(lx,lz,0.5); msg(it.elitePrize?'<b style="color:#ffd27a">*</b>番人が倒れた。守られていたルーンが、手の届く光になった。':'<b style="color:#ffd27a">_</b>祭壇に光が灯った。'); } it.wasGuarded=gd; if(gd)continue; }
     if(it.kind==='legend'){ if(it.born&&time-it.born<1)continue; const [lx,lz]=cpos(it.i); if(Math.hypot(lx-player.x,lz-player.z)<0.9){ it.taken=true; pickLegend(it); } continue; }
     if(it.kind==='grave'){ const [gx,gz]=cpos(it.i); if(Math.hypot(gx-player.x,gz-player.z)<0.9){ it.taken=true; takeRune(it.rune); msg(`<b style="color:#c8c8d8">+</b>前の冒険者の形見を、墓から拾った：${thingLabel(it.rune)}`); META.grave=null; saveMeta(); sChime(gx,gz,0.4); } continue; }
-    if(it.kind==='spring'){ const [sx,sz]=cpos(it.i); if(player.hp<PLAYER_MAX-0.5&&Math.hypot(sx-player.x,sz-player.z)<0.9){ it.taken=true; runState.taken.add(levelSeed()+':'+k+':spring'); player.hp=PLAYER_MAX; player.rally=0; hpFlash=0.6; renderStatus(); sChime(sx,sz,0.5); setTimeout(()=>sChime(sx,sz,0.35),200); msg('<b style="color:#8fe0ff">~</b>泉の光が体を満たし、傷がすっかり癒えた。泉は静かに光を失った。'); for(let q=0;q<30;q++){ const a=mr()*6.28; spawn(player.x+Math.cos(a)*0.5,0.2+mr(),player.z+Math.sin(a)*0.5,Math.cos(a)*0.4,0.8+mr(),Math.sin(a)*0.4,1.0,G(mpick(['*','.','~'])),0.12,0.8,1.8,2.2,0); } } continue; }
+    if(it.kind==='spring'){ const [sx,sz]=cpos(it.i); if(player.hp<PLAYER_MAX-0.5&&Math.hypot(sx-player.x,sz-player.z)<0.9){ it.taken=true; runState.taken.add(levelSeed()+':'+k+':spring'); player.hp=PLAYER_MAX; player.rally=0; vfx.hpFlash=0.6; renderStatus(); sChime(sx,sz,0.5); setTimeout(()=>sChime(sx,sz,0.35),200); msg('<b style="color:#8fe0ff">~</b>泉の光が体を満たし、傷がすっかり癒えた。泉は静かに光を失った。'); for(let q=0;q<30;q++){ const a=mr()*6.28; spawn(player.x+Math.cos(a)*0.5,0.2+mr(),player.z+Math.sin(a)*0.5,Math.cos(a)*0.4,0.8+mr(),Math.sin(a)*0.4,1.0,G(mpick(['*','.','~'])),0.12,0.8,1.8,2.2,0); } } continue; }
     if(it.kind==='slot'){ if(it.born&&time-it.born<1)continue; const [sx,sz]=cpos(it.i); if(Math.hypot(sx-player.x,sz-player.z)<0.9){ it.taken=true; openSlot(it.i); } continue; }
     if(it.kind!=='rune'||!it.rune)continue; if(it.born&&time-it.born<0.6)continue; const [x,z]=cpos(it.i);
     if(it.altar)continue; if(Math.hypot(x-player.x,z-player.z)>0.75)continue;

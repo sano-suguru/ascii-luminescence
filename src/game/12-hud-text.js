@@ -25,7 +25,7 @@ function renderStatus(){
   const meter=['.',':','*'].map((g,k)=>k<=lv?`<span class="glow" style="color:${lc}">${g}</span>`:`<span class="dim">${g}</span>`).join(' ');
   let l4='';
   if(stealth.seen)l4+='<span class="glow" style="color:#ff6a4a">!</span> <span class="lab">見つかっている</span>';
-  const hpR=clamp((player.hp||0)/PLAYER_MAX,0,1), hpN=Math.round(hpR*20), rlN=Math.max(0,Math.min(20-hpN,Math.round(clamp(((player.hp||0)+(player.rally||0))/PLAYER_MAX,0,1)*20)-hpN)), hpC=hpFlash>0?'#fff0d8':hpR>0.5?'#ff8a7a':hpR>0.25?'#ffb05a':'#ff4a3a';
+  const hpR=clamp((player.hp||0)/PLAYER_MAX,0,1), hpN=Math.round(hpR*20), rlN=Math.max(0,Math.min(20-hpN,Math.round(clamp(((player.hp||0)+(player.rally||0))/PLAYER_MAX,0,1)*20)-hpN)), hpC=vfx.hpFlash>0?'#fff0d8':hpR>0.5?'#ff8a7a':hpR>0.25?'#ffb05a':'#ff4a3a';
   const hpLine=`<span class="glow" style="color:${hpC}">${'#'.repeat(hpN)}</span><span style="color:#d9874a">${'='.repeat(rlN)}</span><span class="dim">${'.'.repeat(20-hpN-rlN)}</span>  <span class="lab">体力 ${Math.ceil(player.hp||0)}/${PLAYER_MAX}</span>`;
   const xf=Math.round(clamp(lvl.exp/expNeed(lvl.n),0,1)*20), xpLine=`<span style="color:#c8b6ff">${'-'.repeat(xf)}</span><span class="dim">${'.'.repeat(20-xf)}</span>  <span class="lab">Lv${lvl.n}</span>`;
   el.innerHTML=hpLine+'\n'+xpLine+`\n<span class="glow" style="color:#ffbf6a">&gt; ${placeLabel()}</span>\n${meter}  <span class="lab">${LIGHT_NAMES[lv]}</span>`+(started?'\n'+legendLine():'')+(l4?'\n'+l4:'')+(perfOn?`\n<span class="lab">${pfFps} fps   文字 ${(glyphCount/10000).toFixed(1)}万   描画 ${(chunksDrawn/10000).toFixed(1)}万   生き物 ${monsters.length}</span>`:'');
@@ -54,10 +54,10 @@ function cycleUi(){ uiMode=(uiMode+1)%3; document.body.classList.toggle('ui-min'
 function toggleSneak(){ stealth.sneak=!stealth.sneak; showHint(stealth.sneak?'ランタンを絞った。忍び足で、気配を殺して進む':'ランタンの灯りを戻した'); setTimeout(()=>showHint(''),1600); }
 let noticeMsgT={};
 function onNoticed(m){
-  if(m.ty.watcher&&!m.alarmed){ m.alarmed=true; sAlarm(m.x,m.z); shake=Math.max(shake,0.15); msg(`<b style="color:${css(m.ty.col)}">R</b>${mname(m)}が赤い光を明滅させ、警報を鳴らした！`); for(const o of monsters){ if(o===m||o.ty.critter||o.dead)continue; if(Math.hypot(o.x-m.x,o.z-m.z)<22){ o.sleep=false; o.aware=Math.max(o.aware,1.05); } } }
+  if(m.ty.watcher&&!m.alarmed){ m.alarmed=true; sAlarm(m.x,m.z); vfx.shake=Math.max(vfx.shake,0.15); msg(`<b style="color:${css(m.ty.col)}">R</b>${mname(m)}が赤い光を明滅させ、警報を鳴らした！`); for(const o of monsters){ if(o===m||o.ty.critter||o.dead)continue; if(Math.hypot(o.x-m.x,o.z-m.z)<22){ o.sleep=false; o.aware=Math.max(o.aware,1.05); } } }
   if(m.ty.snap&&!m.howled){ for(const o of monsters)if(o.ty.snap)o.howled=true; sHowl(m.x,m.z); msg(`<b style="color:${css(m.ty.col)}">s</b>${mname(m)}が遠吠えを上げた。野営地じゅうが、こちらを向く。`); for(const o of monsters){ if(!o.ty.snap||o===m)continue; if(Math.hypot(o.x-m.x,o.z-m.z)<30){ o.sleep=false; o.aware=Math.max(o.aware,1.05); } } }
   if(m.ty.hound&&!m.howled){ for(const o of monsters)if(o.g===m.g)o.howled=true; sHowl(m.x,m.z); }
-  if(m.ty.beast&&!m.woke){ m.woke=true; m.noticed=true; m.sleep=false; m.aware=1.25; shake=Math.max(shake,0.6); sRoar(); msg(`<b style="color:${css(m.ty.col)}">X</b>${mname(m)}が目を覚まし、こちらを見た。`); msg(`<b style="color:${css(m.ty.col)}">X</b>──年代記に記された、あの獣だ。${m.ty.lore}`); return; }
+  if(m.ty.beast&&!m.woke){ m.woke=true; m.noticed=true; m.sleep=false; m.aware=1.25; vfx.shake=Math.max(vfx.shake,0.6); sRoar(); msg(`<b style="color:${css(m.ty.col)}">X</b>${mname(m)}が目を覚まし、こちらを見た。`); msg(`<b style="color:${css(m.ty.col)}">X</b>──年代記に記された、あの獣だ。${m.ty.lore}`); return; }
   const grp=m.g>=0?monsters.filter(o=>o.g===m.g):[m];
   for(const o of grp){ o.noticed=true; o.sleep=false; o.aware=Math.max(o.aware,1); o.mark=0; }
   const k=m.g>=0?'g'+m.g:'m'+monsters.indexOf(m);

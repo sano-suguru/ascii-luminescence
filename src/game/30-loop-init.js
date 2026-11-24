@@ -43,7 +43,7 @@ function tick(raw,draw){
   fovT+=dt; if(fovT>0.1){ fovT=0; computeFOV(); checkEvents(false); look(); stepGas(); stepFire(); }
   mapT+=dt; if(mapT>0.11){ mapT=0; if(uiMode===0)drawMap(); }
   if(helpT>0){ helpT-=dt; if(helpT<=0&&helpOn)setHelp(false); }
-  finalPass.uniforms.uTime.value=t; finalPass.uniforms.uFade.value=clamp(fade,0,1); finalPass.uniforms.uHurt.value=hurtFlash+(player.hp<PLAYER_MAX*0.25&&!dead?0.18+0.08*Math.sin(t*4):0);
+  finalPass.uniforms.uTime.value=t; finalPass.uniforms.uFade.value=clamp(fade,0,1); finalPass.uniforms.uHurt.value=vfx.hurtFlash+(player.hp<PLAYER_MAX*0.25&&!dead?0.18+0.08*Math.sin(t*4):0);
   if(started&&!trans&&!dead&&!isPaused())pickupItems();
   if(hands)updateCast(dt);
   updateFinal(dt); updateGallery(dt); trackSeen(dt); updateFrozen(dt); cloudsMeetFire();
