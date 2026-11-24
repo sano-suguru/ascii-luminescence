@@ -22,7 +22,8 @@ src/game/imports.mjs ゲーム本体が使う TypeScript のモジュールを�
 src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整形もする
                      array：配列と表を読む nth・lookup・must（無ければその場で止まる。as の代わり）、rng：シードの乱数を作る mulberry32 と clamp、random：見た目の乱数 mr・mpick と迷宮の乱数 rand・R・RI・pick（入れ替えは setRand）と混ぜる shuffle、glyphs：文字の図鑑の番号 G と飾りの文字の並び、color：css・hsl2rgb、math：角度・稲妻の線など、
                      text：パネルの文字の幅と枠、history：年代記、world：迷宮の大きさ・タイル・液体と地面・支道と異界・層ごとの変化・岩、
-                     light：灯りの計算、runes：ルーンの定義 RUNE_DEF・性質の効き目 RES・特性・反応・手の枠、progress：経験・伝承・解放・加護 BLESS、hands：手元の武器の文字、
+                     light：灯りの計算、runes：ルーンの定義 RUNE_DEF・性質の効き目 RES・特性・反応・手の枠・ルーンの名前と色と付けられるか（表だけに頼る物）、
+                     gear：手と持ち物の処理（makeRune・effHand・isTwo・canPutAt など。状態 gear に頼る物）、progress：経験・伝承・解放・加護 BLESS、hands：手元の武器の文字、
                      creatures：生き物の表 MTYPES（冒険の途中で種類が足される）、
                      strata：層・テーマ・特別な階・支道と異界の中身・地形・群れ、noise：ノイズ（種は setNoiseSeed）、vaults：洞窟と宝物庫の絵、
                      shaders：描画のシェーダーの文と入れ物の大きさ、title：タイトルのロゴ、hud：表示の大きさ（ミニマップ・装備の画面など）、
@@ -37,7 +38,7 @@ tools/game-source.mjs   ゲーム本体をつなぐ処理（gameSource）・行�
 tools/sourcemap.mjs  ソースマップの読み書き（自前の小さな道具）
 tools/lint-game.mjs  src/game/ をつないで構文と lint を調べ、場所を元のファイルの行で出す（読んだ名前の宣言し直しと、状態の入れ物の名前の宣言も止める。入れ物の名前は src/lib/state.ts の export から取る）
 tools/state-move.mjs 段階7b の道具：古い JS の一番外の状態を、src/lib/state.ts の入れ物の欄に移す書き換え（名前の見分けは eslint-scope）。単体テストは tests/unit/state-move.test.mjs（小さな見本で確かめる）
-tools/legacy-eval.mjs  テストの道具：古い JS のトップレベルの宣言を名前で取り出して評価する（まだ古い JS にある makeRune などを、単体テストで本物のまま使う。型は .d.mts）
+tools/legacy-eval.mjs  テストの道具：古い JS のトップレベルの宣言を名前で取り出して評価する（移す前の古い関数を取り出して、新しい関数と結果を比べる。まだ古い JS にある関数を単体テストで本物のまま使う。型は .d.mts）
 tools/where.mjs      組み立てた JS の場所 → src/game/ のどのファイルの何行目か（ソースマップで戻す）
 tools/map.mjs        ゲーム本体の地図（ファイルごとの行の数と見出し）
 tools/serve.mjs      静的ファイルの小さなサーバー
@@ -138,7 +139,9 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
    （関数の中で同じ名前を使い直すのは、その中だけのことなので止めない。色の名前の `EYE` など）。
 3. 移す前の実装と、たくさんの入力で同じ結果になることを確かめる（Node 26 は .ts をそのまま動かせる。古い関数は git の版から取り出す）。
    乱数を引く順番を変えると、同じシードで違う結果になる。移す前の値を、単体テスト（tests/unit/*.test.ts）に残す。
-   移した物が、まだ古い JS にある関数（makeRune など）を使う時は、テストで `tools/legacy-eval.mjs` の legacyValues から本物を取り出す。
+   移した物が、まだ古い JS にある関数を使う時は、テストで `tools/legacy-eval.mjs` の legacyValues から本物を取り出す。
+   状態に頼る関数（段階7c）は、古い JS を消す前に、legacyValues で取り出した古い関数と新しい関数に同じ状態（gear など）を入れ、たくさんの場合で結果と状態の変わり方を比べてから消す
+   （古い関数も、TypeScript の状態の入れ物を同じ物として読む）。比べ方の見本は、tests/unit/gear.test.ts の頭に書いた。
    迷宮の生成は Node とブラウザで同じ迷宮になる（混ぜるのは shuffle）。生成に関わる変更は、Node の単体テストの指紋（generate.test.ts。欄の並びによらない）で、
    前の版と作り比べる。意図して迷宮を変えた時は、ブラウザの `__test.gen` でも Node と同じ指紋になることを確かめてから、指紋を作り直す。
 4. `pnpm fmt`・`pnpm check`・`pnpm test`・`pnpm test:visual`（画素まで同じはず）。
@@ -228,7 +231,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 | 16-view-input | 視界とミニマップ、伝言（msg）、当たり（solidAt）、入力の状態。ミニマップの大きさは src/lib/hud.ts、押しているキー keys は src/lib/state.ts |
 | 17-meta | 段階D：伝承・解放・墓・試練（weaponPool、trialOn）、タイトルの画面（buildIntroPanel）。UNLOCKS・META_DEF は src/lib/progress.ts、保存する記録 META などは src/lib/state.ts の saved |
 | 18-level-player | 階の切り替え（newLevel）、罠、生き物の強さ（MSTAT）、生と死、レベルアップ（levelChoices、lvlLine。加護の表 BLESS は src/lib/progress.ts）。expNeed・expOf は src/lib/progress.ts、serRune は src/lib/runes.ts。TRAP_INFO は src/lib/names.ts、WEAPON・SLEEP_MULT は src/lib/runes.ts、roll は src/lib/random.ts |
-| 19-hands-runes | 手元の武器（VM_MODELS、drawViewWeapons）、性質と反応。ルーンの定義 RUNE_DEF・性質の効き目 RES・TRAITS・REACT・手の枠・AFFIX は src/lib/runes.ts |
+| 19-hands-runes | 手元の武器（VM_MODELS、drawViewWeapons）、性質と反応、術の中身（specOf）。ルーンを作る・手と持ち物の処理は src/lib/gear.ts、ルーンの名前と色と付けられるかは src/lib/runes.ts。ルーンの定義 RUNE_DEF・性質の効き目 RES・TRAITS・REACT・手の枠・AFFIX は src/lib/runes.ts |
 | 20-chant-hits | 詠唱（beginCast、castNow…）、当たり（applyHit）、反応、飛ぶ物。turnDir は src/lib/math.ts、sp_elem は src/lib/runes.ts。戦いの状態は src/lib/state.ts の fight |
 | 21-altars-heal | ルーンの手に入れ方、祭壇（altarFill、forgeOptions、mainPathAltars、altarLine）、回復、拾う。RALLY_FROM は src/lib/runes.ts、ALTAR_W は src/lib/hud.ts |
 | 22-world-hints | 先にある物の気配、方向の矢印、床のルーン、詠唱の見た目、照準。stratumAtDepth は src/lib/strata.ts |

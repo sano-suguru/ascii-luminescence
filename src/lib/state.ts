@@ -195,8 +195,10 @@ export interface Gear {
   builds: (Build | null)[];
   /** 今の組み合わせ（-1 はどれでもない） */
   buildIdx: number;
+  /** 次に作るルーンの番号（冒険の中で通し。src/lib/gear.ts の makeRune が数える） */
+  runeUid: number;
 }
-export const gear: Gear = { hands: null, bag: [], castSt: null, swapSt: null, builds: [null, null], buildIdx: -1 };
+export const gear: Gear = { hands: null, bag: [], castSt: null, swapSt: null, builds: [null, null], buildIdx: -1, runeUid: 1 };
 
 /** 投げた火花（火打ち石。当たった所に火がつく） */
 export interface Spark {
