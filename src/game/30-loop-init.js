@@ -85,7 +85,7 @@ if(TEST)window.__test={
   // the doors of this level (cell i, the room cell j next to it, how open o, burnt away), a cell (its middle x z, floor to stand on, seen now, explored, ash),
   // setting a cell on fire, and putting a creature (an MTYPES key such as 'Re') on a cell
   doors(){ return here.D.doors.map(d=>({i:d.i,j:d.j,o:+d.o.toFixed(3),gone:!!d.gone})); },
-  cell(i){ return {x:(i%MW+0.5)*CELL,z:(((i/MW)|0)+0.5)*CELL,floor:here.D.tile[i]===TF&&!here.D.solid.has(i)&&!blocksWalk(here.D.liquid[i]),seen:here.fovVis[i]===here.fovStamp,explored:!!here.explored[i],burnt:!!burnt[i]}; },
+  cell(i){ return {x:(i%MW+0.5)*CELL,z:(((i/MW)|0)+0.5)*CELL,floor:here.D.tile[i]===TF&&!here.D.solid.has(i)&&!blocksWalk(here.D.liquid[i]),seen:here.fovVis[i]===here.fovStamp,explored:!!here.explored[i],burnt:!!blaze.burnt[i]}; },
   ignite(i){ ignite(i,1,false); },
   // lingering things of this level (fields, delayed hits, rains, marks on the floor, a beam being fired): put one of each where the player stands,
   // made to do nothing for 60 s (a field and a rain with no element, a beam whose first shot is 60 s away), and count them

@@ -39,10 +39,10 @@ function newLevel(seedOverride){
     if(tc>=0){ const nb=[1,-1,MW,-MW,MW+1,MW-1,-MW+1,-MW-1].map(o=>tc+o).find(j=>j>=0&&j<NCELL&&here.D.tile[j]===TF&&!here.D.liquid[j]&&!here.D.solid.has(j))??tc;
       player.x=(nb%MW+0.5)*CELL; player.z=(((nb/MW)|0)+0.5)*CELL; player.yaw=Math.atan2(-((tc%MW)-(nb%MW)),-(((tc/MW)|0)-((nb/MW)|0)))+Math.PI; lockCell=tc; } here.arrive=null; }
   stealth.sneak=false; lantern.r=8.2; lantern.k=1;
-  riverCells=[]; for(let i=0;i<NCELL;i++)if(here.D.flow[i]&&(here.D.liquid[i]===LQ_WATER||here.D.liquid[i]===LQ_DEEP))riverCells.push(i);
+  here.riverCells=[]; for(let i=0;i<NCELL;i++)if(here.D.flow[i]&&(here.D.liquid[i]===LQ_WATER||here.D.liquid[i]===LQ_DEEP))here.riverCells.push(i);
   trampled=[]; tallMsg=false; brimMsg=false; player.lastCell=-1; player.netT=0;
-  scent=new Float32Array(NCELL); webMsg=false; webBurnMsg=false; repairMsg=false;
-  pN=0; gasAny=false; initFire(); initEvents(); spark=null; projs=[]; showHint(''); edge.t=0; setFog(); initDust();
+  blaze.scent=new Float32Array(NCELL); webMsg=false; webBurnMsg=false; repairMsg=false;
+  pN=0; blaze.gasAny=false; initFire(); initEvents(); blaze.spark=null; projs=[]; showHint(''); edge.t=0; setFog(); initDust();
   renderStatus(); if(ui.helpOn)renderHelp();
   computeFOV(); checkEvents(true);
   if(player.fall){ player.fall=false; setTimeout(()=>{ hurtPlayer(roll(2,4),'落下の衝撃'); },300); }
@@ -74,18 +74,18 @@ const iceT=new Map();
 function crackIce(i,dt){
   const t0=(iceT.get(i)||0)+dt; iceT.set(i,t0);
   if(t0<dt*1.5){ sSqueak(player.x,player.z); if(!here.D.crackMsg){ here.D.crackMsg=true; msg('<b style="color:#b8e4ff">/</b>足元の氷が、ぴしりと音を立ててきしんだ。'); } }
-  if(t0>0.85){ here.D.liquid[i]=LQ_WATER; here.D.thin[i]=0; cellFlag[i]=50; uploadCells(); sSplash(0.45); vfx.shake=Math.max(vfx.shake,0.15);
+  if(t0>0.85){ here.D.liquid[i]=LQ_WATER; here.D.thin[i]=0; blaze.cellFlag[i]=50; uploadCells(); sSplash(0.45); vfx.shake=Math.max(vfx.shake,0.15);
     msg('<b style="color:#6ab4ff">~</b>氷が割れ、冷たい水に足が沈んだ。');
     const [x,z]=cpos(i); for(let q=0;q<26;q++){ const a=mr()*6.28; spawn(x+Math.cos(a)*0.5,0.1,z+Math.sin(a)*0.5,Math.cos(a)*1.2,0.6+mr(),Math.sin(a)*1.2,1+mr(),G(mpick(['/','\\','~','*'])),0.16,0.6,0.85,1.0,1); } }
 }
-const tallAt=i=>i>=0&&i<NCELL&&(here.D.surface[i]===SF_FOLIAGE||here.D.surface[i]===SF_FUNGFOR)&&cellFlag[i]!==20&&!burnt[i]&&!here.D.liquid[i];
+const tallAt=i=>i>=0&&i<NCELL&&(here.D.surface[i]===SF_FOLIAGE||here.D.surface[i]===SF_FUNGFOR)&&blaze.cellFlag[i]!==20&&!blaze.burnt[i]&&!here.D.liquid[i];
 let trampled=[], tallMsg=false, brimMsg=false;
-function trample(i){ if(!tallAt(i))return; cellFlag[i]=20; uploadCells(); trampled.push([i,clock.time]); sHiss(player.x,player.z,0.22); }
+function trample(i){ if(!tallAt(i))return; blaze.cellFlag[i]=20; uploadCells(); trampled.push([i,clock.time]); sHiss(player.x,player.z,0.22); }
 function regrow(){ if(!trampled.length)return; const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL); let ch=false;
-  trampled=trampled.filter(([i,t0])=>{ if(clock.time-t0>45&&i!==pc&&cellFlag[i]===20){ cellFlag[i]=0; ch=true; return false; } return cellFlag[i]===20; }); if(ch)uploadCells(); }
-function brimFlare(i){ if(here.D.surface[i]!==SF_BRIM||fire[i]>0.1||fuel[i]<=0)return; ignite(i,1.0,false); for(const d of D4){ const j=i+d[0]+d[1]*MW; if(here.D.surface[j]===SF_BRIM&&fuel[j]>0)ignite(j,0.6,false); } sCrackleBurst&&sCrackleBurst((i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL);
+  trampled=trampled.filter(([i,t0])=>{ if(clock.time-t0>45&&i!==pc&&blaze.cellFlag[i]===20){ blaze.cellFlag[i]=0; ch=true; return false; } return blaze.cellFlag[i]===20; }); if(ch)uploadCells(); }
+function brimFlare(i){ if(here.D.surface[i]!==SF_BRIM||blaze.fire[i]>0.1||blaze.fuel[i]<=0)return; ignite(i,1.0,false); for(const d of D4){ const j=i+d[0]+d[1]*MW; if(here.D.surface[j]===SF_BRIM&&blaze.fuel[j]>0)ignite(j,0.6,false); } sCrackleBurst&&sCrackleBurst((i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL);
   if(!brimMsg){ brimMsg=true; msg('<b style="color:#ffd04a">*</b>足元の硫黄が、ぼっと燃え上がった！ しばらくすると、また燃えるようになる。'); } }
-let brimT=0; function brimRecover(dt){ brimT+=dt; if(brimT<2)return; brimT=0; let ch=false; for(let i=0;i<NCELL;i++){ if(here.D.surface[i]===SF_BRIM&&burnt[i]&&fire[i]<=0&&mr()<0.08){ burnt[i]=0; fuel[i]=0.8; ch=true; } } if(ch)uploadCells(); }
+let brimT=0; function brimRecover(dt){ brimT+=dt; if(brimT<2)return; brimT=0; let ch=false; for(let i=0;i<NCELL;i++){ if(here.D.surface[i]===SF_BRIM&&blaze.burnt[i]&&blaze.fire[i]<=0&&mr()<0.08){ blaze.burnt[i]=0; blaze.fuel[i]=0.8; ch=true; } } if(ch)uploadCells(); }
 // ---------------------------------------------------------------- hidden traps, a lever-and-portcullis vault, sanctuaries (mechanisms after Brogue's machines; written independently)
 // TRAP_INFO は src/lib/names.ts（src/game/imports.mjs で読む）
 function triggerTrap(tr){
@@ -95,9 +95,9 @@ function triggerTrap(tr){
       for(const m of here.monsters){ if(m.ty.critter||m.dead)continue; if(Math.hypot(m.x-x,m.z-z)<32){ m.sleep=false; m.aware=Math.max(m.aware,0.8); m.goal=[x,z]; m.goalT=clock.time+15; } } break;
     case 'trapdoor': sRumble(0.5,1.2); vfx.shake=Math.max(vfx.shake,0.4); msg(tag+'床が抜けた！ 闇の中を、下の階へと落ちていく……'); here.trans={phase:'out',t:0,regen:false}; player.fall=true; break;
     case 'net': player.netT=3.2; sHiss(x,z,0.5); msg(tag+'網が降ってきた！ もがいて抜け出そうとする……'); break;
-    case 'flood': sSplash(0.5); msg(tag+'床の穴から、水が勢いよく噴き出した！'); events.push({type:'flood',ri:-2,order:tr.order.slice(),src:tr.i,state:1,t:0,k:0,max:tr.order.length*3}); break;
+    case 'flood': sSplash(0.5); msg(tag+'床の穴から、水が勢いよく噴き出した！'); here.events.push({type:'flood',ri:-2,order:tr.order.slice(),src:tr.i,state:1,t:0,k:0,max:tr.order.length*3}); break;
     case 'methane': sHiss(x,z,1.2); msg(tag+'床の穴から、沼のガスが噴き出した。火気に注意！');
-      for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){ const j=tr.i+dx+dy*MW; if(j>=0&&j<NCELL&&here.D.tile[j]!==TW&&Math.hypot(dx,dy)<=2.3)here.D.gas[j]=Math.max(here.D.gas[j],0.9); } gasAny=true; break;
+      for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){ const j=tr.i+dx+dy*MW; if(j>=0&&j<NCELL&&here.D.tile[j]!==TW&&Math.hypot(dx,dy)<=2.3)here.D.gas[j]=Math.max(here.D.gas[j],0.9); } blaze.gasAny=true; break;
   }
 }
 function updateTraps(dt){
@@ -295,8 +295,8 @@ function updateLife(dt){
   vfx.hurtFlash=Math.max(0,vfx.hurtFlash-dt*1.6);
   // fire hurts whoever stands in it
   const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL);
-  player.fireT=(player.fireT||0)+dt; if(player.fireT>0.5){ player.fireT=0; if(fire[pc]>0.1)hurtPlayer(2,'炎');
-    for(const m of here.monsters){ if(m.dead||m.ty.critter||m.ty.habitat==='lava')continue; const ci=m.cz*MW+m.cx; if(fire[ci]>0.1&&!m.ty.flier)damageMonster(m,3,'fire'); } }
+  player.fireT=(player.fireT||0)+dt; if(player.fireT>0.5){ player.fireT=0; if(blaze.fire[pc]>0.1)hurtPlayer(2,'炎');
+    for(const m of here.monsters){ if(m.dead||m.ty.critter||m.ty.habitat==='lava')continue; const ci=m.cz*MW+m.cx; if(blaze.fire[ci]>0.1&&!m.ty.flier)damageMonster(m,3,'fire'); } }
 }
 function monsterStrike(m,dt,dp){
   if(!hostile(m)||!m.noticed||m.sleep||adv.dead)return;

@@ -11,14 +11,14 @@ function beamFrame(h){ const o=handPoint(h), a=assistPoint(o,'beam')||aimPoint()
 // ice: puts out fire, freezes water for a while (walkable, slippery); fire melts it again
 function chillArea(x,z,r){ const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL), rr=Math.ceil(r/CELL)+1; let ch=false, froze=false;
   for(let dz=-rr;dz<=rr;dz++)for(let dx=-rr;dx<=rr;dx++){ const i=(cz+dz)*MW+cx+dx; if(i<0||i>=NCELL)continue; const px=(cx+dx+0.5)*CELL, pz=(cz+dz+0.5)*CELL; if(Math.hypot(px-x,pz-z)>r+0.7)continue;
-    if(fire[i]>0){ fire[i]=0; ch=true; for(let q=0;q<5;q++)spawn(px+(mr()-0.5)*1.4,0.3,pz+(mr()-0.5)*1.4,0,0.9+mr(),0,0.9,G(mpick(['~','.'])),0.16,1.6,1.7,1.8,0); }
+    if(blaze.fire[i]>0){ blaze.fire[i]=0; ch=true; for(let q=0;q<5;q++)spawn(px+(mr()-0.5)*1.4,0.3,pz+(mr()-0.5)*1.4,0,0.9+mr(),0,0.9,G(mpick(['~','.'])),0.16,1.6,1.7,1.8,0); }
     const lq=here.D.liquid[i]; if((lq===LQ_WATER||lq===LQ_DEEP)&&!frozen.has(i)){ frozen.set(i,{t:25,liq:lq,surf:here.D.surface[i]}); here.D.liquid[i]=0; here.D.surface[i]=SF_ICE; ch=true; froze=true;
       for(const m of here.monsters){ if(m.dead||m.cx!==cx+dx||m.cz!==cz+dz)continue; const s2=m.st||(m.st={}); s2.chill=Math.max(s2.chill||0,4); } }
     else if(frozen.has(i))frozen.get(i).t=25; }
   if(ch)uploadCells();
   if(froze&&sndReady()){ const t=SND.ctx.currentTime, o=sOut(x,z,0.3); sEnv(sTone(t,'sine',2093,3136,0.4,o),t,0.004,0.35); sEnv(sNoise(t,0.3,'highpass',5000,0.6,o),t,0.003,0.25,0.4); } }
 function updateFrozen(dt){ if(!frozen.size)return; let ch=false;
-  for(const [i,f] of frozen){ f.t-=dt; if(f.t<=0||fire[i]>0.1){ here.D.liquid[i]=f.liq; here.D.surface[i]=f.surf; frozen.delete(i); ch=true; const [x,z]=cpos(i); for(let q=0;q<8;q++){ const a=mr()*6.28; spawn(x+Math.cos(a)*0.6,0.1,z+Math.sin(a)*0.6,Math.cos(a),0.6+mr(),Math.sin(a),0.6,G(mpick(['/','\\','~'])),0.14,0.7,0.95,1.2,1); } } }
+  for(const [i,f] of frozen){ f.t-=dt; if(f.t<=0||blaze.fire[i]>0.1){ here.D.liquid[i]=f.liq; here.D.surface[i]=f.surf; frozen.delete(i); ch=true; const [x,z]=cpos(i); for(let q=0;q<8;q++){ const a=mr()*6.28; spawn(x+Math.cos(a)*0.6,0.1,z+Math.sin(a)*0.6,Math.cos(a),0.6+mr(),Math.sin(a),0.6,G(mpick(['/','\\','~'])),0.14,0.7,0.95,1.2,1); } } }
   if(ch)uploadCells(); }
 function drawFrozen(t){ for(const [i,f] of frozen){ const [x,z]=cpos(i); if(Math.hypot(x-player.x,z-player.z)>30)continue; const crack=f.t<5;
   for(let a=0;a<3;a++)for(let b=0;b<3;b++){ const sh=0.85+0.15*Math.sin(t*2+a+b*1.7); dyn(x+(a-1)*0.62,0.08,z+(b-1)*0.62,G(crack&&((a+b)%2)?'/':'='),0.36,0.7*sh,0.92*sh,1.25*sh); } } }
@@ -34,7 +34,7 @@ function landElem(sp,x,y,z,ci){ if(!sp.elem||ci<0||ci>=NCELL)return; const areaK
   else if(sp.elem==='thunder'){ const lq=here.D.liquid[ci]; if(lq===LQ_WATER||lq===LQ_DEEP){ for(const o of here.monsters){ if(!foe(o)||!inWater(o)||Math.hypot(o.x-x,o.z-z)>5)continue; addBolt([x,0.15,z],[o.x,0.15,o.z],RUNE_DEF.thunder.col,'thunder'); damageMonster(o,2,'thunder'); } } } }
 // fire reaching a poison mist sets the whole mist off
 function cloudsMeetFire(){ for(const c of clouds){ if(c.t<=0)continue; const cx=Math.floor(c.x/CELL), cz=Math.floor(c.z/CELL), rr=Math.ceil(c.r/CELL); let lit=false;
-    for(let dz=-rr;dz<=rr&&!lit;dz++)for(let dx=-rr;dx<=rr;dx++){ const i=(cz+dz)*MW+cx+dx; if(i>=0&&i<NCELL&&fire[i]>0.1){ lit=true; break; } }
+    for(let dz=-rr;dz<=rr&&!lit;dz++)for(let dx=-rr;dx<=rr;dx++){ const i=(cz+dz)*MW+cx+dx; if(i>=0&&i<NCELL&&blaze.fire[i]>0.1){ lit=true; break; } }
     if(!lit)continue; c.t=0; const R=c.r+0.6;
     for(let q=0;q<46;q++){ const a=mr()*6.28, e=mr(); spawn(c.x+Math.cos(a)*e*R,0.4+mr()*1.2,c.z+Math.sin(a)*e*R,Math.cos(a)*2.4,0.8+mr()*2,Math.sin(a)*2.4,0.9+mr()*0.5,G(mpick(['*','#','%','\''])),0.22,3.2,1.8,0.6,0); }
     for(const o of here.monsters){ if(!foe(o)||Math.hypot(o.x-c.x,o.z-c.z)>R)continue; if(!losClear(c.x,0.6,c.z,...mCenter(o)))continue; damageMonster(o,roll(5,9),'fire'); }

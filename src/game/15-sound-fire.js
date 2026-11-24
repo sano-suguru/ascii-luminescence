@@ -54,7 +54,7 @@ function sndUpdate(dt){
     SND.envT=0.25;
     const pcx=Math.floor(player.x/CELL), pcz=Math.floor(player.z/CELL); let water=0,lava=0,chasm=0,bog=0,xtal=0,burn=0,n=0;
     for(let dz=-6;dz<=6;dz++)for(let dx=-6;dx<=6;dx++){ const x=pcx+dx, z=pcz+dz; if(x<0||z<0||x>=MW||z>=MH)continue; const i=z*MW+x, w=Math.max(0,1-Math.hypot(dx,dz)/7); n+=w; const lq=here.D.liquid[i], tt=here.D.tile[i];
-      if(lq===LQ_WATER||lq===LQ_DEEP)water+=w; else if(lq===LQ_LAVA)lava+=w; else if(lq===LQ_BOG)bog+=w; if(tt===TC)chasm+=w; if(tt===TX)xtal+=w; if(fire[i]>0)burn+=w*fire[i]; }
+      if(lq===LQ_WATER||lq===LQ_DEEP)water+=w; else if(lq===LQ_LAVA)lava+=w; else if(lq===LQ_BOG)bog+=w; if(tt===TC)chasm+=w; if(tt===TX)xtal+=w; if(blaze.fire[i]>0)burn+=w*blaze.fire[i]; }
     let fb=0, fx=0, fz=0; for(const f of here.fixtures){ if(!FIRE_TYPES.has(f.type)||f.type==='lava'||f.type==='abyss')continue; const d=Math.hypot(f.x-player.x,f.z-player.z), v=Math.max(0,1-d/7); if(v>fb){fb=v;fx=f.x;fz=f.z;} }
     const ri=here.D.roomOf[pcz*MW+pcx];
     let fallN=0; for(const f of here.fixtures){ if(f.type==='fall')fallN=Math.max(fallN,1-Math.hypot(f.x-player.x,f.z-player.z)/16); }
@@ -78,27 +78,26 @@ function sndUpdate(dt){
 }
 
 // ---------------------------------------------------------------- swamp gas
-let gasTmp=new Float32Array(NCELL), gasAny=false;
+let gasTmp=new Float32Array(NCELL);
 // ---------------------------------------------------------------- fire (after Brogue: spreads through flammable terrain, ignites gas)
-let fire=new Float32Array(NCELL), fuel=new Float32Array(NCELL), burnt=new Uint8Array(NCELL), cellFlag=new Uint8Array(NCELL), fireLight=new Float32Array(NCELL);
-let burning=[], fireSrc=[], lastBoom=-10, events=[], spark=null, sparkCD=0;
+let fireSrc=[], lastBoom=-10, sparkCD=0;
 // FIRE_TYPES は src/lib/world.ts（src/game/imports.mjs で読む）
 function initFire(){
-  fire=new Float32Array(NCELL); fuel=new Float32Array(NCELL); burnt=new Uint8Array(NCELL); cellFlag=new Uint8Array(NCELL); fireLight=new Float32Array(NCELL); burning=[];
-  for(let i=0;i<NCELL;i++){ const sf=here.D.surface[i]; fuel[i]=sf===SF_DEAD?1.0:sf===SF_GRASS?0.7:sf===SF_LUMEN?0.6:sf===SF_FOLIAGE?1.0:sf===SF_HAY?1.2:sf===SF_BRIM?0.8:0; }
-  for(const d of here.D.doors)fuel[d.i]=Math.max(fuel[d.i],1.4);
-  here.D.webAt=new Map(); for(const w of (here.D.webs||[])){ fuel[w.i]=Math.max(fuel[w.i],0.9); here.D.webAt.set(w.i,w); }
-  for(const r of here.D.rooms){ if(r.theme&&r.theme.k==='ashfield')for(const i of r.cells)if(!here.D.liquid[i])burnt[i]=1; }
-  for(const r of here.D.rooms){ const md=r.mdata; if(!md)continue; for(const i of (md.ash||[]))burnt[i]=1; for(const i of (md.char||[]))burnt[i]=1; }
-  for(const [i,dc] of here.D.decoCell)if(dc.ch==='['||dc.ch==='='||dc.k==='carpet')fuel[i]=Math.max(fuel[i],1.5);
+  blaze.fire=new Float32Array(NCELL); blaze.fuel=new Float32Array(NCELL); blaze.burnt=new Uint8Array(NCELL); blaze.cellFlag=new Uint8Array(NCELL); blaze.fireLight=new Float32Array(NCELL); blaze.burning=[];
+  for(let i=0;i<NCELL;i++){ const sf=here.D.surface[i]; blaze.fuel[i]=sf===SF_DEAD?1.0:sf===SF_GRASS?0.7:sf===SF_LUMEN?0.6:sf===SF_FOLIAGE?1.0:sf===SF_HAY?1.2:sf===SF_BRIM?0.8:0; }
+  for(const d of here.D.doors)blaze.fuel[d.i]=Math.max(blaze.fuel[d.i],1.4);
+  here.D.webAt=new Map(); for(const w of (here.D.webs||[])){ blaze.fuel[w.i]=Math.max(blaze.fuel[w.i],0.9); here.D.webAt.set(w.i,w); }
+  for(const r of here.D.rooms){ if(r.theme&&r.theme.k==='ashfield')for(const i of r.cells)if(!here.D.liquid[i])blaze.burnt[i]=1; }
+  for(const r of here.D.rooms){ const md=r.mdata; if(!md)continue; for(const i of (md.ash||[]))blaze.burnt[i]=1; for(const i of (md.char||[]))blaze.burnt[i]=1; }
+  for(const [i,dc] of here.D.decoCell)if(dc.ch==='['||dc.ch==='='||dc.k==='carpet')blaze.fuel[i]=Math.max(blaze.fuel[i],1.5);
   fireSrc=here.D.fixtures.filter(f=>FIRE_TYPES.has(f.type)).map(f=>Math.floor(f.z/CELL)*MW+Math.floor(f.x/CELL));
   uploadCells();
 }
 function ignite(i,strength,gasBurn){
   if(i<0||i>=NCELL||here.D.tile[i]===TW)return;
-  if(fire[i]<=0){ fire[i]=strength; burning.push(i); }
-  else fire[i]=Math.max(fire[i],strength);
-  if(gasBurn){ fuel[i]=Math.max(fuel[i],0.25); here.D.gas[i]=0; }
+  if(blaze.fire[i]<=0){ blaze.fire[i]=strength; blaze.burning.push(i); }
+  else blaze.fire[i]=Math.max(blaze.fire[i],strength);
+  if(gasBurn){ blaze.fuel[i]=Math.max(blaze.fuel[i],0.25); here.D.gas[i]=0; }
 }
 function boom(i){
   const x=(i%MW+0.5)*CELL, z=(((i/MW)|0)+0.5)*CELL, dd=Math.hypot(x-player.x,z-player.z);
@@ -114,35 +113,35 @@ function stepFire(){
   // open flames (braziers, torches, lava) ignite gas that drifts into them
   for(const s0 of fireSrc){ for(const j of [s0,s0+1,s0-1,s0+MW,s0-MW]){ if(j>=0&&j<NCELL&&g[j]>0.15){ ignite(j,1,true); boom(j); } } }
   const next=[];
-  for(const i of burning){
-    if(fire[i]<=0)continue;
-    if(fuel[i]>0){ fuel[i]-=0.05*fire[i]; fire[i]=Math.min(1,fire[i]+0.15); }
-    else fire[i]*=0.6;
+  for(const i of blaze.burning){
+    if(blaze.fire[i]<=0)continue;
+    if(blaze.fuel[i]>0){ blaze.fuel[i]-=0.05*blaze.fire[i]; blaze.fire[i]=Math.min(1,blaze.fire[i]+0.15); }
+    else blaze.fire[i]*=0.6;
     const x=i%MW;
     for(const j of [i+1,i-1,i+MW,i-MW]){
       if(j<0||j>=NCELL||(j===i+1&&x===MW-1)||(j===i-1&&x===0))continue;
       if(g[j]>0.1){ ignite(j,1,true); boom(j); continue; }
-      if(fire[j]<=0&&fuel[j]>0&&mr()<0.22*fire[i]*(here.D.surface[j]===SF_DEAD?1.4:1))ignite(j,0.25,false);
-      const lq=here.D.liquid[j]; if((lq===LQ_WATER||lq===LQ_DEEP)&&fire[i]>0.5&&mr()<0.15){ const sx=(j%MW+0.5)*CELL, sz=(((j/MW)|0)+0.5)*CELL; for(let q=0;q<3;q++)spawn(sx+(mr()-0.5),0.2,sz+(mr()-0.5),(mr()-0.5)*0.3,0.6+mr()*0.6,(mr()-0.5)*0.3,2.5,G(mpick(['~','.','\''])),0.35,0.35,0.36,0.4,1); }
+      if(blaze.fire[j]<=0&&blaze.fuel[j]>0&&mr()<0.22*blaze.fire[i]*(here.D.surface[j]===SF_DEAD?1.4:1))ignite(j,0.25,false);
+      const lq=here.D.liquid[j]; if((lq===LQ_WATER||lq===LQ_DEEP)&&blaze.fire[i]>0.5&&mr()<0.15){ const sx=(j%MW+0.5)*CELL, sz=(((j/MW)|0)+0.5)*CELL; for(let q=0;q<3;q++)spawn(sx+(mr()-0.5),0.2,sz+(mr()-0.5),(mr()-0.5)*0.3,0.6+mr()*0.6,(mr()-0.5)*0.3,2.5,G(mpick(['~','.','\''])),0.35,0.35,0.36,0.4,1); }
     }
-    if(fire[i]<0.04){ fire[i]=0; burnt[i]=1; fuel[i]=0; if(here.D.surface[i]!==SF_OBSIDIAN)here.D.surface[i]=0; const di=here.D.doorAt[i]; if(di>=0)here.D.doors[di].gone=true; }
+    if(blaze.fire[i]<0.04){ blaze.fire[i]=0; blaze.burnt[i]=1; blaze.fuel[i]=0; if(here.D.surface[i]!==SF_OBSIDIAN)here.D.surface[i]=0; const di=here.D.doorAt[i]; if(di>=0)here.D.doors[di].gone=true; }
     else next.push(i);
   }
-  for(const i of burning)if(fire[i]>0&&!next.includes(i))next.push(i);
-  burning=next;
+  for(const i of blaze.burning)if(blaze.fire[i]>0&&!next.includes(i))next.push(i);
+  blaze.burning=next;
   // blurred firelight for the shader and for CPU-side lighting
-  fireLight.fill(0);
-  for(const i of burning){ const f=fire[i], x=i%MW;
-    for(let dz=-2;dz<=2;dz++)for(let dx=-2;dx<=2;dx++){ if(x+dx<0||x+dx>=MW)continue; const j=i+dx+dz*MW; if(j<0||j>=NCELL)continue; const w=f*Math.max(0,1-Math.hypot(dx,dz)/2.6); fireLight[j]+=w; } }
+  blaze.fireLight.fill(0);
+  for(const i of blaze.burning){ const f=blaze.fire[i], x=i%MW;
+    for(let dz=-2;dz<=2;dz++)for(let dx=-2;dx<=2;dx++){ if(x+dx<0||x+dx>=MW)continue; const j=i+dx+dz*MW; if(j<0||j>=NCELL)continue; const w=f*Math.max(0,1-Math.hypot(dx,dz)/2.6); blaze.fireLight[j]+=w; } }
   uploadCells();
 }
 function uploadCells(){
-  for(let i=0;i<NCELL;i++){ const o=i*4; cellData[o]=Math.min(255,fireLight[i]*150); cellData[o+1]=Math.min(255,fire[i]*255); cellData[o+2]=burnt[i]?255:0; cellData[o+3]=cellFlag[i]; }
+  for(let i=0;i<NCELL;i++){ const o=i*4; cellData[o]=Math.min(255,blaze.fireLight[i]*150); cellData[o+1]=Math.min(255,blaze.fire[i]*255); cellData[o+2]=blaze.burnt[i]?255:0; cellData[o+3]=blaze.cellFlag[i]; }
   cellTex.needsUpdate=true;
 }
 function drawFire(t,dt){
-  for(const i of burning){
-    const f=fire[i]; if(f<=0)continue;
+  for(const i of blaze.burning){
+    const f=blaze.fire[i]; if(f<=0)continue;
     const x0=(i%MW+0.5)*CELL, z0=(((i/MW)|0)+0.5)*CELL; if(Math.hypot(x0-player.x,z0-player.z)>34)continue;
     let h=Math.sin(i*12.9898)*43758.5453; h-=Math.floor(h);
     for(let k=0;k<5;k++){
@@ -151,7 +150,7 @@ function drawFire(t,dt){
     }
     if(mr()<dt*6*f)spawn(x0+(mr()-0.5)*1.4,0.3,z0+(mr()-0.5)*1.4,(mr()-0.5)*0.4,0.9+mr()*1.2,(mr()-0.5)*0.4,1.2+mr()*1.6,G(mpick(['.','\'','*'])),0.1,2.8,1.4,0.5,0);
   }
-  if(spark)dyn(spark.x,spark.y,spark.z,G('*'),0.32,3.4,2.2,0.9);
+  if(blaze.spark)dyn(blaze.spark.x,blaze.spark.y,blaze.spark.z,G('*'),0.32,3.4,2.2,0.9);
 }
 let sparks=3, sparkRegen=0; const SPARK_MAX=3;
 function updateSparkHud(){ renderStatus(); }
@@ -159,51 +158,51 @@ function throwSpark(){
   if(sparks<=0){ showHint('火花を使い切った。少し待てば、また溜まる'); sparkCD=0.6; return; }
   sparks--; sparkRegen=0; updateSparkHud(); sWhoosh();
   const cp=Math.cos(player.pitch), dx=-Math.sin(player.yaw)*cp, dy=Math.sin(player.pitch), dz=-Math.cos(player.yaw)*cp;
-  spark={x:camera.position.x+dx*0.4,y:camera.position.y-0.15+dy*0.4,z:camera.position.z+dz*0.4,vx:dx*13,vy:dy*13+2.2,vz:dz*13,t:0};
+  blaze.spark={x:camera.position.x+dx*0.4,y:camera.position.y-0.15+dy*0.4,z:camera.position.z+dz*0.4,vx:dx*13,vy:dy*13+2.2,vz:dz*13,t:0};
   sparkCD=0.6;
 }
 function updateSpark(dt){
-  if(!spark)return;
-  const s2=spark; s2.t+=dt; s2.vy-=9.8*dt;
+  if(!blaze.spark)return;
+  const s2=blaze.spark; s2.t+=dt; s2.vy-=9.8*dt;
   const nx=s2.x+s2.vx*dt, ny=s2.y+s2.vy*dt, nz=s2.z+s2.vz*dt;
   const cx=Math.floor(nx/CELL), cz=Math.floor(nz/CELL), i=cz*MW+cx;
   if(mr()<0.8)spawn(s2.x,s2.y,s2.z,(mr()-0.5)*0.4,(mr()-0.5)*0.4,(mr()-0.5)*0.4,0.5+mr()*0.4,G(mpick(['.','\''])),0.08,2.6,1.5,0.5,0);
   let hit=-1;
-  if(cx<0||cz<0||cx>=MW||cz>=MH||s2.t>4){ spark=null; return; }
+  if(cx<0||cz<0||cx>=MW||cz>=MH||s2.t>4){ blaze.spark=null; return; }
   if(here.D.tile[i]===TW||here.D.tile[i]===TX)hit=Math.floor(s2.z/CELL)*MW+Math.floor(s2.x/CELL);
   else if(ny<0.03&&here.D.tile[i]!==TC)hit=i;
   else if(ny>here.D.ceil[i])hit=i;
   if(hit<0){ s2.x=nx; s2.y=ny; s2.z=nz; return; }
   for(let q=0;q<12;q++){ const a=mr()*6.28; spawn(s2.x,Math.max(0.05,s2.y),s2.z,Math.cos(a)*1.2,0.4+mr()*1.2,Math.sin(a)*1.2,0.5+mr()*0.5,G(mpick(['*','.','\''])),0.12,3,1.6,0.5,0); }
   let lit=false;
-  for(const j of [hit,hit+1,hit-1,hit+MW,hit-MW]){ if(j<0||j>=NCELL)continue; if(here.D.gas[j]>0.1){ ignite(j,1,true); boom(j); lit=true; } else if(fuel[j]>0&&j===hit){ ignite(j,0.6,false); lit=true; } }
+  for(const j of [hit,hit+1,hit-1,hit+MW,hit-MW]){ if(j<0||j>=NCELL)continue; if(here.D.gas[j]>0.1){ ignite(j,1,true); boom(j); lit=true; } else if(blaze.fuel[j]>0&&j===hit){ ignite(j,0.6,false); lit=true; } }
   makeNoise(s2.x,s2.z,6,0.45);
   if(lit)sCrackleBurst(s2.x,s2.z);
-  if(lit&&burning.length<4)msg('<b style="color:#ffb347">^</b>火花が燃え移り、炎が広がり始めた。');
-  spark=null;
+  if(lit&&blaze.burning.length<4)msg('<b style="color:#ffb347">^</b>火花が燃え移り、炎が広がり始めた。');
+  blaze.spark=null;
 }
 function initEvents(){
-  events=[];
+  here.events=[];
   here.D.collapsed=false; here.D.pit=new Uint8Array(NCELL);
   here.D.rooms.forEach((r,ri)=>{
-    if(r.vault&&r.vault.k==='oracle'&&r.valtar&&r.valtar.length)events.push({type:'oracle',cell:r.valtar[0],done:false});
-    if(ri===0){ for(const tp of (here.D.teles||[]))events.push({type:'tele',a:tp.a,b:tp.b,lock:-1}); for(const e of (here.D.erupts||[]))events.push({type:'erupt',src:e.src,order:e.order,state:0,t:8+mr()*14,k:0}); }
+    if(r.vault&&r.vault.k==='oracle'&&r.valtar&&r.valtar.length)here.events.push({type:'oracle',cell:r.valtar[0],done:false});
+    if(ri===0){ for(const tp of (here.D.teles||[]))here.events.push({type:'tele',a:tp.a,b:tp.b,lock:-1}); for(const e of (here.D.erupts||[]))here.events.push({type:'erupt',src:e.src,order:e.order,state:0,t:8+mr()*14,k:0}); }
     const md=r.mdata; if(!md)return;
-    if(md.type==='statues')for(const c of (md.awaken||[]))events.push({type:'statue',cell:c,done:false,active:false,t:0});
-    if(md.type==='collapse')events.push({type:'collapse',cells:md.pit,ri,state:0,t:0});
-    if((md.type==='flood'||md.type==='lavaflow')&&md.order)events.push({type:md.type,ri,order:md.order.slice(),src:md.src,state:0,t:0,k:0,max:md.order.length*3});
-    if(md.type==='crypt'&&md.tombs.length)events.push({type:'haunt',ri,tombs:md.tombs.map(tb=>tb.i),done:false,t:-1});
+    if(md.type==='statues')for(const c of (md.awaken||[]))here.events.push({type:'statue',cell:c,done:false,active:false,t:0});
+    if(md.type==='collapse')here.events.push({type:'collapse',cells:md.pit,ri,state:0,t:0});
+    if((md.type==='flood'||md.type==='lavaflow')&&md.order)here.events.push({type:md.type,ri,order:md.order.slice(),src:md.src,state:0,t:0,k:0,max:md.order.length*3});
+    if(md.type==='crypt'&&md.tombs.length)here.events.push({type:'haunt',ri,tombs:md.tombs.map(tb=>tb.i),done:false,t:-1});
   });
 }
 // cpos は src/lib/world.ts（src/game/imports.mjs で読む）
 function summon(key,cell){ const m=makeMonster({key,cx:cell%MW,cz:(cell/MW)|0,g:-1,lead:true}); m.alert=1; m.seen=true; here.monsters.push(m); return m; }
 function updateEvents(dt,t){
   const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL);
-  for(const ev of events){
+  for(const ev of here.events){
     if(ev.type==='statue'){
       const [sx,sz]=cpos(ev.cell);
       if(!ev.done&&Math.hypot(sx-player.x,sz-player.z)<3.6){
-        ev.done=true; ev.active=true; ev.t=0; sRumble(0.35,1.2); cellFlag[ev.cell]=100; here.D.solid.delete(ev.cell); here.D.decoCell.delete(ev.cell); uploadCells();
+        ev.done=true; ev.active=true; ev.t=0; sRumble(0.35,1.2); blaze.cellFlag[ev.cell]=100; here.D.solid.delete(ev.cell); here.D.decoCell.delete(ev.cell); uploadCells();
         for(let q=0;q<70;q++){ const a=mr()*6.28, h=mr()*2.4; spawn(sx+Math.cos(a)*0.3,0.4+h,sz+Math.sin(a)*0.3,Math.cos(a)*1.6,0.4+mr(),Math.sin(a)*1.6,1.1+mr()*0.4,G(mpick(['&','#','%','&'])),0.2,0.8,0.78,1.0,1); }
         vfx.shake=Math.max(vfx.shake,0.25);
       }
@@ -222,7 +221,7 @@ function updateEvents(dt,t){
         if(mr()<dt*30){ const c=ev.cells[Math.floor(mr()*ev.cells.length)], [x,z]=cpos(c); spawn(x+(mr()-0.5)*1.8,here.D.ceil[c]-0.1,z+(mr()-0.5)*1.8,0,-1.5,0,1.5,G(mpick(['.',',','\''])),0.12,0.4,0.38,0.45,1); }
         if(ev.t>1.4){
           ev.state=2; here.D.collapsed=true; sBoom(0.7); makeNoise(player.x,player.z,22,1.2); U.uCollT.value=t;
-          for(const c of ev.cells){ cellFlag[c]=200; here.D.tile[c]=TC; here.D.pit[c]=1; const [x,z]=cpos(c);
+          for(const c of ev.cells){ blaze.cellFlag[c]=200; here.D.tile[c]=TC; here.D.pit[c]=1; const [x,z]=cpos(c);
             for(let q=0;q<10;q++)spawn(x+(mr()-0.5)*1.8,0.1,z+(mr()-0.5)*1.8,(mr()-0.5)*0.6,-0.5-mr()*2,(mr()-0.5)*0.6,1.6,G(mpick(['.','#',':','%'])),0.2,0.6,0.55,0.6,1); }
           for(const m of here.monsters){ if(here.D.pit[m.cz*MW+m.cx]&&!m.ty.flier){ m.dead=true; } }
           uploadCells(); vfx.shake=0.8;
@@ -249,8 +248,8 @@ function updateEvents(dt,t){
         while(ev.t>=step&&ev.k<ev.order.length&&ev.k<ev.max){ ev.t-=step; const i=ev.order[ev.k++]; const [x,z]=cpos(i);
           if(lava&&(Math.hypot(x-player.x,z-player.z)<1.6||here.monsters.some(m=>!m.ty.flier&&m.cz*MW+m.cx===i))){ ev.order.push(i); continue; }
           changed=true;
-          if(lava){ here.D.liquid[i]=LQ_LAVA; cellFlag[i]=70; for(const j of [i+1,i-1,i+MW,i-MW])if(j>=0&&j<NCELL&&fuel[j]>0)ignite(j,0.6,false); if(here.D.gas[i]>0.1)boom(i); if(mr()<0.3)sBubble(x,z,0.25,true); }
-          else { here.D.liquid[i]=LQ_WATER; cellFlag[i]=50; fire[i]=0; fuel[i]=0; if(mr()<0.2)sSplash(0.12); } }
+          if(lava){ here.D.liquid[i]=LQ_LAVA; blaze.cellFlag[i]=70; for(const j of [i+1,i-1,i+MW,i-MW])if(j>=0&&j<NCELL&&blaze.fuel[j]>0)ignite(j,0.6,false); if(here.D.gas[i]>0.1)boom(i); if(mr()<0.3)sBubble(x,z,0.25,true); }
+          else { here.D.liquid[i]=LQ_WATER; blaze.cellFlag[i]=50; blaze.fire[i]=0; blaze.fuel[i]=0; if(mr()<0.2)sSplash(0.12); } }
         if(changed)uploadCells();
         if(ev.k>=ev.order.length||ev.k>=ev.max)ev.state=2;
       }
@@ -271,11 +270,11 @@ function updateEvents(dt,t){
       else if(ev.state===1){ ev.t+=dt; let ch=false;
         while(ev.t>=0.3&&ev.k<ev.order.length){ ev.t-=0.3; const i=ev.order[ev.k++], [x,z]=cpos(i);
           if(Math.hypot(x-player.x,z-player.z)<1.6||here.monsters.some(m=>!m.ty.flier&&m.cz*MW+m.cx===i))continue;
-          here.D.liquid[i]=LQ_LAVA; cellFlag[i]=70; ch=true; for(const j of [i+1,i-1,i+MW,i-MW])if(j>=0&&j<NCELL&&fuel[j]>0)ignite(j,0.6,false); }
+          here.D.liquid[i]=LQ_LAVA; blaze.cellFlag[i]=70; ch=true; for(const j of [i+1,i-1,i+MW,i-MW])if(j>=0&&j<NCELL&&blaze.fuel[j]>0)ignite(j,0.6,false); }
         if(ch)uploadCells(); if(ev.k>=ev.order.length){ ev.state=2; ev.t=12; } }
       else if(ev.state===2&&ev.t<=0){ ev.state=3; ev.k=ev.order.length-1; ev.t=0; if(f){ f.active=false; const L=here.D.lights[f.li]; if(L)L.active=false; } }
       else if(ev.state===3){ ev.t+=dt; let ch=false;
-        while(ev.t>=0.15&&ev.k>=0){ ev.t-=0.15; const i=ev.order[ev.k--]; if(cellFlag[i]===70){ here.D.liquid[i]=0; cellFlag[i]=0; ch=true; const [x,z]=cpos(i); if(mr()<0.4)spawn(x,0.2,z,0,0.5,0,2,G('.'),0.4,0.15,0.13,0.13,1); } }
+        while(ev.t>=0.15&&ev.k>=0){ ev.t-=0.15; const i=ev.order[ev.k--]; if(blaze.cellFlag[i]===70){ here.D.liquid[i]=0; blaze.cellFlag[i]=0; ch=true; const [x,z]=cpos(i); if(mr()<0.4)spawn(x,0.2,z,0,0.5,0,2,G('.'),0.4,0.15,0.13,0.13,1); } }
         if(ch)uploadCells(); if(ev.k<0){ ev.state=0; ev.t=20+mr()*20; } }
     } else if(ev.type==='haunt'){
       if(ev.done)continue;
@@ -311,11 +310,11 @@ function stepGas(){
       sBubble(x,z,0.3,false);
     }
   }
-  gasAny=any;
+  blaze.gasAny=any;
 }
 function updateGasPoints(t){
   let gi=0;
-  if(gasAny){
+  if(blaze.gasAny){
     const pcx=Math.floor(player.x/CELL), pcz=Math.floor(player.z/CELL), RR=12, g=here.D.gas;
     for(let cz=Math.max(0,pcz-RR);cz<=Math.min(MH-1,pcz+RR)&&gi<GAS_N;cz++)for(let cx=Math.max(0,pcx-RR);cx<=Math.min(MW-1,pcx+RR)&&gi<GAS_N;cx++){
       const i=cz*MW+cx, v=g[i]; if(v<0.04)continue;
@@ -346,11 +345,10 @@ function respawnDust(i,near){
   dust.x[i]=player.x; dust.z[i]=player.z; dust.y[i]=-50;
 }
 function initDust(){ const fl=here.D.stratum.fall; for(let i=0;i<DUST_N;i++){ dust.ph[i]=mr()*100; dust.g[i]=G(mpick(fl==='snow'?['*','.','+','*']:fl==='ash'?[',','.','`','\'']:['.','.','.','+','*','\'',':','`'])); dust.s[i]=0.1+mr()*0.11; respawnDust(i,true); } }
-let riverCells=[];
 function riverFX(dt){
-  if(!riverCells.length)return;
+  if(!here.riverCells.length)return;
   for(let k=0;k<6&&mr()<dt*14;k++){
-    const i=riverCells[Math.floor(mr()*riverCells.length)], x=(i%MW+0.2+mr()*0.6)*CELL, z=(((i/MW)|0)+0.2+mr()*0.6)*CELL;
+    const i=here.riverCells[Math.floor(mr()*here.riverCells.length)], x=(i%MW+0.2+mr()*0.6)*CELL, z=(((i/MW)|0)+0.2+mr()*0.6)*CELL;
     if(Math.hypot(x-player.x,z-player.z)>18)continue;
     const a=here.D.flow[i]-10; spawn(x,0.12,z,Math.cos(a)*1.3,0.01,Math.sin(a)*1.3,2.2+mr(),G(mpick(['~','.','-'])),0.13,0.25,0.55,0.75,1);
   }

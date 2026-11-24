@@ -92,9 +92,9 @@ function look(){
       case 'ceil': h=cave?lookLine('*',[0.7,0.65,1.0],'岩の天蓋','遥か頭上で、星のような光が瞬いている'):lookLine('*',[0.7,0.65,1.0],'天井','まばらな光が、星のように瞬いている'); break;
       case 'floor': {
         const lq=here.D.liquid[i], sf=here.D.surface[i], dc=here.D.decoCell.get(i);
-        if(fire[i]>0.05)h=lookLine('^',[1.0,0.55,0.2],'炎','燃え移った炎が、隣の草へと広がっていく');
+        if(blaze.fire[i]>0.05)h=lookLine('^',[1.0,0.55,0.2],'炎','燃え移った炎が、隣の草へと広がっていく');
         else if(here.D.pit&&here.D.pit[i])h=lookLine(':',[1.0,0.55,0.3],'崩落した穴','遥か下に、次の階層の光が見える。飛び込めば落ちていける');
-        else if(burnt[i]&&!here.D.liquid[i])h=lookLine(',',[0.6,0.55,0.55],'灰','燃え尽きた草の名残');
+        else if(blaze.burnt[i]&&!here.D.liquid[i])h=lookLine(',',[0.6,0.55,0.55],'灰','燃え尽きた草の名残');
         else if(here.D.bridge[i]===1)h=lookLine('=',[0.75,0.55,0.35],'吊り橋','板の隙間から、足元の深淵が覗いている');
         else if(here.D.bridge[i]===2)h=lookLine('=',[0.7,0.7,0.85],'石橋','深い水の上に架けられた、古い石の道');
         else if(lq===LQ_DEEP)h=here.D.algae&&here.D.algae[i]?lookLine('~',[0.3,1.0,0.65],'光る藻','深い水の中で、藻がゆっくりと明滅している'):lookLine('~',[0.2,0.35,0.9],'深い水','暗い水底は見通せない。何かが潜んでいるかもしれない');
@@ -110,8 +110,8 @@ function look(){
         else if(sf===SF_RUBBLE)h=lookLine(',',[0.75,0.62,0.5],'瓦礫','崩れ落ちた壁と天井の欠片');
         else if(sf===SF_DEAD)h=lookLine('"',[0.6,0.5,0.3],'枯れ草','湿った沼の縁で朽ちかけている');
         else if(here.D.glyph&&here.D.glyph[i])h=lookLine('*',[1.0,0.9,0.6],'聖なる紋様','獣たちは、この紋様を越えようとしない');
-        else if(sf===SF_FOLIAGE)h=cellFlag[i]===20?lookLine(',',[0.3,0.6,0.3],'踏み分けられた茂み','しばらくすると、また伸びてくる'):lookLine('"',[0.4,0.9,0.4],'背の高い茂み','視線を遮る。踏み込むと倒れて、しばらくすると元に戻る');
-        else if(sf===SF_FUNGFOR)h=cellFlag[i]===20?lookLine(',',[0.4,0.6,0.7],'踏み分けられた茸の森','倒れた茸が、まだ淡く光っている'):lookLine('"',[0.5,0.9,1.0],'茸の森','背の高い光る茸が林立し、視線を遮っている');
+        else if(sf===SF_FOLIAGE)h=blaze.cellFlag[i]===20?lookLine(',',[0.3,0.6,0.3],'踏み分けられた茂み','しばらくすると、また伸びてくる'):lookLine('"',[0.4,0.9,0.4],'背の高い茂み','視線を遮る。踏み込むと倒れて、しばらくすると元に戻る');
+        else if(sf===SF_FUNGFOR)h=blaze.cellFlag[i]===20?lookLine(',',[0.4,0.6,0.7],'踏み分けられた茸の森','倒れた茸が、まだ淡く光っている'):lookLine('"',[0.5,0.9,1.0],'茸の森','背の高い光る茸が林立し、視線を遮っている');
         else if(sf===SF_BRIM)h=lookLine('*',[1.0,0.82,0.3],'硫黄','踏むと燃え上がる。燃えた後は、しばらくすると元に戻る');
         else if(sf===SF_MUD)h=lookLine('~',[0.6,0.42,0.25],'泥','足を取られて、歩みが遅くなる');
         else if(sf===SF_HAY)h=lookLine('"',[0.95,0.8,0.4],'干し草','乾いていて、よく燃える');

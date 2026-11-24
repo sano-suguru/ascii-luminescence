@@ -26,7 +26,7 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      strata：層・テーマ・特別な階・支道と異界の中身・地形・群れ、noise：ノイズ（種は setNoiseSeed）、vaults：洞窟と宝物庫の絵、
                      shaders：描画のシェーダーの文と入れ物の大きさ、title：タイトルのロゴ、hud：表示の大きさ（ミニマップ・装備の画面など）、
                      names：名前と説明の表（見た時の説明・罠・伝説の物・図鑑の主）、sound：音の小さな表と道具
-src/lib/state.ts     ゲームの状態の入れ物（段階7b。分野ごと：clock＝時計（ゲームの時刻 time）、vfx＝揺れと光り、ui＝画面の開け閉め（started・camMode・invOpen など）、adv＝今の冒険（runSeed・lvl・dead など）、gear＝手と詠唱（hands・bag・castSt など）、here＝今いる場所と階の中身（D・depth・branch・monsters・見えたマスなど）、player・placeMem。古い JS は clock.time・vfx.shake・ui.started のように欄で読み書きする。player・placeMem は丸ごと入れ替えないので名前のまま）
+src/lib/state.ts     ゲームの状態の入れ物（段階7b。分野ごと：clock＝時計（ゲームの時刻 time）、blaze＝火と地面のマス（fire・fuel・burnt・scent など）、vfx＝揺れと光り、ui＝画面の開け閉め（started・camMode・invOpen など）、adv＝今の冒険（runSeed・lvl・dead など）、gear＝手と詠唱（hands・bag・castSt など）、here＝今いる場所と階の中身（D・depth・branch・monsters・見えたマス・部屋の出来事 events など）、player・placeMem。古い JS は clock.time・vfx.shake・ui.started のように欄で読み書きする。player・placeMem は丸ごと入れ替えないので名前のまま）
 src/lib/generate.ts  迷宮の生成（generateLevel。「入力 → 結果」の形。入力 GenInput・古い JS の物 GenEnv・結果 GenResult と、部屋 Room などの型）
 src/lib/bodies/*.ts  生き物の形（kit：点の型と道具 q2・q3、small・beasts・lords：各生き物の形、bosses：主の形（不死の王・蜘蛛の女王・ナーガの女王・古竜・王の影の二つ目の姿））
 tsconfig.json        TypeScript 7 の設定（strict・noUncheckedIndexedAccess・exactOptionalPropertyTypes など）。対象は src/lib/ と tests/unit/*.ts
@@ -217,7 +217,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 | 12-hud-text | 忍び足と灯り、状態の表示（renderStatus）、操作・年代記の画面、物音（**パネルの文字の幅 visW と枠 boxText は src/lib/text.ts**、lerpAngle は src/lib/math.ts）。灯りの段階の名前・印の高さは src/lib/hud.ts、mname は src/lib/names.ts |
 | 13-creatures | 小さな生き物、群れ、大きな生き物の動き（updateMonster）、描く（drawMonster）。古い形は src/lib/bodies/small.ts |
 | 14-lights-fixtures | 灯り、備品、扉。LANTERN は src/lib/light.ts |
-| 15-sound-fire | 音、ガス、火、火花。SND_LV・sEnv は src/lib/sound.ts、cpos・FIRE_TYPES は src/lib/world.ts |
+| 15-sound-fire | 音、ガス、火、火花。SND_LV・sEnv は src/lib/sound.ts、cpos・FIRE_TYPES は src/lib/world.ts。火と地面のマスの状態は src/lib/state.ts の blaze |
 | 16-view-input | 視界とミニマップ、伝言（msg）、当たり（solidAt）、入力の状態。ミニマップの大きさは src/lib/hud.ts |
 | 17-meta | 段階D：伝承・解放・墓・試練（META、weaponPool、trialOn）、タイトルの画面（buildIntroPanel）。UNLOCKS・META_DEF は src/lib/progress.ts |
 | 18-level-player | 階の切り替え（newLevel）、罠、生き物の強さ（MSTAT）、生と死、レベルアップ（BLESS、levelChoices、lvlLine）。expNeed・expOf は src/lib/progress.ts、serRune は src/lib/runes.ts。TRAP_INFO は src/lib/names.ts、WEAPON・SLEEP_MULT は src/lib/runes.ts、roll は src/lib/random.ts |

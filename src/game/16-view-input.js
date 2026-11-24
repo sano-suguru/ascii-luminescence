@@ -53,15 +53,15 @@ function drawMap(){
     else if(here.D.surface[i]===SF_ICE){ ch='='; b0=0.7;b1=0.9;b2=1.1; }
     else if(here.D.surface[i]===SF_RUBBLE&&!here.D.liquid[i]){ ch=','; b0=0.7;b1=0.58;b2=0.48; }
     else if(here.D.surface[i]===SF_DEAD){ ch='"'; b0=0.65;b1=0.52;b2=0.32; }
-    else if(fire[i]>0.05){ ch='^'; b0=2.2;b1=1.0;b2=0.3; }
+    else if(blaze.fire[i]>0.05){ ch='^'; b0=2.2;b1=1.0;b2=0.3; }
     else if(here.D.pit&&here.D.pit[i]){ ch=':'; b0=1.0;b1=0.5;b2=0.25; }
     else if(here.D.doorAt[i]>=0&&here.D.doors[here.D.doorAt[i]].gone){ ch=','; b0=0.35;b1=0.32;b2=0.32; }
-    else if(burnt[i]&&tt===TF&&!here.D.liquid[i]){ ch=','; b0=0.38;b1=0.35;b2=0.36; }
+    else if(blaze.burnt[i]&&tt===TF&&!here.D.liquid[i]){ ch=','; b0=0.38;b1=0.35;b2=0.36; }
     else if(here.D.doorAt[i]>=0){ ch=here.D.doors[here.D.doorAt[i]].o>0.5?"'":'+'; b0=0.95;b1=0.66;b2=0.38; }
     else if(here.D.liquid[i]===LQ_LAVA){ ch='~'; b0=1.3;b1=0.45;b2=0.12; }
     else if(here.D.liquid[i]===LQ_WATER){ ch='~'; b0=0.35;b1=0.68;b2=1.0; }
     else if(here.D.surface[i]===SF_OBSIDIAN){ ch=','; b0=0.6;b1=0.35;b2=0.35; }
-    else if(here.D.surface[i]===SF_FOLIAGE||here.D.surface[i]===SF_FUNGFOR){ const t2=cellFlag[i]===20; ch=t2?',':'"'; if(here.D.surface[i]===SF_FUNGFOR){b0=0.5;b1=0.9;b2=1.0;} else {b0=0.3;b1=t2?0.6:0.85;b2=0.3;} }
+    else if(here.D.surface[i]===SF_FOLIAGE||here.D.surface[i]===SF_FUNGFOR){ const t2=blaze.cellFlag[i]===20; ch=t2?',':'"'; if(here.D.surface[i]===SF_FUNGFOR){b0=0.5;b1=0.9;b2=1.0;} else {b0=0.3;b1=t2?0.6:0.85;b2=0.3;} }
     else if(here.D.surface[i]===SF_BRIM){ ch='*'; b0=1.0;b1=0.82;b2=0.3; }
     else if(here.D.surface[i]===SF_MUD){ ch='~'; b0=0.55;b1=0.4;b2=0.25; }
     else if(here.D.surface[i]===SF_HAY){ ch='"'; b0=0.95;b1=0.8;b2=0.4; }

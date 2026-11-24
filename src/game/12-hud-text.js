@@ -4,7 +4,7 @@ const lantern={r:8.2,k:1};
 function updateStealth(dt){
   const l=cellLight(player.x,player.z); let L=0.3*l[0]+0.55*l[1]+0.15*l[2];
   for(const m of here.monsters){ if(m.ty.light>0&&!m.ty.invisible&&(m.ty.form!=='eel'||m.surf>0)){ const d=Math.hypot(m.x-player.x,m.z-player.z); if(d<m.ty.light)L+=(1-d/m.ty.light)**2*0.6; } }
-  if(spark){ const d=Math.hypot(spark.x-player.x,spark.z-player.z); if(d<5)L+=(1-d/5)**2*1.2; }
+  if(blaze.spark){ const d=Math.hypot(blaze.spark.x-player.x,blaze.spark.z-player.z); if(d<5)L+=(1-d/5)**2*1.2; }
   L+=stealth.sneak?0.02:0.12;
   stealth.lum+=(L-stealth.lum)*Math.min(1,dt*4);
   stealth.level=stealth.lum<0.25?0:stealth.lum<0.85?1:2;
