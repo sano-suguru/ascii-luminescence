@@ -1,20 +1,60 @@
 // テストの道具：音を鳴らす関数を、たくさんの場合で呼び、偽の Web Audio の記録と状態の変わり方を、1つの文字にまとめる。
 // F は関数の入れ物（src/lib/audio.ts の import * など）。audio.test.mjs が、この文字の指紋を、移す前の古い JS と同じ値として確かめる。
-// 場合は、音の大きさ・向き・位置・音が出せる状態か・まわりの様子（本物の迷宮の階）を、シードの乱数で変える。
+// 場合は、音の大きさ・向き・位置・音が出せる状態か・左右の部品の有無・まわりの様子を、シードの乱数で変える。
+// まわりの様子は、迷宮の生成を使わずに、ここで小さな地図（水・溶岩・沼・崖・水晶の塊と、洞窟の部屋）を作る（迷宮の生成を変えても、この指紋は変わらない）。
+// 書き換えた状態（SND・player・here・blaze）と、setTimeout・Math.random・window は、終わったら元に戻す。
 import { mulberry32 } from '../../src/lib/rng.ts';
 import { SND, blaze, here, player } from '../../src/lib/state.ts';
-import { CELL, MH, MW, NCELL } from '../../src/lib/world.ts';
-import { fakeAudio, fakeAudioClass } from './fake-audio.mjs';
+import { CELL, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MH, MW, NCELL, TC, TX } from '../../src/lib/world.ts';
+import { fakeAudio, fakeAudioClass, logText } from './fake-audio.mjs';
 
 const FIX = ['torch', 'brazier', 'lava', 'abyss', 'fall', 'embers', 'crystal'];
+const LIQ = [LQ_WATER, LQ_DEEP, LQ_LAVA, LQ_BOG];
 
-/** levels：まわりの音を確かめる階（generateLevel の結果の level）。seeds：場合の数 */
-export function audioCases(F, levels, seeds) {
+/** 小さな地図：液体・崖・水晶の塊と、部屋（半分くらいが洞窟）。マスの欄は、まわりの音が読む物だけ */
+function makeMap(r) {
+  const tile = new Uint8Array(NCELL),
+    liquid = new Uint8Array(NCELL),
+    roomOf = new Int16Array(NCELL).fill(-1),
+    rooms = [];
+  const blob = (big, put) => {
+    const cx = Math.floor(r() * MW),
+      cz = Math.floor(r() * MH),
+      rad = 1 + r() * big;
+    for (let z = Math.max(0, Math.floor(cz - rad)); z <= Math.min(MH - 1, cz + rad); z++)
+      for (let x = Math.max(0, Math.floor(cx - rad)); x <= Math.min(MW - 1, cx + rad); x++)
+        if (Math.hypot(x - cx, z - cz) <= rad) put(z * MW + x);
+  };
+  for (let k = 0; k < 24; k++) {
+    const ri = rooms.length;
+    rooms.push({ cave: r() < 0.5 });
+    blob(12, (i) => (roomOf[i] = ri));
+  }
+  for (let k = 0; k < 20; k++) {
+    const lq = LIQ[Math.floor(r() * LIQ.length)];
+    blob(5, (i) => (liquid[i] = lq));
+  }
+  for (let k = 0; k < 10; k++) {
+    const t = r() < 0.5 ? TC : TX;
+    blob(5, (i) => (tile[i] = t));
+  }
+  return { tile, liquid, roomOf, rooms };
+}
+
+/** seeds：場合のシードの数（1つのシードで、22の場合） */
+export function audioCases(F, seeds) {
   const out = [];
   let log = [];
-  const savedTimeout = globalThis.setTimeout,
-    savedRandom = Math.random,
-    savedWindow = globalThis.window;
+  const hadWindow = 'window' in globalThis,
+    saved = {
+      setTimeout: globalThis.setTimeout,
+      random: Math.random,
+      window: globalThis.window,
+      SND: { ...SND },
+      player: { ...player },
+      here: { D: here.D, depth: here.depth, fixtures: here.fixtures, monsters: here.monsters },
+      fire: blaze.fire,
+    };
   globalThis.setTimeout = (fn, ms) => {
     log.push(['setTimeout', ms]);
     fn();
@@ -36,7 +76,7 @@ export function audioCases(F, levels, seeds) {
       err = String(e.message).slice(0, 40);
     }
     out.push(
-      JSON.stringify({
+      logText({
         ret: typeof ret === 'object' && ret ? ret.id : ret,
         err,
         log,
@@ -48,7 +88,8 @@ export function audioCases(F, levels, seeds) {
       }),
     );
   };
-  const audioWindow = (r) => ({ AudioContext: fakeAudioClass(log, r() < 0.85 ? 'running' : 'suspended') });
+  // 音の部品を作る窓（鳴らせるのは約85%。左右の部品が無いのは約15%）
+  const audioWindow = (r) => ({ AudioContext: fakeAudioClass(log, r() < 0.85 ? 'running' : 'suspended', r() >= 0.15) });
   const base = (r, withCtx = true) => {
     player.x = 4 + r() * (MW * CELL - 8);
     player.z = 4 + r() * (MH * CELL - 8);
@@ -111,17 +152,17 @@ export function audioCases(F, levels, seeds) {
           () => F[nm](...a),
         );
       }
-      // まわりの音（水・溶岩・崖・水晶の近くに立つことが多い。火・備品・飛ぶ生き物はでたらめに置く）
+      // まわりの音（液体・崖・水晶の近くに立つことが多い。火・備品・飛ぶ生き物はでたらめに置く）
       run(
         s * 977,
         (r) => {
           base(r);
           if (r() < 0.05) SND.ctx = null;
-          const D = levels[s % levels.length];
+          const D = makeMap(r);
           here.D = D;
           here.depth = 1 + Math.floor(r() * 13);
           const cells = [];
-          for (let i = 0; i < D.tile.length; i++) if (D.liquid[i] || D.tile[i] === 3 || D.tile[i] === 4) cells.push(i);
+          for (let i = 0; i < NCELL; i++) if (D.liquid[i] || D.tile[i] === TC || D.tile[i] === TX) cells.push(i);
           if (cells.length && r() < 0.8) {
             const c = cells[Math.floor(r() * cells.length)];
             player.x = ((c % MW) + 0.5) * CELL + (r() - 0.5) * 8;
@@ -146,9 +187,14 @@ export function audioCases(F, levels, seeds) {
       );
     }
   } finally {
-    globalThis.setTimeout = savedTimeout;
-    Math.random = savedRandom;
-    globalThis.window = savedWindow;
+    globalThis.setTimeout = saved.setTimeout;
+    Math.random = saved.random;
+    if (hadWindow) globalThis.window = saved.window;
+    else delete globalThis.window;
+    Object.assign(SND, saved.SND);
+    Object.assign(player, saved.player);
+    Object.assign(here, saved.here);
+    blaze.fire = saved.fire;
   }
   return out.join('\n');
 }

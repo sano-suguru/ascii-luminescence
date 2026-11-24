@@ -3,7 +3,7 @@
 // 移す時は tools/state-move.mjs を使う（同じ名前の局所の変数は書き換えない）。初めの値は、古い JS の宣言のまま。
 // 入れ物の名前は、古い JS の局所の名前とぶつからない物にする（道具が確かめる。fx は座標の fx とぶつかるので vfx にした）。
 import { type MonsterType } from './creatures.ts';
-import { type BranchPlace, type InterPlace, type Level, type RealmPlace } from './generate.ts';
+import { type BranchPlace, type Fixture, type InterPlace, type Level, type RealmPlace } from './generate.ts';
 import { META_DEF, type Meta } from './progress.ts';
 import { type Rune } from './runes.ts';
 import { NCELL } from './world.ts';
@@ -377,12 +377,6 @@ export interface Monster {
   z: number;
   ty: MonsterType;
 }
-/** 灯りの備品（種類と位置） */
-export interface Fixture {
-  type: string;
-  x: number;
-  z: number;
-}
 /** 今いる場所と、階の中身。深さ・支道・異界・特別な階、生き物、灯りの備品、階を移る途中、着いた所 */
 export interface Here {
   /** 階の生き物（型は、TypeScript が読む欄だけ。ほかの欄は、生き物の処理を移す時に足す） */
@@ -391,7 +385,7 @@ export interface Here {
   branch: BranchPlace | null;
   realm: RealmPlace | null;
   inter: InterPlace | null;
-  /** 灯りの備品（型は、TypeScript が読む欄だけ。ほかの欄は、備品の処理を移す時に足す） */
+  /** 灯りの備品（今の階の here.D.fixtures と同じ物） */
   fixtures: Fixture[];
   trans: Trans | null;
   /** 着いた所（'stairs'・'portal' など。普通に入った時は null） */
@@ -466,8 +460,6 @@ export const saved: Saved = {
   LEGEND: null,
 };
 
-/** 音（音量の段 lv・音の仕組み ctx と、その部品・鳴り続ける音 L・まわりの音の様子 env）。丸ごと入れ替えないので、古い JS は今までどおり SND.lv のように読む。
- * 部品は、最初に音を鳴らす時（15-sound-fire.js の sndInit）に作る */
 /** 鳴り続ける雑音（大きさ g と、濾す部品 f） */
 export interface SoundLoop {
   g: GainNode;
@@ -486,6 +478,8 @@ export interface SoundLoops {
   wind?: SoundLoop;
   drone?: DroneLoop;
 }
+/** 音（音量の段 lv・音の仕組み ctx と、その部品・鳴り続ける音 L・まわりの音の様子 env）。丸ごと入れ替えないので、古い JS は今までどおり SND.lv のように読む。
+ * 部品は、最初に音を鳴らす時（src/lib/audio.ts の sndInit）に作る */
 export interface SoundState {
   /** 音量の段（src/lib/sound.ts の SND_LV の番号） */
   lv: number;

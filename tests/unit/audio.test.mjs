@@ -1,10 +1,10 @@
 // 音を鳴らす処理（src/lib/audio.ts）の単体テスト。Node には Web Audio が無いので、偽の Web Audio（fake-audio.mjs）で確かめる。
 // 指紋の値は、移す前の古い JS（src/game/15-sound-fire.js）でも同じになる（audio-cases.mjs の場合を、古い関数で数えて確かめた）。
+// 迷宮の生成は使わないので、生成を変えてもこの指紋は変わらない。
 // テストを .mjs で書くのは、偽の Web Audio を AudioContext の型に合わせられないため（型の言い切り as を使わない）
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import * as A from '../../src/lib/audio.ts';
 import { SND, player } from '../../src/lib/state.ts';
-import { PLACES, gen, loadEnv } from './gen-places.ts';
 import { audioCases } from './audio-cases.mjs';
 import { fakeAudio, fakeAudioClass } from './fake-audio.mjs';
 
@@ -60,19 +60,13 @@ describe('音の土台', () => {
 });
 
 describe('移す前と同じ', () => {
-  let levels;
-  beforeAll(async () => {
-    const env = await loadEnv();
-    // 前の4つはふつうの階、後ろの5つは崖・水晶・水がある階
-    levels = [3, 7, 12, 20]
-      .map((s, k) => gen(env, s, PLACES[(k * 5) % PLACES.length]).level)
-      .concat([3, 6, 11, 12, 22].map((k) => gen(env, 5 + k, PLACES[k]).level));
-  });
-  it('音の部品・効果音・まわりの音の記録と状態の変わり方（60シード、約1300の場合）の指紋', () => {
-    const all = audioCases(A, levels, 60),
+  it('音の部品・効果音・まわりの音の記録と状態の変わり方（60シード、1320の場合）の指紋', () => {
+    const before = JSON.stringify([player, SND.lv, SND.on, SND.ctx]);
+    const all = audioCases(A, 60),
       lines = all.split('\n');
     // 偽の Web Audio が作れずに、どの音も鳴らないまま比べていないか（1320 の場合のうち 1301 で音が鳴る）
     expect([lines.length, lines.filter((l) => l.includes('"start"')).length]).toEqual([1320, 1301]);
-    expect([fnv(all), all.length]).toEqual(['6f4a4661', 3843361]);
+    expect([fnv(all), all.length]).toEqual(['e60f234e', 3860211]);
+    expect(JSON.stringify([player, SND.lv, SND.on, SND.ctx])).toBe(before); // 書き換えた状態は元に戻る
   }, 30000);
 });
