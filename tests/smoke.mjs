@@ -117,11 +117,13 @@ await withBrowser(
     await advance(pg, 1);
     const gal = await pg.evaluate(() => {
       const list = __test.gallery(),
-        bad = [];
+        bad = [],
+        names = new Set();
       if (typeof list === 'string') return { bad: [list] };
       for (const e of list) {
         if (!e.name) bad.push(`${e.n} 番目（${e.key}）に名前が無い`);
-        if (list.some((o) => o !== e && o.name === e.name)) bad.push(`名前が重なっている：${e.name}`);
+        if (names.has(e.name)) bad.push(`名前が重なっている：${e.name}`);
+        names.add(e.name);
         for (const pose of ['stand', 'walk', 'sleep']) {
           try {
             const r0 = __test.galleryShow(e.n, { yaw: 0.6, pose });
@@ -129,18 +131,20 @@ await withBrowser(
             __test.advance(0.5);
             const r = __test.galleryDraw();
             if (r.glyphs + r.sparks < 15) bad.push(`${e.name}（${pose}）が、ほとんど描かれていない：文字 ${r.glyphs}・火花 ${r.sparks}`);
-            if (r.bad) bad.push(`${e.name}（${pose}）の文字のうち ${r.bad} 個に、数でない値（NaN など）がある`);
+            if (r.bad) bad.push(`${e.name}（${pose}）の文字と火花のうち ${r.bad} 個に、数でない値（NaN など）がある`);
           } catch (err) {
             bad.push(`${e.name}（${pose}）で例外：${String(err && err.stack ? err.stack : err).slice(0, 300)}`);
           }
         }
       }
-      const total = Number((document.getElementById('gal').textContent.match(/\/\s*(\d+)\s*（/) || [])[1]);
+      // 図鑑の画面の「見つけた数 x / N」の N（図鑑の全部の数）。開発用モードでは、全部が一覧に並ぶはず
+      const total = Number((document.getElementById('gal').textContent.match(/見つけた数\s*\d+\s*\/\s*(\d+)/) || [])[1]);
       return { n: list.length, total, bad };
     });
     console.log('bestiary:', gal.n, 'creatures');
     for (const b of gal.bad) errs.push(annotate(`図鑑：${b}`)); // 例外の場所に src/game/ のファイルと行を書き足す
-    if (gal.n !== undefined && (gal.n < 40 || gal.n !== gal.total)) errs.push(`図鑑の数が合わない：一覧 ${gal.n}、図鑑の画面 ${gal.total}`);
+    if (gal.n !== undefined && (gal.n < 40 || gal.n !== gal.total))
+      errs.push(`図鑑の一覧に全部が並んでいない：一覧 ${gal.n}、図鑑の全部 ${gal.total}`);
     await pg.keyboard.press('Escape');
     await advance(pg, 0.5);
     if (await pg.evaluate(() => document.getElementById('gal').classList.contains('show')))

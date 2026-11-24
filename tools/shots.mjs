@@ -39,7 +39,7 @@ const PICK = [
   '最後の王の影（底の闇）',
 ];
 const POSE_NAME = { stand: '', walk: '-歩く', sleep: '-眠り' };
-const WAIT = 3; // 出してから写すまでのゲームの秒（歩く姿が歩幅いっぱいになり、灯りが落ち着くまで）
+const WAIT = 3; // 出してから写すまでのゲームの秒（灯りと姿が落ち着くまで。眠りから起きる時の形の移り変わりは約1秒）
 
 const argv = process.argv.slice(2);
 const outDir = resolve(arg('--out', join(OUT, 'shots')));

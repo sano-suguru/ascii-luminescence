@@ -115,14 +115,17 @@ if(TEST)window.__test={
   // It steps one tick so the angle and pose take hold (a walk needs about 1 s more to reach its full stride). Returns what galleryDraw() returns
   galleryShow(n,{yaw=0,pose='stand'}={}){ const list=this.gallery(); if(typeof list==='string')return list;
     if(!(n>=1&&n<=list.length))return 'no such entry: '+n+' (1-'+list.length+')'; if(!['stand','walk','sleep'].includes(pose))return 'no such pose: '+pose;
+    if(typeof yaw!=='number'||!Number.isFinite(yaw))return 'no such yaw: '+yaw+' (a number of radians)';
     showBeast(n-1); gallery.fix={yaw,pose}; testTick(false); return this.galleryDraw(); },
-  // draw the creature on show once more and look at what it drew (then drop it again): how many glyphs, how many of them hold
-  // a number that is not finite (place, colour, glyph, size), the box they fill (width and depth across the floor, the lowest and highest point),
-  // and how many sparks it threw (a phantom is mostly sparks: its glyphs show only now and then)
+  // draw the creature on show once more and look at what it drew (then drop it again, even when the drawing throws): how many glyphs,
+  // how many sparks it threw (a phantom is mostly sparks: its glyphs show only now and then), how many of those glyphs and sparks hold
+  // a number that is not finite (place, colour, glyph, size, speed, life), and the box the glyphs fill (width and depth across the floor, the lowest and highest point)
   galleryDraw(){ const m=gallery&&gallery.mode==='beast'&&gallery.m; if(!m)return null;
-    const d0=dn, p0=pN; drawMonster(m,clock.time); const d1=dn, sparks=pN-p0; dn=d0; pN=p0; let bad=0; const lo=[1e9,1e9,1e9], hi=[-1e9,-1e9,-1e9];
+    const d0=dn, p0=pN; let d1=d0, p1=p0; try{ drawMonster(m,clock.time); d1=dn; p1=pN; } finally{ dn=d0; pN=p0; }
+    const sparks=p1-p0; let bad=0; const lo=[1e9,1e9,1e9], hi=[-1e9,-1e9,-1e9];
     for(let k=d0;k<d1;k++){ let ok=true; for(let j=0;j<3;j++){ const v=dPos[k*3+j]; if(!Number.isFinite(v)||!Number.isFinite(dCol[k*3+j]))ok=false; else { lo[j]=Math.min(lo[j],v); hi[j]=Math.max(hi[j],v); } }
       for(let j=0;j<4;j++)if(!Number.isFinite(dPar[k*4+j]))ok=false; if(!ok)bad++; }
+    for(let k=p0;k<p1;k++)if(['x','y','z','vx','vy','vz','life','gl','sz','r','g','b'].some(a=>!Number.isFinite(P[a][k])))bad++;
     const f=v=>+v.toFixed(2), n=d1-d0;
     return {name:m.ty.name,glyphs:n,sparks,bad,box:n?{w:f(hi[0]-lo[0]),d:f(hi[2]-lo[2]),y0:f(lo[1]),y1:f(hi[1])}:null}; },
   // remove every creature (lords too), so a check is not upset by one that happens to be near
