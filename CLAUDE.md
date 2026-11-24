@@ -82,7 +82,7 @@ pnpm test             # スモーク・同じ結果・全部の階・枠（オ�
 pnpm test:visual      # 画面写真の比較（30秒ほど）。違えば tests/out/visual/ に違いの画像
 node tests/visual.mjs --update [--only 場面]   # 基準の画像を作り直す（見た目を意図して変えた時だけ）
 node tests/levels.mjs --seed 202               # 1つのシードだけ（--seeds 100 で数を変える）
-node tests/smoke.mjs --cdn                     # 公開用の版（dist/）を、公開用と同じく Google Fonts で起動
+node tests/smoke.mjs --prod                    # 公開用の版（dist/）を、公開用と同じく Google Fonts で起動
 pnpm verify           # check + test + test:visual
 pnpm dev              # Vite の開発用サーバー（http://localhost:5173/。src/game/ を変えると読み直す）
 pnpm build            # 公開用を dist/ に組み立てる（pnpm build:test でテスト用を .build/test/ に）

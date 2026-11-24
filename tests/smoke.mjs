@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // スモークテスト：ふだんのページが起動するか、開発用の冒険で dbg が動くか。ページのエラーを確かめ、画面写真を tests/out/ に保存。
-//   node tests/smoke.mjs          three.js は node_modules から（オフラインで動く。既定）
-//   node tests/smoke.mjs --cdn    公開用の版（dist/）で、フォントも公開用と同じく Google Fonts から（ネットワークが必要）
+//   node tests/smoke.mjs          テスト版（.build/test/）。フォントは node_modules の @fontsource から（オフラインで動く。既定）
+//   node tests/smoke.mjs --prod   公開用の版（dist/）で、フォントも公開用と同じく Google Fonts から（ネットワークが必要）
 import { join } from 'node:path';
 import { withBrowser, newPage, openTest, frames, advance, OUT } from './lib.mjs';
 
@@ -30,7 +30,7 @@ await withBrowser(
     await frames(pg, 2);
     await pg.screenshot({ path: join(OUT, 'run.png'), timeout: 90000 });
   },
-  { cdn: process.argv.includes('--cdn') },
+  { prod: process.argv.includes('--prod') },
 );
 console.log('page errors:', errs.length ? errs : 'none');
 process.exit(errs.length ? 1 : 0);

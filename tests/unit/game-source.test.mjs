@@ -153,7 +153,7 @@ describe('Vite の組み立て（公開用と同じ設定）', () => {
         cache = {};
       // 元のファイルは、ゲーム本体（src/game/）と TypeScript に移した物（src/lib/）と、npm の three.js だけ
       const OURS = /^src\/game\/\d{2}-[a-z0-9-]+\.js$|^src\/lib\/[a-z0-9/-]+\.ts$/,
-        THREE_SRC = /^node_modules\/(\.pnpm\/three@0\.147\.0\/node_modules\/)?three\//;
+        THREE_SRC = /^node_modules\/(\.pnpm\/three@[^/]+\/node_modules\/)?three\//; // 版は問わない（patch の更新で落ちないように）
       expect(map.sources.filter((f) => !OURS.test(f) && !THREE_SRC.test(f))).toEqual([]);
       expect(map.sources).toContain('src/lib/text.ts');
       expect(map.sources.some((f) => THREE_SRC.test(f))).toBe(true);
