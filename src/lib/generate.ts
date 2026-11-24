@@ -265,19 +265,8 @@ export interface Item {
   rune?: Rune;
   vault?: boolean;
 }
-/** その階の主の種類（生き物の表の1つを元に、名前や形を変えた物） */
-export interface LordType {
-  sk: string;
-  name: string;
-  scale: number;
-  verb: string;
-  boss: boolean;
-  col: unknown;
-  look: unknown;
-  form?: string;
-  light?: number;
-  readonly [k: string]: unknown;
-}
+/** その階の主の種類（生き物の表の1つを元に、名前や形を変えた物。古い JS が MTYPES.lord に入れる） */
+export type LordType = MonsterType & { sk: string; boss: boolean };
 
 /**
  * 部屋を作る。必須の欄（床のマス cells、深い水 deep などの中の配列）をすべてそろえて作る。
@@ -3218,7 +3207,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       LORD = LORDS[bk];
     if (LORD) {
       lordType = {
-        ...MTYPES[LORD.base],
+        ...lookup(MTYPES, LORD.base),
         sk: LORD.base,
         name: LORD.name,
         scale: LORD.scale,
