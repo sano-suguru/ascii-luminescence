@@ -316,7 +316,7 @@ function orbBurst(x,y,z,sp,opt){
 // lingering traces of an element: every half second, what stands in them takes the element
 function addZone(x,z,r,sp,dur,grow){ const near=fight.zones.find(zn=>zn.el===sp.elem&&Math.hypot(zn.x-x,zn.z-z)<Math.max(0.7,zn.r*0.6)); if(near){ near.t=Math.max(near.t,dur); near.sp=sp; return; } fight.zones.push({x,z,r,r0:r,sp,el:sp.elem,t:dur,tick:0,grow}); if(fight.zones.length>14)fight.zones.shift(); }
 function later(dt,fn){ fight.laters.push({t:clock.time+dt,fn}); }
-function updateZones(dt){ updateRains(dt); for(const L of fight.laters)if(clock.time>=L.t){ L.done=true; try{ L.fn(); }catch(e){} } fight.laters=fight.laters.filter(L=>!L.done);
+function updateZones(dt){ updateRains(dt); for(const L of fight.laters)if(clock.time>=L.t){ L.done=true; try{ L.fn(); }catch(e){ /* in play, go on as before; in test mode, throw it outside so the page reports it */ if(TEST)setTimeout(()=>{ throw e; },0); } } fight.laters=fight.laters.filter(L=>!L.done);
   for(const zn of fight.zones){ zn.t-=dt; zn.tick-=dt; if(zn.grow)zn.r=Math.min(zn.r0*1.7,zn.r+dt*0.18);
     if(zn.tick<=0&&zn.el){ zn.tick=0.5; for(const m of here.monsters){ if(!hittable(m)||m.ty.critter)continue; if(Math.hypot(m.x-zn.x,m.z-zn.z)<zn.r+0.3*m.ty.scale){ m.playerT=clock.time; applyElem(m,zn.el,zn.sp,1); } } } }
   fight.zones=fight.zones.filter(zn=>zn.t>0); }

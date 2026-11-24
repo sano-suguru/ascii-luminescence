@@ -18,7 +18,7 @@ function newLevel(seedOverride){
   here.D=generate(seedOverride!==undefined?seedOverride:levelSeed(),here.depth);
   if(here.depth===FINAL_DEPTH&&!here.branch&&!here.realm)here.D.finalVault=true;
   blaze.frozen=new Map();
-  placeRunesForLevel(); fight.projs=[]; fight.beamSegs=[]; fight.clouds=[]; fight.zones=[]; fight.laters=[]; fight.rains=[]; fight.marks=[]; fight.beamRun=null; gear.castSt=null;
+  placeRunesForLevel(); fight.projs=[]; fight.beamSegs=[]; fight.clouds=[]; fight.zones=[]; fight.laters=[]; fight.rains=[]; fight.marks=[]; fight.beamRun=null; fight.boltFx=[]; fight.zapQueue=[]; gear.castSt=null;
   U.uAmb.value=here.D.prof.ambient;
   hudInfo.explored=0;
   buildWorld(); updateWater();
