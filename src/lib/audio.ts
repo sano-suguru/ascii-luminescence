@@ -12,13 +12,20 @@ export const sndReady = (): boolean | null => SND.ctx && SND.ctx.state === 'runn
 /** 音の部品 */
 const actx = (): AudioContext => must(SND.ctx, '音の部品 SND.ctx');
 
-/** 音の部品を作る（はじめてのクリックで呼ぶ。2回目からは止まっていたのを動かすだけ）。作れなければ音は鳴らない（作りかけの部品は閉じる） */
+/**
+ * 音の部品を作る（はじめてのクリックで呼ぶ）。作れなければ音は鳴らない（作りかけの部品は閉じる）。
+ * 2回目からは、止まっていたのを動かすだけ（動かせなくても、部品はそのまま使う）
+ */
 export function sndInit(): void {
-  try {
-    if (SND.ctx) {
-      void SND.ctx.resume();
-      return;
+  if (SND.ctx) {
+    try {
+      SND.ctx.resume().catch(() => {});
+    } catch {
+      // 動かす関数が無い古いブラウザでは、そのまま使う
     }
+    return;
+  }
+  try {
     const w: { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext } = window;
     const AC = w.AudioContext || w.webkitAudioContext;
     if (!AC) return;
