@@ -82,11 +82,14 @@ if(TEST)window.__test={
   // true when the hand started charging, or attacked at once (a weapon with no charge, such as the short sword)
   press(h){ const r0=player.recover||0; beginCast(h); return !!gear.castSt||(player.recover||0)>r0; },
   release(h){ releaseCast(h); },
-  // the doors of this level (cell i, the room cell j next to it, how open o, burnt away), a cell (its middle x z, floor to stand on, seen now, explored),
-  // and setting a cell on fire
+  // the doors of this level (cell i, the room cell j next to it, how open o, burnt away), a cell (its middle x z, floor to stand on, seen now, explored, ash),
+  // setting a cell on fire, and putting a creature (an MTYPES key such as 'Re') on a cell
   doors(){ return here.D.doors.map(d=>({i:d.i,j:d.j,o:+d.o.toFixed(3),gone:!!d.gone})); },
-  cell(i){ return {x:(i%MW+0.5)*CELL,z:(((i/MW)|0)+0.5)*CELL,floor:here.D.tile[i]===TF&&!here.D.solid.has(i)&&!blocksWalk(here.D.liquid[i]),seen:here.fovVis[i]===here.fovStamp,explored:!!here.explored[i]}; },
+  cell(i){ return {x:(i%MW+0.5)*CELL,z:(((i/MW)|0)+0.5)*CELL,floor:here.D.tile[i]===TF&&!here.D.solid.has(i)&&!blocksWalk(here.D.liquid[i]),seen:here.fovVis[i]===here.fovStamp,explored:!!here.explored[i],burnt:!!burnt[i]}; },
   ignite(i){ ignite(i,1,false); },
+  // count the cells in sight now (the game does it every 0.1 s; a check that looks every frame should not miss a short moment)
+  fov(){ computeFOV(); },
+  summon(key,i){ if(!MTYPES[key])return 'no such creature: '+key; summon(key,i); return here.monsters.length; },
   // remove every creature (lords too), so a check is not upset by one that happens to be near
   clearAll(){ const n=here.monsters.length; here.monsters=[]; return n; },
   // every place a run can visit, for generation checks

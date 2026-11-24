@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // スモークテスト：ふだんのページが起動するか、開発用の冒険で dbg が動くか、冒険の始め直しで前の場所や状態が残らないか
-// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、扉（閉じた扉が視界を遮るか、燃え尽きると無くなるか）。ページのエラーを確かめ、画面写真を tests/out/ に保存。
+// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
 //   node tests/smoke.mjs          テスト版（.build/test/。既定）
 //   node tests/smoke.mjs --prod   公開用の版（dist/）。JetBrains Mono を指定した所の日本語は、システムのフォントで描く
 import { join } from 'node:path';
@@ -88,42 +88,6 @@ await withBrowser(
     await advance(pg, 0.1);
     const hp1 = await pg.evaluate(() => dbg.info().hp);
     if (!(hp1 < hp0)) errs.push(`試しの間から始めた新しい冒険で、傷を受けない：体力 ${hp0} → ${hp1}`);
-
-    // 6. 扉：閉じた扉は視界を遮る（部屋の中から、扉の向こうの通路は見えない）。燃え尽きると、扉は無くなる
-    // （深さ3は大洞窟で扉が無いので、石の迷宮の深さ1で）
-    await openTest(pg, base, 'seed=202&depth=1&god=1');
-    await advance(pg, 2);
-    await pg.evaluate(() => __test.clearAll()); // 近くの生き物が扉を開けたり、掃除をする小さな生き物が火を消したりしないように
-    const door = await pg.evaluate(() => {
-      // 部屋の側に、扉から2マス続く床がある扉（そこに立つと、扉から 5 離れていて、扉は開かない）
-      for (const d of __test.doors()) {
-        const k = d.j - d.i;
-        if (__test.cell(d.j + k).floor && __test.cell(d.j + 2 * k).floor) return { ...d, k, at: d.j + 2 * k, behind: d.i - k };
-      }
-      return null;
-    });
-    if (!door) errs.push('部屋の側に床が続く扉が無い（テストの前提が崩れた。シードを変える）');
-    else {
-      await pg.evaluate(({ at }) => {
-        const c = __test.cell(at);
-        dbg.step(c.x, c.z);
-      }, door);
-      await advance(pg, 0.5);
-      const view = await pg.evaluate(
-        ({ i, behind }) => ({ d: __test.doors().find((d) => d.i === i), door: __test.cell(i), behind: __test.cell(behind) }),
-        door,
-      );
-      if (view.d.o >= 0.35) errs.push(`扉が開いている（テストの前提が崩れた）：${JSON.stringify(view.d)}`);
-      else if (!view.door.seen) errs.push('扉のマスが見えていない（テストの前提が崩れた）');
-      else if (view.behind.seen) errs.push('閉じた扉の向こうの通路が見えている（扉が視界を遮らない）');
-      await pg.evaluate(({ i }) => __test.ignite(i), door);
-      let gone = false;
-      for (let s = 0; s < 30 && !gone; s++) {
-        await advance(pg, 1);
-        gone = await pg.evaluate(({ i }) => __test.doors().find((d) => d.i === i).gone, door);
-      }
-      if (!gone) errs.push('扉のマスが燃え尽きても、扉が無くならない');
-    }
   },
   { prod: process.argv.includes('--prod') },
 );
