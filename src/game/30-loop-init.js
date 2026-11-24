@@ -83,12 +83,14 @@ if(TEST)window.__test={
   press(h){ const r0=player.recover||0; beginCast(h); return !!gear.castSt||(player.recover||0)>r0; },
   release(h){ releaseCast(h); },
   // the doors of this level (cell i, the room cell j next to it, how open o, burnt away), a cell (its middle x z, floor to stand on, seen now, explored, ash,
-  // sulphur or ice floor, water, fire),
-  // setting a cell on fire, and putting a creature (an MTYPES key such as 'Re') on a cell
+  // sulphur or ice floor, water, fire, fuel), the size of the map, setting a cell on fire (gas: as burning gas does, leaving a little fuel),
+  // and putting a creature (an MTYPES key such as 'Re') on a cell
   doors(){ return here.D.doors.map(d=>({i:d.i,j:d.j,o:+d.o.toFixed(3),gone:!!d.gone})); },
   cell(i){ return {x:(i%MW+0.5)*CELL,z:(((i/MW)|0)+0.5)*CELL,floor:here.D.tile[i]===TF&&!here.D.solid.has(i)&&!blocksWalk(here.D.liquid[i]),seen:here.fovVis[i]===here.fovStamp,explored:!!here.explored[i],burnt:!!blaze.burnt[i],
-    brim:here.D.surface[i]===SF_BRIM,ice:here.D.surface[i]===SF_ICE,water:here.D.liquid[i]===LQ_WATER||here.D.liquid[i]===LQ_DEEP,fire:+(blaze.fire[i]||0).toFixed(3)}; },
-  ignite(i){ ignite(i,1,false); },
+    brim:here.D.surface[i]===SF_BRIM,ice:here.D.surface[i]===SF_ICE,water:here.D.liquid[i]===LQ_WATER||here.D.liquid[i]===LQ_DEEP,fire:+(blaze.fire[i]||0).toFixed(3),fuel:+(blaze.fuel[i]||0).toFixed(3)}; },
+  // the size of the map in cells (a cell number is row times w plus column)
+  size(){ return {w:MW,h:MH}; },
+  ignite(i,gas=false){ ignite(i,1,gas); },
   // cold around a cell (r in world units, as an ice spell), and how many times a cell is in the list of burning cells
   chill(i,r){ chillArea((i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL,r); },
   burning(i){ return blaze.burning.filter(j=>j===i).length; },

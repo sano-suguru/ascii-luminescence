@@ -122,7 +122,7 @@ async function houndChecks(pg, base) {
   const at = await pg.evaluate(() => {
     // プレイヤーから 20〜40 離れた床（光のハウンドではないので、近さで気づくことは無い）
     const p = __test.state().pos;
-    for (let i = 0; i < 1e5; i++) {
+    for (let i = 0, { w, h } = __test.size(); i < w * h; i++) {
       // マスの数より十分大きい数まで（範囲の外のマスは床ではない）
       const c = __test.cell(i);
       const d = Math.hypot(c.x - p[0], c.z - p[1]);
@@ -142,17 +142,18 @@ async function houndChecks(pg, base) {
     errs.push('6：プレイヤーは動いていないのに、遠くの猟犬が「匂いを嗅ぎつけた」');
 }
 
-// マスを全部見て、kind に合う最初のマス（無ければ -1）。範囲の外のマスは床でも水でもない。横の位置は i % 70（マップの横は70マス）
+// マスを全部見て、kind に合う最初のマス（無ければ -1）。マスの番号は 行×w＋横（w はマップの横のマスの数、__test.size()）
 const findCell = (pg, kind) =>
   pg.evaluate((kind) => {
-    const inner = (i) => i % 70 > 5 && i % 70 < 64; // 端から離れている
+    const { w, h } = __test.size();
+    const inner = (i) => i % w > 5 && i % w < w - 6; // 端から離れている
     const ok = {
       brim: (c) => c.brim && c.floor,
       water: (c, i) => c.water && inner(i),
-      edgeWater: (c, i) => c.water && (i % 70 >= 66 || i % 70 <= 3),
+      edgeWater: (c, i) => c.water && (i % w >= w - 4 || i % w <= 3),
       dryFloor: (c, i) => c.floor && !c.water && inner(i),
     }[kind];
-    for (let i = 0; i < 1e5; i++) if (ok(__test.cell(i), i)) return i;
+    for (let i = 0; i < w * h; i++) if (ok(__test.cell(i), i)) return i;
     return -1;
   }, kind);
 
@@ -169,7 +170,7 @@ async function brimChecks(pg, base) {
   // 灰の印の無い硫黄のマスを覚えておく（灰の野の部屋では、始めから硫黄に灰の印がある。それは数えない）
   const fresh = await pg.evaluate(() => {
     const out = [];
-    for (let i = 0; i < 1e5; i++) {
+    for (let i = 0, { w, h } = __test.size(); i < w * h; i++) {
       const c = __test.cell(i);
       if (c.brim && !c.burnt) out.push(i);
     }
@@ -195,6 +196,25 @@ async function brimChecks(pg, base) {
     await advance(pg, 30);
     const back = await pg.evaluate((cells) => cells.filter((i) => __test.cell(i).brim && !__test.cell(i).burnt), still);
     if (!back.length) errs.push(`7：燃え尽きた硫黄（${still.length} マス）が、30秒たっても1つも戻らない`);
+    // 清掃機（Rc）が灰を片付けた硫黄（灰の印が無く、燃える物も無い）も、しばらくすると戻る
+    const left = await pg.evaluate((cells) => cells.filter((i) => __test.cell(i).burnt), still);
+    if (!left.length) errs.push('7：灰の残った硫黄が無く、清掃機を試せない（テストの前提が崩れた）');
+    else {
+      await pg.evaluate((i) => __test.summon('Rc', i), left[0]);
+      const swept = (cells) => pg.evaluate((cells) => cells.filter((i) => !__test.cell(i).burnt && !__test.cell(i).fuel), cells);
+      let done = [];
+      for (let s = 0; s < 40 && !done.length; s++) {
+        await advance(pg, 1);
+        done = await swept(left);
+      }
+      if (!done.length) errs.push('7：清掃機が、硫黄の灰を40秒たっても片付けない（テストの前提が崩れた）');
+      else {
+        await pg.evaluate(() => __test.clearAll());
+        await advance(pg, 60);
+        const again = await pg.evaluate((cells) => cells.filter((i) => __test.cell(i).fuel > 0), done);
+        if (!again.length) errs.push(`7：清掃機が灰を片付けた硫黄（${done.length} マス）が、60秒たっても燃えるようにならない`);
+      }
+    }
   }
 }
 
@@ -211,7 +231,7 @@ async function chillChecks(pg, base) {
     const iced = await pg.evaluate((i) => __test.cell(i).ice, w);
     if (!iced) errs.push('8：冷気で水が凍らない（テストの前提が崩れた）');
     else {
-      await pg.evaluate((i) => __test.ignite(i), w);
+      await pg.evaluate((i) => __test.ignite(i, true), w); // 燃えるガスのように、燃える物を少し残す
       let melted = null;
       for (let n = 0; n < 30 && !melted; n++) {
         await advance(pg, 1 / 30);
@@ -221,24 +241,30 @@ async function chillChecks(pg, base) {
       if (!melted) errs.push('8：火をつけても氷が溶けない（テストの前提が崩れた）');
       else {
         if (melted.fire > 0) errs.push(`8：氷が溶けて水に戻っても、そのマスが燃えている（火 ${melted.fire}）`);
+        if (melted.fuel > 0) errs.push(`8：氷が溶けて水に戻っても、そのマスに燃える物が残っている（${melted.fuel}）`);
         await advance(pg, 1);
         if (await pg.evaluate((i) => __test.cell(i).burnt, w)) errs.push('8：水に戻ったマスに、灰の印が付いた');
       }
     }
   }
   // 9. マップの端の近くの水の、隣の行の反対側の端で冷気を使っても、その水は凍らない
-  //    （マスの番号は 行×70＋横 なので、横が範囲の外に出ると、隣の行の反対側の端を指してしまう）
+  //    （マスの番号は 行×横の幅＋横 なので、横が範囲の外に出ると、隣の行の反対側の端を指してしまう）
   const e = await findCell(pg, 'edgeWater');
   if (e < 0) errs.push('9：端の近くに水が無い（テストの前提が崩れた）');
   else {
-    const x = e % 70,
-      z = Math.floor(e / 70);
-    const center = x >= 66 ? (z + 1) * 70 : (z - 1) * 70 + 69; // 右の端なら次の行の横0、左の端なら前の行の横69
+    const { w } = await pg.evaluate(() => __test.size());
+    const x = e % w,
+      z = Math.floor(e / w);
+    const center = x >= w - 4 ? (z + 1) * w : (z - 1) * w + w - 1; // 右の端なら次の行の横0、左の端なら前の行の右の端
     await pg.evaluate((c) => __test.chill(c, 9), center);
     if (await pg.evaluate((i) => __test.cell(i).ice, e)) errs.push('9：端で使った冷気で、隣の行の反対側の端の水が凍った');
   }
   // 10. 火をつけて、冷気で消して、すぐまたつけても、燃えているマスの一覧には1回だけ
   const f = await findCell(pg, 'dryFloor');
+  if (f < 0) {
+    errs.push('10：乾いた床が無い（テストの前提が崩れた）');
+    return;
+  }
   await pg.evaluate((i) => {
     __test.ignite(i);
     __test.chill(i, 1);

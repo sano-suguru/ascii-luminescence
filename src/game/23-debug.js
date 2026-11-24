@@ -4,7 +4,7 @@ function dbgEnter(){ const keepB=here.branch, keepR=here.realm, keepI=here.inter
   if(!ui.started){ startDepth=keepD; document.getElementById('enter').click(); }
   here.branch=keepB; here.realm=keepR; here.inter=keepI; here.depth=keepD; newLevel(); if(here.D)showStratum(here.D.stratum); }
 function dbgNear(cell){ if(cell==null||cell<0)return false; let best=-1, bd=1e9; const cx=cell%MW, cz=(cell/MW)|0;
-  for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){ const i=(cz+dz)*MW+cx+dx; if(i<0||i>=here.D.tile.length||i===cell||here.D.tile[i]!==TF||here.D.liquid[i]===LQ_DEEP)continue; const d=Math.abs(Math.hypot(dx,dz)-2); if(d<bd){ bd=d; best=i; } }
+  for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){ if(cx+dx<0||cx+dx>=MW||cz+dz<0||cz+dz>=MH)continue; const i=(cz+dz)*MW+cx+dx; if(i===cell||here.D.tile[i]!==TF||here.D.liquid[i]===LQ_DEEP)continue; const d=Math.abs(Math.hypot(dx,dz)-2); if(d<bd){ bd=d; best=i; } }
   if(best<0)return false; const [tx,tz]=cpos(cell), [x,z]=cpos(best); player.x=x; player.z=z; player.yaw=Math.atan2(-(tx-x),-(tz-z)); player.pitch=-0.25; return true; }
 const dbg={
   help(){ return 'dbg.info() / go(深度) / branch(key,階) / realm(key) / to("stairs"|"branch"|"portal"|"lord"|"altar"|"vault") / god(on) / heal() / reveal() / give("slot"|"body"|"runes"|"legends") / kill("lord"|"near") / open() / step(x,z) / look(x,y,z) / items() / clear()   支道: '+Object.keys(BRANCHES).join(',')+'   異界: '+Object.keys(REALMS).join(','); },

@@ -18,7 +18,7 @@ function chillArea(x,z,r){ const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL), r
   if(ch)uploadCells();
   if(froze&&sndReady()){ const t=SND.ctx.currentTime, o=sOut(x,z,0.3); sEnv(sTone(t,'sine',2093,3136,0.4,o),t,0.004,0.35); sEnv(sNoise(t,0.3,'highpass',5000,0.6,o),t,0.003,0.25,0.4); } }
 function updateFrozen(dt){ if(!frozen.size)return; let ch=false;
-  for(const [i,f] of frozen){ f.t-=dt; if(f.t<=0||blaze.fire[i]>0.1){ here.D.liquid[i]=f.liq; here.D.surface[i]=f.surf; blaze.fire[i]=0; frozen.delete(i); ch=true; const [x,z]=cpos(i); for(let q=0;q<8;q++){ const a=mr()*6.28; spawn(x+Math.cos(a)*0.6,0.1,z+Math.sin(a)*0.6,Math.cos(a),0.6+mr(),Math.sin(a),0.6,G(mpick(['/','\\','~'])),0.14,0.7,0.95,1.2,1); } } }
+  for(const [i,f] of frozen){ f.t-=dt; if(f.t<=0||blaze.fire[i]>0.1){ here.D.liquid[i]=f.liq; here.D.surface[i]=f.surf; blaze.fire[i]=0; blaze.fuel[i]=0; frozen.delete(i); ch=true; const [x,z]=cpos(i); for(let q=0;q<8;q++){ const a=mr()*6.28; spawn(x+Math.cos(a)*0.6,0.1,z+Math.sin(a)*0.6,Math.cos(a),0.6+mr(),Math.sin(a),0.6,G(mpick(['/','\\','~'])),0.14,0.7,0.95,1.2,1); } } }
   if(ch)uploadCells(); }
 function drawFrozen(t){ for(const [i,f] of frozen){ const [x,z]=cpos(i); if(Math.hypot(x-player.x,z-player.z)>30)continue; const crack=f.t<5;
   for(let a=0;a<3;a++)for(let b=0;b<3;b++){ const sh=0.85+0.15*Math.sin(t*2+a+b*1.7); dyn(x+(a-1)*0.62,0.08,z+(b-1)*0.62,G(crack&&((a+b)%2)?'/':'='),0.36,0.7*sh,0.92*sh,1.25*sh); } } }

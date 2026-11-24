@@ -85,7 +85,7 @@ function regrow(){ if(!trampled.length)return; const pc=Math.floor(player.z/CELL
   trampled=trampled.filter(([i,t0])=>{ if(clock.time-t0>45&&i!==pc&&blaze.cellFlag[i]===20){ blaze.cellFlag[i]=0; ch=true; return false; } return blaze.cellFlag[i]===20; }); if(ch)uploadCells(); }
 function brimFlare(i){ if(here.D.surface[i]!==SF_BRIM||blaze.fire[i]>0.1||blaze.fuel[i]<=0)return; ignite(i,1.0,false); for(const d of D4){ const j=i+d[0]+d[1]*MW; if(here.D.surface[j]===SF_BRIM&&blaze.fuel[j]>0)ignite(j,0.6,false); } sCrackleBurst&&sCrackleBurst((i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL);
   if(!brimMsg){ brimMsg=true; msg('<b style="color:#ffd04a">*</b>足元の硫黄が、ぼっと燃え上がった！ しばらくすると、また燃えるようになる。'); } }
-let brimT=0; function brimRecover(dt){ brimT+=dt; if(brimT<2)return; brimT=0; let ch=false; for(let i=0;i<NCELL;i++){ if(here.D.surface[i]===SF_BRIM&&blaze.burnt[i]&&blaze.fire[i]<=0&&mr()<0.08){ blaze.burnt[i]=0; blaze.fuel[i]=0.8; ch=true; } } if(ch)uploadCells(); }
+let brimT=0; function brimRecover(dt){ brimT+=dt; if(brimT<2)return; brimT=0; let ch=false; for(let i=0;i<NCELL;i++){ if(here.D.surface[i]===SF_BRIM&&(blaze.burnt[i]||blaze.fuel[i]<=0)&&blaze.fire[i]<=0&&mr()<0.08){ /* burnt, or swept by a cleaner (no ash, no fuel) */ blaze.burnt[i]=0; blaze.fuel[i]=0.8; ch=true; } } if(ch)uploadCells(); }
 // ---------------------------------------------------------------- hidden traps, a lever-and-portcullis vault, sanctuaries (mechanisms after Brogue's machines; written independently)
 // TRAP_INFO は src/lib/names.ts（src/game/imports.mjs で読む）
 function triggerTrap(tr){

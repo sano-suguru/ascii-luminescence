@@ -90,7 +90,7 @@ function mainPathAltars(r,free){ if(here.D.stratum.special||here.D.finalVault)re
   }
 // the treasury's prize: taking it wakes guardians, or brings the ceiling down
 let rockfall=null;
-function vaultArea(it,R){ const out=[], cx=it.i%MW, cz=(it.i/MW)|0; for(let dz=-R;dz<=R;dz++)for(let dx=-R;dx<=R;dx++){ const c=(cz+dz)*MW+cx+dx; if(c<0||c>=here.D.tile.length||here.D.tile[c]!==TF||here.D.liquid[c]||Math.hypot(dx,dz)>R)continue; out.push(c); } return out; }
+function vaultArea(it,R){ const out=[], cx=it.i%MW, cz=(it.i/MW)|0; for(let dz=-R;dz<=R;dz++)for(let dx=-R;dx<=R;dx++){ if(cx+dx<0||cx+dx>=MW||cz+dz<0||cz+dz>=MH)continue; const c=(cz+dz)*MW+cx+dx; if(here.D.tile[c]!==TF||here.D.liquid[c]||Math.hypot(dx,dz)>R)continue; out.push(c); } return out; }
 function vaultSprung(it){ const ri=here.D.roomOf[it.i], room=ri>=0&&here.D.rooms[ri]&&here.D.rooms[ri].cells.length>6?here.D.rooms[ri]:{cells:vaultArea(it,4)};
   if(it.ev==='guard'){ const pool=here.monsters.filter(m=>!m.dead&&!m.ty.critter&&!m.ty.peaceful&&!m.ty.boss&&m.key!=='lord'&&MTYPES[m.key]); const key=pool.length?pool.sort((a,b)=>(b.maxHp||0)-(a.maxHp||0))[0].key:'O';
     const cells=vaultArea(it,5).filter(c=>{ const [x,z]=cpos(c); return Math.hypot(x-player.x,z-player.z)>2.0; });

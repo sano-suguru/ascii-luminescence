@@ -349,7 +349,7 @@ function riverFX(dt){
   if(!here.riverCells.length)return;
   for(let k=0;k<6&&mr()<dt*14;k++){
     const i=here.riverCells[Math.floor(mr()*here.riverCells.length)], x=(i%MW+0.2+mr()*0.6)*CELL, z=(((i/MW)|0)+0.2+mr()*0.6)*CELL;
-    if(Math.hypot(x-player.x,z-player.z)>18||!here.D.liquid[i])continue; // a frozen river has no liquid
+    const lq=here.D.liquid[i]; if(Math.hypot(x-player.x,z-player.z)>18||(lq!==LQ_WATER&&lq!==LQ_DEEP))continue; // a river frozen or turned to lava has no ripples
     const a=here.D.flow[i]-10; spawn(x,0.12,z,Math.cos(a)*1.3,0.01,Math.sin(a)*1.3,2.2+mr(),G(mpick(['~','.','-'])),0.13,0.25,0.55,0.75,1);
   }
 }
