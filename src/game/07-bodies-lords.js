@@ -6,7 +6,6 @@
 // makeBeastType（忘れられた獣の種類）は src/lib/bodies/lords.ts
 
 // trollForm は src/lib/bodies/small.ts（src/game/imports.mjs で読む）
-// golem: stacked stone blocks with a rune pulsing in its chest
 // ---------------------------------------------------------------- each creature's own features on the shared bodies (kept short: proportions and a few held things)
 function lookHumanoid(look,pts,add,L){
   const mv=(parts,f)=>{ for(const p of pts)if(parts.includes(p.part))f(p); };

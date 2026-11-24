@@ -70,7 +70,6 @@ function bogAura(m,t){ const sc=m.ty.scale||1; if(Math.hypot(m.x-player.x,m.z-pl
   if(mr()<0.1){ const a=mr()*6.28, r=0.5*sc; spawn(m.x+Math.cos(a)*r,0.9*sc,m.z+Math.sin(a)*r,0,-0.2,0,1.2,G(mpick([',','.'])),0.12,0.5,0.38,0.24,1); } }
 // dragonForm（竜の形）は src/lib/bodies/beasts.ts
 
-
 // ---------------------------------------------------------------- the dead, their own bodies: the lich (a floating skeletal mage) and the wraith (a heap of rags with claws)
 function lichForm(ty){ const {S,pts,lit,stroke,ell,tube}=q3(ty); pts.noExtra=true;
   const BONE=[0.9,0.88,0.8], ROBE=[0.45,0.35,0.6], GOLD=[0.85,0.7,0.38], ICE=[0.6,0.88,1.0], MIST=[0.55,0.55,0.75], BOOK=[0.6,0.45,0.85];
