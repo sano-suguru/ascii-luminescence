@@ -8,12 +8,15 @@
 //   node tools/lint-game.mjs           エラーと警告
 //   node tools/lint-game.mjs --quiet   エラーだけ（pnpm check、編集直後の hook）
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseAst } from 'vite';
 import { gameSource, gameLayout, locate } from './game-source.mjs';
 
 const root = join(import.meta.dirname, '..');
+// 状態の入れ物（段階7b）。無ければ空（入れ物の名前の確かめをしない）
+const STATE = join(root, 'src/lib/state.ts');
+const stateExports = existsSync(STATE) ? await import(STATE) : {};
 const quiet = process.argv.includes('--quiet');
 const code = gameSource(),
   file = join(root, `.build/lint/game-${process.pid}-${Date.now()}.js`);
@@ -97,19 +100,9 @@ if (ast) {
         });
   // 状態の入れ物（src/lib/state.ts から読む名前。vfx など）は、関数の中でも宣言し直さない。同じ名前の局所の変数・引数があると、
   // その中の「vfx.shake」が入れ物ではなくその変数を指し、構文は正しいまま、動かした時に初めて壊れる
-  const boxes = new Set(
-    [...code.matchAll(/import\s*\{([^}]*)\}\s*from\s*'\.\.\/lib\/state\.ts'/g)].flatMap((m) =>
-      m[1]
-        .split(',')
-        .map((n) =>
-          n
-            .trim()
-            .split(/\s+as\s+/)
-            .pop(),
-        )
-        .filter(Boolean),
-    ),
-  );
+  // 入れ物の名前は、src/lib/state.ts の export から取る（import の書き方に頼らない。読み方が変わっても、確かめが黙って切れないように）
+  const boxes = new Set(Object.keys(stateExports));
+  if (existsSync(STATE) && !boxes.size) fail('src/lib/state.ts から入れ物の名前を1つも読めない（入れ物の名前の確かめができない）');
   const declared = (n) =>
     n.type === 'VariableDeclarator'
       ? bound(n.id)
@@ -136,7 +129,7 @@ if (ast) {
           });
     for (const k in n) if (k !== 'parent') visit(n[k]);
   };
-  if (boxes.size) visit(fn);
+  visit(fn);
 }
 const diags = [...(JSON.parse(out).diagnostics ?? []), ...hides];
 // Oxlint の位置はバイト数なので、バイトで行と列を数える
