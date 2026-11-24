@@ -5,7 +5,7 @@ function losClear(ax,ay,az,bx,by,bz){ const d=Math.hypot(bx-ax,by-ay,bz-az), n=M
   for(let k=1;k<n;k++){ const f=k/n, x=ax+(bx-ax)*f, y=ay+(by-ay)*f, z=az+(bz-az)*f, ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL); if(ci<0||ci>=NCELL)return false;
     const tt=D.tile[ci]; if(tt===TW||tt===TX||doorBlock(ci)||y>D.ceil[ci])return false; }
   return true; }
-const mCenter=m=>[m.x,m.y+0.6*m.ty.scale,m.z];
+// mCenter は src/lib/math.ts（src/game/imports.mjs で読む）
 function beamFrame(h){ const o=handPoint(h), a=assistPoint(o,'beam')||aimPoint(), dx=a[0]-o[0], dy=a[1]-o[1], dz=a[2]-o[2], l=Math.hypot(dx,dy,dz); return {o,d:l>1?[dx/l,dy/l,dz/l]:viewDir()}; }
 // ice: puts out fire, freezes water for a while (walkable, slippery); fire melts it again
 function chillArea(x,z,r){ const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL), rr=Math.ceil(r/CELL)+1; let ch=false, froze=false;
@@ -49,8 +49,7 @@ function onDodged(m){ if(!hands)return; let any=false;
   if(any&&sndReady()){ const t=SND.ctx.currentTime; sEnv(sTone(t,'sine',1320,1980,0.18,sOut(undefined,undefined,0.12)),t,0.003,0.16); } }
 
 // ---------------------------------------------------------------- the chant as a voice: whispered syllables that swell into a choir; each syllable lights one rune of the circle
-const VOWELS=[[800,1150],[450,800],[325,700],[400,1700],[300,2200]];
-const CHANT_STEPS=[0,3,5,7,10,12,15,17];
+// VOWELS・CHANT_STEPS は src/lib/sound.ts（src/game/imports.mjs で読む）
 const ELEM_ROOT={fire:110,ice:294,thunder:196,poison:98};
 function chantStart(el){
   if(!sndReady())return null; const ctx=SND.ctx, out=ctx.createGain(); out.gain.value=1; out.connect(sOut(undefined,undefined,0.85));

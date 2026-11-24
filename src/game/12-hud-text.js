@@ -1,6 +1,6 @@
 const stealth={lum:0,level:1,range:8,sneak:false,hudKey:''};
 const lantern={r:8.2,k:1};
-const LIGHT_NAMES=['暗がり','薄明かり','光の中'], LIGHT_COLS=['#8a92d6','#d8c07e','#ffd27a'];
+// LIGHT_NAMES・LIGHT_COLS は src/lib/hud.ts（src/game/imports.mjs で読む）
 function updateStealth(dt){
   const l=cellLight(player.x,player.z); let L=0.3*l[0]+0.55*l[1]+0.15*l[2];
   for(const m of monsters){ if(m.ty.light>0&&!m.ty.invisible&&(m.ty.form!=='eel'||m.surf>0)){ const d=Math.hypot(m.x-player.x,m.z-player.z); if(d<m.ty.light)L+=(1-d/m.ty.light)**2*0.6; } }
@@ -66,7 +66,7 @@ function onNoticed(m){
 function makeNoise(x,z,r,amt){
   for(const m of monsters){ const d=Math.hypot(m.x-x,m.z-z); if(d>r)continue; m.aware=Math.min(1.25,m.aware+amt*(1-d/r)); if(m.sleep&&m.aware>0.35){ m.sleep=false; m.wait=0.6; } }
 }
-const MARK_H={humanoid:2.05,quad:0.95,orb:0.55,bat:0.38,bloat:0.68,wraith:2.35,jelly:0.85,eel:1.2};
+// MARK_H は src/lib/hud.ts（src/game/imports.mjs で読む）
 function drawMark(m,t,dp){
   if(m.ty.peaceful||!m.visible||m.ty.invisible||dp>22)return;
   m.mark+=1/60;
@@ -77,4 +77,4 @@ function drawMark(m,t,dp){
 }
 // lerpAngle は src/lib/math.ts（src/game/imports.mjs で読む）
 const flyOpen=(x,z)=>{ const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL); if(cx<0||cz<0||cx>=MW||cz>=MH)return false; const tt=D.tile[cz*MW+cx]; return tt!==TW&&tt!==TX; };
-const mname=m=>`<span style="color:${css(m.ty.col)}">${m.ty.name}（${m.ty.ch}）</span>`;
+// mname は src/lib/names.ts（src/game/imports.mjs で読む）

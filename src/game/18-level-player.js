@@ -87,7 +87,7 @@ function brimFlare(i){ if(D.surface[i]!==SF_BRIM||fire[i]>0.1||fuel[i]<=0)return
   if(!brimMsg){ brimMsg=true; msg('<b style="color:#ffd04a">*</b>足元の硫黄が、ぼっと燃え上がった！ しばらくすると、また燃えるようになる。'); } }
 let brimT=0; function brimRecover(dt){ brimT+=dt; if(brimT<2)return; brimT=0; let ch=false; for(let i=0;i<NCELL;i++){ if(D.surface[i]===SF_BRIM&&burnt[i]&&fire[i]<=0&&mr()<0.08){ burnt[i]=0; fuel[i]=0.8; ch=true; } } if(ch)uploadCells(); }
 // ---------------------------------------------------------------- hidden traps, a lever-and-portcullis vault, sanctuaries (mechanisms after Brogue's machines; written independently)
-const TRAP_INFO={alarm:['警報の','#ff6a4a','踏むと鐘が鳴り響き、辺りの獣が集まってくる'],trapdoor:['落とし戸の','#c9b8ff','踏むと床が抜け、下の階へ落ちる'],net:['網の','#d8c8ff','踏むと網が降ってきて、しばらく動けなくなる'],flood:['水の','#6ab4ff','踏むと水があふれ出し、辺りが水浸しになる'],methane:['ガスの','#a8e05a','踏むと沼のガスが噴き出す。火気は厳禁']};
+// TRAP_INFO は src/lib/names.ts（src/game/imports.mjs で読む）
 function triggerTrap(tr){
   tr.used=true; tr.hidden=false; const [x,z]=cpos(tr.i), info=TRAP_INFO[tr.type], tag=`<b style="color:${info[1]}">^</b>`;
   switch(tr.type){
@@ -136,9 +136,9 @@ const MSTAT={r:[6,1,3,1.0],k:[7,1,4,1.1],j:[8,2,4,0.9],e:[18,3,7,1.4],m:[12,1,3,
   O:[55,9,13,1.8],w:[10,4,8,1.6],W:[50,6,13,1.5],P:[20,4,9,1.4],S:[20,3,7,1.1],Zf:[25,4,8,1.0],Zi:[25,4,8,1.0],Zl:[25,4,8,1.0],s:[18,2,6,1.2],sw:[22,3,7,1.2],
   B:[55,3,7,1.6],N:[75,7,11,1.5],l:[60,5,11,1.4],K:[120,8,15,2.0],T:[65,10,15,1.7],Y:[300,4,8,2.2],D:[150,20,30,2.4],L:[35,8,14,1.8],n:[12,2,5,1.0],X:[200,12,20,2.0]};
 let PLAYER_MAX=40;
-const WEAPON={name:'短剣',min:3,max:5,cd:0.45,reach:2.2}, SLEEP_MULT=3;
+// WEAPON・SLEEP_MULT は src/lib/runes.ts（src/game/imports.mjs で読む）
 let dead=false, runStats={kills:0,t0:0}, hurtFlash=0, hpShown=-1;
-const roll=(a,b)=>a+Math.floor(mr()*(b-a+1));
+// roll は src/lib/random.ts（src/game/imports.mjs で読む）
 const statOf=m=>{ const st=MSTAT[m.ty.sk||m.key]||[12,2,5,1.2]; return trialOn('fury')?[st[0]*1.3,st[1]*1.3,st[2]*1.3,st[3]]:st; };
 const hostile=m=>!m.ty.critter&&!m.ty.peaceful&&!m.ty.watcher&&m.ty.form!=='bloat'&&!m.dead;
 const hittable=m=>!m.dead&&!m.ty.peaceful;

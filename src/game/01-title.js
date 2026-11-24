@@ -1,9 +1,6 @@
 // ---------------------------------------------------------------- title letters
 // ---------------------------------------------------------------- the title as a logo: filled block letters with shadows, in the style of oh-my-logo
-// The art below was rendered with oh-my-logo's filled block font (cfonts 'block'), one letter at a time, and pasted here as text.
-// To change the title: render the new words the same way (node gen2.mjs WORD1 WORD2) and replace LOGO_ART; TITLE_LINES must match its keys.
-const TITLE_LINES=['ASCII','LUMINESCENCE'];
-const LOGO_ART={"ASCII": [" █████╗  ███████╗  ██████╗ ██╗ ██╗", "██╔══██╗ ██╔════╝ ██╔════╝ ██║ ██║", "███████║ ███████╗ ██║      ██║ ██║", "██╔══██║ ╚════██║ ██║      ██║ ██║", "██║  ██║ ███████║ ╚██████╗ ██║ ██║", "╚═╝  ╚═╝ ╚══════╝  ╚═════╝ ╚═╝ ╚═╝"], "LUMINESCENCE": ["██╗      ██╗   ██╗ ███╗   ███╗ ██╗ ███╗   ██╗ ███████╗ ███████╗  ██████╗ ███████╗ ███╗   ██╗  ██████╗ ███████╗", "██║      ██║   ██║ ████╗ ████║ ██║ ████╗  ██║ ██╔════╝ ██╔════╝ ██╔════╝ ██╔════╝ ████╗  ██║ ██╔════╝ ██╔════╝", "██║      ██║   ██║ ██╔████╔██║ ██║ ██╔██╗ ██║ █████╗   ███████╗ ██║      █████╗   ██╔██╗ ██║ ██║      █████╗", "██║      ██║   ██║ ██║╚██╔╝██║ ██║ ██║╚██╗██║ ██╔══╝   ╚════██║ ██║      ██╔══╝   ██║╚██╗██║ ██║      ██╔══╝", "███████╗ ╚██████╔╝ ██║ ╚═╝ ██║ ██║ ██║ ╚████║ ███████╗ ███████║ ╚██████╗ ███████╗ ██║ ╚████║ ╚██████╗ ███████╗", "╚══════╝  ╚═════╝  ╚═╝     ╚═╝ ╚═╝ ╚═╝  ╚═══╝ ╚══════╝ ╚══════╝  ╚═════╝ ╚══════╝ ╚═╝  ╚═══╝  ╚═════╝ ╚══════╝"]};
+// TITLE_LINES・LOGO_ART は src/lib/title.ts（src/game/imports.mjs で読む）
 // fallback when no rendered art exists for the title: a 5x5 dot font filled with the dungeon's own glyphs
 const LOGO_FONT={
   A:['01110','10001','11111','10001','10001'],B:['11110','10001','11110','10001','11110'],C:['01111','10000','10000','10000','01111'],

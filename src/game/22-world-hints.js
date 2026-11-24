@@ -25,7 +25,7 @@ const REALM_OMEN={
  lab:{col:[1.0,0.45,0.88],gl:['ᛁ','ᚱ','ᛊ','*'],vy:0.2,look:'門の周りに、宙に浮かぶ文字の欠片と、魔法陣の光が漂っている',snd:'chime'},
  volcano:{col:[1.0,0.5,0.15],gl:["'",'.','*'],vy:0.6,look:'門の向こうから、灰と熱気が吹きつけてくる',snd:'rumble'},
 };
-const stratumAtDepth=d=>STRATA.find(s=>d>=s.from&&d<=s.to);
+// stratumAtDepth は src/lib/strata.ts（src/game/imports.mjs で読む）
 function computeOmen(){ const o={stairs:null,branch:null,portal:null,traces:[],sndT:{}};
   if(branch){ if(branch.lvl<branch.len)o.stairs={kind:'branch',key:branch.key,strong:branch.lvl+1===branch.len}; }
   else if(!realm&&D.stairs>=0&&!D.finalVault&&depth<FINAL_DEPTH){ const ik=!inter?interAfter(depth):null; if(ik)o.stairs={kind:'special',key:ik}; else { const nd=depth+1, a=inter?SPECIALS[inter.key]:stratumAtDepth(depth), b=stratumAtDepth(nd); if(a&&b&&a.k!==b.k)o.stairs={kind:'stratum',key:b.k}; } }

@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------- first / third person (chosen in the menu)
 let camMode='fps'; try{ camMode=localStorage.getItem('al_cam')||'fps'; }catch(e){}
-const AVATAR_TY={ch:'@',name:'あなた',col:[1.0,0.9,0.75],form:'humanoid',scale:0.92,speed:1,fl:0,light:0,trail:0};
+// AVATAR_TY は src/lib/names.ts（src/game/imports.mjs で読む）
 let avatar=null, camPos=null;
 function headPos(){ return [player.x,player.eye+0.05-(player.roll?Math.sin(Math.PI*player.roll.t/0.32)*0.55:0),player.z]; }
 // where attacks and thrown things start: the eye in first person, the head of the avatar in third person

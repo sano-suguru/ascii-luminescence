@@ -199,3 +199,34 @@ export function emptyChip(cat: string, attrs: string): string {
   const br = cat === 'atk' ? ['', ''] : cat === 'body' ? ['"', ''] : cat === 'rune' ? ['[', ']'] : CAT_BR[cat] || ['', ''];
   return `<button class="row rs empty" ${attrs}><span class="mk"> </span><span class="dim">${br[0]} 空き ${br[1]}</span></button>`;
 }
+
+// ---------------------------------------------------------------- もとは src/game/18・19・20・21・27
+/** 武器の飾り（増える弾・跳ね返りなど）：名前と、値の振り方 roll（乱数 r を使う）と、書き方 fmt */
+export const AFFIX = {
+  count: { name: '弾数', roll: (r) => 1 + (r() < 0.3 ? 1 : 0), fmt: (v) => `弾数 +${v}` },
+  bounce: { name: '跳ね返り', roll: (r) => 1 + Math.floor(r() * 3), fmt: (v) => `跳ね返り +${v}` },
+  homing: { name: 'ホーミング', roll: (r) => 20 + Math.floor(r() * 5) * 10, fmt: (v) => `ホーミング +${v}度` },
+  chain: { name: '連鎖', roll: (r) => 1 + (r() < 0.35 ? 1 : 0), fmt: (v) => `連鎖 +${v}` },
+  area: { name: '範囲', roll: (r) => 25 + Math.floor(r() * 8) * 5, fmt: (v) => `範囲 +${v}%` },
+  dur: { name: '持続', roll: (r) => 30 + Math.floor(r() * 6) * 10, fmt: (v) => `持続 +${v}%` },
+} satisfies Record<string, { name: string; roll: (r: () => number) => number; fmt: (v: number) => string }>;
+/** 術 sp が性質（elem）を持つか */
+export const sp_elem = (p: { sp?: { elem?: unknown } | null } | null | undefined): boolean => !!(p && p.sp && p.sp.elem);
+/** 二つの性質の反応の名前（無ければ null） */
+export function reactionOf(a: string, b: string): string | null {
+  const k = [a, b].sort().join('+');
+  const table: Readonly<Record<string, string>> = {
+    'fire+ice': 'steam',
+    'fire+poison': 'blast',
+    'fire+thunder': 'overload',
+    'ice+thunder': 'shatter',
+    'ice+poison': 'frostbite',
+    'poison+thunder': 'contagion',
+  };
+  return table[k] || null;
+}
+/** 立て直し（rally）で体力が戻る、当たりの種類 */
+export const RALLY_FROM = new Set(['blade', 'magic', 'fire', 'thunder', 'poison', 'ice']);
+/** 素手の時の短剣と、眠っている相手への倍率 */
+export const WEAPON = { name: '短剣', min: 3, max: 5, cd: 0.45, reach: 2.2 },
+  SLEEP_MULT = 3;

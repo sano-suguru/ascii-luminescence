@@ -159,3 +159,8 @@ export const VEIN_COL: Record<number, [number, number, number]> = {
     4: [0.25, 1.0, 0.55],
   },
   VEIN_NAME: Record<number, string> = { 1: '金', 2: '紅玉', 3: '青玉', 4: '翠玉' };
+
+/** マス i の真ん中の、世界の座標 [x, z]（もとは src/game/15-sound-fire.js） */
+export const cpos = (i: number): [number, number] => [((i % MW) + 0.5) * CELL, (((i / MW) | 0) + 0.5) * CELL];
+/** 火の備品の種類（火の音や、燃え広がる元に使う。もとは src/game/15-sound-fire.js） */
+export const FIRE_TYPES = new Set(['brazier', 'torch', 'lava', 'embers', 'abyss']);

@@ -1,13 +1,21 @@
-// src/lib/ の表と小さな道具の単体テスト（world・light・runes・progress・hands・math・color）
+// src/lib/ の表と小さな道具の単体テスト（world・light・runes・progress・hands・math・color、段階7a で移した title・glyphs・shaders・hud・names・sound など）
 import { lookup, nth } from '../../src/lib/array.ts';
 import { describe, expect, it } from 'vitest';
 import { css } from '../../src/lib/color.ts';
+import * as GL from '../../src/lib/glyphs.ts';
 import { VM_MIRROR, vmGlyph, vmGlyphS } from '../../src/lib/hands.ts';
-import { type Light, computeVis, topLights } from '../../src/lib/light.ts';
-import { angDiff, lerpAngle, sstep, turnDir } from '../../src/lib/math.ts';
+import * as HUD from '../../src/lib/hud.ts';
+import { LANTERN, type Light, computeVis, topLights } from '../../src/lib/light.ts';
+import { angDiff, flowW, jagged, lerpAngle, mCenter, sstep, turnDir } from '../../src/lib/math.ts';
+import * as NM from '../../src/lib/names.ts';
 import { META_DEF, UNLOCKS, expNeed, expOf } from '../../src/lib/progress.ts';
+import { roll } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 import * as R from '../../src/lib/runes.ts';
+import * as SH from '../../src/lib/shaders.ts';
+import * as SND from '../../src/lib/sound.ts';
+import { stratumAtDepth } from '../../src/lib/strata.ts';
+import * as TI from '../../src/lib/title.ts';
 import * as W from '../../src/lib/world.ts';
 
 const fnv = (s: string): string => {
@@ -155,5 +163,105 @@ describe('小さな道具', () => {
   it('色：少し明るくして rgb() にする', () => {
     expect(css([0, 0, 0])).toBe('rgb(38,38,38)');
     expect(css([1, 1, 1])).toBe('rgb(255,255,255)');
+  });
+});
+
+// 段階7a（後半）で移した物。どれも、移す前の実装で出した値（シェーダーの文は1字も違わないこと）
+describe('段階7a（後半）で移した物：移す前と同じ値', () => {
+  const asJson = (v: unknown): unknown => JSON.parse(JSON.stringify(v, (_k, x: unknown) => (x instanceof Set ? ['Set', ...x] : x)));
+  it('タイトル・文字の並び・シェーダーの文・描画の入れ物の大きさ', () => {
+    const v = [
+      TI.TITLE_LINES,
+      TI.LOGO_ART,
+      GL.RUNESET,
+      GL.SWAPSET,
+      GL.WG,
+      GL.RAMP_CH,
+      SH.GLSL_COMMON,
+      SH.STATIC_VS,
+      SH.WATER_VS,
+      SH.WATER_FS,
+      SH.GLYPH_FS,
+      SH.DYN_VS,
+      SH.PT_VS,
+      SH.PT_FS,
+      SH.DYN_MAX,
+      SH.DUST_N,
+      SH.GAS_N,
+      SH.P_MAX,
+      SH.PT_TOTAL,
+      SH.P0,
+    ];
+    expect(fingerprint(v)).toEqual(['acdcd3', 12613]);
+  });
+  it('表示の大きさ・名前と説明・音・ルーンの表', () => {
+    const v = asJson([
+      HUD.LIGHT_NAMES,
+      HUD.LIGHT_COLS,
+      HUD.MARK_H,
+      HUD.MMC,
+      HUD.MMR,
+      HUD.MCW,
+      HUD.MCH,
+      HUD.MPAD,
+      HUD.PACK_W,
+      HUD.PACK_SLOT,
+      HUD.BAG_LINES,
+      HUD.ALTAR_W,
+      NM.FIX_NAMES,
+      NM.DECO_NAMES,
+      NM.DECO_K,
+      NM.TRAP_INFO,
+      NM.LEGEND_KINDS,
+      NM.LEGEND_ORDER,
+      NM.BRANCH_HINT,
+      NM.LORD_GAL,
+      NM.DUMMY_KINDS,
+      NM.AVATAR_TY,
+      SND.SND_LV,
+      SND.SND_NAME,
+      SND.VOWELS,
+      SND.CHANT_STEPS,
+      R.RALLY_FROM,
+      R.WEAPON,
+      R.SLEEP_MULT,
+      W.FIRE_TYPES,
+      LANTERN,
+    ]);
+    expect(fingerprint(v)).toEqual(['883558a6', 3069]);
+  });
+  it('小さな関数（たくさんの入力で）', () => {
+    const out: unknown[] = [];
+    const r = mulberry32(7);
+    const saved = Math.random;
+    Math.random = mulberry32(11);
+    try {
+      for (let s = 0; s < 200; s++) {
+        const x = (r() - 0.5) * 40,
+          p3 = (): [number, number, number] => [r() * 9, r() * 9, r() * 9];
+        out.push(
+          flowW(x),
+          W.cpos(Math.floor(r() * W.NCELL)),
+          HUD.tone(r() * 3),
+          roll(s % 7, 10 + (s % 5)),
+          stratumAtDepth(s % 18)?.k ?? null,
+          mCenter({ x, y: r(), z: r(), ty: { scale: r() * 3 } }),
+          jagged(p3(), p3(), r()),
+          NM.mname({ ty: { col: p3(), name: '名', ch: 'a' } }),
+          NM.lookLine('*', p3(), 'n', 'd'),
+          R.sp_elem([null, undefined, {}, { sp: null }, { sp: {} }, { sp: { elem: 'fire' } }][s % 6]),
+        );
+      }
+      for (const a of ['fire', 'ice', 'poison', 'thunder', 'blade'])
+        for (const b of ['fire', 'ice', 'poison', 'thunder', 'blade']) out.push(R.reactionOf(a, b));
+      for (const [k, a] of Object.entries(R.AFFIX))
+        for (let s = 0; s < 20; s++) {
+          const v = a.roll(mulberry32(s));
+          out.push(k, a.name, v, a.fmt(v));
+        }
+    } finally {
+      Math.random = saved;
+    }
+    expect(fingerprint(out)).toEqual(['c3cae2c3', 203009]);
   });
 });

@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------- ambient sound (procedural, Web Audio)
-const SND_LV=[0.85,0.5,0.25,0], SND_NAME=['大','中','小','オフ'];
+// SND_LV・SND_NAME は src/lib/sound.ts（src/game/imports.mjs で読む）
 const SND={lv:1,ctx:null,on:true,master:null,inp:null,wet:null,noise:null,L:{},envT:0,env:{water:0,lava:0,chasm:0,bog:0,xtal:0,burn:0,fire:0,fx:0,fz:0,cave:false}};
 const sndReady=()=>SND.ctx&&SND.ctx.state==='running'&&SND.on;
 function sndInit(){
@@ -27,7 +27,7 @@ function sndToggle(){ SND.lv=(SND.lv+1)%SND_LV.length; SND.on=SND_LV[SND.lv]>0; 
 const sDist=(x,z)=>x===undefined?1:Math.pow(clamp(1-Math.hypot(x-player.x,z-player.z)/24,0,1),1.4);
 const sPan=(x,z)=>{ if(x===undefined)return (Math.random()-0.5)*1.2; const dx=x-player.x, dz=z-player.z, l=Math.hypot(dx,dz)||1; return clamp((dx*Math.cos(player.yaw)-dz*Math.sin(player.yaw))/l,-1,1)*0.85; };
 function sOut(x,z,vol){ const ctx=SND.ctx, g=ctx.createGain(); g.gain.value=vol*sDist(x,z); if(ctx.createStereoPanner){ const p=ctx.createStereoPanner(); p.pan.value=sPan(x,z); g.connect(p); p.connect(SND.inp); } else g.connect(SND.inp); return g; }
-function sEnv(node,t,a,d,peak){ node.gain.setValueAtTime(0.0001,t); node.gain.exponentialRampToValueAtTime(peak||1,t+a); node.gain.exponentialRampToValueAtTime(0.0001,t+a+d); }
+// sEnv は src/lib/sound.ts（src/game/imports.mjs で読む）
 function sNoise(t,dur,type,freq,q,out,f2){ const ctx=SND.ctx, s0=ctx.createBufferSource(); s0.buffer=SND.noise; const f=ctx.createBiquadFilter(); f.type=type; f.frequency.setValueAtTime(freq,t); if(f2)f.frequency.exponentialRampToValueAtTime(f2,t+dur); f.Q.value=q; const e=ctx.createGain(); s0.connect(f); f.connect(e); e.connect(out); s0.start(t,Math.random()*1.5); s0.stop(t+dur+0.05); return e; }
 function sTone(t,type,f1,f2,dur,out){ const ctx=SND.ctx, o=ctx.createOscillator(); o.type=type; o.frequency.setValueAtTime(f1,t); if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+dur); const e=ctx.createGain(); o.connect(e); e.connect(out); o.start(t); o.stop(t+dur+0.05); return e; }
 function sDrip(x,z,vol){ if(!sndReady())return; const t=SND.ctx.currentTime, f=900+Math.random()*1500; sEnv(sTone(t,'sine',f,f*0.55,0.12,sOut(x,z,vol)),t,0.004,0.2); }
@@ -82,7 +82,7 @@ let gasTmp=new Float32Array(NCELL), gasAny=false;
 // ---------------------------------------------------------------- fire (after Brogue: spreads through flammable terrain, ignites gas)
 let fire=new Float32Array(NCELL), fuel=new Float32Array(NCELL), burnt=new Uint8Array(NCELL), cellFlag=new Uint8Array(NCELL), fireLight=new Float32Array(NCELL);
 let burning=[], fireSrc=[], flash=0, shake=0, lastBoom=-10, events=[], spark=null, sparkCD=0;
-const FIRE_TYPES=new Set(['brazier','torch','lava','embers','abyss']);
+// FIRE_TYPES は src/lib/world.ts（src/game/imports.mjs で読む）
 function initFire(){
   fire=new Float32Array(NCELL); fuel=new Float32Array(NCELL); burnt=new Uint8Array(NCELL); cellFlag=new Uint8Array(NCELL); fireLight=new Float32Array(NCELL); burning=[];
   for(let i=0;i<NCELL;i++){ const sf=D.surface[i]; fuel[i]=sf===SF_DEAD?1.0:sf===SF_GRASS?0.7:sf===SF_LUMEN?0.6:sf===SF_FOLIAGE?1.0:sf===SF_HAY?1.2:sf===SF_BRIM?0.8:0; }
@@ -195,7 +195,7 @@ function initEvents(){
     if(md.type==='crypt'&&md.tombs.length)events.push({type:'haunt',ri,tombs:md.tombs.map(tb=>tb.i),done:false,t:-1});
   });
 }
-const cpos=i=>[(i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL];
+// cpos は src/lib/world.ts（src/game/imports.mjs で読む）
 function summon(key,cell){ const m=makeMonster({key,cx:cell%MW,cz:(cell/MW)|0,g:-1,lead:true}); m.alert=1; m.seen=true; monsters.push(m); return m; }
 function updateEvents(dt,t){
   const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL);

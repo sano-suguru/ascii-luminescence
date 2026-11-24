@@ -142,14 +142,7 @@ const WEAPON_SIG=t=>Object.keys(TRAITS[t]||{}).slice(0,2);
 function rollTraits(ru,r,d,bonus){ if(!ru||RUNE_DEF[ru.type].cat!=='atk'||!TRAITS[ru.type])return ru; const tier=Math.min(4,clamp(Math.floor(((d||1)-1)/3),0,3)+(bonus||0));
   ru.traits=tier>0?WEAPON_SIG(ru.type).map(k=>({k,lv:tier})):[]; return ru; }
 // RUNE_TYPES は src/lib/runes.ts（src/game/imports.mjs で読む）
-const AFFIX={
-  count: {name:'弾数',       roll:r=>1+(r()<0.3?1:0),          fmt:v=>`弾数 +${v}`},
-  bounce:{name:'跳ね返り',   roll:r=>1+Math.floor(r()*3),       fmt:v=>`跳ね返り +${v}`},
-  homing:{name:'ホーミング', roll:r=>20+Math.floor(r()*5)*10,   fmt:v=>`ホーミング +${v}度`},
-  chain: {name:'連鎖',       roll:r=>1+(r()<0.35?1:0),          fmt:v=>`連鎖 +${v}`},
-  area:  {name:'範囲',       roll:r=>25+Math.floor(r()*8)*5,    fmt:v=>`範囲 +${v}%`},
-  dur:   {name:'持続',       roll:r=>30+Math.floor(r()*6)*10,   fmt:v=>`持続 +${v}%`},
-};
+// AFFIX は src/lib/runes.ts（src/game/imports.mjs で読む）
 // what each kind of creature tends to drop, and how much each element hurts it (0 = no effect, 2 = badly)
 const ELEM_OF={l:'fire',Zf:'fire',D:'fire',Zi:'ice',L:'ice',K:'ice',Zl:'thunder',Rc:'thunder',Re:'thunder',Rw:'thunder',S:'poison',n:'poison',N:'poison',B:'poison'};
 const RES={
