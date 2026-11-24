@@ -206,7 +206,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 | 03-vaults-history | 歴史の飾り（壁の絵 ARTS）と、冒険の歴史の入れ物（HIST）。洞窟の形と宝物庫の絵は src/lib/vaults.ts、makeHistory は src/lib/history.ts、岩・鉱脈・宝物庫の壁の高さは src/lib/world.ts |
 | 04-generate | 迷宮の生成の包み（generate）：今のゲームの状態から入力を作り、src/lib/generate.ts の generateLevel を呼び、結果（階・主の種類・忘れられた獣）をゲームの状態に入れる |
 | 05-renderer | 描画（シェーダー、水面、文字の図鑑、dyn、粒子の入れ物）。シェーダーの文と入れ物の大きさは src/lib/shaders.ts |
-| 06-world | 世界の組み立て（buildWorld）と、その部品の状態。今の階の中身 D・depth・monsters・player などは src/lib/state.ts、世界の組み立て（buildWorld）。sstep は src/lib/math.ts、CHUNK は src/lib/world.ts、flowW は src/lib/math.ts |
+| 06-world | 世界の組み立て（buildWorld）と、その部品の状態。今の階の中身 D・depth・monsters・player などは src/lib/state.ts。sstep は src/lib/math.ts、CHUNK は src/lib/world.ts、flowW は src/lib/math.ts |
 | 07-bodies-lords | 生き物の形：人型の見た目（lookHumanoid・extraLook）、主のまわりの気配（不死の王・蜘蛛の女王・ナーガ・竜）。主の形は src/lib/bodies/bosses.ts、古いトロル・古い獣・ゴーレムの形は src/lib/bodies/ |
 | 08-bodies-shadow | 生き物の形：王の影（変身・気配）、深みの主。一つ目の姿と機械の形は src/lib/bodies/lords.ts、二つ目の姿は src/lib/bodies/bosses.ts |
 | 09-bodies-creatures | 生き物の形：人型、リッチ、気配の動き。小さな生き物・四つ足・大きな生き物（オーガ・竜も）・亡霊・幻影の形は src/lib/bodies/ |
