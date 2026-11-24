@@ -52,7 +52,7 @@ const VM_PART={fill:[0.46,0.48,0.56],edge:[0.86,0.89,0.96],metal:[0.7,0.72,0.8],
 const VM_BRIGHT={fill:0.8,edge:1.1,metal:0.95,wood:0.78,woodedge:1.0,hand:0.75,knuckle:0.9,arm:0.45,head:1.25,glow:1.3,string:0.6};
 const VM_TINT={edge:0.7,head:0.85,glow:0.85,fill:0.25};
 const vmKick={L:-9,R:-9};
-function drawViewWeapons(t){ if(ui.camMode==='tps'||!ui.started||dead||!hands||!D)return; if(gallery&&gallery.mode==='beast')return;
+function drawViewWeapons(t){ if(ui.camMode==='tps'||!ui.started||adv.dead||!hands||!D)return; if(gallery&&gallery.mode==='beast')return;
   const [f,r,u]=handUp(), [ex,ey,ez]=aimOrigin(); let dw=0.62;
   for(const side of [-0.3,0,0.3])for(let st=0.05;st<=0.62;st+=0.04){ const x=ex+f[0]*st+r[0]*side, z=ez+f[2]*st+r[2]*side, ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL); if(ci<0||ci>=NCELL||D.tile[ci]===TW||D.tile[ci]===TX||doorBlock(ci)){ dw=Math.min(dw,st-0.07); break; } }
   const q=clamp(dw/0.62,0.3,1), spd=Math.hypot(player.vx||0,player.vz||0), bob=Math.sin(time*9)*0.007*Math.min(1,spd/4), sway=Math.cos(time*4.5)*0.004*Math.min(1,spd/4), two=isTwo();
@@ -153,7 +153,7 @@ const RES={
   N:{fire:0.5,thunder:2}, K:{fire:0.5,thunder:2}, f:{thunder:2},
   n:{poison:0.25}, B:{poison:0.2,fire:2}, S:{fire:2}, j:{}, T:{fire:1.5},
 };
-let runeUid=1, hands=null, bag=[], builds=[null,null], buildIdx=-1, runState={startChosen:false,altar1:false,taken:new Set(),lordsDone:new Set()};
+let runeUid=1, hands=null, bag=[], builds=[null,null], buildIdx=-1;
 let castSt=null, swapSt=null, packSnap=null, packSel=null, trigCd={L:0,R:0}, beamSegs=[], clouds=[];
 let BOOK=new Set(); try{ BOOK=new Set(JSON.parse(localStorage.getItem('al_book')||'[]')); }catch(e){}
 function makeRune(type,nAff,r){ r=r||mr; const def=RUNE_DEF[type], pool=def.aff.slice(), aff={}; let n=0;
@@ -177,7 +177,7 @@ function handName(H){ if(!H.atk)return H.elem?`${RUNE_DEF[H.elem.type].pre}ç´ æ‰
 function resetRunes(){
   hands={L:newHand('blade'), R:newHand('orb'), B:{b0:null,b1:null}};
   bag=[]; builds=[null,null,null]; buildIdx=-1; castSt=null; swapSt=null; packSel=null; beamSegs=[]; clouds=[];
-  runState={startChosen:false,altar1:false,taken:new Set(),lordsDone:new Set(),bodyOpen:0}; LEGEND=null; finalSt=null; won=false; renderHotbar();
+  adv.runState={startChosen:false,altar1:false,taken:new Set(),lordsDone:new Set(),bodyOpen:0}; LEGEND=null; finalSt=null; adv.won=false; renderHotbar();
   try{ if(!RSEEN.has('blade')||!RSEEN.has('bolt')){ RSEEN.add('blade'); RSEEN.add('bolt'); saveSet('al_runes',RSEEN); } }catch(e){}
 }
 function newHand(w){ return {atk:makeRune(w,0),slots:[null,null],slotN:2,turn:0,elem:null,trig:null}; }

@@ -55,11 +55,46 @@ describe('状態を入れ物に移す（tools/state-move.mjs）', () => {
     expect(read('00-a.js')).toBe('let a=1;\nfunction t(){ vfx.zap={t:1}; return vfx.zap; }\n');
   });
 
+  it('1つの宣言に並んだ名前を全部・いくつか移しても、範囲が重ならない（残る宣言子の初めの値の中も書き換える）', () => {
+    make({ '00-a.js': 'let dead=false, stats={k:0}, shown=-1;\nlet a=1, b=2, c=b+1, d=4;\nfunction t(){ return dead||shown||b||d; }\n' });
+    stateMove({ dir, box: 'adv', names: ['dead', 'stats', 'shown', 'b', 'd'] });
+    expect(read('00-a.js')).toBe('let a=1, c=adv.b+1;\nfunction t(){ return adv.dead||adv.shown||adv.b||adv.d; }\n');
+  });
+
   it('書き換える場所で入れ物の名前が別の宣言に隠されていたら、何も書き換えずに止める', () => {
     const src = 'let shake=0;\nfunction burst(fx,fz){ shake=Math.max(shake,0.1); return fx+fz; }\n';
     make({ '00-a.js': src });
     expect(() => stateMove({ dir, box: 'fx', names: ['shake'] })).toThrow(/隠されている/);
     expect(read('00-a.js')).toBe(src);
+  });
+
+  it('初めの値が関数を呼ぶ宣言は、その場に「入れ物.名前=初めの値;」として残す（呼ぶ時と順番を変えない）', () => {
+    make({ '00-a.js': 'let a=1;\nlet seed=(Math.random()*1e9)>>>0;\nfunction s(){ return seed+a; }\n' });
+    const { report } = stateMove({ dir, box: 'adv', names: ['seed'] });
+    expect(read('00-a.js')).toBe('let a=1;\nadv.seed=(Math.random()*1e9)>>>0;\nfunction s(){ return adv.seed+a; }\n');
+    expect(report[0].kept).toBe(true);
+  });
+
+  it('その場に残す時は「=」から後ろを元の文のまま使う（外側のかっこが落ちて意味が変わらない）', () => {
+    make({ '00-a.js': 'let x=(f(),1);\nfunction g(){ return x; }\n' });
+    stateMove({ dir, box: 'adv', names: ['x'] });
+    expect(read('00-a.js')).toBe('adv.x=(f(),1);\nfunction g(){ return adv.x; }\n');
+  });
+
+  it('決まった値でない初めの値（関数を覚えるだけ・new Date()）も、その場に残す。決まった値（new Set() など）は移す', () => {
+    make({
+      '00-a.js':
+        'let rnd=Math.random;\nlet d=new Date();\nlet s=new Set(), o={a:[1,-2],b:"x"};\nfunction g(){ return rnd()+d+s.size+o.a; }\n',
+    });
+    const { report } = stateMove({ dir, box: 'adv', names: ['rnd', 'd', 's', 'o'] });
+    expect(read('00-a.js')).toBe('adv.rnd=Math.random;\nadv.d=new Date();\nfunction g(){ return adv.rnd()+adv.d+adv.s.size+adv.o.a; }\n');
+    expect(report.map((r) => r.kept)).toEqual([true, true, false, false]);
+  });
+
+  it('その場に残す宣言の初めの値に、一緒に移す別の名前があっても止まらない', () => {
+    make({ '00-a.js': 'let base=1;\nlet seed=f(base);\nfunction g(){ return seed; }\n' });
+    stateMove({ dir, box: 'adv', names: ['base', 'seed'] });
+    expect(read('00-a.js')).toBe('adv.seed=f(adv.base);\nfunction g(){ return adv.seed; }\n');
   });
 
   it('dry なら書き換えない', () => {

@@ -47,7 +47,7 @@ function drawSection(){
 function setCamMode(m){ ui.camMode=m; camPos=null; try{ localStorage.setItem('al_cam',m); }catch(e){} }
 
 function updatePlayer(dt){
-  if(dead)return;
+  if(adv.dead)return;
   if(!ui.started){ player.yaw+=dt*0.07; }
   else{
     const k=keys;

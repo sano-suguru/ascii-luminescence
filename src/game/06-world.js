@@ -3,7 +3,7 @@ let D=null, depth=1, staticMesh=null, occMesh=null, glyphCount=0;
 let monsters=[], fixtures=[];
 let explored=new Uint8Array(NCELL), mem=new Float32Array(NCELL*3), fovVis=new Uint32Array(NCELL), fovStamp=1;
 let visitedRooms=new Set(), stairsSeen=false, fogBase=0.05;
-const player={x:0,z:0,vx:0,vz:0,yaw:0,pitch:-0.04,bob:0,eye:1.62,hp:40};
+// player は src/lib/state.ts（src/game/imports.mjs で読む。丸ごと入れ替えないので、名前はそのまま）
 const edge={t:0,k:'',idle:0};
 let hintHTML='';
 function showHint(h){ if(h===hintHTML)return; hintHTML=h; const el=document.getElementById('hint'); if(el)el.innerHTML=h; }

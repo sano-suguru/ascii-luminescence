@@ -25,9 +25,9 @@ function renderStatus(){
   const meter=['.',':','*'].map((g,k)=>k<=lv?`<span class="glow" style="color:${lc}">${g}</span>`:`<span class="dim">${g}</span>`).join(' ');
   let l4='';
   if(stealth.seen)l4+='<span class="glow" style="color:#ff6a4a">!</span> <span class="lab">見つかっている</span>';
-  const hpR=clamp((player.hp||0)/PLAYER_MAX,0,1), hpN=Math.round(hpR*20), rlN=Math.max(0,Math.min(20-hpN,Math.round(clamp(((player.hp||0)+(player.rally||0))/PLAYER_MAX,0,1)*20)-hpN)), hpC=vfx.hpFlash>0?'#fff0d8':hpR>0.5?'#ff8a7a':hpR>0.25?'#ffb05a':'#ff4a3a';
-  const hpLine=`<span class="glow" style="color:${hpC}">${'#'.repeat(hpN)}</span><span style="color:#d9874a">${'='.repeat(rlN)}</span><span class="dim">${'.'.repeat(20-hpN-rlN)}</span>  <span class="lab">体力 ${Math.ceil(player.hp||0)}/${PLAYER_MAX}</span>`;
-  const xf=Math.round(clamp(lvl.exp/expNeed(lvl.n),0,1)*20), xpLine=`<span style="color:#c8b6ff">${'-'.repeat(xf)}</span><span class="dim">${'.'.repeat(20-xf)}</span>  <span class="lab">Lv${lvl.n}</span>`;
+  const hpR=clamp((player.hp||0)/adv.PLAYER_MAX,0,1), hpN=Math.round(hpR*20), rlN=Math.max(0,Math.min(20-hpN,Math.round(clamp(((player.hp||0)+(player.rally||0))/adv.PLAYER_MAX,0,1)*20)-hpN)), hpC=vfx.hpFlash>0?'#fff0d8':hpR>0.5?'#ff8a7a':hpR>0.25?'#ffb05a':'#ff4a3a';
+  const hpLine=`<span class="glow" style="color:${hpC}">${'#'.repeat(hpN)}</span><span style="color:#d9874a">${'='.repeat(rlN)}</span><span class="dim">${'.'.repeat(20-hpN-rlN)}</span>  <span class="lab">体力 ${Math.ceil(player.hp||0)}/${adv.PLAYER_MAX}</span>`;
+  const xf=Math.round(clamp(adv.lvl.exp/expNeed(adv.lvl.n),0,1)*20), xpLine=`<span style="color:#c8b6ff">${'-'.repeat(xf)}</span><span class="dim">${'.'.repeat(20-xf)}</span>  <span class="lab">Lv${adv.lvl.n}</span>`;
   el.innerHTML=hpLine+'\n'+xpLine+`\n<span class="glow" style="color:#ffbf6a">&gt; ${placeLabel()}</span>\n${meter}  <span class="lab">${LIGHT_NAMES[lv]}</span>`+(ui.started?'\n'+legendLine():'')+(l4?'\n'+l4:'')+(ui.perfOn?`\n<span class="lab">${pfFps} fps   文字 ${(glyphCount/10000).toFixed(1)}万   描画 ${(chunksDrawn/10000).toFixed(1)}万   生き物 ${monsters.length}</span>`:'');
 }
 let pfFrames=0, pfT=0, pfFps=0;
@@ -45,7 +45,7 @@ function renderHelp(){
   const f=t=>`<span class="f">${t}</span>`;
   el.innerHTML=boxText([f('+-- 操作 ----------------------'),
     `${f('|')} <b>WASD</b>     移動        <b>マウス</b>  視点`,`${f('|')} <b>左クリック</b> 左手      <b>右クリック</b> 右手`,`${f('|')} 押して詠唱、満ちたら離して放つ`,`${f('|')} <b>ホイール</b> ビルド切替  <b>Space</b>  回避`,`${f('|')} <b>Shift</b>    走る`,`${f('|')} <b>Tab</b>      装備        <b>Esc</b>    メニュー`,`${f('|')} 立ち止まると、辺りを自動で調べる`,f('|'),
-    `${f('|')} 深度 ${depth}${branch||realm?`（${placeLabel()}）`:''}    探索 ${hudInfo.explored}%`,`${f('|')} シード ${runSeed}`,f('+------------------------------')]);
+    `${f('|')} 深度 ${depth}${branch||realm?`（${placeLabel()}）`:''}    探索 ${hudInfo.explored}%`,`${f('|')} シード ${adv.runSeed}`,f('+------------------------------')]);
 }
 function setHelp(on){ ui.helpOn=on; ui.chronOn=false; const el=document.getElementById('help'); if(!el)return; if(on)renderHelp(); el.classList.toggle('off',!on); }
 function cycleUi(){ ui.uiMode=(ui.uiMode+1)%3; document.body.classList.toggle('ui-min',ui.uiMode===1); document.body.classList.toggle('ui-none',ui.uiMode===2);

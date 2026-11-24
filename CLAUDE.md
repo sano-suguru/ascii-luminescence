@@ -25,7 +25,7 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      strata：層・テーマ・特別な階・支道と異界の中身・地形・群れ、noise：ノイズ（種は setNoiseSeed）、vaults：洞窟と宝物庫の絵、
                      shaders：描画のシェーダーの文と入れ物の大きさ、title：タイトルのロゴ、hud：表示の大きさ（ミニマップ・装備の画面など）、
                      names：名前と説明の表（見た時の説明・罠・伝説の物・図鑑の主）、sound：音の小さな表と道具
-src/lib/state.ts     ゲームの状態の入れ物（段階7b。分野ごと：vfx＝揺れと光り、ui＝画面の開け閉め（started・camMode・invOpen など）。古い JS は vfx.shake・ui.started のように欄で読み書きする）
+src/lib/state.ts     ゲームの状態の入れ物（段階7b。分野ごと：vfx＝揺れと光り、ui＝画面の開け閉め（started・camMode・invOpen など）、adv＝今の冒険（runSeed・lvl・dead など）、player。古い JS は vfx.shake・ui.started のように欄で読み書きする。player は丸ごと入れ替えないので名前のまま）
 src/lib/generate.ts  迷宮の生成（generateLevel。「入力 → 結果」の形。入力 GenInput・古い JS の物 GenEnv・結果 GenResult と、部屋 Room などの型）
 src/lib/bodies/*.ts  生き物の形（kit：点の型と道具 q2・q3、small・beasts・lords：各生き物の形、bosses：主の形（不死の王・蜘蛛の女王・ナーガの女王・古竜・王の影の二つ目の姿））
 tsconfig.json        TypeScript 7 の設定（strict・noUncheckedIndexedAccess・exactOptionalPropertyTypes など）。対象は src/lib/ と tests/unit/*.ts
@@ -123,7 +123,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 古い JS（src/game/）の関数を、1つずつ src/lib/*.ts に移す。動きを変えないことが一番大事。
 1. src/lib/ に、型を付けて書き直す（`export` する）。古い JS の外の名前に頼る物（`D`・`depth`・`monsters` など、ゲームの状態）は、まだ移さない。
    迷宮の乱数（`rand`・`R`・`RI`・`pick`）は src/lib/random.ts にあるので、それだけに頼る物は移せる（入れ替えは `setRand`。`rand=…` とは書けない）。
-   `const` でも中身が変わる入れ物（`player`・`keys`・`msgs` など）は状態なので、移さない。
+   `const` でも中身が変わる入れ物（`keys`・`msgs` など）は状態なので、src/lib/ の関数としては移さない（状態は段階7b で src/lib/state.ts の入れ物に移す）。
    TypeScript のモジュールは、古い JS より先に読まれる。読んだ時に値を覚える書き方（`const mr=Math.random` など）は、
    テスト用モードの入れ替えより前の値を覚えてしまうので、呼んだ時に読む形にする（`mr = () => Math.random()`）。
 2. `src/game/imports.mjs` に import を足し、src/game/ から元の定義を消す（「〜は src/lib/xx.ts」と1行残す）。
@@ -142,6 +142,9 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
   わざと読む所は、無い時の扱いをその場で書く（`?? 0` など、元と同じ値になる形）。どうしても要る所だけ `oxlint-disable-next-line` と理由。
 - **状態を入れ物に移す（段階7b）**：`node tools/state-move.mjs <入れ物> <名前>…`（`--dry` で一覧だけ）。eslint-scope で、ゲームの状態を指す所だけを
   `入れ物.名前` に書き換え、元の宣言を消す（初めの値は一覧に出るので、src/lib/state.ts の入れ物に書く。入れ物は src/game/imports.mjs で読む）。
+  初めの値が決まった値（数・文字列・true など、それだけでできた配列・オブジェクト、空の `new Set()`・`new Map()`）でない宣言（`Math.random()`・`Math.random` の読み取り・`new Date()` など）は、
+  道具がその場に `入れ物.名前=…;` として残す（TypeScript のモジュールは先に読まれるので、移すと値を作る時と順番が変わる）。
+  丸ごと入れ替えない `const`（`player` など）は、道具を使わず、宣言を state.ts に移して import するだけでよい（名前はそのまま）。
   書き漏れは lint（定義されていない名前）が止める。入れ物の名前は、古い JS の局所の名前とぶつからない物にする（道具が確かめ、lint-game も
   関数の中での宣言し直しを止める。`fx` は座標の `fx` とぶつかったので `vfx` にした）。書き換えた後は、変わった行が「名前に入れ物を付けただけ」か確かめる。
 - 関数の多重定義（同じ名前の function を型ごとに並べる書き方）は使わない。組み立てた JS では1つになり、ソースマップのテストの関数の数が合わなくなる。
@@ -203,7 +206,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 | 03-vaults-history | 歴史の飾り（壁の絵 ARTS）と、冒険の歴史の入れ物（HIST）。洞窟の形と宝物庫の絵は src/lib/vaults.ts、makeHistory は src/lib/history.ts、岩・鉱脈・宝物庫の壁の高さは src/lib/world.ts |
 | 04-generate | 迷宮の生成の包み（generate）：今のゲームの状態から入力を作り、src/lib/generate.ts の generateLevel を呼び、結果（階・主の種類・忘れられた獣）をゲームの状態に入れる |
 | 05-renderer | 描画（シェーダー、水面、文字の図鑑、dyn、粒子の入れ物）。シェーダーの文と入れ物の大きさは src/lib/shaders.ts |
-| 06-world | 世界の状態（D・depth・monsters・player など）、世界の組み立て（buildWorld）。sstep は src/lib/math.ts、CHUNK は src/lib/world.ts、flowW は src/lib/math.ts |
+| 06-world | 世界の状態（D・depth・monsters など。player は src/lib/state.ts）、世界の組み立て（buildWorld）。sstep は src/lib/math.ts、CHUNK は src/lib/world.ts、flowW は src/lib/math.ts |
 | 07-bodies-lords | 生き物の形：人型の見た目（lookHumanoid・extraLook）、主のまわりの気配（不死の王・蜘蛛の女王・ナーガ・竜）。主の形は src/lib/bodies/bosses.ts、古いトロル・古い獣・ゴーレムの形は src/lib/bodies/ |
 | 08-bodies-shadow | 生き物の形：王の影（変身・気配）、深みの主。一つ目の姿と機械の形は src/lib/bodies/lords.ts、二つ目の姿は src/lib/bodies/bosses.ts |
 | 09-bodies-creatures | 生き物の形：人型、リッチ、気配の動き。小さな生き物・四つ足・大きな生き物（オーガ・竜も）・亡霊・幻影の形は src/lib/bodies/ |

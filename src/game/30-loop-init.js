@@ -26,7 +26,7 @@ function tick(raw,draw){
   U.uTime.value=t;
   if(trans){
     trans.t+=dt;
-    if(trans.phase==='out'){ fade=1-trans.t/0.8; if(trans.t>=0.8){ if(trans.regen)runSeed=(Math.random()*1e9)>>>0; else advance(trans.go); newLevel(); trans={phase:'in',t:0}; fade=0; } }
+    if(trans.phase==='out'){ fade=1-trans.t/0.8; if(trans.t>=0.8){ if(trans.regen)adv.runSeed=(Math.random()*1e9)>>>0; else advance(trans.go); newLevel(); trans={phase:'in',t:0}; fade=0; } }
     else { fade=trans.t/1.3; if(trans.t>=1.3){ trans=null; fade=1; } }
   } else fade=Math.min(1,fade+dt*0.8);
   updatePlayer(dt);
@@ -35,7 +35,7 @@ function tick(raw,draw){
   for(const m of monsters)if(!m.galShow&&!m.ty.dummy)updateMonster(m,dt*monTimeK(m),t);
   if(monsters.some(m=>m.dead))monsters=monsters.filter(m=>!m.dead);
   pfFrames++; pfT+=raw; if(pfT>=0.5){ pfFps=Math.round(pfFrames/pfT); pfFrames=0; pfT=0; if(ui.perfOn)renderStatus(); }
-  regrow(); brimRecover(dt); if(!dead){ updateTraps(dt); updateSearch(dt); } updateLife(dt);
+  regrow(); brimRecover(dt); if(!adv.dead){ updateTraps(dt); updateSearch(dt); } updateLife(dt);
   updateLights(t);
   updateAtmosphere(dt);
   dn=0; drawFixtures(t,dt); drawDoors(t,dt); drawFire(t,dt); drawWebs(t); drawTraps(t); drawSwing(); drawViewWeapons(t); drawOmens(t,dt); drawRunesWorld(t); updateAltarPanel(); drawArrows(); drawLegendWorld(t); drawBoltFx(t,dt); drawGallery(t); drawFrozen(t); drawCastFx(t); if(ui.camMode==='tps'&&D&&!gallery){ updateAvatar(dt); drawMonster0(avatar,t); drawSection(); } for(const m of monsters)drawMonster(m,t); flushDyn();
@@ -43,8 +43,8 @@ function tick(raw,draw){
   fovT+=dt; if(fovT>0.1){ fovT=0; computeFOV(); checkEvents(false); look(); stepGas(); stepFire(); }
   mapT+=dt; if(mapT>0.11){ mapT=0; if(ui.uiMode===0)drawMap(); }
   if(helpT>0){ helpT-=dt; if(helpT<=0&&ui.helpOn)setHelp(false); }
-  finalPass.uniforms.uTime.value=t; finalPass.uniforms.uFade.value=clamp(fade,0,1); finalPass.uniforms.uHurt.value=vfx.hurtFlash+(player.hp<PLAYER_MAX*0.25&&!dead?0.18+0.08*Math.sin(t*4):0);
-  if(ui.started&&!trans&&!dead&&!isPaused())pickupItems();
+  finalPass.uniforms.uTime.value=t; finalPass.uniforms.uFade.value=clamp(fade,0,1); finalPass.uniforms.uHurt.value=vfx.hurtFlash+(player.hp<adv.PLAYER_MAX*0.25&&!adv.dead?0.18+0.08*Math.sin(t*4):0);
+  if(ui.started&&!trans&&!adv.dead&&!isPaused())pickupItems();
   if(hands)updateCast(dt);
   updateFinal(dt); updateGallery(dt); trackSeen(dt); updateFrozen(dt); cloudsMeetFire();
   updateCross(raw);
@@ -69,12 +69,12 @@ if(TEST)window.__test={
   frames(n){ if(TESTQ.done)return Promise.reject(new Error('__test.frames: the previous call has not finished'));
     return new Promise(ok=>{ TESTQ.n=Math.max(0,n|0); if(!TESTQ.n)ok(); else TESTQ.done=ok; }); },
   // give every blessing at level n (default 1), so a level-up offers their next level (shown with II)
-  bless(n=1){ for(const k in BLESS)lvl.bless[k]=n; return Object.keys(BLESS).length; },
+  bless(n=1){ for(const k in BLESS)adv.lvl.bless[k]=n; return Object.keys(BLESS).length; },
   // how many columns the panels count for a piece of text (visW)
   width(text){ return visW(text); },
   // a plain copy of what matters, to compare runs
   state(){ const f=v=>+(+v||0).toFixed(3);
-    return {time:f(time),seed:runSeed,place:placeLabel(),depth,started:ui.started,dead,hp:f(player.hp),pos:[f(player.x),f(player.z)],yaw:f(player.yaw),lvl:lvl.n,
+    return {time:f(time),seed:adv.runSeed,place:placeLabel(),depth,started:ui.started,dead:adv.dead,hp:f(player.hp),pos:[f(player.x),f(player.z)],yaw:f(player.yaw),lvl:adv.lvl.n,
       monsters:monsters.map(m=>[m.key,f(m.x),f(m.z),f(m.hp),m.sleep?1:0]),projs:projs.length,
       trans:trans?trans.phase:null,cast:castSt?{h:castSt.h,t:f(castSt.t),need:f(castSt.need),full:castSt.full}:null,recover:f(player.recover),paused:isPaused()}; },
   // hold a weapon (a RUNE_DEF key such as 'blade', 'bolt', 'orb'), and press / release a hand's button ('L' or 'R')
@@ -87,14 +87,14 @@ if(TEST)window.__test={
     ...Object.values(BRANCHES).flatMap(B=>Array.from({length:B.len},(_,i)=>({branch:B.key,lvl:i+1}))), ...Object.values(REALMS).map(R=>({realm:R.key,depth:R.minD+2}))]; },
   // generate one level only (no meshes). It restores where the run is (seed, depth, branch, realm, special level),
   // but not what generate() rewrites (the history HIST, the level random rand, the light tables): use it on a page of its own
-  gen(seed,pl){ const keep={runSeed,depth,branch,realm,inter};
-    try{ runSeed=seed>>>0; branch=null; realm=null; inter=null;
+  gen(seed,pl){ const keep={runSeed:adv.runSeed,depth,branch,realm,inter};
+    try{ adv.runSeed=seed>>>0; branch=null; realm=null; inter=null;
       if(pl.branch){ const B=BRANCHES[pl.branch]; depth=B.at[0]; branch={key:B.key,lvl:pl.lvl||1,len:B.len,ret:depth+1}; }
       else if(pl.inter){ depth=interAt(pl.inter); inter={key:pl.inter,after:depth}; }
       else if(pl.realm){ depth=pl.depth||4; realm={key:pl.realm,ret:depth+1}; }
       else depth=pl.depth;
       const L=generate(levelSeed(),depth); L.place=placeLabel(); L.final=depth===FINAL_DEPTH&&!branch&&!realm&&!inter; return L; }
-    finally{ ({runSeed,depth,branch,realm,inter}=keep); } },
+    finally{ ({runSeed:adv.runSeed,depth,branch,realm,inter}=keep); } },
 };
 
 // ---------------------------------------------------------------- init

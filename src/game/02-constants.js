@@ -66,11 +66,11 @@ const MTYPES={
 // special levels come between depths (they no longer take a depth's place): the town after the stone labyrinth, the great hall within the great cavern,
 // the oracle before the ruins, the abandoned fortress within the lava sea
 let inter=null, showroomGen=false;
-function interAt(key){ const h=Math.imul(runSeed^0x5bd1e995,2654435761)>>>0; return {town:2, bigroom:3+(h&1), oracle:5, fortress:9+((h>>2)&1)}[key]; }
+function interAt(key){ const h=Math.imul(adv.runSeed^0x5bd1e995,2654435761)>>>0; return {town:2, bigroom:3+(h&1), oracle:5, fortress:9+((h>>2)&1)}[key]; }
 function interAfter(d){ for(const k in SPECIALS)if(interAt(k)===d)return k; return null; }
 let branch=null, realm=null;
 let arrive=null, lockCell=-1; const placeMem=new Map();
-const placeKey=()=>`${runSeed}:`+(realm?`r:${realm.key}:${realm.ret}`:branch?`b:${branch.key}:${branch.lvl}`:inter?`i:${inter.key}`:`m:${depth}`);
+const placeKey=()=>`${adv.runSeed}:`+(realm?`r:${realm.key}:${realm.ret}`:branch?`b:${branch.key}:${branch.lvl}`:inter?`i:${inter.key}`:`m:${depth}`);
 function advance(go){
   if(D&&explored)placeMem.set(placeKey(),{explored:explored.slice(),mem:mem.slice()});
   arrive=null;
