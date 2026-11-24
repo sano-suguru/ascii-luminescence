@@ -39,7 +39,7 @@ function updateCritter(m,dt,t,dp){
   if(m.flee>0)m.flee-=dt;
   if(m.wait>0){ m.wait-=dt; if(m.flee>0)m.wait=0;
     // grazing: a moss cell loses its glow
-    if(ty.critter==='grazer'&&m.wait<=0){ const i=m.cz*MW+m.cx; if(here.D.surface[i]===SF_LUMEN&&cellFlag[i]!==30){ cellFlag[i]=30; here.D.surface[i]=SF_GRASS; uploadCells(); } }
+    if(ty.critter==='grazer'&&m.wait<=0){ const i=m.cz*MW+m.cx; if(here.D.surface[i]===SF_LUMEN&&blaze.cellFlag[i]!==30){ blaze.cellFlag[i]=30; here.D.surface[i]=SF_GRASS; uploadCells(); } }
     m.moving+=(0-m.moving)*Math.min(1,dt*5);
   } else {
     const tx=(m.tx+0.5)*CELL, tz=(m.tz+0.5)*CELL, ddx=tx-m.x, ddz=tz-m.z, d=Math.hypot(ddx,ddz);
@@ -63,13 +63,13 @@ function sShriek(x,z){ if(!sndReady())return; const t=SND.ctx.currentTime, o=sOu
     g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.1,t+0.03); g.gain.exponentialRampToValueAtTime(0.001,t+1.0); os.connect(g); g.connect(o); os.start(t); os.stop(t+1.05); } }
 
 // ---------------------------------------------------------------- packs and hunters: spiders and their webs, hounds on your scent, snapjaw camps, ancient machines
-let scent=new Float32Array(NCELL), webMsg=false, webBurnMsg=false, repairMsg=false;
+let webMsg=false, webBurnMsg=false, repairMsg=false;
 function drawWebs(t){
   if(!here.D.webs)return;
   for(const w of here.D.webs){
     if(w.gone)continue;
     const [x,z]=cpos(w.i), dd=Math.hypot(x-player.x,z-player.z); if(dd>30)continue;
-    if(fire[w.i]>0.1){ w.gone=true; for(let q=0;q<30;q++){ const a=mr()*6.28; spawn(x,0.6+mr()*1.6,z,Math.cos(a)*0.6,0.4+mr(),Math.sin(a)*0.6,1+mr(),G(mpick(['*','.','\''])),0.14,2.4,1.2,0.4,0); }
+    if(blaze.fire[w.i]>0.1){ w.gone=true; for(let q=0;q<30;q++){ const a=mr()*6.28; spawn(x,0.6+mr()*1.6,z,Math.cos(a)*0.6,0.4+mr(),Math.sin(a)*0.6,1+mr(),G(mpick(['*','.','\''])),0.14,2.4,1.2,0.4,0); }
       if(!webBurnMsg&&dd<20){ webBurnMsg=true; msg('<b style="color:#ff9a4a">%</b>クモの巣が、ぱちぱちと音を立てて燃え落ちた。'); } continue; }
     const yaw=w.ax===0?Math.PI/2:0, tX=Math.cos(yaw), tZ=-Math.sin(yaw), sh=0.85+0.15*Math.sin(t*1.3+w.i), k=(w.shake>0?1.8:1)*sh;
     if(w.shake>0)w.shake-=1/60;
@@ -89,7 +89,7 @@ function webTouch(i){
 // hounds follow the freshest scent; water washes it away
 function houndScent(m){
   let best=null, bs=clock.time-40;
-  for(const d of D4){ const i=(m.cz+d[1])*MW+m.cx+d[0]; if(!canStep(m,i))continue; if(scent[i]>0&&scent[i]>bs){bs=scent[i];best=d;} } // 0 is a cell with no scent (in the first 40 s, bs is below 0)
+  for(const d of D4){ const i=(m.cz+d[1])*MW+m.cx+d[0]; if(!canStep(m,i))continue; if(blaze.scent[i]>0&&blaze.scent[i]>bs){bs=blaze.scent[i];best=d;} } // 0 is a cell with no scent (in the first 40 s, bs is below 0)
   return best;
 }
 function machineWork(m,dt){
@@ -101,8 +101,8 @@ function machineWork(m,dt){
       m.work=(m.work||0)+dt; m.moving=0;
       if(mr()<dt*10)spawn(jx+(mr()-0.5)*0.4,0.3+mr()*0.6,jz+(mr()-0.5)*0.4,(mr()-0.5)*0.8,0.6+mr(),(mr()-0.5)*0.8,0.5,G(mpick(['*','.','+'])),0.1,ty.col[0]*2,ty.col[1]*2,ty.col[2]*2,0);
       if(m.work>(ty.critter==='engineer'?3:1.8)){
-        if(ty.critter==='engineer'){ const d=here.D.doors[m.job]; if(!d.gone){ m.job=-1; m.work=0; return true; } d.gone=false; d.o=0; fuel[d.i]=1.4; burnt[d.i]=0; uploadCells(); if(!repairMsg&&m.visible){ repairMsg=true; msg(`<b style="color:${css(ty.col)}">R</b>${mname(m)}が、焼け落ちた扉を黙々と作り直した。`); } }
-        else { burnt[m.job]=0; fire[m.job]=0; uploadCells(); }
+        if(ty.critter==='engineer'){ const d=here.D.doors[m.job]; if(!d.gone){ m.job=-1; m.work=0; return true; } d.gone=false; d.o=0; blaze.fuel[d.i]=1.4; blaze.burnt[d.i]=0; uploadCells(); if(!repairMsg&&m.visible){ repairMsg=true; msg(`<b style="color:${css(ty.col)}">R</b>${mname(m)}が、焼け落ちた扉を黙々と作り直した。`); } }
+        else { blaze.burnt[m.job]=0; blaze.fire[m.job]=0; uploadCells(); }
         m.job=-1; m.work=0;
       }
       return true;
@@ -111,7 +111,7 @@ function machineWork(m,dt){
   }
   if(clock.time-(m.scanT||-9)<1.5)return false; m.scanT=clock.time;
   if(ty.critter==='engineer'){ let bi=-1,bd=1e9; here.D.doors.forEach((d,k)=>{ if(!d.gone)return; const dd=Math.hypot(d.bx-m.x,d.bz-m.z); if(dd<bd&&dd<40){bd=dd;bi=k;} }); m.job=bi; }
-  else { let bi=-1,bd=1e9; for(let dz=-10;dz<=10;dz++)for(let dx=-10;dx<=10;dx++){ const x=m.cx+dx, z=m.cz+dz; if(x<0||z<0||x>=MW||z>=MH)continue; const i=z*MW+x; if(!burnt[i]&&!(fire[i]>0.1))continue; if(here.D.tile[i]!==TF)continue; const dd=Math.abs(dx)+Math.abs(dz); if(dd<bd){bd=dd;bi=i;} } m.job=bi; }
+  else { let bi=-1,bd=1e9; for(let dz=-10;dz<=10;dz++)for(let dx=-10;dx<=10;dx++){ const x=m.cx+dx, z=m.cz+dz; if(x<0||z<0||x>=MW||z>=MH)continue; const i=z*MW+x; if(!blaze.burnt[i]&&!(blaze.fire[i]>0.1))continue; if(here.D.tile[i]!==TF)continue; const dd=Math.abs(dx)+Math.abs(dz); if(dd<bd){bd=dd;bi=i;} } m.job=bi; }
   return false;
 }
 function sHowl(x,z){ if(!sndReady())return; const t=SND.ctx.currentTime, o=sOut(x,z,0.45), os=SND.ctx.createOscillator(), g=SND.ctx.createGain(), lfo=SND.ctx.createOscillator(), lg=SND.ctx.createGain();
@@ -204,7 +204,7 @@ function updateMonster(m,dt,t){
   if(ty.form==='bloat'&&((dp<1.4&&!m.sleep)||fireNear(m.cx,m.cz,1)>=0)){
     m.dead=true;
     for(const d of [[0,0],...D4,[1,1],[-1,1],[1,-1],[-1,-1]]){ const i=(m.cz+d[1])*MW+m.cx+d[0]; if(i>=0&&i<NCELL&&here.D.tile[i]!==TW)here.D.gas[i]=Math.min(1,here.D.gas[i]+0.95); }
-    gasAny=true;
+    blaze.gasAny=true;
     for(let q=0;q<26;q++){ const a=mr()*6.28, e2=(mr()-0.3)*1.2; spawn(m.x,m.y,m.z,Math.cos(a)*1.6,e2,Math.sin(a)*1.6,1+mr(),G(mpick(['o','.','*','~'])),0.16,c[0]*1.6,c[1]*1.6,c[2]*1.6,1); }
     sBubble(m.x,m.z,0.5,true); sSplash(0.2);
     msg(`<b style="color:${css(c)}">b</b>${mname(m)}が弾け、腐食性のガスが広がった。`);
@@ -229,10 +229,10 @@ function updateMonster(m,dt,t){
   }
   monsterStrike(m,dt,dp); if(m.hitT>0)m.hitT-=dt;
   if(ty.heavy&&!m.sleep&&m.moving>0.4&&dp<16){ m.stepT=(m.stepT||0)+dt*m.moving*ty.speed*1.6; if(m.stepT>1){ m.stepT=0; vfx.shake=Math.max(vfx.shake,0.12*(1-dp/16)); sRumble(0.12*(1-dp/16),0.4); } }
-  if(ty.habitat==='lava'&&m.moving>0.5){ const ci=m.cz*MW+m.cx; if(!here.D.liquid[ci]&&fuel[ci]>0&&fire[ci]<=0&&mr()<dt*0.8)ignite(ci,0.5,false); }
-  if(ty.hound&&m.moving>0.5){ const ci=m.cz*MW+m.cx; if(ty.hound==='fire'&&fuel[ci]>0&&fire[ci]<=0&&mr()<dt*0.4)ignite(ci,0.4,false); if(ty.hound==='ice'&&fire[ci]>0)fire[ci]=0; }
+  if(ty.habitat==='lava'&&m.moving>0.5){ const ci=m.cz*MW+m.cx; if(!here.D.liquid[ci]&&blaze.fuel[ci]>0&&blaze.fire[ci]<=0&&mr()<dt*0.8)ignite(ci,0.5,false); }
+  if(ty.hound&&m.moving>0.5){ const ci=m.cz*MW+m.cx; if(ty.hound==='fire'&&blaze.fuel[ci]>0&&blaze.fire[ci]<=0&&mr()<dt*0.4)ignite(ci,0.4,false); if(ty.hound==='ice'&&blaze.fire[ci]>0)blaze.fire[ci]=0; }
   if(ty.beast&&!m.sleep){
-    if(ty.spec.fire){ const ci=m.cz*MW+m.cx; if(fuel[ci]>0&&fire[ci]<=0)ignite(ci,0.5,false); }
+    if(ty.spec.fire){ const ci=m.cz*MW+m.cx; if(blaze.fuel[ci]>0&&blaze.fire[ci]<=0)ignite(ci,0.5,false); }
     if(ty.spec.sing&&dp<22&&mr()<dt*0.5)sChime(m.x,m.z,0.35);
   }
   if(dp<30&&ty.trail){

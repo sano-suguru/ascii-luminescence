@@ -10,8 +10,8 @@ function makeMonster(s){
   if(ty.conj){ m.blades=[0,1,2].map(k=>({a:k*2.094,x:m.x,y:1.5,z:m.z})); m.bladeMsg=false; }
   return m;
 }
-const fireAt=i=>i>=0&&i<NCELL&&fire[i]>0.1;
-function fireNear(cx,cz,r){ let best=-1,bd=1e9; for(const i of burning){ if(fire[i]<=0.1)continue; const dx=i%MW-cx, dz=((i/MW)|0)-cz, d=Math.max(Math.abs(dx),Math.abs(dz)); if(d<=r&&d<bd){bd=d;best=i;} } return best; }
+const fireAt=i=>i>=0&&i<NCELL&&blaze.fire[i]>0.1;
+function fireNear(cx,cz,r){ let best=-1,bd=1e9; for(const i of blaze.burning){ if(blaze.fire[i]<=0.1)continue; const dx=i%MW-cx, dz=((i/MW)|0)-cz, d=Math.max(Math.abs(dx),Math.abs(dz)); if(d<=r&&d<bd){bd=d;best=i;} } return best; }
 let fleeMsgT=-10;
 const canStep=(m,i)=>(m.ty.habitat==='lava'||!fireAt(i))&&!(here.D.glyph&&here.D.glyph[i]&&!m.ty.critter)&&!(here.D.gate&&here.D.gate.o<0.7&&i===here.D.gate.cell)&&(m.home===undefined||here.D.roomOf[i]===m.home)&&(m.ty.habitat==='bog'?(here.D.tile[i]===TF&&here.D.liquid[i]===LQ_BOG):m.ty.habitat==='deep'?(here.D.tile[i]===TF&&here.D.liquid[i]===LQ_DEEP):m.ty.habitat==='amph'?(here.D.tile[i]===TF&&!here.D.solid.has(i)&&here.D.liquid[i]!==LQ_LAVA&&here.D.liquid[i]!==LQ_BOG):m.ty.habitat==='lava'?(here.D.tile[i]===TF&&!here.D.solid.has(i)&&here.D.liquid[i]!==LQ_DEEP&&here.D.liquid[i]!==LQ_WATER):m.ty.aquatic?(here.D.tile[i]===TF&&(here.D.liquid[i]===LQ_WATER||here.D.liquid[i]===LQ_DEEP)):m.ty.form==='eel'?(here.D.tile[i]===TF&&here.D.liquid[i]===LQ_DEEP):(here.D.tile[i]===TF&&!blocksWalk(here.D.liquid[i])&&!here.D.solid.has(i)));
 function chooseNext(m){

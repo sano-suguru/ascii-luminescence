@@ -197,6 +197,48 @@ export interface Gear {
 }
 export const gear: Gear = { hands: null, bag: [], castSt: null, swapSt: null, builds: [null, null], buildIdx: -1 };
 
+/** 投げた火花（火打ち石。当たった所に火がつく） */
+export interface Spark {
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  t: number;
+}
+/** 火と地面のマス（マスごとの火・燃える物・灰・印・火の明かり・匂い）と、燃えているマスの一覧・ガス・投げた火花。階に入るたびに作り直す（火・燃える物・灰・印・明かりと燃えているマスは 15-sound-fire.js の initFire、匂い・ガス・火花は 18-level-player.js の newLevel） */
+export interface Blaze {
+  /** マスごとの火の強さ */
+  fire: Float32Array;
+  /** マスごとの燃える物の量 */
+  fuel: Float32Array;
+  /** 燃え尽きた灰の印 */
+  burnt: Uint8Array;
+  /** マスごとの印（苔を食べた跡など） */
+  cellFlag: Uint8Array;
+  /** マスごとの火の明かり */
+  fireLight: Float32Array;
+  /** プレイヤーの匂い（付いた時のゲームの時刻。0は匂い無し。猟犬が追う） */
+  scent: Float32Array;
+  /** 燃えているマスの一覧 */
+  burning: number[];
+  /** どこかにガスがあるか */
+  gasAny: boolean;
+  spark: Spark | null;
+}
+export const blaze: Blaze = {
+  fire: new Float32Array(NCELL),
+  fuel: new Float32Array(NCELL),
+  burnt: new Uint8Array(NCELL),
+  cellFlag: new Uint8Array(NCELL),
+  fireLight: new Float32Array(NCELL),
+  scent: new Float32Array(NCELL),
+  burning: [],
+  gasAny: false,
+  spark: null,
+};
+
 /** 階を移る途中（out：暗くなって出ていく、in：明るくなって入る。go は行き先の種類） */
 export interface Trans {
   phase: 'out' | 'in';
@@ -231,6 +273,10 @@ export interface Here {
   fovVis: Uint32Array;
   /** 見えるマスを数え直すたびに増える印 */
   fovStamp: number;
+  /** 部屋の出来事（神託・転移・噴き出し・像・崩れ・水攻め・霊など）。型は、出来事の処理を移す時に作る */
+  events: unknown[];
+  /** 川のマスの一覧 */
+  riverCells: number[];
 }
 export const here: Here = {
   monsters: [],
@@ -248,6 +294,8 @@ export const here: Here = {
   mem: new Float32Array(NCELL * 3),
   fovVis: new Uint32Array(NCELL),
   fovStamp: 1,
+  events: [],
+  riverCells: [],
 };
 /** 行った階の覚え（場所の名前 → 見えた所と覚えた色の写し）。丸ごと入れ替えないので、古い JS は今までどおり placeMem で読む */
 export const placeMem = new Map<string, { explored: Uint8Array; mem: Float32Array }>();

@@ -132,7 +132,7 @@ function meleeCast(sp,dir){
   const lL=0; if(lL){ const hx=vx, hz=vz, hl=Math.hypot(hx,hz)||1, dist=[0,0.8,1.1,1.1,1.5,1.5][lL];
     player.lunge={t:0,dur:0.14,dx:hx/hl,dz:hz/hl,sp:dist/0.14}; if(lL>=5&&clock.time>(player.invCd||0)){ player.invulT=clock.time+0.25; player.invCd=clock.time+1.2; }
     if(lL>=3)for(const m of here.monsters){ if(!hittable(m))continue; const ax=m.x-player.x, az=m.z-player.z, dd=Math.hypot(ax,az); if(dd<reach+0.6&&(ax*hx+az*hz)/Math.max(0.01,dd*hl)>0.6){ const v=6/Math.max(0.5,(m.ty.scale||1)); m.kx=(m.kx||0)+ax/dd*v; m.kz=(m.kz||0)+az/dd*v; m.st=m.st||{}; } } }
-  if(sp.elem){ const fx=player.x+vx*1.5, fz=player.z+vz*1.5, ci=Math.floor(fz/CELL)*MW+Math.floor(fx/CELL); if(sp.elem!=='fire'||doorBlock(ci)||fuel[ci]>0)landElem(sp,fx,0.3,fz,ci); }
+  if(sp.elem){ const fx=player.x+vx*1.5, fz=player.z+vz*1.5, ci=Math.floor(fz/CELL)*MW+Math.floor(fx/CELL); if(sp.elem!=='fire'||doorBlock(ci)||blaze.fuel[ci]>0)landElem(sp,fx,0.3,fz,ci); }
 }
 // the light beam: a ray each tick, reflecting off walls when it has bounces
 const beamHold={L:{hold:0,last:-9,sear:-9,burst:-9},R:{hold:0,last:-9,sear:-9,burst:-9}};
@@ -331,7 +331,7 @@ function drawZones(t){ for(const mk of marks){ const n=mk.star?14:18, b=0.6+0.4*
 function burstFire(i,r,str){
   const cx=i%MW, cz=(i/MW)|0, rr=Math.ceil(r);
   for(let dz=-rr;dz<=rr;dz++)for(let dx=-rr;dx<=rr;dx++){ if(Math.hypot(dx,dz)>r)continue; const x=cx+dx, z=cz+dz; if(x<0||z<0||x>=MW||z>=MH)continue; const j=z*MW+x; const tt=here.D.tile[j]; if(tt===TW||tt===TC||here.D.liquid[j]===LQ_WATER||here.D.liquid[j]===LQ_DEEP)continue;
-    fuel[j]=Math.max(fuel[j],0.5); ignite(j,str,false); if(here.D.gas[j]>0.1)boom(j); }
+    blaze.fuel[j]=Math.max(blaze.fuel[j],0.5); ignite(j,str,false); if(here.D.gas[j]>0.1)boom(j); }
 }
 function viewDir(){ const cp=Math.cos(player.pitch); return [-Math.sin(player.yaw)*cp,Math.sin(player.pitch),-Math.cos(player.yaw)*cp]; }
 let projs=[];

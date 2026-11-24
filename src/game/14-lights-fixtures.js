@@ -40,7 +40,7 @@ function cellLight(x,z){
   const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL); if(cx<0||cz<0||cx>=MW||cz>=MH)return _cl;
   const o=(cz*MW+cx)*3;
   for(let k=0;k<3;k++){ const id=here.D.cellLI[o+k]; if(id<0)break; const L=here.D.lights[id], w=here.D.cellLW[o+k]*L.int*L.f; _cl[0]+=L.col[0]*w; _cl[1]+=L.col[1]*w; _cl[2]+=L.col[2]*w; }
-  const fl=fireLight[cz*MW+cx]; if(fl>0){ _cl[0]+=fl*2.2; _cl[1]+=fl*0.99; _cl[2]+=fl*0.26; }
+  const fl=blaze.fireLight[cz*MW+cx]; if(fl>0){ _cl[0]+=fl*2.2; _cl[1]+=fl*0.99; _cl[2]+=fl*0.26; }
   return _cl;
 }
 // LANTERN は src/lib/light.ts（src/game/imports.mjs で読む）
@@ -60,8 +60,8 @@ function updateLights(t){
   const list=here.monsters.filter(m=>m.ty.light>0&&!m.ty.invisible&&(m.ty.form!=='eel'||m.surf>0)).map(m=>[(m.x-player.x)**2+(m.z-player.z)**2,m]).sort((a,b)=>a[0]-b[0]);
   const flOn=vfx.zapFlash&&vfx.zapFlash.t>0;
   if(flOn){ const s5=(NDL-1), k5=vfx.zapFlash.t>900?1:Math.min(1,vfx.zapFlash.t/0.16); DLP[s5*4]=vfx.zapFlash.x; DLP[s5*4+1]=vfx.zapFlash.y; DLP[s5*4+2]=vfx.zapFlash.z; DLP[s5*4+3]=(vfx.zapFlash.r||6); DLC[s5*3]=vfx.zapFlash.col[0]*3*k5; DLC[s5*3+1]=vfx.zapFlash.col[1]*3*k5; DLC[s5*3+2]=vfx.zapFlash.col[2]*3*k5; }
-  else if(spark){ const s5=(NDL-1); DLP[s5*4]=spark.x; DLP[s5*4+1]=spark.y; DLP[s5*4+2]=spark.z; DLP[s5*4+3]=5; DLC[s5*3]=2.4; DLC[s5*3+1]=1.3; DLC[s5*3+2]=0.4; }
-  for(let k=0;k<NDL-((spark||flOn)?2:1)&&k<list.length;k++){
+  else if(blaze.spark){ const s5=(NDL-1); DLP[s5*4]=blaze.spark.x; DLP[s5*4+1]=blaze.spark.y; DLP[s5*4+2]=blaze.spark.z; DLP[s5*4+3]=5; DLC[s5*3]=2.4; DLC[s5*3+1]=1.3; DLC[s5*3+2]=0.4; }
+  for(let k=0;k<NDL-((blaze.spark||flOn)?2:1)&&k<list.length;k++){
     const m=list[k][1], s=k+1, ty=m.ty;
     DLP[s*4]=m.x; DLP[s*4+1]=m.y+(ty.fl?0:0.9); DLP[s*4+2]=m.z; DLP[s*4+3]=ty.light*(1+m.alert*0.3);
     const pulse=(0.85+0.15*Math.sin(t*2.3+m.ph))*0.8*m.glow;
