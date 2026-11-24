@@ -119,12 +119,12 @@ function applyBuild(k){
 }
 function startSwap(prev){
   if(nearStele()){ sChime(player.x,player.z,0.3); for(let q=0;q<16;q++){ const a=mr()*6.28; spawn(player.x+Math.cos(a)*0.7,0.4+mr()*1.2,player.z+Math.sin(a)*0.7,0,0.6,0,0.7,G('.'),0.1,0.8,1.1,1.6,0); } return; }
-  gear.swapSt={t:0,dur:1.5,snap:prev,last:-1}; gear.castSt=null; beamSegs=[];
+  gear.swapSt={t:0,dur:1.5,snap:prev,last:-1}; gear.castSt=null; fight.beamSegs=[];
 }
 function setInv(on){
   if(on===ui.invOpen)return;
   ui.invOpen=on; document.body.classList.toggle('paused',isPaused()); const el=document.getElementById('pack'); if(!el)return; el.classList.toggle('show',on);
-  if(on){ packSnap={key:handsKey(),snap:snapHands()}; packSel=null; packHover=null; if(gear.castSt){ gear.castSt=null; beamSegs=[]; } renderInv(); if(ui.locked&&document.exitPointerLock)document.exitPointerLock(); }
+  if(on){ packSnap={key:handsKey(),snap:snapHands()}; packSel=null; packHover=null; if(gear.castSt){ gear.castSt=null; fight.beamSegs=[]; } renderInv(); if(ui.locked&&document.exitPointerLock)document.exitPointerLock(); }
   else { if(packSnap&&packSnap.key!==handsKey())startSwap(packSnap.snap); packSnap=null; if(!plFailed&&ui.started&&!adv.dead)tryLock(); }
   updateResume(); renderHotbar();
 }

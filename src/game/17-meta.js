@@ -55,7 +55,7 @@ document.getElementById('intropanel').addEventListener('click',e=>{
   if(/^[0-9]{1,10}$/.test(sv)){ const n=Number(sv)>>>0; if(n!==adv.runSeed){ adv.runSeed=n; regen=true; } }
   if(startDepth!==here.depth){ here.depth=startDepth; regen=true; }
   if(regen){ here.branch=null; here.realm=null; here.inter=null; }
-  rains=[]; marks=[]; zones=[]; laters=[];
+  fight.rains=[]; fight.marks=[]; fight.zones=[]; fight.laters=[];
   adv.dead=false; { const de=document.getElementById('death'); if(de)de.classList.remove('show','won'); }
   adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:clock.time,maxDepth:here.depth,book0:BOOK.size,beastsNew:0}; resetRunes();
   if(regen)newLevel();
