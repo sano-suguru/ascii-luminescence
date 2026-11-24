@@ -2,7 +2,8 @@
 // 古い JS は src/game/imports.mjs で入れ物を読み、vfx.shake のように欄で読み書きする（入れ物そのものは差し替えない）。
 // 移す時は tools/state-move.mjs を使う（同じ名前の局所の変数は書き換えない）。初めの値は、古い JS の宣言のまま。
 // 入れ物の名前は、古い JS の局所の名前とぶつからない物にする（道具が確かめる。fx は座標の fx とぶつかるので vfx にした）。
-import { type BranchPlace, type InterPlace, type Level, type RealmPlace } from './generate.ts';
+import { type MonsterType } from './creatures.ts';
+import { type BranchPlace, type Fixture, type InterPlace, type Level, type RealmPlace } from './generate.ts';
 import { META_DEF, type Meta } from './progress.ts';
 import { type Rune } from './runes.ts';
 import { NCELL } from './world.ts';
@@ -370,16 +371,22 @@ export interface Trans {
   regen?: boolean;
   go?: string;
 }
+/** 階の生き物（位置と種類） */
+export interface Monster {
+  x: number;
+  z: number;
+  ty: MonsterType;
+}
 /** 今いる場所と、階の中身。深さ・支道・異界・特別な階、生き物、灯りの備品、階を移る途中、着いた所 */
 export interface Here {
-  /** 階の生き物。生き物の型は、生き物の処理を移す時に作る */
-  monsters: unknown[];
+  /** 階の生き物（型は、TypeScript が読む欄だけ。ほかの欄は、生き物の処理を移す時に足す） */
+  monsters: Monster[];
   depth: number;
   branch: BranchPlace | null;
   realm: RealmPlace | null;
   inter: InterPlace | null;
-  /** 灯りの備品。型は、備品の処理を移す時に作る */
-  fixtures: unknown[];
+  /** 灯りの備品（今の階の here.D.fixtures と同じ物） */
+  fixtures: Fixture[];
   trans: Trans | null;
   /** 着いた所（'stairs'・'portal' など。普通に入った時は null） */
   arrive: string | null;
@@ -453,8 +460,26 @@ export const saved: Saved = {
   LEGEND: null,
 };
 
+/** 鳴り続ける雑音（大きさ g と、濾す部品 f） */
+export interface SoundLoop {
+  g: GainNode;
+  f: BiquadFilterNode;
+}
+/** 鳴り続ける低い音（大きさ g と、3つの波 o） */
+export interface DroneLoop {
+  g: GainNode;
+  o: OscillatorNode[];
+}
+/** 鳴り続ける音の一覧（音の部品を作るまでは空） */
+export interface SoundLoops {
+  rumble?: SoundLoop;
+  water?: SoundLoop;
+  fire?: SoundLoop;
+  wind?: SoundLoop;
+  drone?: DroneLoop;
+}
 /** 音（音量の段 lv・音の仕組み ctx と、その部品・鳴り続ける音 L・まわりの音の様子 env）。丸ごと入れ替えないので、古い JS は今までどおり SND.lv のように読む。
- * 部品は、最初に音を鳴らす時（15-sound-fire.js の sndInit）に作る */
+ * 部品は、最初に音を鳴らす時（src/lib/audio.ts の sndInit）に作る */
 export interface SoundState {
   /** 音量の段（src/lib/sound.ts の SND_LV の番号） */
   lv: number;
@@ -464,8 +489,8 @@ export interface SoundState {
   inp: GainNode | null;
   wet: GainNode | null;
   noise: AudioBuffer | null;
-  /** 鳴り続ける音（地鳴り・水・火・風・低い音）。型は、音の処理を移す時に作る */
-  L: Record<string, unknown>;
+  /** 鳴り続ける音（地鳴り・水・火・風・低い音）。src/lib/audio.ts の sndInit が作る */
+  L: SoundLoops;
   /** まわりの音の様子を数え直すまでの秒 */
   envT: number;
   /** まわりの音の様子（水・溶岩・崖・沼・水晶・燃えている所・火の強さと位置・洞窟か・滝の近さ）。sndUpdate が数え直す。

@@ -69,6 +69,9 @@ import { DUST_N, DYN_MAX, DYN_VS, GAS_N, GLYPH_FS, P0, PT_FS, PT_TOTAL, PT_VS, P
 import { ALTAR_W, BAG_LINES, LIGHT_COLS, LIGHT_NAMES, MARK_H, MCH, MCW, MMC, MMR, MPAD, PACK_SLOT, PACK_W, tone } from '../lib/hud.ts';
 import { AVATAR_TY, BRANCH_HINT, DECO_K, DECO_NAMES, DUMMY_KINDS, FIX_NAMES, LEGEND_KINDS, LEGEND_ORDER, LORD_GAL, TRAP_INFO, lookLine, mname } from '../lib/names.ts';
 import { CHANT_STEPS, SND_LV, SND_NAME, VOWELS, sEnv } from '../lib/sound.ts';
+import {
+  sAlert, sBoom, sBubble, sChime, sCrackleBurst, sCreak, sDist, sDrip, sHiss, sNoise, sOut, sRoar, sRumble, sSplash, sSqueak, sTone, sWhoosh, sndInit, sndReady, sndUpdate,
+} from '../lib/audio.ts';
 // three.js（r147）。npm の three から読んで、組み立てに入れる（前は CDN の <script> で、ページ全体の THREE に入っていた）。
 // 光のにじみなどの部品（examples/jsm）は、古い JS が T.EffectComposer などで使うので、00-test-mode.js で T に一緒に入れる
 import * as THREE from 'three';
