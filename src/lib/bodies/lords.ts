@@ -565,7 +565,8 @@ export function beastSleep(form: readonly Glyph[], ty: { spec: { plan: string } 
 export function makeBeastType(H: History, runSeed: number) {
   const sp = H.beastSpec,
     rnd = mulberry32((runSeed ^ 0x1234567) >>> 0);
-  const plan = ({ 獣: 'quad', 竜: 'quad', 大蛇: 'serpent', 蛾: 'moth', 百足: 'centipede' } as Record<string, string>)[sp.kind] || 'quad';
+  const PLANS: Record<string, string> = { 獣: 'quad', 竜: 'quad', 大蛇: 'serpent', 蛾: 'moth', 百足: 'centipede' };
+  const plan = PLANS[sp.kind] || 'quad';
   const spec = {
     plan,
     kind: sp.kind,

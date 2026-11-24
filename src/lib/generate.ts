@@ -4,6 +4,7 @@
 //   env：まだ古い JS にある物（生き物の表 MTYPES は読むだけ、ルーンを作る makeRune・rollTraits）
 //   結果：階（level）と、その階の主の種類（lordType）・忘れられた獣（beastType）。生き物の表への書き込みは、古い JS の包み（generate）が行う
 // 迷宮の乱数（setRand）とノイズの種（setNoiseSeed）は、ここで階のシードから入れ替える。
+import { lookup, nth } from './array.ts';
 import { type Light, computeVis, topLights } from './light.ts';
 import { R, RI, pick, rand, setRand, shuffle } from './random.ts';
 import { clamp, mulberry32 } from './rng.ts';
@@ -321,6 +322,33 @@ export interface LordType {
   readonly [k: string]: unknown;
 }
 
+/**
+ * 部屋を作る。必須の欄（床のマス cells、深い水 deep などの中の配列）をすべてそろえて作る。
+ * 中心 cx・cy は四角の真ん中。more は、宝物庫の印・テーマ・廃墟の種類など部屋ごとの欄（同じ名前なら more が勝つ）
+ */
+function newRoom(x: number, y: number, w: number, h: number, shape: string, more: Partial<Room> = {}): Room {
+  return {
+    x,
+    y,
+    w,
+    h,
+    shape,
+    cx: x + (w >> 1),
+    cy: y + (h >> 1),
+    theme: null,
+    cells: [],
+    cave: false,
+    chasm: [],
+    lava: [],
+    mush: [],
+    deep: [],
+    bog: [],
+    xtal: [],
+    clusters: [],
+    ...more,
+  };
+}
+
 export function generateLevel(seed: number, depth: number, input: GenInput, env: GenEnv) {
   const { runSeed, branch, realm, inter, showroom, hist: HIST, trials, weapons } = input,
     { MTYPES, makeRune, rollTraits } = env;
@@ -407,34 +435,17 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
           h = bh - 4;
         if (w < 5 || h < 4 || x + w > UW - 1 || y + h > UH - 1) continue;
         if (normals.length > 0 && rand() < 0.08) continue;
-        normals.push({
-          x,
-          y,
-          w,
-          h,
-          shape: 'rect',
-          cx: x + (w >> 1),
-          cy: y + (h >> 1),
-          theme: null,
-          cells: [],
-          cave: false,
-          chasm: [],
-          lava: [],
-          mush: [],
-          ruin: true,
-          fort,
-          rkind: normals.length === 0 ? 'hall' : pick(KINDS),
-          rh: Math.round((fort ? R(4.4, 5.6) : R(6.4, 10)) / 0.4) * 0.4,
-        } as Partial<Room> as Room);
+        normals.push(
+          newRoom(x, y, w, h, 'rect', {
+            ruin: true,
+            fort,
+            rkind: normals.length === 0 ? 'hall' : pick(KINDS),
+            rh: Math.round((fort ? R(4.4, 5.6) : R(6.4, 10)) / 0.4) * 0.4,
+          }),
+        );
       }
     rooms = normals;
     caves = [];
-    rooms.forEach((r) => {
-      r.deep = [];
-      r.bog = [];
-      r.xtal = [];
-      r.clusters = [];
-    });
     rooms.forEach((r, ri) => {
       for (let yy = r.y; yy < r.y + r.h; yy++)
         for (let xx = r.x; xx < r.x + r.w; xx++) {
@@ -495,31 +506,11 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       { x: 2, y: cyM - 3, w: 7, h: 7 },
       { x: 12, y: 3, w: UW - 24, h: UH - 6 },
       { x: UW - 9, y: cyM - 3, w: 7, h: 7 },
-    ].map(
-      (r) =>
-        ({
-          ...r,
-          shape: 'rect',
-          cx: r.x + (r.w >> 1),
-          cy: r.y + (r.h >> 1),
-          theme: null,
-          cells: [],
-          cave: false,
-          chasm: [],
-          lava: [],
-          mush: [],
-        }) as Partial<Room> as Room,
-    );
+    ].map((r) => newRoom(r.x, r.y, r.w, r.h, 'rect'));
     (normals[1] as Room).special = true;
     (normals[1] as Room).kindMsg = town ? '' : '天井の高みまで、無数の灯が整然と並んでいる。';
     rooms = normals;
     caves = [];
-    rooms.forEach((r) => {
-      r.deep = [];
-      r.bog = [];
-      r.xtal = [];
-      r.clusters = [];
-    });
     rooms.forEach((r, ri) => {
       const rh = ri === 1 ? (town ? 8 : 10.4) : 3.6;
       for (let yy = r.y; yy < r.y + r.h; yy++)
@@ -573,20 +564,14 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         if (overlaps(caves, x, y, w, h, 3)) continue;
         const loc = makeCave(w, h);
         if (!loc) continue;
-        caves.push({
-          x,
-          y,
-          w,
-          h,
-          shape: 'cave',
-          cave: true,
-          cells0: loc.map((li) => (y + ((li / w) | 0)) * W + x + (li % w)),
-          theme: (BIOMES as Record<string, Theme>)[bk[c] as string],
-          cells: [],
-          chasm: [],
-          lava: [],
-          mush: [],
-        } as Partial<Room> as Room);
+        // 中心 cx・cy は仮（四角の真ん中）。下で、床の重心に近いマスに置き直す
+        caves.push(
+          newRoom(x, y, w, h, 'cave', {
+            cave: true,
+            cells0: loc.map((li) => (y + ((li / w) | 0)) * W + x + (li % w)),
+            theme: lookup(BIOMES, nth(bk, c)),
+          }),
+        );
         break;
       }
     }
@@ -598,24 +583,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         h = ov.map.length + 4,
         x = (UW - w) >> 1,
         y = (UH - h) >> 1;
-      if (!overlaps(caves, x, y, w, h, 1))
-        vRooms.push({
-          x,
-          y,
-          w,
-          h,
-          shape: 'rect',
-          cx: x + (w >> 1),
-          cy: y + (h >> 1),
-          theme: null,
-          cells: [],
-          cave: false,
-          chasm: [],
-          lava: [],
-          mush: [],
-          vaultPref: true,
-          forceVault: ov,
-        } as Partial<Room> as Room);
+      if (!overlaps(caves, x, y, w, h, 1)) vRooms.push(newRoom(x, y, w, h, 'rect', { vaultPref: true, forceVault: ov }));
     }
     {
       const vo = VAULTS.filter((v) => v.strata.includes('maze') && depth >= v.minD),
@@ -627,22 +595,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
           x = RI(1, UW - w - 1),
           y = RI(1, UH - h - 1);
         if (overlaps(vRooms, x, y, w, h, 2) || overlaps(caves, x, y, w, h, 2)) continue;
-        vRooms.push({
-          x,
-          y,
-          w,
-          h,
-          shape: 'rect',
-          cx: x + (w >> 1),
-          cy: y + (h >> 1),
-          theme: null,
-          cells: [],
-          cave: false,
-          chasm: [],
-          lava: [],
-          mush: [],
-          vaultPref: true,
-        } as Partial<Room> as Room);
+        vRooms.push(newRoom(x, y, w, h, 'rect', { vaultPref: true }));
       }
     }
     // ordinary rooms
@@ -655,30 +608,10 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       if (overlaps(normals, x, y, w, h, 2) || overlaps(caves, x, y, w, h, 2) || overlaps(vRooms, x, y, w, h, 2)) continue;
       const s = rand();
       const shape = s < 0.2 ? 'ellipse' : s < 0.32 && w >= 7 && h >= 7 ? 'cross' : 'rect';
-      normals.push({
-        x,
-        y,
-        w,
-        h,
-        shape,
-        cx: x + (w >> 1),
-        cy: y + (h >> 1),
-        theme: null,
-        cells: [],
-        cave: false,
-        chasm: [],
-        lava: [],
-        mush: [],
-      } as Partial<Room> as Room);
+      normals.push(newRoom(x, y, w, h, shape));
     }
     normals = normals.concat(vRooms);
     rooms = normals.concat(caves);
-    rooms.forEach((r) => {
-      r.deep = [];
-      r.bog = [];
-      r.xtal = [];
-      r.clusters = [];
-    });
     rooms.forEach((r, ri) => {
       if (r.cave) {
         let sx = 0,
@@ -1234,7 +1167,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       let r0 = rand() * tot;
       for (const k in cw) {
         r0 -= cw[k] as number;
-        if (r0 <= 0) return (BIOMES as Record<string, Theme>)[k] as Theme;
+        if (r0 <= 0) return lookup(BIOMES, k);
       }
       return BIOMES.mossfield;
     };
@@ -1254,12 +1187,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
           x1 = Math.max(x1, x);
           y1 = Math.max(y1, y);
         }
-      return {
-        x: x0,
-        y: y0,
-        w: x1 - x0 + 1,
-        h: y1 - y0 + 1,
-        shape: 'cave',
+      return newRoom(x0, y0, x1 - x0 + 1, y1 - y0 + 1, 'cave', {
         cave: true,
         noShell: true,
         cells0,
@@ -1279,39 +1207,22 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
               : k === 0
                 ? BIOMES.mossfield
                 : pickCW(),
-        cells: [],
-        chasm: [],
-        lava: [],
-        mush: [],
-      } as Partial<Room> as Room;
+      });
     });
     const all: number[] = [];
     for (let i = 0; i < N; i++) if (tile[i] === TF || (stratum.k === 'abyss' && tile[i] === TC)) all.push(i);
-    caves.push({
-      x: 1,
-      y: 1,
-      w: UW - 2,
-      h: UH - 2,
-      shape: 'cave',
-      cave: true,
-      shell: true,
-      cells0: all,
-      cx: (caves[0] as Room).cx,
-      cy: (caves[0] as Room).cy,
-      theme: BIOMES.cavern,
-      cells: [],
-      chasm: [],
-      lava: [],
-      mush: [],
-    } as Partial<Room> as Room);
+    caves.push(
+      newRoom(1, 1, UW - 2, UH - 2, 'cave', {
+        cave: true,
+        shell: true,
+        cells0: all,
+        cx: (caves[0] as Room).cx,
+        cy: (caves[0] as Room).cy,
+        theme: BIOMES.cavern,
+      }),
+    );
     rooms = caves.slice();
     normals = [];
-    rooms.forEach((r) => {
-      r.deep = [];
-      r.bog = [];
-      r.xtal = [];
-      r.clusters = [];
-    });
   }
   // cavern ceilings rise toward the middle
   rooms.forEach((r, ri) => {
@@ -2898,7 +2809,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     }
   const engr = new Map<number, Engraving>();
   {
-    const nE = ({ ruins: 10, fortress: 10, town: 4, oracle: 6, maze: 3, bigroom: 6 } as Record<string, number>)[stratum.k] || 0,
+    const ENGR_N: Record<string, number> = { ruins: 10, fortress: 10, town: 4, oracle: 6, maze: 3, bigroom: 6 };
+    const nE = ENGR_N[stratum.k] || 0,
       FD = [
         [1, 0],
         [-1, 0],
@@ -2993,7 +2905,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       x = i % W,
       y = (i / W) | 0,
       r = (roomOf[i] as number) >= 0 ? rooms[roomOf[i] as number] : null,
-      k = r && r.theme ? (r.theme as Theme).k : '';
+      k = r && r.theme ? r.theme.k : '';
     const v = vnoise(x * 0.28, 8.8, y * 0.28) * 0.7 + vnoise(x * 0.9, 1.9, y * 0.9) * 0.3;
     if (
       (sf === SF_GRASS ||
@@ -3353,8 +3265,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   if (stratum.branch && branch && branch.lvl === branch.len) {
     const ru = HIST.rulers[HIST.rulers.length - 1] as Ruler,
       bk = branch.key;
-    const LORD = (
-      {
+    const LORDS: Record<string, { base: string; name: string; scale: number; verb: string }> = {
         crypt: {
           base: 'L',
           name: `不死の王 ${ru.name}`,
@@ -3365,8 +3276,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         sunken: { base: 'K', name: '深みの主', scale: 3.6, verb: '沈んだ神殿の底から、無数の触手を伸ばしている' },
         nest: { base: 'S', name: '蜘蛛の女王', scale: 2.4, verb: '巣の中心で、光る糸を紡ぎ続けている' },
         snake: { base: 'N', name: 'ナーガの女王', scale: 2.6, verb: '水場のほとりで、冠のような鱗を光らせている' },
-      } as Record<string, { base: string; name: string; scale: number; verb: string }>
-    )[bk];
+      },
+      LORD = LORDS[bk];
     if (LORD) {
       lordType = {
         ...MTYPES[LORD.base],
@@ -3376,7 +3287,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         verb: LORD.verb,
         boss: true,
         col: LORD.base === 'L' ? [0.75, 0.9, 1.0] : (MTYPES[LORD.base] as MonsterType).col,
-        look: ({ crypt: null, lair: null, nest: null, snake: null } as Record<string, null>)[bk] || (MTYPES[LORD.base] as MonsterType).look,
+        // 元は ({ crypt: null, … } as …)[bk] || 元の生き物の look。表の値はどれも null なので、いつも元の生き物の look になる
+        look: (MTYPES[LORD.base] as MonsterType).look,
       };
       if (bk === 'lair') {
         lordType.form = 'olddragon';
@@ -3631,27 +3543,14 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
             cells.push(j);
           }
         const ri = rooms.length;
-        rooms.push({
-          x: cxN - 1,
-          y: czN - 1,
-          w: 3,
-          h: 3,
-          shape: 'rect',
-          cx: cxN,
-          cy: czN,
-          cells,
-          theme: (rooms[0] as Room).theme,
-          cave: false,
-          chasm: [],
-          lava: [],
-          mush: [],
-          deep: [],
-          bog: [],
-          xtal: [],
-          clusters: [],
-          alcove: true,
-          kindMsg: '鉄格子の奥の小さな宝物庫。古の王の遺品が、台座の上で静かに光っている。',
-        });
+        rooms.push(
+          newRoom(cxN - 1, czN - 1, 3, 3, 'rect', {
+            cells,
+            theme: (rooms[0] as Room).theme,
+            alcove: true,
+            kindMsg: '鉄格子の奥の小さな宝物庫。古の王の遺品が、台座の上で静かに光っている。',
+          }),
+        );
         for (const j of cells) roomOf[j] = ri;
         const lc: [number, Dir][] = [];
         for (let i = W; i < N - W; i++) {
@@ -3704,27 +3603,14 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         tile[c] = TF;
         ceil[e] = ceil[c] = BASE_H;
         const ri = rooms.length;
-        rooms.push({
-          x: ccx,
-          y: ccz,
-          w: 1,
-          h: 1,
-          shape: 'rect',
-          cx: ccx,
-          cy: ccz,
-          cells: [c],
-          theme: (rooms[0] as Room).theme,
-          cave: false,
-          chasm: [],
-          lava: [],
-          mush: [],
-          deep: [],
-          bog: [],
-          xtal: [],
-          clusters: [],
-          alcove: true,
-          kindMsg: '鉄格子の奥の壁龕。古の王の遺品が、ひっそりと光っている。',
-        });
+        rooms.push(
+          newRoom(ccx, ccz, 1, 1, 'rect', {
+            cells: [c],
+            theme: (rooms[0] as Room).theme,
+            alcove: true,
+            kindMsg: '鉄格子の奥の壁龕。古の王の遺品が、ひっそりと光っている。',
+          }),
+        );
         roomOf[c] = ri;
         const [li, ld] = lc[Math.floor(rand() * lc.length)] as [number, Dir];
         gate = { cell: e, lever: li, ld, open: false, o: 0, axis: d[0] !== 0 ? 0 : 1 };
