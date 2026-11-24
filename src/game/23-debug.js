@@ -1,8 +1,8 @@
 // ---------------------------------------------------------------- debugging (developer mode): one set of commands behind both the F2 screen and window.dbg (for automated checks), plus URL options
 let godMode=false;
-function dbgEnter(){ const keepB=here.branch, keepR=here.realm, keepD=here.depth;
+function dbgEnter(){ const keepB=here.branch, keepR=here.realm, keepI=here.inter, keepD=here.depth;
   if(!ui.started){ startDepth=keepD; document.getElementById('enter').click(); }
-  here.branch=keepB; here.realm=keepR; here.depth=keepD; newLevel(); if(D)showStratum(D.stratum); }
+  here.branch=keepB; here.realm=keepR; here.inter=keepI; here.depth=keepD; newLevel(); if(D)showStratum(D.stratum); }
 function dbgNear(cell){ if(cell==null||cell<0)return false; let best=-1, bd=1e9; const cx=cell%MW, cz=(cell/MW)|0;
   for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){ const i=(cz+dz)*MW+cx+dx; if(i<0||i>=D.tile.length||i===cell||D.tile[i]!==TF||D.liquid[i]===LQ_DEEP)continue; const d=Math.abs(Math.hypot(dx,dz)-2); if(d<bd){ bd=d; best=i; } }
   if(best<0)return false; const [tx,tz]=cpos(cell), [x,z]=cpos(best); player.x=x; player.z=z; player.yaw=Math.atan2(-(tx-x),-(tz-z)); player.pitch=-0.25; return true; }
@@ -15,7 +15,7 @@ const dbg={
   go(d){ here.branch=null; here.realm=null; here.inter=null; here.depth=clamp(d|0,1,FINAL_DEPTH); dbgEnter(); return dbg.info(); },
   branch(key,lvl){ const B=BRANCHES[key]; if(!B)return 'no such branch: '+Object.keys(BRANCHES).join(','); here.realm=null; here.inter=null; const at=B.at[0]; here.branch={key,lvl:clamp(lvl||1,1,B.len),len:B.len,ret:at+1}; here.depth=at; dbgEnter(); return dbg.info(); },
   inter(key){ if(!SPECIALS[key])return 'no such place: '+Object.keys(SPECIALS).join(','); const at=interAt(key); here.branch=null; here.realm=null; here.depth=at; here.inter={key,after:at}; dbgEnter(); return dbg.info(); },
-  realm(key){ if(!REALMS[key])return 'no such realm: '+Object.keys(REALMS).join(','); here.branch=null; here.realm={key,ret:here.depth+1}; dbgEnter(); return dbg.info(); },
+  realm(key){ if(!REALMS[key])return 'no such realm: '+Object.keys(REALMS).join(','); here.branch=null; here.inter=null; here.realm={key,ret:here.depth+1}; dbgEnter(); return dbg.info(); },
   to(what){ if(!D)return false; const cell=what==='forge'?((D.items||[]).find(o=>o.forge&&!o.taken)||{i:-1}).i:what==='hub'?(D.hub?((Math.round(D.hub.cz))*MW+Math.round(D.hub.cx)):-1):what==='spring'?((D.items||[]).find(o=>o.kind==='spring'&&!o.taken)||{i:-1}).i:what==='altar'?((D.items||[]).find(o=>o.altar&&!o.taken)||{i:-1}).i:what==='elite'?((D.items||[]).find(o=>o.elitePrize&&!o.taken)||{i:-1}).i:what==='vault'?(D.gate?D.gate.cell:-1):what==='stairs'?D.stairs:what==='branch'?(D.bstairs&&D.bstairs.cell):what==='portal'?(D.portal&&D.portal.cell):what==='lord'?(()=>{ const m=here.monsters.find(m=>(m.key==='lord'||m.key==='final')&&!m.dead); return m?m.cz*MW+m.cx:-1; })():-1; return dbgNear(cell); },
   god(on){ godMode=on===undefined?!godMode:!!on; return godMode; },
   heal(){ player.hp=adv.PLAYER_MAX; return player.hp; },

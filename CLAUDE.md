@@ -40,7 +40,7 @@ tools/where.mjs      組み立てた JS の場所 → src/game/ のどのファ�
 tools/map.mjs        ゲーム本体の地図（ファイルごとの行の数と見出し）
 tools/serve.mjs      静的ファイルの小さなサーバー
 tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ・テスト用モードのページ）
-tests/smoke.mjs      ふだんのページの起動 ＋ 開発用の冒険で dbg が動くか（画面写真は tests/out/）
+tests/smoke.mjs      ふだんのページの起動 ＋ 開発用の冒険で dbg が動くか ＋ 冒険の始め直しで前の場所や状態が残らないか（画面写真は tests/out/）
 tests/determinism.mjs  同じシードで同じ結果になるか
 tests/levels.mjs     全部の階（20シード×30か所）をブラウザで生成し、例外と、歩いて行けるかを確かめる
 tests/reach.mjs      歩いて行けるかの調べ方（levels.mjs と tests/unit/reach.test.ts が使う。型は reach.d.mts）
