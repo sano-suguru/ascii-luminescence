@@ -107,7 +107,7 @@ function updateRockfall(dt){ if(!rockfall)return; const R=rockfall; R.t+=dt; R.n
 // ---------------------------------------------------------------- healing: no regeneration over time. Part of each wound lingers as recoverable (shown on the bar); strike back before it fades
 // and the light of what you strike flows into you; a kill gives more. Altars, a little on going down, rare healing springs, and the town and the oracle heal.
 let rallyMotes=[], hpFlash=0, rallyShown=-1, rallyChime=0;
-const RALLY_FROM=new Set(['blade','magic','fire','thunder','poison','ice']);
+// RALLY_FROM は src/lib/runes.ts（src/game/imports.mjs で読む）
 function rallyOnHit(m,n,how){ if(!(player.rally>0)||!RALLY_FROM.has(how)||m.ty.critter||!(time-(m.playerT||-99)<1.2))return; const mn=bodyN('mend');
   let gain=Math.min(player.rally,n*0.5*(1+0.5*mn)); const kill=m.hp<=0; if(kill)gain=Math.min(player.rally,gain+3+2*mn+3*BL('devour')); if(gain<=0.05)return; player.rally-=gain;
   const sc=m.ty.scale||1, k=kill?Math.min(16,6+Math.round(gain*2)):Math.min(5,1+Math.round(gain)), per=gain/k, src=kill&&m.form?m.form:null;
@@ -195,7 +195,7 @@ function altarDetail(o){ if(!o)return ['<span class="lab">選択肢にマウス�
   if(o.opt==='open')return [`<b style="color:#ffe3a0">{ }</b> ${o.label}`,'    <span class="lab">選ぶと、その枠が開く。ほかの選択肢は消える</span>','','',''];
   if(o.opt==='forge'){ const w=o.forgeW; return [`<b style="color:#bcdcff">T</b> ${RUNE_DEF[w.type].name}を鍛える`,`    <span class="lab">${trName(w.type,{k:o.forgeK})} Lv${o.forgeTo}：${trDesc(w.type,{k:o.forgeK,lv:o.forgeTo})}</span>`,'    <span class="dim">今持っている武器が、その場で鍛えられる</span>','','']; }
   return detailLines(o.rune); }
-const ALTAR_W=72;
+// ALTAR_W は src/lib/hud.ts（src/game/imports.mjs で読む）
 function altarOpts(){ return [0,1,2].map(k=>D.items.find(o=>o.grp===altarNear&&o.slot===k&&!o.taken)).filter(Boolean); }
 function renderAltar(){ const el=document.getElementById('altarp'); if(!el)return; const opts=altarOpts(); if(!opts.length){ closeAltar(false); return; }
   const f=t=>`<span class="f">${t}</span>`, rows=[f(opts[0].lord?'+-- 主の祭壇 ---':opts[0].opt==='open'?'+-- 空の枠 ---':opts[0].forge?'+-- 鍛えの祭壇 ---':'+-- ルーンの祭壇 ---'),f('|')];

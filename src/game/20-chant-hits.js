@@ -290,7 +290,7 @@ function updateProjs(dt){
   }
   projs=projs.filter(p=>!p.dead);
 }
-const sp_elem=p=>!!(p&&p.sp&&p.sp.elem);
+// sp_elem は src/lib/runes.ts（src/game/imports.mjs で読む）
 function m_rapidCrit(m,sp){ m.playerT=time; applyHit(m,5,sp,true); for(let q=0;q<10;q++){ const a=mr()*6.28; spawn(m.x,m.y+0.8,m.z,Math.cos(a)*1.6,0.4+mr(),Math.sin(a)*1.6,0.4,G(mpick(['!','*'])),0.14,2.6,2.2,1.2,0); } }
 function moonBurst(p,x,y,z){ const f=p.moon, sp=p.sp; orbBurst(x,y,z,sp,{dmg:f*1.1,rad:0.8+0.45*f}); shake=Math.max(shake,0.1+0.05*f);
   if(p.phases>=3&&f>2.2){ const n=p.phases>=4?5:3; for(let i=0;i<n;i++){ const a=i/n*Math.PI*2+mr(); projs.push({kind:'orb',mini:true,gen:9,x,y:Math.max(0.5,y),z,vx:Math.cos(a)*6,vy:3.2,vz:Math.sin(a)*6,t:0,sp,bounce:0,homing:0,hit:new Set(),burstK:0.6}); } }

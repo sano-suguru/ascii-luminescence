@@ -10,9 +10,7 @@ function trackSeen(dt){
   for(const m of monsters){ if(m.dead||m.hidden||!m.visible||m.ty.dummy)continue; if(Math.hypot(m.x-player.x,m.z-player.z)<26){ SEEN.add(seenKey(m)); if(m.ty.beast)recordBeast(m.ty); } }
   if(SEEN.size!==n0)saveSet('al_seen',SEEN);
 }
-const LORD_GAL={crypt:{base:'L',name:'不死の王',scale:1.7,verb:'王冠だけが、まだ光を失っていない亡霊'},lair:{base:'D',name:'年老いた竜',scale:3.6,verb:'巣の最奥で、とぐろを巻いて眠っている'},
-  sunken:{base:'K',name:'深みの主',scale:3.6,verb:'沈んだ神殿の底から、無数の触手を伸ばしている'},nest:{base:'S',name:'蜘蛛の女王',scale:2.4,verb:'巣の中心で、光る糸を紡ぎ続けている'},
-  snake:{base:'N',name:'ナーガの女王',scale:2.6,verb:'水場のほとりで、冠のような鱗を光らせている'}};
+// LORD_GAL は src/lib/names.ts（src/game/imports.mjs で読む）
 function galleryList(){
   const out=[]; for(const k of Object.keys(MTYPES)){ if(k==='lord'||k==='final'||k==='final2'||k==='X'||k.startsWith('__')||k.startsWith('dummy'))continue; out.push({key:k,ty:MTYPES[k]}); }
   for(const rec of loadBeasts().concat(DEVALL?beastSamples():[]))out.push({key:'beast:'+rec.seed+':'+rec.name,ty:{...rec,ch:'X',form:'beast',beast:true,light:9,boss:false,verb:rec.lore}});
@@ -84,7 +82,7 @@ function renderGallery(){
     for(const b of el.querySelectorAll('button[data-g]'))b.onclick=()=>{ const k=b.dataset.g; if(k==='prev')showBeast(g.idx-1); else if(k==='next')showBeast(g.idx+1); else returnToTitle(); }; }
 }
 // ---------------------------------------------------------------- the testing chamber: every rune found so far, and dummies that get back up
-const DUMMY_KINDS=[{k:'dummy',name:'的の人形',col:[0.78,0.74,0.66]},{k:'dummyF',name:'的の人形（火に強い）',col:[1.0,0.55,0.3]},{k:'dummyP',name:'的の人形（毒が効かない）',col:[0.62,0.85,1.0]},{k:'dummyT',name:'的の人形（濡れている）',col:[0.5,0.7,1.0]}];
+// DUMMY_KINDS は src/lib/names.ts（src/game/imports.mjs で読む）
 for(const d of DUMMY_KINDS){ MTYPES[d.k]={ch:'+',name:d.name,col:d.col,form:'humanoid',scale:0.95,speed:0,fl:0,light:1.6,trail:0,dummy:true,verb:'藁と石で組まれた的。何度倒れても、また起き上がる'}; MSTAT[d.k]=[60,0,0,99]; }
 RES.dummyF={fire:0.2,ice:2}; RES.dummyP={poison:0.2,fire:2}; RES.dummyT={thunder:2,fire:0.5};
 function spawnDummy(d){ const m=makeMonster({key:d.k,cx:Math.floor(d.x/CELL),cz:Math.floor(d.z/CELL),g:-1,lead:true}); m.x=d.x; m.z=d.z; m.yaw=0; m.sleep=false; m.wait=1e9; m.noticed=false; m.dsum=0;

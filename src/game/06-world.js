@@ -37,7 +37,7 @@ function updateWater(){
   waterTex.needsUpdate=true; waterLTex.needsUpdate=true;
 }
 
-const flowW=f=>((((f-10)%(Math.PI*2))+Math.PI*2)%(Math.PI*2))/(Math.PI*2)*0.998+0.001;
+// flowW は src/lib/math.ts（src/game/imports.mjs で読む）
 function buildWorld(){
   for(const c of chunks){ scene.remove(c.mesh); c.mesh.geometry.dispose(); }
   chunks=[];

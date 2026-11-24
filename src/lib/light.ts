@@ -121,3 +121,6 @@ export function topLights(
   outW[o + 1] = w1;
   outW[o + 2] = w2;
 }
+
+/** 手元の灯り（ランタン）の色（もとは src/game/14-lights-fixtures.js） */
+export const LANTERN = [0.6, 0.58, 0.86];

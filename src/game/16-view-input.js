@@ -16,10 +16,10 @@ function computeFOV(){
   }
 }
 const mapC=document.getElementById('map'), mctx=mapC.getContext('2d');
-const MMC=45, MMR=27, MCW=8, MCH=13, MPAD=11;
+// MMC・MMR・MCW・MCH・MPAD は src/lib/hud.ts（src/game/imports.mjs で読む）
 function sizeMap(){ const dpr=Math.min(2,window.devicePixelRatio||1); mapC.width=Math.round((MMC*MCW+MPAD*2)*dpr); mapC.height=Math.round((MMR*MCH+MPAD*2)*dpr); mctx.setTransform(dpr,0,0,dpr,0,0); }
 sizeMap();
-const tone=v=>Math.round(255*(1-Math.exp(-v*1.7)));
+// tone は src/lib/hud.ts（src/game/imports.mjs で読む）
 function drawMap(){
   const Wd=MMC*MCW+MPAD*2, Hd=MMR*MCH+MPAD*2;
   mctx.clearRect(0,0,Wd,Hd);

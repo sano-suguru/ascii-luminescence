@@ -1,8 +1,6 @@
 // ---------------------------------------------------------------- the goal (stage C): three legendary things held by lords, a sealed descent, the deepest place, the last king's shadow
 // FINAL_DEPTH は src/lib/world.ts（src/game/imports.mjs で読む）
-const LEGEND_KINDS={candle:{name:'燭台',ch:'i',col:[1.0,0.78,0.42]}, bell:{name:'鐘',ch:'A',col:[0.98,0.9,0.55]}, mirror:{name:'鏡',ch:'O',col:[0.72,0.9,1.0]}};
-const LEGEND_ORDER=['candle','bell','mirror'];
-const BRANCH_HINT={crypt:'死者の眠る回廊の奥',lair:'獣の匂う洞窟の奥',sunken:'水に沈んだ神殿の底',nest:'糸の張りめぐらされた闇の奥',snake:'這うものたちの水場の奥'};
+// LEGEND_KINDS・LEGEND_ORDER・BRANCH_HINT は src/lib/names.ts（src/game/imports.mjs で読む）
 let LEGEND=null, finalSt=null, won=false;
 MSTAT.final=[260,6,11,1.7];
 MSTAT.final2=[260,8,14,1.25];
@@ -143,9 +141,7 @@ function victory(){
 
 // ---------------------------------------------------------------- lightning that can be followed: a jagged bolt that flickers, jumping one target after another, lighting the room for an instant
 let boltFx=[], zapQueue=[], zapFlash=null;
-function jagged(a,b,amp){ const n=Math.max(3,Math.round(Math.hypot(b[0]-a[0],b[1]-a[1],b[2]-a[2])/0.45)), pts=[a];
-  for(let k=1;k<n;k++){ const f=k/n, w=Math.sin(Math.PI*f)*amp; pts.push([a[0]+(b[0]-a[0])*f+(mr()-0.5)*w*2,a[1]+(b[1]-a[1])*f+(mr()-0.5)*w*2,a[2]+(b[2]-a[2])*f+(mr()-0.5)*w*2]); }
-  pts.push(b); return pts; }
+// jagged は src/lib/math.ts（src/game/imports.mjs で読む）
 function addBolt(a,b,col,style){ style=style||'thunder'; const amp=style==='thunder'?0.35:0.14; boltFx.push({a,b,col,style,amp,t:0,life:style==='thunder'?0.36:0.3,re:0,pts:jagged(a,b,amp)}); }
 function sparkCrown(m,col){ const cy=m.y+0.6*m.ty.scale+0.35*m.ty.scale; m.hitT=Math.max(m.hitT||0,0.3);
   for(let q=0;q<12;q++){ const a=q/12*Math.PI*2; spawn(m.x+Math.cos(a)*0.3*m.ty.scale,cy,m.z+Math.sin(a)*0.3*m.ty.scale,Math.cos(a)*1.4,1.2+mr(),Math.sin(a)*1.4,0.35,G(mpick(['*','+','\''])),0.13,col[0]*3.2,col[1]*3.2,col[2]*3.2,0); } }

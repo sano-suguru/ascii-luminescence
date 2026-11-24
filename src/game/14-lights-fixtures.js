@@ -43,7 +43,7 @@ function cellLight(x,z){
   const fl=fireLight[cz*MW+cx]; if(fl>0){ _cl[0]+=fl*2.2; _cl[1]+=fl*0.99; _cl[2]+=fl*0.26; }
   return _cl;
 }
-const LANTERN=[0.6,0.58,0.86];
+// LANTERN は src/lib/light.ts（src/game/imports.mjs で読む）
 function updateLights(t){
   SL.fill(0);
   let shadowK=1; for(const m of monsters)if(m.ty.beast&&m.ty.spec.shadow&&!m.sleep){ const d=Math.hypot(m.x-player.x,m.z-player.z); if(d<16)shadowK=Math.min(shadowK,0.45+0.55*d/16); }

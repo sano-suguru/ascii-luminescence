@@ -41,3 +41,6 @@ export const shuffle = <T>(a: T[], r: () => number = rand): T[] => {
   }
   return a;
 };
+
+/** a 以上 b 以下の整数（見た目の乱数 mr。もとは src/game/18-level-player.js） */
+export const roll = (a: number, b: number): number => a + Math.floor(mr() * (b - a + 1));

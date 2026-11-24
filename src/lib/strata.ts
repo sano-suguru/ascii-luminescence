@@ -383,3 +383,6 @@ export const HORDES: Horde[] = [
   { lead: 'L', fol: [['W', 1, 2]], d: [9, 99], w: 0.5 },
   { lead: 'D', fol: [], d: [10, 99], w: 0.35 },
 ];
+
+/** 深さ d の本道の層（もとは src/game/22-world-hints.js） */
+export const stratumAtDepth = (d: number) => STRATA.find((s) => d >= s.from && d <= s.to);

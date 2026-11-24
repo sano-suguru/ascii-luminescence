@@ -6,10 +6,7 @@
 // RUNE_CHARS・G は src/lib/glyphs.ts（src/game/imports.mjs で読む）
 // mr・mpick・rand・R・RI・pick は src/lib/random.ts（迷宮の乱数の入れ替えは setRand。src/game/imports.mjs で読む）
 // mulberry32・clamp は src/lib/rng.ts（src/game/imports.mjs で読む）
-const RUNESET=['&','%','$','?','!','#','+','x','Y','Z','8','0','*','~','^','=','<','>','{','}','/','\\'];
-const SWAPSET='#$%&*+=?@0123456789ABCDEFGHJKLMNPQRSTUVWXYZ<>{}[]~^';
-const WG='###########%%&8HX=+#$#';
-const RAMP_CH='.`,:-~=+*^%%#&08';
+// RUNESET・SWAPSET・WG・RAMP_CH は src/lib/glyphs.ts（src/game/imports.mjs で読む）
 const MACHINE_INFO={
  camp:{ch:'%',col:[0.95,0.85,0.7],msg:'焚き火の跡と朽ちた寝袋。散らばった骨が、先客の末路を物語っている。'},
  altar:{ch:'_',col:[1.0,0.82,0.42],msg:'石の祭壇の上に、一枚の巻物 ? が静かに浮かんでいる。'},

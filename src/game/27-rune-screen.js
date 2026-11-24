@@ -1,9 +1,9 @@
 // ---------------------------------------------------------------- the rune screen, fixed in size: built once per change; hovering and choosing only touch the detail lines and the slot highlights
 // CAT_BR・CAT_NAME・emptyChip は src/lib/runes.ts（src/game/imports.mjs で読む）
-const PACK_W=84, PACK_SLOT=14, BAG_LINES=2;
+// PACK_W・PACK_SLOT・BAG_LINES は src/lib/hud.ts（src/game/imports.mjs で読む）
 let packHover=null, packClick={u:0,t:0}, bagPage={atk:0,elem:0,trig:0}, bagPageN={atk:1,elem:1,trig:1};
 // padTo・wrapPlain は src/lib/text.ts（src/game/imports.mjs で読む）
-function reactionOf(a,b){ const k=[a,b].sort().join('+'); return {'fire+ice':'steam','fire+poison':'blast','fire+thunder':'overload','ice+thunder':'shatter','ice+poison':'frostbite','poison+thunder':'contagion'}[k]||null; }
+// reactionOf は src/lib/runes.ts（古い JS は使わない）
 function runeChip(ru,attrs){ const d=RUNE_DEF[ru.type], br=CAT_BR[d.cat]||['',''];
   if(d.cat==='atk')return `<button class="row rs" data-u="${ru.uid}" ${attrs}><span class="mk"> </span><span${weaponCol(ru)?` style="color:${weaponCol(ru)}"`:''}>${d.name}</span></button>`;
   return `<button class="row rs" data-u="${ru.uid}" ${attrs}><span class="mk"> </span>${br[0]}<b class="rn" style="color:${css(runeCol(ru))}">${d.ch}</b> <span${ru.strong?` style="color:${css(TIER_COL[3])}"`:''}>${runeShort(ru)}</span>${br[1]}</button>`; }
