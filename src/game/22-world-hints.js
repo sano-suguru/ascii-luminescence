@@ -44,7 +44,7 @@ function drawOmens(t,dt){ if(!here.D||gallery)return; const o=omenOf(); if(!o)re
   const near=(x,z,r)=>Math.hypot(x-player.x,z-player.z)<r, rate=(n)=>mr()<n*(dt||0.016);
   const rise=(x,z,def,n,spread)=>{ if(!rate(n))return; const a=mr()*6.28, rr=mr()*(spread||0.7), down=def.vy<0;
     spawn(x+Math.cos(a)*rr,down?2.2+mr()*0.6:0.15,z+Math.sin(a)*rr,(mr()-0.5)*0.15,def.vy*(0.7+mr()*0.6),(mr()-0.5)*0.15,2.4+mr(),G(mpick(def.gl)),0.12,def.col[0]*1.3,def.col[1]*1.3,def.col[2]*1.3,0); };
-  const sound=(key,kind,x,z)=>{ if(!kind||!near(x,z,10))return; if(time<(o.sndT[key]||0))return; o.sndT[key]=time+6+mr()*5; omenSound(kind,x,z); };
+  const sound=(key,kind,x,z)=>{ if(!kind||!near(x,z,10))return; if(clock.time<(o.sndT[key]||0))return; o.sndT[key]=clock.time+6+mr()*5; omenSound(kind,x,z); };
   // the stairs: what lies below leaks up
   if(o.stairs&&o.stairs.kind!=='branch'){ const def=o.stairs.kind==='special'?SPECIAL_OMEN[o.stairs.key]:STRATUM_OMEN[o.stairs.key]; const [x,z]=cpos(here.D.stairs);
     if(def&&near(x,z,20)){ rise(x,z,def,3.2); if(def.glow)for(let k=0;k<16;k++){ const a=k/16*Math.PI*2+t*0.1, b=0.5+0.25*Math.sin(t*1.7+k); dyn(x+Math.cos(a)*1.3,0.04,z+Math.sin(a)*1.3,G('.'),0.15,def.glow[0]*b,def.glow[1]*b,def.glow[2]*b,0,0); } sound('st',def.snd,x,z); } }
@@ -101,7 +101,7 @@ function drawArrows(){ if(!arrowCtx)return; const W=Math.round(arrowCv.clientWid
     glyph(t.ch,mx,my+ms*0.02,0,ms,rgb,Math.min(1,alpha+0.1),true); } }
 const stairsGuarded=()=>here.D&&here.D.stairGuard!==undefined&&here.monsters.some(m=>!m.dead&&m.g===here.D.stairGuard);
 function drawStairSeal(t){ if(!here.D||here.D.stairGuard===undefined)return; const [x,z]=cpos(here.D.stairs); const d=Math.hypot(x-player.x,z-player.z); if(d>26)return; const on=stairsGuarded();
-  if(on){ for(let k=0;k<18;k++){ const a=k/18*Math.PI*2+t*0.4, b=0.7+0.3*Math.sin(t*2+k); dyn(x+Math.cos(a)*0.9,0.3+0.12*Math.sin(t*1.5+k),z+Math.sin(a)*0.9,G(k%3?'=':'#'),0.18,1.4*b,0.4*b,0.55*b,0,0); } if(d<12&&time>(here.D.sealSnd||0)){ here.D.sealSnd=time+7+mr()*4; omenSound('growl',x,z); } }
+  if(on){ for(let k=0;k<18;k++){ const a=k/18*Math.PI*2+t*0.4, b=0.7+0.3*Math.sin(t*2+k); dyn(x+Math.cos(a)*0.9,0.3+0.12*Math.sin(t*1.5+k),z+Math.sin(a)*0.9,G(k%3?'=':'#'),0.18,1.4*b,0.4*b,0.55*b,0,0); } if(d<12&&clock.time>(here.D.sealSnd||0)){ here.D.sealSnd=clock.time+7+mr()*4; omenSound('growl',x,z); } }
   else if(!here.D.sealOpenMsg){ here.D.sealOpenMsg=true; msg('<b style="color:#ffd27a">=</b>階段を閉ざしていた封が、静かに解けた。'); sChime(x,z,0.4); } }
 // the air of each part of a level: the crossroads a little brighter, the way to the stairs a little darker and quieter
 let ambK=1;
@@ -198,7 +198,7 @@ function drawCastFx(t){
   const sp=specOf(gear.castSt.h), c=elemCol(sp.elem), k=Math.min(1,gear.castSt.t/Math.max(0.01,gear.castSt.need)), full=gear.castSt.full;
   // the circle at the hand
   const P=castPoint(gear.castSt.h,k), [f,r,u]=handUp(), H=gear.hands[gear.castSt.h], rs=[H.elem].filter(Boolean).map(ru=>RUNE_DEF[ru.type].ch), n=12, rr=0.05+0.03*k, spin=t*(full?5:2);
-  for(let j=0;j<n;j++){ const a=spin+j/n*Math.PI*2, ch=(j%3===0&&rs.length)?rs[(j/3|0)%rs.length]:'.', lit=j%3===0&&gear.castSt.sylT!==undefined&&time-gear.castSt.sylT<0.16&&(j/3|0)===(gear.castSt.syl%4), br=(0.8+2.4*k)*(full?1.25+0.25*Math.sin(t*12):1)*(lit?2.2:1);
+  for(let j=0;j<n;j++){ const a=spin+j/n*Math.PI*2, ch=(j%3===0&&rs.length)?rs[(j/3|0)%rs.length]:'.', lit=j%3===0&&gear.castSt.sylT!==undefined&&clock.time-gear.castSt.sylT<0.16&&(j/3|0)===(gear.castSt.syl%4), br=(0.8+2.4*k)*(full?1.25+0.25*Math.sin(t*12):1)*(lit?2.2:1);
     dyn(P[0]+(r[0]*Math.cos(a)+u[0]*Math.sin(a))*rr,P[1]+(u[1]*Math.sin(a))*rr,P[2]+(r[2]*Math.cos(a)+u[2]*Math.sin(a))*rr,G(ch),ch==='.'?0.02:0.032+0.014*k,c[0]*br,c[1]*br,c[2]*br); }
   // light gathers toward the hand
   if(mr()<0.5+0.4*k){ const a=mr()*6.28, e=(mr()-0.3)*1.2, d=1.4+mr()*0.8, sx=player.x+Math.cos(a)*d, sz=player.z+Math.sin(a)*d, sy=P[1]+e;
@@ -214,7 +214,7 @@ function drawCastFx(t){
   const m=path.hitM; if(m){ const cy=m.y+0.6*m.ty.scale, w=0.35*m.ty.scale+0.25; dyn(m.x-r[0]*w,cy,m.z-r[2]*w,G('['),0.42*Math.max(0.8,m.ty.scale),c[0]*3,c[1]*3,c[2]*3); dyn(m.x+r[0]*w,cy,m.z+r[2]*w,G(']'),0.42*Math.max(0.8,m.ty.scale),c[0]*3,c[1]*3,c[2]*3); }
 }
 // the crosshair is a glyph: it closes from ( + ) to [+] as the chant fills; it warms when a creature is in the line
-function aimTarget(){ if(time-aimT<0.1)return crossMon; aimT=time; crossMon=null; const [ox,oy,oz]=aimOrigin(), [vx,vy,vz]=viewDir(); let bd=1e9;
+function aimTarget(){ if(clock.time-aimT<0.1)return crossMon; aimT=clock.time; crossMon=null; const [ox,oy,oz]=aimOrigin(), [vx,vy,vz]=viewDir(); let bd=1e9;
   let ba=1e9; for(const m of here.monsters){ if(!foe(m)||!m.visible)continue; if(m.ty.habitat==='deep'&&(m.rise||0)<0.3)continue; const cy=m.y+0.6*m.ty.scale, ax=m.x-ox, ay=cy-oy, az=m.z-oz, d=Math.hypot(ax,ay,az); if(d>28)continue;
     const ang=Math.acos(clamp((ax*vx+ay*vy+az*vz)/Math.max(d,1e-3),-1,1)), tol=0.08+Math.atan2(0.6*m.ty.scale,Math.max(d,0.5)); if(ang>tol)continue;
     const score=ang/tol+d*0.01; if(score<ba&&losClear(ox,oy,oz,m.x,cy,m.z)){ ba=score; crossMon=m; } }

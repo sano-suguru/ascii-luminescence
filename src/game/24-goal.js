@@ -34,9 +34,9 @@ function legendLine(){ const L=getLegend(); if(!L)return '';
 function lordFell(m){
   if(m.key!=='lord'||!here.branch)return;
   adv.runState.lordsDone.add(here.branch.key);
-  { let si=m.cz*MW+m.cx; for(const d of [1,-1,MW,-MW])if(here.D.tile[si+d]===TF&&!here.D.liquid[si+d]){ si+=d; break; } here.D.items.push({i:si,kind:'slot',taken:false,born:time}); }
+  { let si=m.cz*MW+m.cx; for(const d of [1,-1,MW,-MW])if(here.D.tile[si+d]===TF&&!here.D.liquid[si+d]){ si+=d; break; } here.D.items.push({i:si,kind:'slot',taken:false,born:clock.time}); }
   const k=legendOfBranch(here.branch.key), L=getLegend();
-  if(k&&L&&!L.have.has(k)){ here.D.items.push({i:m.cz*MW+m.cx,kind:'legend',legend:k,taken:false,born:time});
+  if(k&&L&&!L.have.has(k)){ here.D.items.push({i:m.cz*MW+m.cx,kind:'legend',legend:k,taken:false,born:clock.time});
     const c=LEGEND_KINDS[k].col; for(let q=0;q<60;q++){ const a=mr()*6.28; spawn(m.x,0.8+mr()*1.5,m.z,Math.cos(a)*2.2,0.5+mr()*2.4,Math.sin(a)*2.2,1.2+mr(),G(mpick(['*','+','.','\''])),0.2,c[0]*3,c[1]*3,c[2]*3,0); }
     sChime(m.x,m.z,0.6); setTimeout(()=>sChime(m.x,m.z,0.5),300);
     msg(`<b style="color:${css(c)}">${LEGEND_KINDS[k].ch}</b>${mname(m)}が崩れ落ちた。その胸の奥から、ひとつの光がこぼれ落ちた。`); }
@@ -132,7 +132,7 @@ function drawLegendWorld(t){
 function victory(){
   if(adv.won)return; adv.won=true; adv.dead=true; keys.KeyW=keys.KeyA=keys.KeyS=keys.KeyD=false;
   const el=document.getElementById('death'); if(!el)return; const L=getLegend();
-  const secs=Math.floor(time-adv.runStats.t0), mm=Math.floor(secs/60), ss=String(secs%60).padStart(2,'0'), f=t=>`<span class="f">${t}</span>`;
+  const secs=Math.floor(clock.time-adv.runStats.t0), mm=Math.floor(secs/60), ss=String(secs%60).padStart(2,'0'), f=t=>`<span class="f">${t}</span>`;
   const R=awardLore(true); graveCands=[]; document.body.classList.add('over');
   el.innerHTML=boxText([f('+-- 光 は 戻 っ た ---'),f('|'),...LEGEND_ORDER.map(k=>`${f('|')}  <b style="color:${css(LEGEND_KINDS[k].col)}">${LEGEND_KINDS[k].ch}</b> ${L.items[k].name}`),f('|'),
     `${f('|')}  Lv${adv.lvl.n}　倒した敵 ${adv.runStats.kills}　時間 ${mm}:${ss}　シード ${adv.runSeed}`,f('|'),...loreRows(R,f),f('|'),`${f('|')}  ${HIST.civ.name}の地の底に、ひとつの灯りがともった。`,f('|'),`${f('|')}  <b>[Enter]</b> 新しい冒険へ`,f('+---')]);

@@ -16,11 +16,11 @@ function updateCritter(m,dt,t,dp){
   const lit=!stealth.sneak;
   if(ty.critter==='shrieker'){
     m.glow=1.2+0.7*Math.pow(0.5+0.5*Math.sin(t*1.1+m.ph),2);
-    if(dp<3.2&&lit&&m.visible&&time-(m.shriekT||-99)>12){
-      m.shriekT=time; m.glow=3; sShriek(m.x,m.z); vfx.shake=Math.max(vfx.shake,0.12);
+    if(dp<3.2&&lit&&m.visible&&clock.time-(m.shriekT||-99)>12){
+      m.shriekT=clock.time; m.glow=3; sShriek(m.x,m.z); vfx.shake=Math.max(vfx.shake,0.12);
       for(let q=0;q<36;q++){ const a=q/36*Math.PI*2; spawn(m.x,0.7,m.z,Math.cos(a)*2.2,0.2,Math.sin(a)*2.2,0.9,G(q%2?'!':'.'),0.18,ty.col[0]*2.4,ty.col[1]*2.4,ty.col[2]*2.4,1); }
       let woke=0; for(const o of here.monsters){ if(o===m||o.ty.critter||o.dead)continue; if(Math.hypot(o.x-m.x,o.z-m.z)<15){ if(o.sleep||!o.noticed)woke++; o.sleep=false; o.aware=Math.max(o.aware,1.05); } }
-      if(time-shriekMsgT>8){ shriekMsgT=time; msg(`<b style="color:${css(ty.col)}">p</b>${mname(m)}が甲高い叫び声を上げた！${woke?' 周りの獣たちが目を覚ます。':''}`); }
+      if(clock.time-shriekMsgT>8){ shriekMsgT=clock.time; msg(`<b style="color:${css(ty.col)}">p</b>${mname(m)}が甲高い叫び声を上げた！${woke?' 周りの獣たちが目を覚ます。':''}`); }
     }
     return;
   }
@@ -81,14 +81,14 @@ function drawWebs(t){
 }
 function webTouch(i){
   const w=here.D.webAt&&here.D.webAt.get(i); if(!w||w.gone)return false;
-  if(time-(w.touchT||-99)>3){ w.touchT=time; w.shake=1.2; sSqueak(player.x,player.z);
-    for(const m of here.monsters){ if(!m.ty.spider||Math.hypot(m.x-player.x,m.z-player.z)>24)continue; m.sleep=false; m.aware=Math.max(m.aware,1.05); m.goal=[(i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL]; m.goalT=time+12; }
+  if(clock.time-(w.touchT||-99)>3){ w.touchT=clock.time; w.shake=1.2; sSqueak(player.x,player.z);
+    for(const m of here.monsters){ if(!m.ty.spider||Math.hypot(m.x-player.x,m.z-player.z)>24)continue; m.sleep=false; m.aware=Math.max(m.aware,1.05); m.goal=[(i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL]; m.goalT=clock.time+12; }
     if(!webMsg){ webMsg=true; msg('<b style="color:#d8c8ff">%</b>光る糸に絡まった！ 巣全体が震えている……。炎なら、糸を焼き払える。'); } }
   return true;
 }
 // hounds follow the freshest scent; water washes it away
 function houndScent(m){
-  let best=null, bs=time-40;
+  let best=null, bs=clock.time-40;
   for(const d of D4){ const i=(m.cz+d[1])*MW+m.cx+d[0]; if(!canStep(m,i))continue; if(scent[i]>bs){bs=scent[i];best=d;} }
   return best;
 }
@@ -109,7 +109,7 @@ function machineWork(m,dt){
     }
     return false;
   }
-  if(time-(m.scanT||-9)<1.5)return false; m.scanT=time;
+  if(clock.time-(m.scanT||-9)<1.5)return false; m.scanT=clock.time;
   if(ty.critter==='engineer'){ let bi=-1,bd=1e9; here.D.doors.forEach((d,k)=>{ if(!d.gone)return; const dd=Math.hypot(d.bx-m.x,d.bz-m.z); if(dd<bd&&dd<40){bd=dd;bi=k;} }); m.job=bi; }
   else { let bi=-1,bd=1e9; for(let dz=-10;dz<=10;dz++)for(let dx=-10;dx<=10;dx++){ const x=m.cx+dx, z=m.cz+dz; if(x<0||z<0||x>=MW||z>=MH)continue; const i=z*MW+x; if(!burnt[i]&&!(fire[i]>0.1))continue; if(here.D.tile[i]!==TF)continue; const dd=Math.abs(dx)+Math.abs(dz); if(dd<bd){bd=dd;bi=i;} } m.job=bi; }
   return false;
@@ -145,7 +145,7 @@ function updateMonster(m,dt,t){
   if(ty.critter){ if(dp>30&&!ty.critter.startsWith('clean')&&ty.critter!=='engineer'){ m.visible=false; return; } updateCritter(m,dt,t,dp); return; }
   // perception (after Brogue's stealth): the brighter the spot you stand in, the farther away you can be noticed
   if(ty.peaceful){ m.aware=0; m.noticed=false; m.sleep=false;
-    if(dp<2.4&&time-(m.talkT||-99)>14){ m.talkT=time; const ru=HIST.rulers[Math.floor(mr()*HIST.rulers.length)];
+    if(dp<2.4&&clock.time-(m.talkT||-99)>14){ m.talkT=clock.time; const ru=HIST.rulers[Math.floor(mr()*HIST.rulers.length)];
       const L=[`昔々、この上には${HIST.civ.name}の都があったんだとさ。`,`${ru.title}${ru.name}の巨像を見たかい？ 眼だけは、まだ光ってるんだ。`,'溶岩の海の先には、何もない闇があるって話だ。','灯りを絞って歩けば、獣にも見つからないよ。','神殿の巻物は、近づくと勝手にしゃべるんだ。',`${HIST.beast}の話を聞くと、子どもたちは眠れなくなる。`,'壁の彫刻を読んでごらん。この世界の昔話が刻んであるよ。'];
       msg(`<b style="color:${css(ty.col)}">G</b><span style="color:${css(ty.col)}">ノーム</span>「${L[Math.floor(mr()*L.length)]}」`); } }
   else if(ty.form!=='eel'||m.surf>0){
@@ -262,9 +262,9 @@ function drawMonster1(m,t){
   drawMonster0(m,t);
 }
 function drawMonster0(m,t){
-  const fj=(m.flinchUntil||0)>time?(m.flinchUntil-time)*0.9*(m.ty.scale||1):0;
+  const fj=(m.flinchUntil||0)>clock.time?(m.flinchUntil-clock.time)*0.9*(m.ty.scale||1):0;
   if((m.ty.form==='dragon'&&!m.ty.boss)||m.ty.beast){ if(!m.formSleep)m.formSleep=m.ty.beast?beastSleep(m.form,m.ty):dragonSleepForm(m.ty);
-    if(m.wasSleep&&!m.sleep&&!m.morph)m.morph={from:m.formSleep,t0:time,dur:1.0};
+    if(m.wasSleep&&!m.sleep&&!m.morph)m.morph={from:m.formSleep,t0:clock.time,dur:1.0};
     m.wasSleep=!!m.sleep; m.drawForm=m.sleep&&!m.morph?m.formSleep:null; }
   if(m.ty.form==='lichking'&&!m.dead)lichAura(m,t);
   if(m.ty.form==='spiderqueen'&&!m.dead)spiderAura(m,t);

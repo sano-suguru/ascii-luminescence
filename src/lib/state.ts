@@ -16,6 +16,13 @@ export interface ZapFlash {
   r: number;
 }
 
+/** 時計（ゲームの時刻。止めている間・テスト用モードで進めない間は進まない。溜めている間・ヒットストップ中はゆっくり進む） */
+export interface Clock {
+  /** ゲームが始まってからの秒（30-loop-init.js の tick が進める） */
+  time: number;
+}
+export const clock: Clock = { time: 0 };
+
 /** 揺れと光り（画面の揺れ、画面の光り、傷・回復の光り、稲妻の光り） */
 export interface Vfx {
   shake: number;

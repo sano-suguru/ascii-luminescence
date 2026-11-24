@@ -11,7 +11,7 @@ function applySize(){
 window.addEventListener('resize',()=>{ applySize(); sizeMap(); });
 
 // ---------------------------------------------------------------- main loop
-let last=0, time=0, fovT=0, mapT=0, perfT=0, perfAcc=0, perfN=0, warm=0;
+let last=0, fovT=0, mapT=0, perfT=0, perfAcc=0, perfN=0, warm=0;
 function frame(nowMs){
   requestAnimationFrame(frame);
   if(TEST){ if(TESTQ.n>0){ TESTQ.n--; try{ testTick(true); } finally{ if(!TESTQ.n&&TESTQ.done){ const d=TESTQ.done; TESTQ.done=null; d(); } } } return; }
@@ -22,7 +22,7 @@ const TESTQ={n:0,done:null};
 function testTick(draw){ TESTCLK.advance(TEST_STEP*1000); tick(TEST_STEP,draw); }
 function tick(raw,draw){
   if(isPaused()&&ui.started){ if(frame.stillDrawn)return; frame.stillDrawn=true; } else frame.stillDrawn=false; const dt=isPaused()?0:clamp(raw,0,0.05)*timeScale();
-  time+=dt; const t=time;
+  clock.time+=dt; const t=clock.time;
   U.uTime.value=t;
   if(here.trans){
     here.trans.t+=dt;
@@ -64,7 +64,7 @@ if(TEST)window.__test={
   ready(){ return testBoot===true&&!!here.D; },
   error(){ return typeof testBoot==='string'?testBoot:null; },
   // step the game without drawing (fast); returns the game time
-  advance(sec){ const n=Math.max(0,Math.round(sec/TEST_STEP)); for(let i=0;i<n;i++)testTick(false); return +time.toFixed(4); },
+  advance(sec){ const n=Math.max(0,Math.round(sec/TEST_STEP)); for(let i=0;i<n;i++)testTick(false); return +clock.time.toFixed(4); },
   // step and draw n frames (one per animation frame)
   frames(n){ if(TESTQ.done)return Promise.reject(new Error('__test.frames: the previous call has not finished'));
     return new Promise(ok=>{ TESTQ.n=Math.max(0,n|0); if(!TESTQ.n)ok(); else TESTQ.done=ok; }); },
@@ -74,7 +74,7 @@ if(TEST)window.__test={
   width(text){ return visW(text); },
   // a plain copy of what matters, to compare runs
   state(){ const f=v=>+(+v||0).toFixed(3);
-    return {time:f(time),seed:adv.runSeed,place:placeLabel(),depth:here.depth,started:ui.started,dead:adv.dead,hp:f(player.hp),pos:[f(player.x),f(player.z)],yaw:f(player.yaw),lvl:adv.lvl.n,
+    return {time:f(clock.time),seed:adv.runSeed,place:placeLabel(),depth:here.depth,started:ui.started,dead:adv.dead,hp:f(player.hp),pos:[f(player.x),f(player.z)],yaw:f(player.yaw),lvl:adv.lvl.n,
       monsters:here.monsters.map(m=>[m.key,f(m.x),f(m.z),f(m.hp),m.sleep?1:0]),projs:projs.length,
       trans:here.trans?here.trans.phase:null,cast:gear.castSt?{h:gear.castSt.h,t:f(gear.castSt.t),need:f(gear.castSt.need),full:gear.castSt.full}:null,recover:f(player.recover),paused:isPaused()}; },
   // hold a weapon (a RUNE_DEF key such as 'blade', 'bolt', 'orb'), and press / release a hand's button ('L' or 'R')

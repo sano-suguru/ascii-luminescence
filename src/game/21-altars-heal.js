@@ -5,7 +5,7 @@ function dropRune(m){
   if(m.key==='final')return;
   if(!lord)return;
   let at=m.cz*MW+m.cx; for(const d of [-1,MW,-MW,1,MW+1,-MW-1])if(here.D.tile[at+d]===TF&&!here.D.liquid[at+d]&&!here.D.items.some(o=>o.i===at+d&&!o.taken)){ at+=d; break; }
-  placeAltar(at,'lordaltar'+time,{lord:true,born:time});
+  placeAltar(at,'lordaltar'+clock.time,{lord:true,born:clock.time});
   for(let q=0;q<14;q++){ const a=mr()*6.28; spawn(m.x,0.6,m.z,Math.cos(a)*1.2,0.6+mr(),Math.sin(a)*1.2,0.8,G('.'),0.12,1.6,1.4,2.2,0); }
 }
 // ---------------------------------------------------------------- rune altars (predictable rewards): one on the main path of each level, sometimes another off it; three choices made when you come near:
@@ -108,18 +108,18 @@ function updateRockfall(dt){ if(!rockfall)return; const R=rockfall; R.t+=dt; R.n
 // and the light of what you strike flows into you; a kill gives more. Altars, a little on going down, rare healing springs, and the town and the oracle heal.
 let rallyMotes=[], rallyShown=-1, rallyChime=0;
 // RALLY_FROM は src/lib/runes.ts（src/game/imports.mjs で読む）
-function rallyOnHit(m,n,how){ if(!(player.rally>0)||!RALLY_FROM.has(how)||m.ty.critter||!(time-(m.playerT||-99)<1.2))return; const mn=bodyN('mend');
+function rallyOnHit(m,n,how){ if(!(player.rally>0)||!RALLY_FROM.has(how)||m.ty.critter||!(clock.time-(m.playerT||-99)<1.2))return; const mn=bodyN('mend');
   let gain=Math.min(player.rally,n*0.5*(1+0.5*mn)); const kill=m.hp<=0; if(kill)gain=Math.min(player.rally,gain+3+2*mn+3*BL('devour')); if(gain<=0.05)return; player.rally-=gain;
   const sc=m.ty.scale||1, k=kill?Math.min(16,6+Math.round(gain*2)):Math.min(5,1+Math.round(gain)), per=gain/k, src=kill&&m.form?m.form:null;
   for(let q=0;q<k;q++){ let x=m.x,y=m.y+0.6*sc,z=m.z; if(src){ const p=src[Math.floor(mr()*src.length)], cy=Math.cos(m.yaw), sy=Math.sin(m.yaw); x=m.x+(p.x*cy+p.z*sy)*sc; y=m.y+p.y*sc; z=m.z+(-p.x*sy+p.z*cy)*sc; }
     rallyMotes.push({x0:x,y0:y,z0:z,t:-q*0.03,dur:0.38+mr()*0.12,amt:per,c:m.ty.col||[1,0.9,0.7],wob:mr()*6.28}); } }
 function updateRally(dt){ if(adv.dead)return; const mn=bodyN('mend');
-  if(player.rally>0&&time-(player.lastHurt||-99)>0.6){ player.rally=Math.max(0,player.rally-dt*(player.rallyRate||2)); }
+  if(player.rally>0&&clock.time-(player.lastHurt||-99)>0.6){ player.rally=Math.max(0,player.rally-dt*(player.rallyRate||2)); }
   const tx=player.x, ty=(ui.camMode==='tps'?1.0:player.eye-0.35), tz=player.z;
   for(const p of rallyMotes){ p.t+=dt; if(p.t<0)continue; const f=Math.min(1,p.t/p.dur), e=f*f*(3-2*f), arc=Math.sin(f*Math.PI)*0.35;
     const x=p.x0+(tx-p.x0)*e+Math.cos(p.wob)*arc*0.4, y=p.y0+(ty-p.y0)*e+arc, z=p.z0+(tz-p.z0)*e+Math.sin(p.wob)*arc*0.4, b=1.6+1.2*f;
     dyn(x,y,z,G(f<0.5?'*':'.'),0.12,(p.c[0]*0.5+0.6)*b,(p.c[1]*0.5+0.55)*b,(p.c[2]*0.5+0.4)*b,0,0);
-    if(f>=1&&!p.done){ p.done=true; player.hp=Math.min(adv.PLAYER_MAX,player.hp+p.amt); vfx.hpFlash=0.35; if(sndReady()&&time-rallyChime>0.12){ rallyChime=time; sChime(player.x,player.z,0.12); } } }
+    if(f>=1&&!p.done){ p.done=true; player.hp=Math.min(adv.PLAYER_MAX,player.hp+p.amt); vfx.hpFlash=0.35; if(sndReady()&&clock.time-rallyChime>0.12){ rallyChime=clock.time; sChime(player.x,player.z,0.12); } } }
   rallyMotes=rallyMotes.filter(p=>!p.done);
   vfx.hpFlash=Math.max(0,vfx.hpFlash-dt);
   const rs=Math.round((player.rally||0)*4)+(vfx.hpFlash>0?1000:0); if(rs!==rallyShown){ rallyShown=rs; renderStatus(); } }
@@ -154,11 +154,11 @@ const nearStele=()=>(gallery&&gallery.mode==='range')||(here.D.steles||[]).some(
 const guardedNow=it=>it.guardG!==undefined&&here.monsters.some(m=>!m.dead&&m.g===it.guardG);
 function pickupItems(){
   for(let k=0;k<(here.D.items||[]).length;k++){ const it=here.D.items[k]; if(it.taken)continue; if(it.kind==='rune'&&it.guardG!==undefined){ const gd=guardedNow(it); if(it.wasGuarded&&!gd&&!(here.D.lit||(here.D.lit=new Set())).has(it.grp||it.i)){ here.D.lit.add(it.grp||it.i); const [lx,lz]=cpos(it.i); sChime(lx,lz,0.5); msg(it.elitePrize?'<b style="color:#ffd27a">*</b>番人が倒れた。守られていたルーンが、手の届く光になった。':'<b style="color:#ffd27a">_</b>祭壇に光が灯った。'); } it.wasGuarded=gd; if(gd)continue; }
-    if(it.kind==='legend'){ if(it.born&&time-it.born<1)continue; const [lx,lz]=cpos(it.i); if(Math.hypot(lx-player.x,lz-player.z)<0.9){ it.taken=true; pickLegend(it); } continue; }
+    if(it.kind==='legend'){ if(it.born&&clock.time-it.born<1)continue; const [lx,lz]=cpos(it.i); if(Math.hypot(lx-player.x,lz-player.z)<0.9){ it.taken=true; pickLegend(it); } continue; }
     if(it.kind==='grave'){ const [gx,gz]=cpos(it.i); if(Math.hypot(gx-player.x,gz-player.z)<0.9){ it.taken=true; takeRune(it.rune); msg(`<b style="color:#c8c8d8">+</b>前の冒険者の形見を、墓から拾った：${thingLabel(it.rune)}`); META.grave=null; saveMeta(); sChime(gx,gz,0.4); } continue; }
     if(it.kind==='spring'){ const [sx,sz]=cpos(it.i); if(player.hp<adv.PLAYER_MAX-0.5&&Math.hypot(sx-player.x,sz-player.z)<0.9){ it.taken=true; adv.runState.taken.add(levelSeed()+':'+k+':spring'); player.hp=adv.PLAYER_MAX; player.rally=0; vfx.hpFlash=0.6; renderStatus(); sChime(sx,sz,0.5); setTimeout(()=>sChime(sx,sz,0.35),200); msg('<b style="color:#8fe0ff">~</b>泉の光が体を満たし、傷がすっかり癒えた。泉は静かに光を失った。'); for(let q=0;q<30;q++){ const a=mr()*6.28; spawn(player.x+Math.cos(a)*0.5,0.2+mr(),player.z+Math.sin(a)*0.5,Math.cos(a)*0.4,0.8+mr(),Math.sin(a)*0.4,1.0,G(mpick(['*','.','~'])),0.12,0.8,1.8,2.2,0); } } continue; }
-    if(it.kind==='slot'){ if(it.born&&time-it.born<1)continue; const [sx,sz]=cpos(it.i); if(Math.hypot(sx-player.x,sz-player.z)<0.9){ it.taken=true; openSlot(it.i); } continue; }
-    if(it.kind!=='rune'||!it.rune)continue; if(it.born&&time-it.born<0.6)continue; const [x,z]=cpos(it.i);
+    if(it.kind==='slot'){ if(it.born&&clock.time-it.born<1)continue; const [sx,sz]=cpos(it.i); if(Math.hypot(sx-player.x,sz-player.z)<0.9){ it.taken=true; openSlot(it.i); } continue; }
+    if(it.kind!=='rune'||!it.rune)continue; if(it.born&&clock.time-it.born<0.6)continue; const [x,z]=cpos(it.i);
     if(it.altar)continue; if(Math.hypot(x-player.x,z-player.z)>0.75)continue;
     grabItem(it,k,x,z); }
 }
