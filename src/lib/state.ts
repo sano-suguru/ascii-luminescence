@@ -337,11 +337,11 @@ export interface Fight {
   hitSrcPoint: [number, number] | null;
   /** 手ごとの、引き金のルーンが次に効くまでの秒 */
   trigCd: { L: number; R: number };
-  /** 光線が最後に火をつけた時刻 */
+  /** 光線が最後に火をつけた時刻（ゲームの時刻 clock.time） */
   beamIgT: number;
   boltFx: Bolt[];
-  /** 少しずつ遅れて落ちる稲妻（t 秒後に fn） */
-  zapQueue: { t: number; fn: () => void }[];
+  /** 少しずつ遅れて落ちる稲妻（t 秒後に fn。済んだら done） */
+  zapQueue: { t: number; fn: () => void; done?: boolean }[];
 }
 export const fight: Fight = {
   projs: [],
