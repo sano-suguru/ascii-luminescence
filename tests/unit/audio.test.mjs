@@ -52,6 +52,44 @@ describe('音の土台', () => {
       globalThis.window = saved;
     }
   });
+  it('作る途中で止まったら、作りかけの音の部品を閉じ、部品を全部空に戻す（音量の切り替えが止まらない。クリックのたびに部品が増えない）', () => {
+    const saved = globalThis.window;
+    try {
+      fresh();
+      const log = [];
+      globalThis.window = {
+        AudioContext: function BrokenAudioContext() {
+          const c = fakeAudio(log);
+          c.createConvolver = () => {
+            throw new Error('響きの部品が作れない');
+          };
+          c.close = () => {
+            log.push(['close']);
+            return Promise.resolve();
+          };
+          return c;
+        },
+      };
+      A.sndInit();
+      expect([SND.ctx, SND.master, SND.inp, SND.wet, SND.noise, Object.keys(SND.L)]).toEqual([null, null, null, null, null, []]);
+      expect(log).toContainEqual(['close']);
+      // 閉じる関数が無い古いブラウザでも、止まらずに空に戻す
+      fresh();
+      globalThis.window = {
+        AudioContext: function NoCloseAudioContext() {
+          const c = fakeAudio([]);
+          c.createConvolver = () => {
+            throw new Error('響きの部品が作れない');
+          };
+          return c;
+        },
+      };
+      expect(() => A.sndInit()).not.toThrow();
+      expect([SND.ctx, SND.master]).toEqual([null, null]);
+    } finally {
+      globalThis.window = saved;
+    }
+  });
   it('大きさは 24 離れると 0、左右は向きから見た左右（右が正）', () => {
     Object.assign(player, { x: 10, z: 10, yaw: 0 });
     expect([A.sDist(), A.sDist(10, 10), A.sDist(34, 10), A.sDist(22, 10)]).toEqual([1, 1, 0, Math.pow(0.5, 1.4)]);

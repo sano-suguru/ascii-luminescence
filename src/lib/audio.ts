@@ -12,7 +12,7 @@ export const sndReady = (): boolean | null => SND.ctx && SND.ctx.state === 'runn
 /** 音の部品 */
 const actx = (): AudioContext => must(SND.ctx, '音の部品 SND.ctx');
 
-/** 音の部品を作る（はじめてのクリックで呼ぶ。2回目からは止まっていたのを動かすだけ）。作れなければ音は鳴らない */
+/** 音の部品を作る（はじめてのクリックで呼ぶ。2回目からは止まっていたのを動かすだけ）。作れなければ音は鳴らない（作りかけの部品は閉じる） */
 export function sndInit(): void {
   try {
     if (SND.ctx) {
@@ -97,7 +97,16 @@ export function sndInit(): void {
     });
     SND.L.drone = { g: drone, o: os };
   } catch {
-    SND.ctx = null;
+    // 作りかけの部品は閉じて、全部空に戻す（次のクリックで、はじめから作り直す）
+    const ctx = SND.ctx;
+    SND.ctx = SND.master = SND.inp = SND.wet = SND.noise = null;
+    SND.L = {};
+    if (ctx)
+      try {
+        ctx.close().catch(() => {});
+      } catch {
+        // 閉じる関数が無い古いブラウザでは、閉じずに手放す
+      }
   }
 }
 /** 音の大きさ（聞く位置から 24 離れると 0。位置が無い音は 1） */
