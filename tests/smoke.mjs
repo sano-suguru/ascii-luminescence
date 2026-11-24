@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // スモークテスト：ふだんのページが起動するか、開発用の冒険で dbg が動くか、冒険の始め直しで前の場所や状態が残らないか
-// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの確かめの受付が切れるか。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
+// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）、メニューの確かめの受付が切れるか、図鑑の全部の生き物が描けるか。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
 //   node tests/smoke.mjs          テスト版（.build/test/。既定）
 //   node tests/smoke.mjs --prod   公開用の版（dist/）。JetBrains Mono を指定した所の日本語は、システムのフォントで描く
 import { join } from 'node:path';
-import { withBrowser, newPage, openTest, frames, advance, OUT } from './lib.mjs';
+import { withBrowser, newPage, openTest, frames, advance, annotate, OUT } from './lib.mjs';
 
 const errs = [];
 await withBrowser(
@@ -110,6 +110,41 @@ await withBrowser(
         );
       else await pg.keyboard.press('Escape');
     }
+
+    // 7. 図鑑：全部の生き物（テスト用モードは開発用モードなので、全部並ぶ）を、立つ・歩く・眠るの姿で出して、少し進める。
+    //    例外が出ないか、文字を描いているか（ファントムは、ほとんど火花で描く）、描いた文字に NaN などが混じらないか。最後に Esc でタイトルへ戻る
+    await openTest(pg, base);
+    await advance(pg, 1);
+    const gal = await pg.evaluate(() => {
+      const list = __test.gallery(),
+        bad = [];
+      if (typeof list === 'string') return { bad: [list] };
+      for (const e of list) {
+        if (!e.name) bad.push(`${e.n} 番目（${e.key}）に名前が無い`);
+        if (list.some((o) => o !== e && o.name === e.name)) bad.push(`名前が重なっている：${e.name}`);
+        for (const pose of ['stand', 'walk', 'sleep']) {
+          try {
+            const r0 = __test.galleryShow(e.n, { yaw: 0.6, pose });
+            if (typeof r0 === 'string') throw new Error(r0);
+            __test.advance(0.5);
+            const r = __test.galleryDraw();
+            if (r.glyphs + r.sparks < 15) bad.push(`${e.name}（${pose}）が、ほとんど描かれていない：文字 ${r.glyphs}・火花 ${r.sparks}`);
+            if (r.bad) bad.push(`${e.name}（${pose}）の文字のうち ${r.bad} 個に、数でない値（NaN など）がある`);
+          } catch (err) {
+            bad.push(`${e.name}（${pose}）で例外：${String(err && err.stack ? err.stack : err).slice(0, 300)}`);
+          }
+        }
+      }
+      const total = Number((document.getElementById('gal').textContent.match(/\/\s*(\d+)\s*（/) || [])[1]);
+      return { n: list.length, total, bad };
+    });
+    console.log('bestiary:', gal.n, 'creatures');
+    for (const b of gal.bad) errs.push(annotate(`図鑑：${b}`)); // 例外の場所に src/game/ のファイルと行を書き足す
+    if (gal.n !== undefined && (gal.n < 40 || gal.n !== gal.total)) errs.push(`図鑑の数が合わない：一覧 ${gal.n}、図鑑の画面 ${gal.total}`);
+    await pg.keyboard.press('Escape');
+    await advance(pg, 0.5);
+    if (await pg.evaluate(() => document.getElementById('gal').classList.contains('show')))
+      errs.push('図鑑で Esc を押しても、タイトルへ戻らない');
   },
   { prod: process.argv.includes('--prod') },
 );

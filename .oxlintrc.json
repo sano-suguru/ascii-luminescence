@@ -65,8 +65,8 @@
       "env": { "node": true }
     },
     {
-      // テストの page.evaluate の中はブラウザで動く
-      "files": ["tests/**"],
+      // テストと、テストのページを使う道具（tools/shots.mjs）の page.evaluate の中はブラウザで動く
+      "files": ["tests/**", "tools/shots.mjs"],
       "env": { "browser": true },
       "globals": { "dbg": "readonly", "__test": "readonly" }
     },
