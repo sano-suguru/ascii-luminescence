@@ -9,7 +9,7 @@ function dropRune(m){
   for(let q=0;q<14;q++){ const a=mr()*6.28; spawn(m.x,0.6,m.z,Math.cos(a)*1.2,0.6+mr(),Math.sin(a)*1.2,0.8,G('.'),0.12,1.6,1.4,2.2,0); }
 }
 // ---------------------------------------------------------------- rune altars (predictable rewards): one on the main path of each level, sometimes another off it; three choices made when you come near:
-// a new rune (leaning to empty open slots), honing an equipped rune (one more affix), or healing. Lords leave an altar of strong choices. Treasuries hold the unpredictable.
+// a new rune (leaning to empty open slots), sometimes a weapon, or healing. Lords leave an altar of strong choices (forging a weapon among them). Treasuries hold the unpredictable.
 function altarFill(grp){ const its=(here.D.items||[]).filter(o=>o.grp===grp&&o.altar); if(!its.length||its[0].rune)return; const lord=its[0].lord;
   if(its[0].forge){ const fo=forgeOptions(3); its.forEach((it,k)=>{ const f=fo[k]; Object.assign(it,f?{opt:'forge',forgeW:f.w,forgeK:f.k,forgeTo:f.to,rune:{uid:-1,type:'forgeopt'}}:{opt:'heal',rune:{uid:-1,type:'mend'}}); }); return; }
   const opts=[], usedT=new Set(), usedC=new Set(), held=new Set([gear.hands.L.atk,gear.hands.R.atk].filter(Boolean).map(r=>r.type));

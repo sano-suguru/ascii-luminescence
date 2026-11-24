@@ -260,6 +260,6 @@ describe('段階7a（後半）で移した物：移す前と同じ値', () => {
     } finally {
       Math.random = saved;
     }
-    expect(fingerprint(out)).toEqual(['747f2e3b', 199889]); // 飾りの表 AFFIX を消した時に作り直した（AFFIX の分を数えなくなっただけ）
+    expect(fingerprint(out)).toEqual(['747f2e3b', 199889]);
   });
 });
