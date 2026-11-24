@@ -74,32 +74,40 @@ export function noCssStub() {
 //   今のブラウザは読まない。外さないと、使われないファイルが同じ数だけ組み立てに入る
 // - BIZ UDGothic は、M PLUS 1 Code に無い数文字（src/lib/text.ts の BIZ_CHARS）を補うだけなので、その文字を含む面だけ残す
 //   （全部の面だと、ページを開くたびに読む CSS が約20万字増える。前の Google Fonts の text= と同じ考え）
-const covers = (range, chars) =>
-  range.split(',').some((t) => {
-    const [a, b] = t
-      .trim()
-      .replace(/^U\+/i, '')
-      .split('-')
-      .map((x) => parseInt(x, 16));
-    return [...chars].some((ch) => {
-      const c = ch.codePointAt(0);
-      return c >= a && c <= (b ?? a);
-    });
+// unicode-range（U+XXXX・U+XXXX-YYYY をコンマで並べた物）を [始め, 終わり] の並びにする。読めない形（U+4?? など）はエラー
+const ranges = (range) =>
+  range.split(',').map((t) => {
+    const m = t.trim().match(/^U\+([0-9a-f]+)(?:-([0-9a-f]+))?$/i);
+    if (!m) throw new Error(`読めない unicode-range：${t.trim()}（@fontsource の書き方が変わった？）`);
+    const a = parseInt(m[1], 16);
+    return [a, m[2] ? parseInt(m[2], 16) : a];
   });
+// 補いの文字を、1文字（コードポイント）ずつに分けた物。unicode-range もコードポイントで書く
+const BIZ_LIST = Array.from(BIZ_CHARS);
+const inRanges = (rs, ch) => {
+  const c = ch.codePointAt(0);
+  return rs.some(([a, b]) => c >= a && c <= b);
+};
 export function fontCss() {
   return {
     name: 'font-css',
     transform: {
       order: 'pre',
       handler(code, id) {
-        if (!/[\\/]@fontsource[\\/].*\.css$/.test(id)) return null;
+        const path = id.split('?')[0]; // ?inline・?url などの問い合わせが付いても、同じく絞る
+        if (!/[\\/]@fontsource[\\/].*\.css$/.test(path)) return null;
         let out = code.replace(/,\s*url\([^)]*\.woff\)\s*format\(['"]woff['"]\)/g, '');
         if (/\.woff\)/.test(out)) throw new Error(`woff の候補を外せなかった（@fontsource の書き方が変わった？）：${id}`);
-        if (/[\\/]biz-udgothic[\\/]/.test(id)) {
-          const faces = out.match(/\/\*[^*]*\*\/\s*@font-face\s*\{[^}]*\}|@font-face\s*\{[^}]*\}/g) || [];
-          const keep = faces.filter((f) => covers(f.match(/unicode-range:\s*([^;]+);/)?.[1] ?? 'U+0-10FFFF', BIZ_CHARS));
-          if (!keep.length) throw new Error(`BIZ UDGothic の面が1つも残らない（@fontsource の書き方が変わった？）：${id}`);
-          out = keep.join('\n') + '\n';
+        if (/[\\/]biz-udgothic[\\/]/.test(path)) {
+          const faces = (out.match(/\/\*[^*]*\*\/\s*@font-face\s*\{[^}]*\}|@font-face\s*\{[^}]*\}/g) || []).map((f) => ({
+            f,
+            rs: ranges(f.match(/unicode-range:\s*([^;]+);/)?.[1] ?? 'U+0-10FFFF'),
+          }));
+          const keep = faces.filter(({ rs }) => BIZ_LIST.some((ch) => inRanges(rs, ch)));
+          // 補いの文字が、どれも残した面のどれかに入っていること（入っていないと、その文字が別のフォントで描かれ、枠の縦線がずれる）
+          const lost = BIZ_LIST.filter((ch) => !keep.some(({ rs }) => inRanges(rs, ch)));
+          if (lost.length) throw new Error(`BIZ UDGothic に、補いの文字 ${lost.join(' ')} を含む面が無い：${id}`);
+          out = keep.map(({ f }) => f).join('\n') + '\n';
         }
         return { code: out, map: null };
       },
