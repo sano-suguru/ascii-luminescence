@@ -18,7 +18,7 @@ function newLevel(seedOverride){
   here.D=generate(seedOverride!==undefined?seedOverride:levelSeed(),here.depth);
   if(here.depth===FINAL_DEPTH&&!here.branch&&!here.realm)here.D.finalVault=true;
   frozen=new Map();
-  placeRunesForLevel(); projs=[]; beamSegs=[]; clouds=[]; gear.castSt=null;
+  placeRunesForLevel(); projs=[]; beamSegs=[]; clouds=[]; zones=[]; laters=[]; rains=[]; marks=[]; beamRun=null; gear.castSt=null;
   U.uAmb.value=here.D.prof.ambient;
   hudInfo.explored=0;
   buildWorld(); updateWater();

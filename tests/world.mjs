@@ -4,12 +4,15 @@
 //   2. 扉のマスが燃え尽きると、扉は無くなる
 //   3. 修復機（Re）が焼け落ちた扉を作り直すと、灰の印も消える
 //   4. 焼け落ちた扉のマスに立っていて、そこで扉が作り直されても、足元で視界が止まらない
+//   5. 階に残る物（魔法の場・遅れて当たる攻撃・雨・床の印・撃っている途中の光線）は、階を移ると消える
+//   6. 猟犬は、匂いの無いマスを追わない（ページを開いてすぐの、ゲームの時刻が40秒より前も）
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { withBrowser, newPage, openTest, advance } from './lib.mjs';
 
 const errs = [];
-await withBrowser(async ({ browser, base }) => {
-  const pg = await newPage(browser, errs);
+
+// 1〜4：扉
+async function doorChecks(pg, base) {
   // 深さ3は大洞窟で扉が無いので、石の迷宮の深さ1で
   await openTest(pg, base, 'seed=202&depth=1&god=1');
   await advance(pg, 2);
@@ -91,6 +94,55 @@ await withBrowser(async ({ browser, base }) => {
     // 4. 足元の扉が作り直されても、視界が止まらない
     if (blind) errs.push(`4：足元の扉が作り直された時、扉の向こうが見えなくなった（${blind} フレーム）`);
   }
+}
+
+// 5：階に残る物は、階を移ると消える
+async function traceChecks(pg, base) {
+  await openTest(pg, base, 'seed=202&depth=1&god=1');
+  await advance(pg, 2);
+  const put = await pg.evaluate(() => __test.addTraces());
+  if (!put.zones || !put.laters || !put.rains || !put.marks || !put.beam)
+    errs.push(`5：階に残る物を置けていない（テストの前提が崩れた）：${JSON.stringify(put)}`);
+  await pg.evaluate(() => dbg.go(2));
+  await advance(pg, 0.5);
+  const left = await pg.evaluate(() => __test.traces());
+  if (left.zones || left.laters || left.rains || left.marks || left.beam)
+    errs.push(`5：階を移っても、前の階の物が残っている：${JSON.stringify(left)}`);
+}
+
+// 6：猟犬は、匂いの無いマスを追わない。ページを開いてすぐ（ゲームの時刻が40秒より前）に、遠くに猟犬を置き、プレイヤーは動かない
+async function houndChecks(pg, base) {
+  await openTest(pg, base, 'seed=202&depth=1&god=1');
+  await advance(pg, 2);
+  await pg.evaluate(() => __test.clearAll());
+  const at = await pg.evaluate(() => {
+    // プレイヤーから 20〜40 離れた床（光のハウンドではないので、近さで気づくことは無い）
+    const p = __test.state().pos;
+    for (let i = 0; i < 1e5; i++) {
+      // マスの数より十分大きい数まで（範囲の外のマスは床ではない）
+      const c = __test.cell(i);
+      const d = Math.hypot(c.x - p[0], c.z - p[1]);
+      if (c.floor && d > 20 && d < 40) return i;
+    }
+    return -1;
+  });
+  if (at < 0) {
+    errs.push('6：猟犬を置く床が無い（テストの前提が崩れた）');
+    return;
+  }
+  await pg.evaluate((i) => __test.summon('Zf', i), at);
+  await advance(pg, 5);
+  const t = await pg.evaluate(() => __test.state().time);
+  if (t >= 40) errs.push(`6：ゲームの時刻が40秒を過ぎている（テストの前提が崩れた）：${t}`);
+  if (await pg.evaluate(() => document.body.innerText.includes('匂いを嗅ぎつけた')))
+    errs.push('6：プレイヤーは動いていないのに、遠くの猟犬が「匂いを嗅ぎつけた」');
+}
+
+await withBrowser(async ({ browser, base }) => {
+  const pg = await newPage(browser, errs);
+  await doorChecks(pg, base);
+  await traceChecks(pg, base);
+  await houndChecks(pg, base);
 });
 console.log('page errors:', errs.length ? errs : 'none');
 process.exit(errs.length ? 1 : 0);
