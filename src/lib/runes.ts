@@ -114,8 +114,6 @@ export interface Rune {
   /** 冒険の中で通しの番号（src/lib/gear.ts の makeRune が付ける） */
   uid: number;
   type: string;
-  /** 飾り（今は付かないので、いつも空。AFFIX の種類 → 値） */
-  aff: Partial<Record<string, number>>;
   strong?: boolean;
   traits?: RuneTrait[];
   named?: unknown;
@@ -206,15 +204,6 @@ export function emptyChip(cat: string, attrs: string): string {
 }
 
 // ---------------------------------------------------------------- もとは src/game/18・19・20・21・27
-/** 武器の飾り（増える弾・跳ね返りなど）：名前と、値の振り方 roll（乱数 r を使う）と、書き方 fmt */
-export const AFFIX = {
-  count: { name: '弾数', roll: (r) => 1 + (r() < 0.3 ? 1 : 0), fmt: (v) => `弾数 +${v}` },
-  bounce: { name: '跳ね返り', roll: (r) => 1 + Math.floor(r() * 3), fmt: (v) => `跳ね返り +${v}` },
-  homing: { name: 'ホーミング', roll: (r) => 20 + Math.floor(r() * 5) * 10, fmt: (v) => `ホーミング +${v}度` },
-  chain: { name: '連鎖', roll: (r) => 1 + (r() < 0.35 ? 1 : 0), fmt: (v) => `連鎖 +${v}` },
-  area: { name: '範囲', roll: (r) => 25 + Math.floor(r() * 8) * 5, fmt: (v) => `範囲 +${v}%` },
-  dur: { name: '持続', roll: (r) => 30 + Math.floor(r() * 6) * 10, fmt: (v) => `持続 +${v}%` },
-} satisfies Record<string, { name: string; roll: (r: () => number) => number; fmt: (v: number) => string }>;
 /** 術 sp が性質（elem）を持つか */
 export const sp_elem = (p: { sp?: { elem?: unknown } | null } | null | undefined): boolean => !!(p && p.sp && p.sp.elem);
 /** 二つの性質の反応の名前（無ければ null） */
@@ -250,7 +239,7 @@ export interface RuneDef {
   dmg?: readonly number[];
   /** 立ち直りの秒 */
   rec?: number;
-  /** 付けられる特性 */
+  /** 効く効き方（連鎖・範囲など。効き方のルーンの mk。modWorks が見る。名前は、前にあった飾りの仕組みの名残） */
   aff: readonly string[];
   desc?: string;
   /** 両手で持つ（左右で別の撃ち方 L・R） */
@@ -574,20 +563,18 @@ export const RES: Record<string, Record<string, number>> = {
 export const WEAPON_SIG = (t: string): string[] => Object.keys(TRAITS[t] || {}).slice(0, 2);
 /**
  * 見つけた武器の特性を決める（深さ d・宝物庫や強い物は bonus で段が上がる）。武器でないルーン、特性の無い武器はそのまま返す。
- * 乱数 r は受け取るだけで使わない（移す前と同じ）
+ * 特性は武器ごとに決まった代表の2つで、乱数は使わない（docs/DESIGN.md の「武器の特性」）
  */
-export function rollTraits<T extends Rune | null | undefined>(ru: T, _r: () => number, d: number, bonus?: number): T {
+export function rollTraits<T extends Rune | null | undefined>(ru: T, d: number, bonus?: number): T {
   if (!ru || lookup(RUNE_DEF, ru.type).cat !== 'atk' || !TRAITS[ru.type]) return ru;
   const tier = Math.min(4, clamp(Math.floor(((d || 1) - 1) / 3), 0, 3) + (bonus || 0));
   ru.traits = tier > 0 ? WEAPON_SIG(ru.type).map((k) => ({ k, lv: tier })) : [];
   return ru;
 }
-/** ルーンの段（飾りの数） */
-export const runeTier = (ru: Rune): number => Object.keys(ru.aff).length;
-/** ルーンの色（強い物は金、色の決まったルーンはその色、ほかは段の色。段が表の外なら、移す前と同じく undefined） */
+/** ルーンの色（強い物は金、色の決まったルーンはその色、ほかは並の色） */
 export const runeCol = (ru: Rune): readonly number[] | undefined => {
   if (ru.strong) return TIER_COL[3]; // 表を引く前に見る（移す前と同じ順）
-  return lookup(RUNE_DEF, ru.type).col || TIER_COL[runeTier(ru)];
+  return lookup(RUNE_DEF, ru.type).col || TIER_COL[0];
 };
 /** 効き方のルーンの値（強い物は2倍。効き方でないルーンは、移す前と同じく NaN） */
 export const modVal = (ru: Rune): number => (lookup(RUNE_DEF, ru.type).val ?? NaN) * (ru.strong ? 2 : 1);

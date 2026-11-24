@@ -159,7 +159,7 @@ function levelChoices(){ const BEHAVE=['quickdodge','counter','momentum','devour
   if(!adv.lvl.firstDone){ const b=pool.filter(k=>BEHAVE.includes(k)); if(b.length>=2)pool=b; adv.lvl.firstDone=true; }
   for(let i=0;i<2&&pool.length;i++){ const k=pool.splice(Math.floor(mr()*pool.length),1)[0]; out.push({kind:'bless',k}); }
   const useCharm=(adv.runState.bodyOpen||0)>0&&mr()<0.3, t=useCharm?RUNE_TYPES.body[Math.floor(mr()*RUNE_TYPES.body.length)]:randomRuneType(mr,{elem:0.45,trig:0.15,mod:0.4,body:0});
-  out.push({kind:'rune',ru:RUNE_DEF[t].cat==='mod'&&mr()<0.1?makeStrong(t):makeRune(t,0)}); return shuffle(out,mr); }
+  out.push({kind:'rune',ru:RUNE_DEF[t].cat==='mod'&&mr()<0.1?makeStrong(t):makeRune(t)}); return shuffle(out,mr); }
 function lvlLine(o){ const K=t=>t+' '.repeat(Math.max(2,14-visW(t))); // the label column is 14 wide (the longest, 恩恵（代償）, is 12)
   if(o.kind==='bless'){ const B=BLESS[o.k], l=BL(o.k)+1; return `${K(B.cost?'恩恵（代償）':'恩恵')}<span style="color:${B.cost?'#ff9a8a':'#ffe3a0'}">${B.name}${l>1?' II':''}</span>`; }
   const d=RUNE_DEF[o.ru.type], br=CAT_BR[d.cat]||['','']; return `${K(d.cat==='body'?'護符':'ルーン')}${br[0]}<b class="rn" style="color:${css(runeCol(o.ru))}">${d.ch}</b> ${runeName(o.ru)}${br[1]}　<span class="lab">${CAT_NAME[d.cat]}</span>`; }
@@ -210,7 +210,7 @@ function loreRows(R,f){ if(!R)return []; const rows=[`${f('|')}  <b>伝承</b>`]
   else { const nx=UNLOCKS.filter(u=>!unlocked(u.id)).sort((a,b)=>a.cost-b.cost)[0]; if(nx)rows.push(`${f('|')}    <span class="lab">次の解放まで あと ${nx.cost-loreLeft()}（${nx.name} ${nx.cost}）</span>`); } return rows; }
 // the grave: what the fallen adventurer leaves (one thing, chosen on the results screen)
 let graveSel=0, graveCands=[];
-function graveRune(g){ const ru=makeRune(g.type,0); ru.strong=false; if(g.traits&&g.traits.length)ru.traits=g.traits.map(t=>({k:t.k,lv:t.lv-1})).filter(t=>t.lv>0); return ru; }
+function graveRune(g){ const ru=makeRune(g.type); ru.strong=false; if(g.traits&&g.traits.length)ru.traits=g.traits.map(t=>({k:t.k,lv:t.lv-1})).filter(t=>t.lv>0); return ru; }
 function graveCandidates(){ const out=[], seen=new Set(), add=ru=>{ if(ru&&!seen.has(ru)){ seen.add(ru); out.push(ru); } };
   add(gear.hands.L.atk); add(gear.hands.R.atk); for(const h of ['L','R'])for(const r of gear.hands[h].slots)add(r); if(gear.hands.B){ add(gear.hands.B.b0); add(gear.hands.B.b1); } for(const r of gear.bag)add(r); return out.slice(0,10); }
 function saveGrave(){ if(adv.won||!graveCands)return; const ru=graveSel>0?graveCands[graveSel-1]:null; saved.META.grave=ru?{k:(STRATA.find(st=>here.depth>=st.from&&here.depth<=st.to)||{}).k||'',depth:here.depth,cause:adv.runStats.cause||'',item:serRune(ru)}:null; saveMeta(); graveCands=[]; }

@@ -99,7 +99,6 @@ function drawSwing(){
 // what a trait does at its level: its first or third step, and the fifth when reached
 const trDesc=(w,t)=>{ const T=TRAITS[w]&&TRAITS[w][t.k]; return T?T.d(t.lv):''; };
 // RUNE_TYPES は src/lib/runes.ts（src/game/imports.mjs で読む）
-// AFFIX は src/lib/runes.ts（src/game/imports.mjs で読む）
 // what each kind of creature tends to drop, and how much each element hurts it (0 = no effect, 2 = badly)
 const ELEM_OF={l:'fire',Zf:'fire',D:'fire',Zi:'ice',L:'ice',K:'ice',Zl:'thunder',Rc:'thunder',Re:'thunder',Rw:'thunder',S:'poison',n:'poison',N:'poison',B:'poison'};
 // RES は src/lib/runes.ts（src/game/imports.mjs で読む）

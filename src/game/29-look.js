@@ -51,7 +51,6 @@ function look(){
         if(best.it.guardG!==undefined&&guardedNow(best.it)){ h=best.it.elitePrize?lookLine('*',[1,0.5,0.35],'守られた宝','強いものが守っている。番人を倒せば、手に取れる'):lookLine('_',[0.6,0.55,0.65],'眠っている祭壇','光はまだ眠っている。この部屋に巣くうものを退ければ、灯るだろう'); break; }
         const ru=best.it.rune; if(!ru)break; if(best.it.opt==='open'){ h=lookLine('{',[1,0.9,0.6],best.it.label,'空の枠が開けられる所。祭壇と同じく、選んで決める'); break; }
         if(best.it.opt==='heal'){ h=lookLine('+',[1,0.55,0.6],'癒しの光','傷が大きく癒える。祭壇の前で、数字キーで選ぶ'); break; }
-        if(best.it.opt==='hone'){ const d=RUNE_DEF[ru.type]; h=lookLine(d.ch,runeCol(ru),d.name+'のルーンに宿す',`今はめている${d.name}のルーンに、${AFFIX[best.it.hone.k].fmt(best.it.hone.v)} が宿る。ひとつ手に取ると、残りは消える`); break; }
         if(best.it.vault){ const d=RUNE_DEF[ru.type], trs=trList(ru); h=lookLine(d.ch,runeCol(ru),thingLabel(ru)+'（宝物庫の宝）',d.desc+(trs.length?'。特性：'+trs.map(t=>`${trName(ru.type,t)} Lv${t.lv}`).join('・'):'')+'。'+(best.it.ev==='guard'?'周りの石像が、こちらを見ている気がする':'頭上の天井に、深いひびが走っている')); break; }
         const d=RUNE_DEF[ru.type], trs=trList(ru); h=lookLine(d.ch,runeCol(ru),thingLabel(ru),d.desc+(trs.length?'。特性：'+trs.map(t=>`${trName(ru.type,t)} Lv${t.lv}`).join('・'):'')+(best.it.grp?'。ひとつ手に取ると、残りは消える':'')); break; }
       case 'trap': { const inf=TRAP_INFO[best.tr.type], c=inf[1]; h=lookLine('^',[parseInt(c.slice(1,3),16)/255,parseInt(c.slice(3,5),16)/255,parseInt(c.slice(5,7),16)/255],`${inf[0]}罠${best.tr.used?'（作動済み）':''}`,inf[2]); break; }

@@ -111,8 +111,8 @@ export type { MonsterType } from './creatures.ts';
 export interface GenEnv {
   /** 生き物の表（読むだけ） */
   MTYPES: Readonly<Record<string, MonsterType>>;
-  makeRune: (type: string, nAff: number, r?: () => number) => Rune;
-  rollTraits: (ru: Rune, r: () => number, d: number, bonus?: number) => Rune;
+  makeRune: (type: string) => Rune;
+  rollTraits: (ru: Rune, d: number, bonus?: number) => Rune;
 }
 export type { Stratum, Theme } from './strata.ts';
 /** 手で描いた宝物庫の絵（src/lib/vaults.ts の VAULTS の1つ） */
@@ -3621,9 +3621,9 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         rune: (() => {
           if (rand() < 0.5) {
             const wp = weapons;
-            return rollTraits(makeRune(nth(wp, Math.floor(rand() * wp.length)), 0, rand), rand, depth, 1);
+            return rollTraits(makeRune(nth(wp, Math.floor(rand() * wp.length))), depth, 1);
           }
-          const ru = makeRune(nth(RUNE_TYPES.mod, Math.floor(rand() * RUNE_TYPES.mod.length)), 0, rand);
+          const ru = makeRune(nth(RUNE_TYPES.mod, Math.floor(rand() * RUNE_TYPES.mod.length)));
           if (rand() < 0.35) ru.strong = true;
           return ru;
         })(),

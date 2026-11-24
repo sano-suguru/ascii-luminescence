@@ -67,11 +67,11 @@ describe('迷宮の生成', () => {
       expect(level.stairs).toBeGreaterThanOrEqual(0);
     }
   });
-  // ブラウザ（Chromium）と Node で同じ迷宮になることを、190 の階を作り比べて確かめた（混ぜるのを shuffle にした時）。その時の生成の指紋（日本語の文は除く。
-  // 欄の並びによらない形にした時に作り直した。前の generate.js からも同じ値になる）。生成を変えると変わる。意図して変えた時は、ブラウザでも同じになることを確かめてから作り直す
+  // 全部の場所の生成の指紋（日本語の文は除き、欄の並びによらない）。ブラウザ（Chromium）の __test.gen でも同じ値になる。
+  // 生成を変えると変わる。意図して変えた時は、ブラウザでも同じ値になることを確かめてから作り直す
   it('今の迷宮と同じになる（全部の場所の指紋）', () => {
     let all = '';
     for (const pl of PLACES) all += text(gen(202, pl));
-    expect([fnv(all), all.length]).toEqual(['98fac18e', 20044633]);
+    expect([fnv(all), all.length]).toEqual(['85351adf', 20044570]);
   }, 30000);
 });

@@ -12,6 +12,9 @@
 - 見た目の確認は、**画面写真を元の大きさで1枚ずつ見る**。縮小した一覧だけで判断しない（過去に見落としがあった）。
 - ほかのゲームの仕組みを聞かれたら、推測せず、調べて（Web検索）から答える。
 - テスト環境だけの問題（フォントの幅、遅さ、タイムアウト）は、テスト側の問題だと伝える。
+- **ドキュメント（docs/・CLAUDE.md・コメント）には、今有効な仕様だけを書く**。仕様を変えたら、元の記載をその場で書き直すか消す。
+  古い記載を残したまま、訂正・撤回・補足を書き足さない。重複や矛盾する記載は1つにまとめる。廃止した機能の説明は消す。
+  変更の履歴は Git（コミットと PR）に書く。経緯や、やめたこと（とその理由）が今後の判断に要る時だけ、今の決まりとして書く。
 
 ## ファイル
 ```
@@ -229,7 +232,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 | 16-view-input | 視界とミニマップ、伝言（msg）、当たり（solidAt）、入力の状態。ミニマップの大きさは src/lib/hud.ts、押しているキー keys は src/lib/state.ts |
 | 17-meta | 段階D：伝承・解放・墓・試練（weaponPool、trialOn）、タイトルの画面（buildIntroPanel）。UNLOCKS・META_DEF は src/lib/progress.ts、保存する記録 META などは src/lib/state.ts の saved |
 | 18-level-player | 階の切り替え（newLevel）、罠、生き物の強さ（MSTAT）、生と死、レベルアップ（levelChoices、lvlLine。加護の表 BLESS は src/lib/progress.ts）。expNeed・expOf は src/lib/progress.ts、serRune は src/lib/runes.ts。TRAP_INFO は src/lib/names.ts、WEAPON・SLEEP_MULT は src/lib/runes.ts、roll は src/lib/random.ts |
-| 19-hands-runes | 手元の武器（VM_MODELS、drawViewWeapons）、性質と反応、術の中身（specOf）。ルーンを作る・手と持ち物の処理は src/lib/gear.ts、ルーンの名前と色と付けられるかは src/lib/runes.ts。ルーンの定義 RUNE_DEF・性質の効き目 RES・TRAITS・REACT・手の枠・AFFIX は src/lib/runes.ts |
+| 19-hands-runes | 手元の武器（VM_MODELS、drawViewWeapons）、性質と反応、術の中身（specOf）。ルーンを作る・手と持ち物の処理は src/lib/gear.ts、ルーンの名前と色と付けられるかは src/lib/runes.ts。ルーンの定義 RUNE_DEF・性質の効き目 RES・TRAITS・REACT・手の枠は src/lib/runes.ts |
 | 20-chant-hits | 詠唱（beginCast、castNow…）、当たり（applyHit）、反応、飛ぶ物。turnDir は src/lib/math.ts、sp_elem は src/lib/runes.ts。戦いの状態は src/lib/state.ts の fight |
 | 21-altars-heal | ルーンの手に入れ方、祭壇（altarFill、forgeOptions、mainPathAltars、altarLine）、回復、拾う。RALLY_FROM は src/lib/runes.ts、ALTAR_W は src/lib/hud.ts |
 | 22-world-hints | 先にある物の気配、方向の矢印、床のルーン、詠唱の見た目、照準。stratumAtDepth は src/lib/strata.ts |

@@ -93,8 +93,8 @@ function openRange(){
   introEl.classList.add('gone'); sndInit(); resetRunes(); const room=galleryRoom(52571);
   gallery={mode:'range',room,dummies:[]};
   const types=Object.keys(RUNE_DEF).filter(t=>RUNE_DEF[t].cat!=='open'&&RUNE_DEF[t].cat!=='sub'&&(RUNE_DEF[t].cat!=='mod'||RUNE_TYPES.mod.includes(t))&&(saved.DEVALL||saved.RSEEN.has(t)||t==='blade'||t==='bolt'||RUNE_DEF[t].cat==='mod'));
-  gear.bag=[]; for(const t of types)gear.bag.push(makeRune(t,0));
-  for(const h of ['L','R']){ gear.hands[h].slotN=SLOT_MAX; while(gear.hands[h].slots.length<SLOT_MAX)gear.hands[h].slots.push(null); } for(const t of RUNE_TYPES.mod)gear.bag.push(makeStrong(t)); for(const w of RUNE_TYPES.atk)for(const k of Object.keys(TRAITS[w]))for(const lv of [3,5]){ const ru=makeRune(w,0); ru.traits=[{k,lv}]; gear.bag.push(ru); } gear.hands.B=gear.hands.B||{b0:null,b1:null}; adv.runState.bodyOpen=2;
+  gear.bag=[]; for(const t of types)gear.bag.push(makeRune(t));
+  for(const h of ['L','R']){ gear.hands[h].slotN=SLOT_MAX; while(gear.hands[h].slots.length<SLOT_MAX)gear.hands[h].slots.push(null); } for(const t of RUNE_TYPES.mod)gear.bag.push(makeStrong(t)); for(const w of RUNE_TYPES.atk)for(const k of Object.keys(TRAITS[w]))for(const lv of [3,5]){ const ru=makeRune(w); ru.traits=[{k,lv}]; gear.bag.push(ru); } gear.hands.B=gear.hands.B||{b0:null,b1:null}; adv.runState.bodyOpen=2;
   DUMMY_KINDS.forEach((dk,j)=>{ const d={k:dk.k,x:room.x+(j-1.5)*2.4,z:room.z-5}; gallery.dummies.push(d); spawnDummy(d); });
   player.x=room.x; player.z=room.z+3; player.yaw=0; player.pitch=-0.05; player.hp=adv.PLAYER_MAX;
   adv.dead=false; ui.started=true; document.body.classList.add('started'); adv.runStats={kills:0,t0:clock.time};
