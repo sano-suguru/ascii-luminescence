@@ -37,17 +37,17 @@ export const annotate = (s) =>
       });
 
 // 組み立てて配信し、ブラウザを開く。fn が終わったら必ず閉じる。
-export async function withBrowser(fn, { cdn = false } = {}) {
+export async function withBrowser(fn, { prod = false } = {}) {
   mkdirSync(OUT, { recursive: true });
-  // テスト版は .build/test/（three.js とフォントは node_modules から）、cdn は公開用と同じ dist/
-  const mode = cdn ? 'production' : 'test',
-    dir = join(ROOT, cdn ? 'dist' : '.build/test');
+  // テスト版は .build/test/（フォントは node_modules から）、prod は公開用と同じ dist/（フォントは Google Fonts から。three.js はどちらも組み立てに入っている）
+  const mode = prod ? 'production' : 'test',
+    dir = join(ROOT, prod ? 'dist' : '.build/test');
   await build({ configFile: join(ROOT, 'vite.config.mjs'), mode, logLevel: 'warn' });
   mapDir = join(ROOT, '.build/maps', mode);
   const srv = await serve(dir);
   // システムのフォントを見せない（tests/fonts.conf）。テスト版は Web フォントを同梱しているので、どのマシンでも同じ文字になる。
-  // 公開用の版（cdn）は Google Fonts を読むので、ふつうの設定のままにする。
-  const env = cdn ? process.env : { ...process.env, FONTCONFIG_FILE: join(ROOT, 'tests/fonts.conf') };
+  // 公開用の版（prod）は Google Fonts を読むので、ふつうの設定のままにする。
+  const env = prod ? process.env : { ...process.env, FONTCONFIG_FILE: join(ROOT, 'tests/fonts.conf') };
   const browser = await chromium.launch({ args: GL_ARGS, env });
   try {
     return await fn({ browser, base: `http://127.0.0.1:${srv.port}/index.html` });

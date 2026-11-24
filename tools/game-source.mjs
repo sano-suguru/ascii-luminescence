@@ -6,7 +6,6 @@ import { fileURLToPath } from 'node:url';
 import { encodeMappings } from './sourcemap.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-export const CDN = 'https://cdn.jsdelivr.net/npm/three@0.147.0/';
 // テスト版では、Google Fonts の代わりに npm の @fontsource を読む（どのマシンでも同じ文字の形にするため）
 export const TEST_FONTS = [
   'jetbrains-mono/400',

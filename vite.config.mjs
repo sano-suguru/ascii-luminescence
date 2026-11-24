@@ -1,6 +1,7 @@
 // 組み立て（Vite 8）。入口は src/index.html。ゲーム本体は tools/vite-plugins.mjs の legacyGame が1つのモジュールにする。
-//   vite build              -> dist/（公開用。three.js とフォントは CDN と Google Fonts から）
-//   vite build --mode test  -> .build/test/（テスト用。three.js とフォントは node_modules から。オフラインで動く）
+//   vite build              -> dist/（公開用。フォントは Google Fonts から）
+//   vite build --mode test  -> .build/test/（テスト用。フォントは node_modules の @fontsource から。オフラインで動く）
+//   three.js は、どちらも npm の three（r147）を組み立てに入れる（src/game/imports.mjs で読む）
 //   ほかの mode             -> .build/<mode>/（単体テストで、公開用と同じ組み立てを試す時など）
 // ソースマップは、どの mode でも .build/maps/<mode>/ に置き、出力には残さない（公開しない）。
 import { join } from 'node:path';
@@ -14,7 +15,7 @@ export default defineConfig(({ mode }) => ({
   base: './',
   publicDir: false,
   clearScreen: false,
-  // ブラウザで読む npm の依存は無い（three.js は CDN の <script>）。依存を探す下調べは要らない（仮のモジュールを読めずに警告が出る）
+  // 依存を探す下調べはしない（仮のモジュールを読めずに警告が出る）。開発用サーバーは three.js（ES モジュール）を node_modules からそのまま読む
   optimizeDeps: { noDiscovery: true },
   build: {
     outDir: mode === 'production' ? join(root, 'dist') : join(root, '.build', mode),
