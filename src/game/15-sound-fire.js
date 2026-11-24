@@ -95,7 +95,7 @@ function initFire(){
 }
 function ignite(i,strength,gasBurn){
   if(i<0||i>=NCELL||here.D.tile[i]===TW)return;
-  if(blaze.fire[i]<=0){ blaze.fire[i]=strength; blaze.burning.push(i); }
+  if(blaze.fire[i]<=0){ blaze.fire[i]=strength; if(!blaze.burning.includes(i))blaze.burning.push(i); } // put out and lit again before stepFire: it is still in the list
   else blaze.fire[i]=Math.max(blaze.fire[i],strength);
   if(gasBurn){ blaze.fuel[i]=Math.max(blaze.fuel[i],0.25); here.D.gas[i]=0; }
 }
@@ -124,7 +124,7 @@ function stepFire(){
       if(blaze.fire[j]<=0&&blaze.fuel[j]>0&&mr()<0.22*blaze.fire[i]*(here.D.surface[j]===SF_DEAD?1.4:1))ignite(j,0.25,false);
       const lq=here.D.liquid[j]; if((lq===LQ_WATER||lq===LQ_DEEP)&&blaze.fire[i]>0.5&&mr()<0.15){ const sx=(j%MW+0.5)*CELL, sz=(((j/MW)|0)+0.5)*CELL; for(let q=0;q<3;q++)spawn(sx+(mr()-0.5),0.2,sz+(mr()-0.5),(mr()-0.5)*0.3,0.6+mr()*0.6,(mr()-0.5)*0.3,2.5,G(mpick(['~','.','\''])),0.35,0.35,0.36,0.4,1); }
     }
-    if(blaze.fire[i]<0.04){ blaze.fire[i]=0; blaze.burnt[i]=1; blaze.fuel[i]=0; if(here.D.surface[i]!==SF_OBSIDIAN)here.D.surface[i]=0; const di=here.D.doorAt[i]; if(di>=0)here.D.doors[di].gone=true; }
+    if(blaze.fire[i]<0.04){ blaze.fire[i]=0; blaze.burnt[i]=1; blaze.fuel[i]=0; if(here.D.surface[i]!==SF_OBSIDIAN&&here.D.surface[i]!==SF_BRIM)here.D.surface[i]=0; const di=here.D.doorAt[i]; if(di>=0)here.D.doors[di].gone=true; }
     else next.push(i);
   }
   for(const i of blaze.burning)if(blaze.fire[i]>0&&!next.includes(i))next.push(i);
@@ -349,7 +349,7 @@ function riverFX(dt){
   if(!here.riverCells.length)return;
   for(let k=0;k<6&&mr()<dt*14;k++){
     const i=here.riverCells[Math.floor(mr()*here.riverCells.length)], x=(i%MW+0.2+mr()*0.6)*CELL, z=(((i/MW)|0)+0.2+mr()*0.6)*CELL;
-    if(Math.hypot(x-player.x,z-player.z)>18)continue;
+    if(Math.hypot(x-player.x,z-player.z)>18||!here.D.liquid[i])continue; // a frozen river has no liquid
     const a=here.D.flow[i]-10; spawn(x,0.12,z,Math.cos(a)*1.3,0.01,Math.sin(a)*1.3,2.2+mr(),G(mpick(['~','.','-'])),0.13,0.25,0.55,0.75,1);
   }
 }
