@@ -29,6 +29,19 @@ await withBrowser(
     await advance(pg, 1);
     await frames(pg, 2);
     await pg.screenshot({ path: join(OUT, 'run.png'), timeout: 90000 });
+
+    // 3. 特別な階（大広間）で死んで、Enter で新しい冒険を始めると、深さ1から（特別な階は残らない）
+    await pg.evaluate(() => dbg.inter('bigroom'));
+    await advance(pg, 2);
+    const inBig = await pg.evaluate(() => dbg.info());
+    if (inBig.inter !== 'bigroom') errs.push(`大広間に入れていない：${JSON.stringify(inBig).slice(0, 160)}`);
+    await pg.evaluate(() => dbg.hurt(9999)); // god=1 でも dbg.hurt は傷を受ける
+    await advance(pg, 1);
+    await pg.keyboard.press('Enter');
+    await advance(pg, 2);
+    const again = await pg.evaluate(() => dbg.info());
+    if (again.depth !== 1 || again.inter !== null)
+      errs.push(`新しい冒険が深さ1の普通の階で始まっていない：${JSON.stringify(again).slice(0, 160)}`);
   },
   { prod: process.argv.includes('--prod') },
 );
