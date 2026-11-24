@@ -46,7 +46,7 @@ function renderInv(){
   if(two)rows.push(`${f('|')}        <span class="dim">両手で持つ間、両手のルーンの枠は合わせて${TWO_SLOTS}つまで使える</span>`);
   rows.push(`${f('|')} 身     ${bslot(0)}${bslot(1)}${padTo('',W)} <span class="lab">→</span> ${bodyFx||'<span class="dim">護符なし</span>'}`);
   rows.push(f('|'),`${f('|')} 袋`);
-  for(const cat of ['atk','elem','trig','mod','body']){ const list=gear.bag.filter(r=>RUNE_DEF[r.type].cat===cat).sort((a,b)=>runeTier(b)-runeTier(a)||a.type.localeCompare(b.type));
+  for(const cat of ['atk','elem','trig','mod','body']){ const list=gear.bag.filter(r=>RUNE_DEF[r.type].cat===cat).sort((a,b)=>a.type.localeCompare(b.type));
     // pages of BAG_LINES lines each; the last line keeps room for the page buttons
     const head=`${f('|')}   <span class="lab">${CAT_NAME[cat]}</span>  `, cont=`${f('|')}         `, lim=PACK_W-6, pagerW=16;
     const pages=[]; let cur=[], li=0, lw=visW(head);

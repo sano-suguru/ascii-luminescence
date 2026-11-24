@@ -120,22 +120,22 @@ describe('特性とルーン', () => {
   });
   it('手のルーンは、使える枠の分だけ数え、空きを除く。保存の形は種類・強い印・特性だけ', () => {
     const H = {
-      slots: [{ uid: 0, aff: {}, type: 'fire' }, null, { uid: 0, aff: {}, type: 'fire' }, { uid: 0, aff: {}, type: 'ice' }],
+      slots: [{ uid: 0, type: 'fire' }, null, { uid: 0, type: 'fire' }, { uid: 0, type: 'ice' }],
       slotN: 3,
     };
     expect(R.handRunes(H).map((r) => r.type)).toEqual(['fire', 'fire']);
     expect(R.elemCount(H, 'fire')).toBe(2);
     expect(R.elemCount({}, 'fire')).toBe(0);
-    expect(R.serRune({ uid: 0, aff: {}, type: 'orb', traits: [{ k: 'speed', lv: 5 }], named: 'x' })).toEqual({
+    expect(R.serRune({ uid: 0, type: 'orb', traits: [{ k: 'speed', lv: 5 }], named: 'x' })).toEqual({
       type: 'orb',
       strong: false,
       traits: [{ k: 'speed', lv: 5 }],
     });
   });
   it('武器の名前の色：特性が無ければ無し、段5か名のある武器は金', () => {
-    expect(R.weaponCol({ uid: 0, aff: {}, type: 'blade' })).toBe('');
-    expect(R.weaponCol({ uid: 0, aff: {}, type: 'blade', traits: [{ k: 'range', lv: 3 }] })).toBe('#9fdcf0');
-    expect(R.weaponCol({ uid: 0, aff: {}, type: 'blade', traits: [{ k: 'range', lv: 5 }] })).toBe(css([1.0, 0.82, 0.3]));
+    expect(R.weaponCol({ uid: 0, type: 'blade' })).toBe('');
+    expect(R.weaponCol({ uid: 0, type: 'blade', traits: [{ k: 'range', lv: 3 }] })).toBe('#9fdcf0');
+    expect(R.weaponCol({ uid: 0, type: 'blade', traits: [{ k: 'range', lv: 5 }] })).toBe(css([1.0, 0.82, 0.3]));
   });
 });
 
@@ -257,14 +257,9 @@ describe('段階7a（後半）で移した物：移す前と同じ値', () => {
       }
       for (const a of ['fire', 'ice', 'poison', 'thunder', 'blade'])
         for (const b of ['fire', 'ice', 'poison', 'thunder', 'blade']) out.push(R.reactionOf(a, b));
-      for (const [k, a] of Object.entries(R.AFFIX))
-        for (let s = 0; s < 20; s++) {
-          const v = a.roll(mulberry32(s));
-          out.push(k, a.name, v, a.fmt(v));
-        }
     } finally {
       Math.random = saved;
     }
-    expect(fingerprint(out)).toEqual(['c3cae2c3', 203009]);
+    expect(fingerprint(out)).toEqual(['747f2e3b', 199889]);
   });
 });

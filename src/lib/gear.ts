@@ -1,9 +1,8 @@
-// 手と持ち物の処理（もとは src/game/19-hands-runes.js）。状態の入れ物 gear（両手・持ち物）と here（深さ）に頼る物。
+// 手と持ち物の処理（もとは src/game/19-hands-runes.js）。状態の入れ物 gear（両手・持ち物）に頼る物。
 // 表だけに頼る物（ルーンの名前・色・付けられるか）は src/lib/runes.ts。
 import { lookup, must } from './array.ts';
-import { mr } from './random.ts';
-import { AFFIX, RUNE_DEF, type Rune, TWO_SLOTS, slotsAllow, syncHand, trList, canPut } from './runes.ts';
-import { type HandState, type Hands, gear, here } from './state.ts';
+import { RUNE_DEF, type Rune, TWO_SLOTS, slotsAllow, syncHand, trList, canPut } from './runes.ts';
+import { type HandState, type Hands, gear } from './state.ts';
 
 /** 左手・右手 */
 export type Side = 'L' | 'R';
@@ -28,36 +27,20 @@ export interface HandsSnap {
 /** 両手（冒険の始めからあるので、無ければその場で止まる） */
 const hands = (): Hands => must(gear.hands, '両手 gear.hands');
 
-/**
- * ルーンを作る（番号 uid は冒険の中で通し）。飾りの数 nAff と乱数 r は受け取るが、飾りを数える n が 0 から始まるので、
- * 飾りは付かず、乱数も引かない（移す前と同じ）
- */
-export function makeRune(type: string, _nAff: number, r?: () => number): Rune {
-  const rr = r || mr;
-  const def = lookup(RUNE_DEF, type),
-    pool = def.aff.slice(),
-    aff: Partial<Record<string, number>> = {};
-  let n = 0;
-  while (n-- > 0) {
-    const k = must(pool.splice(Math.floor(rr() * pool.length), 1)[0]);
-    aff[k] = lookup(AFFIX, k).roll(rr);
-  }
-  return { uid: gear.runeUid++, type, aff };
+/** ルーンを作る（番号 uid は冒険の中で通し） */
+export function makeRune(type: string): Rune {
+  lookup(RUNE_DEF, type); // 表に無い種類は、ここで止まる（前と同じ）
+  return { uid: gear.runeUid++, type };
 }
 /** 強いルーンを作る（効き方のルーンだけが強くなる） */
 export function makeStrong(t: string): Rune {
-  const ru = makeRune(t, 0);
+  const ru = makeRune(t);
   if (lookup(RUNE_DEF, t).cat === 'mod') ru.strong = true;
   return ru;
 }
-/** 飾りの数を決める（深いほど多い。0 から 3） */
-export function rollAffN(r: () => number, bonus?: number): number {
-  const x = r() + (bonus || 0) + Math.min(0.25, here.depth * 0.015);
-  return x < 0.55 ? 0 : x < 0.82 ? 1 : x < 0.96 ? 2 : 3;
-}
 /** 武器 w を持った、空の手 */
 export function newHand(w: string): HandState {
-  return { atk: makeRune(w, 0), slots: [null, null], slotN: 2, turn: 0, elem: null, trig: null };
+  return { atk: makeRune(w), slots: [null, null], slotN: 2, turn: 0, elem: null, trig: null };
 }
 /** 両手持ちの武器を持っているか（左右が同じ武器で、その武器が両手持ち） */
 export const isTwo = (): boolean =>
