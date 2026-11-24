@@ -74,7 +74,7 @@ const iceT=new Map();
 function crackIce(i,dt){
   const t0=(iceT.get(i)||0)+dt; iceT.set(i,t0);
   if(t0<dt*1.5){ sSqueak(player.x,player.z); if(!D.crackMsg){ D.crackMsg=true; msg('<b style="color:#b8e4ff">/</b>足元の氷が、ぴしりと音を立ててきしんだ。'); } }
-  if(t0>0.85){ D.liquid[i]=LQ_WATER; D.thin[i]=0; cellFlag[i]=50; uploadCells(); sSplash(0.45); shake=Math.max(shake,0.15);
+  if(t0>0.85){ D.liquid[i]=LQ_WATER; D.thin[i]=0; cellFlag[i]=50; uploadCells(); sSplash(0.45); vfx.shake=Math.max(vfx.shake,0.15);
     msg('<b style="color:#6ab4ff">~</b>氷が割れ、冷たい水に足が沈んだ。');
     const [x,z]=cpos(i); for(let q=0;q<26;q++){ const a=mr()*6.28; spawn(x+Math.cos(a)*0.5,0.1,z+Math.sin(a)*0.5,Math.cos(a)*1.2,0.6+mr(),Math.sin(a)*1.2,1+mr(),G(mpick(['/','\\','~','*'])),0.16,0.6,0.85,1.0,1); } }
 }
@@ -91,9 +91,9 @@ let brimT=0; function brimRecover(dt){ brimT+=dt; if(brimT<2)return; brimT=0; le
 function triggerTrap(tr){
   tr.used=true; tr.hidden=false; const [x,z]=cpos(tr.i), info=TRAP_INFO[tr.type], tag=`<b style="color:${info[1]}">^</b>`;
   switch(tr.type){
-    case 'alarm': sAlarm(x,z); shake=Math.max(shake,0.2); msg(tag+'カチリ……鐘の音が響き渡った！ 辺りの獣が集まってくる。');
+    case 'alarm': sAlarm(x,z); vfx.shake=Math.max(vfx.shake,0.2); msg(tag+'カチリ……鐘の音が響き渡った！ 辺りの獣が集まってくる。');
       for(const m of monsters){ if(m.ty.critter||m.dead)continue; if(Math.hypot(m.x-x,m.z-z)<32){ m.sleep=false; m.aware=Math.max(m.aware,0.8); m.goal=[x,z]; m.goalT=time+15; } } break;
-    case 'trapdoor': sRumble(0.5,1.2); shake=Math.max(shake,0.4); msg(tag+'床が抜けた！ 闇の中を、下の階へと落ちていく……'); trans={phase:'out',t:0,regen:false}; player.fall=true; break;
+    case 'trapdoor': sRumble(0.5,1.2); vfx.shake=Math.max(vfx.shake,0.4); msg(tag+'床が抜けた！ 闇の中を、下の階へと落ちていく……'); trans={phase:'out',t:0,regen:false}; player.fall=true; break;
     case 'net': player.netT=3.2; sHiss(x,z,0.5); msg(tag+'網が降ってきた！ もがいて抜け出そうとする……'); break;
     case 'flood': sSplash(0.5); msg(tag+'床の穴から、水が勢いよく噴き出した！'); events.push({type:'flood',ri:-2,order:tr.order.slice(),src:tr.i,state:1,t:0,k:0,max:tr.order.length*3}); break;
     case 'methane': sHiss(x,z,1.2); msg(tag+'床の穴から、沼のガスが噴き出した。火気に注意！');
@@ -137,7 +137,7 @@ const MSTAT={r:[6,1,3,1.0],k:[7,1,4,1.1],j:[8,2,4,0.9],e:[18,3,7,1.4],m:[12,1,3,
   B:[55,3,7,1.6],N:[75,7,11,1.5],l:[60,5,11,1.4],K:[120,8,15,2.0],T:[65,10,15,1.7],Y:[300,4,8,2.2],D:[150,20,30,2.4],L:[35,8,14,1.8],n:[12,2,5,1.0],X:[200,12,20,2.0]};
 let PLAYER_MAX=40;
 // WEAPON・SLEEP_MULT は src/lib/runes.ts（src/game/imports.mjs で読む）
-let dead=false, runStats={kills:0,t0:0}, hurtFlash=0, hpShown=-1;
+let dead=false, runStats={kills:0,t0:0}, hpShown=-1;
 // roll は src/lib/random.ts（src/game/imports.mjs で読む）
 const statOf=m=>{ const st=MSTAT[m.ty.sk||m.key]||[12,2,5,1.2]; return trialOn('fury')?[st[0]*1.3,st[1]*1.3,st[2]*1.3,st[3]]:st; };
 const hostile=m=>!m.ty.critter&&!m.ty.peaceful&&!m.ty.watcher&&m.ty.form!=='bloat'&&!m.dead;
@@ -203,7 +203,7 @@ function hurtPlayer(n,cause){
   if(godMode)return; if((player.invulT||0)>time)return; if(BL('reckless'))n*=BL('reckless')>=2?1.35:1.25;
   n*=Math.max(0.4,1-0.15*bodyN('ward'));
   if(dead||!started||gallery||n<=0)return;
-  player.hp-=n; player.lastHurt=time; { const mn=bodyN('mend'); player.rally=Math.min(Math.max(0,PLAYER_MAX-player.hp),(player.rally||0)+n*0.6); player.rallyRate=player.rally/Math.max(1,4*(1+0.5*mn)-0.6); } hurtFlash=Math.min(1.2,hurtFlash+0.35+n*0.05); shake=Math.max(shake,Math.min(0.5,0.12+n*0.03));
+  player.hp-=n; player.lastHurt=time; { const mn=bodyN('mend'); player.rally=Math.min(Math.max(0,PLAYER_MAX-player.hp),(player.rally||0)+n*0.6); player.rallyRate=player.rally/Math.max(1,4*(1+0.5*mn)-0.6); } vfx.hurtFlash=Math.min(1.2,vfx.hurtFlash+0.35+n*0.05); vfx.shake=Math.max(vfx.shake,Math.min(0.5,0.12+n*0.03));
   if(sndReady()){ const t=SND.ctx.currentTime; sEnv(sTone(t,'sine',140,60,0.25,sOut(undefined,undefined,0.35)),t,0.01,0.22); }
   if(time-(hurtPlayer.mt||-9)>0.8||hurtPlayer.mc!==cause){ hurtPlayer.mt=time; hurtPlayer.mc=cause; msg(`<b style="color:#ff5a4a">-</b>${cause}で ${n} の傷を負った。`); }
   if(player.hp<=0)player.hp=0;
@@ -263,7 +263,7 @@ function damageMonster(m,n,how){
   if(m.sleep&&how!=='env'){ n*=SLEEP_MULT;
     // a hit on a sleeper: a bright gold burst and a deep strike sound instead of words
     for(let q=0;q<22;q++){ const a=mr()*6.28, e=mr()*1.2; spawn(m.x,m.y+0.6*m.ty.scale,m.z,Math.cos(a)*2.4,0.8+e*1.6,Math.sin(a)*2.4,0.6+mr()*0.5,G(mpick(['*','+','\''])),0.2,3.4,2.6,1.0,0); }
-    shake=Math.max(shake,0.18);
+    vfx.shake=Math.max(vfx.shake,0.18);
     if(sndReady()){ const t=SND.ctx.currentTime; sEnv(sTone(t,'square',180,60,0.18,sOut(m.x,m.z,0.35)),t,0.005,0.25); } }
   if(m.ty.dummy){ m.dsum=(m.dsum||0)+n; m.dT=2; }
   m.hp-=n; m.hitT=0.22; m.sleep=false; if(m.hidden)m.revealNow=true; rallyOnHit(m,n,how); if(how!=='env'&&time-(m.playerT||-99)<0.05)hitReact(m,n);
@@ -293,7 +293,7 @@ function updateLife(dt){
   player.atkCd=Math.max(0,(player.atkCd||0)-dt); player.swing=Math.max(0,(player.swing||0)-dt);
   updateRally(dt);
   if(Math.round(player.hp)!==hpShown){ hpShown=Math.round(player.hp); renderStatus(); }
-  hurtFlash=Math.max(0,hurtFlash-dt*1.6);
+  vfx.hurtFlash=Math.max(0,vfx.hurtFlash-dt*1.6);
   // fire hurts whoever stands in it
   const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL);
   player.fireT=(player.fireT||0)+dt; if(player.fireT>0.5){ player.fireT=0; if(fire[pc]>0.1)hurtPlayer(2,'炎');

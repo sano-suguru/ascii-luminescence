@@ -68,7 +68,7 @@ function updateGallery(dt){
     player.x=cx; player.z=cz; player.yaw=Math.atan2(-(g.room.x-cx),-(g.room.z-cz)); player.pitch=Math.atan2(ty2-ch,R)-0.16;
     camera.position.set(cx,ch,cz); camera.rotation.set(player.pitch,player.yaw,0);
     if(R<want-0.2){ U.uCamP.value.set(cx,ch,cz); U.uCutP.value.set(g.room.x,ty2,g.room.z); U.uCut.value=1; } else U.uCut.value=0;
-    zapFlash={x:g.room.x+Math.cos(a)*R*0.6,y:2.2+1.2*sc,z:g.room.z+Math.sin(a)*R*0.6,col:[0.5,0.48,0.45],t:999,r:7+3*sc}; }
+    vfx.zapFlash={x:g.room.x+Math.cos(a)*R*0.6,y:2.2+1.2*sc,z:g.room.z+Math.sin(a)*R*0.6,col:[0.5,0.48,0.45],t:999,r:7+3*sc}; }
   if(g.mode==='range'){ for(const d of g.dummies){ if(d.m.dead){ d.respawn-=dt; if(d.respawn<=0)spawnDummy(d); } else { d.respawn=1.5; d.m.dT=Math.max(0,(d.m.dT||0)-dt); if(d.m.dT<=0)d.m.dsum=0; } } }
 }
 function renderGallery(){

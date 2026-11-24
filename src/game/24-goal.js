@@ -91,7 +91,7 @@ function updateFinal(dt){
   for(const p of finalSt.peds){ if(L.placed.has(p.kind)||!L.have.has(p.kind))continue; const [x,z]=cpos(p.i); if(Math.hypot(x-player.x,z-player.z)>1.4)continue;
     L.have.delete(p.kind); L.placed.add(p.kind); renderStatus(); const c=LEGEND_KINDS[p.kind].col;
     for(let q=0;q<70;q++){ const a=mr()*6.28; spawn(x,0.5+mr()*4,z,Math.cos(a)*1.2,0.6+mr()*2.5,Math.sin(a)*1.2,1.4+mr(),G(mpick(['|','*','.','\''])),0.2,c[0]*3,c[1]*3,c[2]*3,0); }
-    sChime(x,z,0.7); flash=Math.max(flash,0.35);
+    sChime(x,z,0.7); vfx.flash=Math.max(vfx.flash,0.35);
     msg(`<b style="color:${css(c)}">${LEGEND_KINDS[p.kind].ch}</b>${L.items[p.kind].name}を台座に置いた。光の柱が、闇を押し返していく。`);
     if(L.placed.size===3)finalSt.bossT=2.6; }
   if(finalSt.bossT>0){ finalSt.bossT-=dt; if(finalSt.bossT<=0)spawnFinalBoss(); }
@@ -107,7 +107,7 @@ function spawnFinalBoss(){
   const ceilH=D.ceil[finalSt.c0]||6;
   MTYPES.final={...MTYPES.L,ch:'&',look:null,form:'shadowking',sk:'final',name:`${last.name}王の影`,scale:Math.max(2.0,Math.min(3.6,(ceilH-0.3)/3.3)),col:[0.62,0.48,1.0],boss:true,lich:false,light:6,verb:'王冠の形をした影が、底の闇から立ちのぼっている'};
   const b=makeMonster({key:'final',cx,cz,g:-1,lead:true}); b.sleep=false; b.aware=1.25; b.noticed=true; monsters.push(b); finalSt.boss=b;
-  sRumble(0.9,3); shake=Math.max(shake,0.6); flash=Math.max(flash,0.3);
+  sRumble(0.9,3); vfx.shake=Math.max(vfx.shake,0.6); vfx.flash=Math.max(vfx.flash,0.3);
   for(let q=0;q<90;q++){ const a=mr()*6.28, e=mr(); spawn(b.x+Math.cos(a)*e*2,0.2,b.z+Math.sin(a)*e*2,Math.cos(a)*0.6,1+mr()*3,Math.sin(a)*0.6,1.6+mr(),G(mpick(['%','#','.','&'])),0.24,0.5,0.35,0.9,0); }
   msg(`<b style="color:#a98cff">&amp;</b>三つの光に照らされて、底の闇がひとところに集まっていく……`);
   setTimeout(()=>msg(`<b style="color:#a98cff">&amp;</b><b style="color:#c9b8ff">${last.title}${last.name}の影</b>が立ち上がった。闇の外では、その影に触れることさえできない。`),1400);
@@ -140,14 +140,14 @@ function victory(){
 }
 
 // ---------------------------------------------------------------- lightning that can be followed: a jagged bolt that flickers, jumping one target after another, lighting the room for an instant
-let boltFx=[], zapQueue=[], zapFlash=null;
+let boltFx=[], zapQueue=[];
 // jagged は src/lib/math.ts（src/game/imports.mjs で読む）
 function addBolt(a,b,col,style){ style=style||'thunder'; const amp=style==='thunder'?0.35:0.14; boltFx.push({a,b,col,style,amp,t:0,life:style==='thunder'?0.36:0.3,re:0,pts:jagged(a,b,amp)}); }
 function sparkCrown(m,col){ const cy=m.y+0.6*m.ty.scale+0.35*m.ty.scale; m.hitT=Math.max(m.hitT||0,0.3);
   for(let q=0;q<12;q++){ const a=q/12*Math.PI*2; spawn(m.x+Math.cos(a)*0.3*m.ty.scale,cy,m.z+Math.sin(a)*0.3*m.ty.scale,Math.cos(a)*1.4,1.2+mr(),Math.sin(a)*1.4,0.35,G(mpick(['*','+','\''])),0.13,col[0]*3.2,col[1]*3.2,col[2]*3.2,0); } }
 function drawBoltFx(t,dt){
   for(const z of zapQueue){ z.t-=dt; if(z.t<=0&&!z.done){ z.done=true; z.fn(); } } zapQueue=zapQueue.filter(z=>!z.done);
-  if(zapFlash&&zapFlash.t<900)zapFlash.t-=dt;
+  if(vfx.zapFlash&&vfx.zapFlash.t<900)vfx.zapFlash.t-=dt;
   for(const f of boltFx){ f.t+=dt; f.re-=dt; if(f.re<=0){ f.re=0.07; f.pts=jagged(f.a,f.b,f.amp); }
     const fade=Math.max(0,1-f.t/f.life), c=f.col, br=(f.style==='thunder'?3.2:2.2)*fade*(0.75+0.5*mr());
     for(let k=0;k+1<f.pts.length;k++){ const p=f.pts[k], q=f.pts[k+1], dx=q[0]-p[0], dy=q[1]-p[1], dz=q[2]-p[2], hz=Math.hypot(dx,dz);
@@ -160,7 +160,7 @@ function drawBoltFx(t,dt){
 let titleArm=0;
 function returnToTitle(){
   setMenu(false); if(invOpen)setInv(false); if(locked&&document.exitPointerLock)document.exitPointerLock();
-  started=false; dead=false; won=false; gallery=null; castSt=null; swapSt=null; zapFlash=null;
+  started=false; dead=false; won=false; gallery=null; castSt=null; swapSt=null; vfx.zapFlash=null;
   document.body.classList.remove('started'); const de=document.getElementById('death'); if(de)de.classList.remove('show','won');
   const gp=document.getElementById('gal'); if(gp)gp.classList.remove('show');
   runSeed=(Math.random()*1e9)>>>0; depth=startDepth; branch=null; realm=null; placeMem.clear(); arrive=null;

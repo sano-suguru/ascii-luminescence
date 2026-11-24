@@ -26,7 +26,7 @@ function updateAvatar(dt){
   avatar.x=player.x; avatar.z=player.z; avatar.yaw=lerpAngle(avatar.yaw,face,1-Math.exp(-dt*12));
   avatar.moving+=((sp>0.3?1:0)-avatar.moving)*Math.min(1,dt*6); avatar.walk+=dt*sp*2.2;
   avatar.y=(player.eye<1?-0.95:0)-(player.roll?Math.sin(Math.PI*player.roll.t/0.32)*0.6:0);
-  avatar.glow=1.9+Math.min(1.5,hurtFlash*2);
+  avatar.glow=1.9+Math.min(1.5,vfx.hurtFlash*2);
 }
 function rockAt(x,y,z){
   const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL); if(cx<0||cz<0||cx>=MW||cz>=MH)return true;
@@ -89,7 +89,7 @@ function updatePlayer(dt){
     player.bob+=dt*Math.hypot(player.vx,player.vz)*2.1;
   }
   const spd=Math.min(1,Math.hypot(player.vx,player.vz)/3.2);
-  const sk=shake*0.08; shake=Math.max(0,shake-dt*1.2);
+  const sk=vfx.shake*0.08; vfx.shake=Math.max(0,vfx.shake-dt*1.2);
   { const pci=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL), deep=D.liquid[pci]===LQ_DEEP&&!D.bridge[pci]; player.eye+=((deep?0.62:EYE)-player.eye)*Math.min(1,dt*3); }
   if(camMode==='tps'){ placeThirdPerson(dt,sk); return; }
   U.uCut.value=0;
@@ -107,8 +107,8 @@ function updateAtmosphere(dt){
   for(const f of fixtures){ const d=Math.hypot(f.x-player.x,f.z-player.z); if(d<3)B+=(1-d/3)**2*0.8; }
   const target=clamp(1.25/(1+B*0.6),0.55,1.25);
   expo+=(target-expo)*(1-Math.exp(-dt*(target<expo?2.5:1.0)));
-  flash=Math.max(0,flash-dt*2.5);
-  finalPass.uniforms.uExposure.value=expo*(1+flash*1.6);
+  vfx.flash=Math.max(0,vfx.flash-dt*2.5);
+  finalPass.uniforms.uExposure.value=expo*(1+vfx.flash*1.6);
   let heat=0; for(const f of fixtures){ if(f.type!=='lava'&&!(f.type==='crater'&&f.active))continue; heat=Math.max(heat,1-Math.hypot(f.x-player.x,f.z-player.z)/10); }
   const hu=finalPass.uniforms.uHeat; hu.value+=(heat-hu.value)*Math.min(1,dt*2);
   finalPass.uniforms.uSwim.value=camMode==='tps'?0:clamp((EYE-player.eye)/(EYE-0.62),0,1);
