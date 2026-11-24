@@ -2,6 +2,7 @@
 import { nth } from '../../src/lib/array.ts';
 import { afterEach, describe, expect, it } from 'vitest';
 import * as beasts from '../../src/lib/bodies/beasts.ts';
+import * as bosses from '../../src/lib/bodies/bosses.ts';
 import { type Body, type BodyType } from '../../src/lib/bodies/kit.ts';
 import { hsl2rgb } from '../../src/lib/color.ts';
 import * as lords from '../../src/lib/bodies/lords.ts';
@@ -63,6 +64,15 @@ const PLAIN_FORMS: (() => Body)[] = [
   small.bogForm,
   small.krakenForm,
 ];
+// 段階7a で移した、引数の無い形（古いトロルと、主）
+const BOSS_FORMS: (() => Body)[] = [
+  small.trollForm,
+  bosses.lichKingForm,
+  bosses.spiderQueenForm,
+  bosses.nagaQueenForm,
+  bosses.oldDragonForm,
+  bosses.shadowSerpentForm,
+];
 const SPECS: lords.BeastSpec[] = [];
 for (const plan of ['quad', 'serpent', 'centipede', 'moth'])
   for (const wings of [false, true])
@@ -85,10 +95,22 @@ describe('生き物の形', () => {
     expect(all.length).toBe(2926386);
     expect(fnv(all)).toBe('1ef69733'); // 移す前の実装で出した値
   });
+  it('主と大きな生き物の形（段階7a で移した物）：TypeScript に移す前と、同じ乱数で同じ形になる', () => {
+    let all = '';
+    for (const ty of TYS) {
+      all += JSON.stringify(seeded(() => beasts.dragonForm(ty)));
+      all += JSON.stringify(seeded(() => beasts.ogreForm({ ...ty, ch: 'O' })));
+    }
+    for (const f of BOSS_FORMS) all += JSON.stringify(seeded(f));
+    expect(all.length).toBe(1790379);
+    expect(fnv(all)).toBe('a5fb116c'); // 移す前の実装で出した値
+  });
   it('どの点も、座標が有限で、文字の番号が図鑑の中にあり、体のどこかが決まっている', () => {
     const bodies = [
       ...TY_FORMS.flatMap((f) => TYS.map((ty) => seeded(() => f(ty)))),
       ...PLAIN_FORMS.map((f) => seeded(f)),
+      ...BOSS_FORMS.map((f) => seeded(f)),
+      ...TYS.flatMap((ty) => [seeded(() => beasts.dragonForm(ty)), seeded(() => beasts.ogreForm({ ...ty, ch: 'O' }))]),
       ...SPECS.map((s) => seeded(() => lords.beastForm(s))),
     ];
     for (const b of bodies) {

@@ -1,4 +1,4 @@
-// 小さな生き物の形（もとは src/game/09-bodies-creatures.js の初めと、13-creatures.js の古い形）。
+// 小さな生き物の形（もとは src/game/09-bodies-creatures.js の初めと、13-creatures.js の古い形。古いトロルは 07-bodies-lords.js）。
 import { mpick, mr } from '../random.ts';
 import { type Body, type BodyType, adder, cpt } from './kit.ts';
 
@@ -297,5 +297,50 @@ export function krakenForm(): Body {
   }
   add(0.2, 0.15, 0.45, 'O', 0.22, 3.0, 'head');
   add(-0.2, 0.15, 0.45, 'O', 0.22, 3.0, 'head');
+  return pts;
+}
+
+// troll: hunched, with arms that nearly reach the ground and moss hanging from the shoulders
+export function trollForm(): Body {
+  const L = 'T',
+    pts: Body = [],
+    add = adder(pts);
+  for (let i = 0; i < 9; i++) {
+    const y = 1 - (2 * (i + 0.5)) / 9,
+      rr = Math.sqrt(1 - y * y),
+      a = i * 2.39996;
+    add(Math.cos(a) * rr * 0.15, 1.26 + y * 0.14, 0.24 + Math.sin(a) * rr * 0.15, mpick([L, '%', '*']), 0.15, 1.5, 'head');
+  }
+  for (let k = 0; k < 5; k++) {
+    const yy = 0.88 + k * 0.1,
+      lean = k * 0.045;
+    for (let j = 0; j < 8; j++) {
+      const a = (j / 8) * Math.PI * 2;
+      add(Math.cos(a) * 0.26, yy, Math.sin(a) * 0.17 + lean, mpick(['%', '&', '#', L]), 0.16, 1.0, 'body');
+    }
+  }
+  for (const sd of [-1, 1]) {
+    for (let k = 0; k < 8; k++) {
+      const f = k / 7;
+      // 右腕の '\\\\' は、もとから2文字（図鑑の番号は1文字目の \\ で決まる）
+      add(
+        sd * (0.34 + f * 0.05),
+        1.3 - f * 1.05,
+        0.12 + f * 0.06,
+        mpick([L, '|', '%', sd < 0 ? '/' : '\\\\']),
+        0.15,
+        1.0,
+        sd < 0 ? 'armL' : 'armR',
+        1.3,
+      );
+    }
+    for (let k = 0; k < 3; k++) add(sd * (0.36 + k * 0.05), 0.22 - k * 0.03, 0.2, 'v', 0.12, 1.0, sd < 0 ? 'armL' : 'armR', 1.3);
+    for (let k = 0; k < 5; k++) {
+      const f = k / 4;
+      add(sd * 0.14, 0.82 - f * 0.74, 0, mpick(['|', '!', '#']), 0.17, 0.95, sd < 0 ? 'legL' : 'legR', 0.82);
+    }
+    for (let k = 0; k < 4; k++) add(sd * (0.2 + k * 0.04), 1.25 - k * 0.12, -0.05, mpick(['"', ',', ';']), 0.12, 0.9, 'body');
+  }
+  add(0, 1.3, 0.33, L, 0.4, 3.0, 'core');
   return pts;
 }
