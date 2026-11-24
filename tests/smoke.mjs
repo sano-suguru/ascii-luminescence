@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // スモークテスト：ふだんのページが起動するか、開発用の冒険で dbg が動くか。ページのエラーを確かめ、画面写真を tests/out/ に保存。
 //   node tests/smoke.mjs          three.js は node_modules から（オフラインで動く。既定）
-//   node tests/smoke.mjs --cdn    公開用と同じく CDN から（ネットワークが必要）
+//   node tests/smoke.mjs --cdn    公開用の版（dist/）で、フォントも公開用と同じく Google Fonts から（ネットワークが必要）
 import { join } from 'node:path';
 import { withBrowser, newPage, openTest, frames, advance, OUT } from './lib.mjs';
 

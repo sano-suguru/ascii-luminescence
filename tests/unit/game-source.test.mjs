@@ -151,25 +151,30 @@ describe('Vite の組み立て（公開用と同じ設定）', () => {
       const map = findMap(js, maps),
         lines = code.split('\n'),
         cache = {};
-      // 元のファイルは、ゲーム本体（src/game/）と TypeScript に移した物（src/lib/）だけ
-      expect(map.sources.filter((f) => !/^src\/game\/\d{2}-[a-z0-9-]+\.js$|^src\/lib\/[a-z0-9/-]+\.ts$/.test(f))).toEqual([]);
+      // 元のファイルは、ゲーム本体（src/game/）と TypeScript に移した物（src/lib/）と、npm の three.js だけ
+      const OURS = /^src\/game\/\d{2}-[a-z0-9-]+\.js$|^src\/lib\/[a-z0-9/-]+\.ts$/,
+        THREE_SRC = /^node_modules\/(\.pnpm\/three@0\.147\.0\/node_modules\/)?three\//;
+      expect(map.sources.filter((f) => !OURS.test(f) && !THREE_SRC.test(f))).toEqual([]);
       expect(map.sources).toContain('src/lib/text.ts');
-      // 関数の名前（function xx）は、元のファイルの同じ場所に戻る
+      expect(map.sources.some((f) => THREE_SRC.test(f))).toBe(true);
+      // 関数の名前（function xx）は、元のファイルの同じ場所に戻る。ゲームと src/lib/ の関数の名前を集める（three.js の物は除く）
       let checked = 0;
+      const ours = [];
       lines.forEach((l, i) => {
         for (const m of l.matchAll(/function ([A-Za-z_$][\w$]*)/g)) {
           const at = m.index + 9,
             p = originalPosition(map, i + 1, at);
+          if (THREE_SRC.test(p.source)) continue;
           const src = (cache[p.source] ??= readFileSync(join(ROOT, p.source), 'utf8').split('\n'))[p.line - 1];
           expect(src.slice(p.column, p.column + m[1].length)).toBe(m[1]);
+          ours.push(m[1]);
           checked++;
         }
       });
       expect(checked).toBeGreaterThan(300);
       // 使っていない関数も消さない（消すかどうかは人が決める。vite.config.mjs の rolldownOptions）
-      const fnNames = (t) =>
-        [...t.matchAll(/function\s+([A-Za-z_$][\w$]*)/g)].map((x) => x[1]).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-      expect(fnNames(code)).toEqual(fnNames(gameText()));
+      const sorted = (a) => a.sort((x, y) => (x < y ? -1 : x > y ? 1 : 0));
+      expect(sorted(ours)).toEqual(sorted([...gameText().matchAll(/function\s+([A-Za-z_$][\w$]*)/g)].map((x) => x[1])));
     } finally {
       process.env.NODE_ENV = env;
       rmSync(out, { recursive: true, force: true });

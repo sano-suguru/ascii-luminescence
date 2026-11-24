@@ -39,7 +39,7 @@ export const annotate = (s) =>
 // 組み立てて配信し、ブラウザを開く。fn が終わったら必ず閉じる。
 export async function withBrowser(fn, { cdn = false } = {}) {
   mkdirSync(OUT, { recursive: true });
-  // テスト版は .build/test/（three.js とフォントは node_modules から）、cdn は公開用と同じ dist/
+  // テスト版は .build/test/（フォントは node_modules から）、cdn は公開用と同じ dist/（フォントは Google Fonts から。three.js はどちらも組み立てに入っている）
   const mode = cdn ? 'production' : 'test',
     dir = join(ROOT, cdn ? 'dist' : '.build/test');
   await build({ configFile: join(ROOT, 'vite.config.mjs'), mode, logLevel: 'warn' });

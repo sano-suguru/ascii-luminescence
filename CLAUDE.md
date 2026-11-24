@@ -14,7 +14,7 @@
 
 ## ファイル
 ```
-src/index.html       画面の作りとCSS（Vite の入口。three.js を CDN から読む <script> を含む）
+src/index.html       画面の作りとCSS（Vite の入口）
 src/main.js          ページの入口のモジュール（ゲーム本体 virtual:legacy-game を読むだけ）
 src/game/*.js        ゲーム本体の古い JS（31ファイル、合わせて約7,500行。下の「ゲーム本体の地図」）
 src/game/imports.mjs ゲーム本体が使う TypeScript のモジュールを読む import の文（包みの関数の前に置かれる）
@@ -82,7 +82,7 @@ pnpm test             # スモーク・同じ結果・全部の階・枠（オ�
 pnpm test:visual      # 画面写真の比較（30秒ほど）。違えば tests/out/visual/ に違いの画像
 node tests/visual.mjs --update [--only 場面]   # 基準の画像を作り直す（見た目を意図して変えた時だけ）
 node tests/levels.mjs --seed 202               # 1つのシードだけ（--seeds 100 で数を変える）
-node tests/smoke.mjs --cdn                     # 公開用と同じく CDN の three.js と Google Fonts で起動
+node tests/smoke.mjs --cdn                     # 公開用の版（dist/）を、公開用と同じく Google Fonts で起動
 pnpm verify           # check + test + test:visual
 pnpm dev              # Vite の開発用サーバー（http://localhost:5173/。src/game/ を変えると読み直す）
 pnpm build            # 公開用を dist/ に組み立てる（pnpm build:test でテスト用を .build/test/ に）
@@ -105,7 +105,8 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
   とても遅い（960x540で1秒に1フレームくらい）。**テストはテスト用モードで書き、実時間では待たない**。
   例外は、スモークテストの「ふだんのページが描けるか」の確認だけ（テスト用モードではないので、ゲームを止めて進められない）。
   画面写真には `timeout: 90000` を付ける。
-- テスト版（`vite build --mode test`。テストが自分で組み立てる）は、three.js とフォント（@fontsource）を node_modules から読む。Google Fonts は読まない。
+- three.js（r147）は、npm の `three` を組み立てに入れる（`src/game/imports.mjs` で読み、`00-test-mode.js` で光のにじみなどの部品と一緒に `T` にする）。CDN からは読まない。
+- テスト版（`vite build --mode test`。テストが自分で組み立てる）は、フォント（@fontsource）を node_modules から読む。Google Fonts は読まない。
   テストのブラウザには、システムのフォントを見せない（`tests/fonts.conf`、最後の頼みは npm パッケージの DejaVu だけ）。
   JetBrains Mono を指定した所の日本語は、ふだんはシステムの日本語フォントで描かれるが、テスト版では M PLUS 1 Code
   （全角の ！？ などは BIZ UDGothic）を組み合わせて描く（`tools/game-source.mjs` の `cjkFallback`）。マシンが違っても同じ画素になる。

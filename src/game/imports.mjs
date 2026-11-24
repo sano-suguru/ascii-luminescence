@@ -59,3 +59,10 @@ import {
 import { setNoiseSeed, vnoise } from '../lib/noise.ts';
 import { VAULTS } from '../lib/vaults.ts';
 import { generateLevel } from '../lib/generate.ts';
+// three.js（r147）。npm の three から読んで、組み立てに入れる（前は CDN の <script> で、ページ全体の THREE に入っていた）。
+// 光のにじみなどの部品（examples/jsm）は、古い JS が T.EffectComposer などで使うので、00-test-mode.js で T に一緒に入れる
+import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';

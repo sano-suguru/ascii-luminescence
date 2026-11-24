@@ -72,10 +72,9 @@
     },
     {
       // ゲーム本体：src/game/*.js をつないだもの（tools/lint-game.mjs が書き出して調べる）。
-      // ブラウザの普通の <script>。THREE は CDN の <script> から来る。
+      // ブラウザで動く。THREE は src/game/imports.mjs で npm の three から読む。
       "files": [".build/lint/*.js"],
       "env": { "browser": true },
-      "globals": { "THREE": "readonly" },
       "rules": {
         // 同じスコープで、宣言より前に let/const を使う（TDZ）のを見つける。関数の中から外の変数を読むのは許す
         "no-use-before-define": ["error", { "functions": false, "classes": true, "variables": false }],

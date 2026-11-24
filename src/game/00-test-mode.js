@@ -19,6 +19,6 @@ const TESTCLK=TEST?(()=>{
     now=end; }, realTimeout };
 })():null;
 const errEl=document.getElementById('err');
-if(!window.THREE||!THREE.EffectComposer||!THREE.UnrealBloomPass){ errEl.textContent='描画ライブラリを読み込めませんでした。ページを再読み込みしてください。'; return; }
-const T=THREE;
+// three.js と、光のにじみなどの部品（src/game/imports.mjs で読む。組み立てに入っているので、読み込みの失敗を確かめる必要は無い）
+const T={...THREE,EffectComposer,RenderPass,ShaderPass,UnrealBloomPass};
 
