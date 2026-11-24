@@ -52,6 +52,68 @@ describe('音の土台', () => {
       globalThis.window = saved;
     }
   });
+  it('作る途中で止まったら、作りかけの音の部品を閉じ、部品を全部空に戻す。次は、はじめから作り直せる', async () => {
+    const saved = globalThis.window;
+    try {
+      // 鳴り続ける音を作った後、低い音の2つ目の波で止まる。閉じるのも失敗する
+      fresh();
+      const log = [];
+      globalThis.window = {
+        AudioContext: function LateBrokenAudioContext() {
+          const c = fakeAudio(log),
+            osc = c.createOscillator;
+          let n = 0;
+          c.createOscillator = () => {
+            if (++n === 2) throw new Error('低い音の波が作れない');
+            return osc();
+          };
+          c.close = () => {
+            log.push(['close']);
+            return Promise.reject(new Error('閉じられない'));
+          };
+          return c;
+        },
+      };
+      A.sndInit();
+      expect(log.filter((l) => l[1] === 'start').length).toBe(5); // 鳴り続ける雑音4つと、低い音の1つ目の波は鳴り始めていた
+      expect([SND.ctx, SND.master, SND.inp, SND.wet, SND.noise, Object.keys(SND.L)]).toEqual([null, null, null, null, null, []]);
+      expect(log).toContainEqual(['close']);
+      await Promise.resolve(); // 閉じる失敗の知らせを受けていなければ、ここで「受け取られない失敗」になる
+      // 閉じる関数が無い古いブラウザでも、止まらずに空に戻す
+      globalThis.window = {
+        AudioContext: function NoCloseAudioContext() {
+          const c = fakeAudio([]);
+          c.createConvolver = () => {
+            throw new Error('響きの部品が作れない');
+          };
+          return c;
+        },
+      };
+      expect(() => A.sndInit()).not.toThrow();
+      expect([SND.ctx, SND.master]).toEqual([null, null]);
+      // 次のクリックでは、はじめから作り直せる
+      globalThis.window = { AudioContext: fakeAudioClass([]) };
+      A.sndInit();
+      expect(Object.keys(SND.L)).toEqual(['rumble', 'water', 'fire', 'wind', 'drone']);
+    } finally {
+      globalThis.window = saved;
+    }
+  });
+  it('2回目に動かせなくても（動かす関数が無い・失敗する）、動いている部品はそのまま使う', async () => {
+    fresh();
+    const c = fakeAudio([]);
+    SND.ctx = c;
+    const master = (SND.master = c.createGain());
+    c.resume = () => {
+      throw new TypeError('resume が無い');
+    };
+    expect(() => A.sndInit()).not.toThrow();
+    expect([SND.ctx, SND.master]).toEqual([c, master]);
+    c.resume = () => Promise.reject(new Error('動かせない'));
+    A.sndInit();
+    await Promise.resolve();
+    expect([SND.ctx, SND.master]).toEqual([c, master]);
+  });
   it('大きさは 24 離れると 0、左右は向きから見た左右（右が正）', () => {
     Object.assign(player, { x: 10, z: 10, yaw: 0 });
     expect([A.sDist(), A.sDist(10, 10), A.sDist(34, 10), A.sDist(22, 10)]).toEqual([1, 1, 0, Math.pow(0.5, 1.4)]);
