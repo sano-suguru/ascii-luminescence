@@ -245,7 +245,8 @@ function die(cause){
 function newRun(){
   saveGrave(); document.body.classList.remove('over');
   const el=document.getElementById('death'); if(el)el.classList.remove('show','won');
-  adv.dead=false; adv.runSeed=(Math.random()*1e9)>>>0; here.depth=1; here.branch=null; here.realm=null; placeMem.clear(); here.arrive=null;
+  adv.dead=false; adv.runSeed=(Math.random()*1e9)>>>0; here.depth=1; here.branch=null; here.realm=null; here.inter=null; placeMem.clear(); here.arrive=null;
+  here.trans=null; player.fall=false; gallery=null; { const gp=document.getElementById('gal'); if(gp)gp.classList.remove('show'); }
   adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:time,maxDepth:here.depth,book0:BOOK.size,beastsNew:0}; resetRunes(); newLevel();
 }
 function hitReact(m,n){ const ty=m.ty, boss=ty.boss||m.key==='lord'||m.key==='final', now=performance.now();

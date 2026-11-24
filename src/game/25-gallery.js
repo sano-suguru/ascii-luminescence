@@ -21,7 +21,7 @@ function galleryList(){
 }
 // a quiet room from a fixed maze: everything else is cleared away
 function galleryRoom(seed){
-  here.depth=1; here.branch=null; here.realm=null; adv.runState.startChosen=true; adv.runState.altar1=true; newLevel(seed);
+  here.depth=1; here.branch=null; here.realm=null; here.inter=null; adv.runState.startChosen=true; adv.runState.altar1=true; newLevel(seed);
   let best=null,bl=0; for(const r of D.rooms){ if(r.cells.length>bl&&!r.cave&&!r.vault){ bl=r.cells.length; best=r; } }
   const cs=best.cells, cx=Math.round(cs.reduce((s,i)=>s+i%MW,0)/cs.length), cz=Math.round(cs.reduce((s,i)=>s+((i/MW)|0),0)/cs.length);
   D.items=[]; D.steles=[]; here.monsters=[]; projs=[]; clouds=[]; boltFx=[]; zapQueue=[];
