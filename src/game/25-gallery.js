@@ -24,7 +24,7 @@ function galleryRoom(seed){
   here.depth=1; here.branch=null; here.realm=null; here.inter=null; adv.runState.startChosen=true; adv.runState.altar1=true; newLevel(seed);
   let best=null,bl=0; for(const r of here.D.rooms){ if(r.cells.length>bl&&!r.cave&&!r.vault){ bl=r.cells.length; best=r; } }
   const cs=best.cells, cx=Math.round(cs.reduce((s,i)=>s+i%MW,0)/cs.length), cz=Math.round(cs.reduce((s,i)=>s+((i/MW)|0),0)/cs.length);
-  here.D.items=[]; here.D.steles=[]; here.monsters=[]; projs=[]; clouds=[]; boltFx=[]; zapQueue=[];
+  here.D.items=[]; here.D.steles=[]; here.monsters=[]; fight.projs=[]; fight.clouds=[]; fight.boltFx=[]; fight.zapQueue=[];
   if(here.D.tall)for(const i of cs)here.D.tall[i]=0;
   return {cx,cz,x:(cx+0.5)*CELL,z:(cz+0.5)*CELL};
 }
@@ -37,7 +37,7 @@ function showroom(){
       for(let r=1;r<=12;r++){ let ok=true; for(let a=0;a<16&&ok;a++){ const an=a/16*Math.PI*2, j=Math.round(cz+Math.sin(an)*r)*W+Math.round(cx+Math.cos(an)*r); if(!open(j))ok=false; } if(!ok)break; c=r; }
       if(c>bc){ bc=c; best=i; } }
   const cx=best%W, cz=(best/W)|0, x=(cx+0.5)*CELL, z=(cz+0.5)*CELL;
-  here.D.items=[]; here.D.steles=[]; here.monsters=[]; projs=[]; clouds=[]; boltFx=[]; zapQueue=[];
+  here.D.items=[]; here.D.steles=[]; here.monsters=[]; fight.projs=[]; fight.clouds=[]; fight.boltFx=[]; fight.zapQueue=[];
   here.fixtures=here.fixtures.filter(f=>{ const d=Math.hypot(f.x-x,f.z-z); if(d<8&&f.li!==undefined&&here.D.lights[f.li])here.D.lights[f.li].int=0; return d>=8; });
   for(const L of here.D.lights)if(Math.hypot(L.x-x,L.z-z)<8)L.int=0;
   // the open direction for the camera

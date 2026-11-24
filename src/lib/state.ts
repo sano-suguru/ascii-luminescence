@@ -226,6 +226,8 @@ export interface Blaze {
   /** どこかにガスがあるか */
   gasAny: boolean;
   spark: Spark | null;
+  /** 凍らせた水のマス（マス → 溶けるまでの秒・元の液体・元の床）。26-spells-hud.js の chillArea・updateFrozen */
+  frozen: Map<number, { t: number; liq: number; surf: number }>;
 }
 export const blaze: Blaze = {
   fire: new Float32Array(NCELL),
@@ -237,6 +239,125 @@ export const blaze: Blaze = {
   burning: [],
   gasAny: false,
   spark: null,
+  frozen: new Map(),
+};
+
+/** 光線の一切れ（点の並び・色・残りの秒） */
+export interface BeamSeg {
+  pts: unknown[];
+  col: readonly number[];
+  t: number;
+}
+/** 毒の霧 */
+export interface Cloud {
+  x: number;
+  z: number;
+  r: number;
+  t: number;
+  tick: number;
+}
+/** 魔法の場（性質 el の場。0.5秒ごとに、中にいる生き物に性質を移す） */
+export interface Zone {
+  x: number;
+  z: number;
+  r: number;
+  r0: number;
+  /** 術の中身。型は、詠唱の処理を移す時に作る */
+  sp: unknown;
+  el: string | null;
+  t: number;
+  tick: number;
+  grow: boolean;
+}
+/** 遅れて起きること（ゲームの時刻 t になったら fn を呼ぶ） */
+export interface Later {
+  t: number;
+  fn: () => void;
+  done?: boolean;
+}
+/** 降り注ぐ雨（n 粒を iv 秒ごとに。left は残りの粒） */
+export interface Rain {
+  x: number;
+  z: number;
+  r: number;
+  n: number;
+  left: number;
+  iv: number;
+  tick: number;
+  /** 術の中身。型は、詠唱の処理を移す時に作る */
+  sp: unknown;
+  follow: boolean;
+  elemK: number;
+  again: boolean;
+  done?: boolean;
+}
+/** 床の印（雨や落ちてくる物の、落ちる場所の目印） */
+export interface Mark {
+  x: number;
+  z: number;
+  r: number;
+  t: number;
+  c: readonly number[];
+  star?: boolean;
+}
+/** 撃っている途中の光線（どちらの手か・残りの秒・次に撃つまでの秒・自動か・向き） */
+export interface BeamRun {
+  h: 'L' | 'R';
+  t: number;
+  tick: number;
+  auto: boolean;
+  dir: readonly number[] | null;
+}
+/** 稲妻の見た目（a から b へ、ぎざぎざの線 pts） */
+export interface Bolt {
+  a: readonly number[];
+  b: readonly number[];
+  col: readonly number[];
+  style: string;
+  amp: number;
+  t: number;
+  life: number;
+  re: number;
+  pts: unknown[];
+}
+/** 戦い：飛ぶ物・光線・毒の霧・魔法の場・遅れて起きること・雨・床の印・ヒットストップ・引き金の待ち・稲妻 */
+export interface Fight {
+  /** 飛ぶ物（矢・術の弾など）。種類が多いので、型は飛ぶ物の処理を移す時に作る */
+  projs: unknown[];
+  beamSegs: BeamSeg[];
+  clouds: Cloud[];
+  zones: Zone[];
+  laters: Later[];
+  rains: Rain[];
+  marks: Mark[];
+  beamRun: BeamRun | null;
+  /** ヒットストップが終わる時刻（実時間の performance.now） */
+  hitStopUntil: number;
+  /** 今の当たりの元の位置（押し返しの向きを決める） */
+  hitSrcPoint: [number, number] | null;
+  /** 手ごとの、引き金のルーンが次に効くまでの秒 */
+  trigCd: { L: number; R: number };
+  /** 光線が最後に火をつけた時刻 */
+  beamIgT: number;
+  boltFx: Bolt[];
+  /** 少しずつ遅れて落ちる稲妻（t 秒後に fn） */
+  zapQueue: { t: number; fn: () => void }[];
+}
+export const fight: Fight = {
+  projs: [],
+  beamSegs: [],
+  clouds: [],
+  zones: [],
+  laters: [],
+  rains: [],
+  marks: [],
+  beamRun: null,
+  hitStopUntil: 0,
+  hitSrcPoint: null,
+  trigCd: { L: 0, R: 0 },
+  beamIgT: -9,
+  boltFx: [],
+  zapQueue: [],
 };
 
 /** 階を移る途中（out：暗くなって出ていく、in：明るくなって入る。go は行き先の種類） */

@@ -75,7 +75,7 @@ if(TEST)window.__test={
   // a plain copy of what matters, to compare runs
   state(){ const f=v=>+(+v||0).toFixed(3);
     return {time:f(clock.time),seed:adv.runSeed,place:placeLabel(),depth:here.depth,started:ui.started,dead:adv.dead,hp:f(player.hp),pos:[f(player.x),f(player.z)],yaw:f(player.yaw),lvl:adv.lvl.n,
-      monsters:here.monsters.map(m=>[m.key,f(m.x),f(m.z),f(m.hp),m.sleep?1:0]),projs:projs.length,
+      monsters:here.monsters.map(m=>[m.key,f(m.x),f(m.z),f(m.hp),m.sleep?1:0]),projs:fight.projs.length,
       trans:here.trans?here.trans.phase:null,cast:gear.castSt?{h:gear.castSt.h,t:f(gear.castSt.t),need:f(gear.castSt.need),full:gear.castSt.full}:null,recover:f(player.recover),paused:isPaused()}; },
   // hold a weapon (a RUNE_DEF key such as 'blade', 'bolt', 'orb'), and press / release a hand's button ('L' or 'R')
   equip(h,type){ if(!RUNE_DEF[type]||RUNE_DEF[type].cat!=='atk')return 'no such weapon: '+type; equipWeapon(h,makeRune(type,0)); renderHotbar(); return type; },
@@ -96,9 +96,9 @@ if(TEST)window.__test={
   burning(i){ return blaze.burning.filter(j=>j===i).length; },
   // lingering things of this level (fields, delayed hits, rains, marks on the floor, a beam being fired): put one of each where the player stands,
   // made to do nothing for 60 s (a field and a rain with no element, a beam whose first shot is 60 s away), and count them
-  addTraces(){ addZone(player.x,player.z,2,{elem:null},60,false); later(60,()=>{}); marks.push({x:player.x,z:player.z,r:1,t:60,c:[1,0.5,0.2]});
-    rains.push({x:player.x,z:player.z,r:1,n:1,left:1,iv:1,tick:60,sp:{elem:null},follow:false,elemK:0,again:false}); beamRun={h:'L',t:60,tick:60,auto:true,dir:null}; return this.traces(); },
-  traces(){ return {zones:zones.length,laters:laters.length,rains:rains.length,marks:marks.length,beam:!!beamRun}; },
+  addTraces(){ addZone(player.x,player.z,2,{elem:null},60,false); later(60,()=>{}); fight.marks.push({x:player.x,z:player.z,r:1,t:60,c:[1,0.5,0.2]});
+    fight.rains.push({x:player.x,z:player.z,r:1,n:1,left:1,iv:1,tick:60,sp:{elem:null},follow:false,elemK:0,again:false}); fight.beamRun={h:'L',t:60,tick:60,auto:true,dir:null}; return this.traces(); },
+  traces(){ return {zones:fight.zones.length,laters:fight.laters.length,rains:fight.rains.length,marks:fight.marks.length,beam:!!fight.beamRun}; },
   // count the cells in sight now (the game does it every 0.1 s; a check that looks every frame should not miss a short moment)
   fov(){ computeFOV(); },
   summon(key,i){ if(!MTYPES[key])return 'no such creature: '+key; summon(key,i); return here.monsters.length; },

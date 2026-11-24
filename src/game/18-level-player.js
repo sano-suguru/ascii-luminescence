@@ -17,8 +17,8 @@ function newLevel(seedOverride){
   if(advance.bounced){ advance.bounced=false; setTimeout(()=>msg('<b style="color:#a98cff">.</b>闇の底に触れた途端、何かに押し返された。まだ、降りることは許されていない。'),1200); }
   here.D=generate(seedOverride!==undefined?seedOverride:levelSeed(),here.depth);
   if(here.depth===FINAL_DEPTH&&!here.branch&&!here.realm)here.D.finalVault=true;
-  frozen=new Map();
-  placeRunesForLevel(); projs=[]; beamSegs=[]; clouds=[]; zones=[]; laters=[]; rains=[]; marks=[]; beamRun=null; gear.castSt=null;
+  blaze.frozen=new Map();
+  placeRunesForLevel(); fight.projs=[]; fight.beamSegs=[]; fight.clouds=[]; fight.zones=[]; fight.laters=[]; fight.rains=[]; fight.marks=[]; fight.beamRun=null; gear.castSt=null;
   U.uAmb.value=here.D.prof.ambient;
   hudInfo.explored=0;
   buildWorld(); updateWater();
@@ -42,7 +42,7 @@ function newLevel(seedOverride){
   here.riverCells=[]; for(let i=0;i<NCELL;i++)if(here.D.flow[i]&&(here.D.liquid[i]===LQ_WATER||here.D.liquid[i]===LQ_DEEP))here.riverCells.push(i);
   trampled=[]; tallMsg=false; brimMsg=false; player.lastCell=-1; player.netT=0;
   blaze.scent=new Float32Array(NCELL); webMsg=false; webBurnMsg=false; repairMsg=false;
-  pN=0; blaze.gasAny=false; initFire(); initEvents(); blaze.spark=null; projs=[]; showHint(''); edge.t=0; setFog(); initDust();
+  pN=0; blaze.gasAny=false; initFire(); initEvents(); blaze.spark=null; fight.projs=[]; showHint(''); edge.t=0; setFog(); initDust();
   renderStatus(); if(ui.helpOn)renderHelp();
   computeFOV(); checkEvents(true);
   if(player.fall){ player.fall=false; setTimeout(()=>{ hurtPlayer(roll(2,4),'落下の衝撃'); },300); }
@@ -187,7 +187,7 @@ function setLevelDetail(o){ const el=document.getElementById('altarp'); if(!el)r
   else L=detailLines(o.ru).slice(0,4);
   el.querySelectorAll('.ldet').forEach((sp,i)=>{ sp.innerHTML=padTo(clipHtml(L[i]||'',ALTAR_W-4),ALTAR_W-3); }); }
 function openLevelUp(){ const el=document.getElementById('altarp'); if(!el||ui.lvlOpen)return; ui.lvlOpen=true; lvlOpenT=performance.now(); lvlOpts=levelChoices(); document.body.classList.toggle('paused',true);
-  if(gear.castSt){ gear.castSt=null; beamSegs=[]; } if(ui.locked&&document.exitPointerLock)document.exitPointerLock(); renderLevelUp(); el.classList.add('show','open'); }
+  if(gear.castSt){ gear.castSt=null; fight.beamSegs=[]; } if(ui.locked&&document.exitPointerLock)document.exitPointerLock(); renderLevelUp(); el.classList.add('show','open'); }
 function chooseLevel(i){ const o=lvlOpts[i]; if(!o)return;
   if(o.kind==='bless'){ adv.lvl.bless[o.k]=BL(o.k)+1; if(o.k==='tough'){ adv.PLAYER_MAX+=6; player.hp=Math.min(adv.PLAYER_MAX,player.hp+6); } msg(`<b style="color:#ffe3a0">+</b>恩恵「${BLESS[o.k].name}」を得た。${BLESS[o.k].d(BL(o.k))}。`); }
   else takeRune(o.ru);
@@ -252,10 +252,10 @@ function newRun(){
 function hitReact(m,n){ const ty=m.ty, boss=ty.boss||m.key==='lord'||m.key==='final', now=performance.now();
   m.flinchUntil=clock.time+Math.min(0.26,0.08+n*0.015);
   if(!boss&&!ty.habitat&&!['shroom','kraken','deepkraken'].includes(ty.form)){ const heavy=['O','T','Y','B','D','X'].includes(m.key)||ty.beast?2.5:1, w=Math.max(0.3,(ty.scale||1)*(ty.scale||1)*heavy), v=Math.min(6,n*0.9/w);
-    const ak={blade:1.0,bolt:0.45,orb:0.75,beam:0.12,bare:0.6}[m.lastAtk]||0.6, vv=v*0.5*ak*(m.lastKnock||1), src=(m.lastAtk==='orb'&&hitSrcPoint)?hitSrcPoint:[player.x,player.z];
+    const ak={blade:1.0,bolt:0.45,orb:0.75,beam:0.12,bare:0.6}[m.lastAtk]||0.6, vv=v*0.5*ak*(m.lastKnock||1), src=(m.lastAtk==='orb'&&fight.hitSrcPoint)?fight.hitSrcPoint:[player.x,player.z];
     if(vv>0.3){ const dx=m.x-src[0], dz=m.z-src[1], d=Math.hypot(dx,dz)||1; m.kx=(m.kx||0)+dx/d*vv; m.kz=(m.kz||0)+dz/d*vv; m.st=m.st||{}; } }
   if(m.wind>0&&!boss&&(n>=6||n>=(m.maxHp||99)*0.2)){ m.wind=0; m.atkCd=Math.max(m.atkCd||0,0.8); const cy=m.y+1.2*(ty.scale||1); for(let q=0;q<8;q++){ const a=mr()*6.28; spawn(m.x,cy,m.z,Math.cos(a)*1.6,0.4+mr(),Math.sin(a)*1.6,0.35,G(mpick(['!','\'','.'])),0.14,2.4,1.4,0.6,0); } }
-  const strong=m.hp<=0||n>=8||n>=(m.maxHp||99)*0.25; if(strong&&now>hitStopUntil+90)hitStopUntil=now+(m.hp<=0?65:45); }
+  const strong=m.hp<=0||n>=8||n>=(m.maxHp||99)*0.25; if(strong&&now>fight.hitStopUntil+90)fight.hitStopUntil=now+(m.hp<=0?65:45); }
 function damageMonster(m,n,how){
   if(m.dead||n<=0)return;
   if(m.key==='final'&&(!finalExposed(m)||m.invulnT>0)){ if(how!=='env')hitFeedback(m,0,null,false); return; }

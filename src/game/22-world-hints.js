@@ -134,10 +134,10 @@ function drawRunesWorld(t){
   for(const s of (here.D.steles||[])){ const [x,z]=cpos(s.i), d=Math.hypot(x-player.x,z-player.z); if(d>30)continue; const near=d<2.6, g=near?2.2:0.9;
     for(let y=0;y<4;y++)dyn(x,0.25+y*0.42,z,G(y===3?'^':'#'),0.4,0.42,0.4,0.48);
     dyn(x,1.0+Math.sin(t*1.3+s.i)*0.04,z+0.01,G(s.g),0.32,0.55*g,0.75*g,1.0*g); }
-  for(const b of beamSegs){ let run=0; for(let k=0;k+1<b.pts.length;k++){ const a=b.pts[k], e=b.pts[k+1], L=Math.hypot(e[0]-a[0],e[1]-a[1],e[2]-a[2]), n=Math.max(1,Math.round(L/0.22));
+  for(const b of fight.beamSegs){ let run=0; for(let k=0;k+1<b.pts.length;k++){ const a=b.pts[k], e=b.pts[k+1], L=Math.hypot(e[0]-a[0],e[1]-a[1],e[2]-a[2]), n=Math.max(1,Math.round(L/0.22));
       for(let j=0;j<n;j++){ const f=j/n, fl=0.75+0.5*mr(), dd=run+L*f, near=Math.max(0,1-dd/7), sz=0.1+0.1*near, br=1.3+1.2*near; dyn(a[0]+(e[0]-a[0])*f,a[1]+(e[1]-a[1])*f,a[2]+(e[2]-a[2])*f,G(mpick(['-','=','*'])),sz,b.col[0]*br*fl,b.col[1]*br*fl,b.col[2]*br*fl); } run+=L; }
     const e=b.pts[b.pts.length-1]; dyn(e[0],e[1],e[2],G('*'),0.3,b.col[0]*3,b.col[1]*3,b.col[2]*3); }
-  for(const p of projs){ if(p.wave||p.thrust){ drawWave(p); continue; } const c=elemCol(p.sp.elem); dyn(p.x,p.y,p.z,G(p.kind==='bolt'?'*':'o'),p.kind==='bolt'?0.26:0.32,c[0]*2.2,c[1]*2.2,c[2]*2.2); if(p.auto)dyn(p.x,p.y,p.z,G('o'),0.46,0.9,0.9,1.0); }
+  for(const p of fight.projs){ if(p.wave||p.thrust){ drawWave(p); continue; } const c=elemCol(p.sp.elem); dyn(p.x,p.y,p.z,G(p.kind==='bolt'?'*':'o'),p.kind==='bolt'?0.26:0.32,c[0]*2.2,c[1]*2.2,c[2]*2.2); if(p.auto)dyn(p.x,p.y,p.z,G('o'),0.46,0.9,0.9,1.0); }
   // the chant gathers at the hand: the hand's runes circle in front of you, brighter as the chant fills
   if(gear.castSt||gear.swapSt){ const [ox,oy,oz]=aimOrigin(), [fx,fy,fz]=viewDir(), rx=Math.cos(player.yaw), rz=-Math.sin(player.yaw);
     if(gear.castSt){ const H=gear.hands[gear.castSt.h], side=gear.castSt.h==='L'?-0.35:0.35, k=Math.min(1,gear.castSt.t/Math.max(0.01,gear.castSt.need)), c=elemCol(H.elem?H.elem.type:null), list=[H.elem].filter(Boolean);

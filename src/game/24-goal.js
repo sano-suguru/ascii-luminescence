@@ -140,20 +140,19 @@ function victory(){
 }
 
 // ---------------------------------------------------------------- lightning that can be followed: a jagged bolt that flickers, jumping one target after another, lighting the room for an instant
-let boltFx=[], zapQueue=[];
 // jagged は src/lib/math.ts（src/game/imports.mjs で読む）
-function addBolt(a,b,col,style){ style=style||'thunder'; const amp=style==='thunder'?0.35:0.14; boltFx.push({a,b,col,style,amp,t:0,life:style==='thunder'?0.36:0.3,re:0,pts:jagged(a,b,amp)}); }
+function addBolt(a,b,col,style){ style=style||'thunder'; const amp=style==='thunder'?0.35:0.14; fight.boltFx.push({a,b,col,style,amp,t:0,life:style==='thunder'?0.36:0.3,re:0,pts:jagged(a,b,amp)}); }
 function sparkCrown(m,col){ const cy=m.y+0.6*m.ty.scale+0.35*m.ty.scale; m.hitT=Math.max(m.hitT||0,0.3);
   for(let q=0;q<12;q++){ const a=q/12*Math.PI*2; spawn(m.x+Math.cos(a)*0.3*m.ty.scale,cy,m.z+Math.sin(a)*0.3*m.ty.scale,Math.cos(a)*1.4,1.2+mr(),Math.sin(a)*1.4,0.35,G(mpick(['*','+','\''])),0.13,col[0]*3.2,col[1]*3.2,col[2]*3.2,0); } }
 function drawBoltFx(t,dt){
-  for(const z of zapQueue){ z.t-=dt; if(z.t<=0&&!z.done){ z.done=true; z.fn(); } } zapQueue=zapQueue.filter(z=>!z.done);
+  for(const z of fight.zapQueue){ z.t-=dt; if(z.t<=0&&!z.done){ z.done=true; z.fn(); } } fight.zapQueue=fight.zapQueue.filter(z=>!z.done);
   if(vfx.zapFlash&&vfx.zapFlash.t<900)vfx.zapFlash.t-=dt;
-  for(const f of boltFx){ f.t+=dt; f.re-=dt; if(f.re<=0){ f.re=0.07; f.pts=jagged(f.a,f.b,f.amp); }
+  for(const f of fight.boltFx){ f.t+=dt; f.re-=dt; if(f.re<=0){ f.re=0.07; f.pts=jagged(f.a,f.b,f.amp); }
     const fade=Math.max(0,1-f.t/f.life), c=f.col, br=(f.style==='thunder'?3.2:2.2)*fade*(0.75+0.5*mr());
     for(let k=0;k+1<f.pts.length;k++){ const p=f.pts[k], q=f.pts[k+1], dx=q[0]-p[0], dy=q[1]-p[1], dz=q[2]-p[2], hz=Math.hypot(dx,dz);
       const ch=f.style==='thunder'?(Math.abs(dy)>hz*1.2?'|':((dy>0)===(dx+dz>0)?'/':'\\')):f.style==='fire'?mpick(['^','~']):f.style==='ice'?mpick(['*','.']):mpick(['%','.']);
       const n=Math.max(1,Math.round(Math.hypot(dx,dy,dz)/0.2)); for(let j=0;j<n;j++){ const s=j/n; dyn(p[0]+dx*s,p[1]+dy*s,p[2]+dz*s,G(ch),f.style==='thunder'?0.16:0.12,c[0]*br,c[1]*br,c[2]*br); } } }
-  boltFx=boltFx.filter(f=>f.t<f.life);
+  fight.boltFx=fight.boltFx.filter(f=>f.t<f.life);
 }
 
 // ---------------------------------------------------------------- back to the title (the adventure ends)
