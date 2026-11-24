@@ -27,8 +27,8 @@ const REALM_OMEN={
 };
 // stratumAtDepth は src/lib/strata.ts（src/game/imports.mjs で読む）
 function computeOmen(){ const o={stairs:null,branch:null,portal:null,traces:[],sndT:{}};
-  if(branch){ if(branch.lvl<branch.len)o.stairs={kind:'branch',key:branch.key,strong:branch.lvl+1===branch.len}; }
-  else if(!realm&&D.stairs>=0&&!D.finalVault&&depth<FINAL_DEPTH){ const ik=!inter?interAfter(depth):null; if(ik)o.stairs={kind:'special',key:ik}; else { const nd=depth+1, a=inter?SPECIALS[inter.key]:stratumAtDepth(depth), b=stratumAtDepth(nd); if(a&&b&&a.k!==b.k)o.stairs={kind:'stratum',key:b.k}; } }
+  if(here.branch){ if(here.branch.lvl<here.branch.len)o.stairs={kind:'branch',key:here.branch.key,strong:here.branch.lvl+1===here.branch.len}; }
+  else if(!here.realm&&D.stairs>=0&&!D.finalVault&&here.depth<FINAL_DEPTH){ const ik=!here.inter?interAfter(here.depth):null; if(ik)o.stairs={kind:'special',key:ik}; else { const nd=here.depth+1, a=here.inter?SPECIALS[here.inter.key]:stratumAtDepth(here.depth), b=stratumAtDepth(nd); if(a&&b&&a.k!==b.k)o.stairs={kind:'stratum',key:b.k}; } }
   if(D.bstairs)o.branch={key:D.bstairs.key,cell:D.bstairs.cell};
   if(D.portal)o.portal={key:D.portal.key,cell:D.portal.cell};
   const lay=(cell,key,strong)=>{ const [cx,cz]=cpos(cell), n=strong?44:24, R=strong?6:4.2, rr=mulberry32((cell*7919+adv.runSeed)>>>0);
@@ -99,7 +99,7 @@ function drawArrows(){ if(!arrowCtx)return; const W=Math.round(arrowCv.clientWid
     const mx=ox+sx*(r0+n*step+size*0.85), my=oy+sy*(r0+n*step+size*0.85), ms=(17+5*near)*k;
     c.beginPath(); c.arc(mx,my,ms*0.7,0,Math.PI*2); c.fillStyle='rgba(6,4,14,0.55)'; c.fill(); c.lineWidth=1.2*k; c.strokeStyle=`rgba(${rgb},${(alpha*0.6).toFixed(2)})`; c.stroke();
     glyph(t.ch,mx,my+ms*0.02,0,ms,rgb,Math.min(1,alpha+0.1),true); } }
-const stairsGuarded=()=>D&&D.stairGuard!==undefined&&monsters.some(m=>!m.dead&&m.g===D.stairGuard);
+const stairsGuarded=()=>D&&D.stairGuard!==undefined&&here.monsters.some(m=>!m.dead&&m.g===D.stairGuard);
 function drawStairSeal(t){ if(!D||D.stairGuard===undefined)return; const [x,z]=cpos(D.stairs); const d=Math.hypot(x-player.x,z-player.z); if(d>26)return; const on=stairsGuarded();
   if(on){ for(let k=0;k<18;k++){ const a=k/18*Math.PI*2+t*0.4, b=0.7+0.3*Math.sin(t*2+k); dyn(x+Math.cos(a)*0.9,0.3+0.12*Math.sin(t*1.5+k),z+Math.sin(a)*0.9,G(k%3?'=':'#'),0.18,1.4*b,0.4*b,0.55*b,0,0); } if(d<12&&time>(D.sealSnd||0)){ D.sealSnd=time+7+mr()*4; omenSound('growl',x,z); } }
   else if(!D.sealOpenMsg){ D.sealOpenMsg=true; msg('<b style="color:#ffd27a">=</b>階段を閉ざしていた封が、静かに解けた。'); sChime(x,z,0.4); } }
@@ -160,7 +160,7 @@ function castSound(sp,x,z){ if(!sndReady())return; const t=SND.ctx.currentTime, 
 function handUp(){ const [fx,fy,fz]=viewDir(), rx=Math.cos(player.yaw), rz=-Math.sin(player.yaw); let ux=-rz*fy, uy=rz*fx-rx*fz, uz=rx*fy; if(uy<0){ ux=-ux; uy=-uy; uz=-uz; } const l=Math.hypot(ux,uy,uz)||1; return [[fx,fy,fz],[rx,0,rz],[ux/l,uy/l,uz/l]]; }
 // what the crosshair points at: the first wall, floor or creature along the line of sight
 function aimPoint(){ const [ox,oy,oz]=aimOrigin(), [dx,dy,dz]=viewDir(); let x=ox, y=oy, z=oz;
-  const near=monsters.filter(m=>hittable(m)&&Math.hypot(m.x-ox,m.z-oz)<42);
+  const near=here.monsters.filter(m=>hittable(m)&&Math.hypot(m.x-ox,m.z-oz)<42);
   for(let s=0;s<160;s++){ x+=dx*0.25; y+=dy*0.25; z+=dz*0.25; const ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL); if(ci<0||ci>=NCELL)break;
     if(D.tile[ci]===TW||D.tile[ci]===TX||y<0.02||y>D.ceil[ci])return [x,y,z];
     for(const m of near){ if(m.ty.habitat==='deep'&&(m.rise||0)<0.3)continue; const cy=m.hidden?m.y+1.3:m.y+(m.ty.flier?0:0.6*m.ty.scale); if(Math.hypot(m.x-x,cy-y,m.z-z)<0.42+0.35*m.ty.scale)return [x,y,z]; } }
@@ -180,14 +180,14 @@ function simPath(sp){
   if(sp.atk==='orb'){ let x=ox, y=oy, z=oz, vx=d0[0]*12, vy=d0[1]*12+2.6, vz=d0[2]*12, b=sp.aff.bounce||0;
     for(let s=0;s<160;s++){ const dt=0.025; vy-=9.8*dt; const nx=x+vx*dt, ny=y+vy*dt, nz=z+vz*dt, ci=Math.floor(nz/CELL)*MW+Math.floor(nx/CELL);
       if(ci<0||ci>=NCELL)break; if(s%3===0)pts.push([x,y,z]);
-      for(const m of monsters){ if(!foe(m)||!m.visible)continue; if(Math.hypot(m.x-nx,m.y+0.6*m.ty.scale-ny,m.z-nz)<0.42+0.35*m.ty.scale){ hitM=m; break; } } if(hitM){ x=nx; y=ny; z=nz; break; }
+      for(const m of here.monsters){ if(!foe(m)||!m.visible)continue; if(Math.hypot(m.x-nx,m.y+0.6*m.ty.scale-ny,m.z-nz)<0.42+0.35*m.ty.scale){ hitM=m; break; } } if(hitM){ x=nx; y=ny; z=nz; break; }
       const wall=D.tile[ci]===TW||D.tile[ci]===TX, fl=ny<0.03&&D.tile[ci]!==TC, ce=ny>D.ceil[ci];
       if(wall||fl||ce){ if(b>0){ b--; const v=Math.hypot(vx,vy,vz)||1, r=reflectDir(x,y,z,[vx/v,vy/v,vz/v]); vx=r[0]*v; vy=r[1]*v*0.7; vz=r[2]*v; if(fl)vy=Math.abs(vy)+1; continue; } break; }
       x=nx; y=ny; z=nz; }
     return {pts,end:[x,Math.max(0.05,y),z],hitM,orb:true}; }
   let x=ox, y=oy, z=oz, d=d0.slice(), b=sp.aff.bounce||0, left=sp.atk==='beam'?12:26;
   while(left>0){ const nx=x+d[0]*0.3, ny=y+d[1]*0.3, nz=z+d[2]*0.3, ci=Math.floor(nz/CELL)*MW+Math.floor(nx/CELL); left-=0.3; if(ci<0||ci>=NCELL)break;
-    for(const m of monsters){ if(!foe(m)||!m.visible)continue; if(Math.hypot(m.x-nx,m.y+0.6*m.ty.scale-ny,m.z-nz)<0.42+0.35*m.ty.scale){ hitM=m; break; } } if(hitM){ x=nx; y=ny; z=nz; break; }
+    for(const m of here.monsters){ if(!foe(m)||!m.visible)continue; if(Math.hypot(m.x-nx,m.y+0.6*m.ty.scale-ny,m.z-nz)<0.42+0.35*m.ty.scale){ hitM=m; break; } } if(hitM){ x=nx; y=ny; z=nz; break; }
     const wall=D.tile[ci]===TW||D.tile[ci]===TX||ny<0.02||ny>D.ceil[ci];
     if(wall){ if(b>0){ b--; d=reflectDir(x,y,z,d); pts.push([x,y,z]); continue; } break; }
     x=nx; y=ny; z=nz; pts.push([x,y,z]); }
@@ -215,7 +215,7 @@ function drawCastFx(t){
 }
 // the crosshair is a glyph: it closes from ( + ) to [+] as the chant fills; it warms when a creature is in the line
 function aimTarget(){ if(time-aimT<0.1)return crossMon; aimT=time; crossMon=null; const [ox,oy,oz]=aimOrigin(), [vx,vy,vz]=viewDir(); let bd=1e9;
-  let ba=1e9; for(const m of monsters){ if(!foe(m)||!m.visible)continue; if(m.ty.habitat==='deep'&&(m.rise||0)<0.3)continue; const cy=m.y+0.6*m.ty.scale, ax=m.x-ox, ay=cy-oy, az=m.z-oz, d=Math.hypot(ax,ay,az); if(d>28)continue;
+  let ba=1e9; for(const m of here.monsters){ if(!foe(m)||!m.visible)continue; if(m.ty.habitat==='deep'&&(m.rise||0)<0.3)continue; const cy=m.y+0.6*m.ty.scale, ax=m.x-ox, ay=cy-oy, az=m.z-oz, d=Math.hypot(ax,ay,az); if(d>28)continue;
     const ang=Math.acos(clamp((ax*vx+ay*vy+az*vz)/Math.max(d,1e-3),-1,1)), tol=0.08+Math.atan2(0.6*m.ty.scale,Math.max(d,0.5)); if(ang>tol)continue;
     const score=ang/tol+d*0.01; if(score<ba&&losClear(ox,oy,oz,m.x,cy,m.z)){ ba=score; crossMon=m; } }
   return crossMon; }

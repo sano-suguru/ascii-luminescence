@@ -53,11 +53,11 @@ document.getElementById('intropanel').addEventListener('click',e=>{
   const sv=(document.getElementById('seedIn').value||'').trim();
   let regen=false;
   if(/^[0-9]{1,10}$/.test(sv)){ const n=Number(sv)>>>0; if(n!==adv.runSeed){ adv.runSeed=n; regen=true; } }
-  if(startDepth!==depth){ depth=startDepth; regen=true; }
-  if(regen){ branch=null; realm=null; inter=null; }
+  if(startDepth!==here.depth){ here.depth=startDepth; regen=true; }
+  if(regen){ here.branch=null; here.realm=null; here.inter=null; }
   rains=[]; marks=[]; zones=[]; laters=[];
   adv.dead=false; { const de=document.getElementById('death'); if(de)de.classList.remove('show','won'); }
-  adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:time,maxDepth:depth,book0:BOOK.size,beastsNew:0}; resetRunes();
+  adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:time,maxDepth:here.depth,book0:BOOK.size,beastsNew:0}; resetRunes();
   if(regen)newLevel();
   ui.started=true; document.body.classList.add('started'); if(D)showStratum(D.stratum); setHelp(true); helpT=25; introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume();
 });

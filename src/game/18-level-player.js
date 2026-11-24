@@ -1,8 +1,8 @@
 // ---------------------------------------------------------------- level control
-let trans=null, fade=0, expo=1.1;
+let expo=1.1;
 adv.runSeed=(Math.random()*1e9)>>>0;
-const levelSeed=()=>((Math.imul(adv.runSeed,2654435761)^Math.imul(depth,1013904223)^(branch?Math.imul(branch.lvl*31+branch.key.charCodeAt(0),0x27d4eb2d):0)^(realm?Math.imul(realm.key.charCodeAt(0)+7,0x165667b1):0)^(inter?Math.imul(inter.key.charCodeAt(0)+13,0x2c1b3c6d):0))>>>0)||1;
-function setFog(){ const k=D.prof.fogDark, f=(D.stratum.fog?D.stratum.fog:D.stratum.k==='magma'?[0.016,0.004,0.003]:D.stratum.k==='abyss'?[0.007,0.003,0.014]:FOGS[(depth-1)%FOGS.length]).map(v=>v*k); fogCol.set(f[0],f[1],f[2]); renderer.setClearColor(new T.Color(f[0],f[1],f[2]),1); fogBase=0.05+Math.min(depth-1,6)*0.002; U.uFogDen.value=fogBase; }
+const levelSeed=()=>((Math.imul(adv.runSeed,2654435761)^Math.imul(here.depth,1013904223)^(here.branch?Math.imul(here.branch.lvl*31+here.branch.key.charCodeAt(0),0x27d4eb2d):0)^(here.realm?Math.imul(here.realm.key.charCodeAt(0)+7,0x165667b1):0)^(here.inter?Math.imul(here.inter.key.charCodeAt(0)+13,0x2c1b3c6d):0))>>>0)||1;
+function setFog(){ const k=D.prof.fogDark, f=(D.stratum.fog?D.stratum.fog:D.stratum.k==='magma'?[0.016,0.004,0.003]:D.stratum.k==='abyss'?[0.007,0.003,0.014]:FOGS[(here.depth-1)%FOGS.length]).map(v=>v*k); fogCol.set(f[0],f[1],f[2]); renderer.setClearColor(new T.Color(f[0],f[1],f[2]),1); fogBase=0.05+Math.min(here.depth-1,6)*0.002; U.uFogDen.value=fogBase; }
 let lastStratum=null;
 function showStratum(st){
   const el=document.getElementById('stratum'); if(!el)return;
@@ -15,29 +15,29 @@ function settleSlotPick(){ if(!adv.runState||!adv.runState.slotPend||!D)return; 
 function newLevel(seedOverride){
   settleSlotPick();
   if(advance.bounced){ advance.bounced=false; setTimeout(()=>msg('<b style="color:#a98cff">.</b>闇の底に触れた途端、何かに押し返された。まだ、降りることは許されていない。'),1200); }
-  D=generate(seedOverride!==undefined?seedOverride:levelSeed(),depth);
-  if(depth===FINAL_DEPTH&&!branch&&!realm)D.finalVault=true;
+  D=generate(seedOverride!==undefined?seedOverride:levelSeed(),here.depth);
+  if(here.depth===FINAL_DEPTH&&!here.branch&&!here.realm)D.finalVault=true;
   D.doorAt=new Map(D.doors.map(d=>[d.i,d])); frozen=new Map();
   placeRunesForLevel(); projs=[]; beamSegs=[]; clouds=[]; gear.castSt=null;
   U.uAmb.value=D.prof.ambient;
   hudInfo.explored=0;
   buildWorld(); updateWater();
-  fixtures=D.fixtures;
-  monsters=D.spawns.map(makeMonster);
-  if(branch&&adv.runState.lordsDone&&adv.runState.lordsDone.has(branch.key))monsters=monsters.filter(m=>m.key!=='lord');
+  here.fixtures=D.fixtures;
+  here.monsters=D.spawns.map(makeMonster);
+  if(here.branch&&adv.runState.lordsDone&&adv.runState.lordsDone.has(here.branch.key))here.monsters=here.monsters.filter(m=>m.key!=='lord');
   finalSt=null; if(isFinal())setupFinal();
-  for(const m of monsters)if(!m.isLead)m.leader=monsters.find(o=>o.g===m.g&&o.isLead)||null;
-  for(const m of monsters)if(m.ty.beast||(m.ty.dragon&&Math.random()<0.9))m.sleep=true;
-  { const asleep=new Set(); for(const m of monsters)if(m.isLead&&m.g>=0&&m.ty.form!=='eel'&&Math.random()<0.10)asleep.add(m.g); for(const m of monsters)if(asleep.has(m.g))m.sleep=true; }
+  for(const m of here.monsters)if(!m.isLead)m.leader=here.monsters.find(o=>o.g===m.g&&o.isLead)||null;
+  for(const m of here.monsters)if(m.ty.beast||(m.ty.dragon&&Math.random()<0.9))m.sleep=true;
+  { const asleep=new Set(); for(const m of here.monsters)if(m.isLead&&m.g>=0&&m.ty.form!=='eel'&&Math.random()<0.10)asleep.add(m.g); for(const m of here.monsters)if(asleep.has(m.g))m.sleep=true; }
   noticeMsgT={}; stealth.hudKey='';
   explored=new Uint8Array(NCELL); mem=new Float32Array(NCELL*3); fovVis=new Uint32Array(NCELL); fovStamp=1;
   { const pm=placeMem.get(placeKey()); if(pm){ explored.set(pm.explored); mem.set(pm.mem); } }
-  visitedRooms=new Set(); stairsSeen=false; player.rally=0; rallyMotes=[]; if(adv.runStats&&!gallery)adv.runStats.maxDepth=Math.max(adv.runStats.maxDepth||0,depth); setTimeout(strataGrowth,50);
-  if(ui.started&&!gallery&&!adv.dead&&!arrive){ const sp=inter?SPECIALS[inter.key]:null; if(sp&&(sp.k==='town'||sp.k==='oracle')){ player.hp=adv.PLAYER_MAX; setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>静かな場所だ。張りつめていた体が、すっかりほどけた。'),1600); } else if(player.hp<adv.PLAYER_MAX){ player.hp=Math.min(adv.PLAYER_MAX,player.hp+adv.PLAYER_MAX*0.2); setTimeout(()=>msg('<span class="lab">階段を降りると、少し息が整った。</span>'),1600); } }
+  visitedRooms=new Set(); stairsSeen=false; player.rally=0; rallyMotes=[]; if(adv.runStats&&!gallery)adv.runStats.maxDepth=Math.max(adv.runStats.maxDepth||0,here.depth); setTimeout(strataGrowth,50);
+  if(ui.started&&!gallery&&!adv.dead&&!here.arrive){ const sp=here.inter?SPECIALS[here.inter.key]:null; if(sp&&(sp.k==='town'||sp.k==='oracle')){ player.hp=adv.PLAYER_MAX; setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>静かな場所だ。張りつめていた体が、すっかりほどけた。'),1600); } else if(player.hp<adv.PLAYER_MAX){ player.hp=Math.min(adv.PLAYER_MAX,player.hp+adv.PLAYER_MAX*0.2); setTimeout(()=>msg('<span class="lab">階段を降りると、少し息が整った。</span>'),1600); } }
   player.x=(D.start%MW+0.5)*CELL; player.z=(((D.start/MW)|0)+0.5)*CELL; player.vx=player.vz=0; player.yaw=D.startYaw; player.pitch=-0.04; lockCell=-1;
-  { const tc=arrive==='portal'&&D.portal?D.portal.cell:arrive==='bstairs'&&D.bstairs?D.bstairs.cell:arrive==='stairs'?D.stairs:-1;
+  { const tc=here.arrive==='portal'&&D.portal?D.portal.cell:here.arrive==='bstairs'&&D.bstairs?D.bstairs.cell:here.arrive==='stairs'?D.stairs:-1;
     if(tc>=0){ const nb=[1,-1,MW,-MW,MW+1,MW-1,-MW+1,-MW-1].map(o=>tc+o).find(j=>j>=0&&j<NCELL&&D.tile[j]===TF&&!D.liquid[j]&&!D.solid.has(j))??tc;
-      player.x=(nb%MW+0.5)*CELL; player.z=(((nb/MW)|0)+0.5)*CELL; player.yaw=Math.atan2(-((tc%MW)-(nb%MW)),-(((tc/MW)|0)-((nb/MW)|0)))+Math.PI; lockCell=tc; } arrive=null; }
+      player.x=(nb%MW+0.5)*CELL; player.z=(((nb/MW)|0)+0.5)*CELL; player.yaw=Math.atan2(-((tc%MW)-(nb%MW)),-(((tc/MW)|0)-((nb/MW)|0)))+Math.PI; lockCell=tc; } here.arrive=null; }
   stealth.sneak=false; lantern.r=8.2; lantern.k=1;
   riverCells=[]; for(let i=0;i<NCELL;i++)if(D.flow[i]&&(D.liquid[i]===LQ_WATER||D.liquid[i]===LQ_DEEP))riverCells.push(i);
   trampled=[]; tallMsg=false; brimMsg=false; player.lastCell=-1; player.netT=0;
@@ -51,20 +51,20 @@ function newLevel(seedOverride){
 function checkEvents(first){
   const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL);
   const ri=D.roomOf[pc];
-  if(first)msg(depth===1?'<b style="color:#c9b8ff">@</b>石の迷宮に降り立った。闇の奥で、何かが息づいている。':`<b style="color:#ffcf7a">&gt;</b>深度 ${depth}。光はより鮮やかに、闇はより深くなった。`);
+  if(first)msg(here.depth===1?'<b style="color:#c9b8ff">@</b>石の迷宮に降り立った。闇の奥で、何かが息づいている。':`<b style="color:#ffcf7a">&gt;</b>深度 ${here.depth}。光はより鮮やかに、闇はより深くなった。`);
   if(ri>=0&&!visitedRooms.has(ri)){ visitedRooms.add(ri); const th=D.rooms[ri].theme; msg(`<b style="color:${css(th.col)}">${D.rooms[ri].cave?'~':'*'}</b>${th.msg}`); const km=D.rooms[ri].kindMsg; if(km)msg(`<b style="color:${css(th.col)}">=</b>${km}`); const mc=D.rooms[ri].machine; if(mc){ const mi=MACHINE_INFO[mc]; msg(`<b style="color:${css(mi.col)}">${mi.ch}</b>${mi.msg}`); } }
   if(!D.engrSeen&&D.engr.size){ for(const k of D.engr.keys()){ const i=k>>2; if(fovVis[i]===fovStamp&&Math.hypot((i%MW+0.5)*CELL-player.x,(((i/MW)|0)+0.5)*CELL-player.z)<7){ D.engrSeen=true; msg('<b style="color:#ffdca0">#</b>壁に彫刻が刻まれている。見つめれば、そこに描かれた出来事が読み取れる。'); break; } } }
   if(!stairsSeen&&fovVis[D.stairs]===fovStamp){ stairsSeen=true; msg('<b style="color:#ffcf7a">&gt;</b>金色に輝く下り階段を見つけた。踏み込めば、さらに深い階層へ。'); }
   if(lockCell>=0){ const lx=(lockCell%MW+0.5)*CELL, lz=(((lockCell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-lx,player.z-lz)>1.6)lockCell=-1; }
-  if(ui.started&&!trans&&D.upstairs>=0&&lockCell!==D.upstairs){ const ux=(D.upstairs%MW+0.5)*CELL, uz=(((D.upstairs/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-ux,player.z-uz)<0.95){ trans={phase:'out',t:0,regen:false,go:'up'}; msg('<b style="color:#c9b8ff">&lt;</b>上り階段を上り、来た道を引き返す……'); } }
-  if(ui.started&&!trans&&D.bstairs&&lockCell!==D.bstairs.cell){ const bx=(D.bstairs.cell%MW+0.5)*CELL, bz=(((D.bstairs.cell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-bx,player.z-bz)<0.95){ trans={phase:'out',t:0,regen:false,go:'branch'}; msg(`<b style="color:${css(BRANCHES[D.bstairs.key].col)}">&gt;</b>本道を外れ、${BRANCHES[D.bstairs.key].name}へ続く脇道を下りていく……`); } }
-  if(ui.started&&!trans&&D.portal&&lockCell!==D.portal.cell){ const px2=(D.portal.cell%MW+0.5)*CELL, pz2=(((D.portal.cell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-px2,player.z-pz2)<1.0){ trans={phase:'out',t:0,regen:false,go:'realm'}; msg(`<b style="color:${css(REALMS[D.portal.key].col)}">0</b>揺らめく門をくぐった……`); } }
+  if(ui.started&&!here.trans&&D.upstairs>=0&&lockCell!==D.upstairs){ const ux=(D.upstairs%MW+0.5)*CELL, uz=(((D.upstairs/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-ux,player.z-uz)<0.95){ here.trans={phase:'out',t:0,regen:false,go:'up'}; msg('<b style="color:#c9b8ff">&lt;</b>上り階段を上り、来た道を引き返す……'); } }
+  if(ui.started&&!here.trans&&D.bstairs&&lockCell!==D.bstairs.cell){ const bx=(D.bstairs.cell%MW+0.5)*CELL, bz=(((D.bstairs.cell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-bx,player.z-bz)<0.95){ here.trans={phase:'out',t:0,regen:false,go:'branch'}; msg(`<b style="color:${css(BRANCHES[D.bstairs.key].col)}">&gt;</b>本道を外れ、${BRANCHES[D.bstairs.key].name}へ続く脇道を下りていく……`); } }
+  if(ui.started&&!here.trans&&D.portal&&lockCell!==D.portal.cell){ const px2=(D.portal.cell%MW+0.5)*CELL, pz2=(((D.portal.cell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-px2,player.z-pz2)<1.0){ here.trans={phase:'out',t:0,regen:false,go:'realm'}; msg(`<b style="color:${css(REALMS[D.portal.key].col)}">0</b>揺らめく門をくぐった……`); } }
   const sx=(D.stairs%MW+0.5)*CELL, sz=(((D.stairs/MW)|0)+0.5)*CELL;
-  if(ui.started&&!trans&&D.pit&&D.pit[pc]){ trans={phase:'out',t:0,regen:false}; player.fall=true; msg('<b style="color:#ffa060">:</b>崩れた穴へ身を投じ、下の階層へと落ちていく……'); }
-  if(ui.started&&!trans&&lockCell!==D.stairs&&Math.hypot(player.x-sx,player.z-sz)<0.95&&!isFinal()){
+  if(ui.started&&!here.trans&&D.pit&&D.pit[pc]){ here.trans={phase:'out',t:0,regen:false}; player.fall=true; msg('<b style="color:#ffa060">:</b>崩れた穴へ身を投じ、下の階層へと落ちていく……'); }
+  if(ui.started&&!here.trans&&lockCell!==D.stairs&&Math.hypot(player.x-sx,player.z-sz)<0.95&&!isFinal()){
     if(stairsGuarded()){ if(time-(updatePlayer.sealT||-99)>6){ updatePlayer.sealT=time; msg('<b style="color:#ff8a8a">=</b>階段は、見えない封に閉ざされている。控えの間に潜むものを退ければ、解けるだろう。'); } }
     else if(descentSealed()){ if(time-(updatePlayer.sealT||-99)>9){ updatePlayer.sealT=time; msg('<b style="color:#a98cff">.</b>階段の先は、底の見えない闇に塞がれている。三つの窪みが、何かを待つように淡く光っている。'); } }
-    else { trans={phase:'out',t:0,regen:false}; msg(legendAll()&&depth===FINAL_DEPTH-1?'<b style="color:#ffe9b0">*</b>三つの光が闇を押し分けた。最後の階段を、底へと降りていく……':'<b style="color:#ffcf7a">&gt;</b>光の螺旋に身を委ね、さらに深くへ降りていく。'); } }
+    else { here.trans={phase:'out',t:0,regen:false}; msg(legendAll()&&here.depth===FINAL_DEPTH-1?'<b style="color:#ffe9b0">*</b>三つの光が闇を押し分けた。最後の階段を、底へと降りていく……':'<b style="color:#ffcf7a">&gt;</b>光の螺旋に身を委ね、さらに深くへ降りていく。'); } }
   let ex=0; for(let i=0;i<NCELL;i++){ const tt=D.tile[i]; if(explored[i]&&(tt===TF||tt===TP))ex++; }
   const exP=Math.min(100,Math.round(ex/D.floorCount*100)); if(exP!==hudInfo.explored){ hudInfo.explored=exP; if(ui.helpOn)renderHelp(); }
 }
@@ -92,8 +92,8 @@ function triggerTrap(tr){
   tr.used=true; tr.hidden=false; const [x,z]=cpos(tr.i), info=TRAP_INFO[tr.type], tag=`<b style="color:${info[1]}">^</b>`;
   switch(tr.type){
     case 'alarm': sAlarm(x,z); vfx.shake=Math.max(vfx.shake,0.2); msg(tag+'カチリ……鐘の音が響き渡った！ 辺りの獣が集まってくる。');
-      for(const m of monsters){ if(m.ty.critter||m.dead)continue; if(Math.hypot(m.x-x,m.z-z)<32){ m.sleep=false; m.aware=Math.max(m.aware,0.8); m.goal=[x,z]; m.goalT=time+15; } } break;
-    case 'trapdoor': sRumble(0.5,1.2); vfx.shake=Math.max(vfx.shake,0.4); msg(tag+'床が抜けた！ 闇の中を、下の階へと落ちていく……'); trans={phase:'out',t:0,regen:false}; player.fall=true; break;
+      for(const m of here.monsters){ if(m.ty.critter||m.dead)continue; if(Math.hypot(m.x-x,m.z-z)<32){ m.sleep=false; m.aware=Math.max(m.aware,0.8); m.goal=[x,z]; m.goalT=time+15; } } break;
+    case 'trapdoor': sRumble(0.5,1.2); vfx.shake=Math.max(vfx.shake,0.4); msg(tag+'床が抜けた！ 闇の中を、下の階へと落ちていく……'); here.trans={phase:'out',t:0,regen:false}; player.fall=true; break;
     case 'net': player.netT=3.2; sHiss(x,z,0.5); msg(tag+'網が降ってきた！ もがいて抜け出そうとする……'); break;
     case 'flood': sSplash(0.5); msg(tag+'床の穴から、水が勢いよく噴き出した！'); events.push({type:'flood',ri:-2,order:tr.order.slice(),src:tr.i,state:1,t:0,k:0,max:tr.order.length*3}); break;
     case 'methane': sHiss(x,z,1.2); msg(tag+'床の穴から、沼のガスが噴き出した。火気に注意！');
@@ -105,7 +105,7 @@ function updateTraps(dt){
     const [x,z]=cpos(tr.i), d=Math.hypot(x-player.x,z-player.z);
     if(tr.hidden&&d<CELL*1.3){ const mv=Math.hypot(player.vx,player.vz)>0.3, rate=(stealth.sneak?1.1:0.3)*(mv?0.6:1.6);
       if(mr()<dt*rate){ tr.hidden=false; sChime(x,z,0.15); msg(`<b style="color:${TRAP_INFO[tr.type][1]}">^</b>隠された${TRAP_INFO[tr.type][0]}罠を見つけた。踏まないように気をつけよう。`); } }
-    if(!tr.used&&d<0.6&&!trans)triggerTrap(tr);
+    if(!tr.used&&d<0.6&&!here.trans)triggerTrap(tr);
   }
   if(player.netT>0){ const mv=keys.KeyW||keys.KeyA||keys.KeyS||keys.KeyD; player.netT-=dt*(mv?1.6:1); if(player.netT<=0)msg('網から抜け出した。'); }
   const G2=D.gate;
@@ -164,7 +164,7 @@ const BLESS={
   reckless: {name:'捨て身',       d:l=>`与える傷が ${l>=2?40:25}% 増える。ただし、受ける傷も ${l>=2?35:25}% 増える`, cost:true} };
 const BL=k=>adv.lvl.bless[k]||0;
 // a cold snap: the creatures around are chilled (and fire goes out, water freezes)
-function coldSnap(x,z,r){ chillArea(x,z,r); for(const m of monsters){ if(m.dead||m.ty.critter)continue; if(Math.hypot(m.x-x,m.z-z)<r+0.3*m.ty.scale){ const st=m.st||(m.st={}); st.chill=Math.max(st.chill||0,4); } }
+function coldSnap(x,z,r){ chillArea(x,z,r); for(const m of here.monsters){ if(m.dead||m.ty.critter)continue; if(Math.hypot(m.x-x,m.z-z)<r+0.3*m.ty.scale){ const st=m.st||(m.st={}); st.chill=Math.max(st.chill||0,4); } }
   for(let q=0;q<28;q++){ const a=q/28*Math.PI*2; spawn(x+Math.cos(a)*r*0.9,0.15,z+Math.sin(a)*r*0.9,Math.cos(a)*0.6,0.4,Math.sin(a)*0.6,0.6,G(mpick(['*','.','+'])),0.14,1.2,1.7,2.2,0); } }
 function gainExp(e){ if(!(e>0)||adv.dead)return; adv.lvl.exp+=e; let up=0; while(adv.lvl.exp>=expNeed(adv.lvl.n)){ adv.lvl.exp-=expNeed(adv.lvl.n); adv.lvl.n++; adv.lvl.pending++; up++; }
   renderStatus(); if(up){ sChime(player.x,player.z,0.6); setTimeout(()=>sChime(player.x,player.z,0.45),180); for(let q=0;q<40;q++){ const a=mr()*6.28, r=1.6+mr(); spawn(player.x+Math.cos(a)*r,0.4+mr()*1.6,player.z+Math.sin(a)*r,-Math.cos(a)*r*2.2,0.2,-Math.sin(a)*r*2.2,0.45,G(mpick(['*','+','.'])),0.14,2.6,2.3,1.5,0); } } }
@@ -195,7 +195,7 @@ function chooseLevel(i){ const o=lvlOpts[i]; if(!o)return;
   if(adv.lvl.pending>0){ lvlOpenT=performance.now(); lvlOpts=levelChoices(); renderLevelUp(); return; }
   ui.lvlOpen=false; const el=document.getElementById('altarp'); if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused()); if(!plFailed&&ui.started&&!adv.dead)tryLock(); updateResume(); }
 // a new stratum strengthens the body
-function strataGrowth(){ if(!D||branch||realm||inter||!ui.started||gallery)return; const k=D.stratum&&D.stratum.k; if(!['cavern','ruins','magma','abyss'].includes(k)||adv.lvl.strata.has(k))return; adv.lvl.strata.add(k); adv.PLAYER_MAX+=4; player.hp=Math.min(adv.PLAYER_MAX,player.hp+4); renderStatus();
+function strataGrowth(){ if(!D||here.branch||here.realm||here.inter||!ui.started||gallery)return; const k=D.stratum&&D.stratum.k; if(!['cavern','ruins','magma','abyss'].includes(k)||adv.lvl.strata.has(k))return; adv.lvl.strata.add(k); adv.PLAYER_MAX+=4; player.hp=Math.min(adv.PLAYER_MAX,player.hp+4); renderStatus();
   setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>新しい層の空気が、体を強くした。最大体力 +4。'),2200); }
 function hurtPlayer(n,cause){
   if(godMode)return; if((player.invulT||0)>time)return; if(BL('reckless'))n*=BL('reckless')>=2?1.35:1.25;
@@ -208,8 +208,8 @@ function hurtPlayer(n,cause){
   renderStatus();
   if(player.hp<=0)die(cause);
 }
-function resultPlace(){ const pl=placeLabel(); return /^[0-9]+$/.test(String(pl).trim())?`深度${depth}（${(D&&D.stratum&&D.stratum.name)||''}）`:`${pl}（深度${depth}）`; }
-function runLore(victory){ const L=getLegend(), parts=[], add=(lab,n,v)=>{ if(v>0)parts.push([lab,n,v]); }, md=(adv.runStats&&adv.runStats.maxDepth)||depth;
+function resultPlace(){ const pl=placeLabel(); return /^[0-9]+$/.test(String(pl).trim())?`深度${here.depth}（${(D&&D.stratum&&D.stratum.name)||''}）`:`${pl}（深度${here.depth}）`; }
+function runLore(victory){ const L=getLegend(), parts=[], add=(lab,n,v)=>{ if(v>0)parts.push([lab,n,v]); }, md=(adv.runStats&&adv.runStats.maxDepth)||here.depth;
   add('到達した深さ',`深度${md}`,md*2); const lords=adv.runState.lordsDone?adv.runState.lordsDone.size:0; add('倒した支道の主',`${lords}体`,lords*8);
   const pl=L?L.placed.size:0; add('捧げた伝説の物',`${pl}つ`,pl*6); if(victory)add('最後の王の影に勝った','',30);
   const lg=Math.max(0,(adv.lvl.n||1)-1); add('上がったレベル',`${lg}つ`,lg);
@@ -226,7 +226,7 @@ let graveSel=0, graveCands=[];
 function graveRune(g){ const ru=makeRune(g.type,0); ru.strong=false; if(g.traits&&g.traits.length)ru.traits=g.traits.map(t=>({k:t.k,lv:t.lv-1})).filter(t=>t.lv>0); return ru; }
 function graveCandidates(){ const out=[], seen=new Set(), add=ru=>{ if(ru&&!seen.has(ru)){ seen.add(ru); out.push(ru); } };
   add(gear.hands.L.atk); add(gear.hands.R.atk); for(const h of ['L','R'])for(const r of gear.hands[h].slots)add(r); if(gear.hands.B){ add(gear.hands.B.b0); add(gear.hands.B.b1); } for(const r of gear.bag)add(r); return out.slice(0,10); }
-function saveGrave(){ if(adv.won||!graveCands)return; const ru=graveSel>0?graveCands[graveSel-1]:null; META.grave=ru?{k:(STRATA.find(st=>depth>=st.from&&depth<=st.to)||{}).k||'',depth,cause:adv.runStats.cause||'',item:serRune(ru)}:null; saveMeta(); graveCands=[]; }
+function saveGrave(){ if(adv.won||!graveCands)return; const ru=graveSel>0?graveCands[graveSel-1]:null; META.grave=ru?{k:(STRATA.find(st=>here.depth>=st.from&&here.depth<=st.to)||{}).k||'',depth:here.depth,cause:adv.runStats.cause||'',item:serRune(ru)}:null; saveMeta(); graveCands=[]; }
 function graveRows(f){ const rows=[`${f('|')}  <b>墓に遺すもの</b>　<span class="lab">（ひとつ選ぶ。次の冒険で、同じ深さに墓が現れる）</span>`];
   const opt=(i,label)=>`${f('|')}    <button class="row gv" data-gv="${i}"><span class="mk">${graveSel===i?'&gt;':' '}</span> ${label}</button>`;
   rows.push(opt(0,'<span class="lab">遺さない</span>')); graveCands.forEach((ru,i)=>rows.push(opt(i+1,clipHtml(thingLabel(ru),48)))); return rows; }
@@ -245,8 +245,8 @@ function die(cause){
 function newRun(){
   saveGrave(); document.body.classList.remove('over');
   const el=document.getElementById('death'); if(el)el.classList.remove('show','won');
-  adv.dead=false; adv.runSeed=(Math.random()*1e9)>>>0; depth=1; branch=null; realm=null; placeMem.clear(); arrive=null;
-  adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:time,maxDepth:depth,book0:BOOK.size,beastsNew:0}; resetRunes(); newLevel();
+  adv.dead=false; adv.runSeed=(Math.random()*1e9)>>>0; here.depth=1; here.branch=null; here.realm=null; placeMem.clear(); here.arrive=null;
+  adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:time,maxDepth:here.depth,book0:BOOK.size,beastsNew:0}; resetRunes(); newLevel();
 }
 function hitReact(m,n){ const ty=m.ty, boss=ty.boss||m.key==='lord'||m.key==='final', now=performance.now();
   m.flinchUntil=time+Math.min(0.26,0.08+n*0.015);
@@ -275,10 +275,10 @@ function damageMonster(m,n,how){
   }
 }
 function playerAttack(){
-  if(adv.dead||!ui.started||trans||(player.atkCd||0)>0||player.netT>0)return;
+  if(adv.dead||!ui.started||here.trans||(player.atkCd||0)>0||player.netT>0)return;
   player.atkCd=WEAPON.cd; player.swing=0.22; sWhoosh();
   let best=null, bd=1e9; const [vx,vy,vz]=viewDir(), [ox,oy,oz]=aimOrigin();
-  for(const m of monsters){ if(m.dead||m.ty.peaceful||(m.ty.critter&&!m.hidden&&m.ty.critter!=='mimic'))continue; if(m.ty.habitat==='deep'&&(m.rise||0)<0.3)continue; if(m.ty.habitat==='bog'&&(m.rise||0)<0.3)continue;
+  for(const m of here.monsters){ if(m.dead||m.ty.peaceful||(m.ty.critter&&!m.hidden&&m.ty.critter!=='mimic'))continue; if(m.ty.habitat==='deep'&&(m.rise||0)<0.3)continue; if(m.ty.habitat==='bog'&&(m.rise||0)<0.3)continue;
     const sc=m.ty.scale, cy=m.hidden?m.y+1.3:m.y+(m.ty.flier?0:0.6*sc), ax=m.x-ox, ay=cy-oy, az=m.z-oz, d=Math.hypot(ax,ay,az);
     if(Math.hypot(m.x-player.x,m.z-player.z)>WEAPON.reach+0.35*sc)continue;
     const cosA=(ax*vx+ay*vy+az*vz)/Math.max(d,1e-3), tol=0.42+Math.atan2(0.5*sc,Math.max(d,0.5));
@@ -295,7 +295,7 @@ function updateLife(dt){
   // fire hurts whoever stands in it
   const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL);
   player.fireT=(player.fireT||0)+dt; if(player.fireT>0.5){ player.fireT=0; if(fire[pc]>0.1)hurtPlayer(2,'炎');
-    for(const m of monsters){ if(m.dead||m.ty.critter||m.ty.habitat==='lava')continue; const ci=m.cz*MW+m.cx; if(fire[ci]>0.1&&!m.ty.flier)damageMonster(m,3,'fire'); } }
+    for(const m of here.monsters){ if(m.dead||m.ty.critter||m.ty.habitat==='lava')continue; const ci=m.cz*MW+m.cx; if(fire[ci]>0.1&&!m.ty.flier)damageMonster(m,3,'fire'); } }
 }
 function monsterStrike(m,dt,dp){
   if(!hostile(m)||!m.noticed||m.sleep||adv.dead)return;

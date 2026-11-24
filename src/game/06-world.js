@@ -1,6 +1,5 @@
 // ---------------------------------------------------------------- world state
-let D=null, depth=1, staticMesh=null, occMesh=null, glyphCount=0;
-let monsters=[], fixtures=[];
+let D=null, staticMesh=null, occMesh=null, glyphCount=0;
 let explored=new Uint8Array(NCELL), mem=new Float32Array(NCELL*3), fovVis=new Uint32Array(NCELL), fovStamp=1;
 let visitedRooms=new Set(), stairsSeen=false, fogBase=0.05;
 // player は src/lib/state.ts（src/game/imports.mjs で読む。丸ごと入れ替えないので、名前はそのまま）

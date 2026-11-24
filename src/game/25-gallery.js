@@ -4,10 +4,10 @@ const saveSet=(k,s)=>{ try{ localStorage.setItem(k,JSON.stringify([...s])); }cat
 let SEEN=loadSet('al_seen'), RSEEN=loadSet('al_runes'), DEVALL=false; try{ DEVALL=localStorage.getItem('al_dev')==='1'; }catch(e){}
 
 let seenT=0, gallery=null;
-const seenKey=m=>m.ty.beast?'beast:'+adv.runSeed+':'+m.ty.name:m.key==='lord'?'lord:'+(branch?branch.key:m.ty.sk):(m.key==='final'&&m.phase2)?'final2':m.key;
+const seenKey=m=>m.ty.beast?'beast:'+adv.runSeed+':'+m.ty.name:m.key==='lord'?'lord:'+(here.branch?here.branch.key:m.ty.sk):(m.key==='final'&&m.phase2)?'final2':m.key;
 function trackSeen(dt){
   if(!ui.started||gallery)return; seenT-=dt; if(seenT>0)return; seenT=0.5; const n0=SEEN.size;
-  for(const m of monsters){ if(m.dead||m.hidden||!m.visible||m.ty.dummy)continue; if(Math.hypot(m.x-player.x,m.z-player.z)<26){ SEEN.add(seenKey(m)); if(m.ty.beast)recordBeast(m.ty); } }
+  for(const m of here.monsters){ if(m.dead||m.hidden||!m.visible||m.ty.dummy)continue; if(Math.hypot(m.x-player.x,m.z-player.z)<26){ SEEN.add(seenKey(m)); if(m.ty.beast)recordBeast(m.ty); } }
   if(SEEN.size!==n0)saveSet('al_seen',SEEN);
 }
 // LORD_GAL は src/lib/names.ts（src/game/imports.mjs で読む）
@@ -21,24 +21,24 @@ function galleryList(){
 }
 // a quiet room from a fixed maze: everything else is cleared away
 function galleryRoom(seed){
-  depth=1; branch=null; realm=null; adv.runState.startChosen=true; adv.runState.altar1=true; newLevel(seed);
+  here.depth=1; here.branch=null; here.realm=null; adv.runState.startChosen=true; adv.runState.altar1=true; newLevel(seed);
   let best=null,bl=0; for(const r of D.rooms){ if(r.cells.length>bl&&!r.cave&&!r.vault){ bl=r.cells.length; best=r; } }
   const cs=best.cells, cx=Math.round(cs.reduce((s,i)=>s+i%MW,0)/cs.length), cz=Math.round(cs.reduce((s,i)=>s+((i/MW)|0),0)/cs.length);
-  D.items=[]; D.steles=[]; monsters=[]; projs=[]; clouds=[]; boltFx=[]; zapQueue=[];
+  D.items=[]; D.steles=[]; here.monsters=[]; projs=[]; clouds=[]; boltFx=[]; zapQueue=[];
   if(D.tall)for(const i of cs)D.tall[i]=0;
   return {cx,cz,x:(cx+0.5)*CELL,z:(cz+0.5)*CELL};
 }
 // ---------------------------------------------------------------- the bestiary: one creature at a time, turning slowly in the light
 function showroom(){
   // a run seed whose depth 4 is the great hall
-  adv.runSeed=7; depth=4; branch=null; realm=null; inter={key:'bigroom',after:4}; adv.runState.startChosen=true; adv.runState.altar1=true; showroomGen=true; newLevel(424242); showroomGen=false; inter=null;
+  adv.runSeed=7; here.depth=4; here.branch=null; here.realm=null; here.inter={key:'bigroom',after:4}; adv.runState.startChosen=true; adv.runState.altar1=true; here.showroomGen=true; newLevel(424242); here.showroomGen=false; here.inter=null;
   const W=MW, open=i=>i>=0&&i<NCELL&&D.tile[i]===TF&&!D.liquid[i];
   let best=-1, bc=-1; for(let i=W*2;i<NCELL-W*2;i++){ if(!open(i))continue; const cx=i%W, cz=(i/W)|0; let c=0;
       for(let r=1;r<=12;r++){ let ok=true; for(let a=0;a<16&&ok;a++){ const an=a/16*Math.PI*2, j=Math.round(cz+Math.sin(an)*r)*W+Math.round(cx+Math.cos(an)*r); if(!open(j))ok=false; } if(!ok)break; c=r; }
       if(c>bc){ bc=c; best=i; } }
   const cx=best%W, cz=(best/W)|0, x=(cx+0.5)*CELL, z=(cz+0.5)*CELL;
-  D.items=[]; D.steles=[]; monsters=[]; projs=[]; clouds=[]; boltFx=[]; zapQueue=[];
-  fixtures=fixtures.filter(f=>{ const d=Math.hypot(f.x-x,f.z-z); if(d<8&&f.li!==undefined&&D.lights[f.li])D.lights[f.li].int=0; return d>=8; });
+  D.items=[]; D.steles=[]; here.monsters=[]; projs=[]; clouds=[]; boltFx=[]; zapQueue=[];
+  here.fixtures=here.fixtures.filter(f=>{ const d=Math.hypot(f.x-x,f.z-z); if(d<8&&f.li!==undefined&&D.lights[f.li])D.lights[f.li].int=0; return d>=8; });
   for(const L of D.lights)if(Math.hypot(L.x-x,L.z-z)<8)L.int=0;
   // the open direction for the camera
   let dir=0, far=0; for(let a=0;a<16;a++){ const an=a/16*Math.PI*2; let d=0; for(let r=0.5;r<30;r+=0.5){ const j=Math.floor((z+Math.sin(an)*r)/CELL)*W+Math.floor((x+Math.cos(an)*r)/CELL); if(!open(j))break; d=r; } if(d>far){ far=d; dir=an; } }
@@ -51,12 +51,12 @@ function openBestiary(){
   showBeast(0); renderGallery(); document.getElementById('gal').classList.add('show');
 }
 function showBeast(i){
-  const g=gallery; monsters=[]; g.m=null; if(!g.list.length){ renderGallery(); return; }
+  const g=gallery; here.monsters=[]; g.m=null; if(!g.list.length){ renderGallery(); return; }
   g.idx=(i+g.list.length)%g.list.length; const e=g.list[g.idx];
   MTYPES.__gal=e.ty; const m=makeMonster({key:'__gal',cx:g.room.cx,cz:g.room.cz,g:-1,lead:true});
   m.x=g.room.x; m.z=g.room.z; m.sleep=false; m.hidden=false; m.wait=1e9; m.galShow=true; m.heartOn=true; m.rise=1; m.surf=1; m.yaw=0; if(e.ty.form==='eel')m.y=0;
   g.water=e.ty.form==='kraken'||e.ty.form==='deepkraken'||e.ty.form==='eel'||e.ty.form==='fish'||e.ty.habitat==='deep'; if(g.water&&e.ty.form==='kraken')m.y=-0.25*(e.ty.scale||1); if(e.ty.form==='deepkraken')m.y=0; if(e.ty.habitat==='bog')m.y=0;
-  monsters.push(m); g.m=m; g.t=0; renderGallery();
+  here.monsters.push(m); g.m=m; g.t=0; renderGallery();
 }
 function updateGallery(dt){
   if(!gallery)return; const g=gallery;
@@ -86,7 +86,7 @@ function renderGallery(){
 for(const d of DUMMY_KINDS){ MTYPES[d.k]={ch:'+',name:d.name,col:d.col,form:'humanoid',scale:0.95,speed:0,fl:0,light:1.6,trail:0,dummy:true,verb:'藁と石で組まれた的。何度倒れても、また起き上がる'}; MSTAT[d.k]=[60,0,0,99]; }
 RES.dummyF={fire:0.2,ice:2}; RES.dummyP={poison:0.2,fire:2}; RES.dummyT={thunder:2,fire:0.5};
 function spawnDummy(d){ const m=makeMonster({key:d.k,cx:Math.floor(d.x/CELL),cz:Math.floor(d.z/CELL),g:-1,lead:true}); m.x=d.x; m.z=d.z; m.yaw=0; m.sleep=false; m.wait=1e9; m.noticed=false; m.dsum=0;
-  monsters.push(m); d.m=m; d.respawn=1.5; for(let q=0;q<14;q++){ const a=mr()*6.28; spawn(d.x,0.4,d.z,Math.cos(a),0.6+mr(),Math.sin(a),0.6,G('.'),0.12,1.2,1.1,0.9,0); } }
+  here.monsters.push(m); d.m=m; d.respawn=1.5; for(let q=0;q<14;q++){ const a=mr()*6.28; spawn(d.x,0.4,d.z,Math.cos(a),0.6+mr(),Math.sin(a),0.6,G('.'),0.12,1.2,1.1,0.9,0); } }
 function openRange(){
   introEl.classList.add('gone'); sndInit(); resetRunes(); const room=galleryRoom(52571);
   gallery={mode:'range',room,dummies:[]};

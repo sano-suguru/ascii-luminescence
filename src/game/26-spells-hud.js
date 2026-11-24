@@ -12,7 +12,7 @@ function chillArea(x,z,r){ const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL), r
   for(let dz=-rr;dz<=rr;dz++)for(let dx=-rr;dx<=rr;dx++){ const i=(cz+dz)*MW+cx+dx; if(i<0||i>=NCELL)continue; const px=(cx+dx+0.5)*CELL, pz=(cz+dz+0.5)*CELL; if(Math.hypot(px-x,pz-z)>r+0.7)continue;
     if(fire[i]>0){ fire[i]=0; ch=true; for(let q=0;q<5;q++)spawn(px+(mr()-0.5)*1.4,0.3,pz+(mr()-0.5)*1.4,0,0.9+mr(),0,0.9,G(mpick(['~','.'])),0.16,1.6,1.7,1.8,0); }
     const lq=D.liquid[i]; if((lq===LQ_WATER||lq===LQ_DEEP)&&!frozen.has(i)){ frozen.set(i,{t:25,liq:lq,surf:D.surface[i]}); D.liquid[i]=0; D.surface[i]=SF_ICE; ch=true; froze=true;
-      for(const m of monsters){ if(m.dead||m.cx!==cx+dx||m.cz!==cz+dz)continue; const s2=m.st||(m.st={}); s2.chill=Math.max(s2.chill||0,4); } }
+      for(const m of here.monsters){ if(m.dead||m.cx!==cx+dx||m.cz!==cz+dz)continue; const s2=m.st||(m.st={}); s2.chill=Math.max(s2.chill||0,4); } }
     else if(frozen.has(i))frozen.get(i).t=25; }
   if(ch)uploadCells();
   if(froze&&sndReady()){ const t=SND.ctx.currentTime, o=sOut(x,z,0.3); sEnv(sTone(t,'sine',2093,3136,0.4,o),t,0.004,0.35); sEnv(sNoise(t,0.3,'highpass',5000,0.6,o),t,0.003,0.25,0.4); } }
@@ -23,20 +23,20 @@ function drawFrozen(t){ for(const [i,f] of frozen){ const [x,z]=cpos(i); if(Math
   for(let a=0;a<3;a++)for(let b=0;b<3;b++){ const sh=0.85+0.15*Math.sin(t*2+a+b*1.7); dyn(x+(a-1)*0.62,0.08,z+(b-1)*0.62,G(crack&&((a+b)%2)?'/':'='),0.36,0.7*sh,0.92*sh,1.25*sh); } } }
 // thunder runs through water: everything standing in the same water near the hit takes a share
 function conductWater(m,base){ if(!inWater(m))return; let n=0;
-  for(const o of monsters){ if(o===m||!foe(o)||!inWater(o))continue; if(Math.hypot(o.x-m.x,o.z-m.z)>6)continue; if(n++>5)break;
+  for(const o of here.monsters){ if(o===m||!foe(o)||!inWater(o))continue; if(Math.hypot(o.x-m.x,o.z-m.z)>6)continue; if(n++>5)break;
     addBolt([m.x,0.15,m.z],[o.x,0.15,o.z],RUNE_DEF.thunder.col,'thunder'); const r=(RES[o.key]||{}).thunder, k=r===undefined?1:r, d2=Math.round(Math.max(1,base*0.5)*k*1.5);
     if(d2>0)damageMonster(o,d2,'thunder'); if(!o.dead){ const s2=o.st||(o.st={}); s2.shock=Math.max(s2.shock||0,0.3); o.wind=0; } sparkCrown(o,RUNE_DEF.thunder.col); } }
 // what an element does where it lands (walls, doors, floor, water)
 function landElem(sp,x,y,z,ci){ if(!sp.elem||ci<0||ci>=NCELL)return; const areaK=1+(sp.aff.area||0)/100;
   if(sp.elem==='fire'){ if(doorBlock(ci)||(D.tile[ci]!==TW&&D.tile[ci]!==TX&&!D.liquid[ci]))burstFire(ci,0.5*areaK,0.9); }
   else if(sp.elem==='ice')chillArea(x,z,1.2*areaK);
-  else if(sp.elem==='thunder'){ const lq=D.liquid[ci]; if(lq===LQ_WATER||lq===LQ_DEEP){ for(const o of monsters){ if(!foe(o)||!inWater(o)||Math.hypot(o.x-x,o.z-z)>5)continue; addBolt([x,0.15,z],[o.x,0.15,o.z],RUNE_DEF.thunder.col,'thunder'); damageMonster(o,2,'thunder'); } } } }
+  else if(sp.elem==='thunder'){ const lq=D.liquid[ci]; if(lq===LQ_WATER||lq===LQ_DEEP){ for(const o of here.monsters){ if(!foe(o)||!inWater(o)||Math.hypot(o.x-x,o.z-z)>5)continue; addBolt([x,0.15,z],[o.x,0.15,o.z],RUNE_DEF.thunder.col,'thunder'); damageMonster(o,2,'thunder'); } } } }
 // fire reaching a poison mist sets the whole mist off
 function cloudsMeetFire(){ for(const c of clouds){ if(c.t<=0)continue; const cx=Math.floor(c.x/CELL), cz=Math.floor(c.z/CELL), rr=Math.ceil(c.r/CELL); let lit=false;
     for(let dz=-rr;dz<=rr&&!lit;dz++)for(let dx=-rr;dx<=rr;dx++){ const i=(cz+dz)*MW+cx+dx; if(i>=0&&i<NCELL&&fire[i]>0.1){ lit=true; break; } }
     if(!lit)continue; c.t=0; const R=c.r+0.6;
     for(let q=0;q<46;q++){ const a=mr()*6.28, e=mr(); spawn(c.x+Math.cos(a)*e*R,0.4+mr()*1.2,c.z+Math.sin(a)*e*R,Math.cos(a)*2.4,0.8+mr()*2,Math.sin(a)*2.4,0.9+mr()*0.5,G(mpick(['*','#','%','\''])),0.22,3.2,1.8,0.6,0); }
-    for(const o of monsters){ if(!foe(o)||Math.hypot(o.x-c.x,o.z-c.z)>R)continue; if(!losClear(c.x,0.6,c.z,...mCenter(o)))continue; damageMonster(o,roll(5,9),'fire'); }
+    for(const o of here.monsters){ if(!foe(o)||Math.hypot(o.x-c.x,o.z-c.z)>R)continue; if(!losClear(c.x,0.6,c.z,...mCenter(o)))continue; damageMonster(o,roll(5,9),'fire'); }
     if(Math.hypot(player.x-c.x,player.z-c.z)<R*0.8)hurtPlayer(roll(1,3),'爆炎'); burstFire(cz*MW+cx,c.r/CELL+0.5,1.0); sBoom(0.4); vfx.shake=Math.max(vfx.shake,0.25); vfx.flash=Math.max(vfx.flash,0.3);
     if(!BOOK.has('blast')){ BOOK.add('blast'); try{ localStorage.setItem('al_book',JSON.stringify([...BOOK])); }catch(e){} } } }
 // a perfect dodge: the dodge rune answers only when an attack was actually evaded
@@ -99,7 +99,7 @@ function renderHotbar(){
 
 // dodge roll (after Minecraft Dungeons): a quick burst in the direction you are moving, untouchable while it lasts
 function startRoll(){
-  if(adv.dead||trans||(player.rollCd||0)>0||player.netT>0||player.roll)return;
+  if(adv.dead||here.trans||(player.rollCd||0)>0||player.netT>0||player.roll)return;
   const k=keys, fw=((k.KeyW||k.ArrowUp)?1:0)-((k.KeyS||k.ArrowDown)?1:0), st=(k.KeyD?1:0)-(k.KeyA?1:0), sy=Math.sin(player.yaw), cy=Math.cos(player.yaw);
   let ix=-sy*fw+cy*st, iz=-cy*fw-sy*st; const l=Math.hypot(ix,iz); if(l<0.01){ ix=sy; iz=cy; } else { ix/=l; iz/=l; }
   player.roll={t:0,dx:ix,dz:iz}; player.rollCd=1.0; sWhoosh();

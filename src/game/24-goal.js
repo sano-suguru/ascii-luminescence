@@ -25,17 +25,17 @@ function getLegend(){
 }
 const legendOfBranch=bk=>{ const L=getLegend(); if(!L)return null; return LEGEND_ORDER.find(k=>L.items[k].branch===bk)||null; };
 const legendAll=()=>{ const L=getLegend(); return !!L&&L.have.size>=3; };
-const isFinal=()=>depth===FINAL_DEPTH&&!branch&&!realm&&!inter;
-const descentSealed=()=>depth===FINAL_DEPTH-1&&!branch&&!realm&&!legendAll();
+const isFinal=()=>here.depth===FINAL_DEPTH&&!here.branch&&!here.realm&&!here.inter;
+const descentSealed=()=>here.depth===FINAL_DEPTH-1&&!here.branch&&!here.realm&&!legendAll();
 function legendLine(){ const L=getLegend(); if(!L)return '';
   return LEGEND_ORDER.map(k=>{ const kd=LEGEND_KINDS[k], has=L.have.has(k)||L.placed.has(k); return has?`<span class="glow" style="color:${css(kd.col)}">${kd.ch}</span>`:`<span class="dim">${kd.ch}</span>`; }).join(' ')+`  <span class="lab">${LEGEND_ORDER.map(k=>LEGEND_KINDS[k].name).join('・')}</span>`; }
 
 // a lord falls: its legendary thing (if it holds one) or a golden rune
 function lordFell(m){
-  if(m.key!=='lord'||!branch)return;
-  adv.runState.lordsDone.add(branch.key);
+  if(m.key!=='lord'||!here.branch)return;
+  adv.runState.lordsDone.add(here.branch.key);
   { let si=m.cz*MW+m.cx; for(const d of [1,-1,MW,-MW])if(D.tile[si+d]===TF&&!D.liquid[si+d]){ si+=d; break; } D.items.push({i:si,kind:'slot',taken:false,born:time}); }
-  const k=legendOfBranch(branch.key), L=getLegend();
+  const k=legendOfBranch(here.branch.key), L=getLegend();
   if(k&&L&&!L.have.has(k)){ D.items.push({i:m.cz*MW+m.cx,kind:'legend',legend:k,taken:false,born:time});
     const c=LEGEND_KINDS[k].col; for(let q=0;q<60;q++){ const a=mr()*6.28; spawn(m.x,0.8+mr()*1.5,m.z,Math.cos(a)*2.2,0.5+mr()*2.4,Math.sin(a)*2.2,1.2+mr(),G(mpick(['*','+','.','\''])),0.2,c[0]*3,c[1]*3,c[2]*3,0); }
     sChime(m.x,m.z,0.6); setTimeout(()=>sChime(m.x,m.z,0.5),300);
@@ -73,7 +73,7 @@ function setupFinal(){
       for(let dz=-rad;dz<=rad&&ok;dz++)for(let dx=-rad;dx<=rad;dx++)if(!open(i+dz*MW+dx)){ ok=false; break; } if(ok){ bc=D.ceil[i]; c0=i; } }
     if(bc>=10)break; }
   const L=getLegend(), cx0=c0%MW, cz0=(c0/MW)|0;
-  monsters=monsters.filter(m=>m.ty.critter);
+  here.monsters=here.monsters.filter(m=>m.ty.critter);
   const ok=c=>c>=0&&c<NCELL&&D.tile[c]===TF&&!D.liquid[c]&&!D.solid.has(c)&&c!==c0;
   const cand=[]; for(let dz=-5;dz<=5;dz++)for(let dx=-5;dx<=5;dx++){ const d=Math.hypot(dx,dz); if(d<2.4||d>4.6)continue; const c=(cz0+dz)*MW+cx0+dx; if(ok(c))cand.push([Math.atan2(dz,dx),c]); }
   cand.sort((a,b)=>a[0]-b[0]); const peds=[];
@@ -98,15 +98,15 @@ function updateFinal(dt){
   const b=finalSt.boss; if(b&&!b.dead&&!b.phase2&&b.hp<b.maxHp*0.5)transformShadow(b);
   if(b&&b.invulnT>0)b.invulnT-=dt;
   if(b&&!b.dead){ finalSt.summonT-=dt;
-    if(finalSt.summonT<=0){ finalSt.summonT=14; const n=monsters.filter(m=>!m.dead&&m.key==='W').length; if(n<4){ for(let k=0;k<2;k++){ const a=mr()*6.28, cx=Math.floor((b.x+Math.cos(a)*2.5)/CELL), cz=Math.floor((b.z+Math.sin(a)*2.5)/CELL), c=cz*MW+cx; if(D.tile[c]!==TF)continue;
-        const s=makeMonster({key:'W',cx,cz,g:-1,lead:true}); s.sleep=false; s.aware=1.25; s.noticed=true; monsters.push(s); for(let q=0;q<16;q++){ const an=mr()*6.28; spawn(s.x,0.6,s.z,Math.cos(an),0.4+mr(),Math.sin(an),0.8,G('.'),0.14,0.6,0.4,1.2,0); } }
+    if(finalSt.summonT<=0){ finalSt.summonT=14; const n=here.monsters.filter(m=>!m.dead&&m.key==='W').length; if(n<4){ for(let k=0;k<2;k++){ const a=mr()*6.28, cx=Math.floor((b.x+Math.cos(a)*2.5)/CELL), cz=Math.floor((b.z+Math.sin(a)*2.5)/CELL), c=cz*MW+cx; if(D.tile[c]!==TF)continue;
+        const s=makeMonster({key:'W',cx,cz,g:-1,lead:true}); s.sleep=false; s.aware=1.25; s.noticed=true; here.monsters.push(s); for(let q=0;q<16;q++){ const an=mr()*6.28; spawn(s.x,0.6,s.z,Math.cos(an),0.4+mr(),Math.sin(an),0.8,G('.'),0.14,0.6,0.4,1.2,0); } }
         msg(`<b style="color:#a98cff">W</b>影が身をよじり、闇の中から亡霊を呼び出した。`); } } }
 }
 function spawnFinalBoss(){
   const R=HIST.rulers, last=R[R.length-1], cx=finalSt.c0%MW, cz=(finalSt.c0/MW)|0;
   const ceilH=D.ceil[finalSt.c0]||6;
   MTYPES.final={...MTYPES.L,ch:'&',look:null,form:'shadowking',sk:'final',name:`${last.name}王の影`,scale:Math.max(2.0,Math.min(3.6,(ceilH-0.3)/3.3)),col:[0.62,0.48,1.0],boss:true,lich:false,light:6,verb:'王冠の形をした影が、底の闇から立ちのぼっている'};
-  const b=makeMonster({key:'final',cx,cz,g:-1,lead:true}); b.sleep=false; b.aware=1.25; b.noticed=true; monsters.push(b); finalSt.boss=b;
+  const b=makeMonster({key:'final',cx,cz,g:-1,lead:true}); b.sleep=false; b.aware=1.25; b.noticed=true; here.monsters.push(b); finalSt.boss=b;
   sRumble(0.9,3); vfx.shake=Math.max(vfx.shake,0.6); vfx.flash=Math.max(vfx.flash,0.3);
   for(let q=0;q<90;q++){ const a=mr()*6.28, e=mr(); spawn(b.x+Math.cos(a)*e*2,0.2,b.z+Math.sin(a)*e*2,Math.cos(a)*0.6,1+mr()*3,Math.sin(a)*0.6,1.6+mr(),G(mpick(['%','#','.','&'])),0.24,0.5,0.35,0.9,0); }
   msg(`<b style="color:#a98cff">&amp;</b>三つの光に照らされて、底の闇がひとところに集まっていく……`);
@@ -163,7 +163,7 @@ function returnToTitle(){
   ui.started=false; adv.dead=false; adv.won=false; gallery=null; gear.castSt=null; gear.swapSt=null; vfx.zapFlash=null;
   document.body.classList.remove('started'); const de=document.getElementById('death'); if(de)de.classList.remove('show','won');
   const gp=document.getElementById('gal'); if(gp)gp.classList.remove('show');
-  adv.runSeed=(Math.random()*1e9)>>>0; depth=startDepth; branch=null; realm=null; placeMem.clear(); arrive=null;
+  adv.runSeed=(Math.random()*1e9)>>>0; here.depth=startDepth; here.branch=null; here.realm=null; placeMem.clear(); here.arrive=null;
   player.hp=adv.PLAYER_MAX; resetRunes(); newLevel();
   introEl.classList.remove('gone'); setHelp(false); const st=document.getElementById('stratum'); if(st)st.classList.remove('show');
   renderStatus(); renderHotbar();

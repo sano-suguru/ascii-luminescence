@@ -19,7 +19,7 @@ function updateCritter(m,dt,t,dp){
     if(dp<3.2&&lit&&m.visible&&time-(m.shriekT||-99)>12){
       m.shriekT=time; m.glow=3; sShriek(m.x,m.z); vfx.shake=Math.max(vfx.shake,0.12);
       for(let q=0;q<36;q++){ const a=q/36*Math.PI*2; spawn(m.x,0.7,m.z,Math.cos(a)*2.2,0.2,Math.sin(a)*2.2,0.9,G(q%2?'!':'.'),0.18,ty.col[0]*2.4,ty.col[1]*2.4,ty.col[2]*2.4,1); }
-      let woke=0; for(const o of monsters){ if(o===m||o.ty.critter||o.dead)continue; if(Math.hypot(o.x-m.x,o.z-m.z)<15){ if(o.sleep||!o.noticed)woke++; o.sleep=false; o.aware=Math.max(o.aware,1.05); } }
+      let woke=0; for(const o of here.monsters){ if(o===m||o.ty.critter||o.dead)continue; if(Math.hypot(o.x-m.x,o.z-m.z)<15){ if(o.sleep||!o.noticed)woke++; o.sleep=false; o.aware=Math.max(o.aware,1.05); } }
       if(time-shriekMsgT>8){ shriekMsgT=time; msg(`<b style="color:${css(ty.col)}">p</b>${mname(m)}が甲高い叫び声を上げた！${woke?' 周りの獣たちが目を覚ます。':''}`); }
     }
     return;
@@ -82,7 +82,7 @@ function drawWebs(t){
 function webTouch(i){
   const w=D.webAt&&D.webAt.get(i); if(!w||w.gone)return false;
   if(time-(w.touchT||-99)>3){ w.touchT=time; w.shake=1.2; sSqueak(player.x,player.z);
-    for(const m of monsters){ if(!m.ty.spider||Math.hypot(m.x-player.x,m.z-player.z)>24)continue; m.sleep=false; m.aware=Math.max(m.aware,1.05); m.goal=[(i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL]; m.goalT=time+12; }
+    for(const m of here.monsters){ if(!m.ty.spider||Math.hypot(m.x-player.x,m.z-player.z)>24)continue; m.sleep=false; m.aware=Math.max(m.aware,1.05); m.goal=[(i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL]; m.goalT=time+12; }
     if(!webMsg){ webMsg=true; msg('<b style="color:#d8c8ff">%</b>光る糸に絡まった！ 巣全体が震えている……。炎なら、糸を焼き払える。'); } }
   return true;
 }

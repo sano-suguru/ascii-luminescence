@@ -159,7 +159,7 @@ let BOOK=new Set(); try{ BOOK=new Set(JSON.parse(localStorage.getItem('al_book')
 function makeRune(type,nAff,r){ r=r||mr; const def=RUNE_DEF[type], pool=def.aff.slice(), aff={}; let n=0;
   while(n-->0){ const k=pool.splice(Math.floor(r()*pool.length),1)[0]; aff[k]=AFFIX[k].roll(r); }
   return {uid:runeUid++,type,aff}; }
-function rollAffN(r,bonus){ const x=r()+(bonus||0)+Math.min(0.25,depth*0.015); return x<0.55?0:x<0.82?1:x<0.96?2:3; }
+function rollAffN(r,bonus){ const x=r()+(bonus||0)+Math.min(0.25,here.depth*0.015); return x<0.55?0:x<0.82?1:x<0.96?2:3; }
 function randomRuneType(r,weights){ const w=weights||{elem:0.45,trig:0.12,mod:0.33,body:0.1}; let x=r(); for(const c of ['atk','elem','trig','mod','body']){ if(!w[c])continue; if(x<w[c]){ const a=(c==='atk'?weaponPool():RUNE_TYPES[c].filter(t=>!lockedOf('rune',t))); return a[Math.floor(r()*a.length)]||'fire'; } x-=w[c]; } return 'fire'; }
 const runeTier=ru=>Object.keys(ru.aff).length;
 const runeCol=ru=>{ const d=RUNE_DEF[ru.type]; if(ru.strong)return TIER_COL[3]; return d.col||TIER_COL[runeTier(ru)]; };
