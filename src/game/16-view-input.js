@@ -132,13 +132,13 @@ function solidAt(x,z,r){
 
 // ---------------------------------------------------------------- input
 const keys={};
-let started=false, locked=false, dragging=false, lmx=0, lmy=0, plFailed=false;
+let dragging=false, lmx=0, lmy=0, plFailed=false;
 const introEl=document.getElementById('intro'), resumeEl=document.getElementById('resume');
 function updateResume(){ resumeEl.style.display='none'; }
 function tryLock(){
   if(plFailed||!canvas.requestPointerLock)return;
   try{ const p=canvas.requestPointerLock(); if(p&&p.catch)p.catch(()=>{ plFailed=true; updateResume(); }); }catch(e){ plFailed=true; }
 }
-document.addEventListener('pointerlockchange',()=>{ const was=locked; locked=document.pointerLockElement===canvas; if(locked&&menuOpen)setMenu(false); if(was&&!locked&&started&&!dead&&!invOpen)setMenu(true); updateResume(); });
+document.addEventListener('pointerlockchange',()=>{ const was=ui.locked; ui.locked=document.pointerLockElement===canvas; if(ui.locked&&ui.menuOpen)setMenu(false); if(was&&!ui.locked&&ui.started&&!dead&&!ui.invOpen)setMenu(true); updateResume(); });
 document.addEventListener('pointerlockerror',()=>{ plFailed=true; updateResume(); msg('<b style="color:#8fe9ff">i</b>マウスをドラッグして視点を動かせます。'); });
 let startDepth=1;

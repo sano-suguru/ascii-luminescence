@@ -110,5 +110,5 @@ function startRoll(){
 }
 
 // ---------------------------------------------------------------- inventory as a list; hotbar (wheel / 1-5, right click) and a pack screen (Tab); a menu (Esc)
-let invOpen=false, menuOpen=false, newRunArm=0;
-const isPaused=()=>invOpen||menuOpen||dbgOpen||altarOpen||lvlOpen;
+let newRunArm=0;
+const isPaused=()=>ui.invOpen||ui.menuOpen||ui.dbgOpen||ui.altarOpen||ui.lvlOpen;

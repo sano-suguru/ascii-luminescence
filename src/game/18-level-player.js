@@ -33,7 +33,7 @@ function newLevel(seedOverride){
   explored=new Uint8Array(NCELL); mem=new Float32Array(NCELL*3); fovVis=new Uint32Array(NCELL); fovStamp=1;
   { const pm=placeMem.get(placeKey()); if(pm){ explored.set(pm.explored); mem.set(pm.mem); } }
   visitedRooms=new Set(); stairsSeen=false; player.rally=0; rallyMotes=[]; if(runStats&&!gallery)runStats.maxDepth=Math.max(runStats.maxDepth||0,depth); setTimeout(strataGrowth,50);
-  if(started&&!gallery&&!dead&&!arrive){ const sp=inter?SPECIALS[inter.key]:null; if(sp&&(sp.k==='town'||sp.k==='oracle')){ player.hp=PLAYER_MAX; setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>静かな場所だ。張りつめていた体が、すっかりほどけた。'),1600); } else if(player.hp<PLAYER_MAX){ player.hp=Math.min(PLAYER_MAX,player.hp+PLAYER_MAX*0.2); setTimeout(()=>msg('<span class="lab">階段を降りると、少し息が整った。</span>'),1600); } }
+  if(ui.started&&!gallery&&!dead&&!arrive){ const sp=inter?SPECIALS[inter.key]:null; if(sp&&(sp.k==='town'||sp.k==='oracle')){ player.hp=PLAYER_MAX; setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>静かな場所だ。張りつめていた体が、すっかりほどけた。'),1600); } else if(player.hp<PLAYER_MAX){ player.hp=Math.min(PLAYER_MAX,player.hp+PLAYER_MAX*0.2); setTimeout(()=>msg('<span class="lab">階段を降りると、少し息が整った。</span>'),1600); } }
   player.x=(D.start%MW+0.5)*CELL; player.z=(((D.start/MW)|0)+0.5)*CELL; player.vx=player.vz=0; player.yaw=D.startYaw; player.pitch=-0.04; lockCell=-1;
   { const tc=arrive==='portal'&&D.portal?D.portal.cell:arrive==='bstairs'&&D.bstairs?D.bstairs.cell:arrive==='stairs'?D.stairs:-1;
     if(tc>=0){ const nb=[1,-1,MW,-MW,MW+1,MW-1,-MW+1,-MW-1].map(o=>tc+o).find(j=>j>=0&&j<NCELL&&D.tile[j]===TF&&!D.liquid[j]&&!D.solid.has(j))??tc;
@@ -43,7 +43,7 @@ function newLevel(seedOverride){
   trampled=[]; tallMsg=false; brimMsg=false; player.lastCell=-1; player.netT=0;
   scent=new Float32Array(NCELL); webMsg=false; webBurnMsg=false; repairMsg=false;
   pN=0; gasAny=false; initFire(); initEvents(); spark=null; projs=[]; showHint(''); edge.t=0; setFog(); initDust();
-  renderStatus(); if(helpOn)renderHelp();
+  renderStatus(); if(ui.helpOn)renderHelp();
   computeFOV(); checkEvents(true);
   if(player.fall){ player.fall=false; setTimeout(()=>{ hurtPlayer(roll(2,4),'落下の衝撃'); },300); }
   if(D.stratum!==lastStratum){ if(lastStratum!==null){ showStratum(D.stratum); if(D.stratum.msg)msg(`<b style="color:#c9b8ff">=</b>${D.stratum.msg}`); } lastStratum=D.stratum; }
@@ -56,17 +56,17 @@ function checkEvents(first){
   if(!D.engrSeen&&D.engr.size){ for(const k of D.engr.keys()){ const i=k>>2; if(fovVis[i]===fovStamp&&Math.hypot((i%MW+0.5)*CELL-player.x,(((i/MW)|0)+0.5)*CELL-player.z)<7){ D.engrSeen=true; msg('<b style="color:#ffdca0">#</b>壁に彫刻が刻まれている。見つめれば、そこに描かれた出来事が読み取れる。'); break; } } }
   if(!stairsSeen&&fovVis[D.stairs]===fovStamp){ stairsSeen=true; msg('<b style="color:#ffcf7a">&gt;</b>金色に輝く下り階段を見つけた。踏み込めば、さらに深い階層へ。'); }
   if(lockCell>=0){ const lx=(lockCell%MW+0.5)*CELL, lz=(((lockCell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-lx,player.z-lz)>1.6)lockCell=-1; }
-  if(started&&!trans&&D.upstairs>=0&&lockCell!==D.upstairs){ const ux=(D.upstairs%MW+0.5)*CELL, uz=(((D.upstairs/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-ux,player.z-uz)<0.95){ trans={phase:'out',t:0,regen:false,go:'up'}; msg('<b style="color:#c9b8ff">&lt;</b>上り階段を上り、来た道を引き返す……'); } }
-  if(started&&!trans&&D.bstairs&&lockCell!==D.bstairs.cell){ const bx=(D.bstairs.cell%MW+0.5)*CELL, bz=(((D.bstairs.cell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-bx,player.z-bz)<0.95){ trans={phase:'out',t:0,regen:false,go:'branch'}; msg(`<b style="color:${css(BRANCHES[D.bstairs.key].col)}">&gt;</b>本道を外れ、${BRANCHES[D.bstairs.key].name}へ続く脇道を下りていく……`); } }
-  if(started&&!trans&&D.portal&&lockCell!==D.portal.cell){ const px2=(D.portal.cell%MW+0.5)*CELL, pz2=(((D.portal.cell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-px2,player.z-pz2)<1.0){ trans={phase:'out',t:0,regen:false,go:'realm'}; msg(`<b style="color:${css(REALMS[D.portal.key].col)}">0</b>揺らめく門をくぐった……`); } }
+  if(ui.started&&!trans&&D.upstairs>=0&&lockCell!==D.upstairs){ const ux=(D.upstairs%MW+0.5)*CELL, uz=(((D.upstairs/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-ux,player.z-uz)<0.95){ trans={phase:'out',t:0,regen:false,go:'up'}; msg('<b style="color:#c9b8ff">&lt;</b>上り階段を上り、来た道を引き返す……'); } }
+  if(ui.started&&!trans&&D.bstairs&&lockCell!==D.bstairs.cell){ const bx=(D.bstairs.cell%MW+0.5)*CELL, bz=(((D.bstairs.cell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-bx,player.z-bz)<0.95){ trans={phase:'out',t:0,regen:false,go:'branch'}; msg(`<b style="color:${css(BRANCHES[D.bstairs.key].col)}">&gt;</b>本道を外れ、${BRANCHES[D.bstairs.key].name}へ続く脇道を下りていく……`); } }
+  if(ui.started&&!trans&&D.portal&&lockCell!==D.portal.cell){ const px2=(D.portal.cell%MW+0.5)*CELL, pz2=(((D.portal.cell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-px2,player.z-pz2)<1.0){ trans={phase:'out',t:0,regen:false,go:'realm'}; msg(`<b style="color:${css(REALMS[D.portal.key].col)}">0</b>揺らめく門をくぐった……`); } }
   const sx=(D.stairs%MW+0.5)*CELL, sz=(((D.stairs/MW)|0)+0.5)*CELL;
-  if(started&&!trans&&D.pit&&D.pit[pc]){ trans={phase:'out',t:0,regen:false}; player.fall=true; msg('<b style="color:#ffa060">:</b>崩れた穴へ身を投じ、下の階層へと落ちていく……'); }
-  if(started&&!trans&&lockCell!==D.stairs&&Math.hypot(player.x-sx,player.z-sz)<0.95&&!isFinal()){
+  if(ui.started&&!trans&&D.pit&&D.pit[pc]){ trans={phase:'out',t:0,regen:false}; player.fall=true; msg('<b style="color:#ffa060">:</b>崩れた穴へ身を投じ、下の階層へと落ちていく……'); }
+  if(ui.started&&!trans&&lockCell!==D.stairs&&Math.hypot(player.x-sx,player.z-sz)<0.95&&!isFinal()){
     if(stairsGuarded()){ if(time-(updatePlayer.sealT||-99)>6){ updatePlayer.sealT=time; msg('<b style="color:#ff8a8a">=</b>階段は、見えない封に閉ざされている。控えの間に潜むものを退ければ、解けるだろう。'); } }
     else if(descentSealed()){ if(time-(updatePlayer.sealT||-99)>9){ updatePlayer.sealT=time; msg('<b style="color:#a98cff">.</b>階段の先は、底の見えない闇に塞がれている。三つの窪みが、何かを待つように淡く光っている。'); } }
     else { trans={phase:'out',t:0,regen:false}; msg(legendAll()&&depth===FINAL_DEPTH-1?'<b style="color:#ffe9b0">*</b>三つの光が闇を押し分けた。最後の階段を、底へと降りていく……':'<b style="color:#ffcf7a">&gt;</b>光の螺旋に身を委ね、さらに深くへ降りていく。'); } }
   let ex=0; for(let i=0;i<NCELL;i++){ const tt=D.tile[i]; if(explored[i]&&(tt===TF||tt===TP))ex++; }
-  const exP=Math.min(100,Math.round(ex/D.floorCount*100)); if(exP!==hudInfo.explored){ hudInfo.explored=exP; if(helpOn)renderHelp(); }
+  const exP=Math.min(100,Math.round(ex/D.floorCount*100)); if(exP!==hudInfo.explored){ hudInfo.explored=exP; if(ui.helpOn)renderHelp(); }
 }
 
 // ---------------------------------------------------------------- player
@@ -124,7 +124,7 @@ function drawTraps(t){
       for(const yy of [0.9+lift,1.9+lift])if(yy<3.0)for(let k=0;k<7;k++){ const u=(k+0.5)/7*CELL-CELL/2; dyn(G2.axis===0?gx:gx+u,yy,G2.axis===0?gz+u:gz,G('='),0.28,0.75,0.72,0.8); } }
     const [lx,lz]=cpos(G2.lever), wx=lx+G2.ld[0]*0.93, wz=lz+G2.ld[1]*0.93;
     dyn(wx,1.3,wz,G('#'),0.4,0.6,0.55,0.5); dyn(wx-G2.ld[0]*0.08,1.45,wz-G2.ld[1]*0.08,G(G2.open?'\\':'/'),0.42,1.4,1.1,0.5); }
-  if(player.netT>0&&camMode==='tps'){ for(let k=0;k<16;k++){ const a=k/16*Math.PI*2+time*0.3; for(let y=0.3;y<1.9;y+=0.32)dyn(player.x+Math.cos(a)*0.55,y,player.z+Math.sin(a)*0.55,G(k%2?'+':'#'),0.16,0.6,0.55,0.65); } }
+  if(player.netT>0&&ui.camMode==='tps'){ for(let k=0;k<16;k++){ const a=k/16*Math.PI*2+time*0.3; for(let y=0.3;y<1.9;y+=0.32)dyn(player.x+Math.cos(a)*0.55,y,player.z+Math.sin(a)*0.55,G(k%2?'+':'#'),0.16,0.6,0.55,0.65); } }
   else if(player.netT>0){ const fx=-Math.sin(player.yaw), fz=-Math.cos(player.yaw), rx=Math.cos(player.yaw), rz=-Math.sin(player.yaw), cy=camera.position.y;
     for(let a=-3;a<=3;a++)for(let b=-2;b<=2;b++)dyn(camera.position.x+fx*0.7+rx*a*0.16,cy+b*0.16,camera.position.z+fz*0.7+rz*a*0.16,G('+'),0.1,0.55,0.5,0.6); }
 }
@@ -149,7 +149,7 @@ const foe=m=>hittable(m)&&(hostile(m)||m.ty.watcher||m.ty.form==='bloat'||m.ty.f
 function initMonsterLife(m){ const st=statOf(m); m.maxHp=Math.round(st[0]*(m.ty.boss?1.5:1)); m.hp=m.maxHp; m.atkCd=0.5+mr(); m.wind=0; }
 // ---------------------------------------------------------------- levelling: defeating creatures gives experience; at each level time stops and you choose one of three
 // (two blessings - strengths tied to actions and elements, some with a price - and one rune or charm). Max health does not grow with level: it grows by 4 on entering each new stratum.
-let lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}, lvlOpen=false, lvlOpenT=0, lvlOpts=[];
+let lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}, lvlOpenT=0, lvlOpts=[];
 const BLESS={
   tough:    {name:'頑丈な体',     d:l=>`最大体力が ${6*l} 増える`},
   quickdodge:{name:'身軽な詠唱',  d:l=>`かわしてから ${l>=2?2.5:1.5}秒以内の詠唱が、半分の時間で済む`},
@@ -182,27 +182,27 @@ function renderLevelUp(){ const el=document.getElementById('altarp'); if(!el)ret
   lvlOpts.forEach((o,i)=>rows.push(`${f('|')}  <button class="row ao" data-lk="${i}">${clipHtml(lvlLine(o),ALTAR_W-6)}</button>`));
   rows.push(f('|')); for(let i=0;i<4;i++)rows.push(`${f('|')} <span class="ldet">${padTo('',ALTAR_W-3)}</span>`);
   rows.push(f('|'),`${f('|')} <span class="lab">マウスを乗せると説明が出る。クリックで選ぶ</span>`,f('+---')); el.innerHTML=boxText(rows,ALTAR_W); setLevelDetail(null);
-  if(!el.dataset.lvBound){ el.dataset.lvBound='1'; el.addEventListener('mouseover',e=>{ if(!lvlOpen)return; const b=e.target.closest&&e.target.closest('button[data-lk]'); setLevelDetail(b?lvlOpts[+b.dataset.lk]:null); }); el.addEventListener('click',e=>{ if(!lvlOpen)return; const b=e.target.closest&&e.target.closest('button[data-lk]'); if(!b)return; e.stopPropagation(); if(performance.now()-lvlOpenT<400)return; chooseLevel(+b.dataset.lk); }); } }
+  if(!el.dataset.lvBound){ el.dataset.lvBound='1'; el.addEventListener('mouseover',e=>{ if(!ui.lvlOpen)return; const b=e.target.closest&&e.target.closest('button[data-lk]'); setLevelDetail(b?lvlOpts[+b.dataset.lk]:null); }); el.addEventListener('click',e=>{ if(!ui.lvlOpen)return; const b=e.target.closest&&e.target.closest('button[data-lk]'); if(!b)return; e.stopPropagation(); if(performance.now()-lvlOpenT<400)return; chooseLevel(+b.dataset.lk); }); } }
 function setLevelDetail(o){ const el=document.getElementById('altarp'); if(!el)return; let L;
   if(!o)L=['<span class="lab">選択肢にマウスを乗せると、ここに説明が出る</span>','','',''];
   else if(o.kind==='bless'){ const B=BLESS[o.k], l=BL(o.k)+1, w=wrapPlain(B.d(l),ALTAR_W-10); L=[`<span style="color:${B.cost?'#ff9a8a':'#ffe3a0'}">${B.name}${l>1?' II（2回目で強まる）':''}</span>　<span class="lab">（恩恵${B.cost?'・代償あり':''}）</span>`,...w.slice(0,3).map(t=>`    <span class="lab">${t}</span>`)]; }
   else L=detailLines(o.ru).slice(0,4);
   el.querySelectorAll('.ldet').forEach((sp,i)=>{ sp.innerHTML=padTo(clipHtml(L[i]||'',ALTAR_W-4),ALTAR_W-3); }); }
-function openLevelUp(){ const el=document.getElementById('altarp'); if(!el||lvlOpen)return; lvlOpen=true; lvlOpenT=performance.now(); lvlOpts=levelChoices(); document.body.classList.toggle('paused',true);
-  if(castSt){ castSt=null; beamSegs=[]; } if(locked&&document.exitPointerLock)document.exitPointerLock(); renderLevelUp(); el.classList.add('show','open'); }
+function openLevelUp(){ const el=document.getElementById('altarp'); if(!el||ui.lvlOpen)return; ui.lvlOpen=true; lvlOpenT=performance.now(); lvlOpts=levelChoices(); document.body.classList.toggle('paused',true);
+  if(castSt){ castSt=null; beamSegs=[]; } if(ui.locked&&document.exitPointerLock)document.exitPointerLock(); renderLevelUp(); el.classList.add('show','open'); }
 function chooseLevel(i){ const o=lvlOpts[i]; if(!o)return;
   if(o.kind==='bless'){ lvl.bless[o.k]=BL(o.k)+1; if(o.k==='tough'){ PLAYER_MAX+=6; player.hp=Math.min(PLAYER_MAX,player.hp+6); } msg(`<b style="color:#ffe3a0">+</b>恩恵「${BLESS[o.k].name}」を得た。${BLESS[o.k].d(BL(o.k))}。`); }
   else takeRune(o.ru);
   lvl.pending=Math.max(0,lvl.pending-1); renderStatus(); renderHotbar();
   if(lvl.pending>0){ lvlOpenT=performance.now(); lvlOpts=levelChoices(); renderLevelUp(); return; }
-  lvlOpen=false; const el=document.getElementById('altarp'); if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused()); if(!plFailed&&started&&!dead)tryLock(); updateResume(); }
+  ui.lvlOpen=false; const el=document.getElementById('altarp'); if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused()); if(!plFailed&&ui.started&&!dead)tryLock(); updateResume(); }
 // a new stratum strengthens the body
-function strataGrowth(){ if(!D||branch||realm||inter||!started||gallery)return; const k=D.stratum&&D.stratum.k; if(!['cavern','ruins','magma','abyss'].includes(k)||lvl.strata.has(k))return; lvl.strata.add(k); PLAYER_MAX+=4; player.hp=Math.min(PLAYER_MAX,player.hp+4); renderStatus();
+function strataGrowth(){ if(!D||branch||realm||inter||!ui.started||gallery)return; const k=D.stratum&&D.stratum.k; if(!['cavern','ruins','magma','abyss'].includes(k)||lvl.strata.has(k))return; lvl.strata.add(k); PLAYER_MAX+=4; player.hp=Math.min(PLAYER_MAX,player.hp+4); renderStatus();
   setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>新しい層の空気が、体を強くした。最大体力 +4。'),2200); }
 function hurtPlayer(n,cause){
   if(godMode)return; if((player.invulT||0)>time)return; if(BL('reckless'))n*=BL('reckless')>=2?1.35:1.25;
   n*=Math.max(0.4,1-0.15*bodyN('ward'));
-  if(dead||!started||gallery||n<=0)return;
+  if(dead||!ui.started||gallery||n<=0)return;
   player.hp-=n; player.lastHurt=time; { const mn=bodyN('mend'); player.rally=Math.min(Math.max(0,PLAYER_MAX-player.hp),(player.rally||0)+n*0.6); player.rallyRate=player.rally/Math.max(1,4*(1+0.5*mn)-0.6); } vfx.hurtFlash=Math.min(1.2,vfx.hurtFlash+0.35+n*0.05); vfx.shake=Math.max(vfx.shake,Math.min(0.5,0.12+n*0.03));
   if(sndReady()){ const t=SND.ctx.currentTime; sEnv(sTone(t,'sine',140,60,0.25,sOut(undefined,undefined,0.35)),t,0.01,0.22); }
   if(time-(hurtPlayer.mt||-9)>0.8||hurtPlayer.mc!==cause){ hurtPlayer.mt=time; hurtPlayer.mc=cause; msg(`<b style="color:#ff5a4a">-</b>${cause}で ${n} の傷を負った。`); }
@@ -238,7 +238,7 @@ function die(cause){
   const el=document.getElementById('death'); if(!el)return;
   const secs=Math.floor(time-runStats.t0), mm=Math.floor(secs/60), ss=String(secs%60).padStart(2,'0');
   const f=t=>`<span class="f">${t}</span>`;
-  runStats.cause=cause; const R=awardLore(false); graveCands=gallery?[]:graveCandidates(); graveSel=0; if(locked&&document.exitPointerLock)document.exitPointerLock();
+  runStats.cause=cause; const R=awardLore(false); graveCands=gallery?[]:graveCandidates(); graveSel=0; if(ui.locked&&document.exitPointerLock)document.exitPointerLock();
   const draw=()=>{ el.innerHTML=boxText([f('+-- あ な た は 死 ん だ ---'),f('|'),`${f('|')}  死因      ${cause}`,`${f('|')}  場所      ${resultPlace()}`,
     `${f('|')}  Lv${lvl.n}　倒した敵 ${runStats.kills}　時間 ${mm}:${ss}`,f('|'),...loreRows(R,f),f('|'),...(graveCands.length?[...graveRows(f),f('|')]:[]),`${f('|')}  ${HIST?HIST.civ.name+'の地に、またひとつ灯りが消えた。':''}`,f('|'),`${f('|')}  <button class="row" id="newRunB"><b>[Enter]</b> 新しい冒険へ</button>`,f('+---')],64); };
   document.body.classList.add('over'); draw(); el.onclick=e=>{ const b=e.target.closest&&e.target.closest('button'); if(!b)return; if(b.dataset.gv!==undefined){ graveSel=+b.dataset.gv; draw(); } else if(b.id==='newRunB')newRun(); };
@@ -277,7 +277,7 @@ function damageMonster(m,n,how){
   }
 }
 function playerAttack(){
-  if(dead||!started||trans||(player.atkCd||0)>0||player.netT>0)return;
+  if(dead||!ui.started||trans||(player.atkCd||0)>0||player.netT>0)return;
   player.atkCd=WEAPON.cd; player.swing=0.22; sWhoosh();
   let best=null, bd=1e9; const [vx,vy,vz]=viewDir(), [ox,oy,oz]=aimOrigin();
   for(const m of monsters){ if(m.dead||m.ty.peaceful||(m.ty.critter&&!m.hidden&&m.ty.critter!=='mimic'))continue; if(m.ty.habitat==='deep'&&(m.rise||0)<0.3)continue; if(m.ty.habitat==='bog'&&(m.rise||0)<0.3)continue;
