@@ -1,7 +1,7 @@
 // 生き物の表（もとは src/game/02-constants.js の MTYPES）。
 // 冒険の途中で種類が足される（その階の主 lord・忘れられた獣 X・王の影 final・図鑑の見本 __gal・試しの間の的）ので、表そのものは書き換えてよい。
 
-/** 生き物の種類。ここに書いた欄のほか、主や獣には後から欄が足される（見た目 look・技 sk など）ので、ほかの欄も読めるようにしてある */
+/** 生き物の種類。表に初めからある37種と、冒険の途中で足される種類（主・王の影・忘れられた獣・試しの間の的）が持つ欄 */
 export interface MonsterType {
   /** 地図に出る文字 */
   ch: string;
@@ -38,9 +38,21 @@ export interface MonsterType {
   flier?: boolean;
   peaceful?: boolean;
   invisible?: boolean;
-  /** 人型の見た目（主・獣に後から足される） */
+  /** 人型の見た目（人型の主に、元の生き物から引き継ぐ） */
   look?: unknown;
-  [k: string]: unknown;
+  /** ここから下は、冒険の途中で足される種類（その階の主 lord・王の影 final・忘れられた獣 X と図鑑の見本・試しの間の的）だけが持つ欄 */
+  /** 主：元の生き物の記号（王の影は 'final'） */
+  sk?: string;
+  /** 主と王の影 */
+  boss?: boolean;
+  /** 忘れられた獣（src/lib/bodies/lords.ts の makeBeastType） */
+  beast?: boolean;
+  /** 忘れられた獣の体の作り（翼・脚・目など） */
+  spec?: unknown;
+  /** 忘れられた獣の言い伝え */
+  lore?: string;
+  /** 試しの間の的 */
+  dummy?: boolean;
 }
 
 /** 生き物の表（種類の記号 → 種類） */
