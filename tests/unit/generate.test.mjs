@@ -1,4 +1,4 @@
-// src/lib/generate.js（迷宮の生成）の単体テスト。Node で動くので、ブラウザの「全部の階」のテストより速い。
+// src/lib/generate.ts（迷宮の生成）の単体テスト。Node で動くので、ブラウザの「全部の階」のテストより速い。
 // 共通部分（全部の場所・gen）は tests/gen-places.mjs。歩いて行けるかは reach.test.mjs（別のファイルにして、並べて走らせる）
 import { beforeAll, describe, expect, it } from 'vitest';
 import { PLACES, gen as gen0, loadEnv } from '../gen-places.mjs';

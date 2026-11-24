@@ -39,7 +39,7 @@ async function libExports() {
   const all = {};
   for (const f of readdirSync(LIB, { recursive: true })
     .map(String)
-    .filter((f) => /\.(ts|js)$/.test(f)))
+    .filter((f) => f.endsWith('.ts')))
     Object.assign(all, await import(join(LIB, f)));
   return all;
 }

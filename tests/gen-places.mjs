@@ -1,7 +1,7 @@
 // 迷宮の生成のテストの共通部分（tests/unit/generate.test.mjs と reach.test.mjs）：全部の場所と、決まった入力で生成する gen。
 // まだ古い JS にある物（生き物の表 MTYPES・ルーンを作る makeRune など）は、本物を古い JS の文から取り出して使う（tools/legacy-eval.mjs）。
 import { legacyValues } from '../tools/legacy-eval.mjs';
-import { generateLevel } from '../src/lib/generate.js';
+import { generateLevel } from '../src/lib/generate.ts';
 import { makeHistory } from '../src/lib/history.ts';
 import { RUNE_TYPES } from '../src/lib/runes.ts';
 import { SPECIALS } from '../src/lib/strata.ts';

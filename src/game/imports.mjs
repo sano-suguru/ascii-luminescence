@@ -55,4 +55,4 @@ import {
   SPECIALS, STRATA, } from '../lib/strata.ts';
 import { setNoiseSeed, vnoise } from '../lib/noise.ts';
 import { VAULTS } from '../lib/vaults.ts';
-import { generateLevel } from '../lib/generate.js';
+import { generateLevel } from '../lib/generate.ts';

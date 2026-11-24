@@ -79,7 +79,7 @@ const SRC = [
   'src/index.html',
   ...readdirSync(join(ROOT, 'src/game')).map((f) => `src/game/${f}`),
   ...readdirSync(join(ROOT, 'src/lib'), { recursive: true })
-    .filter((f) => /\.(ts|js)$/.test(String(f)))
+    .filter((f) => String(f).endsWith('.ts'))
     .map((f) => `src/lib/${f}`),
 ];
 const whereIs = (c) => {
