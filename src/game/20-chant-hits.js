@@ -1,34 +1,34 @@
 // ---------------------------------------------------------------- chanting: hold to chant, release to cast; the world slows while you chant
 let beamRun=null;
 let hitStopUntil=0;
-const timeScale=()=>performance.now()<hitStopUntil?0.05:(castSt?0.5:1);
+const timeScale=()=>performance.now()<hitStopUntil?0.05:(gear.castSt?0.5:1);
 function beginCast(h){
-  if(adv.dead||trans||!ui.started||isPaused()||swapSt||castSt||(beamRun&&!beamRun.auto)||player.netT>0||player.roll)return;
+  if(adv.dead||trans||!ui.started||isPaused()||gear.swapSt||gear.castSt||(beamRun&&!beamRun.auto)||player.netT>0||player.roll)return;
   if((player.recover||0)>0)return;
-  const H=hands[h]; if(!H.atk){ castNow(h); return; }
+  const H=gear.hands[h]; if(!H.atk){ castNow(h); return; }
   const at=atkType(h), def=RUNE_DEF[at]; if(def.chant<=0){ castNow(h); return; }
   let needK=1; if(time<(player.qcUntil||0)){ needK*=0.5; player.qcUntil=0; } if(BL('desperate')&&player.hp<adv.PLAYER_MAX*0.5)needK*=BL('desperate')>=2?0.55:0.7;
-  castSt={h,t:0,need:def.chant*Math.max(0.4,1-0.3*bodyN('quick'))*TRAIT_V.charge[wTL(h,'charge')]*needK,full:false,hold:0,beam:at==='beam',firing:false,tick:0,beamT:0};
+  gear.castSt={h,t:0,need:def.chant*Math.max(0.4,1-0.3*bodyN('quick'))*TRAIT_V.charge[wTL(h,'charge')]*needK,full:false,hold:0,beam:at==='beam',firing:false,tick:0,beamT:0};
   if(humNode)humNode.stop(); humNode=chantStart(H.elem?H.elem.type:null);
 }
 function fizzle(){ const [ox,oy,oz]=aimOrigin(), [dx,dy,dz]=viewDir(); for(let q=0;q<8;q++){ const a=mr()*6.28; spawn(ox+dx*0.7,oy-0.3+dy*0.7,oz+dz*0.7,Math.cos(a)*0.6,0.2+mr()*0.4,Math.sin(a)*0.6,0.5,G(mpick(['.','\''])),0.1,0.6,0.55,0.75,0); } }
 function releaseCast(h){
-  if(!castSt||castSt.h!==h)return;
-  const c=castSt; castSt=null;
+  if(!gear.castSt||gear.castSt.h!==h)return;
+  const c=gear.castSt; gear.castSt=null;
   if(c.full)castNow(h,{chanted:true,hold:c.hold}); else fizzle();
 }
 function updateCast(dt){
-  if(!castSt&&humNode){ humNode.stop(); humNode=null; }
+  if(!gear.castSt&&humNode){ humNode.stop(); humNode=null; }
   if(beamRun){ beamRun.t-=dt; beamRun.tick-=dt; if(beamRun.tick<=0){ beamRun.tick=0.15; fireBeam(beamRun.h,beamRun.dir,beamRun.dir?handPoint(beamRun.h):null,beamRun.auto); } if(beamRun.t<=0){ turnElem(beamRun.h); beamRun=null; beamSegs=[]; } }
   trigCd.L=Math.max(0,trigCd.L-dt); trigCd.R=Math.max(0,trigCd.R-dt); player.recover=Math.max(0,(player.recover||0)-dt);
-  if(swapSt){ swapSt.t+=dt; if(swapSt.t>=swapSt.dur){ swapSt=null; if(BL('swapedge'))player.swapEdgeUntil=time+3; sChime(player.x,player.z,0.25); renderHotbar(); } else if(((swapSt.t*10)|0)!==swapSt.last){ swapSt.last=(swapSt.t*10)|0; renderHotbar(); } }
-  if(!castSt)return;
-  if(!ui.started||adv.dead||trans){ castSt=null; beamSegs=[]; return; }
-  castSt.t+=dt;
-  if(!castSt.full&&castSt.t>=castSt.need){ castSt.full=true;
-    const P=castPoint(castSt.h,1), c=elemCol(hands[castSt.h].elem?hands[castSt.h].elem.type:null); for(let q=0;q<14;q++){ const a=mr()*6.28; spawn(P[0],P[1],P[2],Math.cos(a)*1.2,(mr()-0.4)*1.2,Math.sin(a)*1.2,0.35,G('*'),0.05,c[0]*3,c[1]*3,c[2]*3,0); } }
-  if(humNode&&humNode.tick)humNode.tick(Math.min(1,castSt.t/Math.max(0.01,castSt.need)),castSt.full);
-  if(castSt.full){ castSt.hold+=dt; if(castSt.hold>2){ const hh=castSt.h; castSt=null; castNow(hh,{chanted:true,hold:2}); } }
+  if(gear.swapSt){ gear.swapSt.t+=dt; if(gear.swapSt.t>=gear.swapSt.dur){ gear.swapSt=null; if(BL('swapedge'))player.swapEdgeUntil=time+3; sChime(player.x,player.z,0.25); renderHotbar(); } else if(((gear.swapSt.t*10)|0)!==gear.swapSt.last){ gear.swapSt.last=(gear.swapSt.t*10)|0; renderHotbar(); } }
+  if(!gear.castSt)return;
+  if(!ui.started||adv.dead||trans){ gear.castSt=null; beamSegs=[]; return; }
+  gear.castSt.t+=dt;
+  if(!gear.castSt.full&&gear.castSt.t>=gear.castSt.need){ gear.castSt.full=true;
+    const P=castPoint(gear.castSt.h,1), c=elemCol(gear.hands[gear.castSt.h].elem?gear.hands[gear.castSt.h].elem.type:null); for(let q=0;q<14;q++){ const a=mr()*6.28; spawn(P[0],P[1],P[2],Math.cos(a)*1.2,(mr()-0.4)*1.2,Math.sin(a)*1.2,0.35,G('*'),0.05,c[0]*3,c[1]*3,c[2]*3,0); } }
+  if(humNode&&humNode.tick)humNode.tick(Math.min(1,gear.castSt.t/Math.max(0.01,gear.castSt.need)),gear.castSt.full);
+  if(gear.castSt.full){ gear.castSt.hold+=dt; if(gear.castSt.hold>2){ const hh=gear.castSt.h; gear.castSt=null; castNow(hh,{chanted:true,hold:2}); } }
   if(((time*10)|0)!==updateCast.last){ updateCast.last=(time*10)|0; renderHotbar(); }
 }
 function castNow(h,opt){
@@ -343,8 +343,8 @@ let rains=[], marks=[];
 
 // ---------------------------------------------------------------- triggers
 function onRolled(){ if(BL('quickdodge'))player.qcUntil=time+(BL('quickdodge')>=2?2.5:1.5); if(BL('counter'))player.ctrUntil=time+1.5;
-   for(const h of ['L','R']){ if(h==='R'&&isTwo())continue; const H=hands[h]; if(H.trig&&H.trig.type==='dodge'&&H.atk&&trigCd[h]<=0&&!swapSt){ trigCd[h]=1.0; castNow(h); } } }
-function onKilledBy(m){ for(const h of ['L','R']){ if(h==='R'&&isTwo())continue; const H=hands[h]; if(!(H.trig&&H.trig.type==='kill')||!H.atk||trigCd[h]>0||swapSt)continue;
+   for(const h of ['L','R']){ if(h==='R'&&isTwo())continue; const H=gear.hands[h]; if(H.trig&&H.trig.type==='dodge'&&H.atk&&trigCd[h]<=0&&!gear.swapSt){ trigCd[h]=1.0; castNow(h); } } }
+function onKilledBy(m){ for(const h of ['L','R']){ if(h==='R'&&isTwo())continue; const H=gear.hands[h]; if(!(H.trig&&H.trig.type==='kill')||!H.atk||trigCd[h]>0||gear.swapSt)continue;
     const [ox,oy,oz]=handPoint(h); let t=null, bd=15; for(const o of monsters){ if(o===m||!foe(o))continue; const dd=Math.hypot(o.x-player.x,o.z-player.z); if(dd>=bd)continue; if(!losClear(ox,oy,oz,...mCenter(o)))continue; bd=dd; t=o; }
     if(!t)continue; const cy=t.y+0.6*t.ty.scale, d=Math.hypot(t.x-ox,cy-oy,t.z-oz)||1; trigCd[h]=0.5;
     if(((atkType(h)==='blade'||atkType(h)==='gsweep')&&Math.hypot(t.x-player.x,t.z-player.z)>2.9)||(atkType(h)==='dash'&&Math.hypot(t.x-player.x,t.z-player.z)>4.5))continue; castNow(h,{dir:[(t.x-ox)/d,(cy-oy)/d,(t.z-oz)/d],auto:true}); } }

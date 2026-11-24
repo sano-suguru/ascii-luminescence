@@ -17,7 +17,7 @@ function handSummary(h){ const H=effHand(h); syncHand(H); const rs=handRunes(H),
   if(H.trig)parts.push(`${RUNE_DEF[H.trig.type].name}、ひとりでに撃つ`);
   const no=rs.filter(r=>RUNE_DEF[r.type].cat==='mod'&&!modWorks(RUNE_DEF[r.type].mk,H)).map(r=>runeName(r)); if(no.length)parts.push(`<span class="dim">${no.join('・')}はこの手には効かない</span>`);
   return parts.join('　'); }
-const handResult=h=>{ const H=hands[h]; return (H.trig?`${RUNE_DEF[H.trig.type].name}：`:'')+handName(H); };
+const handResult=h=>{ const H=gear.hands[h]; return (H.trig?`${RUNE_DEF[H.trig.type].name}：`:'')+handName(H); };
 function detailLines(ru){ const W=PACK_W-4;
   if(!ru)return ['<span class="lab">武器・ルーン・護符にマウスを乗せると、ここに説明が出る</span>','','','',''];
   const d=RUNE_DEF[ru.type], desc=wrapPlain(d.desc,W-4), g=`<b class="rn" style="color:${css(runeCol(ru))}">${d.ch}</b>`;
@@ -33,20 +33,20 @@ function updatePackSel(){ const el=document.getElementById('pack'); if(!el)retur
     b.classList.toggle('sel',!!(packSel&&u&&packSel.ru.uid===u)); if(b.dataset.s){ const ok=!!packSel&&slotAccepts(b.dataset.h,b.dataset.s,packSel.ru); b.classList.toggle('can',ok); b.classList.toggle('dimmed',!!packSel&&!ok); } });
   setPackDetail(packHover||(packSel&&packSel.ru)); }
 function renderInv(){
-  const el=document.getElementById('pack'); if(!el||!hands)return; const f=t=>`<span class="f">${t}</span>`, W=PACK_SLOT;
+  const el=document.getElementById('pack'); if(!el||!gear.hands)return; const f=t=>`<span class="f">${t}</span>`, W=PACK_SLOT;
   const slot=(h,s)=>{ const ru=slotGet(h,s);
-    if(s!=='atk'&&+s.slice(1)>=(hands[h].slotN||2))return padTo(` <span class="dim">· 閉じ</span>`,W);
+    if(s!=='atk'&&+s.slice(1)>=(gear.hands[h].slotN||2))return padTo(` <span class="dim">· 閉じ</span>`,W);
     return padTo(ru?runeChip(ru,`data-h="${h}" data-s="${s}"`):emptyChip(s==='atk'?'atk':'rune',`data-h="${h}" data-s="${s}"`),W); };
-  if(!hands.B)hands.B={b0:null,b1:null};
-  const bslot=i=>{ const s='b'+i, ru=hands.B[s]; if(i>=(adv.runState.bodyOpen||0))return padTo(` <span class="dim">" 閉じ</span>`,W); return padTo(ru?runeChip(ru,`data-h="B" data-s="${s}"`):emptyChip('body',`data-h="B" data-s="${s}"`),W); };
-  const bodyFx=[0,1].slice(0,adv.runState.bodyOpen||0).map(i=>hands.B['b'+i]).filter(Boolean).map(r=>RUNE_DEF[r.type].name).join('・');
+  if(!gear.hands.B)gear.hands.B={b0:null,b1:null};
+  const bslot=i=>{ const s='b'+i, ru=gear.hands.B[s]; if(i>=(adv.runState.bodyOpen||0))return padTo(` <span class="dim">" 閉じ</span>`,W); return padTo(ru?runeChip(ru,`data-h="B" data-s="${s}"`):emptyChip('body',`data-h="B" data-s="${s}"`),W); };
+  const bodyFx=[0,1].slice(0,adv.runState.bodyOpen||0).map(i=>gear.hands.B['b'+i]).filter(Boolean).map(r=>RUNE_DEF[r.type].name).join('・');
   const rows=[f('+-- 装備 ---'),`${f('|')}        ${padTo(' <span class="lab">武器</span>',W)}<span class="lab"> ルーン（性質は2つまで、発動は1つまで、同じ変化は2つまで）</span>`];
   const two=isTwo();
   for(const h of ['L','R']){ const wcell=two&&h==='R'?padTo(' <span class="dim">（両手）</span>',W):slot(h,'atk'); rows.push(`${f('|')} ${two?(h==='L'?'両手':'　　'):(h==='L'?'左手':'右手')}   ${wcell}${slot(h,'s0')}${slot(h,'s1')}${slot(h,'s2')}${slot(h,'s3')}`); if(!two||h==='R')rows.push(`${f('|')}        `+clipHtml(`<span class="lab">→ ${handSummary(h)}</span>`,PACK_W-11)); }
   if(two)rows.push(`${f('|')}        <span class="dim">両手で持つ間、両手のルーンの枠は合わせて${TWO_SLOTS}つまで使える</span>`);
   rows.push(`${f('|')} 身     ${bslot(0)}${bslot(1)}${padTo('',W)} <span class="lab">→</span> ${bodyFx||'<span class="dim">護符なし</span>'}`);
   rows.push(f('|'),`${f('|')} 袋`);
-  for(const cat of ['atk','elem','trig','mod','body']){ const list=bag.filter(r=>RUNE_DEF[r.type].cat===cat).sort((a,b)=>runeTier(b)-runeTier(a)||a.type.localeCompare(b.type));
+  for(const cat of ['atk','elem','trig','mod','body']){ const list=gear.bag.filter(r=>RUNE_DEF[r.type].cat===cat).sort((a,b)=>runeTier(b)-runeTier(a)||a.type.localeCompare(b.type));
     // pages of BAG_LINES lines each; the last line keeps room for the page buttons
     const head=`${f('|')}   <span class="lab">${CAT_NAME[cat]}</span>  `, cont=`${f('|')}         `, lim=PACK_W-6, pagerW=16;
     const pages=[]; let cur=[], li=0, lw=visW(head);
@@ -64,7 +64,7 @@ function renderInv(){
   rows.push(f('|'));
   for(let i=0;i<5;i++)rows.push(`${f('|')} <span class="pdet">${padTo('',PACK_W-2)}</span>`);
   rows.push(f('|'));
-  for(const k of (unlocked('build3')?[0,1,2]:[0,1])){ const b=builds[k]; rows.push(`${f('|')} ビルド${k+1} <button class="row" data-save="${k}">[保存]</button> <button class="row${b?'':' off'}" data-load="${k}">[呼び出す]</button>  <span class="lab">${b&&b.label?b.label:'-'}</span>`); }
+  for(const k of (unlocked('build3')?[0,1,2]:[0,1])){ const b=gear.builds[k]; rows.push(`${f('|')} ビルド${k+1} <button class="row" data-save="${k}">[保存]</button> <button class="row${b?'':' off'}" data-load="${k}">[呼び出す]</button>  <span class="lab">${b&&b.label?b.label:'-'}</span>`); }
   rows.push(f('|'),`${f('|')} <span class="lab">選んで、光る枠をクリック　ダブルクリックで自動ではめる　右クリックで取り消し</span>`,`${f('|')} <span class="lab">閉じると付け替えの詠唱（約1.5秒）。石碑のそばなら一瞬</span>`,f('+---'));
   el.innerHTML=boxText(rows,PACK_W);
   updatePackSel();
@@ -74,36 +74,36 @@ function renderInv(){
       e.stopPropagation();
       if(b.dataset.pg){ const [cat,d]=b.dataset.pg.split(':'), n=bagPageN[cat]||1; bagPage[cat]=((bagPage[cat]||0)+(+d)+n)%n; renderInv(); return; }
       if(b.dataset.h){ packSlot(b.dataset.h,b.dataset.s); return; }
-      if(b.dataset.b){ const u=+b.dataset.b, ru=bag.find(r=>r.uid===u); if(!ru)return;
+      if(b.dataset.b){ const u=+b.dataset.b, ru=gear.bag.find(r=>r.uid===u); if(!ru)return;
         if(packClick.u===u&&performance.now()-packClick.t<600){ packClick={u:0,t:0}; autoEquip(ru); renderInv(); renderHotbar(); return; }
         packClick={u,t:performance.now()}; packSel={ru,from:'bag'}; updatePackSel(); return; }
       if(b.dataset.save!==undefined){ const k=+b.dataset.save, u=r=>r?r.uid:0;
-        builds[k]={L:{atk:u(hands.L.atk),slots:hands.L.slots.map(u)},R:{atk:u(hands.R.atk),slots:hands.R.slots.map(u)},label:`${handResult('L')} / ${handResult('R')}`}; buildIdx=k; sChime(player.x,player.z,0.2); renderInv(); return; }
-      if(b.dataset.load!==undefined){ const k=+b.dataset.load; if(builds[k]){ applyBuild(k); packSel=null; renderInv(); renderHotbar(); } } });
+        gear.builds[k]={L:{atk:u(gear.hands.L.atk),slots:gear.hands.L.slots.map(u)},R:{atk:u(gear.hands.R.atk),slots:gear.hands.R.slots.map(u)},label:`${handResult('L')} / ${handResult('R')}`}; gear.buildIdx=k; sChime(player.x,player.z,0.2); renderInv(); return; }
+      if(b.dataset.load!==undefined){ const k=+b.dataset.load; if(gear.builds[k]){ applyBuild(k); packSel=null; renderInv(); renderHotbar(); } } });
     el.addEventListener('mouseover',e=>{ const b=e.target.closest&&e.target.closest('button[data-u]'), ru=b?allRunes().find(r=>r.uid===+b.dataset.u)||null:null; if(ru!==packHover){ packHover=ru; setPackDetail(packHover||(packSel&&packSel.ru)); } });
     el.addEventListener('mouseleave',()=>{ if(packHover){ packHover=null; setPackDetail(packSel&&packSel.ru); } });
     el.addEventListener('contextmenu',e=>{ e.preventDefault(); if(packSel){ packSel=null; updatePackSel(); } }); }
 }
-function equipWeapon(h,ru){ const out=[]; if(isTwo()){ out.push(hands.R.atk); hands.L.atk=null; hands.R.atk=null; }
-  if(ru&&RUNE_DEF[ru.type].two){ for(const k of ['L','R'])if(hands[k].atk&&!out.includes(hands[k].atk))out.push(hands[k].atk); hands.L.atk=ru; hands.R.atk=ru; }
-  else { if(hands[h].atk&&!out.includes(hands[h].atk))out.push(hands[h].atk); hands[h].atk=ru||null; }
+function equipWeapon(h,ru){ const out=[]; if(isTwo()){ out.push(gear.hands.R.atk); gear.hands.L.atk=null; gear.hands.R.atk=null; }
+  if(ru&&RUNE_DEF[ru.type].two){ for(const k of ['L','R'])if(gear.hands[k].atk&&!out.includes(gear.hands[k].atk))out.push(gear.hands[k].atk); gear.hands.L.atk=ru; gear.hands.R.atk=ru; }
+  else { if(gear.hands[h].atk&&!out.includes(gear.hands[h].atk))out.push(gear.hands[h].atk); gear.hands[h].atk=ru||null; }
   syncHands(); return out.filter(Boolean); }
-function slotGet(h,s){ if(h==='B')return hands.B[s]; if(s==='atk')return hands[h].atk; return hands[h].slots[+s.slice(1)]||null; }
-function slotSet(h,s,v){ if(h==='B')hands.B[s]=v; else if(s==='atk')hands[h].atk=v; else hands[h].slots[+s.slice(1)]=v; }
+function slotGet(h,s){ if(h==='B')return gear.hands.B[s]; if(s==='atk')return gear.hands[h].atk; return gear.hands[h].slots[+s.slice(1)]||null; }
+function slotSet(h,s,v){ if(h==='B')gear.hands.B[s]=v; else if(s==='atk')gear.hands[h].atk=v; else gear.hands[h].slots[+s.slice(1)]=v; }
 function slotAccepts(h,s,ru){ const c=RUNE_DEF[ru.type].cat; if(h==='B')return c==='body'&&(+s.slice(1))<(adv.runState.bodyOpen||0); if(s==='atk')return c==='atk'; return canPutAt(h,+s.slice(1),ru); }
-function freeSlotFor(ru,order){ let ord=(order||['R','L']).slice(); const d=RUNE_DEF[ru.type]; if(d.cat==='mod')ord.sort((a,b)=>(modWorks(d.mk,hands[b])?1:0)-(modWorks(d.mk,hands[a])?1:0));
-  for(const h of ord){ const H=hands[h]; for(let i=0;i<(H.slotN||2);i++)if(!H.slots[i]&&canPutAt(h,i,ru))return [h,'s'+i]; } return null; }
+function freeSlotFor(ru,order){ let ord=(order||['R','L']).slice(); const d=RUNE_DEF[ru.type]; if(d.cat==='mod')ord.sort((a,b)=>(modWorks(d.mk,gear.hands[b])?1:0)-(modWorks(d.mk,gear.hands[a])?1:0));
+  for(const h of ord){ const H=gear.hands[h]; for(let i=0;i<(H.slotN||2);i++)if(!H.slots[i]&&canPutAt(h,i,ru))return [h,'s'+i]; } return null; }
 function autoEquip(ru){ const cat=RUNE_DEF[ru.type].cat; let pick=null;
-  if(cat==='body'){ const n=adv.runState.bodyOpen||0; if(!n)return false; let i=[0,1].slice(0,n).find(i=>!hands.B['b'+i]); if(i===undefined)i=0; pick=['B','b'+i]; }
-  else if(cat==='atk'){ const j=bag.indexOf(ru); if(j>=0)bag.splice(j,1); const out=equipWeapon(isTwo()?'R':(['R','L'].find(h=>!hands[h].atk)||'R'),ru); bag.push(...out); packSel=null; return true; }
-  else { pick=freeSlotFor(ru); if(!pick){ for(const h of ['R','L']){ const H=hands[h]; for(let i=0;i<(H.slotN||2)&&!pick;i++)if(H.slots[i]&&RUNE_DEF[H.slots[i].type].cat===cat&&canPutAt(h,i,ru))pick=[h,'s'+i]; } } }
-  if(!pick)return false; const old=slotGet(pick[0],pick[1]), j=bag.indexOf(ru); if(j>=0)bag.splice(j,1); if(old)bag.push(old); slotSet(pick[0],pick[1],ru); packSel=null; syncHands(); return true; }
+  if(cat==='body'){ const n=adv.runState.bodyOpen||0; if(!n)return false; let i=[0,1].slice(0,n).find(i=>!gear.hands.B['b'+i]); if(i===undefined)i=0; pick=['B','b'+i]; }
+  else if(cat==='atk'){ const j=gear.bag.indexOf(ru); if(j>=0)gear.bag.splice(j,1); const out=equipWeapon(isTwo()?'R':(['R','L'].find(h=>!gear.hands[h].atk)||'R'),ru); gear.bag.push(...out); packSel=null; return true; }
+  else { pick=freeSlotFor(ru); if(!pick){ for(const h of ['R','L']){ const H=gear.hands[h]; for(let i=0;i<(H.slotN||2)&&!pick;i++)if(H.slots[i]&&RUNE_DEF[H.slots[i].type].cat===cat&&canPutAt(h,i,ru))pick=[h,'s'+i]; } } }
+  if(!pick)return false; const old=slotGet(pick[0],pick[1]), j=gear.bag.indexOf(ru); if(j>=0)gear.bag.splice(j,1); if(old)gear.bag.push(old); slotSet(pick[0],pick[1],ru); packSel=null; syncHands(); return true; }
 // how many of a charm sit in the open body slots
-function bodyN(type){ if(!hands||!hands.B)return 0; let n=0; for(let i=0;i<(adv.runState.bodyOpen||0);i++){ const ru=hands.B['b'+i]; if(ru&&ru.type===type)n++; } return n; }
+function bodyN(type){ if(!gear.hands||!gear.hands.B)return 0; let n=0; for(let i=0;i<(adv.runState.bodyOpen||0);i++){ const ru=gear.hands.B['b'+i]; if(ru&&ru.type===type)n++; } return n; }
 function packSlot(h,s){
   const cur=slotGet(h,s);
-  if(packSel&&packSel.from==='bag'){ const ru=packSel.ru; if(slotAccepts(h,s,ru)){ const i=bag.indexOf(ru); if(i>=0)bag.splice(i,1); if(s==='atk')bag.push(...equipWeapon(h,ru)); else { if(cur)bag.push(cur); slotSet(h,s,ru); } packSel=null; } }
-  else if(packSel&&packSel.from==='slot'){ if(packSel.h===h&&packSel.s===s){ if(cur){ bag.push(cur); if(s==='atk'){ if(isTwo()){ hands.L.atk=null; hands.R.atk=null; } else hands[h].atk=null; } else slotSet(h,s,null); } }
+  if(packSel&&packSel.from==='bag'){ const ru=packSel.ru; if(slotAccepts(h,s,ru)){ const i=gear.bag.indexOf(ru); if(i>=0)gear.bag.splice(i,1); if(s==='atk')gear.bag.push(...equipWeapon(h,ru)); else { if(cur)gear.bag.push(cur); slotSet(h,s,ru); } packSel=null; } }
+  else if(packSel&&packSel.from==='slot'){ if(packSel.h===h&&packSel.s===s){ if(cur){ gear.bag.push(cur); if(s==='atk'){ if(isTwo()){ gear.hands.L.atk=null; gear.hands.R.atk=null; } else gear.hands[h].atk=null; } else slotSet(h,s,null); } }
     else if((packSel.s==='atk'||s==='atk')&&(isTwo()||packSel.s!==s)){ }
     else { const ru=packSel.ru; slotSet(packSel.h,packSel.s,null); const okA=slotAccepts(h,s,ru), okB=!cur||slotAccepts(packSel.h,packSel.s,cur); slotSet(packSel.h,packSel.s,ru);
       if(okA&&okB){ slotSet(packSel.h,packSel.s,cur); slotSet(h,s,ru); } } packSel=null; }
@@ -111,20 +111,20 @@ function packSlot(h,s){
   syncHands(); renderInv(); renderHotbar();
 }
 function applyBuild(k){
-  const b=builds[k]; if(!b)return false; const pool=allRunes(), byU=u=>u?pool.find(r=>r.uid===u)||null:null, before=handsKey(), used=new Set(hands.B?[hands.B.b0,hands.B.b1].filter(Boolean):[]);
+  const b=gear.builds[k]; if(!b)return false; const pool=allRunes(), byU=u=>u?pool.find(r=>r.uid===u)||null:null, before=handsKey(), used=new Set(gear.hands.B?[gear.hands.B.b0,gear.hands.B.b1].filter(Boolean):[]);
   const take=u=>{ const r=byU(u); if(!r||used.has(r))return null; used.add(r); return r; };
   const twoB=b.L&&b.R&&b.L.atk&&b.L.atk===b.R.atk, w2=twoB?take(b.L.atk):null;
-  for(const h of ['L','R']){ const H=hands[h], B=b[h]||{}; H.atk=twoB?w2:take(B.atk); const sl=(B.slots||[]); H.slots=Array.from({length:Math.max(H.slotN||2,H.slots.length)},(_,i)=>i<(H.slotN||2)?take(sl[i]):null); }
-  bag=pool.filter(r=>!used.has(r)); buildIdx=k; syncHands(); return handsKey()!==before;
+  for(const h of ['L','R']){ const H=gear.hands[h], B=b[h]||{}; H.atk=twoB?w2:take(B.atk); const sl=(B.slots||[]); H.slots=Array.from({length:Math.max(H.slotN||2,H.slots.length)},(_,i)=>i<(H.slotN||2)?take(sl[i]):null); }
+  gear.bag=pool.filter(r=>!used.has(r)); gear.buildIdx=k; syncHands(); return handsKey()!==before;
 }
 function startSwap(prev){
   if(nearStele()){ sChime(player.x,player.z,0.3); for(let q=0;q<16;q++){ const a=mr()*6.28; spawn(player.x+Math.cos(a)*0.7,0.4+mr()*1.2,player.z+Math.sin(a)*0.7,0,0.6,0,0.7,G('.'),0.1,0.8,1.1,1.6,0); } return; }
-  swapSt={t:0,dur:1.5,snap:prev,last:-1}; castSt=null; beamSegs=[];
+  gear.swapSt={t:0,dur:1.5,snap:prev,last:-1}; gear.castSt=null; beamSegs=[];
 }
 function setInv(on){
   if(on===ui.invOpen)return;
   ui.invOpen=on; document.body.classList.toggle('paused',isPaused()); const el=document.getElementById('pack'); if(!el)return; el.classList.toggle('show',on);
-  if(on){ packSnap={key:handsKey(),snap:snapHands()}; packSel=null; packHover=null; if(castSt){ castSt=null; beamSegs=[]; } renderInv(); if(ui.locked&&document.exitPointerLock)document.exitPointerLock(); }
+  if(on){ packSnap={key:handsKey(),snap:snapHands()}; packSel=null; packHover=null; if(gear.castSt){ gear.castSt=null; beamSegs=[]; } renderInv(); if(ui.locked&&document.exitPointerLock)document.exitPointerLock(); }
   else { if(packSnap&&packSnap.key!==handsKey())startSwap(packSnap.snap); packSnap=null; if(!plFailed&&ui.started&&!adv.dead)tryLock(); }
   updateResume(); renderHotbar();
 }

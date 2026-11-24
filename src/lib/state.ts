@@ -2,6 +2,7 @@
 // 古い JS は src/game/imports.mjs で入れ物を読み、vfx.shake のように欄で読み書きする（入れ物そのものは差し替えない）。
 // 移す時は tools/state-move.mjs を使う（同じ名前の局所の変数は書き換えない）。初めの値は、古い JS の宣言のまま。
 // 入れ物の名前は、古い JS の局所の名前とぶつからない物にする（道具が確かめる。fx は座標の fx とぶつかるので vfx にした）。
+import { type Rune } from './runes.ts';
 
 /** 稲妻の光り（灯りの1つとして描く。t は残りの秒。900 より大きいと消えない） */
 export interface ZapFlash {
@@ -127,3 +128,57 @@ export interface Player {
   hp: number;
 }
 export const player: Player = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, pitch: -0.04, bob: 0, eye: 1.62, hp: 40 };
+
+/** 片手（L・R）：武器のルーン atk と、付けたルーンの枠 slots（枠の数 slotN）。elem・trig は、その手の性質と引き金のルーン。後から足される欄は、使う処理を移す時に型を足す */
+export interface Hand {
+  atk: Rune | null;
+  slots: (Rune | null)[];
+  slotN: number;
+  turn: number;
+  elem: Rune | null;
+  trig: Rune | null;
+}
+/** 両手と、体のルーンの枠 B（b0・b1） */
+export interface Hands {
+  L: Hand;
+  R: Hand;
+  B: { b0: Rune | null; b1: Rune | null };
+}
+/** 詠唱（溜め）の途中：どちらの手か h、経った時間 t と要る時間 need、溜めきったか full、光線か beam など */
+export interface CastState {
+  h: 'L' | 'R';
+  t: number;
+  need: number;
+  full: boolean;
+  hold: number;
+  beam: boolean;
+  firing: boolean;
+  tick: number;
+  beamT: number;
+}
+/** 武器の持ち替えの途中（経った時間 t・かかる時間 dur・持ち替える前の形 snap） */
+export interface SwapState {
+  t: number;
+  dur: number;
+  snap: unknown;
+  last: number;
+}
+/** 覚えておいた組み合わせ（両手の武器と枠、名前） */
+export interface Build {
+  L: { atk: Rune | null; slots: (Rune | null)[] };
+  R: { atk: Rune | null; slots: (Rune | null)[] };
+  label: string;
+}
+/** 手と詠唱（両手・持ち物・詠唱の途中・持ち替えの途中・覚えておいた組み合わせと、今どれか） */
+export interface Gear {
+  /** 両手。冒険が始まるまでは null */
+  hands: Hands | null;
+  /** 持ち物のルーン */
+  bag: Rune[];
+  castSt: CastState | null;
+  swapSt: SwapState | null;
+  builds: (Build | null)[];
+  /** 今の組み合わせ（-1 はどれでもない） */
+  buildIdx: number;
+}
+export const gear: Gear = { hands: null, bag: [], castSt: null, swapSt: null, builds: [null, null], buildIdx: -1 };

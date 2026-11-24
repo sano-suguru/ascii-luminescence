@@ -42,9 +42,9 @@ function lordFell(m){
     msg(`<b style="color:${css(c)}">${LEGEND_KINDS[k].ch}</b>${mname(m)}が崩れ落ちた。その胸の奥から、ひとつの光がこぼれ落ちた。`); }
 }
 let slotPickN=0;
-function applyOpen(t){ if(t==='slotR'||t==='slotL'){ const H=hands[t.slice(4)]; H.slotN=Math.min(SLOT_MAX,(H.slotN||2)+1); while(H.slots.length<H.slotN)H.slots.push(null); } else if(t==='body')adv.runState.bodyOpen=Math.min(2,(adv.runState.bodyOpen||0)+1); syncHands(); renderHotbar(); if(ui.invOpen)renderInv(); }
+function applyOpen(t){ if(t==='slotR'||t==='slotL'){ const H=gear.hands[t.slice(4)]; H.slotN=Math.min(SLOT_MAX,(H.slotN||2)+1); while(H.slots.length<H.slotN)H.slots.push(null); } else if(t==='body')adv.runState.bodyOpen=Math.min(2,(adv.runState.bodyOpen||0)+1); syncHands(); renderHotbar(); if(ui.invOpen)renderInv(); }
 function openSlot(cell){ const opts=[];
-  for(const h of ['R','L'])if((hands[h].slotN||2)<SLOT_MAX)opts.push({target:'slot'+h,label:`${h==='L'?'左':'右'}手に、ルーンの枠をもう1つ`});
+  for(const h of ['R','L'])if((gear.hands[h].slotN||2)<SLOT_MAX)opts.push({target:'slot'+h,label:`${h==='L'?'左':'右'}手に、ルーンの枠をもう1つ`});
   if((adv.runState.bodyOpen||0)<2)opts.push({target:'body',label:'身の護符の枠'});
   sChime(player.x,player.z,0.5); setTimeout(()=>sChime(player.x,player.z,0.4),220);
   for(let q=0;q<30;q++){ const a=mr()*6.28; spawn(player.x,0.6+mr(),player.z,Math.cos(a)*1.2,0.4+mr()*1.4,Math.sin(a)*1.2,0.9,G(mpick(['{','}','*','.'])),0.16,2.4,2.1,1.4,0); }
@@ -160,7 +160,7 @@ function drawBoltFx(t,dt){
 let titleArm=0;
 function returnToTitle(){
   setMenu(false); if(ui.invOpen)setInv(false); if(ui.locked&&document.exitPointerLock)document.exitPointerLock();
-  ui.started=false; adv.dead=false; adv.won=false; gallery=null; castSt=null; swapSt=null; vfx.zapFlash=null;
+  ui.started=false; adv.dead=false; adv.won=false; gallery=null; gear.castSt=null; gear.swapSt=null; vfx.zapFlash=null;
   document.body.classList.remove('started'); const de=document.getElementById('death'); if(de)de.classList.remove('show','won');
   const gp=document.getElementById('gal'); if(gp)gp.classList.remove('show');
   adv.runSeed=(Math.random()*1e9)>>>0; depth=startDepth; branch=null; realm=null; placeMem.clear(); arrive=null;

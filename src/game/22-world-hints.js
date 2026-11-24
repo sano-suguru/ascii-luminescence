@@ -139,10 +139,10 @@ function drawRunesWorld(t){
     const e=b.pts[b.pts.length-1]; dyn(e[0],e[1],e[2],G('*'),0.3,b.col[0]*3,b.col[1]*3,b.col[2]*3); }
   for(const p of projs){ if(p.wave||p.thrust){ drawWave(p); continue; } const c=elemCol(p.sp.elem); dyn(p.x,p.y,p.z,G(p.kind==='bolt'?'*':'o'),p.kind==='bolt'?0.26:0.32,c[0]*2.2,c[1]*2.2,c[2]*2.2); if(p.auto)dyn(p.x,p.y,p.z,G('o'),0.46,0.9,0.9,1.0); }
   // the chant gathers at the hand: the hand's runes circle in front of you, brighter as the chant fills
-  if(castSt||swapSt){ const [ox,oy,oz]=aimOrigin(), [fx,fy,fz]=viewDir(), rx=Math.cos(player.yaw), rz=-Math.sin(player.yaw);
-    if(castSt){ const H=hands[castSt.h], side=castSt.h==='L'?-0.35:0.35, k=Math.min(1,castSt.t/Math.max(0.01,castSt.need)), c=elemCol(H.elem?H.elem.type:null), list=[H.elem].filter(Boolean);
+  if(gear.castSt||gear.swapSt){ const [ox,oy,oz]=aimOrigin(), [fx,fy,fz]=viewDir(), rx=Math.cos(player.yaw), rz=-Math.sin(player.yaw);
+    if(gear.castSt){ const H=gear.hands[gear.castSt.h], side=gear.castSt.h==='L'?-0.35:0.35, k=Math.min(1,gear.castSt.t/Math.max(0.01,gear.castSt.need)), c=elemCol(H.elem?H.elem.type:null), list=[H.elem].filter(Boolean);
       list.forEach((ru,j)=>{ const a=t*3+j*Math.PI, r=0.12+0.06*k; dyn(ox+fx*0.8+rx*(side+Math.cos(a)*r),oy-0.3+fy*0.8+Math.sin(a)*r,oz+fz*0.8+rz*(side+Math.cos(a)*r),G(RUNE_DEF[ru.type].ch),0.1+0.05*k,c[0]*(1+2*k),c[1]*(1+2*k),c[2]*(1+2*k)); }); }
-    if(swapSt){ const rs=allRunes().filter(r=>['elem','trig','mod'].includes(RUNE_DEF[r.type].cat)).slice(0,8), k=swapSt.t/swapSt.dur; rs.forEach((ru,j)=>{ const a=t*2+j/rs.length*Math.PI*2; dyn(player.x+Math.cos(a)*0.9,(ui.camMode==='tps'?1.0:player.eye-0.5)+Math.sin(t*3+j)*0.08,player.z+Math.sin(a)*0.9,G(RUNE_DEF[ru.type].ch),0.2,0.6+k,0.6+k,0.9+k); }); } }
+    if(gear.swapSt){ const rs=allRunes().filter(r=>['elem','trig','mod'].includes(RUNE_DEF[r.type].cat)).slice(0,8), k=gear.swapSt.t/gear.swapSt.dur; rs.forEach((ru,j)=>{ const a=t*2+j/rs.length*Math.PI*2; dyn(player.x+Math.cos(a)*0.9,(ui.camMode==='tps'?1.0:player.eye-0.5)+Math.sin(t*3+j)*0.08,player.z+Math.sin(a)*0.9,G(RUNE_DEF[ru.type].ch),0.2,0.6+k,0.6+k,0.9+k); }); } }
 }
 
 // ---------------------------------------------------------------- the feel of a chant: a circle of runes at the hand, light gathering, the lantern taking the element's colour, a rising hum
@@ -193,12 +193,12 @@ function simPath(sp){
     x=nx; y=ny; z=nz; pts.push([x,y,z]); }
   return {pts,end:[x,y,z],hitM}; }
 function drawCastFx(t){
-  if(!hands)return;
-  if(!castSt){ if(crossMon&&crossMon.dead)crossMon=null; return; }
-  const sp=specOf(castSt.h), c=elemCol(sp.elem), k=Math.min(1,castSt.t/Math.max(0.01,castSt.need)), full=castSt.full;
+  if(!gear.hands)return;
+  if(!gear.castSt){ if(crossMon&&crossMon.dead)crossMon=null; return; }
+  const sp=specOf(gear.castSt.h), c=elemCol(sp.elem), k=Math.min(1,gear.castSt.t/Math.max(0.01,gear.castSt.need)), full=gear.castSt.full;
   // the circle at the hand
-  const P=castPoint(castSt.h,k), [f,r,u]=handUp(), H=hands[castSt.h], rs=[H.elem].filter(Boolean).map(ru=>RUNE_DEF[ru.type].ch), n=12, rr=0.05+0.03*k, spin=t*(full?5:2);
-  for(let j=0;j<n;j++){ const a=spin+j/n*Math.PI*2, ch=(j%3===0&&rs.length)?rs[(j/3|0)%rs.length]:'.', lit=j%3===0&&castSt.sylT!==undefined&&time-castSt.sylT<0.16&&(j/3|0)===(castSt.syl%4), br=(0.8+2.4*k)*(full?1.25+0.25*Math.sin(t*12):1)*(lit?2.2:1);
+  const P=castPoint(gear.castSt.h,k), [f,r,u]=handUp(), H=gear.hands[gear.castSt.h], rs=[H.elem].filter(Boolean).map(ru=>RUNE_DEF[ru.type].ch), n=12, rr=0.05+0.03*k, spin=t*(full?5:2);
+  for(let j=0;j<n;j++){ const a=spin+j/n*Math.PI*2, ch=(j%3===0&&rs.length)?rs[(j/3|0)%rs.length]:'.', lit=j%3===0&&gear.castSt.sylT!==undefined&&time-gear.castSt.sylT<0.16&&(j/3|0)===(gear.castSt.syl%4), br=(0.8+2.4*k)*(full?1.25+0.25*Math.sin(t*12):1)*(lit?2.2:1);
     dyn(P[0]+(r[0]*Math.cos(a)+u[0]*Math.sin(a))*rr,P[1]+(u[1]*Math.sin(a))*rr,P[2]+(r[2]*Math.cos(a)+u[2]*Math.sin(a))*rr,G(ch),ch==='.'?0.02:0.032+0.014*k,c[0]*br,c[1]*br,c[2]*br); }
   // light gathers toward the hand
   if(mr()<0.5+0.4*k){ const a=mr()*6.28, e=(mr()-0.3)*1.2, d=1.4+mr()*0.8, sx=player.x+Math.cos(a)*d, sz=player.z+Math.sin(a)*d, sy=P[1]+e;
@@ -221,14 +221,14 @@ function aimTarget(){ if(time-aimT<0.1)return crossMon; aimT=time; crossMon=null
   return crossMon; }
 function updateCross(dt){
   const el=document.getElementById('cross'); if(!el)return;
-  slowFx+=((castSt?1:0)-slowFx)*Math.min(1,(dt||0.016)*8); finalPass.uniforms.uSlow.value=slowFx;
-  if(castSt){ const c=elemCol(hands[castSt.h].elem?hands[castSt.h].elem.type:null); finalPass.uniforms.uTint.value.set(c[0],c[1],c[2]); }
+  slowFx+=((gear.castSt?1:0)-slowFx)*Math.min(1,(dt||0.016)*8); finalPass.uniforms.uSlow.value=slowFx;
+  if(gear.castSt){ const c=elemCol(gear.hands[gear.castSt.h].elem?gear.hands[gear.castSt.h].elem.type:null); finalPass.uniforms.uTint.value.set(c[0],c[1],c[2]); }
   const tg=ui.started&&!adv.dead&&!isPaused()?aimTarget():null;
   // the sight: a small dot; it is flanked when it holds a creature; while chanting, the runes of that hand close in on it and, when the chant is full, rest beside it and pulse
   let txt='·', col='rgba(225,215,255,.55)', cls='';
-  if(castSt){ const H=hands[castSt.h], k=Math.min(1,castSt.t/Math.max(0.01,castSt.need)), c0=elemCol(H.elem?H.elem.type:null), c=c0.map(v=>v*0.72+0.25), gap=castSt.full?0:Math.max(0,3-Math.round(k*3));
+  if(gear.castSt){ const H=gear.hands[gear.castSt.h], k=Math.min(1,gear.castSt.t/Math.max(0.01,gear.castSt.need)), c0=elemCol(H.elem?H.elem.type:null), c=c0.map(v=>v*0.72+0.25), gap=gear.castSt.full?0:Math.max(0,3-Math.round(k*3));
     const E=H.elem?RUNE_DEF[H.elem.type].ch:'·', A=E;
-    txt=`${A}${' '.repeat(gap+1)}·${' '.repeat(gap+1)}${E}`; col=css(c); cls=castSt.full?'full':'chant'; }
+    txt=`${A}${' '.repeat(gap+1)}·${' '.repeat(gap+1)}${E}`; col=css(c); cls=gear.castSt.full?'full':'chant'; }
   else if(tg){ txt='‹·›'; col='rgba(255,190,140,.85)'; }
   const key=txt+col+cls; if(key===crossKey)return; crossKey=key; el.textContent=txt; el.style.color=col; el.className=cls;
 }

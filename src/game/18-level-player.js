@@ -18,7 +18,7 @@ function newLevel(seedOverride){
   D=generate(seedOverride!==undefined?seedOverride:levelSeed(),depth);
   if(depth===FINAL_DEPTH&&!branch&&!realm)D.finalVault=true;
   D.doorAt=new Map(D.doors.map(d=>[d.i,d])); frozen=new Map();
-  placeRunesForLevel(); projs=[]; beamSegs=[]; clouds=[]; castSt=null;
+  placeRunesForLevel(); projs=[]; beamSegs=[]; clouds=[]; gear.castSt=null;
   U.uAmb.value=D.prof.ambient;
   hudInfo.explored=0;
   buildWorld(); updateWater();
@@ -187,7 +187,7 @@ function setLevelDetail(o){ const el=document.getElementById('altarp'); if(!el)r
   else L=detailLines(o.ru).slice(0,4);
   el.querySelectorAll('.ldet').forEach((sp,i)=>{ sp.innerHTML=padTo(clipHtml(L[i]||'',ALTAR_W-4),ALTAR_W-3); }); }
 function openLevelUp(){ const el=document.getElementById('altarp'); if(!el||ui.lvlOpen)return; ui.lvlOpen=true; lvlOpenT=performance.now(); lvlOpts=levelChoices(); document.body.classList.toggle('paused',true);
-  if(castSt){ castSt=null; beamSegs=[]; } if(ui.locked&&document.exitPointerLock)document.exitPointerLock(); renderLevelUp(); el.classList.add('show','open'); }
+  if(gear.castSt){ gear.castSt=null; beamSegs=[]; } if(ui.locked&&document.exitPointerLock)document.exitPointerLock(); renderLevelUp(); el.classList.add('show','open'); }
 function chooseLevel(i){ const o=lvlOpts[i]; if(!o)return;
   if(o.kind==='bless'){ adv.lvl.bless[o.k]=BL(o.k)+1; if(o.k==='tough'){ adv.PLAYER_MAX+=6; player.hp=Math.min(adv.PLAYER_MAX,player.hp+6); } msg(`<b style="color:#ffe3a0">+</b>恩恵「${BLESS[o.k].name}」を得た。${BLESS[o.k].d(BL(o.k))}。`); }
   else takeRune(o.ru);
@@ -225,7 +225,7 @@ function loreRows(R,f){ if(!R)return []; const rows=[`${f('|')}  <b>伝承</b>`]
 let graveSel=0, graveCands=[];
 function graveRune(g){ const ru=makeRune(g.type,0); ru.strong=false; if(g.traits&&g.traits.length)ru.traits=g.traits.map(t=>({k:t.k,lv:t.lv-1})).filter(t=>t.lv>0); return ru; }
 function graveCandidates(){ const out=[], seen=new Set(), add=ru=>{ if(ru&&!seen.has(ru)){ seen.add(ru); out.push(ru); } };
-  add(hands.L.atk); add(hands.R.atk); for(const h of ['L','R'])for(const r of hands[h].slots)add(r); if(hands.B){ add(hands.B.b0); add(hands.B.b1); } for(const r of bag)add(r); return out.slice(0,10); }
+  add(gear.hands.L.atk); add(gear.hands.R.atk); for(const h of ['L','R'])for(const r of gear.hands[h].slots)add(r); if(gear.hands.B){ add(gear.hands.B.b0); add(gear.hands.B.b1); } for(const r of gear.bag)add(r); return out.slice(0,10); }
 function saveGrave(){ if(adv.won||!graveCands)return; const ru=graveSel>0?graveCands[graveSel-1]:null; META.grave=ru?{k:(STRATA.find(st=>depth>=st.from&&depth<=st.to)||{}).k||'',depth,cause:adv.runStats.cause||'',item:serRune(ru)}:null; saveMeta(); graveCands=[]; }
 function graveRows(f){ const rows=[`${f('|')}  <b>墓に遺すもの</b>　<span class="lab">（ひとつ選ぶ。次の冒険で、同じ深さに墓が現れる）</span>`];
   const opt=(i,label)=>`${f('|')}    <button class="row gv" data-gv="${i}"><span class="mk">${graveSel===i?'&gt;':' '}</span> ${label}</button>`;
