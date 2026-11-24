@@ -55,9 +55,9 @@ function sndUpdate(dt){
     const pcx=Math.floor(player.x/CELL), pcz=Math.floor(player.z/CELL); let water=0,lava=0,chasm=0,bog=0,xtal=0,burn=0,n=0;
     for(let dz=-6;dz<=6;dz++)for(let dx=-6;dx<=6;dx++){ const x=pcx+dx, z=pcz+dz; if(x<0||z<0||x>=MW||z>=MH)continue; const i=z*MW+x, w=Math.max(0,1-Math.hypot(dx,dz)/7); n+=w; const lq=D.liquid[i], tt=D.tile[i];
       if(lq===LQ_WATER||lq===LQ_DEEP)water+=w; else if(lq===LQ_LAVA)lava+=w; else if(lq===LQ_BOG)bog+=w; if(tt===TC)chasm+=w; if(tt===TX)xtal+=w; if(fire[i]>0)burn+=w*fire[i]; }
-    let fb=0, fx=0, fz=0; for(const f of fixtures){ if(!FIRE_TYPES.has(f.type)||f.type==='lava'||f.type==='abyss')continue; const d=Math.hypot(f.x-player.x,f.z-player.z), v=Math.max(0,1-d/7); if(v>fb){fb=v;fx=f.x;fz=f.z;} }
+    let fb=0, fx=0, fz=0; for(const f of here.fixtures){ if(!FIRE_TYPES.has(f.type)||f.type==='lava'||f.type==='abyss')continue; const d=Math.hypot(f.x-player.x,f.z-player.z), v=Math.max(0,1-d/7); if(v>fb){fb=v;fx=f.x;fz=f.z;} }
     const ri=D.roomOf[pcz*MW+pcx];
-    let fallN=0; for(const f of fixtures){ if(f.type==='fall')fallN=Math.max(fallN,1-Math.hypot(f.x-player.x,f.z-player.z)/16); }
+    let fallN=0; for(const f of here.fixtures){ if(f.type==='fall')fallN=Math.max(fallN,1-Math.hypot(f.x-player.x,f.z-player.z)/16); }
     Object.assign(E,{fall:fallN,water:Math.min(1,water/12),lava:Math.min(1,lava/8),chasm:Math.min(1,chasm/10),bog:Math.min(1,bog/10),xtal:Math.min(1,xtal/8),burn:Math.min(1,burn/6),fire:fb,fx,fz,cave:ri>=0&&D.rooms[ri].cave});
     const now=SND.ctx.currentTime, set=(g,v)=>g.gain.setTargetAtTime(v,now,0.6);
     set(SND.L.rumble.g,0.05+E.chasm*0.45+E.lava*0.3+(E.cave?0.04:0));
@@ -65,7 +65,7 @@ function sndUpdate(dt){
     set(SND.L.fire.g,Math.min(0.3,E.burn*0.25+E.fire*0.03));
     set(SND.L.wind.g,E.cave?0.025:0.008);
     set(SND.L.drone.g,0.03);
-    SND.L.drone.o[0].frequency.setTargetAtTime(55*Math.pow(0.97,depth-1),now,2); SND.L.drone.o[1].frequency.setTargetAtTime(82.6*Math.pow(0.97,depth-1),now,2);
+    SND.L.drone.o[0].frequency.setTargetAtTime(55*Math.pow(0.97,here.depth-1),now,2); SND.L.drone.o[1].frequency.setTargetAtTime(82.6*Math.pow(0.97,here.depth-1),now,2);
     SND.wet.gain.setTargetAtTime(E.cave?0.6:0.32,now,1);
   }
   const roll=r=>Math.random()<r*dt;
@@ -74,7 +74,7 @@ function sndUpdate(dt){
   if(roll(E.bog*2.5))sBubble(undefined,undefined,0.2,false);
   if(roll(E.lava*2))sBubble(undefined,undefined,0.3,true);
   if(roll(E.xtal*0.8))sChime(undefined,undefined,0.12);
-  for(const m of monsters){ if(m.ty.flier&&Math.hypot(m.x-player.x,m.z-player.z)<10&&roll(0.35))sSqueak(m.x,m.z); }
+  for(const m of here.monsters){ if(m.ty.flier&&Math.hypot(m.x-player.x,m.z-player.z)<10&&roll(0.35))sSqueak(m.x,m.z); }
 }
 
 // ---------------------------------------------------------------- swamp gas
@@ -106,7 +106,7 @@ function boom(i){
   if(dd<30){ for(let q=0;q<10;q++){ const a=mr()*6.28, e2=mr(); spawn(x,0.6+mr(),z,Math.cos(a)*3*e2,0.5+mr()*2.5,Math.sin(a)*3*e2,0.6+mr()*0.6,G(mpick(['*','#','^','%'])),0.3+mr()*0.2,3.2,1.6,0.5,0); } }
   vfx.flash=Math.max(vfx.flash,clamp(1-dd/26,0,1)); vfx.shake=Math.max(vfx.shake,clamp(1-dd/22,0,1)*0.6);
   if(dd<3.6)hurtPlayer(Math.round(12*(1-dd/3.6))+2,'爆発');
-  for(const m of monsters){ if(m.dead||m.ty.critter)continue; const dm=Math.hypot(m.x-x,m.z-z); if(dm<3.6)damageMonster(m,Math.round(16*(1-dm/3.6))+3,'fire'); }
+  for(const m of here.monsters){ if(m.dead||m.ty.critter)continue; const dm=Math.hypot(m.x-x,m.z-z); if(dm<3.6)damageMonster(m,Math.round(16*(1-dm/3.6))+3,'fire'); }
   if(time-lastBoom>3&&dd<34){ lastBoom=time; msg('<b style="color:#ffb347">*</b>沼のガスに火が回り、轟音とともに爆ぜた！'); }
 }
 function stepFire(){
@@ -196,7 +196,7 @@ function initEvents(){
   });
 }
 // cpos は src/lib/world.ts（src/game/imports.mjs で読む）
-function summon(key,cell){ const m=makeMonster({key,cx:cell%MW,cz:(cell/MW)|0,g:-1,lead:true}); m.alert=1; m.seen=true; monsters.push(m); return m; }
+function summon(key,cell){ const m=makeMonster({key,cx:cell%MW,cz:(cell/MW)|0,g:-1,lead:true}); m.alert=1; m.seen=true; here.monsters.push(m); return m; }
 function updateEvents(dt,t){
   const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL);
   for(const ev of events){
@@ -211,7 +211,7 @@ function updateEvents(dt,t){
         ev.t+=dt;
         if(mr()<dt*40){ const a=mr()*6.28, r=1.6*(1-ev.t/1.3); spawn(sx+Math.cos(a)*r,0.3+mr()*2,sz+Math.sin(a)*r,-Math.cos(a)*1.4,0,-Math.sin(a)*1.4,0.4,G(mpick(['&','#','%'])),0.18,1,0.95,1.2,1); }
         if(ev.t>1.3&&!ev.chimed){ ev.chimed=true; sChime(sx,sz,0.3); }
-        if(ev.t>1.3){ ev.active=false; const key=depth>=5?'O':depth>=3?'g':'k'; const m=summon(key,ev.cell);
+        if(ev.t>1.3){ ev.active=false; const key=here.depth>=5?'O':here.depth>=3?'g':'k'; const m=summon(key,ev.cell);
           msg(`<b style="color:${css(m.ty.col)}">&</b>彫像が崩れ、${mname(m)}の姿へと組み直された！`); }
       }
     } else if(ev.type==='collapse'){
@@ -224,7 +224,7 @@ function updateEvents(dt,t){
           ev.state=2; D.collapsed=true; sBoom(0.7); makeNoise(player.x,player.z,22,1.2); U.uCollT.value=t;
           for(const c of ev.cells){ cellFlag[c]=200; D.tile[c]=TC; D.pit[c]=1; const [x,z]=cpos(c);
             for(let q=0;q<10;q++)spawn(x+(mr()-0.5)*1.8,0.1,z+(mr()-0.5)*1.8,(mr()-0.5)*0.6,-0.5-mr()*2,(mr()-0.5)*0.6,1.6,G(mpick(['.','#',':','%'])),0.2,0.6,0.55,0.6,1); }
-          for(const m of monsters){ if(D.pit[m.cz*MW+m.cx]&&!m.ty.flier){ m.dead=true; } }
+          for(const m of here.monsters){ if(D.pit[m.cz*MW+m.cx]&&!m.ty.flier){ m.dead=true; } }
           uploadCells(); vfx.shake=0.8;
           msg('<b style="color:#ffa060">:</b>轟音とともに床が崩れ落ちた！ 穴の底に、下の階層の光が見える。');
         }
@@ -241,13 +241,13 @@ function updateEvents(dt,t){
       const lava=ev.type==='lavaflow';
       if(ev.state===0){
         if(D.roomOf[pc]===ev.ri){ ev.state=1; ev.t=0;
-          const f=fixtures.find(f=>f.type===(lava?'crater':'spring')&&Math.floor(f.z/CELL)*MW+Math.floor(f.x/CELL)===ev.src); if(f){ f.active=true; const L=D.lights[f.li]; if(L)L.active=true; }
+          const f=here.fixtures.find(f=>f.type===(lava?'crater':'spring')&&Math.floor(f.z/CELL)*MW+Math.floor(f.x/CELL)===ev.src); if(f){ f.active=true; const L=D.lights[f.li]; if(L)L.active=true; }
           if(lava){ sRumble(0.5,2); vfx.shake=Math.max(vfx.shake,0.3); msg('<b style="color:#ff7a3a">^</b>床の裂け目が割れ、溶岩がゆっくりとあふれ出した！'); }
           else { sSplash(0.4); msg('<b style="color:#6ab4ff">~</b>壁の亀裂が崩れ、水が勢いよく噴き出した！'); } }
       } else if(ev.state===1){
         ev.t+=dt; const step=lava?0.38:0.11; let changed=false;
         while(ev.t>=step&&ev.k<ev.order.length&&ev.k<ev.max){ ev.t-=step; const i=ev.order[ev.k++]; const [x,z]=cpos(i);
-          if(lava&&(Math.hypot(x-player.x,z-player.z)<1.6||monsters.some(m=>!m.ty.flier&&m.cz*MW+m.cx===i))){ ev.order.push(i); continue; }
+          if(lava&&(Math.hypot(x-player.x,z-player.z)<1.6||here.monsters.some(m=>!m.ty.flier&&m.cz*MW+m.cx===i))){ ev.order.push(i); continue; }
           changed=true;
           if(lava){ D.liquid[i]=LQ_LAVA; cellFlag[i]=70; for(const j of [i+1,i-1,i+MW,i-MW])if(j>=0&&j<NCELL&&fuel[j]>0)ignite(j,0.6,false); if(D.gas[i]>0.1)boom(i); if(mr()<0.3)sBubble(x,z,0.25,true); }
           else { D.liquid[i]=LQ_WATER; cellFlag[i]=50; fire[i]=0; fuel[i]=0; if(mr()<0.2)sSplash(0.12); } }
@@ -258,19 +258,19 @@ function updateEvents(dt,t){
       const [ax,az]=cpos(ev.a), [bx,bz]=cpos(ev.b), da=Math.hypot(player.x-ax,player.z-az), db=Math.hypot(player.x-bx,player.z-bz);
       if(ev.lock>=0){ const [lx,lz]=cpos(ev.lock); if(Math.hypot(player.x-lx,player.z-lz)>1.3)ev.lock=-1; }
       const from=da<0.7&&ev.lock!==ev.a?ev.a:db<0.7&&ev.lock!==ev.b?ev.b:-1;
-      if(from>=0&&!trans){ const to=from===ev.a?ev.b:ev.a, [tx2,tz2]=cpos(to), [fx2,fz2]=cpos(from);
+      if(from>=0&&!here.trans){ const to=from===ev.a?ev.b:ev.a, [tx2,tz2]=cpos(to), [fx2,fz2]=cpos(from);
         for(const [px3,pz3] of [[fx2,fz2],[tx2,tz2]])for(let q=0;q<40;q++){ const an=mr()*6.28; spawn(px3+Math.cos(an)*0.5,0.2+mr()*2,pz3+Math.sin(an)*0.5,Math.cos(an)*0.8,mr()*1.2,Math.sin(an)*0.8,1.2+mr(),G(mpick(['*','+','.','o'])),0.16,1.0,0.6,1.6,2); }
         player.x=tx2; player.z=tz2; player.vx=player.vz=0; ev.lock=to; sChime(tx2,tz2,0.5);
         if(!D.teleMsg){ D.teleMsg=true; msg('<b style="color:#ff7ae0">*</b>魔法陣が閃き、体が別の場所へと運ばれた。対になった陣が、どこかにもうひとつある。'); } }
     } else if(ev.type==='erupt'){
-      ev.t-=dt; const f=fixtures.find(f=>f.type==='crater'&&Math.floor(f.z/CELL)*MW+Math.floor(f.x/CELL)===ev.src);
+      ev.t-=dt; const f=here.fixtures.find(f=>f.type==='crater'&&Math.floor(f.z/CELL)*MW+Math.floor(f.x/CELL)===ev.src);
       if(ev.state===0&&ev.t<=0){ ev.state=1; ev.k=0; ev.t=0; if(f){ f.active=true; const L=D.lights[f.li]; if(L)L.active=true; }
         const [sx,sz]=cpos(ev.src), dd=Math.hypot(sx-player.x,sz-player.z); if(dd<30){ sRumble(0.6*(1-dd/30)+0.15,2.2); vfx.shake=Math.max(vfx.shake,0.5*(1-dd/30)); }
         if(dd<24&&fovVis[ev.src]===fovStamp)msg('<b style="color:#ff7a3a">^</b>火口が轟音とともに噴き上がり、溶岩があふれ出した！');
         for(let q=0;q<70;q++){ const an=mr()*6.28, sp2=1+mr()*2.4; spawn(sx,0.4,sz,Math.cos(an)*sp2*0.5,3+mr()*4,Math.sin(an)*sp2*0.5,1.4+mr(),G(mpick(['*','o','\'','.'])),0.18,2.4,1.1,0.3,0); } }
       else if(ev.state===1){ ev.t+=dt; let ch=false;
         while(ev.t>=0.3&&ev.k<ev.order.length){ ev.t-=0.3; const i=ev.order[ev.k++], [x,z]=cpos(i);
-          if(Math.hypot(x-player.x,z-player.z)<1.6||monsters.some(m=>!m.ty.flier&&m.cz*MW+m.cx===i))continue;
+          if(Math.hypot(x-player.x,z-player.z)<1.6||here.monsters.some(m=>!m.ty.flier&&m.cz*MW+m.cx===i))continue;
           D.liquid[i]=LQ_LAVA; cellFlag[i]=70; ch=true; for(const j of [i+1,i-1,i+MW,i-MW])if(j>=0&&j<NCELL&&fuel[j]>0)ignite(j,0.6,false); }
         if(ch)uploadCells(); if(ev.k>=ev.order.length){ ev.state=2; ev.t=12; } }
       else if(ev.state===2&&ev.t<=0){ ev.state=3; ev.k=ev.order.length-1; ev.t=0; if(f){ f.active=false; const L=D.lights[f.li]; if(L)L.active=false; } }

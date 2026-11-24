@@ -87,7 +87,7 @@ function drawMap(){
   for(const tr of (D.traps||[])){ if(tr.hidden||!explored[tr.i])continue; const c=tr.i%MW-ox, r=((tr.i/MW)|0)-oy; if(c<0||r<0||c>=MMC||r>=MMR)continue; mctx.shadowColor=TRAP_INFO[tr.type][1]; mctx.fillStyle=TRAP_INFO[tr.type][1]; mctx.fillText('^',MPAD+(c+0.5)*MCW,MPAD+(r+0.5)*MCH); }
   if(D.gate){ for(const [ci,chr] of [[D.gate.cell,D.gate.open?'.':'#'],[D.gate.lever,'/']]){ if(!explored[ci])continue; const c=ci%MW-ox, r=((ci/MW)|0)-oy; if(c<0||r<0||c>=MMC||r>=MMR)continue; mctx.shadowColor='#ffd48a'; mctx.fillStyle='#ffd48a'; mctx.fillText(chr,MPAD+(c+0.5)*MCW,MPAD+(r+0.5)*MCH); } }
   for(const w of (D.webs||[])){ if(w.gone||!explored[w.i])continue; const c=w.i%MW-ox, r=((w.i/MW)|0)-oy; if(c<0||r<0||c>=MMC||r>=MMR)continue; mctx.shadowColor='#d8c8ff'; mctx.fillStyle='rgba(216,200,255,0.8)'; mctx.fillText('%',MPAD+(c+0.5)*MCW,MPAD+(r+0.5)*MCH); }
-  for(const m of monsters){
+  for(const m of here.monsters){
     const ghost=m.ty.invisible&&Math.hypot(m.x-player.x,m.z-player.z)<6;
     if(!m.visible&&!ghost)continue;
     const c=m.cx-ox, r=m.cz-oy; if(c<0||r<0||c>=MMC||r>=MMR)continue;

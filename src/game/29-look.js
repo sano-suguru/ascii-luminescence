@@ -5,15 +5,15 @@ const lookEl=document.getElementById('look'); let lookHTML='';
 // lookLine は src/lib/names.ts（src/game/imports.mjs で読む）
 function look(){
   aimMon=null;
-  if(!ui.started||trans){ if(lookHTML){ lookHTML=''; lookEl.innerHTML=''; } return; }
+  if(!ui.started||here.trans){ if(lookHTML){ lookHTML=''; lookEl.innerHTML=''; } return; }
   const cp=Math.cos(player.pitch), dx=-Math.sin(player.yaw)*cp, dy=Math.sin(player.pitch), dz=-Math.cos(player.yaw)*cp;
   const ox=camera.position.x, oy=camera.position.y, oz=camera.position.z;
   let best=null, bt=18;
   const sph=(cx,cy,cz,r,res)=>{ const lx=cx-ox, ly=cy-oy, lz=cz-oz, tc=lx*dx+ly*dy+lz*dz; if(tc<0)return; const d2=lx*lx+ly*ly+lz*lz-tc*tc; if(d2>r*r)return; const tt=tc-Math.sqrt(r*r-d2); if(tt<bt){bt=tt;best=res;} };
-  for(const m of monsters){ const s=m.ty.scale, near=Math.hypot(m.x-ox,m.z-oz)<6;
+  for(const m of here.monsters){ const s=m.ty.scale, near=Math.hypot(m.x-ox,m.z-oz)<6;
     if(m.ty.invisible){ if(near)sph(m.x,m.y+1.1,m.z,0.6,{k:'ph'}); continue; }
     if(!m.visible)continue; sph(m.x,m.y+(m.ty.fl||m.ty.flier||m.ty.form==='eel'?0.3:0.9*s),m.z,0.6*s,{k:'m',m}); }
-  for(const f of fixtures){
+  for(const f of here.fixtures){
     if(!FIX_NAMES[f.type]&&f.type!=='bstairs'&&f.type!=='portal')continue; const L=D.lights[f.li];
     if(f.type==='torch'){ sph(f.wx+f.nx*0.15,2.0,f.wz+f.nz*0.15,0.35,{k:'f',f}); continue; }
     const fy=f.type==='fall'?(ceilAt(f.x,f.z)*0.5):f.type==='crater'?0.2:f.type==='spring'?1.3:f.type==='orb'?1.4:f.type==='well'?1.6:f.type==='firefly'?1.5:f.type==='sun'?1.6:f.type==='bloodwort'?0.9:f.type==='vent'?0.2:f.type==='brazier'?0.9:f.type==='stairs'?1.3:f.type==='rune'?0.3:f.type==='fungus'?0.3:(L?L.y:1.2);

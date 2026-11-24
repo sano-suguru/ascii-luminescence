@@ -24,27 +24,27 @@ function tick(raw,draw){
   if(isPaused()&&ui.started){ if(frame.stillDrawn)return; frame.stillDrawn=true; } else frame.stillDrawn=false; const dt=isPaused()?0:clamp(raw,0,0.05)*timeScale();
   time+=dt; const t=time;
   U.uTime.value=t;
-  if(trans){
-    trans.t+=dt;
-    if(trans.phase==='out'){ fade=1-trans.t/0.8; if(trans.t>=0.8){ if(trans.regen)adv.runSeed=(Math.random()*1e9)>>>0; else advance(trans.go); newLevel(); trans={phase:'in',t:0}; fade=0; } }
-    else { fade=trans.t/1.3; if(trans.t>=1.3){ trans=null; fade=1; } }
-  } else fade=Math.min(1,fade+dt*0.8);
+  if(here.trans){
+    here.trans.t+=dt;
+    if(here.trans.phase==='out'){ here.fade=1-here.trans.t/0.8; if(here.trans.t>=0.8){ if(here.trans.regen)adv.runSeed=(Math.random()*1e9)>>>0; else advance(here.trans.go); newLevel(); here.trans={phase:'in',t:0}; here.fade=0; } }
+    else { here.fade=here.trans.t/1.3; if(here.trans.t>=1.3){ here.trans=null; here.fade=1; } }
+  } else here.fade=Math.min(1,here.fade+dt*0.8);
   updatePlayer(dt);
   updateStealth(dt);
   updateStatuses(dt);
-  for(const m of monsters)if(!m.galShow&&!m.ty.dummy)updateMonster(m,dt*monTimeK(m),t);
-  if(monsters.some(m=>m.dead))monsters=monsters.filter(m=>!m.dead);
+  for(const m of here.monsters)if(!m.galShow&&!m.ty.dummy)updateMonster(m,dt*monTimeK(m),t);
+  if(here.monsters.some(m=>m.dead))here.monsters=here.monsters.filter(m=>!m.dead);
   pfFrames++; pfT+=raw; if(pfT>=0.5){ pfFps=Math.round(pfFrames/pfT); pfFrames=0; pfT=0; if(ui.perfOn)renderStatus(); }
   regrow(); brimRecover(dt); if(!adv.dead){ updateTraps(dt); updateSearch(dt); } updateLife(dt);
   updateLights(t);
   updateAtmosphere(dt);
-  dn=0; drawFixtures(t,dt); drawDoors(t,dt); drawFire(t,dt); drawWebs(t); drawTraps(t); drawSwing(); drawViewWeapons(t); drawOmens(t,dt); drawRunesWorld(t); updateAltarPanel(); drawArrows(); drawLegendWorld(t); drawBoltFx(t,dt); drawGallery(t); drawFrozen(t); drawCastFx(t); if(ui.camMode==='tps'&&D&&!gallery){ updateAvatar(dt); drawMonster0(avatar,t); drawSection(); } for(const m of monsters)drawMonster(m,t); flushDyn();
+  dn=0; drawFixtures(t,dt); drawDoors(t,dt); drawFire(t,dt); drawWebs(t); drawTraps(t); drawSwing(); drawViewWeapons(t); drawOmens(t,dt); drawRunesWorld(t); updateAltarPanel(); drawArrows(); drawLegendWorld(t); drawBoltFx(t,dt); drawGallery(t); drawFrozen(t); drawCastFx(t); if(ui.camMode==='tps'&&D&&!gallery){ updateAvatar(dt); drawMonster0(avatar,t); drawSection(); } for(const m of here.monsters)drawMonster(m,t); flushDyn();
   updateParticles(dt,t);
   fovT+=dt; if(fovT>0.1){ fovT=0; computeFOV(); checkEvents(false); look(); stepGas(); stepFire(); }
   mapT+=dt; if(mapT>0.11){ mapT=0; if(ui.uiMode===0)drawMap(); }
   if(helpT>0){ helpT-=dt; if(helpT<=0&&ui.helpOn)setHelp(false); }
-  finalPass.uniforms.uTime.value=t; finalPass.uniforms.uFade.value=clamp(fade,0,1); finalPass.uniforms.uHurt.value=vfx.hurtFlash+(player.hp<adv.PLAYER_MAX*0.25&&!adv.dead?0.18+0.08*Math.sin(t*4):0);
-  if(ui.started&&!trans&&!adv.dead&&!isPaused())pickupItems();
+  finalPass.uniforms.uTime.value=t; finalPass.uniforms.uFade.value=clamp(here.fade,0,1); finalPass.uniforms.uHurt.value=vfx.hurtFlash+(player.hp<adv.PLAYER_MAX*0.25&&!adv.dead?0.18+0.08*Math.sin(t*4):0);
+  if(ui.started&&!here.trans&&!adv.dead&&!isPaused())pickupItems();
   if(gear.hands)updateCast(dt);
   updateFinal(dt); updateGallery(dt); trackSeen(dt); updateFrozen(dt); cloudsMeetFire();
   updateCross(raw);
@@ -74,9 +74,9 @@ if(TEST)window.__test={
   width(text){ return visW(text); },
   // a plain copy of what matters, to compare runs
   state(){ const f=v=>+(+v||0).toFixed(3);
-    return {time:f(time),seed:adv.runSeed,place:placeLabel(),depth,started:ui.started,dead:adv.dead,hp:f(player.hp),pos:[f(player.x),f(player.z)],yaw:f(player.yaw),lvl:adv.lvl.n,
-      monsters:monsters.map(m=>[m.key,f(m.x),f(m.z),f(m.hp),m.sleep?1:0]),projs:projs.length,
-      trans:trans?trans.phase:null,cast:gear.castSt?{h:gear.castSt.h,t:f(gear.castSt.t),need:f(gear.castSt.need),full:gear.castSt.full}:null,recover:f(player.recover),paused:isPaused()}; },
+    return {time:f(time),seed:adv.runSeed,place:placeLabel(),depth:here.depth,started:ui.started,dead:adv.dead,hp:f(player.hp),pos:[f(player.x),f(player.z)],yaw:f(player.yaw),lvl:adv.lvl.n,
+      monsters:here.monsters.map(m=>[m.key,f(m.x),f(m.z),f(m.hp),m.sleep?1:0]),projs:projs.length,
+      trans:here.trans?here.trans.phase:null,cast:gear.castSt?{h:gear.castSt.h,t:f(gear.castSt.t),need:f(gear.castSt.need),full:gear.castSt.full}:null,recover:f(player.recover),paused:isPaused()}; },
   // hold a weapon (a RUNE_DEF key such as 'blade', 'bolt', 'orb'), and press / release a hand's button ('L' or 'R')
   equip(h,type){ if(!RUNE_DEF[type]||RUNE_DEF[type].cat!=='atk')return 'no such weapon: '+type; equipWeapon(h,makeRune(type,0)); renderHotbar(); return type; },
   // true when the hand started charging, or attacked at once (a weapon with no charge, such as the short sword)
@@ -87,14 +87,14 @@ if(TEST)window.__test={
     ...Object.values(BRANCHES).flatMap(B=>Array.from({length:B.len},(_,i)=>({branch:B.key,lvl:i+1}))), ...Object.values(REALMS).map(R=>({realm:R.key,depth:R.minD+2}))]; },
   // generate one level only (no meshes). It restores where the run is (seed, depth, branch, realm, special level),
   // but not what generate() rewrites (the history HIST, the level random rand, the light tables): use it on a page of its own
-  gen(seed,pl){ const keep={runSeed:adv.runSeed,depth,branch,realm,inter};
-    try{ adv.runSeed=seed>>>0; branch=null; realm=null; inter=null;
-      if(pl.branch){ const B=BRANCHES[pl.branch]; depth=B.at[0]; branch={key:B.key,lvl:pl.lvl||1,len:B.len,ret:depth+1}; }
-      else if(pl.inter){ depth=interAt(pl.inter); inter={key:pl.inter,after:depth}; }
-      else if(pl.realm){ depth=pl.depth||4; realm={key:pl.realm,ret:depth+1}; }
-      else depth=pl.depth;
-      const L=generate(levelSeed(),depth); L.place=placeLabel(); L.final=depth===FINAL_DEPTH&&!branch&&!realm&&!inter; return L; }
-    finally{ ({runSeed:adv.runSeed,depth,branch,realm,inter}=keep); } },
+  gen(seed,pl){ const keep={runSeed:adv.runSeed,depth:here.depth,branch:here.branch,realm:here.realm,inter:here.inter};
+    try{ adv.runSeed=seed>>>0; here.branch=null; here.realm=null; here.inter=null;
+      if(pl.branch){ const B=BRANCHES[pl.branch]; here.depth=B.at[0]; here.branch={key:B.key,lvl:pl.lvl||1,len:B.len,ret:here.depth+1}; }
+      else if(pl.inter){ here.depth=interAt(pl.inter); here.inter={key:pl.inter,after:here.depth}; }
+      else if(pl.realm){ here.depth=pl.depth||4; here.realm={key:pl.realm,ret:here.depth+1}; }
+      else here.depth=pl.depth;
+      const L=generate(levelSeed(),here.depth); L.place=placeLabel(); L.final=here.depth===FINAL_DEPTH&&!here.branch&&!here.realm&&!here.inter; return L; }
+    finally{ ({runSeed:adv.runSeed,depth:here.depth,branch:here.branch,realm:here.realm,inter:here.inter}=keep); } },
 };
 
 // ---------------------------------------------------------------- init

@@ -76,12 +76,12 @@ function updatePlayer(dt){
     // make impassable terrain legible: say what is in the way; at a chasm's edge, keep pushing to jump (as in Brogue)
     if(len&&blocked&&blocked!=='wall'){
       edge.t+=dt; edge.k=blocked; edge.idle=0;
-      if(blocked==='chasm'){ showHint(`裂け目の縁だ。このまま進み続けると飛び降りる <b>[${'#'.repeat(Math.min(5,Math.floor(edge.t/0.24)))}${'-'.repeat(5-Math.min(5,Math.floor(edge.t/0.24)))}]</b>`); if(edge.t>1.2&&!trans){ trans={phase:'out',t:0,regen:false}; player.fall=true; sRumble(0.5,1.4); msg('<b style="color:#9a7cff">:</b>裂け目へ身を投じ、闇の中を下の階層へと落ちていく……'); } }
+      if(blocked==='chasm'){ showHint(`裂け目の縁だ。このまま進み続けると飛び降りる <b>[${'#'.repeat(Math.min(5,Math.floor(edge.t/0.24)))}${'-'.repeat(5-Math.min(5,Math.floor(edge.t/0.24)))}]</b>`); if(edge.t>1.2&&!here.trans){ here.trans={phase:'out',t:0,regen:false}; player.fall=true; sRumble(0.5,1.4); msg('<b style="color:#9a7cff">:</b>裂け目へ身を投じ、闇の中を下の階層へと落ちていく……'); } }
       else if(blocked==='lava'){ showHint('溶岩の熱が行く手を阻んでいる。これ以上は近づけない'); finalPass.uniforms.uHeat.value=Math.min(1.4,finalPass.uniforms.uHeat.value+dt*2); }
       else if(blocked==='gate')showHint('鉄格子が行く手を塞いでいる。どこかに開ける仕掛けがあるはずだ');
       else if(blocked==='xtal')showHint('結晶に行く手を塞がれている。光は通るが、体は通れない');
     } else { edge.idle+=dt; if(edge.idle>0.15)edge.t=0; if(edge.idle>0.9)showHint(''); }
-    for(const m of monsters){
+    for(const m of here.monsters){
       if(m.ty.flier||m.ty.form==='eel')continue;
       const dx=player.x-m.x, dz=player.z-m.z, d=Math.hypot(dx,dz), rr=0.7*m.ty.scale;
       if(d<rr&&d>1e-4){ const qx=m.x+dx/d*rr, qz=m.z+dz/d*rr; if(!solidAt(qx,player.z,PR))player.x=qx; if(!solidAt(player.x,qz,PR))player.z=qz; }
@@ -103,13 +103,13 @@ function updateAtmosphere(dt){
   const fogT=inCave?(D.stratum.k==='cavern'?0.032:0.03):(D.stratum.k==='ruins'?0.04:fogBase);
   U.uFogDen.value+=(fogT-U.uFogDen.value)*(1-Math.exp(-dt*0.9));
   const l=cellLight(player.x,player.z); let B=0.3*l[0]+0.55*l[1]+0.15*l[2];
-  for(const m of monsters){ const d=Math.hypot(m.x-player.x,m.z-player.z); if(d<5)B+=(1-d/5)**2*0.7; }
-  for(const f of fixtures){ const d=Math.hypot(f.x-player.x,f.z-player.z); if(d<3)B+=(1-d/3)**2*0.8; }
+  for(const m of here.monsters){ const d=Math.hypot(m.x-player.x,m.z-player.z); if(d<5)B+=(1-d/5)**2*0.7; }
+  for(const f of here.fixtures){ const d=Math.hypot(f.x-player.x,f.z-player.z); if(d<3)B+=(1-d/3)**2*0.8; }
   const target=clamp(1.25/(1+B*0.6),0.55,1.25);
   expo+=(target-expo)*(1-Math.exp(-dt*(target<expo?2.5:1.0)));
   vfx.flash=Math.max(0,vfx.flash-dt*2.5);
   finalPass.uniforms.uExposure.value=expo*(1+vfx.flash*1.6);
-  let heat=0; for(const f of fixtures){ if(f.type!=='lava'&&!(f.type==='crater'&&f.active))continue; heat=Math.max(heat,1-Math.hypot(f.x-player.x,f.z-player.z)/10); }
+  let heat=0; for(const f of here.fixtures){ if(f.type!=='lava'&&!(f.type==='crater'&&f.active))continue; heat=Math.max(heat,1-Math.hypot(f.x-player.x,f.z-player.z)/10); }
   const hu=finalPass.uniforms.uHeat; hu.value+=(heat-hu.value)*Math.min(1,dt*2);
   finalPass.uniforms.uSwim.value=ui.camMode==='tps'?0:clamp((EYE-player.eye)/(EYE-0.62),0,1);
 }

@@ -65,30 +65,28 @@ const MTYPES={
 // special levels (after NetHack's special levels and Dwarf Fortress's abandoned fortresses): one-off landmarks, placed per run seed
 // special levels come between depths (they no longer take a depth's place): the town after the stone labyrinth, the great hall within the great cavern,
 // the oracle before the ruins, the abandoned fortress within the lava sea
-let inter=null, showroomGen=false;
 function interAt(key){ const h=Math.imul(adv.runSeed^0x5bd1e995,2654435761)>>>0; return {town:2, bigroom:3+(h&1), oracle:5, fortress:9+((h>>2)&1)}[key]; }
 function interAfter(d){ for(const k in SPECIALS)if(interAt(k)===d)return k; return null; }
-let branch=null, realm=null;
-let arrive=null, lockCell=-1; const placeMem=new Map();
-const placeKey=()=>`${adv.runSeed}:`+(realm?`r:${realm.key}:${realm.ret}`:branch?`b:${branch.key}:${branch.lvl}`:inter?`i:${inter.key}`:`m:${depth}`);
+let lockCell=-1; // placeMem は src/lib/state.ts（src/game/imports.mjs で読む）
+const placeKey=()=>`${adv.runSeed}:`+(here.realm?`r:${here.realm.key}:${here.realm.ret}`:here.branch?`b:${here.branch.key}:${here.branch.lvl}`:here.inter?`i:${here.inter.key}`:`m:${here.depth}`);
 function advance(go){
   if(D&&explored)placeMem.set(placeKey(),{explored:explored.slice(),mem:mem.slice()});
-  arrive=null;
+  here.arrive=null;
   if(go==='up'){
-    if(inter){ inter=null; arrive='stairs'; return; }
-    if(realm){ depth=realm.ret-1; realm=null; arrive='portal'; return; }
-    if(branch){ if(branch.lvl>1){ branch.lvl--; arrive='stairs'; return; } depth=branch.ret-1; branch=null; arrive='bstairs'; return; }
+    if(here.inter){ here.inter=null; here.arrive='stairs'; return; }
+    if(here.realm){ here.depth=here.realm.ret-1; here.realm=null; here.arrive='portal'; return; }
+    if(here.branch){ if(here.branch.lvl>1){ here.branch.lvl--; here.arrive='stairs'; return; } here.depth=here.branch.ret-1; here.branch=null; here.arrive='bstairs'; return; }
     return;
   }
-  if(go==='branch'&&D.bstairs){ const B=BRANCHES[D.bstairs.key]; branch={key:B.key,lvl:1,len:B.len,ret:depth+1}; return; }
-  if(go==='realm'&&D.portal){ realm={key:D.portal.key,ret:depth+1}; return; }
-  if(inter){ depth=inter.after+1; inter=null; return; }
-  if(realm){ depth=realm.ret; realm=null; return; }
-  if(branch){ if(branch.lvl<branch.len){ branch.lvl++; return; } depth=branch.ret; branch=null; return; }
-  if(depth>=FINAL_DEPTH||(depth===FINAL_DEPTH-1&&!legendAll())){ advance.bounced=true; return; }
-  { const ik=interAfter(depth); if(ik){ inter={key:ik,after:depth}; return; } }
-  depth++;
+  if(go==='branch'&&D.bstairs){ const B=BRANCHES[D.bstairs.key]; here.branch={key:B.key,lvl:1,len:B.len,ret:here.depth+1}; return; }
+  if(go==='realm'&&D.portal){ here.realm={key:D.portal.key,ret:here.depth+1}; return; }
+  if(here.inter){ here.depth=here.inter.after+1; here.inter=null; return; }
+  if(here.realm){ here.depth=here.realm.ret; here.realm=null; return; }
+  if(here.branch){ if(here.branch.lvl<here.branch.len){ here.branch.lvl++; return; } here.depth=here.branch.ret; here.branch=null; return; }
+  if(here.depth>=FINAL_DEPTH||(here.depth===FINAL_DEPTH-1&&!legendAll())){ advance.bounced=true; return; }
+  { const ik=interAfter(here.depth); if(ik){ here.inter={key:ik,after:here.depth}; return; } }
+  here.depth++;
 }
-function placeLabel(){ if(inter)return SPECIALS[inter.key].name; if(realm)return REALMS[realm.key].name; if(branch)return `${BRANCHES[branch.key].name} ${branch.lvl}/${branch.len}`; return String(depth); }
+function placeLabel(){ if(here.inter)return SPECIALS[here.inter.key].name; if(here.realm)return REALMS[here.realm.key].name; if(here.branch)return `${BRANCHES[here.branch.key].name} ${here.branch.lvl}/${here.branch.len}`; return String(here.depth); }
 
 

@@ -3,7 +3,7 @@ let beamRun=null;
 let hitStopUntil=0;
 const timeScale=()=>performance.now()<hitStopUntil?0.05:(gear.castSt?0.5:1);
 function beginCast(h){
-  if(adv.dead||trans||!ui.started||isPaused()||gear.swapSt||gear.castSt||(beamRun&&!beamRun.auto)||player.netT>0||player.roll)return;
+  if(adv.dead||here.trans||!ui.started||isPaused()||gear.swapSt||gear.castSt||(beamRun&&!beamRun.auto)||player.netT>0||player.roll)return;
   if((player.recover||0)>0)return;
   const H=gear.hands[h]; if(!H.atk){ castNow(h); return; }
   const at=atkType(h), def=RUNE_DEF[at]; if(def.chant<=0){ castNow(h); return; }
@@ -23,7 +23,7 @@ function updateCast(dt){
   trigCd.L=Math.max(0,trigCd.L-dt); trigCd.R=Math.max(0,trigCd.R-dt); player.recover=Math.max(0,(player.recover||0)-dt);
   if(gear.swapSt){ gear.swapSt.t+=dt; if(gear.swapSt.t>=gear.swapSt.dur){ gear.swapSt=null; if(BL('swapedge'))player.swapEdgeUntil=time+3; sChime(player.x,player.z,0.25); renderHotbar(); } else if(((gear.swapSt.t*10)|0)!==gear.swapSt.last){ gear.swapSt.last=(gear.swapSt.t*10)|0; renderHotbar(); } }
   if(!gear.castSt)return;
-  if(!ui.started||adv.dead||trans){ gear.castSt=null; beamSegs=[]; return; }
+  if(!ui.started||adv.dead||here.trans){ gear.castSt=null; beamSegs=[]; return; }
   gear.castSt.t+=dt;
   if(!gear.castSt.full&&gear.castSt.t>=gear.castSt.need){ gear.castSt.full=true;
     const P=castPoint(gear.castSt.h,1), c=elemCol(gear.hands[gear.castSt.h].elem?gear.hands[gear.castSt.h].elem.type:null); for(let q=0;q<14;q++){ const a=mr()*6.28; spawn(P[0],P[1],P[2],Math.cos(a)*1.2,(mr()-0.4)*1.2,Math.sin(a)*1.2,0.35,G('*'),0.05,c[0]*3,c[1]*3,c[2]*3,0); } }
@@ -64,19 +64,19 @@ function dashCast(sp,dir,auto){ const hx=dir[0], hz=dir[2], l=Math.hypot(hx,hz)|
   later(dur,()=>{ const HP=handPoint(sp.h||'R'), d=viewDir(), dm=RUNE_DEF.dash.dmg, n=1+(sp.aff.count||0); for(let i=0;i<n;i++){ const dd=turnDir(d,(i-(n-1)/2)*0.1); projs.push({kind:'bolt',wind:true,x:HP[0],y:HP[1],z:HP[2],vx:dd[0]*22,vy:dd[1]*22,vz:dd[2]*22,t:0,maxT:0.36*tv(sp,'range'),sp,bounce:0,homing:0,hit:new Set(player.lunge&&player.lunge.cut?player.lunge.cut.hit:[]),dmg:[Math.max(1,Math.round(dm[0]*0.7)),Math.max(1,Math.round(dm[1]*0.7))],pierce:2,keep:true,rad:0.05,thrust:true}); } });
   if(af){ later(dur,()=>{ const x1=player.x, z1=player.z; for(let i=0;i<af;i++){ const f=(i+1)/(af+1), ax=x0+(x1-x0)*f, az=z0+(z1-z0)*f;
       for(let q=0;q<8;q++)spawn(ax+(mr()-0.5)*0.4,0.6+mr()*1.0,az+(mr()-0.5)*0.4,0,0.1,0,0.5,G(mpick([')','(','|'])),0.16,...elemCol(sp.elem).map(v=>v*1.6),0);
-      later(0.35,()=>{ for(const m of monsters){ if(!hittable(m))continue; if(Math.hypot(m.x-ax,m.z-az)<1.0+0.3*m.ty.scale){ m.playerT=time; applyHit(m,Math.max(1,Math.round(roll(RUNE_DEF.dash.dmg[0],RUNE_DEF.dash.dmg[1])*0.55)),sp,true); } } }); } }); } }
+      later(0.35,()=>{ for(const m of here.monsters){ if(!hittable(m))continue; if(Math.hypot(m.x-ax,m.z-az)<1.0+0.3*m.ty.scale){ m.playerT=time; applyHit(m,Math.max(1,Math.round(roll(RUNE_DEF.dash.dmg[0],RUNE_DEF.dash.dmg[1])*0.55)),sp,true); } } }); } }); } }
 function dashCuts(){ const L=player.lunge, c=L&&L.cut; if(!c)return; const dm=RUNE_DEF.dash.dmg;
-  for(const m of monsters){ if(!hittable(m)||c.hit.has(m))continue; if(Math.hypot(m.x-player.x,m.z-player.z)<c.w+0.35*m.ty.scale){ c.hit.add(m); m.playerT=time; applyHit(m,Math.max(1,Math.round(roll(dm[0],dm[1])*c.dK)),c.sp); if(c.link)player.recover=Math.min(player.recover||0,0.05); } } }
+  for(const m of here.monsters){ if(!hittable(m)||c.hit.has(m))continue; if(Math.hypot(m.x-player.x,m.z-player.z)<c.w+0.35*m.ty.scale){ c.hit.add(m); m.playerT=time; applyHit(m,Math.max(1,Math.round(roll(dm[0],dm[1])*c.dK)),c.sp); if(c.link)player.recover=Math.min(player.recover||0,0.05); } } }
 // the longbow: a rain of arrows over the aimed place
 function startRain(sp,x,z,again){ const de=0, n=8+3*(sp.aff.count||0), r=1.8*tv(sp,'area'), span=0.6*tv(sp,'span');
   rains.push({x,z,r,n,left:n,iv:span/n,tick:again?0:0.45,sp,follow:false,elemK:0.25,again:!!again}); marks.push({x,z,r,t:(again?0:0.45)+span,c:elemCol(sp.elem)});
   if(de>=3&&!again)later(0.45+span+0.25,()=>startRain(sp,x,z,true)); }
 function updateRains(dt){ for(const rn of rains){ rn.tick-=dt;
-    if(rn.follow){ let best=null, bd=4; for(const m of monsters){ if(!foe(m))continue; const dd=Math.hypot(m.x-rn.x,m.z-rn.z); if(dd<bd){ bd=dd; best=m; } } if(best){ const k=Math.min(1,dt*2/Math.max(0.1,bd)); rn.x+=(best.x-rn.x)*k; rn.z+=(best.z-rn.z)*k; } }
+    if(rn.follow){ let best=null, bd=4; for(const m of here.monsters){ if(!foe(m))continue; const dd=Math.hypot(m.x-rn.x,m.z-rn.z); if(dd<bd){ bd=dd; best=m; } } if(best){ const k=Math.min(1,dt*2/Math.max(0.1,bd)); rn.x+=(best.x-rn.x)*k; rn.z+=(best.z-rn.z)*k; } }
     while(rn.tick<=0&&rn.left>0){ rn.tick+=rn.iv; rn.left--; const a=mr()*6.28, rr=Math.sqrt(mr())*rn.r, px=rn.x+Math.cos(a)*rr, pz=rn.z+Math.sin(a)*rr, c=elemCol(rn.sp.elem), sp=rn.sp, eK=rn.elemK;
       spawn(px,4.6,pz,0,-24,0,0.19,G('|'),0.16,c[0]*2.4,c[1]*2.4,c[2]*2.4,0);
       later(0.18,()=>{ for(let q=0;q<3;q++)spawn(px,0.05,pz,(mr()-0.5)*1.2,0.4+mr()*0.5,(mr()-0.5)*1.2,0.3,G('.'),0.1,c[0]*2.2,c[1]*2.2,c[2]*2.2,0);
-        for(const m of monsters){ if(!hittable(m))continue; if(Math.hypot(m.x-px,m.z-pz)<0.7+0.3*m.ty.scale){ m.playerT=time; applyHit(m,roll(RUNE_DEF.rain.dmg[0],RUNE_DEF.rain.dmg[1]),sp,true); } }
+        for(const m of here.monsters){ if(!hittable(m))continue; if(Math.hypot(m.x-px,m.z-pz)<0.7+0.3*m.ty.scale){ m.playerT=time; applyHit(m,roll(RUNE_DEF.rain.dmg[0],RUNE_DEF.rain.dmg[1]),sp,true); } }
         if(sp.elem&&mr()<eK){ const ci=Math.floor(pz/CELL)*MW+Math.floor(px/CELL); if(ci>=0&&ci<NCELL)landElem(sp,px,0.1,pz,ci); } }); }
     if(rn.left<=0&&!rn.done){ rn.done=true; } }
   rains=rains.filter(rn=>!rn.done); for(const mk of marks)mk.t-=dt; marks=marks.filter(mk=>mk.t>0); }
@@ -89,11 +89,11 @@ function castStar(sp,x,z){ const tw=0, sw=0, pl=TL(sp,'pull'), sz=tv(sp,'size'),
   const extra=(sp.aff.count||0);
   for(let i=0;i<extra;i++){ const a=mr()*6.28; pts.push([x+Math.cos(a)*1.6,z+Math.sin(a)*1.6]); }
   pts.forEach(([px,pz],i)=>{ const dl=delay+i*0.18; marks.push({x:px,z:pz,r:sz,t:dl,c:elemCol(sp.elem),star:true});
-    if(pl&&i===0)later(dl*0.35,()=>{ const R=TRAIT_V.pull[pl]; for(const m of monsters){ if(!hittable(m)||m.ty.boss||m.key==='lord'||m.key==='final'||m.ty.habitat)continue; const ax=px-m.x, az=pz-m.z, dd=Math.hypot(ax,az); if(dd>R||dd<0.3)continue; const v=(2+pl*0.8)/Math.max(0.6,m.ty.scale||1); m.kx=(m.kx||0)+ax/dd*v; m.kz=(m.kz||0)+az/dd*v; m.st=m.st||{}; } });
-    later(dl,()=>{ let fx=px, fz=pz; if(sw>=3){ let best=null, bd=2.5; for(const m of monsters){ if(!foe(m))continue; const dd=Math.hypot(m.x-px,m.z-pz); if(dd<bd){ bd=dd; best=m; } } if(best){ fx=best.x; fz=best.z; } }
+    if(pl&&i===0)later(dl*0.35,()=>{ const R=TRAIT_V.pull[pl]; for(const m of here.monsters){ if(!hittable(m)||m.ty.boss||m.key==='lord'||m.key==='final'||m.ty.habitat)continue; const ax=px-m.x, az=pz-m.z, dd=Math.hypot(ax,az); if(dd>R||dd<0.3)continue; const v=(2+pl*0.8)/Math.max(0.6,m.ty.scale||1); m.kx=(m.kx||0)+ax/dd*v; m.kz=(m.kz||0)+az/dd*v; m.st=m.st||{}; } });
+    later(dl,()=>{ let fx=px, fz=pz; if(sw>=3){ let best=null, bd=2.5; for(const m of here.monsters){ if(!foe(m))continue; const dd=Math.hypot(m.x-px,m.z-pz); if(dd<bd){ bd=dd; best=m; } } if(best){ fx=best.x; fz=best.z; } }
       const c=elemCol(sp.elem); for(let y=0;y<7;y+=0.35)spawn(fx+(mr()-0.5)*0.2,y,fz+(mr()-0.5)*0.2,0,-6,0,0.25,G(mpick(['|','*','+'])),0.2,c[0]*3,c[1]*3,c[2]*3,0);
       orbBurst(fx,0.2,fz,sp,{dmg:1.25*Math.sqrt(sz),rad:sz}); vfx.shake=Math.max(vfx.shake,0.1);
-      if(false)for(const m of monsters){ if(!hittable(m)||m.ty.boss||m.key==='lord'||m.key==='final')continue; if(Math.hypot(m.x-fx,m.z-fz)<1.2){ const st=m.st||(m.st={}); if(time>=(st.pinCd||0)){ st.pin=Math.max(st.pin||0,0.6); st.pinCd=time+1.8; } } } }); }); }
+      if(false)for(const m of here.monsters){ if(!hittable(m)||m.ty.boss||m.key==='lord'||m.key==='final')continue; if(Math.hypot(m.x-fx,m.z-fz)<1.2){ const st=m.st||(m.st={}); if(time>=(st.pinCd||0)){ st.pin=Math.max(st.pin||0,0.6); st.pinCd=time+1.8; } } } }); }); }
 // the wind blade a sword sends forward: short for the short sword, wide for the greatsword's sweep
 // the slash lies in the plane the blade swept: slanted like the swing (a sword: right-up to left-down from the right hand, mirrored from the left; a greatsword's sweep near level);
 // bowed forward with its tips trailing back toward you, thick and bright in the middle, thin at the tips; it widens as it flies, leaves a faint trail and fades at the end
@@ -112,7 +112,7 @@ function fireWave(sp,dir,cut){ if(sp.atk==='bare')return; player.swingWave=true;
 function meleeCast(sp,dir){
   player.swingWave=false; player.swingH=sp.h; player.swing=0.22; player.swingCol=elemCol(sp.elem); sWhoosh();
   const MD=RUNE_DEF[sp.atk==='bare'?'blade':sp.atk], wgt=TL(sp,'weight'), [vx,vy,vz]=dir, [ox,oy,oz]=aimOrigin(), spL=TL(sp,'spin'), reach=(MD.reach||2.2)+(spL>=2?0.5:0), maxT=1+(sp.aff.count||0)+(spL>=3?3:0)+(sp.atk==='gsweep'?2:0), cands=[];
-  for(const m of monsters){ if(!hittable(m))continue; if(m.ty.habitat==='deep'&&(m.rise||0)<0.3)continue; if(m.ty.habitat==='bog'&&(m.rise||0)<0.3)continue;
+  for(const m of here.monsters){ if(!hittable(m))continue; if(m.ty.habitat==='deep'&&(m.rise||0)<0.3)continue; if(m.ty.habitat==='bog'&&(m.rise||0)<0.3)continue;
     const sc=m.ty.scale, cy=m.hidden?m.y+1.3:m.y+(m.ty.flier?0:0.6*sc), ax=m.x-ox, ay=cy-oy, az=m.z-oz, d=Math.hypot(ax,ay,az);
     if(Math.hypot(m.x-player.x,m.z-player.z)>reach+0.35*sc)continue;
     const ang=Math.acos(clamp((ax*vx+ay*vy+az*vz)/Math.max(d,1e-3),-1,1)), tol=(spL>=3||wgt>=5)?Math.PI:(MD.arc||0.42)+(maxT>1?0.25:0)+(spL>=1?0.3:0)+Math.atan2(0.5*sc,Math.max(d,0.5));
@@ -122,16 +122,16 @@ function meleeCast(sp,dir){
   for(const [,m] of cands.slice(0,maxT)){ applyHit(m,Math.round(roll(dm[0],dm[1])*dK),sp);
     if(wgt&&!m.dead&&!m.ty.boss&&m.key!=='lord'&&m.key!=='final'&&!m.ty.habitat){ const ax=m.x-player.x, az=m.z-player.z, dd=Math.hypot(ax,az)||1, v=(wgt>=2?8:6)/Math.max(0.6,m.ty.scale||1); m.kx=(m.kx||0)+ax/dd*v; m.kz=(m.kz||0)+az/dd*v; m.st=m.st||{}; if(wgt>=3)m.slam={d:wgt>=4?7:4,until:time+0.7}; } }
   const qk=TL(sp,'quake'); if(qk&&sp.atk==='gsweep'){ const px=player.x, pz=player.z, R=qk>=4?4.5:3.2, hitNow=new Set(cands.slice(0,maxT).map(c=>c[1])); later(0.12,()=>{ for(let q=0;q<36;q++){ const a=q/36*Math.PI*2; spawn(px+Math.cos(a)*R*0.9,0.1,pz+Math.sin(a)*R*0.9,Math.cos(a)*2,0.2,Math.sin(a)*2,0.35,G(mpick(['~','-','='])),0.15,1.4,1.2,0.9,0); }
-      for(const m of monsters){ if(!hittable(m)||hitNow.has(m)||m.ty.flier)continue; if(Math.hypot(m.x-px,m.z-pz)<R){ m.playerT=time; applyHit(m,Math.max(1,Math.round(roll(dm[0],dm[1])*(qk>=2?0.55:0.4))),sp,true); if(qk>=3)m.wind=0; if(qk>=5&&!m.ty.boss){ const st=m.st||(m.st={}); if(time>=(st.pinCd||0)){ st.pin=Math.max(st.pin||0,0.4); st.pinCd=time+1.6; } } } } vfx.shake=Math.max(vfx.shake,0.15); }); }
+      for(const m of here.monsters){ if(!hittable(m)||hitNow.has(m)||m.ty.flier)continue; if(Math.hypot(m.x-px,m.z-pz)<R){ m.playerT=time; applyHit(m,Math.max(1,Math.round(roll(dm[0],dm[1])*(qk>=2?0.55:0.4))),sp,true); if(qk>=3)m.wind=0; if(qk>=5&&!m.ty.boss){ const st=m.st||(m.st={}); if(time>=(st.pinCd||0)){ st.pin=Math.max(st.pin||0,0.4); st.pinCd=time+1.6; } } } } vfx.shake=Math.max(vfx.shake,0.15); }); }
   if(spL>=3){ for(let q=0;q<26;q++){ const a=q/26*Math.PI*2; spawn(player.x+Math.cos(a)*reach*0.8,player.eye-0.6,player.z+Math.sin(a)*reach*0.8,-Math.sin(a)*2,0,Math.cos(a)*2,0.25,G(mpick(['-','~','='])),0.14,...elemCol(sp.elem).map(v=>v*2.2),0); } }
   if(spL>=5){ const px=player.x, pz=player.z; later(0.25,()=>{ for(let q=0;q<30;q++){ const a=q/30*Math.PI*2; spawn(px+Math.cos(a)*reach,0.9,pz+Math.sin(a)*reach,0,0.2,0,0.45,G('='),0.16,...elemCol(sp.elem).map(v=>v*2.6),0); }
-    for(const m of monsters){ if(!hittable(m))continue; if(Math.hypot(m.x-px,m.z-pz)<reach+0.4*m.ty.scale){ m.playerT=time; applyHit(m,Math.max(1,Math.round(roll(dm[0],dm[1])*0.5)),sp,true); } } }); }
+    for(const m of here.monsters){ if(!hittable(m))continue; if(Math.hypot(m.x-px,m.z-pz)<reach+0.4*m.ty.scale){ m.playerT=time; applyHit(m,Math.max(1,Math.round(roll(dm[0],dm[1])*0.5)),sp,true); } } }); }
   fireWave(sp,dir,new Set(cands.slice(0,maxT).map(c=>c[1])));
   const wL=0; if(wL){ const HP=handPoint(sp.h||'R'), n=wL>=3?2:1, wK=wL>=4?0.6:wL>=2?0.5:0.4, wd=[Math.max(1,Math.round(dm[0]*wK)),Math.max(1,Math.round(dm[1]*wK))];
     for(let k=0;k<n;k++){ const d=turnDir(dir,(k-(n-1)/2)*0.18); projs.push({kind:'bolt',wind:true,x:HP[0],y:HP[1],z:HP[2],vx:d[0]*16,vy:d[1]*16,vz:d[2]*16,t:0,maxT:0.38,sp,bounce:0,homing:0,hit:new Set(),dmg:wd,pierce:wL>=5?2:0,keep:false}); } }
   const lL=0; if(lL){ const hx=vx, hz=vz, hl=Math.hypot(hx,hz)||1, dist=[0,0.8,1.1,1.1,1.5,1.5][lL];
     player.lunge={t:0,dur:0.14,dx:hx/hl,dz:hz/hl,sp:dist/0.14}; if(lL>=5&&time>(player.invCd||0)){ player.invulT=time+0.25; player.invCd=time+1.2; }
-    if(lL>=3)for(const m of monsters){ if(!hittable(m))continue; const ax=m.x-player.x, az=m.z-player.z, dd=Math.hypot(ax,az); if(dd<reach+0.6&&(ax*hx+az*hz)/Math.max(0.01,dd*hl)>0.6){ const v=6/Math.max(0.5,(m.ty.scale||1)); m.kx=(m.kx||0)+ax/dd*v; m.kz=(m.kz||0)+az/dd*v; m.st=m.st||{}; } } }
+    if(lL>=3)for(const m of here.monsters){ if(!hittable(m))continue; const ax=m.x-player.x, az=m.z-player.z, dd=Math.hypot(ax,az); if(dd<reach+0.6&&(ax*hx+az*hz)/Math.max(0.01,dd*hl)>0.6){ const v=6/Math.max(0.5,(m.ty.scale||1)); m.kx=(m.kx||0)+ax/dd*v; m.kz=(m.kz||0)+az/dd*v; m.st=m.st||{}; } } }
   if(sp.elem){ const fx=player.x+vx*1.5, fz=player.z+vz*1.5, ci=Math.floor(fz/CELL)*MW+Math.floor(fx/CELL); if(sp.elem!=='fire'||doorBlock(ci)||fuel[ci]>0)landElem(sp,fx,0.3,fz,ci); }
 }
 // the light beam: a ray each tick, reflecting off walls when it has bounces
@@ -142,9 +142,9 @@ function fireBeam(h,dirIn,orgIn,auto){
   const fL=TL(sp,'focus'), fMax=TRAIT_V.focus[fL], fK=1+Math.min(fMax,fb.hold*0.35), rL=TL(sp,'refract'), seL=TL(sp,'sear');
   for(let k=0;k<n;k++){ let d=turnDir(base,(k-(n-1)/2)*0.12), x=ox, y=oy, z=oz, left=12*tv(sp,'length'), bounces=sp.aff.bounce||0, bends=rL?(rL>=3?2:1):0, bent=false; const seg=[[x,y,z]], hitSet=new Set();
     while(left>0){ const nx=x+d[0]*0.25, ny=y+d[1]*0.25, nz=z+d[2]*0.25; left-=0.25;
-      let hitM=null; for(const m of monsters){ if(!hittable(m)||hitSet.has(m))continue; if(m.ty.habitat==='deep'&&(m.rise||0)<0.3)continue; const cy=m.y+(m.ty.flier?0:0.6*m.ty.scale); if(Math.hypot(m.x-nx,cy-ny,m.z-nz)<0.57+0.35*m.ty.scale){ hitM=m; break; } }
+      let hitM=null; for(const m of here.monsters){ if(!hittable(m)||hitSet.has(m))continue; if(m.ty.habitat==='deep'&&(m.rise||0)<0.3)continue; const cy=m.y+(m.ty.flier?0:0.6*m.ty.scale); if(Math.hypot(m.x-nx,cy-ny,m.z-nz)<0.57+0.35*m.ty.scale){ hitM=m; break; } }
       if(hitM){ seg.push([nx,ny,nz]); hitSet.add(hitM); const bsp=bent&&rL>=5?{...sp,pow:sp.pow*1.5}:sp; applyHit(hitM,Math.max(1,Math.round(roll(RUNE_DEF.beam.dmg[0],RUNE_DEF.beam.dmg[1])*fK*(bent&&rL>=4?1.25:1))),bsp,true);
-        if(bends>0){ let m2=null, bd=rL>=2?9:6; for(const m of monsters){ if(!hittable(m)||hitSet.has(m)||m.ty.critter)continue; const cy=m.y+(m.ty.flier?0:0.6*m.ty.scale), dd=Math.hypot(m.x-nx,cy-ny,m.z-nz); if(dd<bd&&losClear(nx,ny,nz,m.x,cy,m.z)){ bd=dd; m2=m; } }
+        if(bends>0){ let m2=null, bd=rL>=2?9:6; for(const m of here.monsters){ if(!hittable(m)||hitSet.has(m)||m.ty.critter)continue; const cy=m.y+(m.ty.flier?0:0.6*m.ty.scale), dd=Math.hypot(m.x-nx,cy-ny,m.z-nz); if(dd<bd&&losClear(nx,ny,nz,m.x,cy,m.z)){ bd=dd; m2=m; } }
           if(m2){ bends--; bent=true; const cy=m2.y+(m2.ty.flier?0:0.6*m2.ty.scale), L=Math.hypot(m2.x-nx,cy-ny,m2.z-nz)||1; d=[(m2.x-nx)/L,(cy-ny)/L,(m2.z-nz)/L]; x=nx; y=ny; z=nz; left=L+0.6; continue; } }
         break; }
       const ci=Math.floor(nz/CELL)*MW+Math.floor(nx/CELL), wall=nx<0||nz<0||nx>=MW*CELL||nz>=MH*CELL||D.tile[ci]===TW||D.tile[ci]===TX||doorBlock(ci)||ny<0.02||ny>D.ceil[ci];
@@ -198,7 +198,7 @@ function applyElem(m,el,sp,base){
     for(let k=0;k<sp.aff.chain;k++){ const nx=nearestFoe(from.x,from.z,4*areaK,seen,from.y+0.6*from.ty.scale); if(!nx)break; seen.add(nx); zapLine(from,nx,elemCol(el),el); const s2=nx.st||(nx.st={});
       if(el==='fire')s2.burn=Math.max(s2.burn||0,2*durK); else if(el==='ice')s2.chill=Math.max(s2.chill||0,1.8*durK); else if(el==='poison')s2.poison=Math.max(s2.poison||0,3.5*durK); from=nx; } }
 }
-function nearestFoe(x,z,r,skip,fy){ let b=null, bd=r; for(const o of monsters){ if(!foe(o)||skip.has(o))continue; const d=Math.hypot(o.x-x,o.z-z); if(d<bd&&(fy===undefined||losClear(x,fy,z,...mCenter(o)))){ bd=d; b=o; } } return b; }
+function nearestFoe(x,z,r,skip,fy){ let b=null, bd=r; for(const o of here.monsters){ if(!foe(o)||skip.has(o))continue; const d=Math.hypot(o.x-x,o.z-z); if(d<bd&&(fy===undefined||losClear(x,fy,z,...mCenter(o)))){ bd=d; b=o; } } return b; }
 function zapLine(a,b,c,style){ addBolt([a.x,a.y+0.6*a.ty.scale,a.z],[b.x,b.y+0.6*b.ty.scale,b.z],c,style||'thunder'); }
 function chainLightning(m,jumps,dmg,areaK){ let from=m; const seen=new Set([m]), order=[];
   sparkCrown(m,RUNE_DEF.thunder.col); vfx.zapFlash={x:m.x,y:m.y+0.6*m.ty.scale,z:m.z,col:RUNE_DEF.thunder.col,t:0.16,r:6};
@@ -213,7 +213,7 @@ function chainLightning(m,jumps,dmg,areaK){ let from=m; const seen=new Set([m]),
 }
 function react(kind,m,sp,base){
   const st=m.st, areaK=1+(sp.aff.area||0)/100, cx=m.x, cz=m.z, cy=m.y+0.6*m.ty.scale;
-  const around=(r,f)=>{ for(const o of monsters){ if(!foe(o))continue; if(Math.hypot(o.x-cx,o.z-cz)<r&&(o===m||losClear(cx,cy,cz,...mCenter(o))))f(o); } };
+  const around=(r,f)=>{ for(const o of here.monsters){ if(!foe(o))continue; if(Math.hypot(o.x-cx,o.z-cz)<r&&(o===m||losClear(cx,cy,cz,...mCenter(o))))f(o); } };
   const burst=(chars,col,n,sp2)=>{ for(let q=0;q<n;q++){ const a=mr()*6.28, e=mr(); spawn(cx,cy,cz,Math.cos(a)*sp2*(0.5+e),0.6+mr()*2.2,Math.sin(a)*sp2*(0.5+e),0.8+mr()*0.7,G(mpick(chars)),0.22,col[0],col[1],col[2],0); } };
   if(kind==='steam'){ st.burn=0; st.chill=0; burst(['~','o','.'],[2.4,2.5,2.6],40,2.6); around(2.4*areaK,o=>damageMonster(o,roll(4,7),'magic'));
     if(sndReady()){ const t=SND.ctx.currentTime; sEnv(sNoise(t,1.0,'highpass',1800,0.5,sOut(cx,cz,0.4)),t,0.02,0.9); } }
@@ -229,8 +229,8 @@ function react(kind,m,sp,base){
 }
 // statuses tick on their own; chill slows, shock stops for a moment
 function updateStatuses(dt){
-  if(dt>0)for(const m of monsters){ if(m.plx!==undefined){ const k=Math.min(1,dt*8); m.vlx=(m.vlx||0)+(((m.x-m.plx)/dt)-(m.vlx||0))*k; m.vlz=(m.vlz||0)+(((m.z-m.plz)/dt)-(m.vlz||0))*k; } m.plx=m.x; m.plz=m.z; }
-  for(const m of monsters){ const st=m.st; if(!st||m.dead)continue; const vis=m.visible&&Math.hypot(m.x-player.x,m.z-player.z)<26, cy=m.y+0.6*m.ty.scale;
+  if(dt>0)for(const m of here.monsters){ if(m.plx!==undefined){ const k=Math.min(1,dt*8); m.vlx=(m.vlx||0)+(((m.x-m.plx)/dt)-(m.vlx||0))*k; m.vlz=(m.vlz||0)+(((m.z-m.plz)/dt)-(m.vlz||0))*k; } m.plx=m.x; m.plz=m.z; }
+  for(const m of here.monsters){ const st=m.st; if(!st||m.dead)continue; const vis=m.visible&&Math.hypot(m.x-player.x,m.z-player.z)<26, cy=m.y+0.6*m.ty.scale;
     if(m.kx||m.kz){ m.x+=m.kx*dt; m.z+=m.kz*dt; m.kx*=Math.exp(-dt*6); m.kz*=Math.exp(-dt*6); if(Math.abs(m.kx)+Math.abs(m.kz)<0.05){ m.kx=0; m.kz=0; }
       const ci=Math.floor(m.z/CELL)*MW+Math.floor(m.x/CELL); if(D.tile[ci]===TW||D.tile[ci]===TX||D.solid.has(ci)){ if(m.slam&&time<m.slam.until){ const dd=m.slam.d; m.slam=null; m.playerT=time; damageMonster(m,dd,'blade'); for(let q=0;q<10;q++){ const a=mr()*6.28; spawn(m.x,m.y+0.6,m.z,Math.cos(a)*1.5,mr()*1.2,Math.sin(a)*1.5,0.5,G(mpick(['#','.',','])),0.14,0.9,0.85,0.8,0); } vfx.shake=Math.max(vfx.shake,0.12); } m.x-=m.kx*dt*1.5; m.z-=m.kz*dt*1.5; m.kx=0; m.kz=0; } m.cx=Math.floor(m.x/CELL); m.cz=Math.floor(m.z/CELL); }
     if(st.burn>0&&st.burn-dt<=0&&st.scorched&&!m.dead&&BL('scorch')){ m.hp=Math.min(m.maxHp||m.hp,m.hp+(m.maxHp||10)*0.3); st.scorched=false; }
@@ -242,7 +242,7 @@ function updateStatuses(dt){
     if(st.pin>0){ st.pin-=dt; if(vis&&mr()<dt*5)spawn(m.x+(mr()-0.5)*0.4,cy+0.3,m.z+(mr()-0.5)*0.4,0,0,0,0.3,G('#'),0.12,1.4,1.3,1.0,0); }
     if(st.shock>0){ st.shock-=dt; if(vis&&mr()<dt*12)spawn(m.x+(mr()-0.5)*0.5,cy+(mr()-0.5)*0.6,m.z+(mr()-0.5)*0.5,0,0,0,0.12,G(mpick(['/','\\'])),0.14,3,2.8,1.2,0); }
     if(m.dead&&st)m.st=null; }
-  for(const c of clouds){ c.t-=dt; c.tick-=dt; if(c.tick<=0){ c.tick=0.5; for(const o of monsters){ if(foe(o)&&Math.hypot(o.x-c.x,o.z-c.z)<c.r&&losClear(c.x,0.6,c.z,...mCenter(o))){ const s2=o.st||(o.st={}); s2.poison=Math.max(s2.poison||0,2.5); } } }
+  for(const c of clouds){ c.t-=dt; c.tick-=dt; if(c.tick<=0){ c.tick=0.5; for(const o of here.monsters){ if(foe(o)&&Math.hypot(o.x-c.x,o.z-c.z)<c.r&&losClear(c.x,0.6,c.z,...mCenter(o))){ const s2=o.st||(o.st={}); s2.poison=Math.max(s2.poison||0,2.5); } } }
     if(mr()<dt*16){ const a=mr()*6.28, rr=Math.sqrt(mr())*c.r; spawn(c.x+Math.cos(a)*rr,0.15+mr()*0.5,c.z+Math.sin(a)*rr,0,0.15,0,1.2,G(mpick(['%','~','.'])),0.2,0.5,1.4,0.45,0); } }
   clouds=clouds.filter(c=>c.t>0); updateZones(dt);
 }
@@ -254,17 +254,17 @@ function updateProjs(dt){
   for(const p of projs){
     p.t+=dt; if(p.kind==='orb'&&!p.noGrav)p.vy-=9.8*dt;
     if(p.accel){ const v=Math.hypot(p.vx,p.vy,p.vz)||1, nv=Math.min(p.vmax,v+p.accel*dt); p.vx*=nv/v; p.vy*=nv/v; p.vz*=nv/v; }
-    if(p.moon){ const R=(p.tide?TRAIT_V.pull[p.tide]:2.6)+p.moon*0.3; if(p.tide)for(const m of monsters){ if(!hittable(m)||m.ty.boss||m.key==='lord'||m.key==='final'||m.ty.habitat)continue; const ax=p.x-m.x, az=p.z-m.z, dd=Math.hypot(ax,az); if(dd>R||dd<0.4)continue; const v=(2+p.tide*0.6)*dt*3/Math.max(0.6,m.ty.scale||1); m.kx=(m.kx||0)+ax/dd*v; m.kz=(m.kz||0)+az/dd*v; m.st=m.st||{}; (p.pulled=p.pulled||new Set()).add(m); }
-      if(p.phases>=5){ p.burnT-=dt; if(p.burnT<=0){ p.burnT=0.25; for(const m of monsters){ if(!hittable(m))continue; if(Math.hypot(m.x-p.x,m.z-p.z)<0.6+0.25*p.moon){ m.playerT=time; applyHit(m,2,p.sp,true); } } } }
+    if(p.moon){ const R=(p.tide?TRAIT_V.pull[p.tide]:2.6)+p.moon*0.3; if(p.tide)for(const m of here.monsters){ if(!hittable(m)||m.ty.boss||m.key==='lord'||m.key==='final'||m.ty.habitat)continue; const ax=p.x-m.x, az=p.z-m.z, dd=Math.hypot(ax,az); if(dd>R||dd<0.4)continue; const v=(2+p.tide*0.6)*dt*3/Math.max(0.6,m.ty.scale||1); m.kx=(m.kx||0)+ax/dd*v; m.kz=(m.kz||0)+az/dd*v; m.st=m.st||{}; (p.pulled=p.pulled||new Set()).add(m); }
+      if(p.phases>=5){ p.burnT-=dt; if(p.burnT<=0){ p.burnT=0.25; for(const m of here.monsters){ if(!hittable(m))continue; if(Math.hypot(m.x-p.x,m.z-p.z)<0.6+0.25*p.moon){ m.playerT=time; applyHit(m,2,p.sp,true); } } } }
       const c2=elemCol(p.sp.elem); for(let q=0;q<Math.round(p.moon*2);q++){ const a=mr()*6.28, r=0.25*p.moon; spawn(p.x+Math.cos(a)*r,p.y+(mr()-0.5)*r,p.z+Math.sin(a)*r,0,0,0,0.25,G(mpick(['o','O','*','(',')'])),0.14+0.04*p.moon,c2[0]*2.6,c2[1]*2.6,c2[2]*2.6,0); } }
     if(p.homing){ let best=null, bs=0.5; const v=Math.hypot(p.vx,p.vy,p.vz)||1;
-      for(const m of monsters){ if(!foe(m))continue; const cy=m.y+0.6*m.ty.scale, ax=m.x-p.x, ay=cy-p.y, az=m.z-p.z, d=Math.hypot(ax,ay,az); if(d>12||d<0.1)continue; const c=(ax*p.vx+ay*p.vy+az*p.vz)/(d*v); if(c>bs&&losClear(p.x,p.y,p.z,m.x,cy,m.z)){ bs=c; best=[ax/d,ay/d,az/d]; } }
+      for(const m of here.monsters){ if(!foe(m))continue; const cy=m.y+0.6*m.ty.scale, ax=m.x-p.x, ay=cy-p.y, az=m.z-p.z, d=Math.hypot(ax,ay,az); if(d>12||d<0.1)continue; const c=(ax*p.vx+ay*p.vy+az*p.vz)/(d*v); if(c>bs&&losClear(p.x,p.y,p.z,m.x,cy,m.z)){ bs=c; best=[ax/d,ay/d,az/d]; } }
       if(best){ const k=Math.min(1,(p.homing*Math.PI/180)*dt*2.2); p.vx+=(best[0]*v-p.vx)*k; p.vz+=(best[2]*v-p.vz)*k; if(p.kind==='bolt')p.vy+=(best[1]*v-p.vy)*k; } }
     const nx=p.x+p.vx*dt, ny=p.y+p.vy*dt, nz=p.z+p.vz*dt, cx=Math.floor(nx/CELL), cz=Math.floor(nz/CELL);
     const c=elemCol(p.sp.elem), bolt=p.kind==='bolt';
     if(mr()<(p.wave?0.35:0.85))spawn(p.x,p.y,p.z,(mr()-0.5)*0.3,(mr()-0.5)*0.3,(mr()-0.5)*0.3,0.35+mr()*0.25,G(mpick(p.wind?['~',')','(']:bolt?['*','.','\'']:['o','.','*'])),p.big?0.24:p.mini?0.08:bolt?0.11:0.13,c[0]*2.2,c[1]*2.2,c[2]*2.2,0);
     if(cx<0||cz<0||cx>=MW||cz>=MH||p.t>(p.maxT||4)){ p.dead=true; continue; }
-    let hm=null; for(const m of monsters){ if(!hittable(m)||p.hit.has(m))continue; if(m.ty.habitat==='deep'&&(m.rise||0)<0.3)continue; const cy=m.y+(m.ty.flier?0:0.6*m.ty.scale); if(Math.hypot(m.x-nx,cy-ny,m.z-nz)<0.42+0.35*m.ty.scale+(p.kind==='bolt'?0.14:0)+(p.rad||0)){ hm=m; break; } }
+    let hm=null; for(const m of here.monsters){ if(!hittable(m)||p.hit.has(m))continue; if(m.ty.habitat==='deep'&&(m.rise||0)<0.3)continue; const cy=m.y+(m.ty.flier?0:0.6*m.ty.scale); if(Math.hypot(m.x-nx,cy-ny,m.z-nz)<0.42+0.35*m.ty.scale+(p.kind==='bolt'?0.14:0)+(p.rad||0)){ hm=m; break; } }
     if(hm){ p.hit.add(hm); if(bolt){ const dmg=p.dmg||RUNE_DEF.bolt.dmg; applyHit(hm,Math.max(1,Math.round(roll(dmg[0],dmg[1])*(p.dmgK||1))),p.sp); if(!p.wind&&(!p.mini||TL(p.sp,'scatter')>=5))arrowTraits(p,hm,nx,ny,nz);
         if(p.pierce===undefined&&!p.wind&&!p.mini){ const pl=TL(p.sp,'pierce'); p.pierce=[0,1,1,2,3,3][pl]; p.keep=pl>=2; if(pl>=5)p.wallPass=1; }
         if(p.heavy&&!hm.dead){ const v=Math.hypot(p.vx,p.vz)||1, k=(p.heavy>=1?3:0)/Math.max(0.6,hm.ty.scale||1); if(!hm.ty.boss&&hm.key!=='lord'&&hm.key!=='final'){ hm.kx=(hm.kx||0)+p.vx/v*k; hm.kz=(hm.kz||0)+p.vz/v*k; hm.st=hm.st||{}; if(p.heavy>=3)hm.wind=0; if(p.heavy>=5&&time>=(hm.st.pinCd||0)){ hm.st.pin=Math.max(hm.st.pin||0,0.2); hm.st.pinCd=time+1.2; } } }
@@ -306,14 +306,14 @@ function orbBurst(x,y,z,sp,opt){
   opt=opt||{}; const dK=opt.dmg||1, areaK=1+(sp.aff.area||0)/100, R=1.7*areaK*(opt.rad||1), c=elemCol(sp.elem), ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL);
   for(let q=0;q<28;q++){ const a=mr()*6.28, e=mr(); spawn(x,y,z,Math.cos(a)*R*1.6*(0.4+e),0.5+mr()*1.8,Math.sin(a)*R*1.6*(0.4+e),0.6+mr()*0.4,G(mpick(['*','o','.','+'])),0.18,c[0]*2.6,c[1]*2.6,c[2]*2.6,0); }
   sCrackleBurst(x,z); makeNoise(x,z,9,0.6); vfx.shake=Math.max(vfx.shake,0.08);
-  for(const m of monsters){ if(!hittable(m))continue; if(Math.hypot(m.x-x,m.z-z)<R+0.3*m.ty.scale&&losClear(x,Math.max(0.4,y),z,...mCenter(m))){ hitSrcPoint=[x,z]; applyHit(m,Math.max(1,Math.round(roll(RUNE_DEF.orb.dmg[0],RUNE_DEF.orb.dmg[1])*dK)),sp,true); hitSrcPoint=null; } }
+  for(const m of here.monsters){ if(!hittable(m))continue; if(Math.hypot(m.x-x,m.z-z)<R+0.3*m.ty.scale&&losClear(x,Math.max(0.4,y),z,...mCenter(m))){ hitSrcPoint=[x,z]; applyHit(m,Math.max(1,Math.round(roll(RUNE_DEF.orb.dmg[0],RUNE_DEF.orb.dmg[1])*dK)),sp,true); hitSrcPoint=null; } }
   if(sp.elem==='fire'&&ci>=0&&ci<NCELL&&!D.liquid[ci])burstFire(ci,R/CELL+0.6,0.9);
   if(sp.elem==='ice')chillArea(x,z,R); if(sp.elem==='thunder')landElem(sp,x,y,z,ci);
   if(sp.elem==='poison'&&opt.cloud!==false)clouds.push({x,z,r:R*1.1,t:3*(1+(sp.aff.dur||0)/100),tick:0});
   if(!opt.proj)return; const p=opt.proj, gen=p.gen||0;
   const sL=TL(sp,'split'); if(sL&&gen<(sL>=5?2:1)){ const n=sL>=3?3:2, spd=sL>=2?6.5:4.5; for(let k=0;k<n;k++){ const a=mr()*6.28; projs.push({kind:'orb',mini:true,gen:gen+1,x,y:Math.max(0.5,y),z,vx:Math.cos(a)*spd,vy:3.8,vz:Math.sin(a)*spd,t:0,sp,bounce:0,homing:0,hit:new Set(),burstK:sL>=4?0.7:0.5}); } }
   const tL=TL(sp,'trace'); if(tL&&!p.mini)addZone(x,z,R*(tL>=3?1.0:0.7),sp,[0,4,6,6,8,8][tL],tL>=5);
-  const iL=TL(sp,'impact'); if(iL&&!p.mini){ for(const m of monsters){ if(!hittable(m))continue; const ax=m.x-x, az=m.z-z, dd=Math.hypot(ax,az)||0.01; if(dd>R+0.5)continue; if(m.ty.boss||m.key==='lord'||m.key==='final'||m.ty.habitat)continue;
+  const iL=TL(sp,'impact'); if(iL&&!p.mini){ for(const m of here.monsters){ if(!hittable(m))continue; const ax=m.x-x, az=m.z-z, dd=Math.hypot(ax,az)||0.01; if(dd>R+0.5)continue; if(m.ty.boss||m.key==='lord'||m.key==='final'||m.ty.habitat)continue;
       const v=(iL>=2?8:6)/Math.max(0.6,(m.ty.scale||1)); m.kx=(m.kx||0)+ax/dd*v; m.kz=(m.kz||0)+az/dd*v; m.st=m.st||{}; if(iL>=3)m.slam={d:iL>=4?6:3,until:time+0.7}; if(iL>=5){ m.wind=0; m.st.pin=Math.max(m.st.pin||0,0.8); } } }
 }
 // lingering traces of an element: every half second, what stands in them takes the element
@@ -322,7 +322,7 @@ function addZone(x,z,r,sp,dur,grow){ const near=zones.find(zn=>zn.el===sp.elem&&
 function later(dt,fn){ laters.push({t:time+dt,fn}); }
 function updateZones(dt){ updateRains(dt); for(const L of laters)if(time>=L.t){ L.done=true; try{ L.fn(); }catch(e){} } laters=laters.filter(L=>!L.done);
   for(const zn of zones){ zn.t-=dt; zn.tick-=dt; if(zn.grow)zn.r=Math.min(zn.r0*1.7,zn.r+dt*0.18);
-    if(zn.tick<=0&&zn.el){ zn.tick=0.5; for(const m of monsters){ if(!hittable(m)||m.ty.critter)continue; if(Math.hypot(m.x-zn.x,m.z-zn.z)<zn.r+0.3*m.ty.scale){ m.playerT=time; applyElem(m,zn.el,zn.sp,1); } } } }
+    if(zn.tick<=0&&zn.el){ zn.tick=0.5; for(const m of here.monsters){ if(!hittable(m)||m.ty.critter)continue; if(Math.hypot(m.x-zn.x,m.z-zn.z)<zn.r+0.3*m.ty.scale){ m.playerT=time; applyElem(m,zn.el,zn.sp,1); } } } }
   zones=zones.filter(zn=>zn.t>0); }
 function drawZones(t){ for(const mk of marks){ const n=mk.star?14:18, b=0.6+0.4*Math.sin(t*10); for(let k=0;k<n;k++){ const a=k/n*Math.PI*2+t*(mk.star?1.5:0.6); dyn(mk.x+Math.cos(a)*mk.r,0.06,mk.z+Math.sin(a)*mk.r,G(mk.star?'+':'.'),0.15,mk.c[0]*b*2,mk.c[1]*b*2,mk.c[2]*b*2,0,0); } if(mk.star)dyn(mk.x,0.08,mk.z,G('*'),0.3,mk.c[0]*2.5*b,mk.c[1]*2.5*b,mk.c[2]*2.5*b,0,0); }
   for(const zn of zones){ if(Math.hypot(zn.x-player.x,zn.z-player.z)>30)continue; const c=elemCol(zn.el), f=Math.min(1,zn.t/1.5), n=Math.round(10+zn.r*8);
@@ -336,7 +336,7 @@ function burstFire(i,r,str){
 function viewDir(){ const cp=Math.cos(player.pitch); return [-Math.sin(player.yaw)*cp,Math.sin(player.pitch),-Math.cos(player.yaw)*cp]; }
 let projs=[];
 function groundPoint(o,d,maxD){ let x=o[0], y=o[1], z=o[2], px=x, pz=z; for(let s2=0;s2<(maxD||22);s2+=0.3){ x+=d[0]*0.3; y+=d[1]*0.3; z+=d[2]*0.3;
-    for(const m of monsters){ if(!foe(m))continue; const cy=m.y+0.6*m.ty.scale; if(Math.hypot(m.x-x,cy-y,m.z-z)<0.6+0.35*m.ty.scale)return [m.x,m.z]; }
+    for(const m of here.monsters){ if(!foe(m))continue; const cy=m.y+0.6*m.ty.scale; if(Math.hypot(m.x-x,cy-y,m.z-z)<0.6+0.35*m.ty.scale)return [m.x,m.z]; }
     const ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL); if(ci<0||ci>=NCELL||D.tile[ci]===TW||D.tile[ci]===TX||doorBlock(ci))return [px,pz]; if(y<=0.05)return [x,z]; px=x; pz=z; }
   return [x,z]; }
 let rains=[], marks=[];
@@ -345,7 +345,7 @@ let rains=[], marks=[];
 function onRolled(){ if(BL('quickdodge'))player.qcUntil=time+(BL('quickdodge')>=2?2.5:1.5); if(BL('counter'))player.ctrUntil=time+1.5;
    for(const h of ['L','R']){ if(h==='R'&&isTwo())continue; const H=gear.hands[h]; if(H.trig&&H.trig.type==='dodge'&&H.atk&&trigCd[h]<=0&&!gear.swapSt){ trigCd[h]=1.0; castNow(h); } } }
 function onKilledBy(m){ for(const h of ['L','R']){ if(h==='R'&&isTwo())continue; const H=gear.hands[h]; if(!(H.trig&&H.trig.type==='kill')||!H.atk||trigCd[h]>0||gear.swapSt)continue;
-    const [ox,oy,oz]=handPoint(h); let t=null, bd=15; for(const o of monsters){ if(o===m||!foe(o))continue; const dd=Math.hypot(o.x-player.x,o.z-player.z); if(dd>=bd)continue; if(!losClear(ox,oy,oz,...mCenter(o)))continue; bd=dd; t=o; }
+    const [ox,oy,oz]=handPoint(h); let t=null, bd=15; for(const o of here.monsters){ if(o===m||!foe(o))continue; const dd=Math.hypot(o.x-player.x,o.z-player.z); if(dd>=bd)continue; if(!losClear(ox,oy,oz,...mCenter(o)))continue; bd=dd; t=o; }
     if(!t)continue; const cy=t.y+0.6*t.ty.scale, d=Math.hypot(t.x-ox,cy-oy,t.z-oz)||1; trigCd[h]=0.5;
     if(((atkType(h)==='blade'||atkType(h)==='gsweep')&&Math.hypot(t.x-player.x,t.z-player.z)>2.9)||(atkType(h)==='dash'&&Math.hypot(t.x-player.x,t.z-player.z)>4.5))continue; castNow(h,{dir:[(t.x-ox)/d,(cy-oy)/d,(t.z-oz)/d],auto:true}); } }
 

@@ -2,6 +2,7 @@
 // 古い JS は src/game/imports.mjs で入れ物を読み、vfx.shake のように欄で読み書きする（入れ物そのものは差し替えない）。
 // 移す時は tools/state-move.mjs を使う（同じ名前の局所の変数は書き換えない）。初めの値は、古い JS の宣言のまま。
 // 入れ物の名前は、古い JS の局所の名前とぶつからない物にする（道具が確かめる。fx は座標の fx とぶつかるので vfx にした）。
+import { type BranchPlace, type InterPlace, type RealmPlace } from './generate.ts';
 import { type Rune } from './runes.ts';
 
 /** 稲妻の光り（灯りの1つとして描く。t は残りの秒。900 より大きいと消えない） */
@@ -187,3 +188,43 @@ export interface Gear {
   buildIdx: number;
 }
 export const gear: Gear = { hands: null, bag: [], castSt: null, swapSt: null, builds: [null, null], buildIdx: -1 };
+
+/** 階を移る途中（out：暗くなって出ていく、in：明るくなって入る。go は行き先の種類） */
+export interface Trans {
+  phase: 'out' | 'in';
+  t: number;
+  regen?: boolean;
+  go?: string;
+}
+/** 今いる場所と、階の中身（D 以外）。深さ・支道・異界・特別な階、生き物、灯りの備品、階を移る途中、着いた所 */
+export interface Here {
+  /** 階の生き物。生き物の型は、生き物の処理を移す時に作る */
+  monsters: unknown[];
+  depth: number;
+  branch: BranchPlace | null;
+  realm: RealmPlace | null;
+  inter: InterPlace | null;
+  /** 灯りの備品。型は、備品の処理を移す時に作る */
+  fixtures: unknown[];
+  trans: Trans | null;
+  /** 着いた所（'stairs'・'portal' など。普通に入った時は null） */
+  arrive: string | null;
+  /** 階に入った時の暗さ */
+  fade: number;
+  /** 図鑑の見本の階を作っているか */
+  showroomGen: boolean;
+}
+export const here: Here = {
+  monsters: [],
+  depth: 1,
+  branch: null,
+  realm: null,
+  inter: null,
+  fixtures: [],
+  trans: null,
+  arrive: null,
+  fade: 0,
+  showroomGen: false,
+};
+/** 行った階の覚え（場所の名前 → 見えた所と覚えた色の写し）。丸ごと入れ替えないので、古い JS は今までどおり placeMem で読む */
+export const placeMem = new Map<string, { explored: Uint8Array; mem: Float32Array }>();
