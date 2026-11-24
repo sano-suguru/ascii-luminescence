@@ -119,20 +119,23 @@ describe('特性とルーン', () => {
     expect(R.tv({ tr: { range: 2 } }, 'range')).toBe(1.35);
   });
   it('手のルーンは、使える枠の分だけ数え、空きを除く。保存の形は種類・強い印・特性だけ', () => {
-    const H = { slots: [{ type: 'fire' }, null, { type: 'fire' }, { type: 'ice' }], slotN: 3 };
+    const H = {
+      slots: [{ uid: 0, aff: {}, type: 'fire' }, null, { uid: 0, aff: {}, type: 'fire' }, { uid: 0, aff: {}, type: 'ice' }],
+      slotN: 3,
+    };
     expect(R.handRunes(H).map((r) => r.type)).toEqual(['fire', 'fire']);
     expect(R.elemCount(H, 'fire')).toBe(2);
     expect(R.elemCount({}, 'fire')).toBe(0);
-    expect(R.serRune({ type: 'orb', traits: [{ k: 'speed', lv: 5 }], named: 'x' })).toEqual({
+    expect(R.serRune({ uid: 0, aff: {}, type: 'orb', traits: [{ k: 'speed', lv: 5 }], named: 'x' })).toEqual({
       type: 'orb',
       strong: false,
       traits: [{ k: 'speed', lv: 5 }],
     });
   });
   it('武器の名前の色：特性が無ければ無し、段5か名のある武器は金', () => {
-    expect(R.weaponCol({ type: 'blade' })).toBe('');
-    expect(R.weaponCol({ type: 'blade', traits: [{ k: 'range', lv: 3 }] })).toBe('#9fdcf0');
-    expect(R.weaponCol({ type: 'blade', traits: [{ k: 'range', lv: 5 }] })).toBe(css([1.0, 0.82, 0.3]));
+    expect(R.weaponCol({ uid: 0, aff: {}, type: 'blade' })).toBe('');
+    expect(R.weaponCol({ uid: 0, aff: {}, type: 'blade', traits: [{ k: 'range', lv: 3 }] })).toBe('#9fdcf0');
+    expect(R.weaponCol({ uid: 0, aff: {}, type: 'blade', traits: [{ k: 'range', lv: 5 }] })).toBe(css([1.0, 0.82, 0.3]));
   });
 });
 

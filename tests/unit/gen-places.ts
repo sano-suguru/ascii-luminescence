@@ -1,24 +1,15 @@
 // 迷宮の生成のテストの共通部分（generate.test.ts と reach.test.ts）：全部の場所と、決まった入力で生成する gen。
-// まだ古い JS にある物（ルーンを作る makeRune など）は、本物を古い JS の文から取り出して使う（tools/legacy-eval.mjs）。
 import { lookup } from '../../src/lib/array.ts';
-import { legacyValues } from '../../tools/legacy-eval.mjs';
 import { MTYPES } from '../../src/lib/creatures.ts';
 import { type BranchPlace, type GenEnv, type GenResult, type InterPlace, type RealmPlace, generateLevel } from '../../src/lib/generate.ts';
 import { makeHistory } from '../../src/lib/history.ts';
-import { RUNE_TYPES } from '../../src/lib/runes.ts';
+import { RUNE_TYPES, rollTraits } from '../../src/lib/runes.ts';
+import { makeRune } from '../../src/lib/gear.ts';
 import { SPECIALS } from '../../src/lib/strata.ts';
 import { BRANCHES, FINAL_DEPTH, REALMS } from '../../src/lib/world.ts';
 
-/** 生成に渡す物（テストの beforeAll で1回読む）。生き物の表は src/lib/creatures.ts、ルーンを作る makeRune などは、まだ古い JS にある */
-export const loadEnv = async (): Promise<GenEnv> => {
-  const { makeRune, rollTraits } = await legacyValues<Pick<GenEnv, 'makeRune' | 'rollTraits'>>([
-    'WEAPON_SIG',
-    'runeUid',
-    'makeRune',
-    'rollTraits',
-  ]);
-  return { MTYPES, makeRune, rollTraits };
-};
+/** 生成に渡す物（生き物の表は src/lib/creatures.ts、ルーンを作る makeRune は src/lib/gear.ts、特性を決める rollTraits は src/lib/runes.ts） */
+export const loadEnv = async (): Promise<GenEnv> => ({ MTYPES, makeRune, rollTraits });
 
 /** 生成する場所（深さと、支道・異界・特別な階のどれか） */
 export interface Place {

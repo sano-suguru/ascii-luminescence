@@ -1,7 +1,7 @@
 // 迷宮の生成（もとは src/game/04-generate.js の generate）。「入力 → 結果」の形：
 //   generateLevel(seed, depth, input, env) → { level, lordType, beastType }
 //   input：冒険のシード runSeed、場所（branch・realm・inter）、図鑑の見本か（showroom）、年代記（hist）、試練（trials）、使える武器（weapons）
-//   env：生き物の表 MTYPES（src/lib/creatures.ts。読むだけ）と、まだ古い JS にある物（ルーンを作る makeRune・rollTraits）
+//   env：生き物の表 MTYPES（src/lib/creatures.ts。読むだけ）と、ルーンを作る makeRune（src/lib/gear.ts）・特性を決める rollTraits（src/lib/runes.ts）
 //   結果：階（level）と、その階の主の種類（lordType）・忘れられた獣（beastType）。生き物の表への書き込みは、古い JS の包み（generate）が行う
 // 迷宮の乱数（setRand）とノイズの種（setNoiseSeed）は、ここで階のシードから入れ替える。
 import { lookup, must, nth } from './array.ts';
@@ -107,7 +107,7 @@ export type Engraving = (HistoryEvent & { wide?: boolean; pi?: number }) | { ski
 type Dir = (typeof D4)[number];
 /** 生き物の種類（src/lib/creatures.ts） */
 export type { MonsterType } from './creatures.ts';
-/** 生成に外から渡す物（生き物の表と、まだ古い JS にある物） */
+/** 生成に外から渡す物（生き物の表と、ルーンを作る関数。テストは同じ物を渡す） */
 export interface GenEnv {
   /** 生き物の表（読むだけ） */
   MTYPES: Readonly<Record<string, MonsterType>>;
