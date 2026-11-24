@@ -57,7 +57,7 @@ document.getElementById('intropanel').addEventListener('click',e=>{
   if(regen){ here.branch=null; here.realm=null; here.inter=null; }
   rains=[]; marks=[]; zones=[]; laters=[];
   adv.dead=false; { const de=document.getElementById('death'); if(de)de.classList.remove('show','won'); }
-  adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:time,maxDepth:here.depth,book0:BOOK.size,beastsNew:0}; resetRunes();
+  adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:clock.time,maxDepth:here.depth,book0:BOOK.size,beastsNew:0}; resetRunes();
   if(regen)newLevel();
   ui.started=true; document.body.classList.add('started'); if(here.D)showStratum(here.D.stratum); setHelp(true); helpT=25; introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume();
 });
@@ -71,7 +71,7 @@ window.addEventListener('mousedown',e=>{
   if(ui.menuOpen){ setMenu(false); if(!plFailed)tryLock(); }
   if(ui.invOpen)setInv(false);
 },true);
-canvas.addEventListener('wheel',e=>{ if(!ui.started||isPaused()||!gear.hands)return; e.preventDefault(); const have=(unlocked('build3')?[0,1,2]:[0,1]).filter(k=>gear.builds[k]); if(!have.length||time-(canvas.wheelT||-9)<0.35)return; canvas.wheelT=time;
+canvas.addEventListener('wheel',e=>{ if(!ui.started||isPaused()||!gear.hands)return; e.preventDefault(); const have=(unlocked('build3')?[0,1,2]:[0,1]).filter(k=>gear.builds[k]); if(!have.length||clock.time-(canvas.wheelT||-9)<0.35)return; canvas.wheelT=clock.time;
   const pos=Math.max(0,have.indexOf(gear.buildIdx)), next=have[(pos+1)%have.length]; const prev=snapHands(); if(applyBuild(next)){ startSwap(prev); showHint(`ビルド${next+1}`); setTimeout(()=>showHint(''),900); } renderHotbar(); },{passive:false});
 let downAt=null;
 canvas.addEventListener('mousedown',e=>{ if(!ui.started||isPaused())return; if(e.button===2){ beginCast('R'); return; } if(ui.locked&&e.button===0){ beginCast('L'); return; } if(e.button===0){ downAt=[e.clientX,e.clientY]; beginCast('L'); } dragging=true; lmx=e.clientX; lmy=e.clientY; if(!ui.locked)tryLock(); canvas.focus(); updateResume(); });

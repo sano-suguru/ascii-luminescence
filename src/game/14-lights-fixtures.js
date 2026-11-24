@@ -56,7 +56,7 @@ function updateLights(t){
   const lf=0.96+0.03*Math.sin(t*7.1)+0.02*Math.sin(t*13.3);
   if(ui.camMode==='tps'){ DLP[0]=player.x; DLP[1]=player.eye+0.15; DLP[2]=player.z; } else { DLP[0]=camera.position.x-Math.sin(player.yaw)*0.25; DLP[1]=camera.position.y-0.2; DLP[2]=camera.position.z-Math.cos(player.yaw)*0.25; } DLP[3]=lantern.r*(1+0.35*bodyN('lamp'));
   DLC[0]=LANTERN[0]*lf*lantern.k; DLC[1]=LANTERN[1]*lf*lantern.k; DLC[2]=LANTERN[2]*lf*lantern.k;
-  if(gear.castSt&&gear.hands){ const kk=Math.min(1,gear.castSt.t/Math.max(0.01,gear.castSt.need))*(gear.castSt.full?1+0.15*Math.sin(time*14):1), cc=elemCol(gear.hands[gear.castSt.h].elem?gear.hands[gear.castSt.h].elem.type:null); for(let q=0;q<3;q++)DLC[q]=DLC[q]*(1-0.55*kk)+cc[q]*2.6*kk; }
+  if(gear.castSt&&gear.hands){ const kk=Math.min(1,gear.castSt.t/Math.max(0.01,gear.castSt.need))*(gear.castSt.full?1+0.15*Math.sin(clock.time*14):1), cc=elemCol(gear.hands[gear.castSt.h].elem?gear.hands[gear.castSt.h].elem.type:null); for(let q=0;q<3;q++)DLC[q]=DLC[q]*(1-0.55*kk)+cc[q]*2.6*kk; }
   const list=here.monsters.filter(m=>m.ty.light>0&&!m.ty.invisible&&(m.ty.form!=='eel'||m.surf>0)).map(m=>[(m.x-player.x)**2+(m.z-player.z)**2,m]).sort((a,b)=>a[0]-b[0]);
   const flOn=vfx.zapFlash&&vfx.zapFlash.t>0;
   if(flOn){ const s5=(NDL-1), k5=vfx.zapFlash.t>900?1:Math.min(1,vfx.zapFlash.t/0.16); DLP[s5*4]=vfx.zapFlash.x; DLP[s5*4+1]=vfx.zapFlash.y; DLP[s5*4+2]=vfx.zapFlash.z; DLP[s5*4+3]=(vfx.zapFlash.r||6); DLC[s5*3]=vfx.zapFlash.col[0]*3*k5; DLC[s5*3+1]=vfx.zapFlash.col[1]*3*k5; DLC[s5*3+2]=vfx.zapFlash.col[2]*3*k5; }

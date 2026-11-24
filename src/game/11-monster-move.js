@@ -22,17 +22,17 @@ function chooseNext(m){
   if(fn>=0){
     let best=opts[0],bd=-1; for(const d of opts){ const dd=Math.hypot(m.cx+d[0]-fn%MW,m.cz+d[1]-((fn/MW)|0))+mr()*0.3; if(dd>bd){bd=dd;best=d;} }
     m.dir=best; m.tx=m.cx+best[0]; m.tz=m.cz+best[1]; m.flee=1.6;
-    if(m.visible&&time-fleeMsgT>6){ fleeMsgT=time; msg(`<b style="color:${css(m.ty.col)}">${m.ty.ch}</b>${mname(m)}が炎から逃げ出した。`); }
+    if(m.visible&&clock.time-fleeMsgT>6){ fleeMsgT=clock.time; msg(`<b style="color:${css(m.ty.col)}">${m.ty.ch}</b>${mname(m)}が炎から逃げ出した。`); }
     return;
   }
   let goal=null;
   if(m.noticed&&hostile(m)&&!(m.flee>0))goal=[player.x,player.z];
-  if(!goal&&m.goal&&time<m.goalT)goal=m.goal;
+  if(!goal&&m.goal&&clock.time<m.goalT)goal=m.goal;
   if(!goal&&m.route&&m.route.length&&!m.noticed){ const rc=m.route[m.ri%m.route.length]; if(rc===m.cz*MW+m.cx)m.ri++; goal=cpos(m.route[m.ri%m.route.length]); }
   if(!goal&&m.camp>=0&&m.camp!==undefined&&!m.noticed){ const [cx2,cz2]=cpos(m.camp); if(Math.hypot(cx2-m.x,cz2-m.z)>3.2)goal=[cx2,cz2]; else if(mr()<0.85){ m.wait=2+mr()*4; return; } }
   if(!goal&&m.ty.hound&&m.isLead&&!m.noticed){
     if(m.ty.hound==='light'&&!stealth.sneak&&Math.hypot(player.x-m.x,player.z-m.z)<22)goal=[player.x,player.z];
-    else { const sd=houndScent(m); if(sd){ m.dir=sd; m.tx=m.cx+sd[0]; m.tz=m.cz+sd[1]; if(!m.tracked){ m.tracked=true; if(time-(houndScent.msgT||-99)>20){ houndScent.msgT=time; msg(`<b style="color:${css(m.ty.col)}">Z</b>どこかで${mname(m)}の群れが、あなたの匂いを嗅ぎつけた。`); sHowl(m.x,m.z); } } return; } }
+    else { const sd=houndScent(m); if(sd){ m.dir=sd; m.tx=m.cx+sd[0]; m.tz=m.cz+sd[1]; if(!m.tracked){ m.tracked=true; if(clock.time-(houndScent.msgT||-99)>20){ houndScent.msgT=clock.time; msg(`<b style="color:${css(m.ty.col)}">Z</b>どこかで${mname(m)}の群れが、あなたの匂いを嗅ぎつけた。`); sHowl(m.x,m.z); } } return; } }
   }
   if(!goal&&m.leader&&!m.leader.dead){ const L=m.leader; if(Math.hypot(L.x-m.x,L.z-m.z)>3.2)goal=[L.x,L.z]; else if(mr()<0.5){ m.wait=0.3+mr()*0.8; return; } }
   if(m.ty.form==='bloat'&&m.noticed)goal=[player.x,player.z];

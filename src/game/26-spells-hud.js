@@ -82,7 +82,7 @@ function chantStart(el){
   return {
     tick(kk,isFull){ if(stopped)return; k=kk; if(isFull&&!full){ full=true; startPad(); }
       while(next<ctx.currentTime+0.06){ const step=CHANT_STEPS[Math.min(CHANT_STEPS.length-1,(syl%4)+Math.floor(k*3)+(syl%3===2?1:0))], f=root*Math.pow(2,step/12);
-        const dur=full?0.3:0.2; syllable(next,f,VOWELS[(syl*3)%5],dur); if(gear.castSt){ gear.castSt.syl=syl; gear.castSt.sylT=time; } syl++; next+=full?0.3:0.21; } },
+        const dur=full?0.3:0.2; syllable(next,f,VOWELS[(syl*3)%5],dur); if(gear.castSt){ gear.castSt.syl=syl; gear.castSt.sylT=clock.time; } syl++; next+=full?0.3:0.21; } },
     stop(){ if(stopped)return; stopped=true; const t=ctx.currentTime; try{ out.gain.cancelScheduledValues(t); out.gain.setValueAtTime(out.gain.value,t); out.gain.exponentialRampToValueAtTime(0.0001,t+0.18);
       for(const p of pad){ p.o.stop(t+0.25); p.lfo.stop(t+0.25); } }catch(e){} } };
 }

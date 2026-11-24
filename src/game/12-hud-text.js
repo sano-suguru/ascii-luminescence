@@ -60,7 +60,7 @@ function onNoticed(m){
   const grp=m.g>=0?here.monsters.filter(o=>o.g===m.g):[m];
   for(const o of grp){ o.noticed=true; o.sleep=false; o.aware=Math.max(o.aware,1); o.mark=0; }
   const k=m.g>=0?'g'+m.g:'m'+here.monsters.indexOf(m);
-  if(time-(noticeMsgT[k]||-99)>12){ noticeMsgT[k]=time; msg(`<b style="color:#ff6a4a">!</b>${mname(m)}${grp.length>1?'の群れ':''}があなたに気づいた！`); sAlert(m.x,m.z); }
+  if(clock.time-(noticeMsgT[k]||-99)>12){ noticeMsgT[k]=clock.time; msg(`<b style="color:#ff6a4a">!</b>${mname(m)}${grp.length>1?'の群れ':''}があなたに気づいた！`); sAlert(m.x,m.z); }
 }
 function makeNoise(x,z,r,amt){
   for(const m of here.monsters){ const d=Math.hypot(m.x-x,m.z-z); if(d>r)continue; m.aware=Math.min(1.25,m.aware+amt*(1-d/r)); if(m.sleep&&m.aware>0.35){ m.sleep=false; m.wait=0.6; } }

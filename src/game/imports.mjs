@@ -71,4 +71,4 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { adv, gear, here, placeMem, player, ui, vfx } from '../lib/state.ts';
+import { adv, clock, gear, here, placeMem, player, ui, vfx } from '../lib/state.ts';

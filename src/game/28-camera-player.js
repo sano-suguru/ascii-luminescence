@@ -56,7 +56,7 @@ function updatePlayer(dt){
     const sy=Math.sin(player.yaw), cy=Math.cos(player.yaw);
     const pci=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL), lq=here.D.liquid[pci], wade=(here.D.bridge[pci]?1:lq===LQ_DEEP?0.45:lq===LQ_BOG?0.55:lq===LQ_WATER?0.8:1)*(webTouch(pci)?0.35:1)*(here.D.surface[pci]===SF_MUD&&!lq?0.72:1)*(player.netT>0?0:1);
     if(pci!==player.lastCell){ player.lastCell=pci; brimFlare(pci); if(tallAt(pci)){ if(!tallMsg){ tallMsg=true; msg('<b style="color:#7ad86a">"</b>背の高い茂みを踏み分けた。茂みは視線を遮る。獣との間に挟めば、身を隠す壁になる。踏み分けた跡は、しばらくすると元に戻る。'); } trample(pci); } }
-    if(!lq)scent[pci]=time;
+    if(!lq)scent[pci]=clock.time;
     if(lq===LQ_DEEP&&!here.D.swimMsg){ here.D.swimMsg=true; msg('<b style="color:#5aa0ff">~</b>深い水に入った。足が届かない。ゆっくりと泳いで進む。'); }
     const ix=-sy*fw+cy*st, iz=-cy*fw-sy*st, len=Math.hypot(ix,iz), sp=((k.ShiftLeft||k.ShiftRight)&&!stealth.sneak?5.6:stealth.sneak?2.3:3.2)*wade;
     if(wade<1&&len){ player.splash=(player.splash||0)+dt*Math.hypot(player.vx,player.vz)*1.4; while(player.splash>1){ player.splash--; const a0=mr()*6.28;
@@ -93,7 +93,7 @@ function updatePlayer(dt){
   { const pci=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL), deep=here.D.liquid[pci]===LQ_DEEP&&!here.D.bridge[pci]; player.eye+=((deep?0.62:EYE)-player.eye)*Math.min(1,dt*3); }
   if(ui.camMode==='tps'){ placeThirdPerson(dt,sk); return; }
   U.uCut.value=0;
-  camera.position.set(player.x+(mr()-0.5)*sk,(mr()-0.5)*sk+player.eye-(player.roll?Math.sin(Math.PI*player.roll.t/0.32)*0.55:0)+Math.sin(player.bob*2)*0.035*spd*(player.eye<1?0.3:1)+(player.eye<1?Math.sin(time*1.8)*0.04:0),player.z);
+  camera.position.set(player.x+(mr()-0.5)*sk,(mr()-0.5)*sk+player.eye-(player.roll?Math.sin(Math.PI*player.roll.t/0.32)*0.55:0)+Math.sin(player.bob*2)*0.035*spd*(player.eye<1?0.3:1)+(player.eye<1?Math.sin(clock.time*1.8)*0.04:0),player.z);
   camera.rotation.set(player.pitch,player.yaw,Math.sin(player.bob)*0.004*spd);
 }
 // eye adaptation and atmosphere: open caverns thin the fog, bright surroundings lower the exposure

@@ -102,12 +102,12 @@ function ignite(i,strength,gasBurn){
 }
 function boom(i){
   const x=(i%MW+0.5)*CELL, z=(((i/MW)|0)+0.5)*CELL, dd=Math.hypot(x-player.x,z-player.z);
-  if(time-(boom.last||-9)>0.35){ boom.last=time; sBoom(clamp(1-dd/34,0.05,1)); makeNoise(x,z,20,1.3); }
+  if(clock.time-(boom.last||-9)>0.35){ boom.last=clock.time; sBoom(clamp(1-dd/34,0.05,1)); makeNoise(x,z,20,1.3); }
   if(dd<30){ for(let q=0;q<10;q++){ const a=mr()*6.28, e2=mr(); spawn(x,0.6+mr(),z,Math.cos(a)*3*e2,0.5+mr()*2.5,Math.sin(a)*3*e2,0.6+mr()*0.6,G(mpick(['*','#','^','%'])),0.3+mr()*0.2,3.2,1.6,0.5,0); } }
   vfx.flash=Math.max(vfx.flash,clamp(1-dd/26,0,1)); vfx.shake=Math.max(vfx.shake,clamp(1-dd/22,0,1)*0.6);
   if(dd<3.6)hurtPlayer(Math.round(12*(1-dd/3.6))+2,'爆発');
   for(const m of here.monsters){ if(m.dead||m.ty.critter)continue; const dm=Math.hypot(m.x-x,m.z-z); if(dm<3.6)damageMonster(m,Math.round(16*(1-dm/3.6))+3,'fire'); }
-  if(time-lastBoom>3&&dd<34){ lastBoom=time; msg('<b style="color:#ffb347">*</b>沼のガスに火が回り、轟音とともに爆ぜた！'); }
+  if(clock.time-lastBoom>3&&dd<34){ lastBoom=clock.time; msg('<b style="color:#ffb347">*</b>沼のガスに火が回り、轟音とともに爆ぜた！'); }
 }
 function stepFire(){
   const g=here.D.gas;

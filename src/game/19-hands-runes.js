@@ -55,11 +55,11 @@ const vmKick={L:-9,R:-9};
 function drawViewWeapons(t){ if(ui.camMode==='tps'||!ui.started||adv.dead||!gear.hands||!here.D)return; if(gallery&&gallery.mode==='beast')return;
   const [f,r,u]=handUp(), [ex,ey,ez]=aimOrigin(); let dw=0.62;
   for(const side of [-0.3,0,0.3])for(let st=0.05;st<=0.62;st+=0.04){ const x=ex+f[0]*st+r[0]*side, z=ez+f[2]*st+r[2]*side, ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL); if(ci<0||ci>=NCELL||here.D.tile[ci]===TW||here.D.tile[ci]===TX||doorBlock(ci)){ dw=Math.min(dw,st-0.07); break; } }
-  const q=clamp(dw/0.62,0.3,1), spd=Math.hypot(player.vx||0,player.vz||0), bob=Math.sin(time*9)*0.007*Math.min(1,spd/4), sway=Math.cos(time*4.5)*0.004*Math.min(1,spd/4), two=isTwo();
+  const q=clamp(dw/0.62,0.3,1), spd=Math.hypot(player.vx||0,player.vz||0), bob=Math.sin(clock.time*9)*0.007*Math.min(1,spd/4), sway=Math.cos(clock.time*4.5)*0.004*Math.min(1,spd/4), two=isTwo();
   const kx=Math.min(1,(camera.aspect||1.78)/(16/9)), W=(x,y,z)=>{ x*=kx; return [ex+(f[0]*z+r[0]*x+u[0]*y)*q,ey+(f[1]*z+u[1]*y)*q,ez+(f[2]*z+r[2]*x+u[2]*y)*q]; };
   const one=(h,type,mirror)=>{ const M=VM_MODELS[type]||VM_MODELS.bare; const H=gear.hands[h], el=H.elem?H.elem.type:null, ec=elemCol(el);
     const chant=gear.castSt&&(gear.castSt.h===h||two)?Math.min(1,gear.castSt.t/Math.max(0.01,gear.castSt.need)):0, hold=gear.castSt&&(gear.castSt.h===h||two)&&gear.castSt.full?Math.min(1,gear.castSt.hold/2):0;
-    const swingP=player.swing>0&&(player.swingH===h||two)?1-player.swing/0.22:-1, kick=Math.max(0,1-(time-(vmKick[h]||-9))/0.16);
+    const swingP=player.swing>0&&(player.swingH===h||two)?1-player.swing/0.22:-1, kick=Math.max(0,1-(clock.time-(vmKick[h]||-9))/0.16);
     let th=0, dx=sway, dy=bob, dz=0, glow=1;
     if(M.kind==='sword'){ if(swingP>=0){ th=M.thrust?0.15-0.3*swingP:0.9-2.2*swingP; dz=Math.sin(swingP*Math.PI)*(M.thrust?0.2:0.08); dy+=Math.sin(swingP*Math.PI)*0.04; }
       if(two&&gear.castSt&&gear.castSt.h==='R'){ th=0.55*chant; dy+=0.06*chant; } dz+=kick*0.04; }

@@ -120,7 +120,7 @@ function lichAura(m,t){ const sc=m.ty.scale||1, dp=Math.hypot(m.x-player.x,m.z-p
   for(const s of m.swords){ for(let y=0;y<s.h;y+=0.12)dyn(s.x+s.tx*y,y,s.z+s.tz*y,G('|'),0.14,0.42,0.42,0.48); dyn(s.x+s.tx*s.h,s.h,s.z+s.tz*s.h,G('+'),0.18,0.55,0.48,0.32); }
   const n=36; for(let k=0;k<n;k++){ const a=k/n*Math.PI*2+t*0.05, r=(1.3+0.12*Math.sin(t*0.7+k))*sc; dyn(m.x+Math.cos(a)*r,0.05,m.z+Math.sin(a)*r,G(k%3?'.':'*'),0.12,0.45,0.65,0.9); }
   if(mr()<0.25){ const a=mr()*6.28, r=mr()*1.2*sc; spawn(m.x+Math.cos(a)*r,0.15,m.z+Math.sin(a)*r,Math.cos(a)*0.25,0.08,Math.sin(a)*0.25,2.2,G(mpick(['~','.'])),0.22,0.3,0.4,0.55,0); }
-  if(dp<14&&time>(m.droneT||0)&&sndReady()){ m.droneT=time+3.2; const t0=SND.ctx.currentTime, o=sOut(m.x,m.z,0.16); sEnv(sTone(t0,'sine',55,52,3,o),t0,0.6,2.3); sEnv(sTone(t0,'sine',82.5,80,3,o),t0,0.8,2.1,0.5); } }
+  if(dp<14&&clock.time>(m.droneT||0)&&sndReady()){ m.droneT=clock.time+3.2; const t0=SND.ctx.currentTime, o=sOut(m.x,m.z,0.16); sEnv(sTone(t0,'sine',55,52,3,o),t0,0.6,2.3); sEnv(sTone(t0,'sine',82.5,80,3,o),t0,0.8,2.1,0.5); } }
 
 // spiderQueenForm（蜘蛛の女王の形）は src/lib/bodies/bosses.ts
 // her floor: a radial web and spiderlings running on it
@@ -135,7 +135,7 @@ function spiderAura(m,t){ const sc=m.ty.scale||1, dp=Math.hypot(m.x-player.x,m.z
 function nagaAura(m,t){ const sc=m.ty.scale||1, dp=Math.hypot(m.x-player.x,m.z-player.z); if(dp>30)return;
   for(let r=1.1;r<2.4;r+=0.45){ const n=Math.round(r*16); for(let k=0;k<n;k++){ const a=k/n*Math.PI*2+t*0.1*(r>1.6?-1:1); dyn(m.x+Math.cos(a)*r*sc,0.04+0.02*Math.sin(t*2+k),m.z+Math.sin(a)*r*sc,G('~'),0.12,0.2,0.5,0.55); } }
   for(let k=0;k<4;k++){ const a=t*(0.4+k*0.11)+k*1.6, r=(1.3+0.5*Math.sin(t*0.6+k))*sc; for(let q=0;q<4;q++){ const aa=a-q*0.06; dyn(m.x+Math.cos(aa)*r,0.08,m.z+Math.sin(aa)*r,G(q?'~':'n'),0.15,0.4,0.85,0.45); } }
-  if(dp<12&&time>(m.hissT||0)&&sndReady()){ m.hissT=time+4+mr()*3; const t0=SND.ctx.currentTime; sEnv(sNoise(t0,0.9,'highpass',3000,0.7,sOut(m.x,m.z,0.18)),t0,0.15,0.7); } }
+  if(dp<12&&clock.time>(m.hissT||0)&&sndReady()){ m.hissT=clock.time+4+mr()*3; const t0=SND.ctx.currentTime; sEnv(sNoise(t0,0.9,'highpass',3000,0.7,sOut(m.x,m.z,0.18)),t0,0.15,0.7); } }
 
 // oldDragonForm（古竜の形）は src/lib/bodies/bosses.ts
 // its hoard and its breath: coins, cups and chests around and beneath; smoke from the nostrils now and then

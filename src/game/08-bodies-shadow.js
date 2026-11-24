@@ -22,12 +22,12 @@ function transformShadow(b){
   if(sndReady()){ const t0=SND.ctx.currentTime, o=sOut(b.x,b.z,0.3); for(const f of [55,82.5,110,164.8])sEnv(sTone(t0,'sawtooth',f,f*0.97,3.5,o),t0,0.4,3,0.25); }
   const from=b.form.filter(p=>p.part!=='crack'&&p.part!=='heart');
   MTYPES.final2={...b.ty,form:'shadowserpent',sk:'final2',speed:(b.ty.speed||0.8)*1.35,verb:'封印が破れ、底の闇から長い体をもたげた影'};
-  b.ty=MTYPES.final2; b.form=buildForm(b.ty); b.morph={from,t0:time,dur:2.5};
+  b.ty=MTYPES.final2; b.form=buildForm(b.ty); b.morph={from,t0:clock.time,dur:2.5};
   msg(`<b style="color:#a98cff">&amp;</b>王の姿が砕け、封じられていた闇があふれ出した。`);
   setTimeout(()=>msg(`<b style="color:#a98cff">&amp;</b>${last.title}${last.name}の影が、底の闇から長い体をもたげた。`),1500);
 }
 // drawing the change: each glyph of the second form flies from a glyph of the first
-function drawMorph(m,t){ const M=m.morph, f=clamp((time-M.t0)/M.dur,0,1); if(f>=1){ m.morph=null; return false; }
+function drawMorph(m,t){ const M=m.morph, f=clamp((clock.time-M.t0)/M.dur,0,1); if(f>=1){ m.morph=null; return false; }
   const e=f<0.5?2*f*f:1-Math.pow(-2*f+2,2)/2, sc=m.ty.scale, cy=Math.cos(m.yaw), sy=Math.sin(m.yaw), F=M.from, n=F.length;
   for(let i=0;i<m.form.length;i++){ const p=m.form[i]; if(p.part==='heart')continue; const q=F[(i*7)%n];
     const lx=(q.x+(p.x-q.x)*e)*sc, ly=(q.y+(p.y-q.y)*e)*sc+Math.sin(f*Math.PI)*0.3*sc*Math.sin(i), lz=(q.z+(p.z-q.z)*e)*sc, col=p.col||m.ty.col, k=(f<0.5?q.b:p.b)*0.62*(0.8+0.6*Math.sin(f*Math.PI));
@@ -89,6 +89,6 @@ function houndAura(m,t){ const sc=m.ty.scale||1, mv=m.moving||0, h=m.ty.hound, c
   if(Math.hypot(m.x-player.x,m.z-player.z)>26)return;
   if(h==='fire'&&mv>0.3&&mr()<0.12){ const lz=-0.35*sc; spawn(m.x+lz*sy+(mr()-0.5)*0.2,0.06,m.z+lz*cy+(mr()-0.5)*0.2,(mr()-0.5)*0.2,0.4+mr()*0.5,(mr()-0.5)*0.2,0.4,G(mpick(['\'','.'])),0.09,2.6,1.2,0.35,0); }
   if(h==='ice'&&mr()<0.12){ const lz=0.68*sc; const ice=mr()<0.15; spawn(m.x+lz*sy+(mr()-0.5)*0.1,m.y+0.58*sc,m.z+lz*cy+(mr()-0.5)*0.1,sy*0.18,-0.12,cy*0.18,1.6,G(ice?'*':mpick(['~','.'])),ice?0.08:0.18,ice?1.5:0.62,ice?1.8:0.86,ice?2.1:1.2,0); }
-  if(h==='light'){ m.ghosts=m.ghosts||[]; if(mv>0.3&&time-(m.ghostT||0)>0.12){ m.ghostT=time; m.ghosts.push({x:m.x,y:m.y,z:m.z,yaw:m.yaw,t:time}); if(m.ghosts.length>3)m.ghosts.shift(); }
-    for(const gh of m.ghosts){ const age=time-gh.t; if(age>0.5)continue; const k=(1-age/0.5)*0.5, c2=Math.cos(gh.yaw), s2=Math.sin(gh.yaw);
+  if(h==='light'){ m.ghosts=m.ghosts||[]; if(mv>0.3&&clock.time-(m.ghostT||0)>0.12){ m.ghostT=clock.time; m.ghosts.push({x:m.x,y:m.y,z:m.z,yaw:m.yaw,t:clock.time}); if(m.ghosts.length>3)m.ghosts.shift(); }
+    for(const gh of m.ghosts){ const age=clock.time-gh.t; if(age>0.5)continue; const k=(1-age/0.5)*0.5, c2=Math.cos(gh.yaw), s2=Math.sin(gh.yaw);
       for(let i=0;i<m.form.length;i+=2){ const p=m.form[i]; if(p.part==='orbit')continue; const lx=p.x*sc, ly=p.y*sc, lz=p.z*sc; dyn(gh.x+lx*c2+lz*s2,gh.y+ly,gh.z-lx*s2+lz*c2,p.g,p.s*sc,1.0*k,0.95*k,0.75*k,0,0); } } } }

@@ -29,7 +29,7 @@ const dbg={
   lore(n){ META.lore=(META.lore||0)+(n||50); saveMeta(); return loreLeft(); },
   exp(n){ gainExp(n||20); return {lvl:adv.lvl.n,exp:adv.lvl.exp,pending:adv.lvl.pending}; },
   hurt(n){ const g=godMode; godMode=false; hurtPlayer(n||5,'debug'); godMode=g; return {hp:+player.hp.toFixed(1),rally:+(player.rally||0).toFixed(1)}; },
-  hit(n){ const m=here.monsters.filter(m=>!m.dead&&!m.ty.critter&&!m.ty.peaceful).sort((a,b)=>Math.hypot(a.x-player.x,a.z-player.z)-Math.hypot(b.x-player.x,b.z-player.z))[0]; if(!m)return false; m.playerT=time; damageMonster(m,n||4,'magic'); return {target:m.ty.name,dead:m.dead}; },
+  hit(n){ const m=here.monsters.filter(m=>!m.dead&&!m.ty.critter&&!m.ty.peaceful).sort((a,b)=>Math.hypot(a.x-player.x,a.z-player.z)-Math.hypot(b.x-player.x,b.z-player.z))[0]; if(!m)return false; m.playerT=clock.time; damageMonster(m,n||4,'magic'); return {target:m.ty.name,dead:m.dead}; },
   hp(){ return {hp:+player.hp.toFixed(1),rally:+(player.rally||0).toFixed(1),motes:rallyMotes.length}; },
   look(x,y,z){ const [ox,oy,oz]=aimOrigin(); player.yaw=Math.atan2(-(x-ox),-(z-oz)); player.pitch=Math.atan2(y-oy,Math.hypot(x-ox,z-oz)); return [player.yaw,player.pitch]; },
   items(){ return (here.D.items||[]).filter(o=>!o.taken).map(o=>({kind:o.kind,opt:o.opt||null,altar:!!o.altar,vault:!!o.vault,lord:!!o.lord,type:o.rune?o.rune.type:null,pos:cpos(o.i).map(v=>+v.toFixed(2)),slot:o.slot})); },

@@ -121,8 +121,8 @@ function look(){
     }
   }
   // only describe what the player keeps looking at
-  if(h!==lookPend){ lookPend=h; lookPendT=time; }
-  const show=time-lookPendT>0.5?h:'';
+  if(h!==lookPend){ lookPend=h; lookPendT=clock.time; }
+  const show=clock.time-lookPendT>0.5?h:'';
   if(show!==lookHTML){ lookHTML=show; lookEl.innerHTML=show; }
 }
 
