@@ -15,7 +15,7 @@
 ## ファイル
 ```
 src/index.html       画面の作りとCSS（Vite の入口）
-src/main.js          ページの入口のモジュール（ゲーム本体 virtual:legacy-game を読むだけ）
+src/main.js          ページの入口のモジュール（フォント（@fontsource の CSS）と、ゲーム本体 virtual:legacy-game を読む）
 src/game/*.js        ゲーム本体の古い JS（31ファイル、合わせて約7,500行。下の「ゲーム本体の地図」）
 src/game/imports.mjs ゲーム本体が使う TypeScript のモジュールを読む import の文（包みの関数の前に置かれる）
 src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整形もする
@@ -27,7 +27,7 @@ src/lib/generate.ts  迷宮の生成（generateLevel。「入力 → 結果」�
 src/lib/bodies/*.ts  生き物の形（kit：点の型と道具 q2・q3、small・beasts・lords：各生き物の形、bosses：主の形（不死の王・蜘蛛の女王・ナーガの女王・古竜・王の影の二つ目の姿））
 tsconfig.json        TypeScript 7 の設定（strict・noUncheckedIndexedAccess・exactOptionalPropertyTypes など）。対象は src/lib/ と tests/unit/*.ts
 vite.config.mjs      組み立て（Vite 8）。公開用は dist/、テスト用（--mode test）は .build/test/
-tools/vite-plugins.mjs  Vite のプラグイン：legacyGame（src/game をつないで1つのモジュールに）・testPage（テスト版）・privateMaps（ソースマップを公開物の外へ）・noCssStub（ページの <style> の空の部品を消す）
+tools/vite-plugins.mjs  Vite のプラグイン：legacyGame（src/game をつないで1つのモジュールに）・testPage（テスト版）・privateMaps（ソースマップを公開物の外へ）・noCssStub（ページの <style> の空の部品を消す）・fontCss（@fontsource の CSS を絞る：woff を外し、BIZ UDGothic は BIZ_CHARS を含む面だけ）
 tools/game-source.mjs   ゲーム本体をつなぐ処理（gameSource）・行の対応・ソースマップ・テスト版のフォント
 tools/sourcemap.mjs  ソースマップの読み書き（自前の小さな道具）
 tools/lint-game.mjs  src/game/ をつないで構文と lint を調べ、場所を元のファイルの行で出す
@@ -82,7 +82,7 @@ pnpm test             # スモーク・同じ結果・全部の階・枠（オ�
 pnpm test:visual      # 画面写真の比較（30秒ほど）。違えば tests/out/visual/ に違いの画像
 node tests/visual.mjs --update [--only 場面]   # 基準の画像を作り直す（見た目を意図して変えた時だけ）
 node tests/levels.mjs --seed 202               # 1つのシードだけ（--seeds 100 で数を変える）
-node tests/smoke.mjs --prod                    # 公開用の版（dist/）を、公開用と同じく Google Fonts で起動
+node tests/smoke.mjs --prod                    # 公開用の版（dist/）で起動（JetBrains Mono の所の日本語はシステムのフォント）
 pnpm verify           # check + test + test:visual
 pnpm dev              # Vite の開発用サーバー（http://localhost:5173/。src/game/ を変えると読み直す）
 pnpm build            # 公開用を dist/ に組み立てる（pnpm build:test でテスト用を .build/test/ に）
@@ -106,7 +106,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
   例外は、スモークテストの「ふだんのページが描けるか」の確認だけ（テスト用モードではないので、ゲームを止めて進められない）。
   画面写真には `timeout: 90000` を付ける。
 - three.js（r147）は、npm の `three` を組み立てに入れる（`src/game/imports.mjs` で読み、`00-test-mode.js` で光のにじみなどの部品と一緒に `T` にする）。CDN からは読まない。
-- テスト版（`vite build --mode test`。テストが自分で組み立てる）は、フォント（@fontsource）を node_modules から読む。Google Fonts は読まない。
+- フォントも、npm の @fontsource を組み立てに入れる（`src/main.js` で読む。Google Fonts は読まない）。テスト版（`vite build --mode test`。テストが自分で組み立てる）も同じ。
   テストのブラウザには、システムのフォントを見せない（`tests/fonts.conf`、最後の頼みは npm パッケージの DejaVu だけ）。
   JetBrains Mono を指定した所の日本語は、ふだんはシステムの日本語フォントで描かれるが、テスト版では M PLUS 1 Code
   （全角の ！？ などは BIZ UDGothic）を組み合わせて描く（`tools/game-source.mjs` の `cjkFallback`）。マシンが違っても同じ画素になる。
@@ -227,8 +227,8 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
   それより前で宣言すること。`DEVALL` は後で宣言されるので、`devAllSafe()` 経由で読む。
 - **パネルの枠と文字の幅**：枠（boxText）は `visW` で幅を数えて縦線を揃える（どちらも src/lib/text.ts）。パネルのフォントは M PLUS 1 Code
   （半角1マス・全角2マス。ただし全角スペース「　」は1マス。なので、列を揃える時は全角スペースで埋めず、visW で数えた半角スペースで埋める）。M PLUS 1 Code に無い文字（← → ！：？［］）は、
-  index.html で BIZ UDGothic をその文字だけ読んで補っている（全角2マス）。新しい記号を使う時は、M PLUS 1 Code にあるかを
-  `pnpm check`（tests/glyphs.mjs）で確かめ、無ければ別の文字にするか、index.html の text= と visW に足す。
+  BIZ UDGothic で補っている（全角2マス。補ってよい文字の一覧は src/lib/text.ts の `BIZ_CHARS`。組み立ては、それを含む BIZ UDGothic の面だけ入れる）。新しい記号を使う時は、M PLUS 1 Code にあるかを
+  `pnpm check`（tests/glyphs.mjs）で確かめ、無ければ別の文字にするか、`BIZ_CHARS` と visW に足す。
   Ⅱ などは、BIZ UDGothic にも無いので使わない（II にする）。
 - **lint の警告**：使っていない関数・変数が約60か所ある（古い仕組みの残り）。消す時は、図鑑や dbg から文字列で呼ばれていないか確かめる。
 - **sed の区切り文字**：差し込む文に `|`（`||` など）があると壊れる。置き換えは Python で行う方が安全。

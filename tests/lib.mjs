@@ -39,14 +39,14 @@ export const annotate = (s) =>
 // 組み立てて配信し、ブラウザを開く。fn が終わったら必ず閉じる。
 export async function withBrowser(fn, { prod = false } = {}) {
   mkdirSync(OUT, { recursive: true });
-  // テスト版は .build/test/（フォントは node_modules から）、prod は公開用と同じ dist/（フォントは Google Fonts から。three.js はどちらも組み立てに入っている）
+  // テスト版は .build/test/、prod は公開用と同じ dist/（three.js とフォントは、どちらも組み立てに入っている。違いはテスト版の cjkFallback だけ）
   const mode = prod ? 'production' : 'test',
     dir = join(ROOT, prod ? 'dist' : '.build/test');
   await build({ configFile: join(ROOT, 'vite.config.mjs'), mode, logLevel: 'warn' });
   mapDir = join(ROOT, '.build/maps', mode);
   const srv = await serve(dir);
-  // システムのフォントを見せない（tests/fonts.conf）。テスト版は Web フォントを同梱しているので、どのマシンでも同じ文字になる。
-  // 公開用の版（prod）は Google Fonts を読むので、ふつうの設定のままにする。
+  // システムのフォントを見せない（tests/fonts.conf）。テスト版は日本語も同梱のフォントで描くので、どのマシンでも同じ文字になる。
+  // 公開用の版（prod）は、JetBrains Mono を指定した所の日本語をシステムのフォントで描くので、ふつうの設定のままにする。
   const env = prod ? process.env : { ...process.env, FONTCONFIG_FILE: join(ROOT, 'tests/fonts.conf') };
   const browser = await chromium.launch({ args: GL_ARGS, env });
   try {

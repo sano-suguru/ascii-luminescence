@@ -1,13 +1,15 @@
 // Vite のプラグイン（vite.config.mjs から使う）。
 //   legacyGame()     src/game/*.js を名前の順につなぎ、一番外側の関数で包んだ1つのモジュール（virtual:legacy-game）にする。
 //                    ソースマップで、元のファイルの行に戻せる。開発用サーバーでは、src/game/ が変わったらページを読み直す
-//   testPage(outDir) テスト版：フォントを、Google Fonts の代わりに node_modules の @fontsource から読む（オフラインで動き、
-//                    どのマシンでも同じ文字の形になる）。three.js は、公開用もテスト版も npm から組み立てに入れる
+//   testPage(outDir) テスト版：JetBrains Mono を指定した所の日本語も、決まったフォント（M PLUS 1 Code）で描く面を足す（cjkFallback。
+//                    どのマシンでも同じ文字の形になる）。three.js とフォントは、公開用もテスト版も npm から組み立てに入れる
 //   privateMaps(dir) ソースマップを出力の外（.build/maps/）へ移す。公開物には入れない（tools/where.mjs とテストだけが読む）
 //   noCssStub()      ページの中の <style> から Vite が作る、空の JS の部品を消す
+//   fontCss()        @fontsource の CSS を絞る：古い形式（woff）の候補を外し、BIZ UDGothic は補いの文字（BIZ_CHARS）を含む面だけ残す
 import { mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
-import { TEST_FONTS, cjkFallback, gameSource, gameSourceMap } from './game-source.mjs';
+import { BIZ_CHARS } from '../src/lib/text.ts';
+import { cjkFallback, gameSource, gameSourceMap } from './game-source.mjs';
 
 const root = join(import.meta.dirname, '..');
 const GAME_DIR = join(root, 'src/game');
@@ -67,6 +69,52 @@ export function noCssStub() {
   };
 }
 
+// @fontsource の CSS を絞る（公開用もテスト版も同じ）。
+// - 面ごとに src: url(….woff2) format('woff2'), url(….woff) format('woff') と2つの形式を書いている。woff は woff2 を読めない古いブラウザ向けで、
+//   今のブラウザは読まない。外さないと、使われないファイルが同じ数だけ組み立てに入る
+// - BIZ UDGothic は、M PLUS 1 Code に無い数文字（src/lib/text.ts の BIZ_CHARS）を補うだけなので、その文字を含む面だけ残す
+//   （全部の面だと、ページを開くたびに読む CSS が約20万字増える。前の Google Fonts の text= と同じ考え）
+// unicode-range（U+XXXX・U+XXXX-YYYY をコンマで並べた物）を [始め, 終わり] の並びにする。読めない形（U+4?? など）はエラー
+const ranges = (range) =>
+  range.split(',').map((t) => {
+    const m = t.trim().match(/^U\+([0-9a-f]+)(?:-([0-9a-f]+))?$/i);
+    if (!m) throw new Error(`読めない unicode-range：${t.trim()}（@fontsource の書き方が変わった？）`);
+    const a = parseInt(m[1], 16);
+    return [a, m[2] ? parseInt(m[2], 16) : a];
+  });
+// 補いの文字を、1文字（コードポイント）ずつに分けた物。unicode-range もコードポイントで書く
+const BIZ_LIST = Array.from(BIZ_CHARS);
+const inRanges = (rs, ch) => {
+  const c = ch.codePointAt(0);
+  return rs.some(([a, b]) => c >= a && c <= b);
+};
+export function fontCss() {
+  return {
+    name: 'font-css',
+    transform: {
+      order: 'pre',
+      handler(code, id) {
+        const path = id.split('?')[0]; // ?inline・?url などの問い合わせが付いても、同じく絞る
+        if (!/[\\/]@fontsource[\\/].*\.css$/.test(path)) return null;
+        let out = code.replace(/,\s*url\([^)]*\.woff\)\s*format\(['"]woff['"]\)/g, '');
+        if (/\.woff\)/.test(out)) throw new Error(`woff の候補を外せなかった（@fontsource の書き方が変わった？）：${id}`);
+        if (/[\\/]biz-udgothic[\\/]/.test(path)) {
+          const faces = (out.match(/\/\*[^*]*\*\/\s*@font-face\s*\{[^}]*\}|@font-face\s*\{[^}]*\}/g) || []).map((f) => ({
+            f,
+            rs: ranges(f.match(/unicode-range:\s*([^;]+);/)?.[1] ?? 'U+0-10FFFF'),
+          }));
+          const keep = faces.filter(({ rs }) => BIZ_LIST.some((ch) => inRanges(rs, ch)));
+          // 補いの文字が、どれも残した面のどれかに入っていること（入っていないと、その文字が別のフォントで描かれ、枠の縦線がずれる）
+          const lost = BIZ_LIST.filter((ch) => !keep.some(({ rs }) => inRanges(rs, ch)));
+          if (lost.length) throw new Error(`BIZ UDGothic に、補いの文字 ${lost.join(' ')} を含む面が無い：${id}`);
+          out = keep.map(({ f }) => f).join('\n') + '\n';
+        }
+        return { code: out, map: null };
+      },
+    },
+  };
+}
+
 export function testPage() {
   let outDir;
   return {
@@ -75,21 +123,17 @@ export function testPage() {
     configResolved(config) {
       outDir = config.build.outDir;
     },
-    // Vite が HTML を処理した後に置き換える（先に置き換えると、Vite がフォントの CSS を組み込もうとする）
+    // Vite が HTML を処理した後に足す（先に足すと、Vite が中のフォントの URL を組み込もうとする）。
+    // 同じ名前の面は後に書いた方が先に使われるので、組み立てたフォントの CSS（Vite が <head> の終わりに置く <link>）より前、<title> の直後に置く
     transformIndexHtml: {
       order: 'post',
       handler(html) {
-        const links = html.match(/<link[^>]*fonts\.(googleapis|gstatic)\.com[^>]*>\n?/g) || [];
-        if (!links.some((l) => l.includes('stylesheet'))) throw new Error('Google Fonts の <link> が src/index.html に見つからない');
-        html = html.replace(
-          links[0],
-          `<style>\n${cjkFallback()}</style>\n` + TEST_FONTS.map((f) => `<link rel="stylesheet" href="fonts/${f}.css">\n`).join(''),
-        );
-        for (const l of links.slice(1)) html = html.replace(l, '');
-        return html;
+        if (!html.includes('</title>\n')) throw new Error('src/index.html に </title> が見つからない');
+        return html.replace('</title>\n', `</title>\n<style>\n${cjkFallback()}</style>\n`);
       },
     },
     writeBundle() {
+      // cjkFallback の面は fonts/ から読む
       symlinkSync(join(root, 'node_modules/@fontsource'), join(outDir, 'fonts'), 'junction');
     },
   };
