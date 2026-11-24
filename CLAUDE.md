@@ -41,7 +41,7 @@ tools/where.mjs      組み立てた JS の場所 → src/game/ のどのファ�
 tools/map.mjs        ゲーム本体の地図（ファイルごとの行の数と見出し）
 tools/serve.mjs      静的ファイルの小さなサーバー
 tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ・テスト用モードのページ）
-tests/smoke.mjs      ふだんのページの起動 ＋ 開発用の冒険で dbg が動くか ＋ 冒険の始め直しで前の場所や状態が残らないか ＋ メニューの確かめの受付が切れるか（画面写真は tests/out/）
+tests/smoke.mjs      ふだんのページの起動 ＋ 開発用の冒険で dbg が動くか ＋ 冒険の始め直しで前の場所や状態が残らないか ＋ メニューの確かめの受付が切れるか ＋ 開発用モードのまま読み直した時・保存が使えない時のタイトル（画面写真は tests/out/）
 tests/world.mjs      世界とのやり取り：扉・火・小さな生き物が世界に何かをする流れ（扉が視界を遮る・燃え尽きる・修復機が作り直す、階に残る物が階を移ると消える、猟犬が匂いの無いマスを追わない、硫黄・氷・冷気と火）。生き物は全部消してから、要る物だけ置く
 tests/determinism.mjs  同じシードで同じ結果になるか
 tests/levels.mjs     全部の階（20シード×30か所）をブラウザで生成し、例外と、歩いて行けるかを確かめる
@@ -237,8 +237,8 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 
 ## 落とし穴（過去に踏んだもの）
 - **宣言の順番（TDZ）**：`buildIntroPanel()` はスクリプトの途中で呼ばれる。そこで使う古い JS の `let`/`const` は、それより前で宣言すること。
-  状態の入れ物（src/lib/state.ts）は先に読まれるので TDZ にはならないが、本当の初めの値をその場の代入で入れている欄（`saved.META` は 17-meta.js、
-  `saved.DEVALL` は 25-gallery.js で localStorage から）は、それより前に読むと仮の値（`DEVALL` は false）になる。
+  状態の入れ物（src/lib/state.ts）は先に読まれるので TDZ にはならないが、本当の初めの値をその場の代入で入れている欄（`saved.META`・`saved.DEVALL` は
+  17-meta.js、`saved.SEEN`・`saved.RSEEN` は 25-gallery.js で localStorage から）は、それより前に読むと、止まらずに黙って仮の値になる。
 - **パネルの枠と文字の幅**：枠（boxText）は `visW` で幅を数えて縦線を揃える（どちらも src/lib/text.ts）。パネルのフォントは M PLUS 1 Code
   （半角1マス・全角2マス。ただし全角スペース「　」は1マス。なので、列を揃える時は全角スペースで埋めず、visW で数えた半角スペースで埋める）。M PLUS 1 Code に無い文字（← → ！：？［］）は、
   BIZ UDGothic で補っている（全角2マス。補ってよい文字の一覧は src/lib/text.ts の `BIZ_CHARS`。組み立ては、それを含む BIZ UDGothic の面だけ入れる）。新しい記号を使う時は、M PLUS 1 Code にあるかを
