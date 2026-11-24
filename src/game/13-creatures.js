@@ -89,7 +89,7 @@ function webTouch(i){
 // hounds follow the freshest scent; water washes it away
 function houndScent(m){
   let best=null, bs=clock.time-40;
-  for(const d of D4){ const i=(m.cz+d[1])*MW+m.cx+d[0]; if(!canStep(m,i))continue; if(scent[i]>bs){bs=scent[i];best=d;} }
+  for(const d of D4){ const i=(m.cz+d[1])*MW+m.cx+d[0]; if(!canStep(m,i))continue; if(scent[i]>0&&scent[i]>bs){bs=scent[i];best=d;} } // 0 is a cell with no scent (in the first 40 s, bs is below 0)
   return best;
 }
 function machineWork(m,dt){

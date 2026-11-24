@@ -41,8 +41,8 @@ tools/where.mjs      組み立てた JS の場所 → src/game/ のどのファ�
 tools/map.mjs        ゲーム本体の地図（ファイルごとの行の数と見出し）
 tools/serve.mjs      静的ファイルの小さなサーバー
 tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ・テスト用モードのページ）
-tests/smoke.mjs      ふだんのページの起動 ＋ 開発用の冒険で dbg が動くか ＋ 冒険の始め直しで前の場所や状態が残らないか（画面写真は tests/out/）
-tests/world.mjs      世界とのやり取り：扉・火・小さな生き物が世界に何かをする流れ（扉が視界を遮る・燃え尽きる・修復機が作り直す）。生き物は全部消してから、要る物だけ置く
+tests/smoke.mjs      ふだんのページの起動 ＋ 開発用の冒険で dbg が動くか ＋ 冒険の始め直しで前の場所や状態が残らないか ＋ メニューの確かめの受付が切れるか（画面写真は tests/out/）
+tests/world.mjs      世界とのやり取り：扉・火・小さな生き物が世界に何かをする流れ（扉が視界を遮る・燃え尽きる・修復機が作り直す、階に残る物が階を移ると消える、猟犬が匂いの無いマスを追わない）。生き物は全部消してから、要る物だけ置く
 tests/determinism.mjs  同じシードで同じ結果になるか
 tests/levels.mjs     全部の階（20シード×30か所）をブラウザで生成し、例外と、歩いて行けるかを確かめる
 tests/reach.mjs      歩いて行けるかの調べ方（levels.mjs と tests/unit/reach.test.ts が使う。型は reach.d.mts）
@@ -159,7 +159,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 - `Math.random` はシードで決まる。時計（`performance.now`・`setTimeout`・`setInterval`）は、ゲームが進む時だけ進む。
 - ゲームは自分では進まない。`__test.advance(秒)`（描かずに進める。速い）か `__test.frames(n)`（描いて進める）で進める。1フレーム＝ゲームの1/30秒。
 - `window.__test`：`ready()`、`error()`、`advance(秒)`、`frames(n)`、`state()`（体力・位置・敵・飛ぶ物・溜め・切り替え など）、
-  `equip(手, 武器)`（例：`equip('L','bolt')`）、`bless(n)`（全部の加護を n 段目にする）、`width(文字列)`（visW）、`press(手)`・`release(手)`（ボタンを押す・離す）、`doors()`（扉の一覧）・`cell(i)`（マスの真ん中・床か・今見えているか・灰の印）・`ignite(i)`（火をつける）・`clearAll()`（生き物を全部消す）・`summon(種類, マス)`（生き物を置く。例：`summon('Re', i)`）・`fov()`（見えるマスを今すぐ数え直す。ゲームは0.1秒ごと）、`places()`、`gen(シード, 場所)`（生成だけ。描画の状態を壊すので専用のページで）
+  `equip(手, 武器)`（例：`equip('L','bolt')`）、`bless(n)`（全部の加護を n 段目にする）、`width(文字列)`（visW）、`press(手)`・`release(手)`（ボタンを押す・離す）、`doors()`（扉の一覧）・`cell(i)`（マスの真ん中・床か・今見えているか・灰の印）・`ignite(i)`（火をつける）・`clearAll()`（生き物を全部消す）・`summon(種類, マス)`（生き物を置く。例：`summon('Re', i)`）・`fov()`（見えるマスを今すぐ数え直す。ゲームは0.1秒ごと）・`addTraces()`・`traces()`（階に残る物：魔法の場・遅れて当たる攻撃・床の印を置く、数える）、`places()`、`gen(シード, 場所)`（生成だけ。描画の状態を壊すので専用のページで）
 - 気をつけること：
   - 溜めている間は、ゲームの時間が半分の速さで進む。ヒットストップ中は1/20。
   - 階に入ると、約1.25秒かけて明るくなる。写す前に `advance(2)` する。

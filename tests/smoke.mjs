@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // スモークテスト：ふだんのページが起動するか、開発用の冒険で dbg が動くか、冒険の始め直しで前の場所や状態が残らないか
-// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
+// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの確かめの受付が切れるか。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
 //   node tests/smoke.mjs          テスト版（.build/test/。既定）
 //   node tests/smoke.mjs --prod   公開用の版（dist/）。JetBrains Mono を指定した所の日本語は、システムのフォントで描く
 import { join } from 'node:path';
@@ -88,6 +88,16 @@ await withBrowser(
     await advance(pg, 0.1);
     const hp1 = await pg.evaluate(() => dbg.info().hp);
     if (!(hp1 < hp0)) errs.push(`試しの間から始めた新しい冒険で、傷を受けない：体力 ${hp0} → ${hp1}`);
+
+    // 6. メニューの「新しい冒険」の、もう一度押して確かめる受付は、4秒で切れる（メニューを開いていて、ゲームの時刻が止まっていても）
+    await pg.keyboard.press('Escape');
+    await advance(pg, 0.1);
+    await menu('new');
+    await advance(pg, 6); // メニューを開いている間は止まっているので、ゲームの時刻は進まない（テストの時計は進む）
+    await menu('new');
+    const still = await pg.evaluate(() => __test.state().paused);
+    if (!still) errs.push('メニューで「新しい冒険」を押してから6秒たって、もう一度押したら、確かめずに新しい冒険が始まった');
+    else await pg.keyboard.press('Escape');
   },
   { prod: process.argv.includes('--prod') },
 );

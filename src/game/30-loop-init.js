@@ -87,6 +87,10 @@ if(TEST)window.__test={
   doors(){ return here.D.doors.map(d=>({i:d.i,j:d.j,o:+d.o.toFixed(3),gone:!!d.gone})); },
   cell(i){ return {x:(i%MW+0.5)*CELL,z:(((i/MW)|0)+0.5)*CELL,floor:here.D.tile[i]===TF&&!here.D.solid.has(i)&&!blocksWalk(here.D.liquid[i]),seen:here.fovVis[i]===here.fovStamp,explored:!!here.explored[i],burnt:!!burnt[i]}; },
   ignite(i){ ignite(i,1,false); },
+  // lingering things of this level (fields, delayed hits, rains, marks on the floor): put one of each kind that is easy to make where the player stands
+  // (a field with no element, so it does nothing to creatures), and count them
+  addTraces(){ addZone(player.x,player.z,2,{elem:null},60,false); later(60,()=>{}); marks.push({x:player.x,z:player.z,r:1,t:60,c:[1,0.5,0.2]}); return this.traces(); },
+  traces(){ return {zones:zones.length,laters:laters.length,rains:rains.length,marks:marks.length}; },
   // count the cells in sight now (the game does it every 0.1 s; a check that looks every frame should not miss a short moment)
   fov(){ computeFOV(); },
   summon(key,i){ if(!MTYPES[key])return 'no such creature: '+key; summon(key,i); return here.monsters.length; },
