@@ -40,8 +40,8 @@ function cloudsMeetFire(){ for(const c of clouds){ if(c.t<=0)continue; const cx=
     if(Math.hypot(player.x-c.x,player.z-c.z)<R*0.8)hurtPlayer(roll(1,3),'爆炎'); burstFire(cz*MW+cx,c.r/CELL+0.5,1.0); sBoom(0.4); vfx.shake=Math.max(vfx.shake,0.25); vfx.flash=Math.max(vfx.flash,0.3);
     if(!BOOK.has('blast')){ BOOK.add('blast'); try{ localStorage.setItem('al_book',JSON.stringify([...BOOK])); }catch(e){} } } }
 // a perfect dodge: the dodge rune answers only when an attack was actually evaded
-function onDodged(m){ if(!hands)return; let any=false;
-  for(const h of ['L','R']){ const H=hands[h]; if(!(H.trig&&H.trig.type==='dodge'&&H.atk)||trigCd[h]>0||swapSt)continue;
+function onDodged(m){ if(!gear.hands)return; let any=false;
+  for(const h of ['L','R']){ const H=gear.hands[h]; if(!(H.trig&&H.trig.type==='dodge'&&H.atk)||trigCd[h]>0||gear.swapSt)continue;
     if(((atkType(h)==='blade'||atkType(h)==='gsweep')&&Math.hypot(m.x-player.x,m.z-player.z)>2.9)||(atkType(h)==='dash'&&Math.hypot(m.x-player.x,m.z-player.z)>4.5))continue;
     const [ox,oy,oz]=handPoint(h), c=mCenter(m), d=Math.hypot(c[0]-ox,c[1]-oy,c[2]-oz)||1; trigCd[h]=0.6; any=true;
     castNow(h,{dir:[(c[0]-ox)/d,(c[1]-oy)/d,(c[2]-oz)/d],auto:true}); }
@@ -81,19 +81,19 @@ function chantStart(el){
   return {
     tick(kk,isFull){ if(stopped)return; k=kk; if(isFull&&!full){ full=true; startPad(); }
       while(next<ctx.currentTime+0.06){ const step=CHANT_STEPS[Math.min(CHANT_STEPS.length-1,(syl%4)+Math.floor(k*3)+(syl%3===2?1:0))], f=root*Math.pow(2,step/12);
-        const dur=full?0.3:0.2; syllable(next,f,VOWELS[(syl*3)%5],dur); if(castSt){ castSt.syl=syl; castSt.sylT=time; } syl++; next+=full?0.3:0.21; } },
+        const dur=full?0.3:0.2; syllable(next,f,VOWELS[(syl*3)%5],dur); if(gear.castSt){ gear.castSt.syl=syl; gear.castSt.sylT=time; } syl++; next+=full?0.3:0.21; } },
     stop(){ if(stopped)return; stopped=true; const t=ctx.currentTime; try{ out.gain.cancelScheduledValues(t); out.gain.setValueAtTime(out.gain.value,t); out.gain.exponentialRampToValueAtTime(0.0001,t+0.18);
       for(const p of pad){ p.o.stop(t+0.25); p.lfo.stop(t+0.25); } }catch(e){} } };
 }
 
 // ---------------------------------------------------------------- HUD at the bottom: what each hand holds, the chant
 function renderHotbar(){
-  const el=document.getElementById('hotbar'); if(!el||!hands)return;
+  const el=document.getElementById('hotbar'); if(!el||!gear.hands)return;
   const part=h=>{ const H=effHand(h); syncHand(H); const c=elemCol(H.elem?H.elem.type:null), gl=[...new Set(handRunes(H).filter(r=>RUNE_DEF[r.type].cat==='elem').map(r=>r.type))].map(t=>`<span class="rn" style="color:${css(RUNE_DEF[t].col)}${H.elem&&H.elem.type===t?'':';opacity:0.45'}">${RUNE_DEF[t].ch}</span>`).join('');
     const tg=H.trig?` <span class="rn dim2" style="color:${css(TIER_COL[0])}">${RUNE_DEF[H.trig.type].ch}</span>`:'';
-    let bar=''; if(castSt&&castSt.h===h){ const k=Math.min(1,castSt.t/Math.max(0.01,castSt.need)), n=Math.round(k*8); bar=`\n<span style="color:${css(c)}">${'='.repeat(n)}</span><span class="dim">${'-'.repeat(8-n)}</span>`; }
-    return `<span class="${castSt&&castSt.h===h?'on':''}"><span class="dim">${h==='L'?'左':'右'}</span> ${gl||'<span class="dim">-</span>'} <span style="color:${css(c)}">${handName(H)}</span>${tg}${bar}</span>`; };
-  let sw=''; if(swapSt){ const n=Math.round(swapSt.t/swapSt.dur*10); sw=`\n<span class="lab">付け替え</span> ${'='.repeat(n)}<span class="dim">${'-'.repeat(10-n)}</span>`; }
+    let bar=''; if(gear.castSt&&gear.castSt.h===h){ const k=Math.min(1,gear.castSt.t/Math.max(0.01,gear.castSt.need)), n=Math.round(k*8); bar=`\n<span style="color:${css(c)}">${'='.repeat(n)}</span><span class="dim">${'-'.repeat(8-n)}</span>`; }
+    return `<span class="${gear.castSt&&gear.castSt.h===h?'on':''}"><span class="dim">${h==='L'?'左':'右'}</span> ${gl||'<span class="dim">-</span>'} <span style="color:${css(c)}">${handName(H)}</span>${tg}${bar}</span>`; };
+  let sw=''; if(gear.swapSt){ const n=Math.round(gear.swapSt.t/gear.swapSt.dur*10); sw=`\n<span class="lab">付け替え</span> ${'='.repeat(n)}<span class="dim">${'-'.repeat(10-n)}</span>`; }
   el.innerHTML=part('L')+'      '+part('R')+sw;
 }
 
@@ -103,8 +103,8 @@ function startRoll(){
   const k=keys, fw=((k.KeyW||k.ArrowUp)?1:0)-((k.KeyS||k.ArrowDown)?1:0), st=(k.KeyD?1:0)-(k.KeyA?1:0), sy=Math.sin(player.yaw), cy=Math.cos(player.yaw);
   let ix=-sy*fw+cy*st, iz=-cy*fw-sy*st; const l=Math.hypot(ix,iz); if(l<0.01){ ix=sy; iz=cy; } else { ix/=l; iz/=l; }
   player.roll={t:0,dx:ix,dz:iz}; player.rollCd=1.0; sWhoosh();
-  if(swapSt){ restoreHands(swapSt.snap); swapSt=null; renderHotbar(); }
-  if(castSt){ castSt=null; beamSegs=[]; fizzle(); renderHotbar(); }
+  if(gear.swapSt){ restoreHands(gear.swapSt.snap); gear.swapSt=null; renderHotbar(); }
+  if(gear.castSt){ gear.castSt=null; beamSegs=[]; fizzle(); renderHotbar(); }
   if(beamRun){ beamRun=null; beamSegs=[]; }
   for(let q=0;q<10;q++){ const a=mr()*6.28; spawn(player.x,0.1,player.z,Math.cos(a)*0.8,0.2+mr()*0.4,Math.sin(a)*0.8,0.6,G(mpick(['.',',','\''])),0.14,0.5,0.48,0.55,1); }
 }

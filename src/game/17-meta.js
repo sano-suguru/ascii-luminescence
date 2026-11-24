@@ -71,11 +71,11 @@ window.addEventListener('mousedown',e=>{
   if(ui.menuOpen){ setMenu(false); if(!plFailed)tryLock(); }
   if(ui.invOpen)setInv(false);
 },true);
-canvas.addEventListener('wheel',e=>{ if(!ui.started||isPaused()||!hands)return; e.preventDefault(); const have=(unlocked('build3')?[0,1,2]:[0,1]).filter(k=>builds[k]); if(!have.length||time-(canvas.wheelT||-9)<0.35)return; canvas.wheelT=time;
-  const pos=Math.max(0,have.indexOf(buildIdx)), next=have[(pos+1)%have.length]; const prev=snapHands(); if(applyBuild(next)){ startSwap(prev); showHint(`ビルド${next+1}`); setTimeout(()=>showHint(''),900); } renderHotbar(); },{passive:false});
+canvas.addEventListener('wheel',e=>{ if(!ui.started||isPaused()||!gear.hands)return; e.preventDefault(); const have=(unlocked('build3')?[0,1,2]:[0,1]).filter(k=>gear.builds[k]); if(!have.length||time-(canvas.wheelT||-9)<0.35)return; canvas.wheelT=time;
+  const pos=Math.max(0,have.indexOf(gear.buildIdx)), next=have[(pos+1)%have.length]; const prev=snapHands(); if(applyBuild(next)){ startSwap(prev); showHint(`ビルド${next+1}`); setTimeout(()=>showHint(''),900); } renderHotbar(); },{passive:false});
 let downAt=null;
 canvas.addEventListener('mousedown',e=>{ if(!ui.started||isPaused())return; if(e.button===2){ beginCast('R'); return; } if(ui.locked&&e.button===0){ beginCast('L'); return; } if(e.button===0){ downAt=[e.clientX,e.clientY]; beginCast('L'); } dragging=true; lmx=e.clientX; lmy=e.clientY; if(!ui.locked)tryLock(); canvas.focus(); updateResume(); });
-window.addEventListener('mouseup',e=>{ if(hands){ if(e.button===0)releaseCast('L'); if(e.button===2)releaseCast('R'); } downAt=null; dragging=false; updateResume(); });
+window.addEventListener('mouseup',e=>{ if(gear.hands){ if(e.button===0)releaseCast('L'); if(e.button===2)releaseCast('R'); } downAt=null; dragging=false; updateResume(); });
 window.addEventListener('mousemove',e=>{
   if(!ui.started)return;
   if(ui.locked){ player.yaw-=e.movementX*0.0022; player.pitch-=e.movementY*0.0022; }

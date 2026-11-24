@@ -52,17 +52,17 @@ const VM_PART={fill:[0.46,0.48,0.56],edge:[0.86,0.89,0.96],metal:[0.7,0.72,0.8],
 const VM_BRIGHT={fill:0.8,edge:1.1,metal:0.95,wood:0.78,woodedge:1.0,hand:0.75,knuckle:0.9,arm:0.45,head:1.25,glow:1.3,string:0.6};
 const VM_TINT={edge:0.7,head:0.85,glow:0.85,fill:0.25};
 const vmKick={L:-9,R:-9};
-function drawViewWeapons(t){ if(ui.camMode==='tps'||!ui.started||adv.dead||!hands||!D)return; if(gallery&&gallery.mode==='beast')return;
+function drawViewWeapons(t){ if(ui.camMode==='tps'||!ui.started||adv.dead||!gear.hands||!D)return; if(gallery&&gallery.mode==='beast')return;
   const [f,r,u]=handUp(), [ex,ey,ez]=aimOrigin(); let dw=0.62;
   for(const side of [-0.3,0,0.3])for(let st=0.05;st<=0.62;st+=0.04){ const x=ex+f[0]*st+r[0]*side, z=ez+f[2]*st+r[2]*side, ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL); if(ci<0||ci>=NCELL||D.tile[ci]===TW||D.tile[ci]===TX||doorBlock(ci)){ dw=Math.min(dw,st-0.07); break; } }
   const q=clamp(dw/0.62,0.3,1), spd=Math.hypot(player.vx||0,player.vz||0), bob=Math.sin(time*9)*0.007*Math.min(1,spd/4), sway=Math.cos(time*4.5)*0.004*Math.min(1,spd/4), two=isTwo();
   const kx=Math.min(1,(camera.aspect||1.78)/(16/9)), W=(x,y,z)=>{ x*=kx; return [ex+(f[0]*z+r[0]*x+u[0]*y)*q,ey+(f[1]*z+u[1]*y)*q,ez+(f[2]*z+r[2]*x+u[2]*y)*q]; };
-  const one=(h,type,mirror)=>{ const M=VM_MODELS[type]||VM_MODELS.bare; const H=hands[h], el=H.elem?H.elem.type:null, ec=elemCol(el);
-    const chant=castSt&&(castSt.h===h||two)?Math.min(1,castSt.t/Math.max(0.01,castSt.need)):0, hold=castSt&&(castSt.h===h||two)&&castSt.full?Math.min(1,castSt.hold/2):0;
+  const one=(h,type,mirror)=>{ const M=VM_MODELS[type]||VM_MODELS.bare; const H=gear.hands[h], el=H.elem?H.elem.type:null, ec=elemCol(el);
+    const chant=gear.castSt&&(gear.castSt.h===h||two)?Math.min(1,gear.castSt.t/Math.max(0.01,gear.castSt.need)):0, hold=gear.castSt&&(gear.castSt.h===h||two)&&gear.castSt.full?Math.min(1,gear.castSt.hold/2):0;
     const swingP=player.swing>0&&(player.swingH===h||two)?1-player.swing/0.22:-1, kick=Math.max(0,1-(time-(vmKick[h]||-9))/0.16);
     let th=0, dx=sway, dy=bob, dz=0, glow=1;
     if(M.kind==='sword'){ if(swingP>=0){ th=M.thrust?0.15-0.3*swingP:0.9-2.2*swingP; dz=Math.sin(swingP*Math.PI)*(M.thrust?0.2:0.08); dy+=Math.sin(swingP*Math.PI)*0.04; }
-      if(two&&castSt&&castSt.h==='R'){ th=0.55*chant; dy+=0.06*chant; } dz+=kick*0.04; }
+      if(two&&gear.castSt&&gear.castSt.h==='R'){ th=0.55*chant; dy+=0.06*chant; } dz+=kick*0.04; }
     else if(M.kind==='bow'){ dz-=kick*0.03; }
     else if(M.kind==='xbow'){ dx-=0.05*chant; dy+=0.03*chant; dz-=kick*0.04; }
     else if(M.kind==='staff'){ dy+=0.05*chant+0.03*hold; dz+=kick*0.04; glow=1+2*chant+kick+1.5*hold; }
@@ -79,8 +79,8 @@ function drawViewWeapons(t){ if(ui.camMode==='tps'||!ui.started||adv.dead||!hand
     if(M.orbit)for(let i=0;i<3;i++){ const a=t*2.5+i*2.09; put(M.head[0]+Math.cos(a)*0.07,M.head[1]+Math.sin(a)*0.07,M.head[2],'+','glow',VM_ST*1.4); }
     if(el&&mr()<0.08*(1+chant*3)){ const hp=M.head||(M.kind==='sword'?[0.2,0.0,0.86]:[0.15,-0.19,0.88]); const p=W((mirror?-1:1)*(hp[0]+dx),hp[1]+dy,hp[2]+dz), g2=el==='fire'?'^':el==='ice'?'*':el==='thunder'?'/':'%';
       spawn(p[0],p[1],p[2],(mr()-0.5)*0.15,0.15+mr()*0.2,(mr()-0.5)*0.15,0.35,G(g2),0.03*q,ec[0]*2.2,ec[1]*2.2,ec[2]*2.2,0); } };
-  if(two){ const w=hands.R.atk; if(w)one('R',w.type,false); return; }
-  for(const h of ['L','R']){ const w=hands[h].atk; one(h,w?w.type:'bare',h==='L'); } }
+  if(two){ const w=gear.hands.R.atk; if(w)one('R',w.type,false); return; }
+  for(const h of ['L','R']){ const w=gear.hands[h].atk; one(h,w?w.type:'bare',h==='L'); } }
 // a fist built on demand (the hand that draws the bowstring)
 function VM_FIST(o,c){ const K=VM_K, P=[[-0.05,0.024,'@'],[0,0.032,'@'],[0.05,0.024,'@'],[-0.04,-0.027,'%'],[0.01,-0.03,'%'],[0.057,-0.02,'%']]; for(const [x,y,g] of P)o.push([c[0]+x,c[1]+y,c[2],g,g==='@'?'knuckle':'hand',0.038*K]);
   for(let i=1;i<=4;i++)o.push([c[0]+0.03+i*0.02,c[1]-0.06-i*0.09,c[2]-0.01-i*0.025,'%','arm',0.05*K]); }
@@ -153,8 +153,8 @@ const RES={
   N:{fire:0.5,thunder:2}, K:{fire:0.5,thunder:2}, f:{thunder:2},
   n:{poison:0.25}, B:{poison:0.2,fire:2}, S:{fire:2}, j:{}, T:{fire:1.5},
 };
-let runeUid=1, hands=null, bag=[], builds=[null,null], buildIdx=-1;
-let castSt=null, swapSt=null, packSnap=null, packSel=null, trigCd={L:0,R:0}, beamSegs=[], clouds=[];
+let runeUid=1;
+let packSnap=null, packSel=null, trigCd={L:0,R:0}, beamSegs=[], clouds=[];
 let BOOK=new Set(); try{ BOOK=new Set(JSON.parse(localStorage.getItem('al_book')||'[]')); }catch(e){}
 function makeRune(type,nAff,r){ r=r||mr; const def=RUNE_DEF[type], pool=def.aff.slice(), aff={}; let n=0;
   while(n-->0){ const k=pool.splice(Math.floor(r()*pool.length),1)[0]; aff[k]=AFFIX[k].roll(r); }
@@ -175,36 +175,36 @@ function makeStrong(t){ const ru=makeRune(t,0); if(RUNE_DEF[t].cat==='mod')ru.st
 const runeLabel=ru=>RUNE_DEF[ru.type].name;
 function handName(H){ if(!H.atk)return H.elem?`${RUNE_DEF[H.elem.type].pre}素手`:'素手'; return (H.elem?RUNE_DEF[H.elem.type].pre:'')+RUNE_DEF[H.atk.type].name; }
 function resetRunes(){
-  hands={L:newHand('blade'), R:newHand('orb'), B:{b0:null,b1:null}};
-  bag=[]; builds=[null,null,null]; buildIdx=-1; castSt=null; swapSt=null; packSel=null; beamSegs=[]; clouds=[];
+  gear.hands={L:newHand('blade'), R:newHand('orb'), B:{b0:null,b1:null}};
+  gear.bag=[]; gear.builds=[null,null,null]; gear.buildIdx=-1; gear.castSt=null; gear.swapSt=null; packSel=null; beamSegs=[]; clouds=[];
   adv.runState={startChosen:false,altar1:false,taken:new Set(),lordsDone:new Set(),bodyOpen:0}; LEGEND=null; finalSt=null; adv.won=false; renderHotbar();
   try{ if(!RSEEN.has('blade')||!RSEEN.has('bolt')){ RSEEN.add('blade'); RSEEN.add('bolt'); saveSet('al_runes',RSEEN); } }catch(e){}
 }
 function newHand(w){ return {atk:makeRune(w,0),slots:[null,null],slotN:2,turn:0,elem:null,trig:null}; }
 // the element to be cast next (two different elements take turns) and the hand's trigger
 function syncHand(H){ const rs=handRunes(H), els=[...new Set(rs.filter(r=>RUNE_DEF[r.type].cat==='elem').map(r=>r.type))]; const et=els.length?els[(H.turn||0)%els.length]:null; H.elem=et?rs.find(r=>r.type===et):null; H.trig=rs.find(r=>RUNE_DEF[r.type].cat==='trig')||null; }
-const isTwo=()=>!!(hands&&hands.R&&hands.R.atk&&hands.L.atk===hands.R.atk&&RUNE_DEF[hands.R.atk.type].two);
-function effHand(h){ if(!isTwo())return hands[h]; const sl=[...hands.L.slots.slice(0,hands.L.slotN||2),...hands.R.slots.slice(0,hands.R.slotN||2)].slice(0,TWO_SLOTS); return {atk:hands.R.atk,slots:sl,slotN:sl.length,turn:hands.R.turn||0,two:true}; }
-const atkType=h=>{ const H=hands[h]; if(!H||!H.atk)return 'bare'; const d=RUNE_DEF[H.atk.type]; return d.two?d[h]:H.atk.type; };
-function syncHands(){ if(!hands)return; if(isTwo()){ const v=effHand('R'); syncHand(v); for(const h of ['L','R']){ hands[h].elem=v.elem; hands[h].trig=v.trig; } return; } syncHand(hands.L); syncHand(hands.R); }
-function turnElem(h){ if(isTwo()){ hands.R.turn=(hands.R.turn||0)+1; hands.L.turn=hands.R.turn; syncHands(); return; } const H=hands[h]; if(!H)return; H.turn=(H.turn||0)+1; syncHand(H); }
+const isTwo=()=>!!(gear.hands&&gear.hands.R&&gear.hands.R.atk&&gear.hands.L.atk===gear.hands.R.atk&&RUNE_DEF[gear.hands.R.atk.type].two);
+function effHand(h){ if(!isTwo())return gear.hands[h]; const sl=[...gear.hands.L.slots.slice(0,gear.hands.L.slotN||2),...gear.hands.R.slots.slice(0,gear.hands.R.slotN||2)].slice(0,TWO_SLOTS); return {atk:gear.hands.R.atk,slots:sl,slotN:sl.length,turn:gear.hands.R.turn||0,two:true}; }
+const atkType=h=>{ const H=gear.hands[h]; if(!H||!H.atk)return 'bare'; const d=RUNE_DEF[H.atk.type]; return d.two?d[h]:H.atk.type; };
+function syncHands(){ if(!gear.hands)return; if(isTwo()){ const v=effHand('R'); syncHand(v); for(const h of ['L','R']){ gear.hands[h].elem=v.elem; gear.hands[h].trig=v.trig; } return; } syncHand(gear.hands.L); syncHand(gear.hands.R); }
+function turnElem(h){ if(isTwo()){ gear.hands.R.turn=(gear.hands.R.turn||0)+1; gear.hands.L.turn=gear.hands.R.turn; syncHands(); return; } const H=gear.hands[h]; if(!H)return; H.turn=(H.turn||0)+1; syncHand(H); }
 // a hand holds at most two elements, one trigger, and two of the same change
 function canPut(H,i,ru){ const d=RUNE_DEF[ru.type]; if(!['elem','trig','mod'].includes(d.cat)||i>=(H.slotN||2))return false;
   const others=(H.slots||[]).slice(0,H.slotN||2).filter((r,j)=>r&&j!==i&&r!==ru);
   if(d.cat==='elem'){ const el=new Set(others.filter(r=>RUNE_DEF[r.type].cat==='elem').map(r=>r.type)); el.add(ru.type); if(el.size>2)return false; }
   if(d.cat==='trig'&&others.some(r=>RUNE_DEF[r.type].cat==='trig'))return false;
   if(d.cat==='mod'&&others.filter(r=>r.type===ru.type).length>=2)return false; return true; }
-function canPutAt(h,i,ru){ if(!isTwo())return canPut(hands[h],i,ru); const H=hands[h]; if(i>=(H.slotN||2))return false; const d=RUNE_DEF[ru.type]; if(!['elem','trig','mod'].includes(d.cat))return false;
-  const others=[]; for(const k of ['L','R'])hands[k].slots.slice(0,hands[k].slotN||2).forEach((r,j)=>{ if(r&&!(k===h&&j===i)&&r!==ru)others.push(r); });
+function canPutAt(h,i,ru){ if(!isTwo())return canPut(gear.hands[h],i,ru); const H=gear.hands[h]; if(i>=(H.slotN||2))return false; const d=RUNE_DEF[ru.type]; if(!['elem','trig','mod'].includes(d.cat))return false;
+  const others=[]; for(const k of ['L','R'])gear.hands[k].slots.slice(0,gear.hands[k].slotN||2).forEach((r,j)=>{ if(r&&!(k===h&&j===i)&&r!==ru)others.push(r); });
   if(!H.slots[i]&&others.length>=TWO_SLOTS)return false;
   if(d.cat==='elem'){ const el=new Set(others.filter(r=>RUNE_DEF[r.type].cat==='elem').map(r=>r.type)); el.add(ru.type); if(el.size>2)return false; }
   if(d.cat==='trig'&&others.some(r=>RUNE_DEF[r.type].cat==='trig'))return false;
   if(d.cat==='mod'&&others.filter(r=>r.type===ru.type).length>=2)return false; return true; }
-const allRunes=()=>[...new Set([hands.L.atk,...hands.L.slots,hands.R.atk,...hands.R.slots,...(hands.B?[hands.B.b0,hands.B.b1]:[]),...bag].filter(Boolean))];
-const handsKey=()=>['L','R'].map(h=>[hands[h].atk,...hands[h].slots].map(r=>r?r.uid:0).join(',')+':'+(hands[h].slotN||2)).join('|')+'|'+(hands.B?[hands.B.b0,hands.B.b1].map(r=>r?r.uid:0).join(','):'');
-function snapHands(){ return {L:{...hands.L,slots:hands.L.slots.slice()},R:{...hands.R,slots:hands.R.slots.slice()},B:{...(hands.B||{b0:null,b1:null})},bag:bag.slice()}; }
-function restoreHands(sn){ hands.L={...sn.L,slots:sn.L.slots.slice()}; hands.R={...sn.R,slots:sn.R.slots.slice()}; hands.B={...(sn.B||{b0:null,b1:null})}; bag=sn.bag.slice(); syncHands(); }
-function specOf(h){ const H=effHand(h); syncHand(H); if(H.two){ hands.L.elem=hands.R.elem=H.elem; hands.L.trig=hands.R.trig=H.trig; } const aff={};
+const allRunes=()=>[...new Set([gear.hands.L.atk,...gear.hands.L.slots,gear.hands.R.atk,...gear.hands.R.slots,...(gear.hands.B?[gear.hands.B.b0,gear.hands.B.b1]:[]),...gear.bag].filter(Boolean))];
+const handsKey=()=>['L','R'].map(h=>[gear.hands[h].atk,...gear.hands[h].slots].map(r=>r?r.uid:0).join(',')+':'+(gear.hands[h].slotN||2)).join('|')+'|'+(gear.hands.B?[gear.hands.B.b0,gear.hands.B.b1].map(r=>r?r.uid:0).join(','):'');
+function snapHands(){ return {L:{...gear.hands.L,slots:gear.hands.L.slots.slice()},R:{...gear.hands.R,slots:gear.hands.R.slots.slice()},B:{...(gear.hands.B||{b0:null,b1:null})},bag:gear.bag.slice()}; }
+function restoreHands(sn){ gear.hands.L={...sn.L,slots:sn.L.slots.slice()}; gear.hands.R={...sn.R,slots:sn.R.slots.slice()}; gear.hands.B={...(sn.B||{b0:null,b1:null})}; gear.bag=sn.bag.slice(); syncHands(); }
+function specOf(h){ const H=effHand(h); syncHand(H); if(H.two){ gear.hands.L.elem=gear.hands.R.elem=H.elem; gear.hands.L.trig=gear.hands.R.trig=H.trig; } const aff={};
   for(const ru of handRunes(H)){ const d=RUNE_DEF[ru.type]; if(d.cat==='mod'&&modWorks(d.mk,H))aff[d.mk]=(aff[d.mk]||0)+modVal(ru); }
   const el=H.elem?H.elem.type:null;
   const tr={}, el0=H.elem?H.elem.type:null; for(const t of trList(H.atk))tr[t.k]=t.lv;
