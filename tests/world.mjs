@@ -191,31 +191,33 @@ async function brimChecks(pg, base) {
   await advance(pg, 3);
   const ash = await burned(fresh);
   const still = await pg.evaluate((cells) => cells.filter((i) => __test.cell(i).brim), ash);
-  if (!still.length) errs.push(`7：燃え尽きた硫黄（${ash.length} マス）が、硫黄のまま残っていない（もう燃えるようにならない）`);
-  else {
-    await advance(pg, 30);
-    const back = await pg.evaluate((cells) => cells.filter((i) => __test.cell(i).brim && !__test.cell(i).burnt), still);
-    if (!back.length) errs.push(`7：燃え尽きた硫黄（${still.length} マス）が、30秒たっても1つも戻らない`);
-    // 清掃機（Rc）が灰を片付けた硫黄（灰の印が無く、燃える物も無い）も、しばらくすると戻る
-    const left = await pg.evaluate((cells) => cells.filter((i) => __test.cell(i).burnt), still);
-    if (!left.length) errs.push('7：灰の残った硫黄が無く、清掃機を試せない（テストの前提が崩れた）');
-    else {
-      await pg.evaluate((i) => __test.summon('Rc', i), left[0]);
-      const swept = (cells) => pg.evaluate((cells) => cells.filter((i) => !__test.cell(i).burnt && !__test.cell(i).fuel), cells);
-      let done = [];
-      for (let s = 0; s < 40 && !done.length; s++) {
-        await advance(pg, 1);
-        done = await swept(left);
-      }
-      if (!done.length) errs.push('7：清掃機が、硫黄の灰を40秒たっても片付けない（テストの前提が崩れた）');
-      else {
-        await pg.evaluate(() => __test.clearAll());
-        await advance(pg, 60);
-        const again = await pg.evaluate((cells) => cells.filter((i) => __test.cell(i).fuel > 0), done);
-        if (!again.length) errs.push(`7：清掃機が灰を片付けた硫黄（${done.length} マス）が、60秒たっても燃えるようにならない`);
-      }
-    }
+  if (!still.length) {
+    errs.push(`7：燃え尽きた硫黄（${ash.length} マス）が、硫黄のまま残っていない（もう燃えるようにならない）`);
+    return;
   }
+  // すぐに清掃機（Rc）を置き、灰を片付けさせる（片付けた硫黄は、灰の印が無く、燃える物も無い）
+  await pg.evaluate((i) => __test.summon('Rc', i), still[0]);
+  const isSwept = (cells) => pg.evaluate((cells) => cells.filter((i) => !__test.cell(i).burnt && !__test.cell(i).fuel), cells);
+  let swept = [];
+  for (let s = 0; s < 40 && !swept.length; s++) {
+    await advance(pg, 1);
+    swept = await isSwept(still);
+  }
+  await pg.evaluate(() => __test.clearAll());
+  if (!swept.length) errs.push('7：清掃機が、硫黄の灰を40秒たっても片付けない（テストの前提が崩れた）');
+  const rest = still.filter((i) => !swept.includes(i));
+  // 戻るのは2秒ごとに8%なので、1マスが300秒たっても戻らない見込みは 0.92^150（10万分の1より小さい）
+  const backOf = (cells) => pg.evaluate((cells) => cells.filter((i) => __test.cell(i).fuel > 0), cells);
+  let back = [],
+    sweptBack = [];
+  for (let t = 0; t < 300 && (!back.length || (swept.length && !sweptBack.length)); t += 2) {
+    await advance(pg, 2);
+    back = await backOf(rest);
+    sweptBack = await backOf(swept);
+  }
+  if (rest.length && !back.length) errs.push(`7：燃え尽きた硫黄（${rest.length} マス）が、300秒たっても1つも燃えるようにならない`);
+  if (swept.length && !sweptBack.length)
+    errs.push(`7：清掃機が灰を片付けた硫黄（${swept.length} マス）が、300秒たっても燃えるようにならない`);
 }
 
 // 8〜10：冷気と火（大洞窟の深さ4。水がマップの端にもある）
