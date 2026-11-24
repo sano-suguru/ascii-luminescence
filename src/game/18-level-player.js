@@ -17,7 +17,7 @@ function newLevel(seedOverride){
   if(advance.bounced){ advance.bounced=false; setTimeout(()=>msg('<b style="color:#a98cff">.</b>闇の底に触れた途端、何かに押し返された。まだ、降りることは許されていない。'),1200); }
   here.D=generate(seedOverride!==undefined?seedOverride:levelSeed(),here.depth);
   if(here.depth===FINAL_DEPTH&&!here.branch&&!here.realm)here.D.finalVault=true;
-  here.D.doorAt=new Map(here.D.doors.map(d=>[d.i,d])); frozen=new Map();
+  frozen=new Map();
   placeRunesForLevel(); projs=[]; beamSegs=[]; clouds=[]; gear.castSt=null;
   U.uAmb.value=here.D.prof.ambient;
   hudInfo.explored=0;

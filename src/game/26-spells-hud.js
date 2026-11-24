@@ -1,6 +1,7 @@
 // ---------------------------------------------------------------- spells meet the world: doors stop them, sight lines matter, ice freezes water and puts out fire, thunder runs through water, fire lights poison mist
 let frozen=new Map(), beamIgT=-9;
-function doorBlock(ci){ const d=here.D.doorAt&&here.D.doorAt.get(ci); return !!d&&!d.gone&&d.o<0.5; }
+// doorAt is the door number of each cell (-1 where there is no door), as generate() made it
+function doorBlock(ci){ const di=here.D.doorAt[ci], d=di>=0?here.D.doors[di]:null; return !!d&&!d.gone&&d.o<0.5; }
 function losClear(ax,ay,az,bx,by,bz){ const d=Math.hypot(bx-ax,by-ay,bz-az), n=Math.ceil(d/0.3);
   for(let k=1;k<n;k++){ const f=k/n, x=ax+(bx-ax)*f, y=ay+(by-ay)*f, z=az+(bz-az)*f, ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL); if(ci<0||ci>=NCELL)return false;
     const tt=here.D.tile[ci]; if(tt===TW||tt===TX||doorBlock(ci)||y>here.D.ceil[ci])return false; }
