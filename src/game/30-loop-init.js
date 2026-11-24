@@ -87,6 +87,8 @@ if(TEST)window.__test={
   doors(){ return here.D.doors.map(d=>({i:d.i,j:d.j,o:+d.o.toFixed(3),gone:!!d.gone})); },
   cell(i){ return {x:(i%MW+0.5)*CELL,z:(((i/MW)|0)+0.5)*CELL,floor:here.D.tile[i]===TF&&!here.D.solid.has(i)&&!blocksWalk(here.D.liquid[i]),seen:here.fovVis[i]===here.fovStamp,explored:!!here.explored[i]}; },
   ignite(i){ ignite(i,1,false); },
+  // remove every creature (lords too), so a check is not upset by one that happens to be near
+  clearAll(){ const n=here.monsters.length; here.monsters=[]; return n; },
   // every place a run can visit, for generation checks
   places(){ return [...Array.from({length:FINAL_DEPTH},(_,i)=>({depth:i+1})), ...Object.keys(SPECIALS).map(k=>({inter:k})),
     ...Object.values(BRANCHES).flatMap(B=>Array.from({length:B.len},(_,i)=>({branch:B.key,lvl:i+1}))), ...Object.values(REALMS).map(R=>({realm:R.key,depth:R.minD+2}))]; },

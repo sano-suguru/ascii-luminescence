@@ -93,7 +93,7 @@ await withBrowser(
     // （深さ3は大洞窟で扉が無いので、石の迷宮の深さ1で）
     await openTest(pg, base, 'seed=202&depth=1&god=1');
     await advance(pg, 2);
-    await pg.evaluate(() => dbg.clear());
+    await pg.evaluate(() => __test.clearAll()); // 近くの生き物が扉を開けたり、掃除をする小さな生き物が火を消したりしないように
     const door = await pg.evaluate(() => {
       // 部屋の側に、扉から2マス続く床がある扉（そこに立つと、扉から 5 離れていて、扉は開かない）
       for (const d of __test.doors()) {
