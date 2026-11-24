@@ -4,6 +4,12 @@
 // BIZ UDGothic で補っていて、そこでも全角（2マス）。全角スペース（U+3000）は M PLUS 1 Code では半角なので1マス。
 // tests/panels.mjs が、本物のフォントで測った幅と合うかを確かめている。
 
+/**
+ * M PLUS 1 Code に無く、BIZ UDGothic で補ってよい文字（どれも全角2マス）。ゲームの文言に使える文字は、M PLUS 1 Code にある文字とこれだけ。
+ * 足す時は、BIZ UDGothic にあることと、visW の幅を合わせる（tests/glyphs.mjs と tests/panels.mjs が確かめる）
+ */
+export const BIZ_CHARS = '←→！：？［］';
+
 const WIDE: readonly (readonly [number, number])[] = [
   [0x1100, 0x115f],
   [0x2e80, 0xa4cf],

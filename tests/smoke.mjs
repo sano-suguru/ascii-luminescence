@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // スモークテスト：ふだんのページが起動するか、開発用の冒険で dbg が動くか。ページのエラーを確かめ、画面写真を tests/out/ に保存。
-//   node tests/smoke.mjs          テスト版（.build/test/）。フォントは node_modules の @fontsource から（オフラインで動く。既定）
-//   node tests/smoke.mjs --prod   公開用の版（dist/）で、フォントも公開用と同じく Google Fonts から（ネットワークが必要）
+//   node tests/smoke.mjs          テスト版（.build/test/。既定）
+//   node tests/smoke.mjs --prod   公開用の版（dist/）。JetBrains Mono を指定した所の日本語は、システムのフォントで描く
 import { join } from 'node:path';
 import { withBrowser, newPage, openTest, frames, advance, OUT } from './lib.mjs';
 

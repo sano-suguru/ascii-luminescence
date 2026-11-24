@@ -6,23 +6,11 @@ import { fileURLToPath } from 'node:url';
 import { encodeMappings } from './sourcemap.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-// テスト版では、Google Fonts の代わりに npm の @fontsource を読む（どのマシンでも同じ文字の形にするため）
-export const TEST_FONTS = [
-  'jetbrains-mono/400',
-  'jetbrains-mono/700',
-  'jetbrains-mono/800',
-  'm-plus-1-code/400',
-  'm-plus-1-code/600',
-  'm-plus-1-code/700',
-  'noto-sans-runic/400',
-  'biz-udgothic/400',
-  'biz-udgothic/700',
-];
 
 // ゲームは JetBrains Mono を指定した所でも日本語を書く。JetBrains Mono に日本語は無いので、ふだんはシステムの日本語フォントで
 // 描かれる（マシンごとに違う）。テスト版では、M PLUS 1 Code の面を「JetBrains Mono」の名前でも登録して、日本語をそれで描く。
-// 同じ名前の面は後に書いた方が先に使われるので、本物の JetBrains Mono（後の <link>）が英数字では勝つ。
-// M PLUS 1 Code を指定した所の補い（BIZ UDGothic）は、ゲームの CSS の指定どおり、その名前のまま読み込む（TEST_FONTS）。
+// 同じ名前の面は後に書いた方が先に使われるので、本物の JetBrains Mono（後に置かれる、組み立てたフォントの CSS）が英数字では勝つ。
+// フォントそのものは、公開用もテスト版も src/main.js で @fontsource から読む。
 export function cjkFallback() {
   // 日本語の範囲だけ（記号と句読点・かな・漢字・全角）。罫線（タイトルのロゴ）などは含めない
   const CJK = [

@@ -1,12 +1,12 @@
 // 組み立て（Vite 8）。入口は src/index.html。ゲーム本体は tools/vite-plugins.mjs の legacyGame が1つのモジュールにする。
-//   vite build              -> dist/（公開用。フォントは Google Fonts から）
-//   vite build --mode test  -> .build/test/（テスト用。フォントは node_modules の @fontsource から。オフラインで動く）
-//   three.js は、どちらも npm の three（r147）を組み立てに入れる（src/game/imports.mjs で読む）
+//   vite build              -> dist/（公開用）
+//   vite build --mode test  -> .build/test/（テスト用。JetBrains Mono を指定した所の日本語も、同梱のフォントで描く。tools/vite-plugins.mjs の testPage）
+//   three.js（src/game/imports.mjs）とフォント（src/main.js）は、どちらも npm から組み立てに入れる。外の CDN は読まない
 //   ほかの mode             -> .build/<mode>/（単体テストで、公開用と同じ組み立てを試す時など）
 // ソースマップは、どの mode でも .build/maps/<mode>/ に置き、出力には残さない（公開しない）。
 import { join } from 'node:path';
 import { defineConfig } from 'vite';
-import { legacyGame, noCssStub, privateMaps, testPage } from './tools/vite-plugins.mjs';
+import { fontCss, legacyGame, noCssStub, privateMaps, testPage } from './tools/vite-plugins.mjs';
 
 const root = import.meta.dirname;
 
@@ -30,6 +30,8 @@ export default defineConfig(({ mode }) => ({
     modulePreload: false,
     sourcemap: 'hidden',
     reportCompressedSize: false,
+    // フォントは CSS に埋め込まない（埋め込むと、小さな面がページを開くたびに読む CSS に入る。ファイルにしておけば、要る範囲だけ読む）
+    assetsInlineLimit: (file) => (/\.woff2?$/.test(file) ? false : undefined),
   },
-  plugins: [legacyGame(), noCssStub(), mode === 'test' && testPage(), privateMaps(join(root, '.build/maps', mode))],
+  plugins: [legacyGame(), noCssStub(), fontCss(), mode === 'test' && testPage(), privateMaps(join(root, '.build/maps', mode))],
 }));

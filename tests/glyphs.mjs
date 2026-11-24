@@ -1,23 +1,19 @@
 #!/usr/bin/env node
 // 使う文字のもれのチェック（ブラウザ不要、数秒）：ゲームの文言（src/game/・src/lib/ と index.html）に出る文字が、パネルのフォントで描けるか。
 //   - M PLUS 1 Code（パネルのフォント。太さ400・600・700のすべて）に入っている → よい
-//   - 入っていない → index.html の BIZ UDGothic の text=（補いの文字の一覧）に入っていなければ失敗
+//   - 入っていない → BIZ UDGothic で補ってよい文字の一覧（src/lib/text.ts の BIZ_CHARS）に入っていなければ失敗
 //   - ルーン文字（U+16A0–16FF）は Noto Sans Runic で描くので対象外
 // 一覧に足した文字は、BIZ UDGothic に入っているかも確かめる。幅の数え方（visW）は tests/panels.mjs が確かめる。
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import * as fontkit from 'fontkit';
+import { BIZ_CHARS } from '../src/lib/text.ts';
 import { gameText } from '../tools/game-source.mjs';
 import { ROOT } from './lib.mjs';
 
 const head = readFileSync(join(ROOT, 'src/index.html'), 'utf8'),
   game = gameText();
-const m = head.match(/family=BIZ\+UDGothic[^"]*?[?&]text=([^&"]+)/);
-if (!m) {
-  console.log('✗ index.html に BIZ UDGothic の text= が見つからない');
-  process.exit(1);
-}
-const extra = new Set(decodeURIComponent(m[1]));
+const extra = new Set(BIZ_CHARS);
 
 // @fontsource の CSS から、どのファイルがどの範囲を持つかを読み、必要なファイルだけ開く。
 // 範囲の書いていない面は、全部の範囲を持つものとして扱う。ファイルの無い面は飛ばす（@fontsource の書き方が変わっても落ちないように）
@@ -96,7 +92,7 @@ let fail = false;
 if (missing.length) {
   fail = true;
   console.log(
-    `✗ M PLUS 1 Code に無く、BIZ UDGothic の一覧にも無い文字：\n${missing.map((c) => `  ${c}（${hex(c)}）  ${whereIs(c)}`).join('\n')}\n  → 別の文字にするか、index.html の text= に足して visW の幅も合わせる（コメントだけなら、言い換える）`,
+    `✗ M PLUS 1 Code に無く、BIZ UDGothic の一覧にも無い文字：\n${missing.map((c) => `  ${c}（${hex(c)}）  ${whereIs(c)}`).join('\n')}\n  → 別の文字にするか、src/lib/text.ts の BIZ_CHARS に足して visW の幅も合わせる（コメントだけなら、言い換える）`,
   );
 }
 if (notInBiz.length) {

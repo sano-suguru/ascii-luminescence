@@ -22,13 +22,13 @@
     "deploy": "vite build && pnpm dlx wrangler@4 deploy"
   },
   "dependencies": {
-    "three": "0.147.0"
-  },
-  "devDependencies": {
     "@fontsource/biz-udgothic": "5.3.0",
     "@fontsource/jetbrains-mono": "5.3.0",
     "@fontsource/m-plus-1-code": "5.3.1",
     "@fontsource/noto-sans-runic": "5.3.0",
+    "three": "0.147.0"
+  },
+  "devDependencies": {
     "dejavu-fonts-ttf": "2.37.3",
     "fontkit": "3.0.0",
     "oxfmt": "0.79.0",
