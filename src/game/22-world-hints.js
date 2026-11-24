@@ -28,25 +28,25 @@ const REALM_OMEN={
 // stratumAtDepth は src/lib/strata.ts（src/game/imports.mjs で読む）
 function computeOmen(){ const o={stairs:null,branch:null,portal:null,traces:[],sndT:{}};
   if(here.branch){ if(here.branch.lvl<here.branch.len)o.stairs={kind:'branch',key:here.branch.key,strong:here.branch.lvl+1===here.branch.len}; }
-  else if(!here.realm&&D.stairs>=0&&!D.finalVault&&here.depth<FINAL_DEPTH){ const ik=!here.inter?interAfter(here.depth):null; if(ik)o.stairs={kind:'special',key:ik}; else { const nd=here.depth+1, a=here.inter?SPECIALS[here.inter.key]:stratumAtDepth(here.depth), b=stratumAtDepth(nd); if(a&&b&&a.k!==b.k)o.stairs={kind:'stratum',key:b.k}; } }
-  if(D.bstairs)o.branch={key:D.bstairs.key,cell:D.bstairs.cell};
-  if(D.portal)o.portal={key:D.portal.key,cell:D.portal.cell};
+  else if(!here.realm&&here.D.stairs>=0&&!here.D.finalVault&&here.depth<FINAL_DEPTH){ const ik=!here.inter?interAfter(here.depth):null; if(ik)o.stairs={kind:'special',key:ik}; else { const nd=here.depth+1, a=here.inter?SPECIALS[here.inter.key]:stratumAtDepth(here.depth), b=stratumAtDepth(nd); if(a&&b&&a.k!==b.k)o.stairs={kind:'stratum',key:b.k}; } }
+  if(here.D.bstairs)o.branch={key:here.D.bstairs.key,cell:here.D.bstairs.cell};
+  if(here.D.portal)o.portal={key:here.D.portal.key,cell:here.D.portal.cell};
   const lay=(cell,key,strong)=>{ const [cx,cz]=cpos(cell), n=strong?44:24, R=strong?6:4.2, rr=mulberry32((cell*7919+adv.runSeed)>>>0);
-    for(let k=0;k<n;k++){ const a=rr()*6.28, d=0.9+rr()*(R-0.9), x=cx+Math.cos(a)*d, z=cz+Math.sin(a)*d, ci=((z/CELL)|0)*MW+((x/CELL)|0); if(ci<0||ci>=D.tile.length||D.tile[ci]!==TF)continue; o.traces.push({x,z,key,r:rr(),a:rr()*6.28}); } };
+    for(let k=0;k<n;k++){ const a=rr()*6.28, d=0.9+rr()*(R-0.9), x=cx+Math.cos(a)*d, z=cz+Math.sin(a)*d, ci=((z/CELL)|0)*MW+((x/CELL)|0); if(ci<0||ci>=here.D.tile.length||here.D.tile[ci]!==TF)continue; o.traces.push({x,z,key,r:rr(),a:rr()*6.28}); } };
   if(o.branch)lay(o.branch.cell,o.branch.key,false);
-  if(o.stairs&&o.stairs.kind==='branch')lay(D.stairs,o.stairs.key,o.stairs.strong);
+  if(o.stairs&&o.stairs.kind==='branch')lay(here.D.stairs,o.stairs.key,o.stairs.strong);
   return o; }
-const omenOf=()=>D?(D.omen||(D.omen=computeOmen())):null;
+const omenOf=()=>here.D?(here.D.omen||(here.D.omen=computeOmen())):null;
 function omenSound(kind,x,z){ if(!sndReady())return; const d=Math.hypot(x-player.x,z-player.z), v=Math.max(0.05,1-d/10);
   if(kind==='drip')sDrip(x,z,0.4*v); else if(kind==='chime'||kind==='chant')sChime(x,z,0.22*v); else if(kind==='rumble'||kind==='growl')sRumble(0.18*v,kind==='growl'?0.9:1.6);
   else if(kind==='whisper'||kind==='wind'||kind==='hiss')sHiss(x,z,kind==='hiss'?0.7:1.4); else if(kind==='bubble')sBubble(x,z,0.3*v); else if(kind==='scuttle')sHiss(x,z,0.18); }
-function drawOmens(t,dt){ if(!D||gallery)return; const o=omenOf(); if(!o)return;
+function drawOmens(t,dt){ if(!here.D||gallery)return; const o=omenOf(); if(!o)return;
   const near=(x,z,r)=>Math.hypot(x-player.x,z-player.z)<r, rate=(n)=>mr()<n*(dt||0.016);
   const rise=(x,z,def,n,spread)=>{ if(!rate(n))return; const a=mr()*6.28, rr=mr()*(spread||0.7), down=def.vy<0;
     spawn(x+Math.cos(a)*rr,down?2.2+mr()*0.6:0.15,z+Math.sin(a)*rr,(mr()-0.5)*0.15,def.vy*(0.7+mr()*0.6),(mr()-0.5)*0.15,2.4+mr(),G(mpick(def.gl)),0.12,def.col[0]*1.3,def.col[1]*1.3,def.col[2]*1.3,0); };
   const sound=(key,kind,x,z)=>{ if(!kind||!near(x,z,10))return; if(time<(o.sndT[key]||0))return; o.sndT[key]=time+6+mr()*5; omenSound(kind,x,z); };
   // the stairs: what lies below leaks up
-  if(o.stairs&&o.stairs.kind!=='branch'){ const def=o.stairs.kind==='special'?SPECIAL_OMEN[o.stairs.key]:STRATUM_OMEN[o.stairs.key]; const [x,z]=cpos(D.stairs);
+  if(o.stairs&&o.stairs.kind!=='branch'){ const def=o.stairs.kind==='special'?SPECIAL_OMEN[o.stairs.key]:STRATUM_OMEN[o.stairs.key]; const [x,z]=cpos(here.D.stairs);
     if(def&&near(x,z,20)){ rise(x,z,def,3.2); if(def.glow)for(let k=0;k<16;k++){ const a=k/16*Math.PI*2+t*0.1, b=0.5+0.25*Math.sin(t*1.7+k); dyn(x+Math.cos(a)*1.3,0.04,z+Math.sin(a)*1.3,G('.'),0.15,def.glow[0]*b,def.glow[1]*b,def.glow[2]*b,0,0); } sound('st',def.snd,x,z); } }
   // the otherworld gate: its realm's light
   if(o.portal){ const def=REALM_OMEN[o.portal.key], [x,z]=cpos(o.portal.cell); if(def&&near(x,z,20)){ rise(x,z,def,3,1.0); if(def.frost)for(let k=0;k<20;k++){ const a=k*2.399, r=0.8+(k%5)*0.3; dyn(x+Math.cos(a)*r,0.03,z+Math.sin(a)*r,G(k%3?'.':'*'),0.13,0.55,0.7,0.85,0,0); } sound('po',def.snd,x,z); } }
@@ -58,25 +58,25 @@ function drawOmens(t,dt){ if(!D||gallery)return; const o=omenOf(); if(!o)return;
     else if(k==='nest'){ if(r<0.55)dyn(tr.x,0.03,tr.z,G(mpick(['-','/','\\'])),0.15,0.5,0.5,0.55,0,0); else if(r<0.85){ for(let q=0;q<3;q++)dyn(tr.x,1.4+q*0.35,tr.z,G('|'),0.13,0.45,0.45,0.5,0,0); } else { const a=t*1.5+tr.a; dyn(tr.x+Math.cos(a)*0.3,0.05,tr.z+Math.sin(a)*0.3,G('x'),0.11,0.5,0.45,0.4,0,0); } }
     else if(k==='snake'){ if(r<0.6){ for(let q=0;q<4;q++)dyn(tr.x+Math.cos(tr.a)*q*0.13,0.03,tr.z+Math.sin(tr.a)*q*0.13+Math.sin(q*1.6)*0.05,G(q%2?'s':'~'),0.14,0.62,0.6,0.42,0,0); } else dyn(tr.x,0.03,tr.z,G(','),0.14,0.3,0.5,0.24,0,0); } }
   if(o.branch){ const [x,z]=cpos(o.branch.cell), k=o.branch.key; if(near(x,z,18)){ if(k==='crypt')rise(x,z,{col:[0.45,0.6,0.8],gl:['~','.'],vy:0.08},1.5,1.2); if(k==='lair')rise(x,z,{col:[0.6,0.45,0.32],gl:['~'],vy:0.15},0.8,0.6); sound('br',BRANCH_OMEN[k].snd,x,z); } }
-  if(o.stairs&&o.stairs.kind==='branch'){ const [x,z]=cpos(D.stairs), k=o.stairs.key; if(near(x,z,18)){ if(k==='crypt')rise(x,z,{col:[0.45,0.6,0.8],gl:['~','.'],vy:0.08},o.stairs.strong?3:1.5,1.4); sound('st',BRANCH_OMEN[k].snd,x,z); } }
+  if(o.stairs&&o.stairs.kind==='branch'){ const [x,z]=cpos(here.D.stairs), k=o.stairs.key; if(near(x,z,18)){ if(k==='crypt')rise(x,z,{col:[0.45,0.6,0.8],gl:['~','.'],vy:0.08},o.stairs.strong?3:1.5,1.4); sound('st',BRANCH_OMEN[k].snd,x,z); } }
 }
 
 // ---------------------------------------------------------------- direction arrows: from a point just above the hands, arrows spread out toward places - straight-line direction only, never the way;
 // near ones short and thick, far ones long and thin. The stairs are always known; gates once seen; altars from 20 m; springs, treasuries and guarded prizes from 12 m. A place in plain sight needs no arrow.
 const arrowCv=document.getElementById('arrows'), arrowCtx=arrowCv?arrowCv.getContext('2d'):null;
-function arrowTargets(){ const out=[]; if(!D||!ui.started||adv.dead)return out; const pc=((player.z/CELL)|0)*MW+((player.x/CELL)|0), atHub=D.hub&&D.roomOf[pc]===D.hub.ri, far=atHub?1.5:1;
+function arrowTargets(){ const out=[]; if(!here.D||!ui.started||adv.dead)return out; const pc=((player.z/CELL)|0)*MW+((player.x/CELL)|0), atHub=here.D.hub&&here.D.roomOf[pc]===here.D.hub.ri, far=atHub?1.5:1;
   // standing at the crossroads, presences around are felt from farther off
-  const P=(cell,ch,col,range,seenOnly,vague)=>{ if(cell==null||cell<0)return; if(seenOnly&&!explored[cell])return; const [x,z]=cpos(cell), d=Math.hypot(x-player.x,z-player.z); if(range&&d>range*far)return;
+  const P=(cell,ch,col,range,seenOnly,vague)=>{ if(cell==null||cell<0)return; if(seenOnly&&!here.explored[cell])return; const [x,z]=cpos(cell), d=Math.hypot(x-player.x,z-player.z); if(range&&d>range*far)return;
     // a thing not yet seen is only a presence: a '?' in the colour of its light
-    if(vague&&!explored[cell])ch='?'; out.push({x,z,d,ch,col}); };
-  if(!D.finalVault&&D.stairs>=0)P(D.stairs,'>',[1.0,0.85,0.45],0,false);
-  if(D.bstairs)P(D.bstairs.cell,'>',[0.75,0.6,1.0],0,true);
-  if(D.portal)P(D.portal.cell,'0',[1.0,0.55,0.9],0,true);
-  const seenAltar=new Set(); for(const it of (D.items||[])){ if(it.taken)continue;
+    if(vague&&!here.explored[cell])ch='?'; out.push({x,z,d,ch,col}); };
+  if(!here.D.finalVault&&here.D.stairs>=0)P(here.D.stairs,'>',[1.0,0.85,0.45],0,false);
+  if(here.D.bstairs)P(here.D.bstairs.cell,'>',[0.75,0.6,1.0],0,true);
+  if(here.D.portal)P(here.D.portal.cell,'0',[1.0,0.55,0.9],0,true);
+  const seenAltar=new Set(); for(const it of (here.D.items||[])){ if(it.taken)continue;
     if(it.altar&&!seenAltar.has(it.grp)){ seenAltar.add(it.grp); if(it.forge)P(it.i,'T',[0.7,0.85,1.0],20,false); else P(it.i,'_',[1.0,0.8,0.45],20,false); }
     else if(it.kind==='spring')P(it.i,'~',[0.5,0.88,1.0],20,false,true);
     else if(it.kind==='grave')P(it.i,'+',[0.78,0.78,0.9],20,false,true);
-    else if(it.vault)P(D.gate?D.gate.cell:it.i,'#',[1.0,0.82,0.3],20,false,true);
+    else if(it.vault)P(here.D.gate?here.D.gate.cell:it.i,'#',[1.0,0.82,0.3],20,false,true);
     else if(it.elitePrize)P(it.i,'*',[1.0,0.42,0.32],20,false,true); }
   return out; }
 function inPlainSight(t){ if(t.d>22)return false; const [ox,oy,oz]=aimOrigin(), [vx,vy,vz]=viewDir(), dx=t.x-ox, dz=t.z-oz, dy=0.9-oy, L=Math.hypot(dx,dy,dz)||1;
@@ -99,29 +99,29 @@ function drawArrows(){ if(!arrowCtx)return; const W=Math.round(arrowCv.clientWid
     const mx=ox+sx*(r0+n*step+size*0.85), my=oy+sy*(r0+n*step+size*0.85), ms=(17+5*near)*k;
     c.beginPath(); c.arc(mx,my,ms*0.7,0,Math.PI*2); c.fillStyle='rgba(6,4,14,0.55)'; c.fill(); c.lineWidth=1.2*k; c.strokeStyle=`rgba(${rgb},${(alpha*0.6).toFixed(2)})`; c.stroke();
     glyph(t.ch,mx,my+ms*0.02,0,ms,rgb,Math.min(1,alpha+0.1),true); } }
-const stairsGuarded=()=>D&&D.stairGuard!==undefined&&here.monsters.some(m=>!m.dead&&m.g===D.stairGuard);
-function drawStairSeal(t){ if(!D||D.stairGuard===undefined)return; const [x,z]=cpos(D.stairs); const d=Math.hypot(x-player.x,z-player.z); if(d>26)return; const on=stairsGuarded();
-  if(on){ for(let k=0;k<18;k++){ const a=k/18*Math.PI*2+t*0.4, b=0.7+0.3*Math.sin(t*2+k); dyn(x+Math.cos(a)*0.9,0.3+0.12*Math.sin(t*1.5+k),z+Math.sin(a)*0.9,G(k%3?'=':'#'),0.18,1.4*b,0.4*b,0.55*b,0,0); } if(d<12&&time>(D.sealSnd||0)){ D.sealSnd=time+7+mr()*4; omenSound('growl',x,z); } }
-  else if(!D.sealOpenMsg){ D.sealOpenMsg=true; msg('<b style="color:#ffd27a">=</b>階段を閉ざしていた封が、静かに解けた。'); sChime(x,z,0.4); } }
+const stairsGuarded=()=>here.D&&here.D.stairGuard!==undefined&&here.monsters.some(m=>!m.dead&&m.g===here.D.stairGuard);
+function drawStairSeal(t){ if(!here.D||here.D.stairGuard===undefined)return; const [x,z]=cpos(here.D.stairs); const d=Math.hypot(x-player.x,z-player.z); if(d>26)return; const on=stairsGuarded();
+  if(on){ for(let k=0;k<18;k++){ const a=k/18*Math.PI*2+t*0.4, b=0.7+0.3*Math.sin(t*2+k); dyn(x+Math.cos(a)*0.9,0.3+0.12*Math.sin(t*1.5+k),z+Math.sin(a)*0.9,G(k%3?'=':'#'),0.18,1.4*b,0.4*b,0.55*b,0,0); } if(d<12&&time>(here.D.sealSnd||0)){ here.D.sealSnd=time+7+mr()*4; omenSound('growl',x,z); } }
+  else if(!here.D.sealOpenMsg){ here.D.sealOpenMsg=true; msg('<b style="color:#ffd27a">=</b>階段を閉ざしていた封が、静かに解けた。'); sChime(x,z,0.4); } }
 // the air of each part of a level: the crossroads a little brighter, the way to the stairs a little darker and quieter
 let ambK=1;
-function updateSectionAir(dt){ if(!D||!D.prof)return; const pc=((player.z/CELL)|0)*MW+((player.x/CELL)|0); let k=1;
-  if(D.hub&&D.roomOf[pc]===D.hub.ri)k=1.25; else if(D.dS&&D.pathL>0&&D.dS[pc]>D.pathL*0.7)k=0.85;
-  ambK+=(k-ambK)*Math.min(1,dt*1.2); U.uAmb.value=D.prof.ambient*ambK; }
-function drawGraves(t){ for(const it of (D.items||[])){ if(it.kind!=='grave'||it.taken)continue; const [x,z]=cpos(it.i); if(Math.hypot(x-player.x,z-player.z)>26)continue;
+function updateSectionAir(dt){ if(!here.D||!here.D.prof)return; const pc=((player.z/CELL)|0)*MW+((player.x/CELL)|0); let k=1;
+  if(here.D.hub&&here.D.roomOf[pc]===here.D.hub.ri)k=1.25; else if(here.D.dS&&here.D.pathL>0&&here.D.dS[pc]>here.D.pathL*0.7)k=0.85;
+  ambK+=(k-ambK)*Math.min(1,dt*1.2); U.uAmb.value=here.D.prof.ambient*ambK; }
+function drawGraves(t){ for(const it of (here.D.items||[])){ if(it.kind!=='grave'||it.taken)continue; const [x,z]=cpos(it.i); if(Math.hypot(x-player.x,z-player.z)>26)continue;
     for(let y=0;y<3;y++)dyn(x,0.2+y*0.3,z,G(y===2?'+':'|'),0.34,0.55,0.55,0.62,0,0); dyn(x-0.18,0.62,z,G('-'),0.3,0.5,0.5,0.58,0,0); dyn(x+0.18,0.62,z,G('-'),0.3,0.5,0.5,0.58,0,0);
     const c=runeCol(it.rune), b=0.9+0.4*Math.sin(t*1.8+it.i); dyn(x,1.35+0.06*Math.sin(t*1.3),z,G(RUNE_DEF[it.rune.type].ch),0.26,c[0]*b,c[1]*b,c[2]*b,0,0); } }
 function drawRunesWorld(t){
   drawZones(t);
   drawStairSeal(t); updateSectionAir(0.016);
   drawSprings(t); drawGraves(t);
-  { const pr=(D.items||[]).find(o=>o.vault&&!o.taken&&o.ev); if(pr){ const ri=D.roomOf[pr.i], room=ri>=0&&D.rooms[ri]&&D.rooms[ri].cells.length>6?D.rooms[ri]:(pr.area||(pr.area={cells:vaultArea(pr,2)})); const [px,pz]=cpos(pr.i); if(room&&Math.hypot(px-player.x,pz-player.z)<20){ const rr=mulberry32((pr.i*31+7)>>>0);
+  { const pr=(here.D.items||[]).find(o=>o.vault&&!o.taken&&o.ev); if(pr){ const ri=here.D.roomOf[pr.i], room=ri>=0&&here.D.rooms[ri]&&here.D.rooms[ri].cells.length>6?here.D.rooms[ri]:(pr.area||(pr.area={cells:vaultArea(pr,2)})); const [px,pz]=cpos(pr.i); if(room&&Math.hypot(px-player.x,pz-player.z)<20){ const rr=mulberry32((pr.i*31+7)>>>0);
     if(pr.ev==='guard'){ for(let k=0;k<2;k++){ const c=room.cells[Math.floor(rr()*room.cells.length)], [x,z]=cpos(c), b=0.6+0.5*Math.max(0,Math.sin(t*0.9+k*2)); dyn(x-0.06,1.35,z,G('.'),0.12,1.6*b,0.3*b,0.25*b,0,0); dyn(x+0.06,1.35,z,G('.'),0.12,1.6*b,0.3*b,0.25*b,0,0); for(let y=0;y<4;y++)dyn(x,0.2+y*0.32,z,G(y===3?'@':'#'),0.3,0.32,0.3,0.34,0,0); } }
     else { if(mr()<0.12){ const c=room.cells[Math.floor(mr()*room.cells.length)], [x,z]=cpos(c); spawn(x+(mr()-0.5),2.8,z+(mr()-0.5),0,-0.4,0,2.2,G(mpick(['.',','])),0.1,0.6,0.56,0.5,1); } for(let k=0;k<6;k++){ const c=room.cells[Math.floor(rr()*room.cells.length)], [x,z]=cpos(c); dyn(x,0.03,z,G(rr()<0.5?'/':'\\'),0.18,0.4,0.36,0.32,0,0); } } } } }
   updateRockfall(0.016);
-  for(const it of (D.items||[])){ if(it.taken||it.kind!=='slot')continue; const [x,z]=cpos(it.i); if(Math.hypot(x-player.x,z-player.z)>28)continue; const b=1.8+0.6*Math.sin(t*2.2+it.i), hy=0.75+0.08*Math.sin(t*1.6);
+  for(const it of (here.D.items||[])){ if(it.taken||it.kind!=='slot')continue; const [x,z]=cpos(it.i); if(Math.hypot(x-player.x,z-player.z)>28)continue; const b=1.8+0.6*Math.sin(t*2.2+it.i), hy=0.75+0.08*Math.sin(t*1.6);
     dyn(x-0.16,hy,z,G('{'),0.34,2.6*b/2,2.2*b/2,1.3*b/2,0,0); dyn(x+0.16,hy,z,G('}'),0.34,2.6*b/2,2.2*b/2,1.3*b/2,0,0); dyn(x,hy,z,G('.'),0.2,1.6,1.5,1.2,0,0); if(mr()<0.15)spawn(x+(mr()-0.5)*0.4,hy,z+(mr()-0.5)*0.4,0,0.5,0,0.8,G('.'),0.1,2.2,1.9,1.2,0); }
-  for(const it of (D.items||[])){ if(it.taken||it.kind!=='rune')continue; let [x,z]=cpos(it.i); const dd=Math.hypot(x-player.x,z-player.z); if(dd>28)continue;
+  for(const it of (here.D.items||[])){ if(it.taken||it.kind!=='rune')continue; let [x,z]=cpos(it.i); const dd=Math.hypot(x-player.x,z-player.z); if(dd>28)continue;
     const guarded=it.guardG!==undefined&&guardedNow(it);
     if(guarded&&it.elitePrize){ const b=0.5; dyn(x,0.75,z,G(RUNE_DEF[it.rune.type].ch),0.42,0.5*b,0.45*b,0.5*b); for(let k=0;k<8;k++){ const a=k/8*Math.PI*2+t*0.3; dyn(x+Math.cos(a)*0.4,0.75+Math.sin(a*2)*0.08,z+Math.sin(a)*0.4,G('#'),0.14,0.55,0.25,0.2); } continue; }
     if(!it.rune||guarded){ if(dd<12&&it.altar&&!guarded)altarFill(it.grp); if(!it.rune||guarded){ if(it.altar&&it.slot===1&&it.opt!=='open')for(let k=-1;k<=1;k++){ dyn(x+k*0.55,0.55,z,G('='),0.42,0.4,0.38,0.45); dyn(x+k*0.55,0.25,z,G('#'),0.36,0.3,0.28,0.34); } continue; } }
@@ -131,7 +131,7 @@ function drawRunesWorld(t){
     if(it.altar&&it.slot===1&&it.opt!=='open'){ for(let k=-1;k<=1;k++){ dyn(x+k*0.55,0.55,z,G('='),0.42,0.55,0.52,0.6); dyn(x+k*0.55,0.25,z,G('#'),0.36,0.4,0.38,0.45); } }
     if(it.opt==='heal'){ dyn(x,hy+Math.sin(t*1.5+it.i+(it.slot||0))*0.06,z,G('+'),0.5,1.0*b,0.5*b,0.58*b); } else { dyn(x,hy+Math.sin(t*1.5+it.i+(it.slot||0))*0.06,z,G(RUNE_DEF[it.rune.type].ch),0.5,c[0]*b,c[1]*b,c[2]*b); if(it.opt==='hone')dyn(x+0.2,hy+0.32,z,G('+'),0.24,1.0*b,0.95*b,0.7*b); }
     for(let k=0;k<6;k++){ const a=t*0.8+k/6*Math.PI*2+(it.slot||0); dyn(x+Math.cos(a)*0.3,hy-0.45,z+Math.sin(a)*0.3,G('.'),0.1,tc[0]*1.4,tc[1]*1.4,tc[2]*1.4); } }
-  for(const s of (D.steles||[])){ const [x,z]=cpos(s.i), d=Math.hypot(x-player.x,z-player.z); if(d>30)continue; const near=d<2.6, g=near?2.2:0.9;
+  for(const s of (here.D.steles||[])){ const [x,z]=cpos(s.i), d=Math.hypot(x-player.x,z-player.z); if(d>30)continue; const near=d<2.6, g=near?2.2:0.9;
     for(let y=0;y<4;y++)dyn(x,0.25+y*0.42,z,G(y===3?'^':'#'),0.4,0.42,0.4,0.48);
     dyn(x,1.0+Math.sin(t*1.3+s.i)*0.04,z+0.01,G(s.g),0.32,0.55*g,0.75*g,1.0*g); }
   for(const b of beamSegs){ let run=0; for(let k=0;k+1<b.pts.length;k++){ const a=b.pts[k], e=b.pts[k+1], L=Math.hypot(e[0]-a[0],e[1]-a[1],e[2]-a[2]), n=Math.max(1,Math.round(L/0.22));
@@ -162,7 +162,7 @@ function handUp(){ const [fx,fy,fz]=viewDir(), rx=Math.cos(player.yaw), rz=-Math
 function aimPoint(){ const [ox,oy,oz]=aimOrigin(), [dx,dy,dz]=viewDir(); let x=ox, y=oy, z=oz;
   const near=here.monsters.filter(m=>hittable(m)&&Math.hypot(m.x-ox,m.z-oz)<42);
   for(let s=0;s<160;s++){ x+=dx*0.25; y+=dy*0.25; z+=dz*0.25; const ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL); if(ci<0||ci>=NCELL)break;
-    if(D.tile[ci]===TW||D.tile[ci]===TX||y<0.02||y>D.ceil[ci])return [x,y,z];
+    if(here.D.tile[ci]===TW||here.D.tile[ci]===TX||y<0.02||y>here.D.ceil[ci])return [x,y,z];
     for(const m of near){ if(m.ty.habitat==='deep'&&(m.rise||0)<0.3)continue; const cy=m.hidden?m.y+1.3:m.y+(m.ty.flier?0:0.6*m.ty.scale); if(Math.hypot(m.x-x,cy-y,m.z-z)<0.42+0.35*m.ty.scale)return [x,y,z]; } }
   return [x,y,z]; }
 function centerPoint(){ const [o0,o1,o2]=aimOrigin(), [f]=handUp(); return [o0+f[0]*0.95,o1+f[1]*0.95,o2+f[2]*0.95]; }
@@ -181,14 +181,14 @@ function simPath(sp){
     for(let s=0;s<160;s++){ const dt=0.025; vy-=9.8*dt; const nx=x+vx*dt, ny=y+vy*dt, nz=z+vz*dt, ci=Math.floor(nz/CELL)*MW+Math.floor(nx/CELL);
       if(ci<0||ci>=NCELL)break; if(s%3===0)pts.push([x,y,z]);
       for(const m of here.monsters){ if(!foe(m)||!m.visible)continue; if(Math.hypot(m.x-nx,m.y+0.6*m.ty.scale-ny,m.z-nz)<0.42+0.35*m.ty.scale){ hitM=m; break; } } if(hitM){ x=nx; y=ny; z=nz; break; }
-      const wall=D.tile[ci]===TW||D.tile[ci]===TX, fl=ny<0.03&&D.tile[ci]!==TC, ce=ny>D.ceil[ci];
+      const wall=here.D.tile[ci]===TW||here.D.tile[ci]===TX, fl=ny<0.03&&here.D.tile[ci]!==TC, ce=ny>here.D.ceil[ci];
       if(wall||fl||ce){ if(b>0){ b--; const v=Math.hypot(vx,vy,vz)||1, r=reflectDir(x,y,z,[vx/v,vy/v,vz/v]); vx=r[0]*v; vy=r[1]*v*0.7; vz=r[2]*v; if(fl)vy=Math.abs(vy)+1; continue; } break; }
       x=nx; y=ny; z=nz; }
     return {pts,end:[x,Math.max(0.05,y),z],hitM,orb:true}; }
   let x=ox, y=oy, z=oz, d=d0.slice(), b=sp.aff.bounce||0, left=sp.atk==='beam'?12:26;
   while(left>0){ const nx=x+d[0]*0.3, ny=y+d[1]*0.3, nz=z+d[2]*0.3, ci=Math.floor(nz/CELL)*MW+Math.floor(nx/CELL); left-=0.3; if(ci<0||ci>=NCELL)break;
     for(const m of here.monsters){ if(!foe(m)||!m.visible)continue; if(Math.hypot(m.x-nx,m.y+0.6*m.ty.scale-ny,m.z-nz)<0.42+0.35*m.ty.scale){ hitM=m; break; } } if(hitM){ x=nx; y=ny; z=nz; break; }
-    const wall=D.tile[ci]===TW||D.tile[ci]===TX||ny<0.02||ny>D.ceil[ci];
+    const wall=here.D.tile[ci]===TW||here.D.tile[ci]===TX||ny<0.02||ny>here.D.ceil[ci];
     if(wall){ if(b>0){ b--; d=reflectDir(x,y,z,d); pts.push([x,y,z]); continue; } break; }
     x=nx; y=ny; z=nz; pts.push([x,y,z]); }
   return {pts,end:[x,y,z],hitM}; }

@@ -4,13 +4,13 @@ function dropRune(m){
   const strong=(m.maxHp||0)>=40||(m.isLead&&m.g>=0), lord=m.key==='lord'||m.ty.lord;
   if(m.key==='final')return;
   if(!lord)return;
-  let at=m.cz*MW+m.cx; for(const d of [-1,MW,-MW,1,MW+1,-MW-1])if(D.tile[at+d]===TF&&!D.liquid[at+d]&&!D.items.some(o=>o.i===at+d&&!o.taken)){ at+=d; break; }
+  let at=m.cz*MW+m.cx; for(const d of [-1,MW,-MW,1,MW+1,-MW-1])if(here.D.tile[at+d]===TF&&!here.D.liquid[at+d]&&!here.D.items.some(o=>o.i===at+d&&!o.taken)){ at+=d; break; }
   placeAltar(at,'lordaltar'+time,{lord:true,born:time});
   for(let q=0;q<14;q++){ const a=mr()*6.28; spawn(m.x,0.6,m.z,Math.cos(a)*1.2,0.6+mr(),Math.sin(a)*1.2,0.8,G('.'),0.12,1.6,1.4,2.2,0); }
 }
 // ---------------------------------------------------------------- rune altars (predictable rewards): one on the main path of each level, sometimes another off it; three choices made when you come near:
 // a new rune (leaning to empty open slots), honing an equipped rune (one more affix), or healing. Lords leave an altar of strong choices. Treasuries hold the unpredictable.
-function altarFill(grp){ const its=(D.items||[]).filter(o=>o.grp===grp&&o.altar); if(!its.length||its[0].rune)return; const lord=its[0].lord;
+function altarFill(grp){ const its=(here.D.items||[]).filter(o=>o.grp===grp&&o.altar); if(!its.length||its[0].rune)return; const lord=its[0].lord;
   if(its[0].forge){ const fo=forgeOptions(3); its.forEach((it,k)=>{ const f=fo[k]; Object.assign(it,f?{opt:'forge',forgeW:f.w,forgeK:f.k,forgeTo:f.to,rune:{uid:-1,type:'forgeopt',aff:{}}}:{opt:'heal',rune:{uid:-1,type:'mend',aff:{}}}); }); return; }
   const opts=[], usedT=new Set(), usedC=new Set(), held=new Set([gear.hands.L.atk,gear.hands.R.atk].filter(Boolean).map(r=>r.type));
   const newRune=()=>{ const empty=[]; for(const h of ['L','R']){ const H=gear.hands[h]; for(let i=0;i<(H.slotN||2);i++)if(!H.slots[i])empty.push(mpick(['elem','mod','mod','trig'])); } for(let i=0;i<(adv.runState.bodyOpen||0);i++)if(!gear.hands.B['b'+i])empty.push('body');
@@ -21,11 +21,11 @@ function altarFill(grp){ const its=(D.items||[]).filter(o=>o.grp===grp&&o.altar)
   opts.push((lord||mr()<0.08)?(weapon()||newRune()):newRune()); opts.push(lord?(forge()||newRune()):newRune()); opts.push(heal()||newRune()); for(let k=0;k<3;k++)if(!opts[k])opts[k]={opt:'heal',rune:{uid:-1,type:'mend',aff:{}}};
   shuffle(opts,mr); its.forEach((it,k)=>Object.assign(it,opts[k])); }
 // guards for altars and the strong one's room: groups added to this level's spawns, kept in their room; an altar or prize is dark until its guards are gone
-function hostileKeys(){ const n={}; for(const s of (D.spawns||[])){ const ty=MTYPES[s.key]; if(!ty||ty.critter||ty.peaceful||ty.boss||s.key==='lord'||s.key==='final'||ty.habitat||ty.form==='eel')continue; n[s.key]=(n[s.key]||0)+1; } return n; }
-function nextGroup(){ return (D.spawns||[]).reduce((a,s)=>Math.max(a,s.g||0),0)+1; }
-function addGuards(at,r){ const ri=D.roomOf[at]; if(ri<0)return undefined; const hk=hostileKeys(), keys=Object.keys(hk); if(!keys.length)return undefined;
-  const key=keys.sort((a,b)=>hk[b]-hk[a])[0], cells=D.rooms[ri].cells.filter(c=>D.tile[c]===TF&&!D.liquid[c]&&!D.solid.has(c)&&Math.hypot((c%MW)-(at%MW),((c/MW)|0)-((at/MW)|0))>=2), g=nextGroup(), n=2+(r()<0.5?1:0);
-  if(cells.length<n)return undefined; for(let k=0;k<n;k++){ const c=cells.splice(Math.floor(r()*cells.length),1)[0]; D.spawns.push({key,cx:c%MW,cz:(c/MW)|0,g,lead:k===0,home:ri}); } return g; }
+function hostileKeys(){ const n={}; for(const s of (here.D.spawns||[])){ const ty=MTYPES[s.key]; if(!ty||ty.critter||ty.peaceful||ty.boss||s.key==='lord'||s.key==='final'||ty.habitat||ty.form==='eel')continue; n[s.key]=(n[s.key]||0)+1; } return n; }
+function nextGroup(){ return (here.D.spawns||[]).reduce((a,s)=>Math.max(a,s.g||0),0)+1; }
+function addGuards(at,r){ const ri=here.D.roomOf[at]; if(ri<0)return undefined; const hk=hostileKeys(), keys=Object.keys(hk); if(!keys.length)return undefined;
+  const key=keys.sort((a,b)=>hk[b]-hk[a])[0], cells=here.D.rooms[ri].cells.filter(c=>here.D.tile[c]===TF&&!here.D.liquid[c]&&!here.D.solid.has(c)&&Math.hypot((c%MW)-(at%MW),((c/MW)|0)-((at/MW)|0))>=2), g=nextGroup(), n=2+(r()<0.5?1:0);
+  if(cells.length<n)return undefined; for(let k=0;k<n;k++){ const c=cells.splice(Math.floor(r()*cells.length),1)[0]; here.D.spawns.push({key,cx:c%MW,cz:(c/MW)|0,g,lead:k===0,home:ri}); } return g; }
 function strongestKey(){ const keys=Object.keys(hostileKeys()).filter(k=>!MTYPES[k].beast&&!MTYPES[k].dragon&&k!=='X'&&k!=='D'); let best=null, bh=-1; for(const k of keys){ let h=0; try{ h=statOf({ty:MTYPES[k],key:k})[0]; }catch(e){} if(h>bh){ bh=h; best=k; } } return best; }
 
 function forgeOptions(n){ const ws=[...new Set([gear.hands.L.atk,gear.hands.R.atk].filter(Boolean))], cands=[];
@@ -33,22 +33,22 @@ function forgeOptions(n){ const ws=[...new Set([gear.hands.L.atk,gear.hands.R.at
     for(const t of tr)if(t.lv<5)cands.push({w,k:t.k,from:t.lv,to:t.lv+1});
     for(const k of pool)if(!tr.some(t=>t.k===k))cands.push({w,k,from:0,to:1}); }
   const out=[]; while(out.length<n&&cands.length){ out.push(cands.splice(Math.floor(mr()*cands.length),1)[0]); } return out; }
-function placeAltar(at,grp,extra){ for(let k=0;k<3;k++)D.items.push(Object.assign({i:at,kind:'rune',rune:null,grp,altar:true,slot:k,taken:false},extra||{})); }
+function placeAltar(at,grp,extra){ for(let k=0;k<3;k++)here.D.items.push(Object.assign({i:at,kind:'rune',rune:null,grp,altar:true,slot:k,taken:false},extra||{})); }
 function forgeDepthOf(k){ const h=Math.imul(adv.runSeed^0x2f6b1c3d,2654435761)>>>0, span={cavern:[3,5],ruins:[6,8],magma:[9,11]}[k]; if(!span)return -1; return span[0]+(h>>>({cavern:0,ruins:3,magma:6}[k]))%(span[1]-span[0]+1); }
-function mainPathAltars(r,free){ if(D.stratum.special||D.finalVault)return; const W=MW, N=D.tile.length, ok=i=>i>=0&&i<N&&D.tile[i]===TF&&D.liquid[i]!==LQ_DEEP&&D.liquid[i]!==LQ_LAVA;
+function mainPathAltars(r,free){ if(here.D.stratum.special||here.D.finalVault)return; const W=MW, N=here.D.tile.length, ok=i=>i>=0&&i<N&&here.D.tile[i]===TF&&here.D.liquid[i]!==LQ_DEEP&&here.D.liquid[i]!==LQ_LAVA;
   const bfs=s=>{ const d=new Int32Array(N).fill(-1); if(s==null||s<0||!ok(s))return d; const q=[s]; d[s]=0; for(let h=0;h<q.length;h++){ const c=q[h]; for(const o of [1,-1,W,-W]){ const j=c+o; if(ok(j)&&d[j]<0){ d[j]=d[c]+1; q.push(j); } } } return d; };
-  const dS=bfs(D.start), goal=D.stairs>=0?D.stairs:(D.bstairs?D.bstairs.cell:-1), dT=bfs(goal), L=goal>=0&&dS[goal]>0?dS[goal]:0;
-  const rooms=D.rooms.map((ro,ri)=>({ro,ri})).filter(o=>o.ri>0&&o.ro.cells.length>10&&!(o.ro.kindMsg&&o.ro.kindMsg.includes('鉄格子の奥')));
+  const dS=bfs(here.D.start), goal=here.D.stairs>=0?here.D.stairs:(here.D.bstairs?here.D.bstairs.cell:-1), dT=bfs(goal), L=goal>=0&&dS[goal]>0?dS[goal]:0;
+  const rooms=here.D.rooms.map((ro,ri)=>({ro,ri})).filter(o=>o.ri>0&&o.ro.cells.length>10&&!(o.ro.kindMsg&&o.ro.kindMsg.includes('鉄格子の奥')));
   const score=(ro)=>{ let best=1e9, mid=1e9; for(const c of ro.cells){ if(dS[c]<0||dT[c]<0)continue; const det=dS[c]+dT[c]-L; if(det<best){ best=det; mid=Math.abs(dS[c]-L/2); } } return {det:best,mid}; };
   const scored=rooms.map(o=>({...o,...score(o.ro)})).filter(o=>o.det<1e8);
   let hubDistRef=null; const pickCell=ro=>{ const c=ro.cells.filter(free); if(!c.length)return undefined; if(hubDistRef){ const nearC=c.filter(x=>hubDistRef[x]<=9); if(nearC.length)return nearC[Math.floor(nearC.length/2)]; } return c[Math.floor(c.length/2)]; };
-  D.dS=dS; D.pathL=L;
+  here.D.dS=dS; here.D.pathL=L;
   // the crossroads: the largest room near the middle of the main path (ordinary levels and other realms; not the first level, special levels or branches)
-  let hub=null; if(L>0&&!here.branch&&(here.depth>=2||here.realm)&&!D.stratum.special){ for(const o of scored){ if(o.det>4)continue; let pos=0, n=0; for(const c of o.ro.cells)if(dS[c]>=0){ pos+=dS[c]; n++; } pos=n?pos/n/L:0; if(pos<0.25||pos>0.75)continue; if(!hub||o.ro.cells.length>hub.ro.cells.length)hub=o; } }
-  if(hub){ const cx=hub.ro.cells.reduce((a,c)=>a+c%W,0)/hub.ro.cells.length, cz=hub.ro.cells.reduce((a,c)=>a+((c/W)|0),0)/hub.ro.cells.length; D.hub={ri:hub.ri,cx,cz}; }
-  let hubDist=null; if(D.hub){ hubDist=new Float32Array(N).fill(1e9); const hc=D.rooms[D.hub.ri].cells, q=hc.slice(); for(const c of hc)hubDist[c]=0; for(let h=0;h<q.length;h++){ const c=q[h]; if(hubDist[c]>=10)continue; for(const o of [1,-1,W,-W]){ const j=c+o; if(j<0||j>=N||hubDist[j]<=hubDist[c]+1)continue; hubDist[j]=hubDist[c]+1; q.push(j); } } }
-  hubDistRef=hubDist; const nearHub=o=>{ if(!D.hub)return true; for(const c of o.ro.cells)if(hubDist[c]<=10)return true; return false; };
-  const sx=D.hub?D.hub.cx:D.start%W, sz=D.hub?D.hub.cz:(D.start/W)|0, angOf=ro=>Math.atan2(ro.cells.reduce((a,c)=>a+((c/W)|0),0)/ro.cells.length-sz,ro.cells.reduce((a,c)=>a+c%W,0)/ro.cells.length-sx);
+  let hub=null; if(L>0&&!here.branch&&(here.depth>=2||here.realm)&&!here.D.stratum.special){ for(const o of scored){ if(o.det>4)continue; let pos=0, n=0; for(const c of o.ro.cells)if(dS[c]>=0){ pos+=dS[c]; n++; } pos=n?pos/n/L:0; if(pos<0.25||pos>0.75)continue; if(!hub||o.ro.cells.length>hub.ro.cells.length)hub=o; } }
+  if(hub){ const cx=hub.ro.cells.reduce((a,c)=>a+c%W,0)/hub.ro.cells.length, cz=hub.ro.cells.reduce((a,c)=>a+((c/W)|0),0)/hub.ro.cells.length; here.D.hub={ri:hub.ri,cx,cz}; }
+  let hubDist=null; if(here.D.hub){ hubDist=new Float32Array(N).fill(1e9); const hc=here.D.rooms[here.D.hub.ri].cells, q=hc.slice(); for(const c of hc)hubDist[c]=0; for(let h=0;h<q.length;h++){ const c=q[h]; if(hubDist[c]>=10)continue; for(const o of [1,-1,W,-W]){ const j=c+o; if(j<0||j>=N||hubDist[j]<=hubDist[c]+1)continue; hubDist[j]=hubDist[c]+1; q.push(j); } } }
+  hubDistRef=hubDist; const nearHub=o=>{ if(!here.D.hub)return true; for(const c of o.ro.cells)if(hubDist[c]<=10)return true; return false; };
+  const sx=here.D.hub?here.D.hub.cx:here.D.start%W, sz=here.D.hub?here.D.hub.cz:(here.D.start/W)|0, angOf=ro=>Math.atan2(ro.cells.reduce((a,c)=>a+((c/W)|0),0)/ro.cells.length-sz,ro.cells.reduce((a,c)=>a+c%W,0)/ro.cells.length-sx);
   const placedA=[]; if(goal>=0)placedA.push(Math.atan2(((goal/W)|0)-sz,goal%W-sx));
   const adiff=(a,b)=>{ let d=Math.abs(a-b)%(Math.PI*2); return d>Math.PI?Math.PI*2-d:d; };
   const spreadPick=list=>{ if(!list.length)return null; const ok=list.filter(o=>placedA.every(a=>adiff(angOf(o.ro),a)>=Math.PI/3)); if(ok.length)return ok[Math.floor(r()*ok.length)];
@@ -58,46 +58,46 @@ function mainPathAltars(r,free){ if(D.stratum.special||D.finalVault)return; cons
   if(mainAt===undefined&&L>0){ let best=-1, bs=1e9; for(let c=0;c<N;c++){ if(dS[c]<0||dT[c]<0||!free(c))continue; const det=dS[c]+dT[c]-L; if(det>3)continue; const sc=Math.abs(dS[c]-L/2)+det*2; if(sc<bs&&dS[c]>4&&dT[c]>4){ bs=sc; best=c; } } if(best>=0)mainAt=best; }
   if(mainAt!==undefined)placeAltar(mainAt,'altar'+levelSeed()+'m',{guardG:main&&r()<0.6?addGuards(mainAt,r):undefined});
 
-  const sidePool=o=>o!==main&&o!==hub&&(D.hub?nearHub(o)&&o.det>=4:o.det>=12);
+  const sidePool=o=>o!==main&&o!==hub&&(here.D.hub?nearHub(o)&&o.det>=4:o.det>=12);
   const side=r()<0.2?spreadPick(scored.filter(o=>sidePool(o))):null; if(side)placedA.push(angOf(side.ro));
   if(side){ const at=pickCell(side.ro); if(at!==undefined)placeAltar(at,'altar'+levelSeed()+'s',{guardG:addGuards(at,r)}); }
   // the strong one's room: off the main path, one strong creature guarding a rare rune
-  const er=spreadPick(scored.filter(o=>o!==side&&o.ro.cells.length>12&&(D.hub?sidePool(o):o.det>=5&&o!==main))), key=strongestKey(); if(er)placedA.push(angOf(er.ro));
-  const roll=r(); D.eliteWhy={rooms:scored.length,far:scored.filter(o=>o.det>=5).length,er:!!er,key,roll:+roll.toFixed(2)};
+  const er=spreadPick(scored.filter(o=>o!==side&&o.ro.cells.length>12&&(here.D.hub?sidePool(o):o.det>=5&&o!==main))), key=strongestKey(); if(er)placedA.push(angOf(er.ro));
+  const roll=r(); here.D.eliteWhy={rooms:scored.length,far:scored.filter(o=>o.det>=5).length,er:!!er,key,roll:+roll.toFixed(2)};
   if(er&&key&&roll<0.35){ const cells=er.ro.cells.filter(free); if(cells.length>3){ const at=cells[Math.floor(cells.length/2)], g=nextGroup(), sc=cells.filter(c=>c!==at&&Math.hypot((c%MW)-(at%MW),((c/MW)|0)-((at/MW)|0))>=1.5)[0];
-    if(sc!==undefined){ D.spawns.push({key,cx:sc%MW,cz:(sc/MW)|0,g,lead:true,home:er.ri,elite:true}); { const wp=weaponPool(); D.items.push({i:at,kind:'rune',rune:rollTraits(makeRune(wp[Math.floor(r()*wp.length)],0,r),r,here.depth,1),taken:false,elitePrize:true,guardG:g}); } } } }
-  placeSpring(r,free,D.hub?scored.filter(o=>sidePool(o)):scored,spreadPick);
-  if(META.grave&&!here.branch&&!here.realm&&!here.inter&&!gallery&&META.grave.depth===here.depth&&!(D.items||[]).some(o=>o.kind==='grave')){ const pool=scored.filter(o=>sidePool(o)), ro=(pool[pool.length-1]||scored[scored.length-1]||{}).ro; if(ro){ const c=ro.cells.filter(free); if(c.length)D.items.push({i:c[Math.floor(c.length/2)],kind:'grave',g:META.grave,rune:graveRune(META.grave.item),taken:false}); } }
-  if(!here.branch&&!here.realm&&!here.inter&&forgeDepthOf(D.stratum.k)===here.depth){ const ro=D.hub?D.rooms[D.hub.ri]:(scored.find(o=>o.det>=3)||scored[0]||{}).ro; if(ro){ const c=ro.cells.filter(free); if(c.length){ const at=c[Math.floor(c.length*0.3)]; placeAltar(at,'forge'+levelSeed(),{forge:true}); } } }
+    if(sc!==undefined){ here.D.spawns.push({key,cx:sc%MW,cz:(sc/MW)|0,g,lead:true,home:er.ri,elite:true}); { const wp=weaponPool(); here.D.items.push({i:at,kind:'rune',rune:rollTraits(makeRune(wp[Math.floor(r()*wp.length)],0,r),r,here.depth,1),taken:false,elitePrize:true,guardG:g}); } } } }
+  placeSpring(r,free,here.D.hub?scored.filter(o=>sidePool(o)):scored,spreadPick);
+  if(META.grave&&!here.branch&&!here.realm&&!here.inter&&!gallery&&META.grave.depth===here.depth&&!(here.D.items||[]).some(o=>o.kind==='grave')){ const pool=scored.filter(o=>sidePool(o)), ro=(pool[pool.length-1]||scored[scored.length-1]||{}).ro; if(ro){ const c=ro.cells.filter(free); if(c.length)here.D.items.push({i:c[Math.floor(c.length/2)],kind:'grave',g:META.grave,rune:graveRune(META.grave.item),taken:false}); } }
+  if(!here.branch&&!here.realm&&!here.inter&&forgeDepthOf(here.D.stratum.k)===here.depth){ const ro=here.D.hub?here.D.rooms[here.D.hub.ri]:(scored.find(o=>o.det>=3)||scored[0]||{}).ro; if(ro){ const c=ro.cells.filter(free); if(c.length){ const at=c[Math.floor(c.length*0.3)]; placeAltar(at,'forge'+levelSeed(),{forge:true}); } } }
   // at the crossroads there should be somewhere to choose: at least two side places within reach of its arrows
-  if(D.hub){ const near=()=>(D.items||[]).filter(it=>!it.taken&&(it.kind==='spring'||it.elitePrize||it.vault||(it.altar&&it.slot===1&&/s$/.test(it.grp)))&&hubDist[it.i]<=11).length;
-    const used=new Set((D.items||[]).map(it=>D.roomOf[it.i])); let tries=0;
-    const pocket=()=>{ const taken=(D.items||[]).map(it=>it.i); const cs=[]; for(let c=0;c<N;c++){ if(!free(c)||!(hubDist[c]<=10)||dS[c]<0||dT[c]<0||dS[c]+dT[c]-L<5)continue; if(taken.some(t=>Math.hypot((t%W)-(c%W),((t/W)|0)-((c/W)|0))<6))continue; cs.push(c); } if(!cs.length)return undefined;
-      const ang=c=>Math.atan2(((c/W)|0)-D.hub.cz,c%W-D.hub.cx), ok=cs.filter(c=>placedA.every(a=>adiff(ang(c),a)>=Math.PI/3)); const pick=(ok.length?ok:cs)[Math.floor(r()*(ok.length?ok:cs).length)]; placedA.push(ang(pick)); return pick; };
+  if(here.D.hub){ const near=()=>(here.D.items||[]).filter(it=>!it.taken&&(it.kind==='spring'||it.elitePrize||it.vault||(it.altar&&it.slot===1&&/s$/.test(it.grp)))&&hubDist[it.i]<=11).length;
+    const used=new Set((here.D.items||[]).map(it=>here.D.roomOf[it.i])); let tries=0;
+    const pocket=()=>{ const taken=(here.D.items||[]).map(it=>it.i); const cs=[]; for(let c=0;c<N;c++){ if(!free(c)||!(hubDist[c]<=10)||dS[c]<0||dT[c]<0||dS[c]+dT[c]-L<5)continue; if(taken.some(t=>Math.hypot((t%W)-(c%W),((t/W)|0)-((c/W)|0))<6))continue; cs.push(c); } if(!cs.length)return undefined;
+      const ang=c=>Math.atan2(((c/W)|0)-here.D.hub.cz,c%W-here.D.hub.cx), ok=cs.filter(c=>placedA.every(a=>adiff(ang(c),a)>=Math.PI/3)); const pick=(ok.length?ok:cs)[Math.floor(r()*(ok.length?ok:cs).length)]; placedA.push(ang(pick)); return pick; };
     while(near()<2&&tries++<4){ const pool=scored.filter(o=>sidePool(o)&&!used.has(o.ri)&&o.ro.cells.length>6); const o=spreadPick(pool); let at;
       if(o){ used.add(o.ri); placedA.push(angOf(o.ro)); at=pickCell(o.ro); } else at=pocket(); if(at===undefined)continue;
-      D.items.push({i:at,kind:'spring',taken:false}); }
-    D.hubNear=near(); }
+      here.D.items.push({i:at,kind:'spring',taken:false}); }
+    here.D.hubNear=near(); }
   // 3: wandering groups near the entrance move on toward the stairs (camps and guards stay put)
-  if(L>0){ const groups=new Map(); for(const sp of D.spawns){ if(sp.camp||sp.home!==undefined||sp.elite||sp.key==='lord'||sp.key==='final'||sp.g==null||sp.g<0)continue; const ty=MTYPES[sp.key]; if(!ty||ty.habitat||ty.critter||ty.peaceful||ty.boss)continue; if(!groups.has(sp.g))groups.set(sp.g,[]); groups.get(sp.g).push(sp); }
+  if(L>0){ const groups=new Map(); for(const sp of here.D.spawns){ if(sp.camp||sp.home!==undefined||sp.elite||sp.key==='lord'||sp.key==='final'||sp.g==null||sp.g<0)continue; const ty=MTYPES[sp.key]; if(!ty||ty.habitat||ty.critter||ty.peaceful||ty.boss)continue; if(!groups.has(sp.g))groups.set(sp.g,[]); groups.get(sp.g).push(sp); }
     const late=[]; for(let c=0;c<N;c++)if(dS[c]>L*0.7&&dT[c]>4&&free(c))late.push(c);
     for(const [g,list] of groups){ const c0=list[0].cz*W+list[0].cx; if(!(dS[c0]>=0&&dS[c0]<L*0.3)||r()>=0.5||!late.length)continue; const nc=late[Math.floor(r()*late.length)];
       for(const sp of list){ let best=nc; for(let k=0;k<8;k++){ const c=nc+Math.round((r()-0.5)*4)+Math.round((r()-0.5)*4)*W; if(free(c)&&dS[c]>=0){ best=c; break; } } sp.cx=best%W; sp.cz=(best/W)|0; } } }
   // 4: on some levels a small band waits in the room before the stairs; the stairs stay sealed until it falls
-  if(L>0&&D.stairs>=0&&!D.finalVault&&!D.stratum.special&&(here.branch?here.branch.lvl<here.branch.len:here.depth>=2&&here.depth<FINAL_DEPTH)&&!here.realm&&r()<0.3){ const hk=hostileKeys(), keys=Object.keys(hk); if(keys.length){ const key=keys.sort((a,b)=>hk[b]-hk[a])[0], g=nextGroup();
+  if(L>0&&here.D.stairs>=0&&!here.D.finalVault&&!here.D.stratum.special&&(here.branch?here.branch.lvl<here.branch.len:here.depth>=2&&here.depth<FINAL_DEPTH)&&!here.realm&&r()<0.3){ const hk=hostileKeys(), keys=Object.keys(hk); if(keys.length){ const key=keys.sort((a,b)=>hk[b]-hk[a])[0], g=nextGroup();
       const cells=[]; for(let c=0;c<N;c++)if(dT[c]>=2&&dT[c]<=5&&free(c))cells.push(c); const n=2+(r()<0.5?1:0);
-      if(cells.length>=n){ for(let k=0;k<n;k++){ const c=cells.splice(Math.floor(r()*cells.length),1)[0]; D.spawns.push({key,cx:c%W,cz:(c/W)|0,g,lead:k===0}); } D.stairGuard=g; } } }
+      if(cells.length>=n){ for(let k=0;k<n;k++){ const c=cells.splice(Math.floor(r()*cells.length),1)[0]; here.D.spawns.push({key,cx:c%W,cz:(c/W)|0,g,lead:k===0}); } here.D.stairGuard=g; } } }
   }
 // the treasury's prize: taking it wakes guardians, or brings the ceiling down
 let rockfall=null;
-function vaultArea(it,R){ const out=[], cx=it.i%MW, cz=(it.i/MW)|0; for(let dz=-R;dz<=R;dz++)for(let dx=-R;dx<=R;dx++){ const c=(cz+dz)*MW+cx+dx; if(c<0||c>=D.tile.length||D.tile[c]!==TF||D.liquid[c]||Math.hypot(dx,dz)>R)continue; out.push(c); } return out; }
-function vaultSprung(it){ const ri=D.roomOf[it.i], room=ri>=0&&D.rooms[ri]&&D.rooms[ri].cells.length>6?D.rooms[ri]:{cells:vaultArea(it,4)};
+function vaultArea(it,R){ const out=[], cx=it.i%MW, cz=(it.i/MW)|0; for(let dz=-R;dz<=R;dz++)for(let dx=-R;dx<=R;dx++){ const c=(cz+dz)*MW+cx+dx; if(c<0||c>=here.D.tile.length||here.D.tile[c]!==TF||here.D.liquid[c]||Math.hypot(dx,dz)>R)continue; out.push(c); } return out; }
+function vaultSprung(it){ const ri=here.D.roomOf[it.i], room=ri>=0&&here.D.rooms[ri]&&here.D.rooms[ri].cells.length>6?here.D.rooms[ri]:{cells:vaultArea(it,4)};
   if(it.ev==='guard'){ const pool=here.monsters.filter(m=>!m.dead&&!m.ty.critter&&!m.ty.peaceful&&!m.ty.boss&&m.key!=='lord'&&MTYPES[m.key]); const key=pool.length?pool.sort((a,b)=>(b.maxHp||0)-(a.maxHp||0))[0].key:'O';
     const cells=vaultArea(it,5).filter(c=>{ const [x,z]=cpos(c); return Math.hypot(x-player.x,z-player.z)>2.0; });
     for(let k=0;k<2&&cells.length;k++){ const c=cells.splice(Math.floor(mr()*cells.length),1)[0]; const m=makeMonster({key,cx:c%MW,cz:(c/MW)|0,g:-1,lead:true}); m.sleep=false; m.aware=1; m.noticed=true; m.alert=1; m.guardian=true; here.monsters.push(m);
       for(let q=0;q<24;q++){ const a=mr()*6.28; spawn(m.x,0.2+mr()*1.6,m.z,Math.cos(a)*0.8,mr()*0.8,Math.sin(a)*0.8,0.9,G(mpick(['#','%','.'])),0.14,0.8,0.78,0.85,0); } }
     sRumble(0.4,1.2); msg('<b style="color:#ffb0a0">!</b>石像の目に光が灯った。宝の番人たちが、目を覚ます。'); }
-  else if(room.cells.length){ rockfall={t:0,dur:9,cells:room.cells.filter(c=>D.tile[c]===TF),rocks:[],next:0.2}; sRumble(0.5,2.0); msg('<b style="color:#ffd0a0">!</b>天井が軋み、崩れ始めた。早く外へ。'); } }
+  else if(room.cells.length){ rockfall={t:0,dur:9,cells:room.cells.filter(c=>here.D.tile[c]===TF),rocks:[],next:0.2}; sRumble(0.5,2.0); msg('<b style="color:#ffd0a0">!</b>天井が軋み、崩れ始めた。早く外へ。'); } }
 function updateRockfall(dt){ if(!rockfall)return; const R=rockfall; R.t+=dt; R.next-=dt;
   if(R.t<R.dur&&R.next<=0){ R.next=0.28+mr()*0.2; const near=R.cells.filter(c=>{ const [x,z]=cpos(c); return Math.hypot(x-player.x,z-player.z)<4.5; }); const c=(near.length&&mr()<0.7?near:R.cells)[Math.floor(mr()*(near.length&&mr()<0.7?near.length:R.cells.length))]; if(c!==undefined){ const [x,z]=cpos(c); R.rocks.push({x:x+(mr()-0.5)*1.2,z:z+(mr()-0.5)*1.2,t:0}); } }
   for(const k of R.rocks){ k.t+=dt; if(k.t<0.9){ const f=k.t/0.9; for(let q=0;q<10;q++){ const a=q/10*Math.PI*2; dyn(k.x+Math.cos(a)*0.55,0.04,k.z+Math.sin(a)*0.55,G('.'),0.13,0.9+0.8*f,0.45+0.3*f,0.2,0,0); } dyn(k.x,3.2-2.6*f*f,k.z,G('#'),0.3,0.7,0.66,0.6,0,0); }
@@ -124,36 +124,36 @@ function updateRally(dt){ if(adv.dead)return; const mn=bodyN('mend');
   vfx.hpFlash=Math.max(0,vfx.hpFlash-dt);
   const rs=Math.round((player.rally||0)*4)+(vfx.hpFlash>0?1000:0); if(rs!==rallyShown){ rallyShown=rs; renderStatus(); } }
 // healing springs: rare, off the path; one use heals fully
-function placeSpring(r,free,scored,spreadPick){ if(D.stratum.special||D.finalVault||r()>=0.25)return; const pool=(scored||[]).filter(o=>o.det>=5&&!D.items.some(it=>D.roomOf[it.i]===o.ri)); const pick=spreadPick?spreadPick(pool.length?pool:(scored||[])):(pool.length?pool:(scored||[]))[Math.floor(r()*Math.max(1,(pool.length?pool:(scored||[])).length))];
-  if(!pick)return; const c=pick.ro.cells.filter(free); if(!c.length)return; D.items.push({i:c[Math.floor(c.length/2)],kind:'spring',taken:false}); }
-function drawSprings(t){ for(const it of (D.items||[])){ if(it.kind!=='spring')continue; const [x,z]=cpos(it.i); if(Math.hypot(x-player.x,z-player.z)>26)continue; const used=it.taken;
+function placeSpring(r,free,scored,spreadPick){ if(here.D.stratum.special||here.D.finalVault||r()>=0.25)return; const pool=(scored||[]).filter(o=>o.det>=5&&!here.D.items.some(it=>here.D.roomOf[it.i]===o.ri)); const pick=spreadPick?spreadPick(pool.length?pool:(scored||[])):(pool.length?pool:(scored||[]))[Math.floor(r()*Math.max(1,(pool.length?pool:(scored||[])).length))];
+  if(!pick)return; const c=pick.ro.cells.filter(free); if(!c.length)return; here.D.items.push({i:c[Math.floor(c.length/2)],kind:'spring',taken:false}); }
+function drawSprings(t){ for(const it of (here.D.items||[])){ if(it.kind!=='spring')continue; const [x,z]=cpos(it.i); if(Math.hypot(x-player.x,z-player.z)>26)continue; const used=it.taken;
     for(let k=0;k<16;k++){ const a=k/16*Math.PI*2+t*0.25, rr=0.55+0.05*Math.sin(t*2+k), b=used?0.25:0.7+0.3*Math.sin(t*1.8+k); dyn(x+Math.cos(a)*rr,0.05,z+Math.sin(a)*rr,G('~'),0.15,0.35*b,0.85*b,1.0*b,0,0); }
     if(!used){ dyn(x,0.06,z,G('o'),0.3,0.8,1.6,2.0,0,0); if(mr()<0.2)spawn(x+(mr()-0.5)*0.6,0.1,z+(mr()-0.5)*0.6,0,0.6,0,1.4,G(mpick(['.','\''])),0.1,0.6,1.5,1.8,0); } } }
 
 function placeRunesForLevel(){
-  D.items=D.items||[]; const seed=levelSeed(), r=mulberry32(seed^0x5eed1);
-  const free=c=>c>=0&&c<NCELL&&D.tile[c]===TF&&!D.liquid[c]&&!D.solid.has(c)&&c!==D.stairs&&c!==D.upstairs&&!D.items.some(it=>it.i===c);
+  here.D.items=here.D.items||[]; const seed=levelSeed(), r=mulberry32(seed^0x5eed1);
+  const free=c=>c>=0&&c<NCELL&&here.D.tile[c]===TF&&!here.D.liquid[c]&&!here.D.solid.has(c)&&c!==here.D.stairs&&c!==here.D.upstairs&&!here.D.items.some(it=>it.i===c);
   if(here.depth===1&&!here.branch&&!here.realm&&!adv.runState.startChosen){
-    const s=D.start, cand=[]; for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){ const d=Math.hypot(dx,dz); if(d<1.8||d>3.2)continue; const c=s+dx+dz*MW; if(free(c))cand.push([Math.atan2(dz,dx),c]); }
+    const s=here.D.start, cand=[]; for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){ const d=Math.hypot(dx,dz); if(d<1.8||d>3.2)continue; const c=s+dx+dz*MW; if(free(c))cand.push([Math.atan2(dz,dx),c]); }
     cand.sort((a,b)=>a[0]-b[0]); const els=shuffle(RUNE_TYPES.elem.slice(),r).slice(0,3);
-    if(cand.length>=3){ const step=cand.length/3; for(let k=0;k<3;k++)D.items.push({i:cand[Math.floor(k*step+step/2)][1],kind:'rune',rune:makeRune(els[k],0,r),grp:'start',pedestal:true,taken:false}); }
+    if(cand.length>=3){ const step=cand.length/3; for(let k=0;k<3;k++)here.D.items.push({i:cand[Math.floor(k*step+step/2)][1],kind:'rune',rune:makeRune(els[k],0,r),grp:'start',pedestal:true,taken:false}); }
   }
   if(here.depth===1&&!here.branch&&!here.realm&&!adv.runState.altar1){
-    const rooms=D.rooms.filter((ro,ri)=>ri>0&&!ro.cave&&ro.cells.length>12); const ro=rooms.length?rooms[Math.floor(r()*rooms.length)]:null;
+    const rooms=here.D.rooms.filter((ro,ri)=>ri>0&&!ro.cave&&ro.cells.length>12); const ro=rooms.length?rooms[Math.floor(r()*rooms.length)]:null;
     const c=ro?ro.cells.filter(free):[]; if(c.length){ const at=c[Math.floor(c.length/2)];
       const opts=[...shuffle(RUNE_TYPES.elem.slice(),r).slice(0,2),RUNE_TYPES.trig[Math.floor(r()*2)]];
-      opts.forEach((t,k)=>D.items.push({i:at,kind:'rune',rune:makeRune(t,rollAffN(r,0.1),r),grp:'altar1',altar:true,slot:k,taken:false})); } }
+      opts.forEach((t,k)=>here.D.items.push({i:at,kind:'rune',rune:makeRune(t,rollAffN(r,0.1),r),grp:'altar1',altar:true,slot:k,taken:false})); } }
   else if(here.depth>1||here.branch||here.realm)mainPathAltars(r,free);
-  for(const it of D.items)if(it.vault&&!it.ev)it.ev=r()<0.5?'guard':'collapse';
+  for(const it of here.D.items)if(it.vault&&!it.ev)it.ev=r()<0.5?'guard':'collapse';
   // steles beside the stairs and gates: swap runes there at once
-  D.steles=[]; for(const c0 of [D.stairs,D.upstairs,D.bstairs&&D.bstairs.cell,D.portal&&D.portal.cell]){ if(c0===undefined||c0===null||c0<0)continue;
-    const nb=[1,-1,MW,-MW,MW+1,MW-1,-MW+1,-MW-1].map(o=>c0+o).find(free); if(nb!==undefined)D.steles.push({i:nb,g:RUNE_CHARS[Math.floor(r()*RUNE_CHARS.length)]}); }
-  D.items.forEach((it,k)=>{ if(adv.runState.taken.has(seed+':'+k+':'+it.kind))it.taken=true; });
+  here.D.steles=[]; for(const c0 of [here.D.stairs,here.D.upstairs,here.D.bstairs&&here.D.bstairs.cell,here.D.portal&&here.D.portal.cell]){ if(c0===undefined||c0===null||c0<0)continue;
+    const nb=[1,-1,MW,-MW,MW+1,MW-1,-MW+1,-MW-1].map(o=>c0+o).find(free); if(nb!==undefined)here.D.steles.push({i:nb,g:RUNE_CHARS[Math.floor(r()*RUNE_CHARS.length)]}); }
+  here.D.items.forEach((it,k)=>{ if(adv.runState.taken.has(seed+':'+k+':'+it.kind))it.taken=true; });
 }
-const nearStele=()=>(gallery&&gallery.mode==='range')||(D.steles||[]).some(s=>{ const [x,z]=cpos(s.i); return Math.hypot(x-player.x,z-player.z)<2.6; })||(D.items||[]).some(o=>o.altar&&o.slot===1&&(()=>{ const [x,z]=cpos(o.i); return Math.hypot(x-player.x,z-player.z)<2.6; })());
+const nearStele=()=>(gallery&&gallery.mode==='range')||(here.D.steles||[]).some(s=>{ const [x,z]=cpos(s.i); return Math.hypot(x-player.x,z-player.z)<2.6; })||(here.D.items||[]).some(o=>o.altar&&o.slot===1&&(()=>{ const [x,z]=cpos(o.i); return Math.hypot(x-player.x,z-player.z)<2.6; })());
 const guardedNow=it=>it.guardG!==undefined&&here.monsters.some(m=>!m.dead&&m.g===it.guardG);
 function pickupItems(){
-  for(let k=0;k<(D.items||[]).length;k++){ const it=D.items[k]; if(it.taken)continue; if(it.kind==='rune'&&it.guardG!==undefined){ const gd=guardedNow(it); if(it.wasGuarded&&!gd&&!(D.lit||(D.lit=new Set())).has(it.grp||it.i)){ D.lit.add(it.grp||it.i); const [lx,lz]=cpos(it.i); sChime(lx,lz,0.5); msg(it.elitePrize?'<b style="color:#ffd27a">*</b>番人が倒れた。守られていたルーンが、手の届く光になった。':'<b style="color:#ffd27a">_</b>祭壇に光が灯った。'); } it.wasGuarded=gd; if(gd)continue; }
+  for(let k=0;k<(here.D.items||[]).length;k++){ const it=here.D.items[k]; if(it.taken)continue; if(it.kind==='rune'&&it.guardG!==undefined){ const gd=guardedNow(it); if(it.wasGuarded&&!gd&&!(here.D.lit||(here.D.lit=new Set())).has(it.grp||it.i)){ here.D.lit.add(it.grp||it.i); const [lx,lz]=cpos(it.i); sChime(lx,lz,0.5); msg(it.elitePrize?'<b style="color:#ffd27a">*</b>番人が倒れた。守られていたルーンが、手の届く光になった。':'<b style="color:#ffd27a">_</b>祭壇に光が灯った。'); } it.wasGuarded=gd; if(gd)continue; }
     if(it.kind==='legend'){ if(it.born&&time-it.born<1)continue; const [lx,lz]=cpos(it.i); if(Math.hypot(lx-player.x,lz-player.z)<0.9){ it.taken=true; pickLegend(it); } continue; }
     if(it.kind==='grave'){ const [gx,gz]=cpos(it.i); if(Math.hypot(gx-player.x,gz-player.z)<0.9){ it.taken=true; takeRune(it.rune); msg(`<b style="color:#c8c8d8">+</b>前の冒険者の形見を、墓から拾った：${thingLabel(it.rune)}`); META.grave=null; saveMeta(); sChime(gx,gz,0.4); } continue; }
     if(it.kind==='spring'){ const [sx,sz]=cpos(it.i); if(player.hp<adv.PLAYER_MAX-0.5&&Math.hypot(sx-player.x,sz-player.z)<0.9){ it.taken=true; adv.runState.taken.add(levelSeed()+':'+k+':spring'); player.hp=adv.PLAYER_MAX; player.rally=0; vfx.hpFlash=0.6; renderStatus(); sChime(sx,sz,0.5); setTimeout(()=>sChime(sx,sz,0.35),200); msg('<b style="color:#8fe0ff">~</b>泉の光が体を満たし、傷がすっかり癒えた。泉は静かに光を失った。'); for(let q=0;q<30;q++){ const a=mr()*6.28; spawn(player.x+Math.cos(a)*0.5,0.2+mr(),player.z+Math.sin(a)*0.5,Math.cos(a)*0.4,0.8+mr(),Math.sin(a)*0.4,1.0,G(mpick(['*','.','~'])),0.12,0.8,1.8,2.2,0); } } continue; }
@@ -164,7 +164,7 @@ function pickupItems(){
 }
 function grabItem(it,k,x,z,dest){
     it.taken=true; adv.runState.taken.add(levelSeed()+':'+k+':rune');
-    if(it.grp){ D.items.forEach((o,j)=>{ if(o!==it&&o.grp===it.grp&&!o.taken){ o.taken=true; adv.runState.taken.add(levelSeed()+':'+j+':rune'); const [ox,oz]=cpos(o.i); for(let q=0;q<12;q++){ const a=mr()*6.28; spawn(ox+(o.altar?(o.slot-1)*0.55:0),0.95,oz,Math.cos(a)*0.8,0.3+mr()*0.6,Math.sin(a)*0.8,0.9,G('.'),0.1,0.8,0.75,1.0,0); } } }); }
+    if(it.grp){ here.D.items.forEach((o,j)=>{ if(o!==it&&o.grp===it.grp&&!o.taken){ o.taken=true; adv.runState.taken.add(levelSeed()+':'+j+':rune'); const [ox,oz]=cpos(o.i); for(let q=0;q<12;q++){ const a=mr()*6.28; spawn(ox+(o.altar?(o.slot-1)*0.55:0),0.95,oz,Math.cos(a)*0.8,0.3+mr()*0.6,Math.sin(a)*0.8,0.9,G('.'),0.1,0.8,0.75,1.0,0); } } }); }
     if(it.grp==='start')adv.runState.startChosen=true; if(it.grp==='altar1')adv.runState.altar1=true;
     if(it.opt==='forge'){ const w=it.forgeW, t=trList(w).find(t=>t.k===it.forgeK); if(t)t.lv=it.forgeTo; else { w.traits=w.traits||[]; w.traits.push({k:it.forgeK,lv:it.forgeTo}); }
       msg(`<b style="color:#bcdcff">T</b>${RUNE_DEF[w.type].name}の「${trName(w.type,{k:it.forgeK})}」が Lv${it.forgeTo} になった。`); sChime(x,z,0.5); renderHotbar(); if(ui.invOpen)renderInv(); return; }
@@ -196,7 +196,7 @@ function altarDetail(o){ if(!o)return ['<span class="lab">選択肢にマウス�
   if(o.opt==='forge'){ const w=o.forgeW; return [`<b style="color:#bcdcff">T</b> ${RUNE_DEF[w.type].name}を鍛える`,`    <span class="lab">${trName(w.type,{k:o.forgeK})} Lv${o.forgeTo}：${trDesc(w.type,{k:o.forgeK,lv:o.forgeTo})}</span>`,'    <span class="dim">今持っている武器が、その場で鍛えられる</span>','','']; }
   return detailLines(o.rune); }
 // ALTAR_W は src/lib/hud.ts（src/game/imports.mjs で読む）
-function altarOpts(){ return [0,1,2].map(k=>D.items.find(o=>o.grp===altarNear&&o.slot===k&&!o.taken)).filter(Boolean); }
+function altarOpts(){ return [0,1,2].map(k=>here.D.items.find(o=>o.grp===altarNear&&o.slot===k&&!o.taken)).filter(Boolean); }
 function renderAltar(){ const el=document.getElementById('altarp'); if(!el)return; const opts=altarOpts(); if(!opts.length){ closeAltar(false); return; }
   const f=t=>`<span class="f">${t}</span>`, rows=[f(opts[0].lord?'+-- 主の祭壇 ---':opts[0].opt==='open'?'+-- 空の枠 ---':opts[0].forge?'+-- 鍛えの祭壇 ---':'+-- ルーンの祭壇 ---'),f('|')];
   for(const o of opts)rows.push(`${f('|')}  <button class="row ao" data-k="${o.slot}">${clipHtml(altarLine(o),ALTAR_W-6)}</button>`);
@@ -217,15 +217,15 @@ function openAltar(){ const el=document.getElementById('altarp'); if(!el)return;
 function closeAltar(dismiss){ const el=document.getElementById('altarp'); ui.altarOpen=false; if(dismiss)altarDismissed=altarNear; if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused());
   if(!plFailed&&ui.started&&!adv.dead)tryLock(); updateResume(); }
 function updateAltarPanel(){ const el=document.getElementById('altarp'); if(!el)return; if(ui.lvlOpen)return; if(adv.lvl.pending>0&&ui.started&&!adv.dead&&!isPaused()){ openLevelUp(); return; }
-  if(ui.altarOpen){ if(!D||!ui.started||adv.dead||!altarOpts().length)closeAltar(false); return; }
+  if(ui.altarOpen){ if(!here.D||!ui.started||adv.dead||!altarOpts().length)closeAltar(false); return; }
   altarNear=null;
-  if(ui.started&&!adv.dead&&!isPaused()&&D){ let best=null, bd=1.5; for(const it of (D.items||[])){ if(it.taken||!it.altar||!it.rune||it.slot!==1)continue; if(it.guardG!==undefined&&guardedNow(it))continue; const [x,z]=cpos(it.i), d=Math.hypot(x-player.x,z-player.z); if(d<bd){ bd=d; best=it; } } if(best)altarNear=best.grp; }
+  if(ui.started&&!adv.dead&&!isPaused()&&here.D){ let best=null, bd=1.5; for(const it of (here.D.items||[])){ if(it.taken||!it.altar||!it.rune||it.slot!==1)continue; if(it.guardG!==undefined&&guardedNow(it))continue; const [x,z]=cpos(it.i), d=Math.hypot(x-player.x,z-player.z); if(d<bd){ bd=d; best=it; } } if(best)altarNear=best.grp; }
   if(!altarNear){ altarDismissed=null; if(el.classList.contains('show'))el.classList.remove('show','open'); return; }
   if(altarDismissed===altarNear)return;
   openAltar(); }
-function chooseAltar(n){ if(!altarNear)return false; const k=D.items.findIndex(o=>o.grp===altarNear&&o.slot===n&&!o.taken); if(k<0)return false; const it=D.items[k];
+function chooseAltar(n){ if(!altarNear)return false; const k=here.D.items.findIndex(o=>o.grp===altarNear&&o.slot===n&&!o.taken); if(k<0)return false; const it=here.D.items[k];
   const [x,z]=cpos(it.i); if(!it.opt||it.opt==='rune')grabItem(it,k,x+(it.slot-1)*0.55,z,'bag'); else grabItem(it,k,x+(it.slot-1)*0.55,z); altarSel=null; altarPanelKey=''; if(ui.altarOpen)closeAltar(false); return true; }
-function altarPlace(dest){ if(!altarSel)return false; const k=D.items.findIndex(o=>o.grp===altarSel.grp&&o.slot===altarSel.slot&&!o.taken); altarSel=null; altarPanelKey=''; if(k<0)return false; const it=D.items[k], [x,z]=cpos(it.i); grabItem(it,k,x+(it.slot-1)*0.55,z,dest); return true; }
+function altarPlace(dest){ if(!altarSel)return false; const k=here.D.items.findIndex(o=>o.grp===altarSel.grp&&o.slot===altarSel.slot&&!o.taken); altarSel=null; altarPanelKey=''; if(k<0)return false; const it=here.D.items[k], [x,z]=cpos(it.i); grabItem(it,k,x+(it.slot-1)*0.55,z,dest); return true; }
 
 function mergeMod(ru){ if(RUNE_DEF[ru.type].cat!=='mod'||ru.strong)return false; const tw=gear.bag.find(b=>b.type===ru.type&&!b.strong); if(!tw)return false; tw.strong=true; msg(`<b class="rn" style="color:${css(TIER_COL[3])}">${RUNE_DEF[ru.type].ch}</b>2つの「${RUNE_DEF[ru.type].nm}」のルーンが、ひとつの強い版にまとまった（${runeName(tw)}）。`); renderHotbar(); if(ui.invOpen)renderInv(); return true; }
 function takeRune(ru,prefer,fromAltar){

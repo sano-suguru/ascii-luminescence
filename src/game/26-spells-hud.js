@@ -1,9 +1,9 @@
 // ---------------------------------------------------------------- spells meet the world: doors stop them, sight lines matter, ice freezes water and puts out fire, thunder runs through water, fire lights poison mist
 let frozen=new Map(), beamIgT=-9;
-function doorBlock(ci){ const d=D.doorAt&&D.doorAt.get(ci); return !!d&&!d.gone&&d.o<0.5; }
+function doorBlock(ci){ const d=here.D.doorAt&&here.D.doorAt.get(ci); return !!d&&!d.gone&&d.o<0.5; }
 function losClear(ax,ay,az,bx,by,bz){ const d=Math.hypot(bx-ax,by-ay,bz-az), n=Math.ceil(d/0.3);
   for(let k=1;k<n;k++){ const f=k/n, x=ax+(bx-ax)*f, y=ay+(by-ay)*f, z=az+(bz-az)*f, ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL); if(ci<0||ci>=NCELL)return false;
-    const tt=D.tile[ci]; if(tt===TW||tt===TX||doorBlock(ci)||y>D.ceil[ci])return false; }
+    const tt=here.D.tile[ci]; if(tt===TW||tt===TX||doorBlock(ci)||y>here.D.ceil[ci])return false; }
   return true; }
 // mCenter は src/lib/math.ts（src/game/imports.mjs で読む）
 function beamFrame(h){ const o=handPoint(h), a=assistPoint(o,'beam')||aimPoint(), dx=a[0]-o[0], dy=a[1]-o[1], dz=a[2]-o[2], l=Math.hypot(dx,dy,dz); return {o,d:l>1?[dx/l,dy/l,dz/l]:viewDir()}; }
@@ -11,13 +11,13 @@ function beamFrame(h){ const o=handPoint(h), a=assistPoint(o,'beam')||aimPoint()
 function chillArea(x,z,r){ const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL), rr=Math.ceil(r/CELL)+1; let ch=false, froze=false;
   for(let dz=-rr;dz<=rr;dz++)for(let dx=-rr;dx<=rr;dx++){ const i=(cz+dz)*MW+cx+dx; if(i<0||i>=NCELL)continue; const px=(cx+dx+0.5)*CELL, pz=(cz+dz+0.5)*CELL; if(Math.hypot(px-x,pz-z)>r+0.7)continue;
     if(fire[i]>0){ fire[i]=0; ch=true; for(let q=0;q<5;q++)spawn(px+(mr()-0.5)*1.4,0.3,pz+(mr()-0.5)*1.4,0,0.9+mr(),0,0.9,G(mpick(['~','.'])),0.16,1.6,1.7,1.8,0); }
-    const lq=D.liquid[i]; if((lq===LQ_WATER||lq===LQ_DEEP)&&!frozen.has(i)){ frozen.set(i,{t:25,liq:lq,surf:D.surface[i]}); D.liquid[i]=0; D.surface[i]=SF_ICE; ch=true; froze=true;
+    const lq=here.D.liquid[i]; if((lq===LQ_WATER||lq===LQ_DEEP)&&!frozen.has(i)){ frozen.set(i,{t:25,liq:lq,surf:here.D.surface[i]}); here.D.liquid[i]=0; here.D.surface[i]=SF_ICE; ch=true; froze=true;
       for(const m of here.monsters){ if(m.dead||m.cx!==cx+dx||m.cz!==cz+dz)continue; const s2=m.st||(m.st={}); s2.chill=Math.max(s2.chill||0,4); } }
     else if(frozen.has(i))frozen.get(i).t=25; }
   if(ch)uploadCells();
   if(froze&&sndReady()){ const t=SND.ctx.currentTime, o=sOut(x,z,0.3); sEnv(sTone(t,'sine',2093,3136,0.4,o),t,0.004,0.35); sEnv(sNoise(t,0.3,'highpass',5000,0.6,o),t,0.003,0.25,0.4); } }
 function updateFrozen(dt){ if(!frozen.size)return; let ch=false;
-  for(const [i,f] of frozen){ f.t-=dt; if(f.t<=0||fire[i]>0.1){ D.liquid[i]=f.liq; D.surface[i]=f.surf; frozen.delete(i); ch=true; const [x,z]=cpos(i); for(let q=0;q<8;q++){ const a=mr()*6.28; spawn(x+Math.cos(a)*0.6,0.1,z+Math.sin(a)*0.6,Math.cos(a),0.6+mr(),Math.sin(a),0.6,G(mpick(['/','\\','~'])),0.14,0.7,0.95,1.2,1); } } }
+  for(const [i,f] of frozen){ f.t-=dt; if(f.t<=0||fire[i]>0.1){ here.D.liquid[i]=f.liq; here.D.surface[i]=f.surf; frozen.delete(i); ch=true; const [x,z]=cpos(i); for(let q=0;q<8;q++){ const a=mr()*6.28; spawn(x+Math.cos(a)*0.6,0.1,z+Math.sin(a)*0.6,Math.cos(a),0.6+mr(),Math.sin(a),0.6,G(mpick(['/','\\','~'])),0.14,0.7,0.95,1.2,1); } } }
   if(ch)uploadCells(); }
 function drawFrozen(t){ for(const [i,f] of frozen){ const [x,z]=cpos(i); if(Math.hypot(x-player.x,z-player.z)>30)continue; const crack=f.t<5;
   for(let a=0;a<3;a++)for(let b=0;b<3;b++){ const sh=0.85+0.15*Math.sin(t*2+a+b*1.7); dyn(x+(a-1)*0.62,0.08,z+(b-1)*0.62,G(crack&&((a+b)%2)?'/':'='),0.36,0.7*sh,0.92*sh,1.25*sh); } } }
@@ -28,9 +28,9 @@ function conductWater(m,base){ if(!inWater(m))return; let n=0;
     if(d2>0)damageMonster(o,d2,'thunder'); if(!o.dead){ const s2=o.st||(o.st={}); s2.shock=Math.max(s2.shock||0,0.3); o.wind=0; } sparkCrown(o,RUNE_DEF.thunder.col); } }
 // what an element does where it lands (walls, doors, floor, water)
 function landElem(sp,x,y,z,ci){ if(!sp.elem||ci<0||ci>=NCELL)return; const areaK=1+(sp.aff.area||0)/100;
-  if(sp.elem==='fire'){ if(doorBlock(ci)||(D.tile[ci]!==TW&&D.tile[ci]!==TX&&!D.liquid[ci]))burstFire(ci,0.5*areaK,0.9); }
+  if(sp.elem==='fire'){ if(doorBlock(ci)||(here.D.tile[ci]!==TW&&here.D.tile[ci]!==TX&&!here.D.liquid[ci]))burstFire(ci,0.5*areaK,0.9); }
   else if(sp.elem==='ice')chillArea(x,z,1.2*areaK);
-  else if(sp.elem==='thunder'){ const lq=D.liquid[ci]; if(lq===LQ_WATER||lq===LQ_DEEP){ for(const o of here.monsters){ if(!foe(o)||!inWater(o)||Math.hypot(o.x-x,o.z-z)>5)continue; addBolt([x,0.15,z],[o.x,0.15,o.z],RUNE_DEF.thunder.col,'thunder'); damageMonster(o,2,'thunder'); } } } }
+  else if(sp.elem==='thunder'){ const lq=here.D.liquid[ci]; if(lq===LQ_WATER||lq===LQ_DEEP){ for(const o of here.monsters){ if(!foe(o)||!inWater(o)||Math.hypot(o.x-x,o.z-z)>5)continue; addBolt([x,0.15,z],[o.x,0.15,o.z],RUNE_DEF.thunder.col,'thunder'); damageMonster(o,2,'thunder'); } } } }
 // fire reaching a poison mist sets the whole mist off
 function cloudsMeetFire(){ for(const c of clouds){ if(c.t<=0)continue; const cx=Math.floor(c.x/CELL), cz=Math.floor(c.z/CELL), rr=Math.ceil(c.r/CELL); let lit=false;
     for(let dz=-rr;dz<=rr&&!lit;dz++)for(let dx=-rr;dx<=rr;dx++){ const i=(cz+dz)*MW+cx+dx; if(i>=0&&i<NCELL&&fire[i]>0.1){ lit=true; break; } }

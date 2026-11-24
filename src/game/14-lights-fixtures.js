@@ -23,7 +23,7 @@ function flicker(L,t){
     case 'orb': return 0.9+0.1*Math.sin(t*0.7+p);
     case 'bloodwort': return (L.fade===undefined?1:L.fade)*(0.85+0.15*Math.sin(t*2.2+p));
     case 'vent': return 0.04+(L.boost||0);
-    case 'pitglow': return D.collapsed?0.85+0.15*Math.sin(t*1.3+p):0;
+    case 'pitglow': return here.D.collapsed?0.85+0.15*Math.sin(t*1.3+p):0;
     case 'xlight': return 0.85+0.15*Math.sin(t*0.6+p);
     case 'torch': return 0.8+0.08*Math.sin(t*9.1+p)+0.07*Math.sin(t*21.3+p*1.7)+0.05*Math.sin(t*37.9+p*2.9);
     case 'lava': return 0.85+0.1*Math.sin(t*0.7+p)+0.05*Math.sin(t*2.3+p);
@@ -39,7 +39,7 @@ function cellLight(x,z){
   _cl[0]=_cl[1]=_cl[2]=0;
   const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL); if(cx<0||cz<0||cx>=MW||cz>=MH)return _cl;
   const o=(cz*MW+cx)*3;
-  for(let k=0;k<3;k++){ const id=D.cellLI[o+k]; if(id<0)break; const L=D.lights[id], w=D.cellLW[o+k]*L.int*L.f; _cl[0]+=L.col[0]*w; _cl[1]+=L.col[1]*w; _cl[2]+=L.col[2]*w; }
+  for(let k=0;k<3;k++){ const id=here.D.cellLI[o+k]; if(id<0)break; const L=here.D.lights[id], w=here.D.cellLW[o+k]*L.int*L.f; _cl[0]+=L.col[0]*w; _cl[1]+=L.col[1]*w; _cl[2]+=L.col[2]*w; }
   const fl=fireLight[cz*MW+cx]; if(fl>0){ _cl[0]+=fl*2.2; _cl[1]+=fl*0.99; _cl[2]+=fl*0.26; }
   return _cl;
 }
@@ -48,7 +48,7 @@ function updateLights(t){
   SL.fill(0);
   let shadowK=1; for(const m of here.monsters)if(m.ty.beast&&m.ty.spec.shadow&&!m.sleep){ const d=Math.hypot(m.x-player.x,m.z-player.z); if(d<16)shadowK=Math.min(shadowK,0.45+0.55*d/16); }
   const drag=here.monsters.filter(m=>m.ty.dragon&&m.sleep), lich=here.monsters.filter(m=>m.ty.lich);
-  D.lights.forEach((L,i)=>{ let f=flicker(L,t)*shadowK; let c0=L.col[0], c1=L.col[1], c2=L.col[2];
+  here.D.lights.forEach((L,i)=>{ let f=flicker(L,t)*shadowK; let c0=L.col[0], c1=L.col[1], c2=L.col[2];
     for(const m of drag){ const d=Math.hypot(L.x-m.x,L.z-m.z); if(d<11)f*=1-0.35*(1-d/11)*(0.5+0.5*Math.sin(t*0.8+m.ph)); }
     for(const m of lich){ const d=Math.hypot(L.x-m.x,L.z-m.z); if(d<12){ const k2=(1-d/12)*0.8; c0=c0*(1-k2)+0.55*k2; c1=c1*(1-k2)+0.8*k2; c2=c2*(1-k2)+1.0*k2; } }
     L.f=f; const k=L.int*f; SL[i*3]=c0*k; SL[i*3+1]=c1*k; SL[i*3+2]=c2*k; });
@@ -74,7 +74,7 @@ function drawFixtures(t,dt){
   for(const f of here.fixtures){
     const ddx=f.x-player.x, ddz=f.z-player.z, d2=ddx*ddx+ddz*ddz; if(d2>46*46)continue;
     const near=clamp(Math.sqrt(d2)/4,0.35,1);
-    const L=D.lights[f.li], fl=L?L.f:1, c=f.col, x=f.x, z=f.z, ly=L?L.y:1.5;
+    const L=here.D.lights[f.li], fl=L?L.f:1, c=f.col, x=f.x, z=f.z, ly=L?L.y:1.5;
     switch(f.type){
       case 'brazier': {
         for(let k=0;k<3;k++){ const a=k*2.094+f.ph; dyn(x+Math.cos(a)*0.2,0.42,z+Math.sin(a)*0.2,G('|'),0.6,c[0]*0.55*fl+0.04,c[1]*0.55*fl+0.04,c[2]*0.55*fl+0.06,2,Math.atan2(Math.cos(a),Math.sin(a))); }
@@ -228,7 +228,7 @@ function drawFixtures(t,dt){
         else if(L)L.boost=Math.max(0,(L.boost||0)-dt*0.8);
         break; }
       case 'pitglow': {
-        if(!D.collapsed)break;
+        if(!here.D.collapsed)break;
         f.acc+=dt*6; while(f.acc>=1){ f.acc--; const a=mr()*6.28, r=mr()*1.6; spawn(x+Math.cos(a)*r,-5.5,z+Math.sin(a)*r,(mr()-0.5)*0.2,0.9+mr()*0.8,(mr()-0.5)*0.2,4+mr()*2,G(mpick(['.','*','\''])),0.12,c[0]*2.4,c[1]*2,c[2]*1.5,0); }
         break; }
       case 'xlight': {
@@ -250,7 +250,7 @@ function drawFixtures(t,dt){
         f.acc+=dt*7;
         while(f.acc>=1){ f.acc--; const a=mr()*6.28, r=mr()*3.2; spawn(x+Math.cos(a)*r,0.15,z+Math.sin(a)*r,(mr()-0.5)*0.3,0.5+mr()*0.9,(mr()-0.5)*0.3,1.5+mr()*2.5,G(mpick(['.','\'','*','`'])),0.09+mr()*0.08,c[0]*2.8,c[1]*2.2,c[2]*1.6,0); }
         f.burst=(f.burst||0)-dt;
-        if(f.burst<=0){ f.burst=0.8+mr()*2.2; f.bx=x+(mr()-0.5)*4; f.bz=z+(mr()-0.5)*4; const ci=Math.floor(f.bz/CELL)*MW+Math.floor(f.bx/CELL); f.bt=(ci>=0&&ci<NCELL&&D.liquid[ci]===LQ_LAVA)?0:1; }
+        if(f.burst<=0){ f.burst=0.8+mr()*2.2; f.bx=x+(mr()-0.5)*4; f.bz=z+(mr()-0.5)*4; const ci=Math.floor(f.bz/CELL)*MW+Math.floor(f.bx/CELL); f.bt=(ci>=0&&ci<NCELL&&here.D.liquid[ci]===LQ_LAVA)?0:1; }
         if(f.bt<1){ f.bt+=dt*1.6; const q=Math.min(1,f.bt), rr=0.15+q*0.7, b=2.6*(1-q);
           for(let k=0;k<8;k++){ const a=k/8*Math.PI*2; dyn(f.bx+Math.cos(a)*rr,0.14+Math.sin(q*Math.PI)*0.25,f.bz+Math.sin(a)*rr,G(k%2?'o':'*'),0.2*(1-q*0.5),c[0]*b,c[1]*b*0.7,c[2]*b*0.4); }
           if(q<0.2)dyn(f.bx,0.22,f.bz,G('0'),0.4,c[0]*3,c[1]*2,c[2]); }
@@ -292,7 +292,7 @@ function drawFixtures(t,dt){
 
 // ---------------------------------------------------------------- doors
 function drawDoors(t,dt){
-  for(const d of D.doors){
+  for(const d of here.D.doors){
     if(d.gone)continue;
     const dx=d.bx-player.x, dz=d.bz-player.z, dd=Math.hypot(dx,dz);
     let tgt=dd<2.7?1:0;

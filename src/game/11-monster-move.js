@@ -1,6 +1,6 @@
 function makeMonster(s){
   const ty=MTYPES[s.key];
-  if(ty&&ty.golem&&!s.route&&D&&D.roomOf){ const r=D.roomOf[s.cz*MW+s.cx]>=0?D.rooms[D.roomOf[s.cz*MW+s.cx]]:null; if(r&&r.cells.length>12){ const pts=[]; for(let k=0;k<4;k++){ const c=r.cells[Math.floor(Math.random()*r.cells.length)]; if(D.tile[c]===TF&&!D.liquid[c]&&!D.solid.has(c))pts.push(c); } s.route=pts; } }
+  if(ty&&ty.golem&&!s.route&&here.D&&here.D.roomOf){ const r=here.D.roomOf[s.cz*MW+s.cx]>=0?here.D.rooms[here.D.roomOf[s.cz*MW+s.cx]]:null; if(r&&r.cells.length>12){ const pts=[]; for(let k=0;k<4;k++){ const c=r.cells[Math.floor(Math.random()*r.cells.length)]; if(here.D.tile[c]===TF&&!here.D.liquid[c]&&!here.D.solid.has(c))pts.push(c); } s.route=pts; } }
   const m={home:s.home,route:s.route,ri:0,camp:s.camp,ty,key:s.key,x:(s.cx+0.5)*CELL,z:(s.cz+0.5)*CELL,cx:s.cx,cz:s.cz,tx:s.cx,tz:s.cz,dir:[0,0],yaw:mr()*6.28,dirYaw:mr()*6.28,
     wait:mr()*2,alert:0,seen:false,visible:false,walk:mr()*10,moving:0,ph:mr()*100,form:buildForm(ty),acc:0,glow:1,y:0,
     g:s.g,isLead:s.lead,leader:null,dead:false,aware:0,noticed:false,sleep:false,mark:0,surf:0,surfT:2+mr()*6,vx:0,vz:0,vy:0,fy:1.8,flitT:0};
@@ -13,7 +13,7 @@ function makeMonster(s){
 const fireAt=i=>i>=0&&i<NCELL&&fire[i]>0.1;
 function fireNear(cx,cz,r){ let best=-1,bd=1e9; for(const i of burning){ if(fire[i]<=0.1)continue; const dx=i%MW-cx, dz=((i/MW)|0)-cz, d=Math.max(Math.abs(dx),Math.abs(dz)); if(d<=r&&d<bd){bd=d;best=i;} } return best; }
 let fleeMsgT=-10;
-const canStep=(m,i)=>(m.ty.habitat==='lava'||!fireAt(i))&&!(D.glyph&&D.glyph[i]&&!m.ty.critter)&&!(D.gate&&D.gate.o<0.7&&i===D.gate.cell)&&(m.home===undefined||D.roomOf[i]===m.home)&&(m.ty.habitat==='bog'?(D.tile[i]===TF&&D.liquid[i]===LQ_BOG):m.ty.habitat==='deep'?(D.tile[i]===TF&&D.liquid[i]===LQ_DEEP):m.ty.habitat==='amph'?(D.tile[i]===TF&&!D.solid.has(i)&&D.liquid[i]!==LQ_LAVA&&D.liquid[i]!==LQ_BOG):m.ty.habitat==='lava'?(D.tile[i]===TF&&!D.solid.has(i)&&D.liquid[i]!==LQ_DEEP&&D.liquid[i]!==LQ_WATER):m.ty.aquatic?(D.tile[i]===TF&&(D.liquid[i]===LQ_WATER||D.liquid[i]===LQ_DEEP)):m.ty.form==='eel'?(D.tile[i]===TF&&D.liquid[i]===LQ_DEEP):(D.tile[i]===TF&&!blocksWalk(D.liquid[i])&&!D.solid.has(i)));
+const canStep=(m,i)=>(m.ty.habitat==='lava'||!fireAt(i))&&!(here.D.glyph&&here.D.glyph[i]&&!m.ty.critter)&&!(here.D.gate&&here.D.gate.o<0.7&&i===here.D.gate.cell)&&(m.home===undefined||here.D.roomOf[i]===m.home)&&(m.ty.habitat==='bog'?(here.D.tile[i]===TF&&here.D.liquid[i]===LQ_BOG):m.ty.habitat==='deep'?(here.D.tile[i]===TF&&here.D.liquid[i]===LQ_DEEP):m.ty.habitat==='amph'?(here.D.tile[i]===TF&&!here.D.solid.has(i)&&here.D.liquid[i]!==LQ_LAVA&&here.D.liquid[i]!==LQ_BOG):m.ty.habitat==='lava'?(here.D.tile[i]===TF&&!here.D.solid.has(i)&&here.D.liquid[i]!==LQ_DEEP&&here.D.liquid[i]!==LQ_WATER):m.ty.aquatic?(here.D.tile[i]===TF&&(here.D.liquid[i]===LQ_WATER||here.D.liquid[i]===LQ_DEEP)):m.ty.form==='eel'?(here.D.tile[i]===TF&&here.D.liquid[i]===LQ_DEEP):(here.D.tile[i]===TF&&!blocksWalk(here.D.liquid[i])&&!here.D.solid.has(i)));
 function chooseNext(m){
   if(m.ty.form!=='eel'&&!m.leader&&m.ty.form!=='bloat'&&mr()<0.1)m.wait=1+mr()*3;
   const opts=[]; for(const d of D4){ const i=(m.cz+d[1])*MW+m.cx+d[0]; if(canStep(m,i))opts.push(d); }

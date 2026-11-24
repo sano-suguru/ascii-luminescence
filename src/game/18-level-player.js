@@ -2,7 +2,7 @@
 let expo=1.1;
 adv.runSeed=(Math.random()*1e9)>>>0;
 const levelSeed=()=>((Math.imul(adv.runSeed,2654435761)^Math.imul(here.depth,1013904223)^(here.branch?Math.imul(here.branch.lvl*31+here.branch.key.charCodeAt(0),0x27d4eb2d):0)^(here.realm?Math.imul(here.realm.key.charCodeAt(0)+7,0x165667b1):0)^(here.inter?Math.imul(here.inter.key.charCodeAt(0)+13,0x2c1b3c6d):0))>>>0)||1;
-function setFog(){ const k=D.prof.fogDark, f=(D.stratum.fog?D.stratum.fog:D.stratum.k==='magma'?[0.016,0.004,0.003]:D.stratum.k==='abyss'?[0.007,0.003,0.014]:FOGS[(here.depth-1)%FOGS.length]).map(v=>v*k); fogCol.set(f[0],f[1],f[2]); renderer.setClearColor(new T.Color(f[0],f[1],f[2]),1); fogBase=0.05+Math.min(here.depth-1,6)*0.002; U.uFogDen.value=fogBase; }
+function setFog(){ const k=here.D.prof.fogDark, f=(here.D.stratum.fog?here.D.stratum.fog:here.D.stratum.k==='magma'?[0.016,0.004,0.003]:here.D.stratum.k==='abyss'?[0.007,0.003,0.014]:FOGS[(here.depth-1)%FOGS.length]).map(v=>v*k); fogCol.set(f[0],f[1],f[2]); renderer.setClearColor(new T.Color(f[0],f[1],f[2]),1); fogBase=0.05+Math.min(here.depth-1,6)*0.002; U.uFogDen.value=fogBase; }
 let lastStratum=null;
 function showStratum(st){
   const el=document.getElementById('stratum'); if(!el)return;
@@ -11,81 +11,81 @@ function showStratum(st){
   el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
   clearTimeout(showStratum.t); showStratum.t=setTimeout(()=>el.classList.remove('show'),5600);
 }
-function settleSlotPick(){ if(!adv.runState||!adv.runState.slotPend||!D)return; const o=(D.items||[]).find(x=>x.grp===adv.runState.slotPend&&!x.taken); if(o){ applyOpen(o.target); msg(`<span class="lab">選ばれなかった空の枠は、${o.label}を開けた。</span>`); } adv.runState.slotPend=null; }
+function settleSlotPick(){ if(!adv.runState||!adv.runState.slotPend||!here.D)return; const o=(here.D.items||[]).find(x=>x.grp===adv.runState.slotPend&&!x.taken); if(o){ applyOpen(o.target); msg(`<span class="lab">選ばれなかった空の枠は、${o.label}を開けた。</span>`); } adv.runState.slotPend=null; }
 function newLevel(seedOverride){
   settleSlotPick();
   if(advance.bounced){ advance.bounced=false; setTimeout(()=>msg('<b style="color:#a98cff">.</b>闇の底に触れた途端、何かに押し返された。まだ、降りることは許されていない。'),1200); }
-  D=generate(seedOverride!==undefined?seedOverride:levelSeed(),here.depth);
-  if(here.depth===FINAL_DEPTH&&!here.branch&&!here.realm)D.finalVault=true;
-  D.doorAt=new Map(D.doors.map(d=>[d.i,d])); frozen=new Map();
+  here.D=generate(seedOverride!==undefined?seedOverride:levelSeed(),here.depth);
+  if(here.depth===FINAL_DEPTH&&!here.branch&&!here.realm)here.D.finalVault=true;
+  here.D.doorAt=new Map(here.D.doors.map(d=>[d.i,d])); frozen=new Map();
   placeRunesForLevel(); projs=[]; beamSegs=[]; clouds=[]; gear.castSt=null;
-  U.uAmb.value=D.prof.ambient;
+  U.uAmb.value=here.D.prof.ambient;
   hudInfo.explored=0;
   buildWorld(); updateWater();
-  here.fixtures=D.fixtures;
-  here.monsters=D.spawns.map(makeMonster);
+  here.fixtures=here.D.fixtures;
+  here.monsters=here.D.spawns.map(makeMonster);
   if(here.branch&&adv.runState.lordsDone&&adv.runState.lordsDone.has(here.branch.key))here.monsters=here.monsters.filter(m=>m.key!=='lord');
   finalSt=null; if(isFinal())setupFinal();
   for(const m of here.monsters)if(!m.isLead)m.leader=here.monsters.find(o=>o.g===m.g&&o.isLead)||null;
   for(const m of here.monsters)if(m.ty.beast||(m.ty.dragon&&Math.random()<0.9))m.sleep=true;
   { const asleep=new Set(); for(const m of here.monsters)if(m.isLead&&m.g>=0&&m.ty.form!=='eel'&&Math.random()<0.10)asleep.add(m.g); for(const m of here.monsters)if(asleep.has(m.g))m.sleep=true; }
   noticeMsgT={}; stealth.hudKey='';
-  explored=new Uint8Array(NCELL); mem=new Float32Array(NCELL*3); fovVis=new Uint32Array(NCELL); fovStamp=1;
-  { const pm=placeMem.get(placeKey()); if(pm){ explored.set(pm.explored); mem.set(pm.mem); } }
+  here.explored=new Uint8Array(NCELL); here.mem=new Float32Array(NCELL*3); here.fovVis=new Uint32Array(NCELL); here.fovStamp=1;
+  { const pm=placeMem.get(placeKey()); if(pm){ here.explored.set(pm.explored); here.mem.set(pm.mem); } }
   visitedRooms=new Set(); stairsSeen=false; player.rally=0; rallyMotes=[]; if(adv.runStats&&!gallery)adv.runStats.maxDepth=Math.max(adv.runStats.maxDepth||0,here.depth); setTimeout(strataGrowth,50);
   if(ui.started&&!gallery&&!adv.dead&&!here.arrive){ const sp=here.inter?SPECIALS[here.inter.key]:null; if(sp&&(sp.k==='town'||sp.k==='oracle')){ player.hp=adv.PLAYER_MAX; setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>静かな場所だ。張りつめていた体が、すっかりほどけた。'),1600); } else if(player.hp<adv.PLAYER_MAX){ player.hp=Math.min(adv.PLAYER_MAX,player.hp+adv.PLAYER_MAX*0.2); setTimeout(()=>msg('<span class="lab">階段を降りると、少し息が整った。</span>'),1600); } }
-  player.x=(D.start%MW+0.5)*CELL; player.z=(((D.start/MW)|0)+0.5)*CELL; player.vx=player.vz=0; player.yaw=D.startYaw; player.pitch=-0.04; lockCell=-1;
-  { const tc=here.arrive==='portal'&&D.portal?D.portal.cell:here.arrive==='bstairs'&&D.bstairs?D.bstairs.cell:here.arrive==='stairs'?D.stairs:-1;
-    if(tc>=0){ const nb=[1,-1,MW,-MW,MW+1,MW-1,-MW+1,-MW-1].map(o=>tc+o).find(j=>j>=0&&j<NCELL&&D.tile[j]===TF&&!D.liquid[j]&&!D.solid.has(j))??tc;
+  player.x=(here.D.start%MW+0.5)*CELL; player.z=(((here.D.start/MW)|0)+0.5)*CELL; player.vx=player.vz=0; player.yaw=here.D.startYaw; player.pitch=-0.04; lockCell=-1;
+  { const tc=here.arrive==='portal'&&here.D.portal?here.D.portal.cell:here.arrive==='bstairs'&&here.D.bstairs?here.D.bstairs.cell:here.arrive==='stairs'?here.D.stairs:-1;
+    if(tc>=0){ const nb=[1,-1,MW,-MW,MW+1,MW-1,-MW+1,-MW-1].map(o=>tc+o).find(j=>j>=0&&j<NCELL&&here.D.tile[j]===TF&&!here.D.liquid[j]&&!here.D.solid.has(j))??tc;
       player.x=(nb%MW+0.5)*CELL; player.z=(((nb/MW)|0)+0.5)*CELL; player.yaw=Math.atan2(-((tc%MW)-(nb%MW)),-(((tc/MW)|0)-((nb/MW)|0)))+Math.PI; lockCell=tc; } here.arrive=null; }
   stealth.sneak=false; lantern.r=8.2; lantern.k=1;
-  riverCells=[]; for(let i=0;i<NCELL;i++)if(D.flow[i]&&(D.liquid[i]===LQ_WATER||D.liquid[i]===LQ_DEEP))riverCells.push(i);
+  riverCells=[]; for(let i=0;i<NCELL;i++)if(here.D.flow[i]&&(here.D.liquid[i]===LQ_WATER||here.D.liquid[i]===LQ_DEEP))riverCells.push(i);
   trampled=[]; tallMsg=false; brimMsg=false; player.lastCell=-1; player.netT=0;
   scent=new Float32Array(NCELL); webMsg=false; webBurnMsg=false; repairMsg=false;
   pN=0; gasAny=false; initFire(); initEvents(); spark=null; projs=[]; showHint(''); edge.t=0; setFog(); initDust();
   renderStatus(); if(ui.helpOn)renderHelp();
   computeFOV(); checkEvents(true);
   if(player.fall){ player.fall=false; setTimeout(()=>{ hurtPlayer(roll(2,4),'落下の衝撃'); },300); }
-  if(D.stratum!==lastStratum){ if(lastStratum!==null){ showStratum(D.stratum); if(D.stratum.msg)msg(`<b style="color:#c9b8ff">=</b>${D.stratum.msg}`); } lastStratum=D.stratum; }
+  if(here.D.stratum!==lastStratum){ if(lastStratum!==null){ showStratum(here.D.stratum); if(here.D.stratum.msg)msg(`<b style="color:#c9b8ff">=</b>${here.D.stratum.msg}`); } lastStratum=here.D.stratum; }
 }
 function checkEvents(first){
   const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL);
-  const ri=D.roomOf[pc];
+  const ri=here.D.roomOf[pc];
   if(first)msg(here.depth===1?'<b style="color:#c9b8ff">@</b>石の迷宮に降り立った。闇の奥で、何かが息づいている。':`<b style="color:#ffcf7a">&gt;</b>深度 ${here.depth}。光はより鮮やかに、闇はより深くなった。`);
-  if(ri>=0&&!visitedRooms.has(ri)){ visitedRooms.add(ri); const th=D.rooms[ri].theme; msg(`<b style="color:${css(th.col)}">${D.rooms[ri].cave?'~':'*'}</b>${th.msg}`); const km=D.rooms[ri].kindMsg; if(km)msg(`<b style="color:${css(th.col)}">=</b>${km}`); const mc=D.rooms[ri].machine; if(mc){ const mi=MACHINE_INFO[mc]; msg(`<b style="color:${css(mi.col)}">${mi.ch}</b>${mi.msg}`); } }
-  if(!D.engrSeen&&D.engr.size){ for(const k of D.engr.keys()){ const i=k>>2; if(fovVis[i]===fovStamp&&Math.hypot((i%MW+0.5)*CELL-player.x,(((i/MW)|0)+0.5)*CELL-player.z)<7){ D.engrSeen=true; msg('<b style="color:#ffdca0">#</b>壁に彫刻が刻まれている。見つめれば、そこに描かれた出来事が読み取れる。'); break; } } }
-  if(!stairsSeen&&fovVis[D.stairs]===fovStamp){ stairsSeen=true; msg('<b style="color:#ffcf7a">&gt;</b>金色に輝く下り階段を見つけた。踏み込めば、さらに深い階層へ。'); }
+  if(ri>=0&&!visitedRooms.has(ri)){ visitedRooms.add(ri); const th=here.D.rooms[ri].theme; msg(`<b style="color:${css(th.col)}">${here.D.rooms[ri].cave?'~':'*'}</b>${th.msg}`); const km=here.D.rooms[ri].kindMsg; if(km)msg(`<b style="color:${css(th.col)}">=</b>${km}`); const mc=here.D.rooms[ri].machine; if(mc){ const mi=MACHINE_INFO[mc]; msg(`<b style="color:${css(mi.col)}">${mi.ch}</b>${mi.msg}`); } }
+  if(!here.D.engrSeen&&here.D.engr.size){ for(const k of here.D.engr.keys()){ const i=k>>2; if(here.fovVis[i]===here.fovStamp&&Math.hypot((i%MW+0.5)*CELL-player.x,(((i/MW)|0)+0.5)*CELL-player.z)<7){ here.D.engrSeen=true; msg('<b style="color:#ffdca0">#</b>壁に彫刻が刻まれている。見つめれば、そこに描かれた出来事が読み取れる。'); break; } } }
+  if(!stairsSeen&&here.fovVis[here.D.stairs]===here.fovStamp){ stairsSeen=true; msg('<b style="color:#ffcf7a">&gt;</b>金色に輝く下り階段を見つけた。踏み込めば、さらに深い階層へ。'); }
   if(lockCell>=0){ const lx=(lockCell%MW+0.5)*CELL, lz=(((lockCell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-lx,player.z-lz)>1.6)lockCell=-1; }
-  if(ui.started&&!here.trans&&D.upstairs>=0&&lockCell!==D.upstairs){ const ux=(D.upstairs%MW+0.5)*CELL, uz=(((D.upstairs/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-ux,player.z-uz)<0.95){ here.trans={phase:'out',t:0,regen:false,go:'up'}; msg('<b style="color:#c9b8ff">&lt;</b>上り階段を上り、来た道を引き返す……'); } }
-  if(ui.started&&!here.trans&&D.bstairs&&lockCell!==D.bstairs.cell){ const bx=(D.bstairs.cell%MW+0.5)*CELL, bz=(((D.bstairs.cell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-bx,player.z-bz)<0.95){ here.trans={phase:'out',t:0,regen:false,go:'branch'}; msg(`<b style="color:${css(BRANCHES[D.bstairs.key].col)}">&gt;</b>本道を外れ、${BRANCHES[D.bstairs.key].name}へ続く脇道を下りていく……`); } }
-  if(ui.started&&!here.trans&&D.portal&&lockCell!==D.portal.cell){ const px2=(D.portal.cell%MW+0.5)*CELL, pz2=(((D.portal.cell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-px2,player.z-pz2)<1.0){ here.trans={phase:'out',t:0,regen:false,go:'realm'}; msg(`<b style="color:${css(REALMS[D.portal.key].col)}">0</b>揺らめく門をくぐった……`); } }
-  const sx=(D.stairs%MW+0.5)*CELL, sz=(((D.stairs/MW)|0)+0.5)*CELL;
-  if(ui.started&&!here.trans&&D.pit&&D.pit[pc]){ here.trans={phase:'out',t:0,regen:false}; player.fall=true; msg('<b style="color:#ffa060">:</b>崩れた穴へ身を投じ、下の階層へと落ちていく……'); }
-  if(ui.started&&!here.trans&&lockCell!==D.stairs&&Math.hypot(player.x-sx,player.z-sz)<0.95&&!isFinal()){
+  if(ui.started&&!here.trans&&here.D.upstairs>=0&&lockCell!==here.D.upstairs){ const ux=(here.D.upstairs%MW+0.5)*CELL, uz=(((here.D.upstairs/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-ux,player.z-uz)<0.95){ here.trans={phase:'out',t:0,regen:false,go:'up'}; msg('<b style="color:#c9b8ff">&lt;</b>上り階段を上り、来た道を引き返す……'); } }
+  if(ui.started&&!here.trans&&here.D.bstairs&&lockCell!==here.D.bstairs.cell){ const bx=(here.D.bstairs.cell%MW+0.5)*CELL, bz=(((here.D.bstairs.cell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-bx,player.z-bz)<0.95){ here.trans={phase:'out',t:0,regen:false,go:'branch'}; msg(`<b style="color:${css(BRANCHES[here.D.bstairs.key].col)}">&gt;</b>本道を外れ、${BRANCHES[here.D.bstairs.key].name}へ続く脇道を下りていく……`); } }
+  if(ui.started&&!here.trans&&here.D.portal&&lockCell!==here.D.portal.cell){ const px2=(here.D.portal.cell%MW+0.5)*CELL, pz2=(((here.D.portal.cell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-px2,player.z-pz2)<1.0){ here.trans={phase:'out',t:0,regen:false,go:'realm'}; msg(`<b style="color:${css(REALMS[here.D.portal.key].col)}">0</b>揺らめく門をくぐった……`); } }
+  const sx=(here.D.stairs%MW+0.5)*CELL, sz=(((here.D.stairs/MW)|0)+0.5)*CELL;
+  if(ui.started&&!here.trans&&here.D.pit&&here.D.pit[pc]){ here.trans={phase:'out',t:0,regen:false}; player.fall=true; msg('<b style="color:#ffa060">:</b>崩れた穴へ身を投じ、下の階層へと落ちていく……'); }
+  if(ui.started&&!here.trans&&lockCell!==here.D.stairs&&Math.hypot(player.x-sx,player.z-sz)<0.95&&!isFinal()){
     if(stairsGuarded()){ if(time-(updatePlayer.sealT||-99)>6){ updatePlayer.sealT=time; msg('<b style="color:#ff8a8a">=</b>階段は、見えない封に閉ざされている。控えの間に潜むものを退ければ、解けるだろう。'); } }
     else if(descentSealed()){ if(time-(updatePlayer.sealT||-99)>9){ updatePlayer.sealT=time; msg('<b style="color:#a98cff">.</b>階段の先は、底の見えない闇に塞がれている。三つの窪みが、何かを待つように淡く光っている。'); } }
     else { here.trans={phase:'out',t:0,regen:false}; msg(legendAll()&&here.depth===FINAL_DEPTH-1?'<b style="color:#ffe9b0">*</b>三つの光が闇を押し分けた。最後の階段を、底へと降りていく……':'<b style="color:#ffcf7a">&gt;</b>光の螺旋に身を委ね、さらに深くへ降りていく。'); } }
-  let ex=0; for(let i=0;i<NCELL;i++){ const tt=D.tile[i]; if(explored[i]&&(tt===TF||tt===TP))ex++; }
-  const exP=Math.min(100,Math.round(ex/D.floorCount*100)); if(exP!==hudInfo.explored){ hudInfo.explored=exP; if(ui.helpOn)renderHelp(); }
+  let ex=0; for(let i=0;i<NCELL;i++){ const tt=here.D.tile[i]; if(here.explored[i]&&(tt===TF||tt===TP))ex++; }
+  const exP=Math.min(100,Math.round(ex/here.D.floorCount*100)); if(exP!==hudInfo.explored){ hudInfo.explored=exP; if(ui.helpOn)renderHelp(); }
 }
 
 // ---------------------------------------------------------------- player
 const iceT=new Map();
 function crackIce(i,dt){
   const t0=(iceT.get(i)||0)+dt; iceT.set(i,t0);
-  if(t0<dt*1.5){ sSqueak(player.x,player.z); if(!D.crackMsg){ D.crackMsg=true; msg('<b style="color:#b8e4ff">/</b>足元の氷が、ぴしりと音を立ててきしんだ。'); } }
-  if(t0>0.85){ D.liquid[i]=LQ_WATER; D.thin[i]=0; cellFlag[i]=50; uploadCells(); sSplash(0.45); vfx.shake=Math.max(vfx.shake,0.15);
+  if(t0<dt*1.5){ sSqueak(player.x,player.z); if(!here.D.crackMsg){ here.D.crackMsg=true; msg('<b style="color:#b8e4ff">/</b>足元の氷が、ぴしりと音を立ててきしんだ。'); } }
+  if(t0>0.85){ here.D.liquid[i]=LQ_WATER; here.D.thin[i]=0; cellFlag[i]=50; uploadCells(); sSplash(0.45); vfx.shake=Math.max(vfx.shake,0.15);
     msg('<b style="color:#6ab4ff">~</b>氷が割れ、冷たい水に足が沈んだ。');
     const [x,z]=cpos(i); for(let q=0;q<26;q++){ const a=mr()*6.28; spawn(x+Math.cos(a)*0.5,0.1,z+Math.sin(a)*0.5,Math.cos(a)*1.2,0.6+mr(),Math.sin(a)*1.2,1+mr(),G(mpick(['/','\\','~','*'])),0.16,0.6,0.85,1.0,1); } }
 }
-const tallAt=i=>i>=0&&i<NCELL&&(D.surface[i]===SF_FOLIAGE||D.surface[i]===SF_FUNGFOR)&&cellFlag[i]!==20&&!burnt[i]&&!D.liquid[i];
+const tallAt=i=>i>=0&&i<NCELL&&(here.D.surface[i]===SF_FOLIAGE||here.D.surface[i]===SF_FUNGFOR)&&cellFlag[i]!==20&&!burnt[i]&&!here.D.liquid[i];
 let trampled=[], tallMsg=false, brimMsg=false;
 function trample(i){ if(!tallAt(i))return; cellFlag[i]=20; uploadCells(); trampled.push([i,time]); sHiss(player.x,player.z,0.22); }
 function regrow(){ if(!trampled.length)return; const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL); let ch=false;
   trampled=trampled.filter(([i,t0])=>{ if(time-t0>45&&i!==pc&&cellFlag[i]===20){ cellFlag[i]=0; ch=true; return false; } return cellFlag[i]===20; }); if(ch)uploadCells(); }
-function brimFlare(i){ if(D.surface[i]!==SF_BRIM||fire[i]>0.1||fuel[i]<=0)return; ignite(i,1.0,false); for(const d of D4){ const j=i+d[0]+d[1]*MW; if(D.surface[j]===SF_BRIM&&fuel[j]>0)ignite(j,0.6,false); } sCrackleBurst&&sCrackleBurst((i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL);
+function brimFlare(i){ if(here.D.surface[i]!==SF_BRIM||fire[i]>0.1||fuel[i]<=0)return; ignite(i,1.0,false); for(const d of D4){ const j=i+d[0]+d[1]*MW; if(here.D.surface[j]===SF_BRIM&&fuel[j]>0)ignite(j,0.6,false); } sCrackleBurst&&sCrackleBurst((i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL);
   if(!brimMsg){ brimMsg=true; msg('<b style="color:#ffd04a">*</b>足元の硫黄が、ぼっと燃え上がった！ しばらくすると、また燃えるようになる。'); } }
-let brimT=0; function brimRecover(dt){ brimT+=dt; if(brimT<2)return; brimT=0; let ch=false; for(let i=0;i<NCELL;i++){ if(D.surface[i]===SF_BRIM&&burnt[i]&&fire[i]<=0&&mr()<0.08){ burnt[i]=0; fuel[i]=0.8; ch=true; } } if(ch)uploadCells(); }
+let brimT=0; function brimRecover(dt){ brimT+=dt; if(brimT<2)return; brimT=0; let ch=false; for(let i=0;i<NCELL;i++){ if(here.D.surface[i]===SF_BRIM&&burnt[i]&&fire[i]<=0&&mr()<0.08){ burnt[i]=0; fuel[i]=0.8; ch=true; } } if(ch)uploadCells(); }
 // ---------------------------------------------------------------- hidden traps, a lever-and-portcullis vault, sanctuaries (mechanisms after Brogue's machines; written independently)
 // TRAP_INFO は src/lib/names.ts（src/game/imports.mjs で読む）
 function triggerTrap(tr){
@@ -97,27 +97,27 @@ function triggerTrap(tr){
     case 'net': player.netT=3.2; sHiss(x,z,0.5); msg(tag+'網が降ってきた！ もがいて抜け出そうとする……'); break;
     case 'flood': sSplash(0.5); msg(tag+'床の穴から、水が勢いよく噴き出した！'); events.push({type:'flood',ri:-2,order:tr.order.slice(),src:tr.i,state:1,t:0,k:0,max:tr.order.length*3}); break;
     case 'methane': sHiss(x,z,1.2); msg(tag+'床の穴から、沼のガスが噴き出した。火気に注意！');
-      for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){ const j=tr.i+dx+dy*MW; if(j>=0&&j<NCELL&&D.tile[j]!==TW&&Math.hypot(dx,dy)<=2.3)D.gas[j]=Math.max(D.gas[j],0.9); } gasAny=true; break;
+      for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){ const j=tr.i+dx+dy*MW; if(j>=0&&j<NCELL&&here.D.tile[j]!==TW&&Math.hypot(dx,dy)<=2.3)here.D.gas[j]=Math.max(here.D.gas[j],0.9); } gasAny=true; break;
   }
 }
 function updateTraps(dt){
-  for(const tr of (D.traps||[])){
+  for(const tr of (here.D.traps||[])){
     const [x,z]=cpos(tr.i), d=Math.hypot(x-player.x,z-player.z);
     if(tr.hidden&&d<CELL*1.3){ const mv=Math.hypot(player.vx,player.vz)>0.3, rate=(stealth.sneak?1.1:0.3)*(mv?0.6:1.6);
       if(mr()<dt*rate){ tr.hidden=false; sChime(x,z,0.15); msg(`<b style="color:${TRAP_INFO[tr.type][1]}">^</b>隠された${TRAP_INFO[tr.type][0]}罠を見つけた。踏まないように気をつけよう。`); } }
     if(!tr.used&&d<0.6&&!here.trans)triggerTrap(tr);
   }
   if(player.netT>0){ const mv=keys.KeyW||keys.KeyA||keys.KeyS||keys.KeyD; player.netT-=dt*(mv?1.6:1); if(player.netT<=0)msg('網から抜け出した。'); }
-  const G2=D.gate;
+  const G2=here.D.gate;
   if(G2&&!G2.open){ const [lx,lz]=cpos(G2.lever); if(Math.hypot(player.x-lx-G2.ld[0]*0.6,player.z-lz-G2.ld[1]*0.6)<1.1){ G2.open=true; G2.pulled=time; sCreak(lx,lz); const [gx,gz]=cpos(G2.cell); setTimeout(()=>sRumble(0.25,1.6),500); msg('<b style="color:#ffd48a">/</b>壁のレバーを引いた。どこか遠くで、鉄格子が軋みながら上がっていく音がした。'); } }
   if(G2)G2.o+=((G2.open?1:0)-G2.o)*Math.min(1,dt*0.8);
 }
 function drawTraps(t){
-  for(const tr of (D.traps||[])){ if(tr.hidden)continue; const [x,z]=cpos(tr.i); if(Math.hypot(x-player.x,z-player.z)>30)continue;
+  for(const tr of (here.D.traps||[])){ if(tr.hidden)continue; const [x,z]=cpos(tr.i); if(Math.hypot(x-player.x,z-player.z)>30)continue;
     const col=TRAP_INFO[tr.type][1], c=[parseInt(col.slice(1,3),16)/255,parseInt(col.slice(3,5),16)/255,parseInt(col.slice(5,7),16)/255], k=tr.used?0.35:1.2+0.5*Math.sin(t*2.5+tr.i);
     dyn(x,0.05,z,G('^'),0.7,c[0]*k,c[1]*k,c[2]*k,1,0);
     for(let q=0;q<8;q++){ const a=q/8*Math.PI*2+t*0.4; dyn(x+Math.cos(a)*0.55,0.04,z+Math.sin(a)*0.55,G('.'),0.18,c[0]*k*0.7,c[1]*k*0.7,c[2]*k*0.7,1,a); } }
-  const G2=D.gate; if(G2){ const [gx,gz]=cpos(G2.cell);
+  const G2=here.D.gate; if(G2){ const [gx,gz]=cpos(G2.cell);
     if(Math.hypot(gx-player.x,gz-player.z)<36){ const lift=G2.o*2.7;
       for(let k=0;k<7;k++){ const u=(k+0.5)/7*CELL-CELL/2, bx=G2.axis===0?gx:gx+u, bz=G2.axis===0?gz+u:gz;
         for(let y=0.15+lift;y<3.0;y+=0.3)dyn(bx,y,bz,G('|'),0.3,0.75,0.72,0.8); }
@@ -195,7 +195,7 @@ function chooseLevel(i){ const o=lvlOpts[i]; if(!o)return;
   if(adv.lvl.pending>0){ lvlOpenT=performance.now(); lvlOpts=levelChoices(); renderLevelUp(); return; }
   ui.lvlOpen=false; const el=document.getElementById('altarp'); if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused()); if(!plFailed&&ui.started&&!adv.dead)tryLock(); updateResume(); }
 // a new stratum strengthens the body
-function strataGrowth(){ if(!D||here.branch||here.realm||here.inter||!ui.started||gallery)return; const k=D.stratum&&D.stratum.k; if(!['cavern','ruins','magma','abyss'].includes(k)||adv.lvl.strata.has(k))return; adv.lvl.strata.add(k); adv.PLAYER_MAX+=4; player.hp=Math.min(adv.PLAYER_MAX,player.hp+4); renderStatus();
+function strataGrowth(){ if(!here.D||here.branch||here.realm||here.inter||!ui.started||gallery)return; const k=here.D.stratum&&here.D.stratum.k; if(!['cavern','ruins','magma','abyss'].includes(k)||adv.lvl.strata.has(k))return; adv.lvl.strata.add(k); adv.PLAYER_MAX+=4; player.hp=Math.min(adv.PLAYER_MAX,player.hp+4); renderStatus();
   setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>新しい層の空気が、体を強くした。最大体力 +4。'),2200); }
 function hurtPlayer(n,cause){
   if(godMode)return; if((player.invulT||0)>time)return; if(BL('reckless'))n*=BL('reckless')>=2?1.35:1.25;
@@ -208,7 +208,7 @@ function hurtPlayer(n,cause){
   renderStatus();
   if(player.hp<=0)die(cause);
 }
-function resultPlace(){ const pl=placeLabel(); return /^[0-9]+$/.test(String(pl).trim())?`深度${here.depth}（${(D&&D.stratum&&D.stratum.name)||''}）`:`${pl}（深度${here.depth}）`; }
+function resultPlace(){ const pl=placeLabel(); return /^[0-9]+$/.test(String(pl).trim())?`深度${here.depth}（${(here.D&&here.D.stratum&&here.D.stratum.name)||''}）`:`${pl}（深度${here.depth}）`; }
 function runLore(victory){ const L=getLegend(), parts=[], add=(lab,n,v)=>{ if(v>0)parts.push([lab,n,v]); }, md=(adv.runStats&&adv.runStats.maxDepth)||here.depth;
   add('到達した深さ',`深度${md}`,md*2); const lords=adv.runState.lordsDone?adv.runState.lordsDone.size:0; add('倒した支道の主',`${lords}体`,lords*8);
   const pl=L?L.placed.size:0; add('捧げた伝説の物',`${pl}つ`,pl*6); if(victory)add('最後の王の影に勝った','',30);

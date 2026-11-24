@@ -5,8 +5,8 @@ function critterStep(m,away){
   if(!opts.length)return;
   let ch;
   if(away){ let bd=-1; for(const d of opts){ const dd=Math.hypot((m.cx+d[0]+0.5)*CELL-player.x,(m.cz+d[1]+0.5)*CELL-player.z)+mr()*0.4; if(dd>bd){bd=dd;ch=d;} } }
-  else if((m.ty.critter==='cleaner'||m.ty.critter==='engineer')&&m.job>=0){ const [gx,gz]=m.ty.critter==='engineer'?[D.doors[m.job].bx,D.doors[m.job].bz]:cpos(m.job); let bd=1e9; for(const d of opts){ const dd=Math.hypot((m.cx+d[0]+0.5)*CELL-gx,(m.cz+d[1]+0.5)*CELL-gz)+mr()*0.5; if(dd<bd){bd=dd;ch=d;} } }
-  else if(m.ty.critter==='grazer'){ const moss=opts.filter(d=>D.surface[(m.cz+d[1])*MW+m.cx+d[0]]===SF_LUMEN); ch=moss.length&&mr()<0.8?moss[Math.floor(mr()*moss.length)]:opts[Math.floor(mr()*opts.length)]; }
+  else if((m.ty.critter==='cleaner'||m.ty.critter==='engineer')&&m.job>=0){ const [gx,gz]=m.ty.critter==='engineer'?[here.D.doors[m.job].bx,here.D.doors[m.job].bz]:cpos(m.job); let bd=1e9; for(const d of opts){ const dd=Math.hypot((m.cx+d[0]+0.5)*CELL-gx,(m.cz+d[1]+0.5)*CELL-gz)+mr()*0.5; if(dd<bd){bd=dd;ch=d;} } }
+  else if(m.ty.critter==='grazer'){ const moss=opts.filter(d=>here.D.surface[(m.cz+d[1])*MW+m.cx+d[0]]===SF_LUMEN); ch=moss.length&&mr()<0.8?moss[Math.floor(mr()*moss.length)]:opts[Math.floor(mr()*opts.length)]; }
   else { const fwd=opts.find(o=>o[0]===m.dir[0]&&o[1]===m.dir[1]); const nrev=opts.filter(o=>!(o[0]===-m.dir[0]&&o[1]===-m.dir[1])); ch=(fwd&&mr()<0.6)?fwd:(nrev.length?nrev[Math.floor(mr()*nrev.length)]:opts[0]); }
   m.dir=ch; m.tx=m.cx+ch[0]; m.tz=m.cz+ch[1];
 }
@@ -39,12 +39,12 @@ function updateCritter(m,dt,t,dp){
   if(m.flee>0)m.flee-=dt;
   if(m.wait>0){ m.wait-=dt; if(m.flee>0)m.wait=0;
     // grazing: a moss cell loses its glow
-    if(ty.critter==='grazer'&&m.wait<=0){ const i=m.cz*MW+m.cx; if(D.surface[i]===SF_LUMEN&&cellFlag[i]!==30){ cellFlag[i]=30; D.surface[i]=SF_GRASS; uploadCells(); } }
+    if(ty.critter==='grazer'&&m.wait<=0){ const i=m.cz*MW+m.cx; if(here.D.surface[i]===SF_LUMEN&&cellFlag[i]!==30){ cellFlag[i]=30; here.D.surface[i]=SF_GRASS; uploadCells(); } }
     m.moving+=(0-m.moving)*Math.min(1,dt*5);
   } else {
     const tx=(m.tx+0.5)*CELL, tz=(m.tz+0.5)*CELL, ddx=tx-m.x, ddz=tz-m.z, d=Math.hypot(ddx,ddz);
     if(d<0.05){ m.x=tx; m.z=tz; m.cx=m.tx; m.cz=m.tz; critterStep(m,m.flee>0);
-      if(ty.critter==='grazer'&&!(m.flee>0)&&D.surface[m.cz*MW+m.cx]===SF_LUMEN&&mr()<0.35)m.wait=2+mr()*3; }
+      if(ty.critter==='grazer'&&!(m.flee>0)&&here.D.surface[m.cz*MW+m.cx]===SF_LUMEN&&mr()<0.35)m.wait=2+mr()*3; }
     else { const sp=ty.speed*(m.flee>0?(ty.critter==='fish'?2.6:3):1)*dt, st=Math.min(sp,d); m.x+=ddx/d*st; m.z+=ddz/d*st; m.dirYaw=Math.atan2(ddx,ddz); m.cx=Math.floor(m.x/CELL); m.cz=Math.floor(m.z/CELL); }
     m.moving+=(1-m.moving)*Math.min(1,dt*5);
   }
@@ -65,8 +65,8 @@ function sShriek(x,z){ if(!sndReady())return; const t=SND.ctx.currentTime, o=sOu
 // ---------------------------------------------------------------- packs and hunters: spiders and their webs, hounds on your scent, snapjaw camps, ancient machines
 let scent=new Float32Array(NCELL), webMsg=false, webBurnMsg=false, repairMsg=false;
 function drawWebs(t){
-  if(!D.webs)return;
-  for(const w of D.webs){
+  if(!here.D.webs)return;
+  for(const w of here.D.webs){
     if(w.gone)continue;
     const [x,z]=cpos(w.i), dd=Math.hypot(x-player.x,z-player.z); if(dd>30)continue;
     if(fire[w.i]>0.1){ w.gone=true; for(let q=0;q<30;q++){ const a=mr()*6.28; spawn(x,0.6+mr()*1.6,z,Math.cos(a)*0.6,0.4+mr(),Math.sin(a)*0.6,1+mr(),G(mpick(['*','.','\''])),0.14,2.4,1.2,0.4,0); }
@@ -80,7 +80,7 @@ function drawWebs(t){
   }
 }
 function webTouch(i){
-  const w=D.webAt&&D.webAt.get(i); if(!w||w.gone)return false;
+  const w=here.D.webAt&&here.D.webAt.get(i); if(!w||w.gone)return false;
   if(time-(w.touchT||-99)>3){ w.touchT=time; w.shake=1.2; sSqueak(player.x,player.z);
     for(const m of here.monsters){ if(!m.ty.spider||Math.hypot(m.x-player.x,m.z-player.z)>24)continue; m.sleep=false; m.aware=Math.max(m.aware,1.05); m.goal=[(i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL]; m.goalT=time+12; }
     if(!webMsg){ webMsg=true; msg('<b style="color:#d8c8ff">%</b>光る糸に絡まった！ 巣全体が震えている……。炎なら、糸を焼き払える。'); } }
@@ -96,12 +96,12 @@ function machineWork(m,dt){
   // cleaners clear ash and put out fires; engineers rebuild burnt doors
   const ty=m.ty;
   if(m.job!==undefined&&m.job>=0){
-    const [jx,jz]=ty.critter==='engineer'?[D.doors[m.job].bx,D.doors[m.job].bz]:cpos(m.job);
+    const [jx,jz]=ty.critter==='engineer'?[here.D.doors[m.job].bx,here.D.doors[m.job].bz]:cpos(m.job);
     if(Math.hypot(jx-m.x,jz-m.z)<(ty.critter==='engineer'?1.6:0.4)){
       m.work=(m.work||0)+dt; m.moving=0;
       if(mr()<dt*10)spawn(jx+(mr()-0.5)*0.4,0.3+mr()*0.6,jz+(mr()-0.5)*0.4,(mr()-0.5)*0.8,0.6+mr(),(mr()-0.5)*0.8,0.5,G(mpick(['*','.','+'])),0.1,ty.col[0]*2,ty.col[1]*2,ty.col[2]*2,0);
       if(m.work>(ty.critter==='engineer'?3:1.8)){
-        if(ty.critter==='engineer'){ const d=D.doors[m.job]; d.gone=false; d.o=0; fuel[d.i]=1.4; if(!repairMsg&&m.visible){ repairMsg=true; msg(`<b style="color:${css(ty.col)}">R</b>${mname(m)}が、焼け落ちた扉を黙々と作り直した。`); } }
+        if(ty.critter==='engineer'){ const d=here.D.doors[m.job]; d.gone=false; d.o=0; fuel[d.i]=1.4; if(!repairMsg&&m.visible){ repairMsg=true; msg(`<b style="color:${css(ty.col)}">R</b>${mname(m)}が、焼け落ちた扉を黙々と作り直した。`); } }
         else { burnt[m.job]=0; fire[m.job]=0; uploadCells(); }
         m.job=-1; m.work=0;
       }
@@ -110,8 +110,8 @@ function machineWork(m,dt){
     return false;
   }
   if(time-(m.scanT||-9)<1.5)return false; m.scanT=time;
-  if(ty.critter==='engineer'){ let bi=-1,bd=1e9; D.doors.forEach((d,k)=>{ if(!d.gone)return; const dd=Math.hypot(d.bx-m.x,d.bz-m.z); if(dd<bd&&dd<40){bd=dd;bi=k;} }); m.job=bi; }
-  else { let bi=-1,bd=1e9; for(let dz=-10;dz<=10;dz++)for(let dx=-10;dx<=10;dx++){ const x=m.cx+dx, z=m.cz+dz; if(x<0||z<0||x>=MW||z>=MH)continue; const i=z*MW+x; if(!burnt[i]&&!(fire[i]>0.1))continue; if(D.tile[i]!==TF)continue; const dd=Math.abs(dx)+Math.abs(dz); if(dd<bd){bd=dd;bi=i;} } m.job=bi; }
+  if(ty.critter==='engineer'){ let bi=-1,bd=1e9; here.D.doors.forEach((d,k)=>{ if(!d.gone)return; const dd=Math.hypot(d.bx-m.x,d.bz-m.z); if(dd<bd&&dd<40){bd=dd;bi=k;} }); m.job=bi; }
+  else { let bi=-1,bd=1e9; for(let dz=-10;dz<=10;dz++)for(let dx=-10;dx<=10;dx++){ const x=m.cx+dx, z=m.cz+dz; if(x<0||z<0||x>=MW||z>=MH)continue; const i=z*MW+x; if(!burnt[i]&&!(fire[i]>0.1))continue; if(here.D.tile[i]!==TF)continue; const dd=Math.abs(dx)+Math.abs(dz); if(dd<bd){bd=dd;bi=i;} } m.job=bi; }
   return false;
 }
 function sHowl(x,z){ if(!sndReady())return; const t=SND.ctx.currentTime, o=sOut(x,z,0.45), os=SND.ctx.createOscillator(), g=SND.ctx.createGain(), lfo=SND.ctx.createOscillator(), lg=SND.ctx.createGain();
@@ -135,13 +135,13 @@ function drawTentacles(m,t){
 function updateMonster(m,dt,t){
   const ty=m.ty, dxp=player.x-m.x, dzp=player.z-m.z, dp=Math.hypot(dxp,dzp);
   const cell=m.cz*MW+m.cx;
-  const inView=fovVis[cell]===fovStamp&&dp<28;
+  const inView=here.fovVis[cell]===here.fovStamp&&dp<28;
   if(ty.habitat==='bog'||ty.habitat==='deep'){ const tgt=(dp<(ty.habitat==='bog'?4:9)||m.noticed)?1:0; m.rise=(m.rise||0)+(tgt-(m.rise||0))*Math.min(1,dt*(tgt?1.4:0.5));
     if(ty.habitat==='bog'){ m.y=-0.9+0.9*m.rise; if(mr()<dt*3&&dp<24)spawn(m.x+(mr()-0.5)*1.2,0.06,m.z+(mr()-0.5)*1.2,0,0.25,0,0.9,G('o'),0.14,0.35,0.42,0.15,1); if(m.rise>0.3&&!m.riseMsg&&inView){ m.riseMsg=true; msg(`<b style="color:${css(ty.col)}">B</b>沼が盛り上がり、${mname(m)}が姿を現した！`); sBubble(m.x,m.z,0.5,false); } }
     else { m.y=-0.7; if(m.rise>0.3&&!m.riseMsg&&inView){ m.riseMsg=true; msg(`<b style="color:${css(ty.col)}">K</b>水面が割れ、${mname(m)}の触手が立ち上がった！`); sSplash(0.5); vfx.shake=Math.max(vfx.shake,0.2); } } }
   m.visible=inView&&!ty.invisible&&(ty.form!=='eel'||m.surf>0.08)&&(ty.habitat!=='bog'||(m.rise||0)>0.25)&&!(tallAt(cell)&&dp>3);
   if(tallAt(cell)&&!ty.flier&&m.moving>0.5&&mr()<dt*0.5)trample(cell);
-  if(D.surface[cell]===SF_BRIM&&!ty.flier&&m.moving>0.5)brimFlare(cell);
+  if(here.D.surface[cell]===SF_BRIM&&!ty.flier&&m.moving>0.5)brimFlare(cell);
   if(ty.critter){ if(dp>30&&!ty.critter.startsWith('clean')&&ty.critter!=='engineer'){ m.visible=false; return; } updateCritter(m,dt,t,dp); return; }
   // perception (after Brogue's stealth): the brighter the spot you stand in, the farther away you can be noticed
   if(ty.peaceful){ m.aware=0; m.noticed=false; m.sleep=false;
@@ -203,7 +203,7 @@ function updateMonster(m,dt,t){
   }
   if(ty.form==='bloat'&&((dp<1.4&&!m.sleep)||fireNear(m.cx,m.cz,1)>=0)){
     m.dead=true;
-    for(const d of [[0,0],...D4,[1,1],[-1,1],[1,-1],[-1,-1]]){ const i=(m.cz+d[1])*MW+m.cx+d[0]; if(i>=0&&i<NCELL&&D.tile[i]!==TW)D.gas[i]=Math.min(1,D.gas[i]+0.95); }
+    for(const d of [[0,0],...D4,[1,1],[-1,1],[1,-1],[-1,-1]]){ const i=(m.cz+d[1])*MW+m.cx+d[0]; if(i>=0&&i<NCELL&&here.D.tile[i]!==TW)here.D.gas[i]=Math.min(1,here.D.gas[i]+0.95); }
     gasAny=true;
     for(let q=0;q<26;q++){ const a=mr()*6.28, e2=(mr()-0.3)*1.2; spawn(m.x,m.y,m.z,Math.cos(a)*1.6,e2,Math.sin(a)*1.6,1+mr(),G(mpick(['o','.','*','~'])),0.16,c[0]*1.6,c[1]*1.6,c[2]*1.6,1); }
     sBubble(m.x,m.z,0.5,true); sSplash(0.2);
@@ -229,7 +229,7 @@ function updateMonster(m,dt,t){
   }
   monsterStrike(m,dt,dp); if(m.hitT>0)m.hitT-=dt;
   if(ty.heavy&&!m.sleep&&m.moving>0.4&&dp<16){ m.stepT=(m.stepT||0)+dt*m.moving*ty.speed*1.6; if(m.stepT>1){ m.stepT=0; vfx.shake=Math.max(vfx.shake,0.12*(1-dp/16)); sRumble(0.12*(1-dp/16),0.4); } }
-  if(ty.habitat==='lava'&&m.moving>0.5){ const ci=m.cz*MW+m.cx; if(!D.liquid[ci]&&fuel[ci]>0&&fire[ci]<=0&&mr()<dt*0.8)ignite(ci,0.5,false); }
+  if(ty.habitat==='lava'&&m.moving>0.5){ const ci=m.cz*MW+m.cx; if(!here.D.liquid[ci]&&fuel[ci]>0&&fire[ci]<=0&&mr()<dt*0.8)ignite(ci,0.5,false); }
   if(ty.hound&&m.moving>0.5){ const ci=m.cz*MW+m.cx; if(ty.hound==='fire'&&fuel[ci]>0&&fire[ci]<=0&&mr()<dt*0.4)ignite(ci,0.4,false); if(ty.hound==='ice'&&fire[ci]>0)fire[ci]=0; }
   if(ty.beast&&!m.sleep){
     if(ty.spec.fire){ const ci=m.cz*MW+m.cx; if(fuel[ci]>0&&fire[ci]<=0)ignite(ci,0.5,false); }

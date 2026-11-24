@@ -7,7 +7,7 @@ function headPos(){ return [player.x,player.eye+0.05-(player.roll?Math.sin(Math.
 function aimOrigin(){ return ui.camMode==='tps'?headPos():[camera.position.x,camera.position.y,camera.position.z]; }
 function camBlocked(x,y,z){
   for(const [ox,oz] of [[0,0],[0.22,0],[-0.22,0],[0,0.22],[0,-0.22]]){ const cx=Math.floor((x+ox)/CELL), cz=Math.floor((z+oz)/CELL); if(cx<0||cz<0||cx>=MW||cz>=MH)return true;
-    const i=cz*MW+cx, tt=D.tile[i]; if(tt===TW||tt===TX)return true; if(y>D.ceil[i]-0.25)return true; if(tt!==TC&&y<0.3)return true;
+    const i=cz*MW+cx, tt=here.D.tile[i]; if(tt===TW||tt===TX)return true; if(y>here.D.ceil[i]-0.25)return true; if(tt!==TC&&y<0.3)return true;
     if(tt===TP&&Math.hypot(x+ox-(cx+0.5)*CELL,z+oz-(cz+0.5)*CELL)<0.7)return true; }
   return false;
 }
@@ -30,8 +30,8 @@ function updateAvatar(dt){
 }
 function rockAt(x,y,z){
   const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL); if(cx<0||cz<0||cx>=MW||cz>=MH)return true;
-  const i=cz*MW+cx, tt=D.tile[i]; if(tt===TW||tt===TX)return true;
-  if(y>D.ceil[i])return true; if(y<0&&tt!==TC)return true; return false;
+  const i=cz*MW+cx, tt=here.D.tile[i]; if(tt===TW||tt===TX)return true;
+  if(y>here.D.ceil[i])return true; if(y<0&&tt!==TC)return true; return false;
 }
 function drawSection(){
   if(ui.camMode!=='tps'||!camPos)return;
@@ -54,17 +54,17 @@ function updatePlayer(dt){
     const fw=((k.KeyW||k.ArrowUp)?1:0)-((k.KeyS||k.ArrowDown)?1:0), st=(k.KeyD?1:0)-(k.KeyA?1:0);
     if(k.ArrowLeft)player.yaw+=dt*2.0; if(k.ArrowRight)player.yaw-=dt*2.0;
     const sy=Math.sin(player.yaw), cy=Math.cos(player.yaw);
-    const pci=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL), lq=D.liquid[pci], wade=(D.bridge[pci]?1:lq===LQ_DEEP?0.45:lq===LQ_BOG?0.55:lq===LQ_WATER?0.8:1)*(webTouch(pci)?0.35:1)*(D.surface[pci]===SF_MUD&&!lq?0.72:1)*(player.netT>0?0:1);
+    const pci=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL), lq=here.D.liquid[pci], wade=(here.D.bridge[pci]?1:lq===LQ_DEEP?0.45:lq===LQ_BOG?0.55:lq===LQ_WATER?0.8:1)*(webTouch(pci)?0.35:1)*(here.D.surface[pci]===SF_MUD&&!lq?0.72:1)*(player.netT>0?0:1);
     if(pci!==player.lastCell){ player.lastCell=pci; brimFlare(pci); if(tallAt(pci)){ if(!tallMsg){ tallMsg=true; msg('<b style="color:#7ad86a">"</b>背の高い茂みを踏み分けた。茂みは視線を遮る。獣との間に挟めば、身を隠す壁になる。踏み分けた跡は、しばらくすると元に戻る。'); } trample(pci); } }
     if(!lq)scent[pci]=time;
-    if(lq===LQ_DEEP&&!D.swimMsg){ D.swimMsg=true; msg('<b style="color:#5aa0ff">~</b>深い水に入った。足が届かない。ゆっくりと泳いで進む。'); }
+    if(lq===LQ_DEEP&&!here.D.swimMsg){ here.D.swimMsg=true; msg('<b style="color:#5aa0ff">~</b>深い水に入った。足が届かない。ゆっくりと泳いで進む。'); }
     const ix=-sy*fw+cy*st, iz=-cy*fw-sy*st, len=Math.hypot(ix,iz), sp=((k.ShiftLeft||k.ShiftRight)&&!stealth.sneak?5.6:stealth.sneak?2.3:3.2)*wade;
     if(wade<1&&len){ player.splash=(player.splash||0)+dt*Math.hypot(player.vx,player.vz)*1.4; while(player.splash>1){ player.splash--; const a0=mr()*6.28;
       sSplash(lq===LQ_DEEP?0.22:0.12);
       for(let q=0;q<5;q++){ const a=a0+q/5*Math.PI*2; spawn(player.x+Math.cos(a)*0.15,0.07,player.z+Math.sin(a)*0.15,Math.cos(a)*0.5,0.02,Math.sin(a)*0.5,0.8,G(lq===LQ_BOG?'o':'~'),0.12,lq===LQ_BOG?0.3:0.15,lq===LQ_BOG?0.34:0.3,lq===LQ_BOG?0.12:0.55,1); } } }
-    const onIce=D.surface[pci]===SF_ICE&&!D.liquid[pci]&&!D.bridge[pci];
-    if(onIce&&!D.iceMsg){ D.iceMsg=true; msg('<b style="color:#b8e4ff">=</b>氷の上だ。足が滑る。止まるにも、曲がるにも時間がかかる。'); }
-    if(D.thin[pci]&&!D.liquid[pci])crackIce(pci,dt);
+    const onIce=here.D.surface[pci]===SF_ICE&&!here.D.liquid[pci]&&!here.D.bridge[pci];
+    if(onIce&&!here.D.iceMsg){ here.D.iceMsg=true; msg('<b style="color:#b8e4ff">=</b>氷の上だ。足が滑る。止まるにも、曲がるにも時間がかかる。'); }
+    if(here.D.thin[pci]&&!here.D.liquid[pci])crackIce(pci,dt);
     const BSP=1+0.15*bodyN('swift'), tx=len?ix/len*sp*BSP:0, tz=len?iz/len*sp*BSP:0, a=1-Math.exp(-dt*(onIce?1.3:9));
     player.vx+=(tx-player.vx)*a; player.vz+=(tz-player.vz)*a;
     if(player.lunge){ player.lunge.t+=dt; player.vx=player.lunge.dx*player.lunge.sp; player.vz=player.lunge.dz*player.lunge.sp; dashCuts(); if(player.lunge.t>=player.lunge.dur)player.lunge=null; }
@@ -90,7 +90,7 @@ function updatePlayer(dt){
   }
   const spd=Math.min(1,Math.hypot(player.vx,player.vz)/3.2);
   const sk=vfx.shake*0.08; vfx.shake=Math.max(0,vfx.shake-dt*1.2);
-  { const pci=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL), deep=D.liquid[pci]===LQ_DEEP&&!D.bridge[pci]; player.eye+=((deep?0.62:EYE)-player.eye)*Math.min(1,dt*3); }
+  { const pci=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL), deep=here.D.liquid[pci]===LQ_DEEP&&!here.D.bridge[pci]; player.eye+=((deep?0.62:EYE)-player.eye)*Math.min(1,dt*3); }
   if(ui.camMode==='tps'){ placeThirdPerson(dt,sk); return; }
   U.uCut.value=0;
   camera.position.set(player.x+(mr()-0.5)*sk,(mr()-0.5)*sk+player.eye-(player.roll?Math.sin(Math.PI*player.roll.t/0.32)*0.55:0)+Math.sin(player.bob*2)*0.035*spd*(player.eye<1?0.3:1)+(player.eye<1?Math.sin(time*1.8)*0.04:0),player.z);
@@ -98,9 +98,9 @@ function updatePlayer(dt){
 }
 // eye adaptation and atmosphere: open caverns thin the fog, bright surroundings lower the exposure
 function updateAtmosphere(dt){
-  const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL), ri=D.roomOf[pc];
-  const inCave=ri>=0&&D.rooms[ri].cave;
-  const fogT=inCave?(D.stratum.k==='cavern'?0.032:0.03):(D.stratum.k==='ruins'?0.04:fogBase);
+  const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL), ri=here.D.roomOf[pc];
+  const inCave=ri>=0&&here.D.rooms[ri].cave;
+  const fogT=inCave?(here.D.stratum.k==='cavern'?0.032:0.03):(here.D.stratum.k==='ruins'?0.04:fogBase);
   U.uFogDen.value+=(fogT-U.uFogDen.value)*(1-Math.exp(-dt*0.9));
   const l=cellLight(player.x,player.z); let B=0.3*l[0]+0.55*l[1]+0.15*l[2];
   for(const m of here.monsters){ const d=Math.hypot(m.x-player.x,m.z-player.z); if(d<5)B+=(1-d/5)**2*0.7; }
