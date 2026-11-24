@@ -1,5 +1,6 @@
 // 迷宮の生成のテストの共通部分（generate.test.ts と reach.test.ts）：全部の場所と、決まった入力で生成する gen。
 // まだ古い JS にある物（生き物の表 MTYPES・ルーンを作る makeRune など）は、本物を古い JS の文から取り出して使う（tools/legacy-eval.mjs）。
+import { lookup } from '../../src/lib/array.ts';
 import { legacyValues } from '../../tools/legacy-eval.mjs';
 import { type BranchPlace, type GenEnv, type GenResult, type InterPlace, type RealmPlace, generateLevel } from '../../src/lib/generate.ts';
 import { makeHistory } from '../../src/lib/history.ts';
@@ -22,7 +23,7 @@ export interface Place {
 const SPECIAL_AT: Record<string, number> = { town: 2, bigroom: 3, oracle: 5, fortress: 9 };
 export const PLACES: Place[] = [
   ...Array.from({ length: FINAL_DEPTH }, (_, i) => ({ depth: i + 1 })),
-  ...Object.keys(SPECIALS).map((k) => ({ depth: SPECIAL_AT[k] as number, inter: { key: k, after: SPECIAL_AT[k] as number } })),
+  ...Object.keys(SPECIALS).map((k) => ({ depth: lookup(SPECIAL_AT, k), inter: { key: k, after: lookup(SPECIAL_AT, k) } })),
   ...Object.values(BRANCHES).flatMap((B) =>
     Array.from({ length: B.len }, (_, i) => ({ depth: B.at[0], branch: { key: B.key, lvl: i + 1, len: B.len, ret: B.at[0] + 1 } })),
   ),

@@ -4,7 +4,7 @@
 //   env：まだ古い JS にある物（生き物の表 MTYPES は読むだけ、ルーンを作る makeRune・rollTraits）
 //   結果：階（level）と、その階の主の種類（lordType）・忘れられた獣（beastType）。生き物の表への書き込みは、古い JS の包み（generate）が行う
 // 迷宮の乱数（setRand）とノイズの種（setNoiseSeed）は、ここで階のシードから入れ替える。
-import { lookup, nth } from './array.ts';
+import { lookup, must, nth } from './array.ts';
 import { type Light, computeVis, topLights } from './light.ts';
 import { R, RI, pick, rand, setRand, shuffle } from './random.ts';
 import { clamp, mulberry32 } from './rng.ts';
@@ -12,9 +12,12 @@ import { RUNE_TYPES } from './runes.ts';
 import { setNoiseSeed, vnoise } from './noise.ts';
 import { VAULTS, makeCave, vaultCells } from './vaults.ts';
 import { makeBeastType } from './bodies/lords.ts';
-import type { Art, History, HistoryEvent, Ruler } from './history.ts';
+import type { Art, History, HistoryEvent } from './history.ts';
 import type { Rune } from './runes.ts';
 import {
+  type Horde,
+  type Stratum,
+  type Theme,
   BIOMES,
   BRANCH_STRATA,
   FORT_THEMES,
@@ -30,7 +33,6 @@ import {
 import {
   BASE_H,
   BRANCHES,
-  type Branch,
   CELL,
   D4,
   FINAL_DEPTH,
@@ -46,7 +48,6 @@ import {
   REALMS,
   ROCKS,
   RUIN_KIND_MSG,
-  type Realm,
   SF_BRIM,
   SF_DEAD,
   SF_FOLIAGE,
@@ -99,13 +100,6 @@ export interface GenInput {
   /** 使える武器（解放したもの） */
   weapons: readonly string[];
 }
-/** 群れ（strata.ts の HORDES の1つ）：頭の生き物 lead と、ついてくる生き物 [種類, 最少, 最多]、出る深さ d、重み w */
-interface Horde {
-  lead: string;
-  fol: [string, number, number][];
-  d: [number, number];
-  w: number;
-}
 /** 壁の彫刻（年代記の出来事。2マスにまたがる物は、2つ目のマスに skip を置く） */
 export type Engraving = (HistoryEvent & { wide?: boolean; pi?: number }) | { skip: true; mi: number; art: Art };
 /** 上下左右の向き（D4 の1つ） */
@@ -123,41 +117,7 @@ export interface GenEnv {
   makeRune: (type: string, nAff: number, r?: () => number) => Rune;
   rollTraits: (ru: Rune, r: () => number, d: number, bonus?: number) => Rune;
 }
-/** 部屋や洞窟のテーマ（灯りの色・備品・入った時の言葉。洞窟は地形 BIOMES） */
-export interface Theme {
-  k: string;
-  col: number[];
-  msg: string;
-  fix?: string;
-  ruin?: boolean;
-  base?: number;
-  slope?: number;
-  cave?: boolean;
-}
-/** 層（本道の層・特別な階・支道・異界の中身） */
-export interface Stratum {
-  k: string;
-  name: string;
-  msg: string;
-  n?: number;
-  from?: number;
-  to?: number;
-  special?: boolean;
-  branch?: boolean;
-  realm?: boolean;
-  themes?: Theme[];
-  machines?: string[];
-  vaults?: string[];
-  hordes?: string[];
-  hordeMul?: number;
-  torchMul?: number;
-  fog?: number[];
-  cw?: Record<string, number>;
-  denseWebs?: boolean;
-  flood?: boolean;
-  freeze?: boolean;
-  fall?: string;
-}
+export type { Stratum, Theme } from './strata.ts';
 /** 手で描いた宝物庫の絵（src/lib/vaults.ts の VAULTS の1つ） */
 export type Vault = (typeof VAULTS)[number];
 /** 部屋の仕掛け（Brogue の machine）の中身 */
@@ -363,7 +323,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     liquid = new Uint8Array(N),
     surface = new Uint8Array(N),
     roomOf = new Int16Array(N).fill(-1);
-  const walk = (j: number): boolean => tile[j] === TF && !blocksWalk(liquid[j] as number);
+  const walk = (j: number): boolean => tile[j] === TF && !blocksWalk(nth(liquid, j));
   const bridge = new Uint8Array(N),
     bridgeDir = new Uint8Array(N),
     xtalCol = new Map<number, number[]>();
@@ -382,11 +342,11 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   ): boolean => list.some((r) => x < r.x + r.w + m && x + w + m > r.x && y < r.y + r.h + m && y + h + m > r.y);
 
   const stratum: Stratum = realm
-    ? ((REALM_STRATA as Record<string, Stratum>)[realm.key] as Stratum)
+    ? lookup<Stratum>(REALM_STRATA, realm.key)
     : branch
-      ? ((BRANCH_STRATA as Record<string, Stratum>)[branch.key] as Stratum)
+      ? lookup<Stratum>(BRANCH_STRATA, branch.key)
       : inter
-        ? ((SPECIALS as Record<string, Stratum>)[inter.key] as Stratum)
+        ? lookup<Stratum>(SPECIALS, inter.key)
         : stratumOf(depth);
   const [UW, UH] = levelDims(stratum, depth, { showroom, realm, branch });
   let caves: Room[] = [],
@@ -452,7 +412,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
           const i = yy * W + xx;
           tile[i] = TF;
           roomOf[i] = ri;
-          ceil[i] = r.rh as number;
+          ceil[i] = must(r.rh);
         }
     });
     // gates (2 wide) from every hall onto the avenues, and a few extra ones
@@ -492,7 +452,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       const Y0 = 1 + RI(1, rowsN - 1) * bh;
       for (let x = 1; x < UW - 1; x++) {
         const i = Y0 * W + x;
-        if (tile[i] === TF && (roomOf[i] as number) < 0 && !surface[i]) {
+        if (tile[i] === TF && nth(roomOf, i) < 0 && !surface[i]) {
           liquid[i] = LQ_WATER;
           flow[i] = 10;
         }
@@ -507,8 +467,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       { x: 12, y: 3, w: UW - 24, h: UH - 6 },
       { x: UW - 9, y: cyM - 3, w: 7, h: 7 },
     ].map((r) => newRoom(r.x, r.y, r.w, r.h, 'rect'));
-    (normals[1] as Room).special = true;
-    (normals[1] as Room).kindMsg = town ? '' : '天井の高みまで、無数の灯が整然と並んでいる。';
+    nth(normals, 1).special = true;
+    nth(normals, 1).kindMsg = town ? '' : '天井の高みまで、無数の灯が整然と並んでいる。';
     rooms = normals;
     caves = [];
     rooms.forEach((r, ri) => {
@@ -521,10 +481,11 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
           ceil[i] = rh;
         }
     });
-    for (const [x0, x1] of [
+    const doors: [number, number][] = [
       [9, 11],
       [UW - 12, UW - 10],
-    ] as [number, number][])
+    ];
+    for (const [x0, x1] of doors)
       for (let x = x0; x <= x1; x++)
         for (const y of [cyM, cyM + 1]) {
           const i = y * W + x;
@@ -540,17 +501,17 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       const w: Record<string, number> = { ...prof.biomes, ...(stratum.k === 'maze' ? { warren: 1.3 } : {}) };
       for (let c = 0; c < 2; c++) {
         let tot = 0;
-        for (const k in w) tot += w[k] as number;
+        for (const k in w) tot += lookup(w, k);
         let r0 = rand() * tot,
           chosen: string | null = null;
         for (const k in w) {
-          r0 -= w[k] as number;
+          r0 -= lookup(w, k);
           if (r0 <= 0) {
             chosen = k;
             break;
           }
         }
-        if (!chosen) chosen = Object.keys(w)[0] as string;
+        if (!chosen) chosen = nth(Object.keys(w), 0);
         bk.push(chosen);
         delete w[chosen];
       }
@@ -578,8 +539,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     // rooms sized for a hand-drawn vault are reserved first, then ordinary rooms fill the rest
     const vRooms = [];
     if (stratum.k === 'oracle') {
-      const ov = VAULTS.find((v) => v.k === 'oracle') as Vault,
-        w = (ov.map[0] as string).length + 4,
+      const ov = must(VAULTS.find((v) => v.k === 'oracle')),
+        w = nth(ov.map, 0).length + 4,
         h = ov.map.length + 4,
         x = (UW - w) >> 1,
         y = (UH - h) >> 1;
@@ -590,7 +551,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         want = RI(1, 2);
       for (let t = 0; t < 400 && vRooms.length < want && vo.length; t++) {
         const v = pick(vo),
-          w = (v.map[0] as string).length + RI(2, 3),
+          w = nth(v.map, 0).length + RI(2, 3),
           h = v.map.length + RI(2, 3),
           x = RI(1, UW - w - 1),
           y = RI(1, UH - h - 1);
@@ -616,17 +577,17 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       if (r.cave) {
         let sx = 0,
           sy = 0;
-        for (const i of r.cells0 as number[]) {
+        for (const i of must(r.cells0)) {
           tile[i] = TF;
           roomOf[i] = ri;
           sx += i % W;
           sy += (i / W) | 0;
         }
-        sx /= (r.cells0 as number[]).length;
-        sy /= (r.cells0 as number[]).length;
-        let bi = (r.cells0 as number[])[0] as number,
+        sx /= must(r.cells0).length;
+        sy /= must(r.cells0).length;
+        let bi = nth(must(r.cells0), 0),
           bd = 1e9;
-        for (const i of r.cells0 as number[]) {
+        for (const i of must(r.cells0)) {
           const d = ((i % W) - sx) ** 2 + (((i / W) | 0) - sy) ** 2;
           if (d < bd) {
             bd = d;
@@ -666,7 +627,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       rest = new Set(rooms.map((_, i) => i));
     rest.delete(0);
     const rd = (a: number, b: number): number =>
-      Math.abs((rooms[a] as Room).cx - (rooms[b] as Room).cx) + Math.abs((rooms[a] as Room).cy - (rooms[b] as Room).cy);
+      Math.abs(nth(rooms, a).cx - nth(rooms, b).cx) + Math.abs(nth(rooms, a).cy - nth(rooms, b).cy);
     while (rest.size) {
       let best: [number, number] | null = null,
         bd = 1e9;
@@ -678,9 +639,9 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
             best = [a, b];
           }
         }
-      edges.push(best as [number, number]);
-      inTree.push((best as [number, number])[1]);
-      rest.delete((best as [number, number])[1]);
+      edges.push(must(best));
+      inTree.push(must(best)[1]);
+      rest.delete(must(best)[1]);
     }
     for (let k = 0; k < 4; k++) {
       const a = RI(0, rooms.length - 1);
@@ -688,7 +649,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         .map((_, i) => i)
         .filter((i) => i !== a)
         .sort((p, q) => rd(a, p) - rd(a, q));
-      if (others.length > 2) edges.push([a, others[RI(1, 2)] as number]);
+      if (others.length > 2) edges.push([a, nth(others, RI(1, 2))]);
     }
     const carve = (x: number, y: number): void => {
       if (x < 1 || y < 1 || x > UW - 2 || y > UH - 2) return;
@@ -699,8 +660,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       }
     };
     for (const [ai, bi] of edges) {
-      const a = rooms[ai] as Room,
-        b = rooms[bi] as Room;
+      const a = nth(rooms, ai),
+        b = nth(rooms, bi);
       let x = a.cx,
         y = a.cy;
       const sx = () => {
@@ -745,8 +706,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       for (let y = 1; y < UH - 1; y++)
         for (let x = 1; x < UW - 1; x++) {
           let n = 0;
-          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (dx || dy) n += g[(y + dy) * W + x + dx] as number;
-          ng[y * W + x] = edgeOf(x, y) < 2 ? 0 : n >= 5 ? 1 : n < 4 ? 0 : (g[y * W + x] as number);
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (dx || dy) n += nth(g, (y + dy) * W + x + dx);
+          ng[y * W + x] = edgeOf(x, y) < 2 ? 0 : n >= 5 ? 1 : n < 4 ? 0 : nth(g, y * W + x);
         }
       g = ng;
     }
@@ -754,11 +715,11 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       const lab = new Int32Array(N).fill(-1),
         out: number[][] = [];
       for (let s0 = 0; s0 < N; s0++) {
-        if (g[s0] !== val || (lab[s0] as number) >= 0) continue;
+        if (g[s0] !== val || nth(lab, s0) >= 0) continue;
         const list = [s0];
         lab[s0] = out.length;
         for (let h = 0; h < list.length; h++) {
-          const c = list[h] as number,
+          const c = nth(list, h),
             x = c % W,
             y = (c / W) | 0;
           for (const d of D4) {
@@ -766,7 +727,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
               yy = y + d[1];
             if (xx < 0 || yy < 0 || xx >= UW || yy >= UH) continue;
             const j = yy * W + xx;
-            if (g[j] === val && (lab[j] as number) < 0) {
+            if (g[j] === val && nth(lab, j) < 0) {
               lab[j] = out.length;
               list.push(j);
             }
@@ -778,7 +739,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     };
     {
       const oc = comps(1).sort((p, q) => q.length - p.length);
-      for (let k = 1; k < oc.length; k++) for (const i of oc[k] as number[]) g[i] = 0;
+      for (let k = 1; k < oc.length; k++) for (const i of nth(oc, k)) g[i] = 0;
     }
     {
       const rc = comps(0);
@@ -801,8 +762,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         }
       }
       path.forEach(([px, py], pi) => {
-        const pa = path[Math.max(0, pi - 2)] as [number, number],
-          pb = path[Math.min(path.length - 1, pi + 2)] as [number, number],
+        const pa = nth(path, Math.max(0, pi - 2)),
+          pb = nth(path, Math.min(path.length - 1, pi + 2)),
           ang = Math.atan2(pb[1] - pa[1], pb[0] - pa[0]);
         for (let dy = -2; dy <= 2; dy++)
           for (let dx = -2; dx <= 2; dx++) {
@@ -823,7 +784,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
           }
       });
       const ford = (k: number): void => {
-        const [px, py] = path[clamp(k, 0, path.length - 1)] as [number, number];
+        const [px, py] = nth(path, clamp(k, 0, path.length - 1));
         for (let dy = -2; dy <= 2; dy++)
           for (let dx = -2; dx <= 2; dx++) {
             const i = (py + dy) * W + px + dx;
@@ -843,7 +804,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
             st = [s0];
           seen[s0] = 1;
           while (st.length) {
-            const c = st.pop() as number;
+            const c = must(st.pop());
             for (const d of D4) {
               const j = c + d[0] + d[1] * W;
               if (!seen[j] && walk(j)) {
@@ -867,12 +828,12 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       // ---- the Abyss (after DCSS's Abyss and NetHack's Gehennom): fragments of the world above, drifting over the void, tied together by rope bridges
       const cand0: number[] = [];
       for (let i = 0; i < N; i++) if (tile[i] === TF && edgeOf(i % W, (i / W) | 0) > 3) cand0.push(i);
-      magSeeds = [cand0[Math.floor(rand() * cand0.length)] as number];
+      magSeeds = [nth(cand0, Math.floor(rand() * cand0.length))];
       while (magSeeds.length < 10) {
         let bi = -1,
           bd = -1;
         for (let t = 0; t < 300; t++) {
-          const c = cand0[Math.floor(rand() * cand0.length)] as number;
+          const c = nth(cand0, Math.floor(rand() * cand0.length));
           let md = 1e9;
           for (const o of magSeeds) {
             const d = ((c % W) - (o % W)) ** 2 + (((c / W) | 0) - ((o / W) | 0)) ** 2;
@@ -948,8 +909,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
           rest2 = new Set(magSeeds.map((_, k) => k));
         rest2.delete(0);
         const dd = (a: number, b: number): number =>
-          Math.abs(((magSeeds[a] as number) % W) - ((magSeeds[b] as number) % W)) +
-          Math.abs((((magSeeds[a] as number) / W) | 0) - (((magSeeds[b] as number) / W) | 0));
+          Math.abs((nth(magSeeds, a) % W) - (nth(magSeeds, b) % W)) + Math.abs(((nth(magSeeds, a) / W) | 0) - ((nth(magSeeds, b) / W) | 0));
         while (rest2.size) {
           let best: [number, number] | null = null,
             bd2 = 1e9;
@@ -961,22 +921,22 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
                 best = [a, b];
               }
             }
-          span(magSeeds[(best as [number, number])[0]] as number, magSeeds[(best as [number, number])[1]] as number);
-          inT.push((best as [number, number])[1]);
-          rest2.delete((best as [number, number])[1]);
+          span(nth(magSeeds, must(best)[0]), nth(magSeeds, must(best)[1]));
+          inT.push(must(best)[1]);
+          rest2.delete(must(best)[1]);
         }
         for (let k = 0; k < 2; k++) {
           const a = RI(0, magSeeds.length - 1),
             b = RI(0, magSeeds.length - 1);
-          if (a !== b) span(magSeeds[a] as number, magSeeds[b] as number);
+          if (a !== b) span(nth(magSeeds, a), nth(magSeeds, b));
         }
       }
       {
         const seen = new Uint8Array(N),
-          st = [magSeeds[0] as number];
-        seen[magSeeds[0] as number] = 1;
+          st = [nth(magSeeds, 0)];
+        seen[nth(magSeeds, 0)] = 1;
         while (st.length) {
-          const c = st.pop() as number;
+          const c = must(st.pop());
           for (const d of D4) {
             const j = c + d[0] + d[1] * W;
             if (!seen[j] && walk(j)) {
@@ -995,12 +955,12 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       // ---- the Magma Sea (after Dwarf Fortress): basalt islands joined by narrow causeways over a sea of lava
       const cand0: number[] = [];
       for (let i = 0; i < N; i++) if (tile[i] === TF && edgeOf(i % W, (i / W) | 0) > 3) cand0.push(i);
-      magSeeds = [cand0[Math.floor(rand() * cand0.length)] as number];
+      magSeeds = [nth(cand0, Math.floor(rand() * cand0.length))];
       while (magSeeds.length < 11) {
         let bi = -1,
           bd = -1;
         for (let t = 0; t < 300; t++) {
-          const c = cand0[Math.floor(rand() * cand0.length)] as number;
+          const c = nth(cand0, Math.floor(rand() * cand0.length));
           let md = 1e9;
           for (const o of magSeeds) {
             const d = ((c % W) - (o % W)) ** 2 + (((c / W) | 0) - ((o / W) | 0)) ** 2;
@@ -1064,8 +1024,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
           rest2 = new Set(magSeeds.map((_, k) => k));
         rest2.delete(0);
         const dd = (a: number, b: number): number =>
-          Math.abs(((magSeeds[a] as number) % W) - ((magSeeds[b] as number) % W)) +
-          Math.abs((((magSeeds[a] as number) / W) | 0) - (((magSeeds[b] as number) / W) | 0));
+          Math.abs((nth(magSeeds, a) % W) - (nth(magSeeds, b) % W)) + Math.abs(((nth(magSeeds, a) / W) | 0) - ((nth(magSeeds, b) / W) | 0));
         while (rest2.size) {
           let best: [number, number] | null = null,
             bd2 = 1e9;
@@ -1077,14 +1036,14 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
                 best = [a, b];
               }
             }
-          causeway(magSeeds[(best as [number, number])[0]] as number, magSeeds[(best as [number, number])[1]] as number);
-          inT.push((best as [number, number])[1]);
-          rest2.delete((best as [number, number])[1]);
+          causeway(nth(magSeeds, must(best)[0]), nth(magSeeds, must(best)[1]));
+          inT.push(must(best)[1]);
+          rest2.delete(must(best)[1]);
         }
         for (let k = 0; k < 2; k++) {
           const a = RI(0, magSeeds.length - 1),
             b = RI(0, magSeeds.length - 1);
-          if (a !== b) causeway(magSeeds[a] as number, magSeeds[b] as number);
+          if (a !== b) causeway(nth(magSeeds, a), nth(magSeeds, b));
         }
       }
       // cooled crust: obsidian footholds creeping out from the shores
@@ -1095,10 +1054,10 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       }
       {
         const seen = new Uint8Array(N),
-          st = [magSeeds[0] as number];
-        seen[magSeeds[0] as number] = 1;
+          st = [nth(magSeeds, 0)];
+        seen[nth(magSeeds, 0)] = 1;
         while (st.length) {
-          const c = st.pop() as number;
+          const c = must(st.pop());
           for (const d of D4) {
             const j = c + d[0] + d[1] * W;
             if (!seen[j] && walk(j)) {
@@ -1114,12 +1073,12 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     const cand: number[] = [];
     for (let i = 0; i < N; i++) if (walk(i) && !liquid[i]) cand.push(i);
     const seeds =
-      stratum.k === 'magma' || stratum.k === 'abyss' ? magSeeds.filter((c) => walk(c)) : [cand[Math.floor(rand() * cand.length)] as number];
+      stratum.k === 'magma' || stratum.k === 'abyss' ? magSeeds.filter((c) => walk(c)) : [nth(cand, Math.floor(rand() * cand.length))];
     while (seeds.length < 7) {
       let bi = -1,
         bd = -1;
       for (let t = 0; t < 400; t++) {
-        const c = cand[Math.floor(rand() * cand.length)] as number;
+        const c = nth(cand, Math.floor(rand() * cand.length));
         let md = 1e9;
         for (const o of seeds) {
           const d = ((c % W) - (o % W)) ** 2 + (((c / W) | 0) - ((o / W) | 0)) ** 2;
@@ -1140,11 +1099,11 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         q.push(sd0);
       });
       for (let h = 0; h < q.length; h++) {
-        const c = q[h] as number;
+        const c = nth(q, h);
         for (const d of D4) {
           const j = c + d[0] + d[1] * W;
-          if ((tile[j] === TF || (stratum.k === 'abyss' && tile[j] === TC)) && (roomOf[j] as number) < 0) {
-            roomOf[j] = roomOf[c] as number;
+          if ((tile[j] === TF || (stratum.k === 'abyss' && tile[j] === TC)) && nth(roomOf, j) < 0) {
+            roomOf[j] = nth(roomOf, c);
             q.push(j);
           }
         }
@@ -1163,10 +1122,10 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     };
     const pickCW = (): Theme => {
       let tot = 0;
-      for (const k in cw) tot += cw[k] as number;
+      for (const k in cw) tot += lookup(cw, k);
       let r0 = rand() * tot;
       for (const k in cw) {
-        r0 -= cw[k] as number;
+        r0 -= lookup(cw, k);
         if (r0 <= 0) return lookup(BIOMES, k);
       }
       return BIOMES.mossfield;
@@ -1216,8 +1175,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         cave: true,
         shell: true,
         cells0: all,
-        cx: (caves[0] as Room).cx,
-        cy: (caves[0] as Room).cy,
+        cx: nth(caves, 0).cx,
+        cy: nth(caves, 0).cy,
         theme: BIOMES.cavern,
       }),
     );
@@ -1228,34 +1187,33 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   rooms.forEach((r, ri) => {
     if (!r.cave || r.shell) return;
     const q: number[] = [];
-    for (const i of r.cells0 as number[]) {
+    for (const i of must(r.cells0)) {
       if (D4.some((d) => roomOf[i + d[0] + d[1] * W] !== ri)) {
         dfield[i] = 1;
         q.push(i);
       }
     }
     for (let h = 0; h < q.length; h++) {
-      const i = q[h] as number;
+      const i = nth(q, h);
       for (const d of D4) {
         const j = i + d[0] + d[1] * W;
         if (roomOf[j] === ri && !dfield[j]) {
-          dfield[j] = (dfield[i] as number) + 1;
+          dfield[j] = nth(dfield, i) + 1;
           q.push(j);
         }
       }
     }
-    const B = r.theme as Theme;
-    for (const i of r.cells0 as number[])
-      ceil[i] = Math.round(Math.min(B.base as number, 3.6 + ((dfield[i] as number) - 1) * (B.slope as number)) / 0.4) * 0.4;
+    const B = must(r.theme);
+    for (const i of must(r.cells0)) ceil[i] = Math.round(Math.min(must(B.base), 3.6 + (nth(dfield, i) - 1) * must(B.slope)) / 0.4) * 0.4;
   });
-  const startI = (rooms[0] as Room).cy * W + (rooms[0] as Room).cx;
+  const startI = nth(rooms, 0).cy * W + nth(rooms, 0).cx;
   const flood = (from: number): number => {
     const seen = new Uint8Array(N),
       st = [from];
     seen[from] = 1;
     let c = 0;
     while (st.length) {
-      const i = st.pop() as number;
+      const i = must(st.pop());
       c++;
       const x = i % W,
         y = (i / W) | 0;
@@ -1280,14 +1238,14 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     const saved: [number, number, number, number][] = [],
       fx: [string, number][] = [];
     for (let y = 0; y < m.length; y++)
-      for (let x = 0; x < (m[0] as string[]).length; x++) {
-        const ch = (m[y] as string[])[x];
+      for (let x = 0; x < nth(m, 0).length; x++) {
+        const ch = nth(m, y)[x];
         if (ch === ' ') continue;
         const xx = ox + x,
           yy = oy + y;
         if (xx < 1 || yy < 1 || xx > UW - 2 || yy > UH - 2) continue;
         const i = yy * W + xx;
-        saved.push([i, tile[i] as number, liquid[i] as number, surface[i] as number]);
+        saved.push([i, nth(tile, i), nth(liquid, i), nth(surface, i)]);
         surface[i] = 0;
         liquid[i] = 0;
         if (ch === '#' || ch === 'H') tile[i] = TW;
@@ -1325,17 +1283,17 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     if (!r.forceVault) continue;
     const vt = r.forceVault,
       m = vt.map.map((x) => x.split(''));
-    if (stampAt(r, vt, m, r.x + ((r.w - (m[0] as string[]).length) >> 1), r.y + ((r.h - m.length) >> 1))) {
+    if (stampAt(r, vt, m, r.x + ((r.w - nth(m, 0).length) >> 1), r.y + ((r.h - m.length) >> 1))) {
       r.vault = vt;
       r.kindMsg = vt.msg;
     }
   }
   if (stratum.k === 'town') {
     // the town: a fountain plaza in the middle, houses, shops and a temple on a loose grid around it
-    const big = rooms[1] as Room,
+    const big = nth(rooms, 1),
       hs = VAULTS.filter((v) => v.k === 'house' || v.k === 'shop'),
-      tp = VAULTS.find((v) => v.k === 'townTemple') as Vault,
-      fo = VAULTS.find((v) => v.k === 'townFountain') as Vault;
+      tp = must(VAULTS.find((v) => v.k === 'townTemple')),
+      fo = must(VAULTS.find((v) => v.k === 'townFountain'));
     stampAt(
       big,
       fo,
@@ -1359,50 +1317,50 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       opts = VAULTS.filter((v) => (stratum.vaults ? stratum.vaults.includes(v.k) : v.strata.includes(sk) && depth >= v.minD));
     let placed = 0;
     const order = shuffle(rooms.map((_, i) => i).filter((i) => i > 0)).sort(
-      (a2, b2) => ((rooms[b2] as Room).vaultPref ? 1 : 0) - ((rooms[a2] as Room).vaultPref ? 1 : 0),
+      (a2, b2) => (nth(rooms, b2).vaultPref ? 1 : 0) - (nth(rooms, a2).vaultPref ? 1 : 0),
     );
     for (const ri of order) {
       if (placed >= want || !opts.length) break;
-      const r = rooms[ri] as Room;
+      const r = nth(rooms, ri);
       if (r.cave || r.shape !== 'rect' || r.vault) continue;
       let mg = 2;
       const fit = (w: number, h: number): boolean => w <= r.w - mg && h <= r.h - mg;
-      let fits = opts.filter((v) => fit((v.map[0] as string).length, v.map.length) || fit(v.map.length, (v.map[0] as string).length));
+      let fits = opts.filter((v) => fit(nth(v.map, 0).length, v.map.length) || fit(v.map.length, nth(v.map, 0).length));
       if (!fits.length && r.ruin) {
         mg = 0;
-        fits = opts.filter((v) => fit((v.map[0] as string).length, v.map.length) || fit(v.map.length, (v.map[0] as string).length));
+        fits = opts.filter((v) => fit(nth(v.map, 0).length, v.map.length) || fit(v.map.length, nth(v.map, 0).length));
       }
       if (!fits.length) continue;
       let tw = 0;
-      for (const v of fits) tw += v.map.length * (v.map[0] as string).length;
+      for (const v of fits) tw += v.map.length * nth(v.map, 0).length;
       let r0 = rand() * tw,
-        vt = fits[0] as Vault;
+        vt = nth(fits, 0);
       for (const v of fits) {
-        r0 -= v.map.length * (v.map[0] as string).length;
+        r0 -= v.map.length * nth(v.map, 0).length;
         if (r0 <= 0) {
           vt = v;
           break;
         }
       }
       let m = vaultCells(vt);
-      if (!fit((m[0] as string[]).length, m.length)) {
+      if (!fit(nth(m, 0).length, m.length)) {
         const t2: string[][] = [];
-        for (let x = 0; x < (m[0] as string[]).length; x++) t2.push(m.map((row) => row[x] as string));
+        for (let x = 0; x < nth(m, 0).length; x++) t2.push(m.map((row) => nth(row, x)));
         m = t2;
       }
-      if (!fit((m[0] as string[]).length, m.length)) continue;
+      if (!fit(nth(m, 0).length, m.length)) continue;
       const vh = m.length,
-        vw = (m[0] as string[]).length;
+        vw = nth(m, 0).length;
       const ox = r.x + Math.floor((r.w - vw) / 2),
         oy = r.y + Math.floor((r.h - vh) / 2),
         saved: [number, number, number, number][] = [],
         fx: [string, number][] = [];
       for (let y = 0; y < vh; y++)
         for (let x = 0; x < vw; x++) {
-          const ch = (m[y] as string[])[x];
+          const ch = nth(m, y)[x];
           if (ch === ' ') continue;
           const i = (oy + y) * W + ox + x;
-          saved.push([i, tile[i] as number, liquid[i] as number, surface[i] as number]);
+          saved.push([i, nth(tile, i), nth(liquid, i), nth(surface, i)]);
           surface[i] = 0;
           liquid[i] = 0;
           if (ch === '#' || ch === 'H') tile[i] = TW;
@@ -1446,12 +1404,12 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       q = [a];
     dd[a] = 0;
     for (let h = 0; h < q.length; h++) {
-      const i = q[h] as number;
-      if (i === b) return dd[i] as number;
+      const i = nth(q, h);
+      if (i === b) return nth(dd, i);
       for (const d of D4) {
         const j = i + d[0] + d[1] * W;
-        if ((dd[j] as number) < 0 && walk(j)) {
-          dd[j] = (dd[i] as number) + 1;
+        if (nth(dd, j) < 0 && walk(j)) {
+          dd[j] = nth(dd, i) + 1;
           q.push(j);
         }
       }
@@ -1460,7 +1418,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   };
   const bridgeAcross = (r: Room, isGap: (j: number) => boolean, kind: number): boolean => {
     const cands: [number, number, (typeof D4)[number], number][] = [];
-    for (const a of r.cells0 as number[]) {
+    for (const a of must(r.cells0)) {
       if (!walk(a)) continue;
       for (const d of D4) {
         let j = a + d[0] + d[1] * W,
@@ -1477,9 +1435,9 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     let best: (typeof cands)[number] | null = null,
       bs = -1;
     for (let t = 0; t < Math.min(40, cands.length); t++) {
-      const c = cands[Math.floor(rand() * cands.length)] as (typeof cands)[number];
+      const c = nth(cands, Math.floor(rand() * cands.length));
       const dd = bfsDist(c[0], c[1]);
-      const sc = (dd < 0 ? 1000 : dd) - (c[2 + 1] as number);
+      const sc = (dd < 0 ? 1000 : dd) - c[3];
       if (sc > bs) {
         bs = sc;
         best = c;
@@ -1501,14 +1459,14 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   rooms.forEach((r) => {
     if (!r.cave) return;
     const blob = (minD: number): number[] =>
-      (r.cells0 as number[]).filter((i) => {
+      must(r.cells0).filter((i) => {
         const x = (i % W) + 0.5,
           y = ((i / W) | 0) + 0.5,
           dx = (x - (r.x + r.w / 2)) / (r.w * 0.3),
           dy = (y - (r.y + r.h / 2)) / (r.h * 0.3);
-        return tile[i] === TF && dx * dx + dy * dy < 1 + 0.3 * Math.sin(x * 0.9 + y * 0.7) && (dfield[i] as number) >= minD;
+        return tile[i] === TF && dx * dx + dy * dy < 1 + 0.3 * Math.sin(x * 0.9 + y * 0.7) && nth(dfield, i) >= minD;
       });
-    if ((r.theme as Theme).k === 'chasm') {
+    if (must(r.theme).k === 'chasm') {
       const b = blob(2);
       if (b.length < 10) r.theme = BIOMES.lake;
       else {
@@ -1528,7 +1486,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         } else if (rand() < 0.8) bridgeAcross(r, (j) => tile[j] === TC, 1);
       }
     }
-    if ((r.theme as Theme).k === 'lake') {
+    if (must(r.theme).k === 'lake') {
       blob(2).forEach((i) => (liquid[i] = LQ_WATER));
       const core = blob(3).filter((i) => liquid[i] === LQ_WATER);
       if (core.length >= 6) {
@@ -1542,22 +1500,22 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         else if (rand() < 0.6) bridgeAcross(r, (j) => liquid[j] === LQ_DEEP, 2);
       }
     }
-    if ((r.theme as Theme).k === 'towercap' || (r.theme as Theme).k === 'mossfield') {
+    if (must(r.theme).k === 'towercap' || must(r.theme).k === 'mossfield') {
       /* vegetation comes from the surface pass and the lights below */
     }
-    if ((r.theme as Theme).k === 'warren') {
-      for (const i of r.cells0 as number[]) {
+    if (must(r.theme).k === 'warren') {
+      for (const i of must(r.cells0)) {
         if (tile[i] !== TF || liquid[i]) continue;
         const v = vnoise((i % W) * 0.5, 6.6, ((i / W) | 0) * 0.5);
         surface[i] = v > 0.68 ? SF_HAY : SF_MUD;
       }
     }
-    if ((r.theme as Theme).k === 'swamp') {
-      for (const i of r.cells0 as number[]) {
+    if (must(r.theme).k === 'swamp') {
+      for (const i of must(r.cells0)) {
         if (tile[i] !== TF || liquid[i]) continue;
         if (vnoise((i % W) * 0.4, 2.2, ((i / W) | 0) * 0.4) > 0.55) surface[i] = SF_MUD;
       }
-      for (const i of r.cells0 as number[]) {
+      for (const i of must(r.cells0)) {
         if (tile[i] !== TF) continue;
         const x = i % W,
           y = (i / W) | 0;
@@ -1565,14 +1523,14 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         if (v > 0.46) liquid[i] = LQ_BOG;
       }
     }
-    if ((r.theme as Theme).k === 'crystal') {
+    if (must(r.theme).k === 'crystal') {
       const pal = [
         [0.55, 0.85, 1.0],
         [0.75, 0.6, 1.0],
         [0.85, 0.95, 1.0],
         [0.5, 1.0, 0.85],
       ];
-      const pool = (r.cells0 as number[]).filter((i) => tile[i] === TF && (dfield[i] as number) >= 2),
+      const pool = must(r.cells0).filter((i) => tile[i] === TF && nth(dfield, i) >= 2),
         seeds: number[] = [];
       for (let t = 0; t < 60 && seeds.length < 9; t++) {
         const c = pool[Math.floor(rand() * pool.length)];
@@ -1583,7 +1541,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         const rad = R(0.8, 1.9),
           sx = s0 % W,
           sy = (s0 / W) | 0,
-          cl = (r.cells0 as number[]).filter((i) => tile[i] === TF && Math.hypot((i % W) - sx, ((i / W) | 0) - sy) <= rad);
+          cl = must(r.cells0).filter((i) => tile[i] === TF && Math.hypot((i % W) - sx, ((i / W) | 0) - sy) <= rad);
         cl.forEach((i) => (tile[i] = TX));
         if (flood(startI) !== countTF()) {
           cl.forEach((i) => (tile[i] = TF));
@@ -1593,14 +1551,14 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         cl.forEach((i) => xtalCol.set(i, col));
         r.clusters.push({ c: s0, col });
       }
-      for (const i of r.cells0 as number[]) {
+      for (const i of must(r.cells0)) {
         if (tile[i] !== TF || dfield[i] !== 1 || rand() > 0.22) continue;
         tile[i] = TX;
         if (flood(startI) !== countTF()) tile[i] = TF;
         else xtalCol.set(i, pick(pal));
       }
     }
-    if ((r.theme as Theme).k === 'magma') {
+    if (must(r.theme).k === 'magma') {
       let ok = false;
       for (const md of [2, 3, 4]) {
         const b = blob(md);
@@ -1614,11 +1572,11 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       }
       if (!ok) blob(2).forEach((i) => (surface[i] = SF_OBSIDIAN));
     }
-    if ((r.theme as Theme).k === 'cathedral') {
+    if (must(r.theme).k === 'cathedral') {
       for (let py = r.y + 2; py < r.y + r.h - 2; py += 4)
         for (let px = r.x + 2; px < r.x + r.w - 2; px += 4) {
           const blk = [py * W + px, py * W + px + 1, (py + 1) * W + px, (py + 1) * W + px + 1];
-          if (!blk.every((i) => tile[i] === TF && roomOf[i] === rooms.indexOf(r) && (dfield[i] as number) >= 3)) continue;
+          if (!blk.every((i) => tile[i] === TF && roomOf[i] === rooms.indexOf(r) && nth(dfield, i) >= 3)) continue;
           blk.forEach((i) => (tile[i] = TW));
           if (flood(startI) !== countTF()) blk.forEach((i) => (tile[i] = TF));
         }
@@ -1655,16 +1613,16 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     });
     let r0 = rand() * tot;
     for (let k = 0; k < TH.length; k++) {
-      r0 -= ws[k] as number;
-      if (r0 <= 0) return TH[k] as Theme;
+      r0 -= nth(ws, k);
+      if (r0 <= 0) return nth(TH, k);
     }
-    return TH[0] as Theme;
+    return nth(TH, 0);
   };
   normals.forEach((r, i) => {
     let th;
     do {
       th = pickTheme();
-    } while (i > 0 && th === (normals[i - 1] as Room).theme && rand() < 0.85);
+    } while (i > 0 && th === nth(normals, i - 1).theme && rand() < 0.85);
     r.theme = th;
   });
   // pools in ordinary rooms: water near the surface, lava in the depths
@@ -1701,9 +1659,9 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     }
   });
   for (let i = 0; i < N; i++) {
-    const ri = roomOf[i] as number;
+    const ri = nth(roomOf, i);
     if (ri < 0) continue;
-    const R0 = rooms[ri] as Room;
+    const R0 = nth(rooms, ri);
     if (tile[i] === TC) R0.chasm.push(i);
     else if (tile[i] === TX) R0.xtal.push(i);
     else if (tile[i] === TF) {
@@ -1732,9 +1690,9 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       continue;
     }
     if (surface[i]) continue;
-    const ri = roomOf[i] as number,
+    const ri = nth(roomOf, i),
       nearWall = D4.some((d) => tile[i + d[0] + d[1] * W] === TW),
-      k = ri >= 0 ? ((rooms[ri] as Room).theme as Theme).k : '';
+      k = ri >= 0 ? must(nth(rooms, ri).theme).k : '';
     const lum = k === 'emerald' || k === 'fungal' || k === 'towercap' || k === 'mossfield',
       shore =
         (k === 'lake' || stratum.k === 'cavern') &&
@@ -1750,11 +1708,11 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     const q = [startI];
     dist[startI] = 0;
     for (let h = 0; h < q.length; h++) {
-      const i = q[h] as number;
+      const i = nth(q, h);
       for (const d of D4) {
         const j = i + d[0] + d[1] * W;
-        if ((dist[j] as number) < 0 && walk(j)) {
-          dist[j] = (dist[i] as number) + 1;
+        if (nth(dist, j) < 0 && walk(j)) {
+          dist[j] = nth(dist, i) + 1;
           q.push(j);
         }
       }
@@ -1764,7 +1722,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     bd = -1;
   rooms.forEach((r, ri) => {
     if (ri === 0 || !r.cells.length) return;
-    const d = dist[r.cells[0] as number] as number;
+    const d = nth(dist, nth(r.cells, 0));
     if (d > bd) {
       bd = d;
       best = ri;
@@ -1772,18 +1730,18 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   });
   // a level of one great cave has no other room: the stairs go to the farthest dry floor from the start
   let stI: number;
-  const sroom = rooms[best] && best !== 0 ? (rooms[best] as Room) : null;
+  const sroom = rooms[best] && best !== 0 ? nth(rooms, best) : null;
   if (!sroom) {
     let far = -1;
     stI = startI;
     for (let i = 0; i < N; i++) {
-      if ((dist[i] as number) > far && !liquid[i] && walk(i)) {
-        far = dist[i] as number;
+      if (nth(dist, i) > far && !liquid[i] && walk(i)) {
+        far = nth(dist, i);
         stI = i;
       }
     }
   } else {
-    stI = sroom.cells[0] as number;
+    stI = nth(sroom.cells, 0);
     let sbd = 1e9;
     for (const i of sroom.cells) {
       if (liquid[i]) continue;
@@ -1816,11 +1774,11 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   const doors: Door[] = [],
     doorAt = new Int16Array(N).fill(-1);
   for (let i = 0; i < N; i++) {
-    if (!walk(i) || (roomOf[i] as number) >= 0 || used.has(i)) continue;
+    if (!walk(i) || nth(roomOf, i) >= 0 || used.has(i)) continue;
     for (const d of D4) {
       const j = i + d[0] + d[1] * W,
-        rj = roomOf[j] as number;
-      if (rj < 0 || (rooms[rj] as Room).cave || !walk(j)) continue;
+        rj = nth(roomOf, j);
+      if (rj < 0 || nth(rooms, rj).cave || !walk(j)) continue;
       if (tile[i - d[1] + d[0] * W] !== TW || tile[i + d[1] - d[0] * W] !== TW) continue;
       if (!walk(i - d[0] - d[1] * W)) continue;
       if (rand() > prof.door) break;
@@ -1844,7 +1802,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   const spread = (cands: readonly number[], n: number): number[] => {
     const out: number[] = [];
     if (!cands.length || n < 1) return out;
-    out.push(cands[Math.floor(rand() * cands.length)] as number);
+    out.push(nth(cands, Math.floor(rand() * cands.length)));
     while (out.length < n) {
       let bi = -1,
         bdd = -1;
@@ -1866,7 +1824,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   };
   const nearWallC = (i: number): boolean => D4.some((d) => tile[i + d[0] + d[1] * W] === TW);
   rooms.forEach((r) => {
-    const th = r.theme as Theme,
+    const th = must(r.theme),
       area = r.cells.length;
     const ok = r.cells.filter((i) => !used.has(i) && cd(i, stI) > 4);
     const dry = ok.filter((i) => !liquid[i] && !bridge[i]);
@@ -1926,7 +1884,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
               '"',
             );
           r.mush = spread(
-            dry.filter((i) => (dfield[i] as number) >= 2 && !used.has(i)),
+            dry.filter((i) => nth(dfield, i) >= 2 && !used.has(i)),
             9,
           );
           break;
@@ -1967,7 +1925,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
               '"',
             );
           r.mush = spread(
-            dry.filter((i) => (dfield[i] as number) >= 2 && !used.has(i)),
+            dry.filter((i) => nth(dfield, i) >= 2 && !used.has(i)),
             16,
           );
           r.giant = true;
@@ -2027,10 +1985,10 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
               '*',
             );
           for (const i of spread(
-            dry.filter((i) => (dfield[i] as number) >= 3),
+            dry.filter((i) => nth(dfield, i) >= 3),
             3,
           ))
-            addFix('lamp', i, [1.0, 0.7, 0.35], (ceil[i] as number) - 3.6, 2.0, 12, '*');
+            addFix('lamp', i, [1.0, 0.7, 0.35], nth(ceil, i) - 3.6, 2.0, 12, '*');
           break;
       }
       return;
@@ -2078,11 +2036,11 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   let mk = 0;
   normals.forEach((r, ri) => {
     if (ri === 0 || r === sroom || r.vault || r.special || r.cells.length < 14) return;
-    if (r.fort && !['crypt', 'library', 'statues'].includes(r.rkind as string)) return;
+    if (r.fort && !(r.rkind !== undefined && ['crypt', 'library', 'statues'].includes(r.rkind))) return;
     if (stratum.machines) {
       if (rand() > 0.85) return;
     } else if (!r.fort && (mk >= mlist.length || rand() > 0.65)) return;
-    const type = (stratum.machines ? pick(stratum.machines) : r.fort ? r.rkind : mlist[mk++]) as string,
+    const type = must(stratum.machines ? pick(stratum.machines) : r.fort ? r.rkind : mlist[mk++]),
       md: MachineData = { type };
     const free = r.cells.filter((i) => !used.has(i) && !liquid[i] && cd(i, stI) > 2);
     const edgeF = free.filter(nearWallC),
@@ -2119,7 +2077,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         if (md.shelves.length >= 10) break;
         if (used.has(i)) continue;
         const d = D4.find((d) => tile[i + d[0] + d[1] * W] === TW);
-        md.shelves.push({ i, dx: (d as Dir)[0], dz: (d as Dir)[1] });
+        md.shelves.push({ i, dx: must(d)[0], dz: must(d)[1] });
         used.add(i);
         decoCell.set(i, { ch: '[', col: [0.75, 0.55, 0.35] });
       }
@@ -2169,7 +2127,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       }
       const sc = one(free.filter((i) => !liquid[i]));
       if (sc !== undefined) {
-        addFix('sun', sc, [1.0, 0.93, 0.78], (ceil[sc] as number) - 0.3, 2.2, 9, '*');
+        addFix('sun', sc, [1.0, 0.93, 0.78], nth(ceil, sc) - 0.3, 2.2, 9, '*');
         fixCell.delete(sc);
       }
     } else if (type === 'remnant') {
@@ -2194,12 +2152,13 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         surface[i] = 0;
       });
       md.inert = [];
-      for (const [sx, sy] of [
+      const corners: [number, number][] = [
         [-1, -1],
         [1, -1],
         [-1, 1],
         [1, 1],
-      ] as [number, number][]) {
+      ];
+      for (const [sx, sy] of corners) {
         const i = (r.cy + sy * (hh + 1)) * W + r.cx + sx * (hw + 1);
         if (r.cells.includes(i) && !used.has(i) && trySolid(i, 0.5)) {
           used.add(i);
@@ -2208,9 +2167,10 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         }
       }
     } else if (type === 'dismal') {
-      md.blood = spread(free, 5);
+      const blood = spread(free, 5);
+      md.blood = blood;
       md.bones2 = spread(
-        free.filter((i) => !(md.blood as number[]).includes(i)),
+        free.filter((i) => !blood.includes(i)),
         4,
       );
       md.char = spread(free, 5);
@@ -2233,17 +2193,17 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       const before = fixtures.length;
       addFix('spring', src, [0.45, 0.75, 1.0], 1.2, 0.9, 7, '~');
       fixCell.delete(src);
-      if (fixtures.length > before) (fixtures[fixtures.length - 1] as Fixture).wd = dW;
+      if (fixtures.length > before) nth(fixtures, fixtures.length - 1).wd = dW;
       const order: number[] = [],
         seen = new Set([src]),
         q = [src];
       for (let h = 0; h < q.length && order.length < 80; h++) {
-        const c = q[h] as number;
+        const c = nth(q, h);
         order.push(c);
         for (const dd of D4) {
           const j = c + dd[0] + dd[1] * W;
           if (seen.has(j) || !walk(j) || liquid[j] || solid.has(j) || j === stI) continue;
-          if ((roomOf[j] as number) >= 0 && roomOf[j] !== ri) continue;
+          if (nth(roomOf, j) >= 0 && roomOf[j] !== ri) continue;
           seen.add(j);
           q.push(j);
         }
@@ -2260,7 +2220,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         seen = new Set([src]),
         q = [src];
       for (let h = 0; h < q.length && order.length < 34; h++) {
-        const c = q[h] as number;
+        const c = nth(q, h);
         liquid[c] = LQ_LAVA;
         const okc = flood(startI) === countTF();
         liquid[c] = 0;
@@ -2282,7 +2242,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     } else if (type === 'collapse') {
       const pool = innerF.filter((i) => !used.has(i));
       if (pool.length < 6) return;
-      const c0 = pool[Math.floor(rand() * pool.length)] as number,
+      const c0 = nth(pool, Math.floor(rand() * pool.length)),
         reg = pool.filter((i) => Math.hypot((i % W) - (c0 % W), ((i / W) | 0) - ((c0 / W) | 0)) <= 1.6);
       if (reg.length < 3) return;
       reg.forEach((i) => (tile[i] = TC));
@@ -2343,15 +2303,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       .map((o) => startI + o)
       .find((j) => walk(j) && !liquid[j] && !used.has(j) && !solid.has(j) && j !== stI);
     if (c !== undefined) {
-      addFix(
-        'upstairs',
-        c,
-        stratum.realm ? (REALMS[(realm as RealmPlace).key] as Realm).col : (BRANCHES[(branch as BranchPlace).key] as Branch).col,
-        1.6,
-        1.5,
-        7,
-        '<',
-      );
+      addFix('upstairs', c, stratum.realm ? lookup(REALMS, must(realm).key).col : lookup(BRANCHES, must(branch).key).col, 1.6, 1.5, 7, '<');
       upstairs = c;
     }
   }
@@ -2363,22 +2315,22 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         for (const i of r.cells)
           if (walk(i) && !liquid[i] && !used.has(i) && !solid.has(i) && cd(i, stI) > 36 && cd(i, startI) > 25) cand.push(i);
       });
-      return cand.length ? (cand[Math.floor(rand() * cand.length)] as number) : -1;
+      return cand.length ? nth(cand, Math.floor(rand() * cand.length)) : -1;
     };
     const bk = branchAtDepth(depth, runSeed);
     if (bk) {
       const c = pickSpot();
       if (c >= 0) {
-        addFix('bstairs', c, (BRANCHES[bk] as Branch).col, 1.7, 1.8, 8.5, '>');
+        addFix('bstairs', c, lookup(BRANCHES, bk).col, 1.7, 1.8, 8.5, '>');
         bstairs = { cell: c, key: bk };
       }
     }
     if (depth >= 2 && rand() < 0.3) {
-      const ks = Object.keys(REALMS).filter((k) => depth >= (REALMS[k] as Realm).minD),
-        rk = ks[Math.floor(rand() * ks.length)] as string,
+      const ks = Object.keys(REALMS).filter((k) => depth >= lookup(REALMS, k).minD),
+        rk = nth(ks, Math.floor(rand() * ks.length)),
         c = pickSpot();
       if (c >= 0) {
-        addFix('portal', c, (REALMS[rk] as Realm).col, 1.6, 2.0, 9, '0');
+        addFix('portal', c, lookup(REALMS, rk).col, 1.6, 2.0, 9, '0');
         portal = { cell: c, key: rk };
       }
     }
@@ -2409,8 +2361,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   let nT = 0;
   for (let i = 0; i < N && nT < 24; i++) {
     if (!walk(i) || liquid[i] || used.has(i)) continue;
-    const ri = roomOf[i] as number;
-    if (ri >= 0 && (rooms[ri] as Room).cave) continue;
+    const ri = nth(roomOf, i);
+    if (ri >= 0 && nth(rooms, ri).cave) continue;
     if (rand() > (ri >= 0 ? 0.05 : 0.03) * prof.torch * (stratum.torchMul || 1)) continue;
     const fs = D4.filter((d) => tile[i + d[0] + d[1] * W] === TW);
     if (!fs.length) continue;
@@ -2433,8 +2385,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     r.vcarpet = [];
     for (const [ch, i] of r.vfx) {
       if (ch === '*') {
-        if ((r.theme as Theme).fix === 'brazier') addFix('brazier', i, (r.theme as Theme).col, 1.35, 2.2, 9, '*');
-        else addFix('orb', i, (r.theme as Theme).col, 1.65, 2.0, 10, 'o');
+        if (must(r.theme).fix === 'brazier') addFix('brazier', i, must(r.theme).col, 1.35, 2.2, 9, '*');
+        else addFix('orb', i, must(r.theme).col, 1.65, 2.0, 10, 'o');
       } else if (ch === '&') {
         tile[i] = TF;
         solid.set(i, 0.5);
@@ -2462,10 +2414,10 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         r.cells.filter((i) => !used.has(i) && !liquid[i] && !solid.has(i)),
         r.cells.length > 90 ? 2 : 1,
       ))
-        addFix('orb', i, (r.theme as Theme).col, 1.65, 1.9, 10, 'o');
+        addFix('orb', i, must(r.theme).col, 1.65, 1.9, 10, 'o');
     });
   if (stratum.k === 'bigroom') {
-    const big = rooms[1] as Room,
+    const big = nth(rooms, 1),
       cols2 = [
         [1.0, 0.55, 0.17],
         [0.25, 0.82, 1.0],
@@ -2499,7 +2451,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         addFix(
           t2 === 0 ? 'brazier' : t2 === 1 ? 'crystal' : 'rune',
           i,
-          cols2[(k2 * 2) % cols2.length] as number[],
+          nth(cols2, (k2 * 2) % cols2.length),
           t2 === 0 ? 1.35 : t2 === 1 ? 2.4 : 0.7,
           2.3,
           11,
@@ -2508,7 +2460,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       }
   }
   if (stratum.k === 'town') {
-    const big = rooms[1] as Room,
+    const big = nth(rooms, 1),
       streets = big.cells.filter((i) => !vaultCell[i] && !used.has(i) && !liquid[i]);
     for (const i of spread(streets, 12))
       addFix(
@@ -2527,7 +2479,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   if (stratum.k === 'fortress')
     rooms.forEach((r) => {
       if (!r.fort) return;
-      if (FORT_KIND_MSG[r.rkind as string]) r.kindMsg = FORT_KIND_MSG[r.rkind as string] as string;
+      const fm = r.rkind === undefined ? undefined : FORT_KIND_MSG[r.rkind];
+      if (fm) r.kindMsg = fm;
       const free = r.cells.filter((i) => !used.has(i) && !liquid[i] && !solid.has(i));
       if (r.rkind === 'dining') {
         r.tables = [];
@@ -2586,20 +2539,20 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
             surface[i] = 0;
           }
         }
-        addFix('well', c, [0.45, 1.0, 0.92], Math.min((ceil[c] as number) - 0.4, 4.4), 2.6, 12, '*');
+        addFix('well', c, [0.45, 1.0, 0.92], Math.min(nth(ceil, c) - 0.4, 4.4), 2.6, 12, '*');
         fixCell.delete(c);
-        r.kindMsg = RUIN_KIND_MSG['atrium'] as string;
+        r.kindMsg = lookup(RUIN_KIND_MSG, 'atrium');
       } else if (r.rkind === 'plaza') {
         if (!used.has(c) && trySolid(c, 1.35)) {
           r.colossus = c;
           used.add(c);
           decoCell.set(c, { ch: '&', col: [0.85, 0.82, 0.95], k: 'colossus' });
-          const ru = HIST.rulers[c % HIST.rulers.length] as Ruler;
+          const ru = nth(HIST.rulers, c % HIST.rulers.length);
           r.kindMsg = `広場の中央に、${ru.title}${ru.name}の巨像がそびえている。`;
         }
       } else if (r.rkind === 'garden') {
         for (const i of r.cells) if (!liquid[i] && !used.has(i) && rand() < 0.75) surface[i] = rand() < 0.4 ? SF_LUMEN : SF_GRASS;
-        r.kindMsg = RUIN_KIND_MSG['garden'] as string;
+        r.kindMsg = lookup(RUIN_KIND_MSG, 'garden');
       }
     });
   if (stratum.flood) {
@@ -2611,7 +2564,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     }
     const core = [];
     for (let i = W; i < N - W; i++) {
-      if (liquid[i] !== LQ_WATER || (roomOf[i] as number) < 0) continue;
+      if (liquid[i] !== LQ_WATER || nth(roomOf, i) < 0) continue;
       let ok = true;
       for (let dy = -1; dy <= 1 && ok; dy++)
         for (let dx = -1; dx <= 1; dx++) {
@@ -2639,14 +2592,14 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   const teles: { a: number; b: number }[] = [],
     erupts: { src: number; order: number[] }[] = [];
   if (stratum.realm && realm && realm.key === 'lab') {
-    const rs = shuffle(rooms.map((_r, ri) => ri).filter((ri) => ri > 0 && (rooms[ri] as Room).cells.length > 12));
+    const rs = shuffle(rooms.map((_r, ri) => ri).filter((ri) => ri > 0 && nth(rooms, ri).cells.length > 12));
     for (let k = 0; k + 1 < rs.length && teles.length < 3; k += 2) {
       const pick2 = (ri: number): number => {
-        const c = (rooms[ri] as Room).cells.filter((i) => walk(i) && !liquid[i] && !used.has(i) && !solid.has(i) && i !== stI);
-        return c.length ? (c[Math.floor(rand() * c.length)] as number) : -1;
+        const c = nth(rooms, ri).cells.filter((i) => walk(i) && !liquid[i] && !used.has(i) && !solid.has(i) && i !== stI);
+        return c.length ? nth(c, Math.floor(rand() * c.length)) : -1;
       };
-      const a = pick2(rs[k] as number),
-        b = pick2(rs[k + 1] as number);
+      const a = pick2(nth(rs, k)),
+        b = pick2(nth(rs, k + 1));
       if (a < 0 || b < 0) continue;
       const col = pick([
         [1.0, 0.35, 0.85],
@@ -2672,7 +2625,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         seen = new Set([src]),
         q = [src];
       for (let h = 0; h < q.length && order.length < 22; h++) {
-        const c = q[h] as number;
+        const c = nth(q, h);
         liquid[c] = LQ_LAVA;
         const okc = flood(startI) === countTF();
         liquid[c] = 0;
@@ -2718,13 +2671,13 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     for (const r of rooms) {
       if (!r.cave || r.shell) continue;
       for (const i of r.cells) {
-        if ((liquid[i] === LQ_WATER || liquid[i] === LQ_DEEP) && !used.has(i) && (ceil[i] as number) >= 5.5) fc.push(i);
+        if ((liquid[i] === LQ_WATER || liquid[i] === LQ_DEEP) && !used.has(i) && nth(ceil, i) >= 5.5) fc.push(i);
       }
     }
-    fc.sort((p, q) => (ceil[q] as number) - (ceil[p] as number));
+    fc.sort((p, q) => nth(ceil, q) - nth(ceil, p));
     const topC = fc.slice(0, Math.max(4, Math.floor(fc.length * 0.25)));
     const nF = stratum.k === 'cavern' ? RI(1, 2) : topC.length ? 1 : 0;
-    for (const i of spread(topC, nF)) addFix('fall', i, [0.5, 0.85, 1.0], Math.min(6, (ceil[i] as number) * 0.45), 1.9, 12, '|');
+    for (const i of spread(topC, nF)) addFix('fall', i, [0.5, 0.85, 1.0], Math.min(6, nth(ceil, i) * 0.45), 1.9, 12, '|');
   }
   // ore veins in the rock (gold near the surface, gems deeper)
   const vein = new Uint8Array(N);
@@ -2756,11 +2709,11 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       vc.map((x) => x[0]),
       nV,
     )) {
-      const e = vc.find((x) => x[0] === j) as [number, number, Dir],
+      const e = must(vc.find((x) => x[0] === j)),
         before = fixtures.length;
-      addFix('veinlight', j, VEIN_COL[vein[e[1]] as number] as number[], 1.3, 1.0, 6.5, '*');
+      addFix('veinlight', j, lookup(VEIN_COL, nth(vein, e[1])), 1.3, 1.0, 6.5, '*');
       if (fixtures.length > before) {
-        (fixtures[fixtures.length - 1] as Fixture).wd = [e[2][0], e[2][1]];
+        nth(fixtures, fixtures.length - 1).wd = [e[2][0], e[2][1]];
         fixCell.delete(j);
       }
     }
@@ -2776,7 +2729,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         1,
       )[0];
       if (c === undefined) continue;
-      addFix('sun', c, [1.0, 0.93, 0.78], (ceil[c] as number) - 0.3, 2.2, 9, '*');
+      addFix('sun', c, [1.0, 0.93, 0.78], nth(ceil, c) - 0.3, 2.2, 9, '*');
       fixCell.delete(c);
     }
   if (depth >= 2)
@@ -2792,7 +2745,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
             y = cy + dy;
           if (x < 0 || y < 0 || x >= UW || y >= UH) continue;
           const m = clamp((Math.hypot(dx, dy) - 1.2) / 2.6, 0, 1);
-          darkMul[y * W + x] = Math.min(darkMul[y * W + x] as number, 0.12 + 0.88 * m);
+          darkMul[y * W + x] = Math.min(nth(darkMul, y * W + x), 0.12 + 0.88 * m);
         }
     }
   if (depth >= 5)
@@ -2810,13 +2763,13 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   const engr = new Map<number, Engraving>();
   {
     const ENGR_N: Record<string, number> = { ruins: 10, fortress: 10, town: 4, oracle: 6, maze: 3, bigroom: 6 };
+    const FD: [number, number][] = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ];
     const nE = ENGR_N[stratum.k] || 0,
-      FD = [
-        [1, 0],
-        [-1, 0],
-        [0, 1],
-        [0, -1],
-      ] as [number, number][],
       cands: number[] = [];
     if (nE)
       for (const r of rooms) {
@@ -2824,14 +2777,14 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         for (const i of r.cells) {
           if (liquid[i] || used.has(i)) continue;
           for (let fi = 0; fi < 4; fi++) {
-            const j = i + (FD[fi] as [number, number])[0] + (FD[fi] as [number, number])[1] * W;
+            const j = i + nth(FD, fi)[0] + nth(FD, fi)[1] * W;
             if (tile[j] === TW && !fixCell.has(j)) cands.push(i * 4 + fi);
           }
         }
       }
     const picks: number[] = [];
     for (let t = 0; t < 600 && picks.length < nE && cands.length; t++) {
-      const k = cands[Math.floor(rand() * cands.length)] as number,
+      const k = nth(cands, Math.floor(rand() * cands.length)),
         i = k >> 2;
       if (picks.some((o) => Math.hypot(((o >> 2) % W) - (i % W), (((o >> 2) / W) | 0) - ((i / W) | 0)) < 5)) continue;
       picks.push(k);
@@ -2845,7 +2798,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       let pi = -1;
       for (const o of tg) {
         const p = i + o,
-          wj = p + (FD[fi] as [number, number])[0] + (FD[fi] as [number, number])[1] * W;
+          wj = p + nth(FD, fi)[0] + nth(FD, fi)[1] * W;
         if (tile[p] === TF && !liquid[p] && roomOf[p] === roomOf[i] && tile[wj] === TW && !fixCell.has(wj) && !engr.has(p * 4 + fi)) {
           pi = p;
           break;
@@ -2863,7 +2816,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     [0.45, 0.9, 0.95],
   ];
   for (let i = 0; i < N; i++) {
-    if (tile[i] !== TF || (roomOf[i] as number) >= 0 || used.has(i) || rand() > (stratum.k === 'ruins' ? 0.085 : 0.05)) continue;
+    if (tile[i] !== TF || nth(roomOf, i) >= 0 || used.has(i) || rand() > (stratum.k === 'ruins' ? 0.085 : 0.05)) continue;
     let near = false;
     for (const f of fixtures) {
       if (Math.hypot(f.x / CELL - ((i % W) + 0.5), f.z / CELL - (((i / W) | 0) + 0.5)) < 7) {
@@ -2893,8 +2846,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         }
         if (ref < 0) continue;
       }
-      topLights(lights as Light[], ((i % W) + 0.5) * CELL, 1.3, (((i / W) | 0) + 0.5) * CELL, null, 0, 0, ref, cellLI, cellLW, i * 3);
-      for (let k = 0; k < 3; k++) cellLW[i * 3 + k] = (cellLW[i * 3 + k] as number) * (darkMul[i] as number);
+      topLights(lights, ((i % W) + 0.5) * CELL, 1.3, (((i / W) | 0) + 0.5) * CELL, null, 0, 0, ref, cellLI, cellLW, i * 3);
+      for (let k = 0; k < 3; k++) cellLW[i * 3 + k] = nth(cellLW, i * 3 + k) * nth(darkMul, i);
     }
   };
   bakeCellLights();
@@ -2904,7 +2857,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     const sf = surface[i],
       x = i % W,
       y = (i / W) | 0,
-      r = (roomOf[i] as number) >= 0 ? rooms[roomOf[i] as number] : null,
+      r = nth(roomOf, i) >= 0 ? rooms[nth(roomOf, i)] : null,
       k = r && r.theme ? r.theme.k : '';
     const v = vnoise(x * 0.28, 8.8, y * 0.28) * 0.7 + vnoise(x * 0.9, 1.9, y * 0.9) * 0.3;
     if (
@@ -2938,7 +2891,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   for (let i = 0; i < N; i++) {
     if (
       liquid[i] === LQ_DEEP &&
-      vnoise((i % W) * 0.3, 5.1, ((i / W) | 0) * 0.3) > (stratum.flood || (stratum.cw && (stratum.cw['lake'] as number) > 2) ? 0.42 : 0.56)
+      vnoise((i % W) * 0.3, 5.1, ((i / W) | 0) * 0.3) > // 湖の重み lake が無い層もある（無ければ多くない）
+        (stratum.flood || (stratum.cw && (stratum.cw['lake'] ?? 0) > 2) ? 0.42 : 0.56)
     )
       algae[i] = 1;
   }
@@ -2950,15 +2904,15 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       .filter(
         (ri) =>
           ri > 0 &&
-          !(rooms[ri] as Room).cave &&
-          !(rooms[ri] as Room).vault &&
-          !(rooms[ri] as Room).mdata &&
-          (rooms[ri] as Room).cells.length >= 12 &&
-          (rooms[ri] as Room).cells.length <= 60 &&
-          !(rooms[ri] as Room).cells.includes(stI),
+          !nth(rooms, ri).cave &&
+          !nth(rooms, ri).vault &&
+          !nth(rooms, ri).mdata &&
+          nth(rooms, ri).cells.length >= 12 &&
+          nth(rooms, ri).cells.length <= 60 &&
+          !nth(rooms, ri).cells.includes(stI),
       );
     if (rs.length) {
-      const r = rooms[rs[Math.floor(rand() * rs.length)] as number] as Room;
+      const r = nth(rooms, nth(rs, Math.floor(rand() * rs.length)));
       for (const i of r.cells) if (walk(i) && !liquid[i]) glyph[i] = 1;
       r.sanct = true;
       r.kindMsg = '床一面に聖なる紋様が描かれた部屋。獣たちは、この紋様を越えようとしない。';
@@ -2968,20 +2922,11 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   const spawns: Spawn[] = [],
     taken = new Set<number>();
   const okCell = (i: number | undefined): i is number =>
-    i !== undefined &&
-    i >= 0 &&
-    walk(i) &&
-    (dist[i] as number) >= 8 &&
-    i !== stI &&
-    !solid.has(i) &&
-    !bridge[i] &&
-    !taken.has(i) &&
-    !glyph[i];
-  const avail = (
-    stratum.hordes
-      ? HORDES.filter((H) => (stratum.hordes as string[]).includes(H.lead))
-      : HORDES.filter((H) => depth >= (H.d[0] as number) && depth <= (H.d[1] as number))
-  ) as Horde[];
+    i !== undefined && i >= 0 && walk(i) && nth(dist, i) >= 8 && i !== stI && !solid.has(i) && !bridge[i] && !taken.has(i) && !glyph[i];
+  const hordes = stratum.hordes;
+  const avail: Horde[] = hordes
+    ? HORDES.filter((H) => hordes.includes(H.lead))
+    : HORDES.filter((H) => depth >= nth(H.d, 0) && depth <= nth(H.d, 1));
   const areaK = clamp((UW * UH) / (MW * MH), 0.3, 1) * (trials.includes('fury') ? 1.25 : 1),
     nH = Math.max(
       2,
@@ -2994,7 +2939,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     let tot = 0;
     for (const H of avail) tot += H.w;
     let r0 = rand() * tot,
-      H = avail[0] as Horde;
+      H = nth(avail, 0);
     for (const h of avail) {
       r0 -= h.w;
       if (r0 <= 0) {
@@ -3012,8 +2957,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       const q = [i],
         seen = new Map([[i, 0]]);
       for (let h = 0; h < q.length; h++) {
-        const c = q[h] as number,
-          dd = seen.get(c) as number;
+        const c = nth(q, h),
+          dd = must(seen.get(c));
         if (dd >= 4) continue;
         for (const d of D4) {
           const j = c + d[0] + d[1] * W;
@@ -3027,7 +2972,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     for (const [fk, mn, mx] of H.fol) {
       const n = RI(mn, mx);
       for (let k = 0; k < n && nearC.length; k++) {
-        const j = nearC.splice(Math.floor(rand() * nearC.length), 1)[0] as number;
+        const j = nth(nearC.splice(Math.floor(rand() * nearC.length), 1), 0);
         taken.add(j);
         spawns.push({ key: fk, cx: j % W, cz: (j / W) | 0, g: gid, lead: false });
       }
@@ -3044,14 +2989,14 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
           seen = new Set([c]);
         for (let h = 0; h < q.length && q.length < 12; h++)
           for (const d of D4) {
-            const j = (q[h] as number) + d[0] + d[1] * W;
+            const j = nth(q, h) + d[0] + d[1] * W;
             if (!seen.has(j) && tile[j] === TF && (liquid[j] === LQ_WATER || liquid[j] === LQ_DEEP)) {
               seen.add(j);
               q.push(j);
             }
           }
         for (let k = 0; k < RI(3, 5) && q.length; k++) {
-          const j = q.splice(Math.floor(rand() * q.length), 1)[0] as number;
+          const j = nth(q.splice(Math.floor(rand() * q.length), 1), 0);
           spawns.push({ key: 'f', cx: j % W, cz: (j / W) | 0, g: -1, lead: true });
         }
       }
@@ -3059,12 +3004,12 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   // grazers wander the luminous moss in small herds
   {
     const mc: number[] = [];
-    for (let i = 0; i < N; i++) if (surface[i] === SF_LUMEN && walk(i) && !liquid[i] && i !== stI && (dist[i] as number) >= 5) mc.push(i);
+    for (let i = 0; i < N; i++) if (surface[i] === SF_LUMEN && walk(i) && !liquid[i] && i !== stI && nth(dist, i) >= 5) mc.push(i);
     if (mc.length >= 10)
       for (const c of spread(mc, Math.min(3, Math.floor(mc.length / 35) + 1))) {
         const near = mc.filter((j) => Math.abs((j % W) - (c % W)) + Math.abs(((j / W) | 0) - ((c / W) | 0)) <= 3);
         for (let k = 0; k < RI(3, 5) && near.length; k++) {
-          const j = near.splice(Math.floor(rand() * near.length), 1)[0] as number;
+          const j = nth(near.splice(Math.floor(rand() * near.length), 1), 0);
           spawns.push({ key: 'h', cx: j % W, cz: (j / W) | 0, g: -1, lead: true });
         }
       }
@@ -3075,7 +3020,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     for (let k = 0; k < nS; k++) {
       let c = -1;
       if (rand() < 0.5 && spawns.length) {
-        const s0 = spawns[Math.floor(rand() * spawns.length)] as Spawn;
+        const s0 = nth(spawns, Math.floor(rand() * spawns.length));
         const b0 = s0.cz * W + s0.cx;
         const nb: number[] = [];
         for (let dy = -3; dy <= 3; dy++)
@@ -3083,12 +3028,12 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
             const j = b0 + dx + dy * W;
             if (j > 0 && j < N && okCell(j) && !liquid[j]) nb.push(j);
           }
-        if (nb.length) c = nb[Math.floor(rand() * nb.length)] as number;
+        if (nb.length) c = nth(nb, Math.floor(rand() * nb.length));
       }
       if (c < 0) {
         for (let t2 = 0; t2 < 40; t2++) {
           const j = RI(0, N - 1);
-          if (okCell(j) && !liquid[j] && (roomOf[j] as number) >= 0) {
+          if (okCell(j) && !liquid[j] && nth(roomOf, j) >= 0) {
             c = j;
             break;
           }
@@ -3106,7 +3051,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     const dense = !!stratum.denseWebs,
       narrow: number[] = [];
     for (let i = W; i < N - W; i++) {
-      if (!walk(i) || liquid[i] || i === stI || (dist[i] as number) < 10 || bridge[i]) continue;
+      if (!walk(i) || liquid[i] || i === stI || nth(dist, i) < 10 || bridge[i]) continue;
       let n = 0;
       for (const d of D4) if (walk(i + d[0] + d[1] * W)) n++;
       if (n <= (dense ? 3 : 2)) narrow.push(i);
@@ -3116,8 +3061,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       const q = [c],
         seen = new Map([[c, 0]]);
       for (let h = 0; h < q.length; h++) {
-        const x = q[h] as number,
-          dd = seen.get(x) as number;
+        const x = nth(q, h),
+          dd = must(seen.get(x));
         if (dd >= 6) continue;
         for (const d of D4) {
           const j = x + d[0] + d[1] * W;
@@ -3141,7 +3086,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       for (let k = 0; k < RI(1, 2); k++) {
         const sc = cand.filter((i) => okCell(i) && !webs.some((w) => w.i === i));
         if (!sc.length) break;
-        const j = sc[Math.floor(rand() * sc.length)] as number;
+        const j = nth(sc, Math.floor(rand() * sc.length));
         taken.add(j);
         spawns.push({ key: 'S', cx: j % W, cz: (j / W) | 0, g, lead: k === 0 });
       }
@@ -3159,20 +3104,16 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     const rs = rooms
       .map((_r, ri) => ri)
       .filter(
-        (ri) =>
-          ri > 0 &&
-          (rooms[ri] as Room).cells.length >= 30 &&
-          !(rooms[ri] as Room).vault &&
-          !(rooms[ri] as Room).shell &&
-          !(rooms[ri] as Room).mdata,
+        (ri) => ri > 0 && nth(rooms, ri).cells.length >= 30 && !nth(rooms, ri).vault && !nth(rooms, ri).shell && !nth(rooms, ri).mdata,
       );
     if (rs.length) {
-      const r = rooms[rs[Math.floor(rand() * rs.length)] as number] as Room,
-        cc = r.cells.filter((i) => walk(i) && !liquid[i] && !used.has(i) && !solid.has(i) && i !== stI && (dist[i] as number) >= 10);
+      const r = nth(rooms, nth(rs, Math.floor(rand() * rs.length))),
+        cc = r.cells.filter((i) => walk(i) && !liquid[i] && !used.has(i) && !solid.has(i) && i !== stI && nth(dist, i) >= 10);
       if (cc.length) {
-        const c = cc.sort(
-            (a, b) => Math.hypot((a % W) - r.cx, ((a / W) | 0) - r.cy) - Math.hypot((b % W) - r.cx, ((b / W) | 0) - r.cy),
-          )[0] as number,
+        const c = nth(
+            cc.sort((a, b) => Math.hypot((a % W) - r.cx, ((a / W) | 0) - r.cy) - Math.hypot((b % W) - r.cx, ((b / W) | 0) - r.cy)),
+            0,
+          ),
           g = gid++;
         addFix('embers', c, [1.0, 0.55, 0.2], 0.6, 2.6, 11, '*');
         const ring = (r0: number, r1: number): number[] =>
@@ -3182,7 +3123,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
           });
         const sit = ring(1, 2.3);
         for (let k = 0; k < RI(3, 5) && sit.length; k++) {
-          const j = sit.splice(Math.floor(rand() * sit.length), 1)[0] as number;
+          const j = nth(sit.splice(Math.floor(rand() * sit.length), 1), 0);
           taken.add(j);
           spawns.push({ key: 's', cx: j % W, cz: (j / W) | 0, g, lead: k === 0, camp: c });
         }
@@ -3213,7 +3154,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       for (let k = 0; k < n; k++) {
         for (let t2 = 0; t2 < 40; t2++) {
           const j = RI(0, N - 1);
-          if (okCell(j) && !liquid[j] && (roomOf[j] as number) >= 0) {
+          if (okCell(j) && !liquid[j] && nth(roomOf, j) >= 0) {
             taken.add(j);
             spawns.push({ key, cx: j % W, cz: (j / W) | 0, g: key === 'Rw' ? gid++ : -1, lead: true });
             break;
@@ -3254,7 +3195,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     for (let k = 0; k < RI(1, 2); k++)
       for (let t2 = 0; t2 < 40; t2++) {
         const j = RI(0, N - 1);
-        if (okCell(j) && !liquid[j] && (roomOf[j] as number) >= 0 && (rooms[roomOf[j] as number] as Room).cells.length > 20) {
+        if (okCell(j) && !liquid[j] && nth(roomOf, j) >= 0 && nth(rooms, nth(roomOf, j)).cells.length > 20) {
           taken.add(j);
           spawns.push({ key: 'Y', cx: j % W, cz: (j / W) | 0, g: gid++, lead: true });
           break;
@@ -3263,7 +3204,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   }
   // the lord of a branch waits near its last staircase (after DCSS's branch-end uniques)
   if (stratum.branch && branch && branch.lvl === branch.len) {
-    const ru = HIST.rulers[HIST.rulers.length - 1] as Ruler,
+    const ru = nth(HIST.rulers, HIST.rulers.length - 1),
       bk = branch.key;
     const LORDS: Record<string, { base: string; name: string; scale: number; verb: string }> = {
         crypt: {
@@ -3286,9 +3227,9 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         scale: LORD.scale,
         verb: LORD.verb,
         boss: true,
-        col: LORD.base === 'L' ? [0.75, 0.9, 1.0] : (MTYPES[LORD.base] as MonsterType).col,
+        col: LORD.base === 'L' ? [0.75, 0.9, 1.0] : lookup(MTYPES, LORD.base).col,
         // 元は ({ crypt: null, … } as …)[bk] || 元の生き物の look。表の値はどれも null なので、いつも元の生き物の look になる
-        look: (MTYPES[LORD.base] as MonsterType).look,
+        look: lookup(MTYPES, LORD.base).look,
       };
       if (bk === 'lair') {
         lordType.form = 'olddragon';
@@ -3370,7 +3311,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         }
       }
       if (near.length) {
-        const j = near[Math.floor(rand() * near.length)] as number;
+        const j = nth(near, Math.floor(rand() * near.length));
         taken.add(j);
         spawns.push({ key: 'lord', cx: j % W, cz: (j / W) | 0, g: gid++, lead: true });
       }
@@ -3382,19 +3323,19 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     for (let k = 0; k < nM; k++) {
       const rr = rooms.filter((r, ri) => ri > 0 && r.cells.length > 12 && !r.shell);
       if (!rr.length) break;
-      const r = rr[Math.floor(rand() * rr.length)] as Room;
+      const r = nth(rr, Math.floor(rand() * rr.length));
       const c = r.cells.filter((i) => okCell(i) && !liquid[i] && !used.has(i));
       if (c.length) {
-        const j = c[Math.floor(rand() * c.length)] as number;
+        const j = nth(c, Math.floor(rand() * c.length));
         taken.add(j);
         spawns.push({ key: 'q', cx: j % W, cz: (j / W) | 0, g: -1, lead: true });
       }
     }
   }
   if (stratum.k === 'town') {
-    const st2 = (rooms[1] as Room).cells.filter((i) => !vaultCell[i] && walk(i) && !liquid[i] && !solid.has(i));
+    const st2 = nth(rooms, 1).cells.filter((i) => !vaultCell[i] && walk(i) && !liquid[i] && !solid.has(i));
     for (let k = 0; k < 7 && st2.length; k++) {
-      const i = st2.splice(Math.floor(rand() * st2.length), 1)[0] as number;
+      const i = nth(st2.splice(Math.floor(rand() * st2.length), 1), 0);
       spawns.push({ key: 'G', cx: i % W, cz: (i / W) | 0, g: -1, lead: true });
     }
   }
@@ -3404,17 +3345,17 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       ld = -1;
     rooms.forEach((r, ri) => {
       if (ri === 0 || !r.cells.length || !r.cave || r.shell) return;
-      const d = dist[r.cx + r.cy * W] as number;
+      const d = nth(dist, r.cx + r.cy * W);
       if (d > ld && r.cells.length > 30) {
         ld = d;
         lr = ri;
       }
     });
     if (lr >= 0) {
-      const r = rooms[lr] as Room;
+      const r = nth(rooms, lr);
       r.lair = true;
       const cand = r.cells.filter((i) => walk(i) && !liquid[i] && !solid.has(i) && i !== stI);
-      const c = cand.sort((p, q) => (dfield[q] as number) - (dfield[p] as number))[0];
+      const c = cand.sort((p, q) => nth(dfield, q) - nth(dfield, p))[0];
       if (c !== undefined) spawns.push({ key: 'X', cx: c % W, cz: (c / W) | 0, g: -1, lead: true, home: lr });
     }
   }
@@ -3431,8 +3372,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     bl = -1;
   for (const d of D4) {
     let l = 0,
-      x = (rooms[0] as Room).cx,
-      y = (rooms[0] as Room).cy;
+      x = nth(rooms, 0).cx,
+      y = nth(rooms, 0).cy;
     while (tile[(y + d[1]) * W + x + d[0]] === TF && l < 20) {
       x += d[0];
       y += d[1];
@@ -3449,7 +3390,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   let gate: Gate | null = null;
   if (!stratum.special && !stratum.realm && stratum.k !== 'abyss' && stratum.k !== 'magma' && rand() < 0.55) {
     for (const ri of shuffle(rooms.map((_, k) => k))) {
-      const r = rooms[ri] as Room;
+      const r = nth(rooms, ri);
       if (
         ri === 0 ||
         r.cave ||
@@ -3470,13 +3411,13 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
           if (!set.has(j) && walk(j)) ent.add(j);
         }
       if (ent.size < 1 || ent.size > 4) continue;
-      const entL = [...ent].filter((j) => j !== stI && j !== startI && (doorAt[j] as number) < 0 && !used.has(j));
+      const entL = [...ent].filter((j) => j !== stI && j !== startI && nth(doorAt, j) < 0 && !used.has(j));
       if (!entL.length) continue;
-      const e = entL[0] as number,
+      const e = nth(entL, 0),
         seal = [...ent].filter((j) => j !== e);
-      if (seal.some((j) => j === stI || j === startI || (doorAt[j] as number) >= 0 || used.has(j))) continue;
+      if (seal.some((j) => j === stI || j === startI || nth(doorAt, j) >= 0 || used.has(j))) continue;
       const inside = r.cells.filter((i) => walk(i)).length,
-        sv = tile[e] as number;
+        sv = nth(tile, e);
       for (const j of seal) tile[j] = TW;
       tile[e] = TW;
       const ok = flood(startI) === countTF() - inside;
@@ -3486,8 +3427,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         continue;
       }
       if (spawns.some((sp) => set.has(sp.cz * W + sp.cx)))
-        for (let k = spawns.length - 1; k >= 0; k--)
-          if (set.has((spawns[k] as Spawn).cz * W + (spawns[k] as Spawn).cx)) spawns.splice(k, 1);
+        for (let k = spawns.length - 1; k >= 0; k--) if (set.has(nth(spawns, k).cz * W + nth(spawns, k).cx)) spawns.splice(k, 1);
       const lc: [number, Dir][] = [];
       for (let i = W; i < N - W; i++) {
         if (!walk(i) || liquid[i] || set.has(i) || i === e || used.has(i) || cd(i, e) < 100) continue;
@@ -3495,7 +3435,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         if (d) lc.push([i, d]);
       }
       if (!lc.length) continue;
-      const [li, ld] = lc[Math.floor(rand() * lc.length)] as [number, Dir];
+      const [li, ld] = nth(lc, Math.floor(rand() * lc.length));
       const axis = (walk(e + W) || set.has(e + W)) && (walk(e - W) || set.has(e - W)) ? 1 : 0;
       gate = { cell: e, lever: li, ld, open: false, o: 0, axis };
       const c = r.cells
@@ -3503,7 +3443,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         .sort((a, b) => Math.hypot((a % W) - r.cx, ((a / W) | 0) - r.cy) - Math.hypot((b % W) - r.cx, ((b / W) | 0) - r.cy))[0];
       if (c !== undefined) {
         addFix('relic', c, [1.0, 0.82, 0.42], 1.55, 1.6, 8, '_');
-        const ru = HIST.rulers[Math.floor(rand() * HIST.rulers.length)] as Ruler;
+        const ru = nth(HIST.rulers, Math.floor(rand() * HIST.rulers.length));
         gate.heir = `${ru.title}${ru.name}の遺品`;
       }
       r.kindMsg = '鉄格子の奥の宝物庫。古の王の遺品が、台座の上で静かに光っている。';
@@ -3515,8 +3455,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       for (let i = W * 3; i < N - W * 3; i++)
         if (walk(i) && !liquid[i] && !used.has(i) && i !== stI && i !== startI && cd(i, startI) > 49) all.push(i);
       for (let t2 = 0; t2 < 300 && !gate && all.length; t2++) {
-        const f = all[Math.floor(rand() * all.length)] as number,
-          d = D4[Math.floor(rand() * 4)] as Dir,
+        const f = nth(all, Math.floor(rand() * all.length)),
+          d = nth(D4, Math.floor(rand() * 4)),
           fx = f % W,
           fz = (f / W) | 0,
           cxN = fx + d[0] * 3,
@@ -3546,7 +3486,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         rooms.push(
           newRoom(cxN - 1, czN - 1, 3, 3, 'rect', {
             cells,
-            theme: (rooms[0] as Room).theme,
+            theme: nth(rooms, 0).theme,
             alcove: true,
             kindMsg: '鉄格子の奥の小さな宝物庫。古の王の遺品が、台座の上で静かに光っている。',
           }),
@@ -3563,10 +3503,10 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
           rooms.pop();
           continue;
         }
-        const [li, ld] = lc[Math.floor(rand() * lc.length)] as [number, Dir];
+        const [li, ld] = nth(lc, Math.floor(rand() * lc.length));
         gate = { cell: e, lever: li, ld, open: false, o: 0, axis: d[0] !== 0 ? 0 : 1 };
         addFix('relic', czN * W + cxN, [1.0, 0.82, 0.42], 1.55, 1.6, 8, '_');
-        const ru = HIST.rulers[Math.floor(rand() * HIST.rulers.length)] as Ruler;
+        const ru = nth(HIST.rulers, Math.floor(rand() * HIST.rulers.length));
         gate.heir = `${ru.title}${ru.name}の遺品`;
       }
     }
@@ -3576,8 +3516,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       for (let i = W * 2; i < N - W * 2; i++)
         if (walk(i) && !liquid[i] && !used.has(i) && i !== stI && i !== startI && cd(i, startI) > 49) all.push(i);
       for (let t2 = 0; t2 < 400 && !gate && all.length; t2++) {
-        const f = all[Math.floor(rand() * all.length)] as number,
-          d = D4[Math.floor(rand() * 4)] as Dir,
+        const f = nth(all, Math.floor(rand() * all.length)),
+          d = nth(D4, Math.floor(rand() * 4)),
           e = f + d[0] + d[1] * W,
           c = f + d[0] * 2 + d[1] * W * 2,
           ccx = c % W,
@@ -3606,16 +3546,16 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         rooms.push(
           newRoom(ccx, ccz, 1, 1, 'rect', {
             cells: [c],
-            theme: (rooms[0] as Room).theme,
+            theme: nth(rooms, 0).theme,
             alcove: true,
             kindMsg: '鉄格子の奥の壁龕。古の王の遺品が、ひっそりと光っている。',
           }),
         );
         roomOf[c] = ri;
-        const [li, ld] = lc[Math.floor(rand() * lc.length)] as [number, Dir];
+        const [li, ld] = nth(lc, Math.floor(rand() * lc.length));
         gate = { cell: e, lever: li, ld, open: false, o: 0, axis: d[0] !== 0 ? 0 : 1 };
         addFix('relic', c, [1.0, 0.82, 0.42], 1.55, 1.6, 8, '_');
-        const ru = HIST.rulers[Math.floor(rand() * HIST.rulers.length)] as Ruler;
+        const ru = nth(HIST.rulers, Math.floor(rand() * HIST.rulers.length));
         gate.heir = `${ru.title}${ru.name}の遺品`;
       }
     }
@@ -3646,14 +3586,14 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       cand.push(i);
     }
     for (const i of spread(cand, nT)) {
-      const type = types[Math.floor(rand() * types.length)] as string,
+      const type = nth(types, Math.floor(rand() * types.length)),
         t: Trap = { i, type, hidden: true, used: false };
       if (type === 'flood') {
         const order: number[] = [],
           seen = new Set([i]),
           q = [i];
         for (let h = 0; h < q.length && order.length < 40; h++) {
-          const c = q[h] as number;
+          const c = nth(q, h);
           order.push(c);
           for (const d of D4) {
             const j = c + d[0] + d[1] * W;
@@ -3685,25 +3625,19 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     if (gate) {
       const inside: number[] = [];
       for (let i = 0; i < N; i++) {
-        const rr = roomOf[i] as number;
-        if (
-          rr >= 0 &&
-          (rooms[rr] as Room).kindMsg &&
-          ((rooms[rr] as Room).kindMsg as string).includes('鉄格子の奥') &&
-          walk(i) &&
-          !used.has(i)
-        )
-          inside.push(i);
+        const rr = nth(roomOf, i);
+        const km = rr >= 0 ? nth(rooms, rr).kindMsg : undefined;
+        if (km && km.includes('鉄格子の奥') && walk(i) && !used.has(i)) inside.push(i);
       }
       items.push({
-        i: inside.length ? (inside[Math.floor(rand() * inside.length)] as number) : gate.cell,
+        i: inside.length ? nth(inside, Math.floor(rand() * inside.length)) : gate.cell,
         kind: 'rune',
         rune: (() => {
           if (rand() < 0.5) {
             const wp = weapons;
-            return rollTraits(makeRune(wp[Math.floor(rand() * wp.length)] as string, 0, rand), rand, depth, 1);
+            return rollTraits(makeRune(nth(wp, Math.floor(rand() * wp.length)), 0, rand), rand, depth, 1);
           }
-          const ru = makeRune(RUNE_TYPES.mod[Math.floor(rand() * RUNE_TYPES.mod.length)] as string, 0, rand);
+          const ru = makeRune(nth(RUNE_TYPES.mod, Math.floor(rand() * RUNE_TYPES.mod.length)), 0, rand);
           if (rand() < 0.35) ru.strong = true;
           return ru;
         })(),
@@ -3721,7 +3655,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
         const i = (sz0 + dz) * W + sx0 + dx,
           d = Math.hypot(dx, dz);
         if (i < 0 || i >= N || d > 10) continue;
-        ceil[i] = Math.max(ceil[i] as number, 7 + 6 * (1 - d / 10));
+        ceil[i] = Math.max(nth(ceil, i), 7 + 6 * (1 - d / 10));
       }
   }
   // lights placed with the inhabitants (campfires) still need their visibility, and the light map must include them
@@ -3778,7 +3712,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     floorCount,
     noiseSeed: ns,
     gas: new Float32Array(N),
-    bogList: rooms.flatMap((r) => r.bog).concat([...Array(N).keys()].filter((i) => (roomOf[i] as number) < 0 && liquid[i] === LQ_BOG)),
+    bogList: rooms.flatMap((r) => r.bog).concat([...Array(N).keys()].filter((i) => nth(roomOf, i) < 0 && liquid[i] === LQ_BOG)),
   };
   return { level, lordType, beastType };
 }

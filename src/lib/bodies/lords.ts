@@ -1,4 +1,5 @@
 // 主・機械・忘れられた獣の形（もとは src/game/07-bodies-lords.js・08-bodies-shadow.js・10-bodies-beast.js）。
+import { nth } from '../array.ts';
 import { hsl2rgb } from '../color.ts';
 import { G } from '../glyphs.ts';
 import type { History } from '../history.ts';
@@ -65,7 +66,7 @@ export function beastForm(spec: BeastSpec): Body {
         for (let q = 0; q < 4; q++) add(sx * 0.17, 0.42 - q * 0.13, z, mpick(['|', '!', '/']), 0.12, 0.9, part, 0.45, z);
       }
     });
-    for (let k = 0; k < 6; k++) add(0, 0.6 - k * 0.03, -0.55 - k * 0.12, mpick(['~', '-', B[0] as string]), 0.12, 0.9, 'tail', k);
+    for (let k = 0; k < 6; k++) add(0, 0.6 - k * 0.03, -0.55 - k * 0.12, mpick(['~', '-', nth(B, 0)]), 0.12, 0.9, 'tail', k);
     if (spec.wings)
       for (const sd of [-1, 1])
         for (let k = 0; k < 7; k++)
@@ -128,7 +129,7 @@ export function beastForm(spec: BeastSpec): Body {
     const onHead = k < 2 || !spec.eyes;
     const p = onHead
       ? { x: head[0] + (k % 2 ? 0.07 : -0.07), y: head[1] + 0.05, z: head[2] + 0.13 }
-      : (pts[Math.floor(mr() * pts.length)] as Glyph);
+      : nth(pts, Math.floor(mr() * pts.length));
     add(p.x, p.y + 0.05, p.z, 'o', 0.11, 3.0, onHead ? 'head' : 'body');
   }
   return pts;
@@ -470,7 +471,7 @@ export function repairerForm(ty: BodyType): Body {
         piv: y,
       });
     }
-    mLit(pts, tp[0], tp[1], tp[2] + 0.05, tools[j] as string, S * 1.05, 2.6, [0.95, 0.95, 0.9], part, { piv: y });
+    mLit(pts, tp[0], tp[1], tp[2] + 0.05, nth(tools, j), S * 1.05, 2.6, [0.95, 0.95, 0.9], part, { piv: y });
   });
   for (let k = 0; k < 8; k++) mLit(pts, ((k % 3) - 1) * 0.14, 0.86 + Math.floor(k / 3) * 0.13, -0.42, '#', S, 0.9, [0.6, 0.6, 0.58]);
   return pts;
@@ -576,12 +577,15 @@ export function makeBeastType(H: History, runSeed: number) {
     fire: sp.feat === '燃える鱗の',
     shadow: sp.feat === '影を喰らう',
     sing: sp.feat === '歌う',
-    glyphs: [
-      ['#', '%', '&'],
-      ['=', '~', 'x'],
-      ['%', '*', '#'],
-      ['&', '8', '%'],
-    ][Math.floor(rnd() * 4)] as string[],
+    glyphs: nth(
+      [
+        ['#', '%', '&'],
+        ['=', '~', 'x'],
+        ['%', '*', '#'],
+        ['&', '8', '%'],
+      ],
+      Math.floor(rnd() * 4),
+    ),
   };
   const col: Color = spec.fire ? [1.0, 0.42, 0.14] : spec.shadow ? [0.5, 0.32, 0.8] : hsl2rgb(rnd(), 0.75, 0.6);
   const lore = (H.events.find((e) => e.art === 'serpent') || { text: undefined }).text || `その名は、年代記の隅にだけ記されている。`;

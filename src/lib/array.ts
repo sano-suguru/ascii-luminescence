@@ -11,8 +11,14 @@ export function nth<T>(a: ArrayLike<T>, i: number): T {
 }
 
 /** 表 o の欄 k。無ければ RangeError */
-export function lookup<T>(o: Readonly<Record<string, T>>, k: string): T {
+export function lookup<T>(o: Readonly<Record<string, T>>, k: string | number): T {
   const v = o[k];
   if (v === undefined) throw new RangeError(`表に ${k} が無い`);
+  return v;
+}
+
+/** 必ずある値（null でも undefined でもない）。無ければ TypeError。find の結果・pop・Map の get・省ける欄（洞窟の床 cells0 など）に */
+export function must<T>(v: T | null | undefined, what = '値'): T {
+  if (v === null || v === undefined) throw new TypeError(`${what}が無い`);
   return v;
 }

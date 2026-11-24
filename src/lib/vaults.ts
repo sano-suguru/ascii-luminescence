@@ -1,4 +1,5 @@
 // 洞窟の形と宝物庫の絵（もとは src/game/03-vaults-history.js）。迷宮の乱数（rand）を使う。
+import { nth } from './array.ts';
 import { rand } from './random.ts';
 import { D4 } from './world.ts';
 
@@ -24,7 +25,7 @@ export function makeCave(w: number, h: number): number[] | null {
                 yy = y + dy;
               if (xx >= 0 && yy >= 0 && xx < w && yy < h && g[yy * w + xx]) n++;
             }
-          ng[y * w + x] = inE(x, y) >= 0.95 ? 0 : n >= 5 ? 1 : n < 4 ? 0 : (g[y * w + x] as number);
+          ng[y * w + x] = inE(x, y) >= 0.95 ? 0 : n >= 5 ? 1 : n < 4 ? 0 : nth(g, y * w + x);
         }
       g = ng;
     }
@@ -35,7 +36,7 @@ export function makeCave(w: number, h: number): number[] | null {
       const list = [s];
       seen[s] = 1;
       for (let h2 = 0; h2 < list.length; h2++) {
-        const c = list[h2] as number,
+        const c = nth(list, h2),
           x = c % w,
           y = (c / w) | 0;
         for (const d of D4) {
@@ -337,8 +338,8 @@ export function vaultCells(v: { map: readonly string[] }): string[][] {
   if (rand() < 0.5) m = m.slice().reverse();
   if (rand() < 0.5) {
     const t: string[][] = [];
-    for (let x = 0; x < (m[0] as string[]).length; x++) {
-      t.push(m.map((r) => r[x] as string));
+    for (let x = 0; x < nth(m, 0).length; x++) {
+      t.push(m.map((r) => nth(r, x)));
     }
     m = t;
   }

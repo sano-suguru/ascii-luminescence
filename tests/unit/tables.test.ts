@@ -1,4 +1,5 @@
 // src/lib/ の表と小さな道具の単体テスト（world・light・runes・progress・hands・math・color）
+import { lookup, nth } from '../../src/lib/array.ts';
 import { describe, expect, it } from 'vitest';
 import { css } from '../../src/lib/color.ts';
 import { VM_MIRROR, vmGlyph, vmGlyphS } from '../../src/lib/hands.ts';
@@ -59,7 +60,7 @@ describe('移す前と同じ値', () => {
   });
   it('特性の値と説明・反応・装備の画面の括弧', () => {
     const texts: string[] = [];
-    for (const k of Object.keys(R.TRAIT_V) as R.TraitKey[]) for (const lv of R.TRAIT_LVS) texts.push(R.TD[k](lv, '矢'));
+    for (const k of Object.keys(R.TRAIT_V)) for (const lv of R.TRAIT_LVS) texts.push(lookup(R.TD, k)(lv, '矢'));
     for (const [, ts] of Object.entries(R.TRAITS))
       for (const t of Object.values(ts)) for (const lv of R.TRAIT_LVS) texts.push(t.name + t.d(lv));
     const v = [
@@ -82,7 +83,7 @@ describe('移す前と同じ値', () => {
   });
   it('灯りから見えるマスと、点を照らす灯り（シードで決まる迷宮で）', () => {
     const rnd = mulberry32(5),
-      tile = new Uint8Array(W.NCELL).map(() => [0, 1, 1, 1, 2, 3][Math.floor(rnd() * 6)] as number);
+      tile = new Uint8Array(W.NCELL).map(() => nth([0, 1, 1, 1, 2, 3], Math.floor(rnd() * 6)));
     const lights: Light[] = Array.from({ length: 10 }, () => {
       const L = { x: rnd() * 140, y: rnd() * 3, z: rnd() * 92, rad: 2 + rnd() * 14 };
       return { ...L, vis: computeVis(L, tile) };

@@ -1,4 +1,5 @@
 // ルーンと武器の特性・反応・手の枠（もとは src/game/19-hands-runes.js と、18・27 の一部）。
+import { nth } from './array.ts';
 import { css } from './color.ts';
 
 /** 特性の段（0 から 5）。古い JS は数のまま渡すので、範囲の外の段が来ると、移す前と同じく undefined や NaN の文字になる */
@@ -116,8 +117,8 @@ export interface Rune {
 }
 /** 特性の名前（武器 w に無い特性なら、種類の名前のまま） */
 export const trName = (w: string, t: RuneTrait): string => {
-  const tw = TRAITS[w],
-    tr = tw && tw[t.k as TraitKey];
+  const tw: Partial<Record<string, Trait>> | undefined = TRAITS[w],
+    tr = tw && tw[t.k];
   return tr ? tr.name : t.k;
 };
 /** 術（sp）の特性 k の段（無ければ 0） */
@@ -137,7 +138,7 @@ export const TIER_COL: [number, number, number][] = [
 export const weaponCol = (ru: Rune | null | undefined): string => {
   const tr = trList(ru);
   if (!tr.length) return '';
-  return tr.some((t) => t.lv >= 5) || (ru as Rune).named ? css(TIER_COL[3] as [number, number, number]) : '#9fdcf0';
+  return tr.some((t) => t.lv >= 5) || ru?.named ? css(nth(TIER_COL, 3)) : '#9fdcf0';
 };
 
 /** 性質の反応（二つの性質が重なった時） */
