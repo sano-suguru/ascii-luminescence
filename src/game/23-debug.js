@@ -20,7 +20,7 @@ const dbg={
   god(on){ godMode=on===undefined?!godMode:!!on; return godMode; },
   heal(){ player.hp=adv.PLAYER_MAX; return player.hp; },
   reveal(){ here.explored.fill(1); return true; },
-  give(what){ if(what==='slot')openSlot(((player.z/CELL)|0)*MW+((player.x/CELL)|0)); else if(what==='body'){ for(const t of RUNE_TYPES.body)takeRune(makeRune(t,0)); } else if(what==='runes'){ for(const t of Object.keys(RUNE_DEF))if(RUNE_DEF[t].cat!=='sub'&&RUNE_DEF[t].cat!=='open'&&(RUNE_DEF[t].cat!=='mod'||RUNE_TYPES.mod.includes(t)))takeRune(makeRune(t,0)); }
+  give(what){ if(what==='slot')openSlot(((player.z/CELL)|0)*MW+((player.x/CELL)|0)); else if(what==='body'){ for(const t of RUNE_TYPES.body)takeRune(makeRune(t)); } else if(what==='runes'){ for(const t of Object.keys(RUNE_DEF))if(RUNE_DEF[t].cat!=='sub'&&RUNE_DEF[t].cat!=='open'&&(RUNE_DEF[t].cat!=='mod'||RUNE_TYPES.mod.includes(t)))takeRune(makeRune(t)); }
     else if(what==='legends'){ const L=getLegend(); if(L){ for(const k of LEGEND_ORDER)L.have.add(k); renderStatus(); } } else return 'give: slot / body / runes / legends'; renderHotbar(); return true; },
   kill(what){ if(what==='guards'){ const gs=new Set((here.D.items||[]).filter(o=>!o.taken&&o.guardG!==undefined&&Math.hypot(cpos(o.i)[0]-player.x,cpos(o.i)[1]-player.z)<18).map(o=>o.guardG)); let n=0; for(const m of here.monsters)if(!m.dead&&gs.has(m.g)){ damageMonster(m,99999,'debug'); n++; } return n; }
     const m=what==='lord'?here.monsters.find(m=>(m.key==='lord'||m.key==='final')&&!m.dead):here.monsters.filter(m=>!m.dead).sort((a,b)=>Math.hypot(a.x-player.x,a.z-player.z)-Math.hypot(b.x-player.x,b.z-player.z))[0]; if(!m)return false; damageMonster(m,99999,'debug'); return true; },

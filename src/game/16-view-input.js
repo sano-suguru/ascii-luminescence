@@ -83,7 +83,7 @@ function drawMap(){
     mctx.fillText(ch,MPAD+(c+0.5)*MCW,MPAD+(r+0.5)*MCH);
   }
   mctx.shadowBlur=8;
-  for(const it of (here.D.items||[])){ if(it.taken||!here.explored[it.i])continue; if(!it.rune)continue; const tc=TIER_COL[runeTier(it.rune)], c=it.i%MW-ox, r=((it.i/MW)|0)-oy; if(c<0||r<0||c>=MMC||r>=MMR)continue; mctx.shadowColor=css(tc); mctx.fillStyle=css(tc); mctx.fillText('*',MPAD+(c+0.5)*MCW,MPAD+(r+0.5)*MCH); }
+  for(const it of (here.D.items||[])){ if(it.taken||!here.explored[it.i])continue; if(!it.rune)continue; const tc=TIER_COL[0], c=it.i%MW-ox, r=((it.i/MW)|0)-oy; if(c<0||r<0||c>=MMC||r>=MMR)continue; mctx.shadowColor=css(tc); mctx.fillStyle=css(tc); mctx.fillText('*',MPAD+(c+0.5)*MCW,MPAD+(r+0.5)*MCH); }
   for(const tr of (here.D.traps||[])){ if(tr.hidden||!here.explored[tr.i])continue; const c=tr.i%MW-ox, r=((tr.i/MW)|0)-oy; if(c<0||r<0||c>=MMC||r>=MMR)continue; mctx.shadowColor=TRAP_INFO[tr.type][1]; mctx.fillStyle=TRAP_INFO[tr.type][1]; mctx.fillText('^',MPAD+(c+0.5)*MCW,MPAD+(r+0.5)*MCH); }
   if(here.D.gate){ for(const [ci,chr] of [[here.D.gate.cell,here.D.gate.open?'.':'#'],[here.D.gate.lever,'/']]){ if(!here.explored[ci])continue; const c=ci%MW-ox, r=((ci/MW)|0)-oy; if(c<0||r<0||c>=MMC||r>=MMR)continue; mctx.shadowColor='#ffd48a'; mctx.fillStyle='#ffd48a'; mctx.fillText(chr,MPAD+(c+0.5)*MCW,MPAD+(r+0.5)*MCH); } }
   for(const w of (here.D.webs||[])){ if(w.gone||!here.explored[w.i])continue; const c=w.i%MW-ox, r=((w.i/MW)|0)-oy; if(c<0||r<0||c>=MMC||r>=MMR)continue; mctx.shadowColor='#d8c8ff'; mctx.fillStyle='rgba(216,200,255,0.8)'; mctx.fillText('%',MPAD+(c+0.5)*MCW,MPAD+(r+0.5)*MCH); }

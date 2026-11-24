@@ -50,11 +50,11 @@ import { LANTERN, topLights } from '../lib/light.ts';
 import { flowW, jagged, lerpAngle, mCenter, sstep, turnDir } from '../lib/math.ts';
 import { css, hsl2rgb } from '../lib/color.ts';
 import {
-  AFFIX, CAT_BR, CAT_NAME, ELEM_POW, REACT, RUNE_FONT, RUNE_TYPES, RALLY_FROM, SLEEP_MULT, SLOT_MAX, TIER_COL, TL, TRAITS, TRAIT_V, TWO_SLOTS, WEAPON, elemCount, emptyChip, handRunes, serRune, sp_elem, trList, trName, tv, weaponCol,
-  RES, RUNE_DEF, elemCol, handName, modTargets, modVal, modWorks, rollTraits, runeCol, runeName, runeShort, runeTier, syncHand, thingLabel,
+  CAT_BR, CAT_NAME, ELEM_POW, REACT, RUNE_FONT, RUNE_TYPES, RALLY_FROM, SLEEP_MULT, SLOT_MAX, TIER_COL, TL, TRAITS, TRAIT_V, TWO_SLOTS, WEAPON, elemCount, emptyChip, handRunes, serRune, sp_elem, trList, trName, tv, weaponCol,
+  RES, RUNE_DEF, elemCol, handName, modTargets, modVal, modWorks, rollTraits, runeCol, runeName, runeShort, syncHand, thingLabel,
 } from '../lib/runes.ts';
 import {
-  allRunes, atkType, canPutAt, effHand, handsKey, isTwo, makeRune, makeStrong, newHand, restoreHands, rollAffN, snapHands, syncHands, turnElem, wTL,
+  allRunes, atkType, canPutAt, effHand, handsKey, isTwo, makeRune, makeStrong, newHand, restoreHands, snapHands, syncHands, turnElem, wTL,
 } from '../lib/gear.ts';
 import { BLESS, META_DEF, UNLOCKS, expNeed, expOf } from '../lib/progress.ts';
 import { MTYPES } from '../lib/creatures.ts';

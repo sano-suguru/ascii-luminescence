@@ -126,10 +126,10 @@ function drawRunesWorld(t){
     if(guarded&&it.elitePrize){ const b=0.5; dyn(x,0.75,z,G(RUNE_DEF[it.rune.type].ch),0.42,0.5*b,0.45*b,0.5*b); for(let k=0;k<8;k++){ const a=k/8*Math.PI*2+t*0.3; dyn(x+Math.cos(a)*0.4,0.75+Math.sin(a*2)*0.08,z+Math.sin(a)*0.4,G('#'),0.14,0.55,0.25,0.2); } continue; }
     if(!it.rune||guarded){ if(dd<12&&it.altar&&!guarded)altarFill(it.grp); if(!it.rune||guarded){ if(it.altar&&it.slot===1&&it.opt!=='open')for(let k=-1;k<=1;k++){ dyn(x+k*0.55,0.55,z,G('='),0.42,0.4,0.38,0.45); dyn(x+k*0.55,0.25,z,G('#'),0.36,0.3,0.28,0.34); } continue; } }
     if(it.altar)x+=(it.slot-1)*0.55;
-    const c=runeCol(it.rune), tc=TIER_COL[runeTier(it.rune)], b=(1.7+0.5*Math.sin(t*2+it.i+(it.slot||0))), hy=it.pedestal?1.05:it.altar?1.05:0.6;
+    const c=runeCol(it.rune), tc=TIER_COL[0], b=(1.7+0.5*Math.sin(t*2+it.i+(it.slot||0))), hy=it.pedestal?1.05:it.altar?1.05:0.6;
     if(it.pedestal){ dyn(x,0.25,z,G('|'),0.36,0.5,0.48,0.55); dyn(x,0.6,z,G('|'),0.36,0.5,0.48,0.55); dyn(x,0.85,z,G('='),0.34,0.6,0.58,0.65); }
     if(it.altar&&it.slot===1&&it.opt!=='open'){ for(let k=-1;k<=1;k++){ dyn(x+k*0.55,0.55,z,G('='),0.42,0.55,0.52,0.6); dyn(x+k*0.55,0.25,z,G('#'),0.36,0.4,0.38,0.45); } }
-    if(it.opt==='heal'){ dyn(x,hy+Math.sin(t*1.5+it.i+(it.slot||0))*0.06,z,G('+'),0.5,1.0*b,0.5*b,0.58*b); } else { dyn(x,hy+Math.sin(t*1.5+it.i+(it.slot||0))*0.06,z,G(RUNE_DEF[it.rune.type].ch),0.5,c[0]*b,c[1]*b,c[2]*b); if(it.opt==='hone')dyn(x+0.2,hy+0.32,z,G('+'),0.24,1.0*b,0.95*b,0.7*b); }
+    if(it.opt==='heal'){ dyn(x,hy+Math.sin(t*1.5+it.i+(it.slot||0))*0.06,z,G('+'),0.5,1.0*b,0.5*b,0.58*b); } else { dyn(x,hy+Math.sin(t*1.5+it.i+(it.slot||0))*0.06,z,G(RUNE_DEF[it.rune.type].ch),0.5,c[0]*b,c[1]*b,c[2]*b); }
     for(let k=0;k<6;k++){ const a=t*0.8+k/6*Math.PI*2+(it.slot||0); dyn(x+Math.cos(a)*0.3,hy-0.45,z+Math.sin(a)*0.3,G('.'),0.1,tc[0]*1.4,tc[1]*1.4,tc[2]*1.4); } }
   for(const s of (here.D.steles||[])){ const [x,z]=cpos(s.i), d=Math.hypot(x-player.x,z-player.z); if(d>30)continue; const near=d<2.6, g=near?2.2:0.9;
     for(let y=0;y<4;y++)dyn(x,0.25+y*0.42,z,G(y===3?'^':'#'),0.4,0.42,0.4,0.48);

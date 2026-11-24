@@ -9,7 +9,7 @@ import * as R from '../../src/lib/runes.ts';
 import { type Rune } from '../../src/lib/runes.ts';
 import { gear } from '../../src/lib/state.ts';
 
-const ru = (uid: number, type: string, extra: Partial<Rune> = {}): Rune => ({ uid, type, aff: {}, ...extra });
+const ru = (uid: number, type: string, extra: Partial<Rune> = {}): Rune => ({ uid, type, ...extra });
 // 両手持ちの短弓（左右で同じ武器）。左の枠に炎・氷、右の枠に「かわすと」、体に速さの護符、持ち物に強い連鎖
 const bow = ru(1, 'bolt');
 beforeEach(() => {
@@ -55,19 +55,13 @@ describe('両手持ち（src/lib/gear.ts）', () => {
 });
 
 describe('ルーンを作る（src/lib/gear.ts）', () => {
-  it('番号は通しで増え、飾りは付かず、乱数も引かない（移す前と同じ）', () => {
+  it('番号は通しで増える。表に無い種類は止まる', () => {
     gear.runeUid = 40;
-    let calls = 0;
-    expect(
-      G.makeRune('orb', 2, () => {
-        calls++;
-        return 0.5;
-      }),
-    ).toEqual({ uid: 40, type: 'orb', aff: {} });
-    expect(calls).toBe(0);
-    expect(G.makeStrong('m_area')).toEqual({ uid: 41, type: 'm_area', aff: {}, strong: true });
+    expect(G.makeRune('orb')).toEqual({ uid: 40, type: 'orb' });
+    expect(G.makeStrong('m_area')).toEqual({ uid: 41, type: 'm_area', strong: true });
     expect(G.newHand('blade').atk?.uid).toBe(42);
     expect(gear.runeUid).toBe(43);
+    expect(() => G.makeRune('no_such_rune')).toThrow();
   });
 });
 
@@ -99,11 +93,11 @@ describe('ルーンの名前・付け方（src/lib/runes.ts）', () => {
   it('効き方が効くか、武器の特性', () => {
     expect(R.modWorks('chain', G.effHand('L'))).toBe(true);
     expect(R.modWorks('area', { atk: ru(1, 'blade'), slots: [], slotN: 2 })).toBe(false);
-    expect(R.rollTraits(ru(1, 'orb'), Math.random, 7, 1).traits).toEqual([
+    expect(R.rollTraits(ru(1, 'orb'), 7, 1).traits).toEqual([
       { k: 'count', lv: 3 },
       { k: 'bounce', lv: 3 },
     ]);
-    expect(R.rollTraits(ru(1, 'orb'), Math.random, 1).traits).toEqual([]);
-    expect(R.rollTraits(ru(1, 'fire'), Math.random, 9).traits).toBeUndefined();
+    expect(R.rollTraits(ru(1, 'orb'), 1).traits).toEqual([]);
+    expect(R.rollTraits(ru(1, 'fire'), 9).traits).toBeUndefined();
   });
 });
