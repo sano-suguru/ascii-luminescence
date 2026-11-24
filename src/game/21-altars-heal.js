@@ -13,10 +13,10 @@ function dropRune(m){
 function altarFill(grp){ const its=(D.items||[]).filter(o=>o.grp===grp&&o.altar); if(!its.length||its[0].rune)return; const lord=its[0].lord;
   if(its[0].forge){ const fo=forgeOptions(3); its.forEach((it,k)=>{ const f=fo[k]; Object.assign(it,f?{opt:'forge',forgeW:f.w,forgeK:f.k,forgeTo:f.to,rune:{uid:-1,type:'forgeopt',aff:{}}}:{opt:'heal',rune:{uid:-1,type:'mend',aff:{}}}); }); return; }
   const opts=[], usedT=new Set(), usedC=new Set(), held=new Set([hands.L.atk,hands.R.atk].filter(Boolean).map(r=>r.type));
-  const newRune=()=>{ const empty=[]; for(const h of ['L','R']){ const H=hands[h]; for(let i=0;i<(H.slotN||2);i++)if(!H.slots[i])empty.push(mpick(['elem','mod','mod','trig'])); } for(let i=0;i<(runState.bodyOpen||0);i++)if(!hands.B['b'+i])empty.push('body');
+  const newRune=()=>{ const empty=[]; for(const h of ['L','R']){ const H=hands[h]; for(let i=0;i<(H.slotN||2);i++)if(!H.slots[i])empty.push(mpick(['elem','mod','mod','trig'])); } for(let i=0;i<(adv.runState.bodyOpen||0);i++)if(!hands.B['b'+i])empty.push('body');
     for(let tries=0;tries<16;tries++){ let t; if(empty.length&&mr()<0.5){ const c=empty[Math.floor(mr()*empty.length)], a=RUNE_TYPES[c].filter(t=>!lockedOf('rune',t)); t=a[Math.floor(mr()*a.length)]; } else t=randomRuneType(mr,lord?{elem:0.3,trig:0.15,mod:0.35,body:0.2}:{elem:0.4,trig:0.12,mod:0.38,body:0.1}); if(usedT.has(t)||(tries<10&&usedC.has(RUNE_DEF[t].cat)))continue; usedT.add(t); usedC.add(RUNE_DEF[t].cat); return {opt:'rune',rune:RUNE_DEF[t].cat==='mod'&&mr()<(lord?0.5:0.05)?makeStrong(t):makeRune(t,0)}; } return null; };
   const weapon=()=>{ const pool=weaponPool().filter(t=>!usedT.has(t)); if(!pool.length)return null; const t=pool[Math.floor(mr()*pool.length)]; usedT.add(t); return {opt:'rune',rune:rollTraits(makeRune(t,0),mr,depth,lord?2:0)}; };
-  const heal=()=>player.hp<PLAYER_MAX*0.85?{opt:'heal',rune:{uid:-1,type:'mend',aff:{}}}:null;
+  const heal=()=>player.hp<adv.PLAYER_MAX*0.85?{opt:'heal',rune:{uid:-1,type:'mend',aff:{}}}:null;
   const forge=()=>{ const f=forgeOptions(1)[0]; return f?{opt:'forge',forgeW:f.w,forgeK:f.k,forgeTo:f.to,rune:{uid:-1,type:'forgeopt',aff:{}}}:null; };
   opts.push((lord||mr()<0.08)?(weapon()||newRune()):newRune()); opts.push(lord?(forge()||newRune()):newRune()); opts.push(heal()||newRune()); for(let k=0;k<3;k++)if(!opts[k])opts[k]={opt:'heal',rune:{uid:-1,type:'mend',aff:{}}};
   shuffle(opts,mr); its.forEach((it,k)=>Object.assign(it,opts[k])); }
@@ -34,7 +34,7 @@ function forgeOptions(n){ const ws=[...new Set([hands.L.atk,hands.R.atk].filter(
     for(const k of pool)if(!tr.some(t=>t.k===k))cands.push({w,k,from:0,to:1}); }
   const out=[]; while(out.length<n&&cands.length){ out.push(cands.splice(Math.floor(mr()*cands.length),1)[0]); } return out; }
 function placeAltar(at,grp,extra){ for(let k=0;k<3;k++)D.items.push(Object.assign({i:at,kind:'rune',rune:null,grp,altar:true,slot:k,taken:false},extra||{})); }
-function forgeDepthOf(k){ const h=Math.imul(runSeed^0x2f6b1c3d,2654435761)>>>0, span={cavern:[3,5],ruins:[6,8],magma:[9,11]}[k]; if(!span)return -1; return span[0]+(h>>>({cavern:0,ruins:3,magma:6}[k]))%(span[1]-span[0]+1); }
+function forgeDepthOf(k){ const h=Math.imul(adv.runSeed^0x2f6b1c3d,2654435761)>>>0, span={cavern:[3,5],ruins:[6,8],magma:[9,11]}[k]; if(!span)return -1; return span[0]+(h>>>({cavern:0,ruins:3,magma:6}[k]))%(span[1]-span[0]+1); }
 function mainPathAltars(r,free){ if(D.stratum.special||D.finalVault)return; const W=MW, N=D.tile.length, ok=i=>i>=0&&i<N&&D.tile[i]===TF&&D.liquid[i]!==LQ_DEEP&&D.liquid[i]!==LQ_LAVA;
   const bfs=s=>{ const d=new Int32Array(N).fill(-1); if(s==null||s<0||!ok(s))return d; const q=[s]; d[s]=0; for(let h=0;h<q.length;h++){ const c=q[h]; for(const o of [1,-1,W,-W]){ const j=c+o; if(ok(j)&&d[j]<0){ d[j]=d[c]+1; q.push(j); } } } return d; };
   const dS=bfs(D.start), goal=D.stairs>=0?D.stairs:(D.bstairs?D.bstairs.cell:-1), dT=bfs(goal), L=goal>=0&&dS[goal]>0?dS[goal]:0;
@@ -113,13 +113,13 @@ function rallyOnHit(m,n,how){ if(!(player.rally>0)||!RALLY_FROM.has(how)||m.ty.c
   const sc=m.ty.scale||1, k=kill?Math.min(16,6+Math.round(gain*2)):Math.min(5,1+Math.round(gain)), per=gain/k, src=kill&&m.form?m.form:null;
   for(let q=0;q<k;q++){ let x=m.x,y=m.y+0.6*sc,z=m.z; if(src){ const p=src[Math.floor(mr()*src.length)], cy=Math.cos(m.yaw), sy=Math.sin(m.yaw); x=m.x+(p.x*cy+p.z*sy)*sc; y=m.y+p.y*sc; z=m.z+(-p.x*sy+p.z*cy)*sc; }
     rallyMotes.push({x0:x,y0:y,z0:z,t:-q*0.03,dur:0.38+mr()*0.12,amt:per,c:m.ty.col||[1,0.9,0.7],wob:mr()*6.28}); } }
-function updateRally(dt){ if(dead)return; const mn=bodyN('mend');
+function updateRally(dt){ if(adv.dead)return; const mn=bodyN('mend');
   if(player.rally>0&&time-(player.lastHurt||-99)>0.6){ player.rally=Math.max(0,player.rally-dt*(player.rallyRate||2)); }
   const tx=player.x, ty=(ui.camMode==='tps'?1.0:player.eye-0.35), tz=player.z;
   for(const p of rallyMotes){ p.t+=dt; if(p.t<0)continue; const f=Math.min(1,p.t/p.dur), e=f*f*(3-2*f), arc=Math.sin(f*Math.PI)*0.35;
     const x=p.x0+(tx-p.x0)*e+Math.cos(p.wob)*arc*0.4, y=p.y0+(ty-p.y0)*e+arc, z=p.z0+(tz-p.z0)*e+Math.sin(p.wob)*arc*0.4, b=1.6+1.2*f;
     dyn(x,y,z,G(f<0.5?'*':'.'),0.12,(p.c[0]*0.5+0.6)*b,(p.c[1]*0.5+0.55)*b,(p.c[2]*0.5+0.4)*b,0,0);
-    if(f>=1&&!p.done){ p.done=true; player.hp=Math.min(PLAYER_MAX,player.hp+p.amt); vfx.hpFlash=0.35; if(sndReady()&&time-rallyChime>0.12){ rallyChime=time; sChime(player.x,player.z,0.12); } } }
+    if(f>=1&&!p.done){ p.done=true; player.hp=Math.min(adv.PLAYER_MAX,player.hp+p.amt); vfx.hpFlash=0.35; if(sndReady()&&time-rallyChime>0.12){ rallyChime=time; sChime(player.x,player.z,0.12); } } }
   rallyMotes=rallyMotes.filter(p=>!p.done);
   vfx.hpFlash=Math.max(0,vfx.hpFlash-dt);
   const rs=Math.round((player.rally||0)*4)+(vfx.hpFlash>0?1000:0); if(rs!==rallyShown){ rallyShown=rs; renderStatus(); } }
@@ -133,12 +133,12 @@ function drawSprings(t){ for(const it of (D.items||[])){ if(it.kind!=='spring')c
 function placeRunesForLevel(){
   D.items=D.items||[]; const seed=levelSeed(), r=mulberry32(seed^0x5eed1);
   const free=c=>c>=0&&c<NCELL&&D.tile[c]===TF&&!D.liquid[c]&&!D.solid.has(c)&&c!==D.stairs&&c!==D.upstairs&&!D.items.some(it=>it.i===c);
-  if(depth===1&&!branch&&!realm&&!runState.startChosen){
+  if(depth===1&&!branch&&!realm&&!adv.runState.startChosen){
     const s=D.start, cand=[]; for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){ const d=Math.hypot(dx,dz); if(d<1.8||d>3.2)continue; const c=s+dx+dz*MW; if(free(c))cand.push([Math.atan2(dz,dx),c]); }
     cand.sort((a,b)=>a[0]-b[0]); const els=shuffle(RUNE_TYPES.elem.slice(),r).slice(0,3);
     if(cand.length>=3){ const step=cand.length/3; for(let k=0;k<3;k++)D.items.push({i:cand[Math.floor(k*step+step/2)][1],kind:'rune',rune:makeRune(els[k],0,r),grp:'start',pedestal:true,taken:false}); }
   }
-  if(depth===1&&!branch&&!realm&&!runState.altar1){
+  if(depth===1&&!branch&&!realm&&!adv.runState.altar1){
     const rooms=D.rooms.filter((ro,ri)=>ri>0&&!ro.cave&&ro.cells.length>12); const ro=rooms.length?rooms[Math.floor(r()*rooms.length)]:null;
     const c=ro?ro.cells.filter(free):[]; if(c.length){ const at=c[Math.floor(c.length/2)];
       const opts=[...shuffle(RUNE_TYPES.elem.slice(),r).slice(0,2),RUNE_TYPES.trig[Math.floor(r()*2)]];
@@ -148,7 +148,7 @@ function placeRunesForLevel(){
   // steles beside the stairs and gates: swap runes there at once
   D.steles=[]; for(const c0 of [D.stairs,D.upstairs,D.bstairs&&D.bstairs.cell,D.portal&&D.portal.cell]){ if(c0===undefined||c0===null||c0<0)continue;
     const nb=[1,-1,MW,-MW,MW+1,MW-1,-MW+1,-MW-1].map(o=>c0+o).find(free); if(nb!==undefined)D.steles.push({i:nb,g:RUNE_CHARS[Math.floor(r()*RUNE_CHARS.length)]}); }
-  D.items.forEach((it,k)=>{ if(runState.taken.has(seed+':'+k+':'+it.kind))it.taken=true; });
+  D.items.forEach((it,k)=>{ if(adv.runState.taken.has(seed+':'+k+':'+it.kind))it.taken=true; });
 }
 const nearStele=()=>(gallery&&gallery.mode==='range')||(D.steles||[]).some(s=>{ const [x,z]=cpos(s.i); return Math.hypot(x-player.x,z-player.z)<2.6; })||(D.items||[]).some(o=>o.altar&&o.slot===1&&(()=>{ const [x,z]=cpos(o.i); return Math.hypot(x-player.x,z-player.z)<2.6; })());
 const guardedNow=it=>it.guardG!==undefined&&monsters.some(m=>!m.dead&&m.g===it.guardG);
@@ -156,20 +156,20 @@ function pickupItems(){
   for(let k=0;k<(D.items||[]).length;k++){ const it=D.items[k]; if(it.taken)continue; if(it.kind==='rune'&&it.guardG!==undefined){ const gd=guardedNow(it); if(it.wasGuarded&&!gd&&!(D.lit||(D.lit=new Set())).has(it.grp||it.i)){ D.lit.add(it.grp||it.i); const [lx,lz]=cpos(it.i); sChime(lx,lz,0.5); msg(it.elitePrize?'<b style="color:#ffd27a">*</b>番人が倒れた。守られていたルーンが、手の届く光になった。':'<b style="color:#ffd27a">_</b>祭壇に光が灯った。'); } it.wasGuarded=gd; if(gd)continue; }
     if(it.kind==='legend'){ if(it.born&&time-it.born<1)continue; const [lx,lz]=cpos(it.i); if(Math.hypot(lx-player.x,lz-player.z)<0.9){ it.taken=true; pickLegend(it); } continue; }
     if(it.kind==='grave'){ const [gx,gz]=cpos(it.i); if(Math.hypot(gx-player.x,gz-player.z)<0.9){ it.taken=true; takeRune(it.rune); msg(`<b style="color:#c8c8d8">+</b>前の冒険者の形見を、墓から拾った：${thingLabel(it.rune)}`); META.grave=null; saveMeta(); sChime(gx,gz,0.4); } continue; }
-    if(it.kind==='spring'){ const [sx,sz]=cpos(it.i); if(player.hp<PLAYER_MAX-0.5&&Math.hypot(sx-player.x,sz-player.z)<0.9){ it.taken=true; runState.taken.add(levelSeed()+':'+k+':spring'); player.hp=PLAYER_MAX; player.rally=0; vfx.hpFlash=0.6; renderStatus(); sChime(sx,sz,0.5); setTimeout(()=>sChime(sx,sz,0.35),200); msg('<b style="color:#8fe0ff">~</b>泉の光が体を満たし、傷がすっかり癒えた。泉は静かに光を失った。'); for(let q=0;q<30;q++){ const a=mr()*6.28; spawn(player.x+Math.cos(a)*0.5,0.2+mr(),player.z+Math.sin(a)*0.5,Math.cos(a)*0.4,0.8+mr(),Math.sin(a)*0.4,1.0,G(mpick(['*','.','~'])),0.12,0.8,1.8,2.2,0); } } continue; }
+    if(it.kind==='spring'){ const [sx,sz]=cpos(it.i); if(player.hp<adv.PLAYER_MAX-0.5&&Math.hypot(sx-player.x,sz-player.z)<0.9){ it.taken=true; adv.runState.taken.add(levelSeed()+':'+k+':spring'); player.hp=adv.PLAYER_MAX; player.rally=0; vfx.hpFlash=0.6; renderStatus(); sChime(sx,sz,0.5); setTimeout(()=>sChime(sx,sz,0.35),200); msg('<b style="color:#8fe0ff">~</b>泉の光が体を満たし、傷がすっかり癒えた。泉は静かに光を失った。'); for(let q=0;q<30;q++){ const a=mr()*6.28; spawn(player.x+Math.cos(a)*0.5,0.2+mr(),player.z+Math.sin(a)*0.5,Math.cos(a)*0.4,0.8+mr(),Math.sin(a)*0.4,1.0,G(mpick(['*','.','~'])),0.12,0.8,1.8,2.2,0); } } continue; }
     if(it.kind==='slot'){ if(it.born&&time-it.born<1)continue; const [sx,sz]=cpos(it.i); if(Math.hypot(sx-player.x,sz-player.z)<0.9){ it.taken=true; openSlot(it.i); } continue; }
     if(it.kind!=='rune'||!it.rune)continue; if(it.born&&time-it.born<0.6)continue; const [x,z]=cpos(it.i);
     if(it.altar)continue; if(Math.hypot(x-player.x,z-player.z)>0.75)continue;
     grabItem(it,k,x,z); }
 }
 function grabItem(it,k,x,z,dest){
-    it.taken=true; runState.taken.add(levelSeed()+':'+k+':rune');
-    if(it.grp){ D.items.forEach((o,j)=>{ if(o!==it&&o.grp===it.grp&&!o.taken){ o.taken=true; runState.taken.add(levelSeed()+':'+j+':rune'); const [ox,oz]=cpos(o.i); for(let q=0;q<12;q++){ const a=mr()*6.28; spawn(ox+(o.altar?(o.slot-1)*0.55:0),0.95,oz,Math.cos(a)*0.8,0.3+mr()*0.6,Math.sin(a)*0.8,0.9,G('.'),0.1,0.8,0.75,1.0,0); } } }); }
-    if(it.grp==='start')runState.startChosen=true; if(it.grp==='altar1')runState.altar1=true;
+    it.taken=true; adv.runState.taken.add(levelSeed()+':'+k+':rune');
+    if(it.grp){ D.items.forEach((o,j)=>{ if(o!==it&&o.grp===it.grp&&!o.taken){ o.taken=true; adv.runState.taken.add(levelSeed()+':'+j+':rune'); const [ox,oz]=cpos(o.i); for(let q=0;q<12;q++){ const a=mr()*6.28; spawn(ox+(o.altar?(o.slot-1)*0.55:0),0.95,oz,Math.cos(a)*0.8,0.3+mr()*0.6,Math.sin(a)*0.8,0.9,G('.'),0.1,0.8,0.75,1.0,0); } } }); }
+    if(it.grp==='start')adv.runState.startChosen=true; if(it.grp==='altar1')adv.runState.altar1=true;
     if(it.opt==='forge'){ const w=it.forgeW, t=trList(w).find(t=>t.k===it.forgeK); if(t)t.lv=it.forgeTo; else { w.traits=w.traits||[]; w.traits.push({k:it.forgeK,lv:it.forgeTo}); }
       msg(`<b style="color:#bcdcff">T</b>${RUNE_DEF[w.type].name}の「${trName(w.type,{k:it.forgeK})}」が Lv${it.forgeTo} になった。`); sChime(x,z,0.5); renderHotbar(); if(ui.invOpen)renderInv(); return; }
-    if(it.opt==='open'){ applyOpen(it.target); if(runState.slotPend===it.grp)runState.slotPend=null; msg(`<b style="color:#ffe3a0">{ }</b>${it.label}が開いた。`); sChime(x,z,0.5); return; }
-    if(it.opt==='heal'){ player.hp=Math.min(PLAYER_MAX,player.hp+PLAYER_MAX*0.7); renderStatus(); msg('<b style="color:#ff9aa8">+</b>温かな光が、傷を塞いでいく。'); sChime(x,z,0.45); return; }
+    if(it.opt==='open'){ applyOpen(it.target); if(adv.runState.slotPend===it.grp)adv.runState.slotPend=null; msg(`<b style="color:#ffe3a0">{ }</b>${it.label}が開いた。`); sChime(x,z,0.5); return; }
+    if(it.opt==='heal'){ player.hp=Math.min(adv.PLAYER_MAX,player.hp+adv.PLAYER_MAX*0.7); renderStatus(); msg('<b style="color:#ff9aa8">+</b>温かな光が、傷を塞いでいく。'); sChime(x,z,0.45); return; }
     if(it.opt==='hone'){ const ru=allRunes().find(o=>o.uid===it.hone.uid); if(ru){ ru.aff[it.hone.k]=it.hone.v; msg(`<b class="rn" style="color:${css(runeCol(ru))}">${RUNE_DEF[ru.type].ch}</b>${RUNE_DEF[ru.type].name}のルーンに、${AFFIX[it.hone.k].fmt(it.hone.v)} が宿った。`); renderHotbar(); if(ui.invOpen)renderInv(); } else msg('<span class="lab">宿すはずのルーンは、もう手元にない。光は静かに消えた。</span>'); sChime(x,z,0.45); return; }
     if(dest){ placeChosen(it.rune,dest,!!it.altar); sChime(x,z,0.45); return; }
     takeRune(it.rune,it.grp==='start'?'R':null,!!it.altar); sChime(x,z,0.45); if(it.vault)vaultSprung(it);
@@ -180,18 +180,18 @@ function placeChosen(ru,dest,fromAltar){ if(!RSEEN.has(ru.type)){ RSEEN.add(ru.t
 // the altar's comparison panel: near a lit altar, its three choices side by side; 1, 2, 3 choose (touching still works). The game does not pause.
 let altarNear=null, altarPanelKey='', altarSel=null, altarAim=-1, altarDismissed=null;
 function runeDest(ru){ const def=RUNE_DEF[ru.type], cat=def.cat;
-  if(cat==='body'){ const i=[0,1].slice(0,runState.bodyOpen||0).find(i=>!hands.B['b'+i]); return i!==undefined?'身の護符の枠へ':'袋へ'; }
+  if(cat==='body'){ const i=[0,1].slice(0,adv.runState.bodyOpen||0).find(i=>!hands.B['b'+i]); return i!==undefined?'身の護符の枠へ':'袋へ'; }
   if(cat==='atk'){ const h=['R','L'].find(h=>!hands[h].atk); return h?`${h==='L'?'左':'右'}手へ`:'袋へ'; }
   const p=freeSlotFor(ru); return p?`${p[0]==='L'?'左':'右'}手のルーンの枠へ`:'袋へ'; }
 function altarLine(o){ const K=t=>t+' '.repeat(Math.max(2,12-visW(t))); // the label column is 12 wide (the longest, 枠を開ける, is 10)
-  if(o.opt==='heal')return `${K('癒し')}<b style="color:#ff9aa8">+</b> 体力 ${Math.round(player.hp)} → ${Math.round(Math.min(PLAYER_MAX,player.hp+PLAYER_MAX*0.7))}`;
+  if(o.opt==='heal')return `${K('癒し')}<b style="color:#ff9aa8">+</b> 体力 ${Math.round(player.hp)} → ${Math.round(Math.min(adv.PLAYER_MAX,player.hp+adv.PLAYER_MAX*0.7))}`;
   if(o.opt==='open')return `${K('枠を開ける')}<b style="color:#ffe3a0">{ }</b> ${o.label}`;
   if(o.opt==='forge'){ const w=o.forgeW, cur=(trList(w).find(t=>t.k===o.forgeK)||{lv:0}).lv; return `${K('鍛える')}<span style="color:#bcdcff">${RUNE_DEF[w.type].name}</span>の ${trName(w.type,{k:o.forgeK})}　<span class="lab">${cur?`Lv${cur} → Lv${o.forgeTo}`:`を足す（Lv1）`}</span>`; }
   const d=RUNE_DEF[o.rune.type], br=CAT_BR[d.cat]||['',''], kind=d.cat==='atk'?'武器':d.cat==='body'?'護符':'ルーン';
   if(d.cat==='atk'){ const tr=trList(o.rune), wc=weaponCol(o.rune); return `${K(kind)}<span${wc?` style="color:${wc}"`:''}>${d.name}</span>　<span class="lab">${tr.length?tr.map(t=>`${trName(o.rune.type,t)} Lv${t.lv}`).join('・'):d.desc}</span>`; }
   return `${K(kind)}${br[0]}<b class="rn" style="color:${css(runeCol(o.rune))}">${d.ch}</b> <span${o.rune.strong?` style="color:${css(TIER_COL[3])}"`:''}>${runeName(o.rune)}</span>${br[1]}　<span class="lab">${CAT_NAME[d.cat]}${o.rune.strong?'・強い版':''}</span>`; }
 function altarDetail(o){ if(!o)return ['<span class="lab">選択肢にマウスを乗せると、ここに説明が出る</span>','','','',''];
-  if(o.opt==='heal')return ['<b style="color:#ff9aa8">+</b> 癒し',`    <span class="lab">体力 ${Math.round(player.hp)} → ${Math.round(Math.min(PLAYER_MAX,player.hp+PLAYER_MAX*0.7))}</span>`,'    <span class="lab">温かな光が、傷を大きく塞ぐ</span>','',''];
+  if(o.opt==='heal')return ['<b style="color:#ff9aa8">+</b> 癒し',`    <span class="lab">体力 ${Math.round(player.hp)} → ${Math.round(Math.min(adv.PLAYER_MAX,player.hp+adv.PLAYER_MAX*0.7))}</span>`,'    <span class="lab">温かな光が、傷を大きく塞ぐ</span>','',''];
   if(o.opt==='open')return [`<b style="color:#ffe3a0">{ }</b> ${o.label}`,'    <span class="lab">選ぶと、その枠が開く。ほかの選択肢は消える</span>','','',''];
   if(o.opt==='forge'){ const w=o.forgeW; return [`<b style="color:#bcdcff">T</b> ${RUNE_DEF[w.type].name}を鍛える`,`    <span class="lab">${trName(w.type,{k:o.forgeK})} Lv${o.forgeTo}：${trDesc(w.type,{k:o.forgeK,lv:o.forgeTo})}</span>`,'    <span class="dim">今持っている武器が、その場で鍛えられる</span>','','']; }
   return detailLines(o.rune); }
@@ -215,11 +215,11 @@ function setAltarDetail(o){ const el=document.getElementById('altarp'); if(!el)r
 function openAltar(){ const el=document.getElementById('altarp'); if(!el)return; ui.altarOpen=true; document.body.classList.toggle('paused',true);
   if(castSt){ castSt=null; beamSegs=[]; } if(ui.locked&&document.exitPointerLock)document.exitPointerLock(); renderAltar(); el.classList.add('show','open'); renderHotbar(); }
 function closeAltar(dismiss){ const el=document.getElementById('altarp'); ui.altarOpen=false; if(dismiss)altarDismissed=altarNear; if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused());
-  if(!plFailed&&ui.started&&!dead)tryLock(); updateResume(); }
-function updateAltarPanel(){ const el=document.getElementById('altarp'); if(!el)return; if(ui.lvlOpen)return; if(lvl.pending>0&&ui.started&&!dead&&!isPaused()){ openLevelUp(); return; }
-  if(ui.altarOpen){ if(!D||!ui.started||dead||!altarOpts().length)closeAltar(false); return; }
+  if(!plFailed&&ui.started&&!adv.dead)tryLock(); updateResume(); }
+function updateAltarPanel(){ const el=document.getElementById('altarp'); if(!el)return; if(ui.lvlOpen)return; if(adv.lvl.pending>0&&ui.started&&!adv.dead&&!isPaused()){ openLevelUp(); return; }
+  if(ui.altarOpen){ if(!D||!ui.started||adv.dead||!altarOpts().length)closeAltar(false); return; }
   altarNear=null;
-  if(ui.started&&!dead&&!isPaused()&&D){ let best=null, bd=1.5; for(const it of (D.items||[])){ if(it.taken||!it.altar||!it.rune||it.slot!==1)continue; if(it.guardG!==undefined&&guardedNow(it))continue; const [x,z]=cpos(it.i), d=Math.hypot(x-player.x,z-player.z); if(d<bd){ bd=d; best=it; } } if(best)altarNear=best.grp; }
+  if(ui.started&&!adv.dead&&!isPaused()&&D){ let best=null, bd=1.5; for(const it of (D.items||[])){ if(it.taken||!it.altar||!it.rune||it.slot!==1)continue; if(it.guardG!==undefined&&guardedNow(it))continue; const [x,z]=cpos(it.i), d=Math.hypot(x-player.x,z-player.z); if(d<bd){ bd=d; best=it; } } if(best)altarNear=best.grp; }
   if(!altarNear){ altarDismissed=null; if(el.classList.contains('show'))el.classList.remove('show','open'); return; }
   if(altarDismissed===altarNear)return;
   openAltar(); }
@@ -232,7 +232,7 @@ function takeRune(ru,prefer,fromAltar){
   if(!RSEEN.has(ru.type)){ RSEEN.add(ru.type); saveSet('al_runes',RSEEN); }
   if(mergeMod(ru))return;
   const def=RUNE_DEF[ru.type], col=runeCol(ru), order=prefer?[prefer,prefer==='R'?'L':'R']:['R','L']; let where='';
-  if(def.cat==='body'){ const i=[0,1].slice(0,runState.bodyOpen||0).find(i=>!hands.B['b'+i]); if(i!==undefined){ hands.B['b'+i]=ru; where='身に着けた'; } else { bag.push(ru); where='袋に収めた'; } }
+  if(def.cat==='body'){ const i=[0,1].slice(0,adv.runState.bodyOpen||0).find(i=>!hands.B['b'+i]); if(i!==undefined){ hands.B['b'+i]=ru; where='身に着けた'; } else { bag.push(ru); where='袋に収めた'; } }
   else if(def.cat==='atk'){ const two=def.two, h=two?(!hands.L.atk&&!hands.R.atk?'R':null):(isTwo()?null:order.find(h=>!hands[h].atk)); if(h){ equipWeapon(h,ru); where=two?'両手で持った':`${h==='L'?'左':'右'}手に持った`; } else { bag.push(ru); where='袋に収めた'; } }
   else { const p=freeSlotFor(ru,order); if(p){ slotSet(p[0],p[1],ru); where=`${p[0]==='L'?'左':'右'}手に宿った`; } else { bag.push(ru); where='袋に収めた'; } }
   syncHands(); msg(`<b class="rn" style="color:${css(col)}">${def.ch}</b>${thingLabel(ru)}を手にした。${where}。`); renderHotbar(); if(ui.invOpen)renderInv();

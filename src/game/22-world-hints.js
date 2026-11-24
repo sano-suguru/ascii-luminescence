@@ -31,7 +31,7 @@ function computeOmen(){ const o={stairs:null,branch:null,portal:null,traces:[],s
   else if(!realm&&D.stairs>=0&&!D.finalVault&&depth<FINAL_DEPTH){ const ik=!inter?interAfter(depth):null; if(ik)o.stairs={kind:'special',key:ik}; else { const nd=depth+1, a=inter?SPECIALS[inter.key]:stratumAtDepth(depth), b=stratumAtDepth(nd); if(a&&b&&a.k!==b.k)o.stairs={kind:'stratum',key:b.k}; } }
   if(D.bstairs)o.branch={key:D.bstairs.key,cell:D.bstairs.cell};
   if(D.portal)o.portal={key:D.portal.key,cell:D.portal.cell};
-  const lay=(cell,key,strong)=>{ const [cx,cz]=cpos(cell), n=strong?44:24, R=strong?6:4.2, rr=mulberry32((cell*7919+runSeed)>>>0);
+  const lay=(cell,key,strong)=>{ const [cx,cz]=cpos(cell), n=strong?44:24, R=strong?6:4.2, rr=mulberry32((cell*7919+adv.runSeed)>>>0);
     for(let k=0;k<n;k++){ const a=rr()*6.28, d=0.9+rr()*(R-0.9), x=cx+Math.cos(a)*d, z=cz+Math.sin(a)*d, ci=((z/CELL)|0)*MW+((x/CELL)|0); if(ci<0||ci>=D.tile.length||D.tile[ci]!==TF)continue; o.traces.push({x,z,key,r:rr(),a:rr()*6.28}); } };
   if(o.branch)lay(o.branch.cell,o.branch.key,false);
   if(o.stairs&&o.stairs.kind==='branch')lay(D.stairs,o.stairs.key,o.stairs.strong);
@@ -64,7 +64,7 @@ function drawOmens(t,dt){ if(!D||gallery)return; const o=omenOf(); if(!o)return;
 // ---------------------------------------------------------------- direction arrows: from a point just above the hands, arrows spread out toward places - straight-line direction only, never the way;
 // near ones short and thick, far ones long and thin. The stairs are always known; gates once seen; altars from 20 m; springs, treasuries and guarded prizes from 12 m. A place in plain sight needs no arrow.
 const arrowCv=document.getElementById('arrows'), arrowCtx=arrowCv?arrowCv.getContext('2d'):null;
-function arrowTargets(){ const out=[]; if(!D||!ui.started||dead)return out; const pc=((player.z/CELL)|0)*MW+((player.x/CELL)|0), atHub=D.hub&&D.roomOf[pc]===D.hub.ri, far=atHub?1.5:1;
+function arrowTargets(){ const out=[]; if(!D||!ui.started||adv.dead)return out; const pc=((player.z/CELL)|0)*MW+((player.x/CELL)|0), atHub=D.hub&&D.roomOf[pc]===D.hub.ri, far=atHub?1.5:1;
   // standing at the crossroads, presences around are felt from farther off
   const P=(cell,ch,col,range,seenOnly,vague)=>{ if(cell==null||cell<0)return; if(seenOnly&&!explored[cell])return; const [x,z]=cpos(cell), d=Math.hypot(x-player.x,z-player.z); if(range&&d>range*far)return;
     // a thing not yet seen is only a presence: a '?' in the colour of its light
@@ -83,7 +83,7 @@ function inPlainSight(t){ if(t.d>22)return false; const [ox,oy,oz]=aimOrigin(), 
   if((dx*vx+dy*vy+dz*vz)/L<Math.cos(0.5))return false; return losClear(ox,oy,oz,t.x,0.9,t.z); }
 let arrowsDrawn=false;
 function drawArrows(){ if(!arrowCtx)return; const W=Math.round(arrowCv.clientWidth*devicePixelRatio), H=Math.round(arrowCv.clientHeight*devicePixelRatio), c=arrowCtx; if(arrowCv.width!==W||arrowCv.height!==H){ arrowCv.width=W; arrowCv.height=H; } if(arrowsDrawn){ c.clearRect(0,0,W,H); arrowsDrawn=false; }
-  if(!ui.started||dead||isPaused()||gallery)return; const ts=arrowTargets().filter(t=>!inPlainSight(t)); if(!ts.length)return; arrowsDrawn=true;
+  if(!ui.started||adv.dead||isPaused()||gallery)return; const ts=arrowTargets().filter(t=>!inPlainSight(t)); if(!ts.length)return; arrowsDrawn=true;
   const k=devicePixelRatio, ox=W/2, oy=H*0.66, r0=46*k, ps=player.yaw, fx=-Math.sin(ps), fz=-Math.cos(ps), rx=Math.cos(ps), rz=-Math.sin(ps), FONT='"M PLUS 1 Code","BIZ UDGothic",monospace';
   c.textAlign='center'; c.textBaseline='middle'; c.lineJoin='round';
   // the ring the arrows spread from
@@ -223,7 +223,7 @@ function updateCross(dt){
   const el=document.getElementById('cross'); if(!el)return;
   slowFx+=((castSt?1:0)-slowFx)*Math.min(1,(dt||0.016)*8); finalPass.uniforms.uSlow.value=slowFx;
   if(castSt){ const c=elemCol(hands[castSt.h].elem?hands[castSt.h].elem.type:null); finalPass.uniforms.uTint.value.set(c[0],c[1],c[2]); }
-  const tg=ui.started&&!dead&&!isPaused()?aimTarget():null;
+  const tg=ui.started&&!adv.dead&&!isPaused()?aimTarget():null;
   // the sight: a small dot; it is flanked when it holds a creature; while chanting, the runes of that hand close in on it and, when the chant is full, rest beside it and pulse
   let txt='·', col='rgba(225,215,255,.55)', cls='';
   if(castSt){ const H=hands[castSt.h], k=Math.min(1,castSt.t/Math.max(0.01,castSt.need)), c0=elemCol(H.elem?H.elem.type:null), c=c0.map(v=>v*0.72+0.25), gap=castSt.full?0:Math.max(0,3-Math.round(k*3));

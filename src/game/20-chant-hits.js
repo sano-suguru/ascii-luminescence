@@ -3,11 +3,11 @@ let beamRun=null;
 let hitStopUntil=0;
 const timeScale=()=>performance.now()<hitStopUntil?0.05:(castSt?0.5:1);
 function beginCast(h){
-  if(dead||trans||!ui.started||isPaused()||swapSt||castSt||(beamRun&&!beamRun.auto)||player.netT>0||player.roll)return;
+  if(adv.dead||trans||!ui.started||isPaused()||swapSt||castSt||(beamRun&&!beamRun.auto)||player.netT>0||player.roll)return;
   if((player.recover||0)>0)return;
   const H=hands[h]; if(!H.atk){ castNow(h); return; }
   const at=atkType(h), def=RUNE_DEF[at]; if(def.chant<=0){ castNow(h); return; }
-  let needK=1; if(time<(player.qcUntil||0)){ needK*=0.5; player.qcUntil=0; } if(BL('desperate')&&player.hp<PLAYER_MAX*0.5)needK*=BL('desperate')>=2?0.55:0.7;
+  let needK=1; if(time<(player.qcUntil||0)){ needK*=0.5; player.qcUntil=0; } if(BL('desperate')&&player.hp<adv.PLAYER_MAX*0.5)needK*=BL('desperate')>=2?0.55:0.7;
   castSt={h,t:0,need:def.chant*Math.max(0.4,1-0.3*bodyN('quick'))*TRAIT_V.charge[wTL(h,'charge')]*needK,full:false,hold:0,beam:at==='beam',firing:false,tick:0,beamT:0};
   if(humNode)humNode.stop(); humNode=chantStart(H.elem?H.elem.type:null);
 }
@@ -23,7 +23,7 @@ function updateCast(dt){
   trigCd.L=Math.max(0,trigCd.L-dt); trigCd.R=Math.max(0,trigCd.R-dt); player.recover=Math.max(0,(player.recover||0)-dt);
   if(swapSt){ swapSt.t+=dt; if(swapSt.t>=swapSt.dur){ swapSt=null; if(BL('swapedge'))player.swapEdgeUntil=time+3; sChime(player.x,player.z,0.25); renderHotbar(); } else if(((swapSt.t*10)|0)!==swapSt.last){ swapSt.last=(swapSt.t*10)|0; renderHotbar(); } }
   if(!castSt)return;
-  if(!ui.started||dead||trans){ castSt=null; beamSegs=[]; return; }
+  if(!ui.started||adv.dead||trans){ castSt=null; beamSegs=[]; return; }
   castSt.t+=dt;
   if(!castSt.full&&castSt.t>=castSt.need){ castSt.full=true;
     const P=castPoint(castSt.h,1), c=elemCol(hands[castSt.h].elem?hands[castSt.h].elem.type:null); for(let q=0;q<14;q++){ const a=mr()*6.28; spawn(P[0],P[1],P[2],Math.cos(a)*1.2,(mr()-0.4)*1.2,Math.sin(a)*1.2,0.35,G('*'),0.05,c[0]*3,c[1]*3,c[2]*3,0); } }
@@ -82,7 +82,7 @@ function updateRains(dt){ for(const rn of rains){ rn.tick-=dt;
   rains=rains.filter(rn=>!rn.done); for(const mk of marks)mk.t-=dt; marks=marks.filter(mk=>mk.t>0); }
 // the crossbow: bolts in quick succession
 function castRapid(h,sp,opt){ const vo=0, sd=0, hv=0, ac=TL(sp,'accuracy'), n=3+(sp.aff.count||0), volleys=1;
-  for(let v=0;v<volleys;v++)for(let k=0;k<n;k++)later(k*0.07+v*0.45,()=>{ if(dead)return; const fr=shotFrame(h,false,'bolt'), base=opt.dir||fr.d, HP=opt.dir?handPoint(h):fr.o, spread=0.045*(1-0.16*ac), d=turnDir(base,(mr()-0.5)*spread*2);
+  for(let v=0;v<volleys;v++)for(let k=0;k<n;k++)later(k*0.07+v*0.45,()=>{ if(adv.dead)return; const fr=shotFrame(h,false,'bolt'), base=opt.dir||fr.d, HP=opt.dir?handPoint(h):fr.o, spread=0.045*(1-0.16*ac), d=turnDir(base,(mr()-0.5)*spread*2);
     projs.push({kind:'bolt',auto:!!opt.auto,x:HP[0],y:HP[1],z:HP[2],vx:d[0]*22,vy:d[1]*22,vz:d[2]*22,t:0,sp,bounce:sp.aff.bounce||0,homing:(sp.aff.homing||0)+(sd>=2?20:sd>=1?10:0),hit:new Set(),dmg:RUNE_DEF.rapid.dmg,dmgK:(sd>=4?1.3:1)*(hv>=4?1.4:hv>=2?1.2:1),pierce:sd>=3?1:0,keep:true,heavy:hv,steady:sd,boom:vo>=5&&k===n-1}); if(k%2===0)sWhoosh(); }); }
 // the star staff: a pillar of light falls on the aimed place after a moment
 function castStar(sp,x,z){ const tw=0, sw=0, pl=TL(sp,'pull'), sz=tv(sp,'size'), delay=0.6*tv(sp,'fall'), pts=[[x,z]];

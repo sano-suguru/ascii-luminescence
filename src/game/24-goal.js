@@ -1,13 +1,13 @@
 // ---------------------------------------------------------------- the goal (stage C): three legendary things held by lords, a sealed descent, the deepest place, the last king's shadow
 // FINAL_DEPTH は src/lib/world.ts（src/game/imports.mjs で読む）
 // LEGEND_KINDS・LEGEND_ORDER・BRANCH_HINT は src/lib/names.ts（src/game/imports.mjs で読む）
-let LEGEND=null, finalSt=null, won=false;
+let LEGEND=null, finalSt=null;
 MSTAT.final=[260,6,11,1.7];
 MSTAT.final2=[260,8,14,1.25];
 function getLegend(){
-  if(LEGEND&&LEGEND.seed===runSeed)return LEGEND;
+  if(LEGEND&&LEGEND.seed===adv.runSeed)return LEGEND;
   if(!HIST)return null;
-  const r=mulberry32((runSeed^0x1e9e3)>>>0), pk=a=>a[Math.floor(r()*a.length)], R=HIST.rulers, last=R[R.length-1], civ=HIST.civ;
+  const r=mulberry32((adv.runSeed^0x1e9e3)>>>0), pk=a=>a[Math.floor(r()*a.length)], R=HIST.rulers, last=R[R.length-1], civ=HIST.civ;
   const pool=Object.keys(BRANCHES), take=k=>{ const i=pool.indexOf(k); if(i>=0)pool.splice(i,1); return k; };
   const where={};
   where.candle=(r()<0.75&&pool.includes('crypt'))?take('crypt'):take(pk(pool));
@@ -20,7 +20,7 @@ function getLegend(){
     mirror:{name:`${r3.name}王の鏡`, lore:`${civ.ep}が、最後の光を映して封じた鏡。覗くと、今はない空が見える。`},
   };
   for(const k of LEGEND_ORDER){ items[k].branch=where[k]; items[k].kind=k; }
-  LEGEND={seed:runSeed,items,have:new Set(),placed:new Set()};
+  LEGEND={seed:adv.runSeed,items,have:new Set(),placed:new Set()};
   return LEGEND;
 }
 const legendOfBranch=bk=>{ const L=getLegend(); if(!L)return null; return LEGEND_ORDER.find(k=>L.items[k].branch===bk)||null; };
@@ -33,7 +33,7 @@ function legendLine(){ const L=getLegend(); if(!L)return '';
 // a lord falls: its legendary thing (if it holds one) or a golden rune
 function lordFell(m){
   if(m.key!=='lord'||!branch)return;
-  runState.lordsDone.add(branch.key);
+  adv.runState.lordsDone.add(branch.key);
   { let si=m.cz*MW+m.cx; for(const d of [1,-1,MW,-MW])if(D.tile[si+d]===TF&&!D.liquid[si+d]){ si+=d; break; } D.items.push({i:si,kind:'slot',taken:false,born:time}); }
   const k=legendOfBranch(branch.key), L=getLegend();
   if(k&&L&&!L.have.has(k)){ D.items.push({i:m.cz*MW+m.cx,kind:'legend',legend:k,taken:false,born:time});
@@ -42,17 +42,17 @@ function lordFell(m){
     msg(`<b style="color:${css(c)}">${LEGEND_KINDS[k].ch}</b>${mname(m)}が崩れ落ちた。その胸の奥から、ひとつの光がこぼれ落ちた。`); }
 }
 let slotPickN=0;
-function applyOpen(t){ if(t==='slotR'||t==='slotL'){ const H=hands[t.slice(4)]; H.slotN=Math.min(SLOT_MAX,(H.slotN||2)+1); while(H.slots.length<H.slotN)H.slots.push(null); } else if(t==='body')runState.bodyOpen=Math.min(2,(runState.bodyOpen||0)+1); syncHands(); renderHotbar(); if(ui.invOpen)renderInv(); }
+function applyOpen(t){ if(t==='slotR'||t==='slotL'){ const H=hands[t.slice(4)]; H.slotN=Math.min(SLOT_MAX,(H.slotN||2)+1); while(H.slots.length<H.slotN)H.slots.push(null); } else if(t==='body')adv.runState.bodyOpen=Math.min(2,(adv.runState.bodyOpen||0)+1); syncHands(); renderHotbar(); if(ui.invOpen)renderInv(); }
 function openSlot(cell){ const opts=[];
   for(const h of ['R','L'])if((hands[h].slotN||2)<SLOT_MAX)opts.push({target:'slot'+h,label:`${h==='L'?'左':'右'}手に、ルーンの枠をもう1つ`});
-  if((runState.bodyOpen||0)<2)opts.push({target:'body',label:'身の護符の枠'});
+  if((adv.runState.bodyOpen||0)<2)opts.push({target:'body',label:'身の護符の枠'});
   sChime(player.x,player.z,0.5); setTimeout(()=>sChime(player.x,player.z,0.4),220);
   for(let q=0;q<30;q++){ const a=mr()*6.28; spawn(player.x,0.6+mr(),player.z,Math.cos(a)*1.2,0.4+mr()*1.4,Math.sin(a)*1.2,0.9,G(mpick(['{','}','*','.'])),0.16,2.4,2.1,1.4,0); }
   if(!opts.length){ const ru=makeRune(randomRuneType(mr),0); msg('<b style="color:#ffe3a0">{ }</b>空の枠を手にした。開ける枠はもうない。枠は、ひとつのルーンに姿を変えた。'); takeRune(ru); return; }
   if(opts.length===1){ applyOpen(opts[0].target); msg(`<b style="color:#ffe3a0">{ }</b>空の枠を手にした。${opts[0].label}が開いた。`); return; }
   const grp='slotpick'+(++slotPickN);
   opts.forEach((o,k)=>D.items.push({i:cell,kind:'rune',altar:true,grp,slot:k,opt:'open',target:o.target,label:o.label,rune:{uid:-1,type:'slotopt',aff:{}},taken:false}));
-  runState.slotPend=grp; msg('<b style="color:#ffe3a0">{ }</b>空の枠を手にした。どの枠を開けるか、選ぶ。'); }
+  adv.runState.slotPend=grp; msg('<b style="color:#ffe3a0">{ }</b>空の枠を手にした。どの枠を開けるか、選ぶ。'); }
 
 function pickLegend(it){
   const L=getLegend(), k=it.legend, kd=LEGEND_KINDS[k], c=kd.col; L.have.add(k); renderStatus();
@@ -86,7 +86,7 @@ function setupFinal(){
 const pedLit=p=>{ const L=getLegend(); return !!L&&L.placed.has(p.kind); };
 function finalExposed(m){ if(!finalSt)return true; return finalSt.peds.some(p=>{ if(!pedLit(p))return false; const [x,z]=cpos(p.i); return Math.hypot(m.x-x,m.z-z)<4.5; }); }
 function updateFinal(dt){
-  if(!finalSt||!isFinal()||dead)return; const L=getLegend();
+  if(!finalSt||!isFinal()||adv.dead)return; const L=getLegend();
   if(!finalSt.said&&ui.started){ finalSt.said=true; setTimeout(()=>msg('<b style="color:#bfe4ff">.</b>底に着いた。光の届かない、静かな闇だ。三つの台座が、何かを待っている。'),1600); }
   for(const p of finalSt.peds){ if(L.placed.has(p.kind)||!L.have.has(p.kind))continue; const [x,z]=cpos(p.i); if(Math.hypot(x-player.x,z-player.z)>1.4)continue;
     L.have.delete(p.kind); L.placed.add(p.kind); renderStatus(); const c=LEGEND_KINDS[p.kind].col;
@@ -130,12 +130,12 @@ function drawLegendWorld(t){
 }
 // the end: a screen like the one for death, but light
 function victory(){
-  if(won)return; won=true; dead=true; keys.KeyW=keys.KeyA=keys.KeyS=keys.KeyD=false;
+  if(adv.won)return; adv.won=true; adv.dead=true; keys.KeyW=keys.KeyA=keys.KeyS=keys.KeyD=false;
   const el=document.getElementById('death'); if(!el)return; const L=getLegend();
-  const secs=Math.floor(time-runStats.t0), mm=Math.floor(secs/60), ss=String(secs%60).padStart(2,'0'), f=t=>`<span class="f">${t}</span>`;
+  const secs=Math.floor(time-adv.runStats.t0), mm=Math.floor(secs/60), ss=String(secs%60).padStart(2,'0'), f=t=>`<span class="f">${t}</span>`;
   const R=awardLore(true); graveCands=[]; document.body.classList.add('over');
   el.innerHTML=boxText([f('+-- 光 は 戻 っ た ---'),f('|'),...LEGEND_ORDER.map(k=>`${f('|')}  <b style="color:${css(LEGEND_KINDS[k].col)}">${LEGEND_KINDS[k].ch}</b> ${L.items[k].name}`),f('|'),
-    `${f('|')}  Lv${lvl.n}　倒した敵 ${runStats.kills}　時間 ${mm}:${ss}　シード ${runSeed}`,f('|'),...loreRows(R,f),f('|'),`${f('|')}  ${HIST.civ.name}の地の底に、ひとつの灯りがともった。`,f('|'),`${f('|')}  <b>[Enter]</b> 新しい冒険へ`,f('+---')]);
+    `${f('|')}  Lv${adv.lvl.n}　倒した敵 ${adv.runStats.kills}　時間 ${mm}:${ss}　シード ${adv.runSeed}`,f('|'),...loreRows(R,f),f('|'),`${f('|')}  ${HIST.civ.name}の地の底に、ひとつの灯りがともった。`,f('|'),`${f('|')}  <b>[Enter]</b> 新しい冒険へ`,f('+---')]);
   el.classList.add('show','won'); for(let k=0;k<4;k++)setTimeout(()=>sChime(player.x,player.z,0.5),k*380);
 }
 
@@ -160,11 +160,11 @@ function drawBoltFx(t,dt){
 let titleArm=0;
 function returnToTitle(){
   setMenu(false); if(ui.invOpen)setInv(false); if(ui.locked&&document.exitPointerLock)document.exitPointerLock();
-  ui.started=false; dead=false; won=false; gallery=null; castSt=null; swapSt=null; vfx.zapFlash=null;
+  ui.started=false; adv.dead=false; adv.won=false; gallery=null; castSt=null; swapSt=null; vfx.zapFlash=null;
   document.body.classList.remove('started'); const de=document.getElementById('death'); if(de)de.classList.remove('show','won');
   const gp=document.getElementById('gal'); if(gp)gp.classList.remove('show');
-  runSeed=(Math.random()*1e9)>>>0; depth=startDepth; branch=null; realm=null; placeMem.clear(); arrive=null;
-  player.hp=PLAYER_MAX; resetRunes(); newLevel();
+  adv.runSeed=(Math.random()*1e9)>>>0; depth=startDepth; branch=null; realm=null; placeMem.clear(); arrive=null;
+  player.hp=adv.PLAYER_MAX; resetRunes(); newLevel();
   introEl.classList.remove('gone'); setHelp(false); const st=document.getElementById('stratum'); if(st)st.classList.remove('show');
   renderStatus(); renderHotbar();
 }

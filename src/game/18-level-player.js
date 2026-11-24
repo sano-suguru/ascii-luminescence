@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------- level control
 let trans=null, fade=0, expo=1.1;
-let runSeed=(Math.random()*1e9)>>>0;
-const levelSeed=()=>((Math.imul(runSeed,2654435761)^Math.imul(depth,1013904223)^(branch?Math.imul(branch.lvl*31+branch.key.charCodeAt(0),0x27d4eb2d):0)^(realm?Math.imul(realm.key.charCodeAt(0)+7,0x165667b1):0)^(inter?Math.imul(inter.key.charCodeAt(0)+13,0x2c1b3c6d):0))>>>0)||1;
+adv.runSeed=(Math.random()*1e9)>>>0;
+const levelSeed=()=>((Math.imul(adv.runSeed,2654435761)^Math.imul(depth,1013904223)^(branch?Math.imul(branch.lvl*31+branch.key.charCodeAt(0),0x27d4eb2d):0)^(realm?Math.imul(realm.key.charCodeAt(0)+7,0x165667b1):0)^(inter?Math.imul(inter.key.charCodeAt(0)+13,0x2c1b3c6d):0))>>>0)||1;
 function setFog(){ const k=D.prof.fogDark, f=(D.stratum.fog?D.stratum.fog:D.stratum.k==='magma'?[0.016,0.004,0.003]:D.stratum.k==='abyss'?[0.007,0.003,0.014]:FOGS[(depth-1)%FOGS.length]).map(v=>v*k); fogCol.set(f[0],f[1],f[2]); renderer.setClearColor(new T.Color(f[0],f[1],f[2]),1); fogBase=0.05+Math.min(depth-1,6)*0.002; U.uFogDen.value=fogBase; }
 let lastStratum=null;
 function showStratum(st){
@@ -11,7 +11,7 @@ function showStratum(st){
   el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
   clearTimeout(showStratum.t); showStratum.t=setTimeout(()=>el.classList.remove('show'),5600);
 }
-function settleSlotPick(){ if(!runState||!runState.slotPend||!D)return; const o=(D.items||[]).find(x=>x.grp===runState.slotPend&&!x.taken); if(o){ applyOpen(o.target); msg(`<span class="lab">選ばれなかった空の枠は、${o.label}を開けた。</span>`); } runState.slotPend=null; }
+function settleSlotPick(){ if(!adv.runState||!adv.runState.slotPend||!D)return; const o=(D.items||[]).find(x=>x.grp===adv.runState.slotPend&&!x.taken); if(o){ applyOpen(o.target); msg(`<span class="lab">選ばれなかった空の枠は、${o.label}を開けた。</span>`); } adv.runState.slotPend=null; }
 function newLevel(seedOverride){
   settleSlotPick();
   if(advance.bounced){ advance.bounced=false; setTimeout(()=>msg('<b style="color:#a98cff">.</b>闇の底に触れた途端、何かに押し返された。まだ、降りることは許されていない。'),1200); }
@@ -24,7 +24,7 @@ function newLevel(seedOverride){
   buildWorld(); updateWater();
   fixtures=D.fixtures;
   monsters=D.spawns.map(makeMonster);
-  if(branch&&runState.lordsDone&&runState.lordsDone.has(branch.key))monsters=monsters.filter(m=>m.key!=='lord');
+  if(branch&&adv.runState.lordsDone&&adv.runState.lordsDone.has(branch.key))monsters=monsters.filter(m=>m.key!=='lord');
   finalSt=null; if(isFinal())setupFinal();
   for(const m of monsters)if(!m.isLead)m.leader=monsters.find(o=>o.g===m.g&&o.isLead)||null;
   for(const m of monsters)if(m.ty.beast||(m.ty.dragon&&Math.random()<0.9))m.sleep=true;
@@ -32,8 +32,8 @@ function newLevel(seedOverride){
   noticeMsgT={}; stealth.hudKey='';
   explored=new Uint8Array(NCELL); mem=new Float32Array(NCELL*3); fovVis=new Uint32Array(NCELL); fovStamp=1;
   { const pm=placeMem.get(placeKey()); if(pm){ explored.set(pm.explored); mem.set(pm.mem); } }
-  visitedRooms=new Set(); stairsSeen=false; player.rally=0; rallyMotes=[]; if(runStats&&!gallery)runStats.maxDepth=Math.max(runStats.maxDepth||0,depth); setTimeout(strataGrowth,50);
-  if(ui.started&&!gallery&&!dead&&!arrive){ const sp=inter?SPECIALS[inter.key]:null; if(sp&&(sp.k==='town'||sp.k==='oracle')){ player.hp=PLAYER_MAX; setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>静かな場所だ。張りつめていた体が、すっかりほどけた。'),1600); } else if(player.hp<PLAYER_MAX){ player.hp=Math.min(PLAYER_MAX,player.hp+PLAYER_MAX*0.2); setTimeout(()=>msg('<span class="lab">階段を降りると、少し息が整った。</span>'),1600); } }
+  visitedRooms=new Set(); stairsSeen=false; player.rally=0; rallyMotes=[]; if(adv.runStats&&!gallery)adv.runStats.maxDepth=Math.max(adv.runStats.maxDepth||0,depth); setTimeout(strataGrowth,50);
+  if(ui.started&&!gallery&&!adv.dead&&!arrive){ const sp=inter?SPECIALS[inter.key]:null; if(sp&&(sp.k==='town'||sp.k==='oracle')){ player.hp=adv.PLAYER_MAX; setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>静かな場所だ。張りつめていた体が、すっかりほどけた。'),1600); } else if(player.hp<adv.PLAYER_MAX){ player.hp=Math.min(adv.PLAYER_MAX,player.hp+adv.PLAYER_MAX*0.2); setTimeout(()=>msg('<span class="lab">階段を降りると、少し息が整った。</span>'),1600); } }
   player.x=(D.start%MW+0.5)*CELL; player.z=(((D.start/MW)|0)+0.5)*CELL; player.vx=player.vz=0; player.yaw=D.startYaw; player.pitch=-0.04; lockCell=-1;
   { const tc=arrive==='portal'&&D.portal?D.portal.cell:arrive==='bstairs'&&D.bstairs?D.bstairs.cell:arrive==='stairs'?D.stairs:-1;
     if(tc>=0){ const nb=[1,-1,MW,-MW,MW+1,MW-1,-MW+1,-MW-1].map(o=>tc+o).find(j=>j>=0&&j<NCELL&&D.tile[j]===TF&&!D.liquid[j]&&!D.solid.has(j))??tc;
@@ -135,9 +135,7 @@ function drawTraps(t){
 const MSTAT={r:[6,1,3,1.0],k:[7,1,4,1.1],j:[8,2,4,0.9],e:[18,3,7,1.4],m:[12,1,3,0.9],b:[4,0,0,9],g:[15,2,5,1.1],c:[10,2,4,1.3],J:[50,1,3,1.0],v:[18,2,6,0.8],
   O:[55,9,13,1.8],w:[10,4,8,1.6],W:[50,6,13,1.5],P:[20,4,9,1.4],S:[20,3,7,1.1],Zf:[25,4,8,1.0],Zi:[25,4,8,1.0],Zl:[25,4,8,1.0],s:[18,2,6,1.2],sw:[22,3,7,1.2],
   B:[55,3,7,1.6],N:[75,7,11,1.5],l:[60,5,11,1.4],K:[120,8,15,2.0],T:[65,10,15,1.7],Y:[300,4,8,2.2],D:[150,20,30,2.4],L:[35,8,14,1.8],n:[12,2,5,1.0],X:[200,12,20,2.0]};
-let PLAYER_MAX=40;
 // WEAPON・SLEEP_MULT は src/lib/runes.ts（src/game/imports.mjs で読む）
-let dead=false, runStats={kills:0,t0:0}, hpShown=-1;
 // roll は src/lib/random.ts（src/game/imports.mjs で読む）
 const statOf=m=>{ const st=MSTAT[m.ty.sk||m.key]||[12,2,5,1.2]; return trialOn('fury')?[st[0]*1.3,st[1]*1.3,st[2]*1.3,st[3]]:st; };
 const hostile=m=>!m.ty.critter&&!m.ty.peaceful&&!m.ty.watcher&&m.ty.form!=='bloat'&&!m.dead;
@@ -149,7 +147,7 @@ const foe=m=>hittable(m)&&(hostile(m)||m.ty.watcher||m.ty.form==='bloat'||m.ty.f
 function initMonsterLife(m){ const st=statOf(m); m.maxHp=Math.round(st[0]*(m.ty.boss?1.5:1)); m.hp=m.maxHp; m.atkCd=0.5+mr(); m.wind=0; }
 // ---------------------------------------------------------------- levelling: defeating creatures gives experience; at each level time stops and you choose one of three
 // (two blessings - strengths tied to actions and elements, some with a price - and one rune or charm). Max health does not grow with level: it grows by 4 on entering each new stratum.
-let lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}, lvlOpenT=0, lvlOpts=[];
+let lvlOpenT=0, lvlOpts=[];
 const BLESS={
   tough:    {name:'頑丈な体',     d:l=>`最大体力が ${6*l} 増える`},
   quickdodge:{name:'身軽な詠唱',  d:l=>`かわしてから ${l>=2?2.5:1.5}秒以内の詠唱が、半分の時間で済む`},
@@ -164,21 +162,21 @@ const BLESS={
   swapedge: {name:'持ち替えの冴え', d:l=>`ビルドを替えてから 3秒の間、与える傷が ${l>=2?90:60}% 増える`},
   scorch:   {name:'焦熱',         d:l=>`燃えている敵への傷が ${l>=2?70:50}% 増える。ただし、燃焼を生き延びた敵は、体力が3割戻る`, cost:true},
   reckless: {name:'捨て身',       d:l=>`与える傷が ${l>=2?40:25}% 増える。ただし、受ける傷も ${l>=2?35:25}% 増える`, cost:true} };
-const BL=k=>lvl.bless[k]||0;
+const BL=k=>adv.lvl.bless[k]||0;
 // a cold snap: the creatures around are chilled (and fire goes out, water freezes)
 function coldSnap(x,z,r){ chillArea(x,z,r); for(const m of monsters){ if(m.dead||m.ty.critter)continue; if(Math.hypot(m.x-x,m.z-z)<r+0.3*m.ty.scale){ const st=m.st||(m.st={}); st.chill=Math.max(st.chill||0,4); } }
   for(let q=0;q<28;q++){ const a=q/28*Math.PI*2; spawn(x+Math.cos(a)*r*0.9,0.15,z+Math.sin(a)*r*0.9,Math.cos(a)*0.6,0.4,Math.sin(a)*0.6,0.6,G(mpick(['*','.','+'])),0.14,1.2,1.7,2.2,0); } }
-function gainExp(e){ if(!(e>0)||dead)return; lvl.exp+=e; let up=0; while(lvl.exp>=expNeed(lvl.n)){ lvl.exp-=expNeed(lvl.n); lvl.n++; lvl.pending++; up++; }
+function gainExp(e){ if(!(e>0)||adv.dead)return; adv.lvl.exp+=e; let up=0; while(adv.lvl.exp>=expNeed(adv.lvl.n)){ adv.lvl.exp-=expNeed(adv.lvl.n); adv.lvl.n++; adv.lvl.pending++; up++; }
   renderStatus(); if(up){ sChime(player.x,player.z,0.6); setTimeout(()=>sChime(player.x,player.z,0.45),180); for(let q=0;q<40;q++){ const a=mr()*6.28, r=1.6+mr(); spawn(player.x+Math.cos(a)*r,0.4+mr()*1.6,player.z+Math.sin(a)*r,-Math.cos(a)*r*2.2,0.2,-Math.sin(a)*r*2.2,0.45,G(mpick(['*','+','.'])),0.14,2.6,2.3,1.5,0); } } }
 function levelChoices(){ const BEHAVE=['quickdodge','counter','momentum','devour','shatter','charge','swapedge','branch']; let pool=Object.keys(BLESS).filter(k=>BL(k)<2&&!lockedOf('bless',k)), out=[];
-  if(!lvl.firstDone){ const b=pool.filter(k=>BEHAVE.includes(k)); if(b.length>=2)pool=b; lvl.firstDone=true; }
+  if(!adv.lvl.firstDone){ const b=pool.filter(k=>BEHAVE.includes(k)); if(b.length>=2)pool=b; adv.lvl.firstDone=true; }
   for(let i=0;i<2&&pool.length;i++){ const k=pool.splice(Math.floor(mr()*pool.length),1)[0]; out.push({kind:'bless',k}); }
-  const useCharm=(runState.bodyOpen||0)>0&&mr()<0.3, t=useCharm?RUNE_TYPES.body[Math.floor(mr()*RUNE_TYPES.body.length)]:randomRuneType(mr,{elem:0.45,trig:0.15,mod:0.4,body:0});
+  const useCharm=(adv.runState.bodyOpen||0)>0&&mr()<0.3, t=useCharm?RUNE_TYPES.body[Math.floor(mr()*RUNE_TYPES.body.length)]:randomRuneType(mr,{elem:0.45,trig:0.15,mod:0.4,body:0});
   out.push({kind:'rune',ru:RUNE_DEF[t].cat==='mod'&&mr()<0.1?makeStrong(t):makeRune(t,0)}); return shuffle(out,mr); }
 function lvlLine(o){ const K=t=>t+' '.repeat(Math.max(2,14-visW(t))); // the label column is 14 wide (the longest, 恩恵（代償）, is 12)
   if(o.kind==='bless'){ const B=BLESS[o.k], l=BL(o.k)+1; return `${K(B.cost?'恩恵（代償）':'恩恵')}<span style="color:${B.cost?'#ff9a8a':'#ffe3a0'}">${B.name}${l>1?' II':''}</span>`; }
   const d=RUNE_DEF[o.ru.type], br=CAT_BR[d.cat]||['','']; return `${K(d.cat==='body'?'護符':'ルーン')}${br[0]}<b class="rn" style="color:${css(runeCol(o.ru))}">${d.ch}</b> ${runeName(o.ru)}${br[1]}　<span class="lab">${CAT_NAME[d.cat]}</span>`; }
-function renderLevelUp(){ const el=document.getElementById('altarp'); if(!el)return; const f=t=>`<span class="f">${t}</span>`, rows=[f(`+-- レベルが上がった（Lv${lvl.n-lvl.pending+1}） ---`),f('|')];
+function renderLevelUp(){ const el=document.getElementById('altarp'); if(!el)return; const f=t=>`<span class="f">${t}</span>`, rows=[f(`+-- レベルが上がった（Lv${adv.lvl.n-adv.lvl.pending+1}） ---`),f('|')];
   lvlOpts.forEach((o,i)=>rows.push(`${f('|')}  <button class="row ao" data-lk="${i}">${clipHtml(lvlLine(o),ALTAR_W-6)}</button>`));
   rows.push(f('|')); for(let i=0;i<4;i++)rows.push(`${f('|')} <span class="ldet">${padTo('',ALTAR_W-3)}</span>`);
   rows.push(f('|'),`${f('|')} <span class="lab">マウスを乗せると説明が出る。クリックで選ぶ</span>`,f('+---')); el.innerHTML=boxText(rows,ALTAR_W); setLevelDetail(null);
@@ -191,19 +189,19 @@ function setLevelDetail(o){ const el=document.getElementById('altarp'); if(!el)r
 function openLevelUp(){ const el=document.getElementById('altarp'); if(!el||ui.lvlOpen)return; ui.lvlOpen=true; lvlOpenT=performance.now(); lvlOpts=levelChoices(); document.body.classList.toggle('paused',true);
   if(castSt){ castSt=null; beamSegs=[]; } if(ui.locked&&document.exitPointerLock)document.exitPointerLock(); renderLevelUp(); el.classList.add('show','open'); }
 function chooseLevel(i){ const o=lvlOpts[i]; if(!o)return;
-  if(o.kind==='bless'){ lvl.bless[o.k]=BL(o.k)+1; if(o.k==='tough'){ PLAYER_MAX+=6; player.hp=Math.min(PLAYER_MAX,player.hp+6); } msg(`<b style="color:#ffe3a0">+</b>恩恵「${BLESS[o.k].name}」を得た。${BLESS[o.k].d(BL(o.k))}。`); }
+  if(o.kind==='bless'){ adv.lvl.bless[o.k]=BL(o.k)+1; if(o.k==='tough'){ adv.PLAYER_MAX+=6; player.hp=Math.min(adv.PLAYER_MAX,player.hp+6); } msg(`<b style="color:#ffe3a0">+</b>恩恵「${BLESS[o.k].name}」を得た。${BLESS[o.k].d(BL(o.k))}。`); }
   else takeRune(o.ru);
-  lvl.pending=Math.max(0,lvl.pending-1); renderStatus(); renderHotbar();
-  if(lvl.pending>0){ lvlOpenT=performance.now(); lvlOpts=levelChoices(); renderLevelUp(); return; }
-  ui.lvlOpen=false; const el=document.getElementById('altarp'); if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused()); if(!plFailed&&ui.started&&!dead)tryLock(); updateResume(); }
+  adv.lvl.pending=Math.max(0,adv.lvl.pending-1); renderStatus(); renderHotbar();
+  if(adv.lvl.pending>0){ lvlOpenT=performance.now(); lvlOpts=levelChoices(); renderLevelUp(); return; }
+  ui.lvlOpen=false; const el=document.getElementById('altarp'); if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused()); if(!plFailed&&ui.started&&!adv.dead)tryLock(); updateResume(); }
 // a new stratum strengthens the body
-function strataGrowth(){ if(!D||branch||realm||inter||!ui.started||gallery)return; const k=D.stratum&&D.stratum.k; if(!['cavern','ruins','magma','abyss'].includes(k)||lvl.strata.has(k))return; lvl.strata.add(k); PLAYER_MAX+=4; player.hp=Math.min(PLAYER_MAX,player.hp+4); renderStatus();
+function strataGrowth(){ if(!D||branch||realm||inter||!ui.started||gallery)return; const k=D.stratum&&D.stratum.k; if(!['cavern','ruins','magma','abyss'].includes(k)||adv.lvl.strata.has(k))return; adv.lvl.strata.add(k); adv.PLAYER_MAX+=4; player.hp=Math.min(adv.PLAYER_MAX,player.hp+4); renderStatus();
   setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>新しい層の空気が、体を強くした。最大体力 +4。'),2200); }
 function hurtPlayer(n,cause){
   if(godMode)return; if((player.invulT||0)>time)return; if(BL('reckless'))n*=BL('reckless')>=2?1.35:1.25;
   n*=Math.max(0.4,1-0.15*bodyN('ward'));
-  if(dead||!ui.started||gallery||n<=0)return;
-  player.hp-=n; player.lastHurt=time; { const mn=bodyN('mend'); player.rally=Math.min(Math.max(0,PLAYER_MAX-player.hp),(player.rally||0)+n*0.6); player.rallyRate=player.rally/Math.max(1,4*(1+0.5*mn)-0.6); } vfx.hurtFlash=Math.min(1.2,vfx.hurtFlash+0.35+n*0.05); vfx.shake=Math.max(vfx.shake,Math.min(0.5,0.12+n*0.03));
+  if(adv.dead||!ui.started||gallery||n<=0)return;
+  player.hp-=n; player.lastHurt=time; { const mn=bodyN('mend'); player.rally=Math.min(Math.max(0,adv.PLAYER_MAX-player.hp),(player.rally||0)+n*0.6); player.rallyRate=player.rally/Math.max(1,4*(1+0.5*mn)-0.6); } vfx.hurtFlash=Math.min(1.2,vfx.hurtFlash+0.35+n*0.05); vfx.shake=Math.max(vfx.shake,Math.min(0.5,0.12+n*0.03));
   if(sndReady()){ const t=SND.ctx.currentTime; sEnv(sTone(t,'sine',140,60,0.25,sOut(undefined,undefined,0.35)),t,0.01,0.22); }
   if(time-(hurtPlayer.mt||-9)>0.8||hurtPlayer.mc!==cause){ hurtPlayer.mt=time; hurtPlayer.mc=cause; msg(`<b style="color:#ff5a4a">-</b>${cause}で ${n} の傷を負った。`); }
   if(player.hp<=0)player.hp=0;
@@ -211,15 +209,15 @@ function hurtPlayer(n,cause){
   if(player.hp<=0)die(cause);
 }
 function resultPlace(){ const pl=placeLabel(); return /^[0-9]+$/.test(String(pl).trim())?`深度${depth}（${(D&&D.stratum&&D.stratum.name)||''}）`:`${pl}（深度${depth}）`; }
-function runLore(victory){ const L=getLegend(), parts=[], add=(lab,n,v)=>{ if(v>0)parts.push([lab,n,v]); }, md=(runStats&&runStats.maxDepth)||depth;
-  add('到達した深さ',`深度${md}`,md*2); const lords=runState.lordsDone?runState.lordsDone.size:0; add('倒した支道の主',`${lords}体`,lords*8);
+function runLore(victory){ const L=getLegend(), parts=[], add=(lab,n,v)=>{ if(v>0)parts.push([lab,n,v]); }, md=(adv.runStats&&adv.runStats.maxDepth)||depth;
+  add('到達した深さ',`深度${md}`,md*2); const lords=adv.runState.lordsDone?adv.runState.lordsDone.size:0; add('倒した支道の主',`${lords}体`,lords*8);
   const pl=L?L.placed.size:0; add('捧げた伝説の物',`${pl}つ`,pl*6); if(victory)add('最後の王の影に勝った','',30);
-  const lg=Math.max(0,(lvl.n||1)-1); add('上がったレベル',`${lg}つ`,lg);
-  const nb=Math.max(0,BOOK.size-((runStats&&runStats.book0)||0)); add('新しく記した反応',`${nb}つ`,nb*3); const nbe=(runStats&&runStats.beastsNew)||0; add('初めて出会った忘れられた獣',`${nbe}体`,nbe*4);
-  const base=parts.reduce((a,p)=>a+p[2],0), mult=1+0.25*runTrials.length; return {parts,base,mult,total:Math.round(base*mult)}; }
-function awardLore(victory){ if(!runStats||gallery)return null; if(runStats.loreRes)return runStats.loreRes; const R=runLore(victory); META.lore=(META.lore||0)+R.total; saveMeta(); runStats.loreRes=R; return R; }
+  const lg=Math.max(0,(adv.lvl.n||1)-1); add('上がったレベル',`${lg}つ`,lg);
+  const nb=Math.max(0,BOOK.size-((adv.runStats&&adv.runStats.book0)||0)); add('新しく記した反応',`${nb}つ`,nb*3); const nbe=(adv.runStats&&adv.runStats.beastsNew)||0; add('初めて出会った忘れられた獣',`${nbe}体`,nbe*4);
+  const base=parts.reduce((a,p)=>a+p[2],0), mult=1+0.25*adv.runTrials.length; return {parts,base,mult,total:Math.round(base*mult)}; }
+function awardLore(victory){ if(!adv.runStats||gallery)return null; if(adv.runStats.loreRes)return adv.runStats.loreRes; const R=runLore(victory); META.lore=(META.lore||0)+R.total; saveMeta(); adv.runStats.loreRes=R; return R; }
 function loreRows(R,f){ if(!R)return []; const rows=[`${f('|')}  <b>伝承</b>`]; for(const [lab,n,v] of R.parts)rows.push(`${f('|')}    ${padTo(lab+(n?`（${n}）`:''),34)}${String(v).padStart(4)}`);
-  if(R.mult>1)rows.push(`${f('|')}    ${padTo(`試練（${runTrials.map(k=>({dusk:'薄明',fury:'猛り'})[k]).join('・')}）`,34)}  ×${R.mult.toFixed(2)}`);
+  if(R.mult>1)rows.push(`${f('|')}    ${padTo(`試練（${adv.runTrials.map(k=>({dusk:'薄明',fury:'猛り'})[k]).join('・')}）`,34)}  ×${R.mult.toFixed(2)}`);
   rows.push(`${f('|')}    ${padTo('合計',34)}<b style="color:#ffe3a0">${String('+'+R.total).padStart(4)}</b>`, `${f('|')}    <span class="lab">累計 ${META.lore}　　使える伝承 ${loreLeft()}</span>`);
   if(UNLOCKS.some(u=>!unlocked(u.id)&&u.cost<=loreLeft()))rows.push(`${f('|')}    <span style="color:#ffe3a0">解放できるものがある（タイトルの［解放］から）</span>`);
   else { const nx=UNLOCKS.filter(u=>!unlocked(u.id)).sort((a,b)=>a.cost-b.cost)[0]; if(nx)rows.push(`${f('|')}    <span class="lab">次の解放まで あと ${nx.cost-loreLeft()}（${nx.name} ${nx.cost}）</span>`); } return rows; }
@@ -228,27 +226,27 @@ let graveSel=0, graveCands=[];
 function graveRune(g){ const ru=makeRune(g.type,0); ru.strong=false; if(g.traits&&g.traits.length)ru.traits=g.traits.map(t=>({k:t.k,lv:t.lv-1})).filter(t=>t.lv>0); return ru; }
 function graveCandidates(){ const out=[], seen=new Set(), add=ru=>{ if(ru&&!seen.has(ru)){ seen.add(ru); out.push(ru); } };
   add(hands.L.atk); add(hands.R.atk); for(const h of ['L','R'])for(const r of hands[h].slots)add(r); if(hands.B){ add(hands.B.b0); add(hands.B.b1); } for(const r of bag)add(r); return out.slice(0,10); }
-function saveGrave(){ if(won||!graveCands)return; const ru=graveSel>0?graveCands[graveSel-1]:null; META.grave=ru?{k:(STRATA.find(st=>depth>=st.from&&depth<=st.to)||{}).k||'',depth,cause:runStats.cause||'',item:serRune(ru)}:null; saveMeta(); graveCands=[]; }
+function saveGrave(){ if(adv.won||!graveCands)return; const ru=graveSel>0?graveCands[graveSel-1]:null; META.grave=ru?{k:(STRATA.find(st=>depth>=st.from&&depth<=st.to)||{}).k||'',depth,cause:adv.runStats.cause||'',item:serRune(ru)}:null; saveMeta(); graveCands=[]; }
 function graveRows(f){ const rows=[`${f('|')}  <b>墓に遺すもの</b>　<span class="lab">（ひとつ選ぶ。次の冒険で、同じ深さに墓が現れる）</span>`];
   const opt=(i,label)=>`${f('|')}    <button class="row gv" data-gv="${i}"><span class="mk">${graveSel===i?'&gt;':' '}</span> ${label}</button>`;
   rows.push(opt(0,'<span class="lab">遺さない</span>')); graveCands.forEach((ru,i)=>rows.push(opt(i+1,clipHtml(thingLabel(ru),48)))); return rows; }
 function die(cause){
-  if(won)return;
-  dead=true; keys.KeyW=keys.KeyA=keys.KeyS=keys.KeyD=false;
+  if(adv.won)return;
+  adv.dead=true; keys.KeyW=keys.KeyA=keys.KeyS=keys.KeyD=false;
   const el=document.getElementById('death'); if(!el)return;
-  const secs=Math.floor(time-runStats.t0), mm=Math.floor(secs/60), ss=String(secs%60).padStart(2,'0');
+  const secs=Math.floor(time-adv.runStats.t0), mm=Math.floor(secs/60), ss=String(secs%60).padStart(2,'0');
   const f=t=>`<span class="f">${t}</span>`;
-  runStats.cause=cause; const R=awardLore(false); graveCands=gallery?[]:graveCandidates(); graveSel=0; if(ui.locked&&document.exitPointerLock)document.exitPointerLock();
+  adv.runStats.cause=cause; const R=awardLore(false); graveCands=gallery?[]:graveCandidates(); graveSel=0; if(ui.locked&&document.exitPointerLock)document.exitPointerLock();
   const draw=()=>{ el.innerHTML=boxText([f('+-- あ な た は 死 ん だ ---'),f('|'),`${f('|')}  死因      ${cause}`,`${f('|')}  場所      ${resultPlace()}`,
-    `${f('|')}  Lv${lvl.n}　倒した敵 ${runStats.kills}　時間 ${mm}:${ss}`,f('|'),...loreRows(R,f),f('|'),...(graveCands.length?[...graveRows(f),f('|')]:[]),`${f('|')}  ${HIST?HIST.civ.name+'の地に、またひとつ灯りが消えた。':''}`,f('|'),`${f('|')}  <button class="row" id="newRunB"><b>[Enter]</b> 新しい冒険へ</button>`,f('+---')],64); };
+    `${f('|')}  Lv${adv.lvl.n}　倒した敵 ${adv.runStats.kills}　時間 ${mm}:${ss}`,f('|'),...loreRows(R,f),f('|'),...(graveCands.length?[...graveRows(f),f('|')]:[]),`${f('|')}  ${HIST?HIST.civ.name+'の地に、またひとつ灯りが消えた。':''}`,f('|'),`${f('|')}  <button class="row" id="newRunB"><b>[Enter]</b> 新しい冒険へ</button>`,f('+---')],64); };
   document.body.classList.add('over'); draw(); el.onclick=e=>{ const b=e.target.closest&&e.target.closest('button'); if(!b)return; if(b.dataset.gv!==undefined){ graveSel=+b.dataset.gv; draw(); } else if(b.id==='newRunB')newRun(); };
   el.classList.add('show'); sRumble(0.6,2.5);
 }
 function newRun(){
   saveGrave(); document.body.classList.remove('over');
   const el=document.getElementById('death'); if(el)el.classList.remove('show','won');
-  dead=false; runSeed=(Math.random()*1e9)>>>0; depth=1; branch=null; realm=null; placeMem.clear(); arrive=null;
-  PLAYER_MAX=40; lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; runTrials=(META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=PLAYER_MAX; runStats={kills:0,t0:time,maxDepth:depth,book0:BOOK.size,beastsNew:0}; resetRunes(); newLevel();
+  adv.dead=false; adv.runSeed=(Math.random()*1e9)>>>0; depth=1; branch=null; realm=null; placeMem.clear(); arrive=null;
+  adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:time,maxDepth:depth,book0:BOOK.size,beastsNew:0}; resetRunes(); newLevel();
 }
 function hitReact(m,n){ const ty=m.ty, boss=ty.boss||m.key==='lord'||m.key==='final', now=performance.now();
   m.flinchUntil=time+Math.min(0.26,0.08+n*0.015);
@@ -269,7 +267,7 @@ function damageMonster(m,n,how){
   m.hp-=n; m.hitT=0.22; m.sleep=false; if(m.hidden)m.revealNow=true; rallyOnHit(m,n,how); if(how!=='env'&&time-(m.playerT||-99)<0.05)hitReact(m,n);
   if(!m.noticed&&hostile(m)){ m.aware=1.25; onNoticed(m); }
   for(let q=0;q<10;q++){ const a=mr()*6.28; spawn(m.x,m.y+0.6*m.ty.scale+mr()*0.4,m.z,Math.cos(a)*1.4,0.6+mr()*1.2,Math.sin(a)*1.4,0.5+mr()*0.3,G(mpick(['*','+','.'])),0.14,2.2,1.9,1.6,0); }
-  if(m.hp<=0){ m.dead=true; runStats.kills++; lordFell(m); if(m.key==='final')setTimeout(victory,1800); if(how!=='env'){ dropRune(m); onKilledBy(m); }
+  if(m.hp<=0){ m.dead=true; adv.runStats.kills++; lordFell(m); if(m.key==='final')setTimeout(victory,1800); if(how!=='env'){ dropRune(m); onKilledBy(m); }
     if(time-(m.playerT||-99)<6)gainExp(expOf(m)); if(BL('momentum')&&time-(m.playerT||-99)<1)player.momUntil=time+3; if(BL('shatter')&&m.st&&m.st.chill>0&&time-(m.playerT||-99)<0.1)coldSnap(m.x,m.z,BL('shatter')>=2?3.5:2.5);
     for(const p of m.form){ if(mr()<0.6)continue; const a=mr()*6.28; spawn(m.x+p.x*m.ty.scale,m.y+p.y*m.ty.scale,m.z+p.z*m.ty.scale,Math.cos(a)*1.2,0.3+mr()*1.5,Math.sin(a)*1.2,0.8+mr()*0.8,p.g,0.18,m.ty.col[0]*1.6,m.ty.col[1]*1.6,m.ty.col[2]*1.6,0); }
     if(sndReady()){ const t=SND.ctx.currentTime; sEnv(sTone(t,'triangle',300,90,0.4,sOut(m.x,m.z,0.3)),t,0.01,0.35); }
@@ -277,7 +275,7 @@ function damageMonster(m,n,how){
   }
 }
 function playerAttack(){
-  if(dead||!ui.started||trans||(player.atkCd||0)>0||player.netT>0)return;
+  if(adv.dead||!ui.started||trans||(player.atkCd||0)>0||player.netT>0)return;
   player.atkCd=WEAPON.cd; player.swing=0.22; sWhoosh();
   let best=null, bd=1e9; const [vx,vy,vz]=viewDir(), [ox,oy,oz]=aimOrigin();
   for(const m of monsters){ if(m.dead||m.ty.peaceful||(m.ty.critter&&!m.hidden&&m.ty.critter!=='mimic'))continue; if(m.ty.habitat==='deep'&&(m.rise||0)<0.3)continue; if(m.ty.habitat==='bog'&&(m.rise||0)<0.3)continue;
@@ -289,10 +287,10 @@ function playerAttack(){
   best.playerT=time; damageMonster(best,roll(WEAPON.min,WEAPON.max),'blade');
 }
 function updateLife(dt){
-  if(dead)return;
+  if(adv.dead)return;
   player.atkCd=Math.max(0,(player.atkCd||0)-dt); player.swing=Math.max(0,(player.swing||0)-dt);
   updateRally(dt);
-  if(Math.round(player.hp)!==hpShown){ hpShown=Math.round(player.hp); renderStatus(); }
+  if(Math.round(player.hp)!==adv.hpShown){ adv.hpShown=Math.round(player.hp); renderStatus(); }
   vfx.hurtFlash=Math.max(0,vfx.hurtFlash-dt*1.6);
   // fire hurts whoever stands in it
   const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL);
@@ -300,7 +298,7 @@ function updateLife(dt){
     for(const m of monsters){ if(m.dead||m.ty.critter||m.ty.habitat==='lava')continue; const ci=m.cz*MW+m.cx; if(fire[ci]>0.1&&!m.ty.flier)damageMonster(m,3,'fire'); } }
 }
 function monsterStrike(m,dt,dp){
-  if(!hostile(m)||!m.noticed||m.sleep||dead)return;
+  if(!hostile(m)||!m.noticed||m.sleep||adv.dead)return;
   if(m.ty.form==='eel'&&!(m.surf>0))return; if((m.ty.habitat==='deep'||m.ty.habitat==='bog')&&(m.rise||0)<0.5)return;
   const st=statOf(m), reach=(m.ty.habitat==='deep'?3.2:0.95+0.45*m.ty.scale);
   m.atkCd-=dt;

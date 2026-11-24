@@ -55,11 +55,24 @@ describe('状態を入れ物に移す（tools/state-move.mjs）', () => {
     expect(read('00-a.js')).toBe('let a=1;\nfunction t(){ vfx.zap={t:1}; return vfx.zap; }\n');
   });
 
+  it('1つの宣言に並んだ名前を全部・いくつか移しても、範囲が重ならない（残る宣言子の初めの値の中も書き換える）', () => {
+    make({ '00-a.js': 'let dead=false, stats={k:0}, shown=-1;\nlet a=1, b=2, c=b+1, d=4;\nfunction t(){ return dead||shown||b||d; }\n' });
+    stateMove({ dir, box: 'adv', names: ['dead', 'stats', 'shown', 'b', 'd'] });
+    expect(read('00-a.js')).toBe('let a=1, c=adv.b+1;\nfunction t(){ return adv.dead||adv.shown||adv.b||adv.d; }\n');
+  });
+
   it('書き換える場所で入れ物の名前が別の宣言に隠されていたら、何も書き換えずに止める', () => {
     const src = 'let shake=0;\nfunction burst(fx,fz){ shake=Math.max(shake,0.1); return fx+fz; }\n';
     make({ '00-a.js': src });
     expect(() => stateMove({ dir, box: 'fx', names: ['shake'] })).toThrow(/隠されている/);
     expect(read('00-a.js')).toBe(src);
+  });
+
+  it('初めの値が関数を呼ぶ宣言は、その場に「入れ物.名前=初めの値;」として残す（呼ぶ時と順番を変えない）', () => {
+    make({ '00-a.js': 'let a=1;\nlet seed=(Math.random()*1e9)>>>0;\nfunction s(){ return seed+a; }\n' });
+    const { report } = stateMove({ dir, box: 'adv', names: ['seed'] });
+    expect(read('00-a.js')).toBe('let a=1;\nadv.seed=(Math.random()*1e9)>>>0;\nfunction s(){ return adv.seed+a; }\n');
+    expect(report[0].kept).toBe(true);
   });
 
   it('dry なら書き換えない', () => {

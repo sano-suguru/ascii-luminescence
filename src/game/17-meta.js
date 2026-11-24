@@ -8,8 +8,7 @@ const unlocked=id=>devAllSafe()||META.unl.includes(id);
 const lockedOf=(kind,t)=>{ const u=UNLOCKS.find(x=>x.kind===kind&&x.t===t); return !!u&&!unlocked(u.id); };
 const weaponPool=()=>RUNE_TYPES.atk.filter(t=>!lockedOf('weapon',t));
 const loreLeft=()=>Math.max(0,(META.lore||0)-(META.spent||0));
-let runTrials=[];
-const trialOn=k=>runTrials.includes(k);
+const trialOn=k=>adv.runTrials.includes(k);
 let introMode='main';
 function buildUnlockPanel(){ const el=document.getElementById('intropanel'); if(!el)return; const f=t=>`<span class="f">${t}</span>`, KIND={weapon:'武器',rune:'ルーン',bless:'恩恵',build:'ビルド',trial:'試練'};
   const rows=[f('+-- 解放 ---'),`${f('|')} 伝承を使って、選べるものを増やす。　使える伝承 <b style="color:#ffe3a0">${loreLeft()}</b>`,f('|')];
@@ -53,12 +52,12 @@ document.getElementById('intropanel').addEventListener('click',e=>{
   sndInit();
   const sv=(document.getElementById('seedIn').value||'').trim();
   let regen=false;
-  if(/^[0-9]{1,10}$/.test(sv)){ const n=Number(sv)>>>0; if(n!==runSeed){ runSeed=n; regen=true; } }
+  if(/^[0-9]{1,10}$/.test(sv)){ const n=Number(sv)>>>0; if(n!==adv.runSeed){ adv.runSeed=n; regen=true; } }
   if(startDepth!==depth){ depth=startDepth; regen=true; }
   if(regen){ branch=null; realm=null; inter=null; }
   rains=[]; marks=[]; zones=[]; laters=[];
-  dead=false; { const de=document.getElementById('death'); if(de)de.classList.remove('show','won'); }
-  PLAYER_MAX=40; lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; runTrials=(META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=PLAYER_MAX; runStats={kills:0,t0:time,maxDepth:depth,book0:BOOK.size,beastsNew:0}; resetRunes();
+  adv.dead=false; { const de=document.getElementById('death'); if(de)de.classList.remove('show','won'); }
+  adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:time,maxDepth:depth,book0:BOOK.size,beastsNew:0}; resetRunes();
   if(regen)newLevel();
   ui.started=true; document.body.classList.add('started'); if(D)showStratum(D.stratum); setHelp(true); helpT=25; introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume();
 });
@@ -89,15 +88,15 @@ window.addEventListener('keydown',e=>{
   keys[e.code]=true;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
   if(!ui.started&&(e.code==='Enter'||e.code==='Space')){ document.getElementById('enter').click(); return; }
-  if(e.code==='F2'){ e.preventDefault(); if(ui.started&&!dead&&DEVALL){ if(ui.menuOpen)setMenu(false); if(ui.invOpen)setInv(false); setDbg(!ui.dbgOpen); } return; }
+  if(e.code==='F2'){ e.preventDefault(); if(ui.started&&!adv.dead&&DEVALL){ if(ui.menuOpen)setMenu(false); if(ui.invOpen)setInv(false); setDbg(!ui.dbgOpen); } return; }
   if(e.code==='Escape'&&ui.dbgOpen){ setDbg(false); return; }
-  if(ui.altarOpen&&(e.code==='Escape'||e.code==='Tab')){ e.preventDefault(); closeAltar(true); if(e.code==='Tab'&&ui.started&&!dead)setInv(true); return; }
-  if(e.code==='Tab'){ e.preventDefault(); if(ui.started&&!dead){ if(ui.menuOpen)setMenu(false); setInv(!ui.invOpen); } return; }
-  if(e.code==='Escape'){ if(ui.invOpen){ setInv(false); return; } if(ui.started&&!dead&&plFailed){ setMenu(!ui.menuOpen); return; } }
+  if(ui.altarOpen&&(e.code==='Escape'||e.code==='Tab')){ e.preventDefault(); closeAltar(true); if(e.code==='Tab'&&ui.started&&!adv.dead)setInv(true); return; }
+  if(e.code==='Tab'){ e.preventDefault(); if(ui.started&&!adv.dead){ if(ui.menuOpen)setMenu(false); setInv(!ui.invOpen); } return; }
+  if(e.code==='Escape'){ if(ui.invOpen){ setInv(false); return; } if(ui.started&&!adv.dead&&plFailed){ setMenu(!ui.menuOpen); return; } }
   if(isPaused())return;
   if(ui.started&&e.code==='KeyM'){ sndToggle(); }
   if(ui.started&&e.code==='KeyH'){ cycleUi(); }
-  if(dead&&(e.code==='Enter'||e.code==='KeyR')){ newRun(); return; }
+  if(adv.dead&&(e.code==='Enter'||e.code==='KeyR')){ newRun(); return; }
   if(ui.started&&e.code==='Space'){ startRoll(); }
   if(ui.started&&e.code==='KeyP'){ ui.perfOn=!ui.perfOn; renderStatus(); }
   if(ui.started&&e.code==='KeyJ'){ ui.chronOn=!ui.chronOn; ui.helpOn=false; helpT=0; const el=document.getElementById('help'); if(el){ if(ui.chronOn)renderChron(); el.classList.toggle('off',!ui.chronOn); } }

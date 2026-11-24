@@ -99,7 +99,7 @@ function renderHotbar(){
 
 // dodge roll (after Minecraft Dungeons): a quick burst in the direction you are moving, untouchable while it lasts
 function startRoll(){
-  if(dead||trans||(player.rollCd||0)>0||player.netT>0||player.roll)return;
+  if(adv.dead||trans||(player.rollCd||0)>0||player.netT>0||player.roll)return;
   const k=keys, fw=((k.KeyW||k.ArrowUp)?1:0)-((k.KeyS||k.ArrowDown)?1:0), st=(k.KeyD?1:0)-(k.KeyA?1:0), sy=Math.sin(player.yaw), cy=Math.cos(player.yaw);
   let ix=-sy*fw+cy*st, iz=-cy*fw-sy*st; const l=Math.hypot(ix,iz); if(l<0.01){ ix=sy; iz=cy; } else { ix/=l; iz/=l; }
   player.roll={t:0,dx:ix,dz:iz}; player.rollCd=1.0; sWhoosh();

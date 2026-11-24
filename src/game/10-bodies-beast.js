@@ -44,7 +44,7 @@ function beastForm2(ty){
 }
 // the beasts met, kept across adventures (the bestiary lists each by name)
 function loadBeasts(){ try{ return JSON.parse(localStorage.getItem('al_beasts')||'[]'); }catch(e){ return []; } }
-function recordBeast(ty){ try{ const all=loadBeasts(); if(all.some(b=>b.seed===runSeed&&b.name===ty.name))return; all.push({seed:runSeed,name:ty.name,col:ty.col,spec:ty.spec,lore:ty.lore,scale:ty.scale,fl:ty.fl,flier:ty.flier}); if(runStats)runStats.beastsNew=(runStats.beastsNew||0)+1; localStorage.setItem('al_beasts',JSON.stringify(all.slice(-60))); }catch(e){} }
+function recordBeast(ty){ try{ const all=loadBeasts(); if(all.some(b=>b.seed===adv.runSeed&&b.name===ty.name))return; all.push({seed:adv.runSeed,name:ty.name,col:ty.col,spec:ty.spec,lore:ty.lore,scale:ty.scale,fl:ty.fl,flier:ty.flier}); if(adv.runStats)adv.runStats.beastsNew=(adv.runStats.beastsNew||0)+1; localStorage.setItem('al_beasts',JSON.stringify(all.slice(-60))); }catch(e){} }
 function beastSamples(){ const K=[['獣','六本脚の','quad'],['竜','燃える鱗の','quad'],['大蛇','千の眼を持つ','serpent'],['蛾','歌う','moth'],['百足','影を喰らう','centipede']];
   return K.map(([kind,feat,plan],i)=>({seed:-1-i,name:`${feat}${kind}（見本）`,col:feat==='燃える鱗の'?[1.0,0.42,0.14]:feat==='影を喰らう'?[0.5,0.32,0.8]:hsl2rgb(i*0.21+0.05,0.75,0.6),
     spec:{plan,kind,legs:feat==='六本脚の'?6:4,wings:kind==='竜'||kind==='蛾',eyes:feat==='千の眼を持つ'?26:0,fire:feat==='燃える鱗の',shadow:feat==='影を喰らう',sing:feat==='歌う',glyphs:[['#','%','&'],['=','~','x'],['%','*','#'],['&','8','%'],['#','=','%']][i]},
