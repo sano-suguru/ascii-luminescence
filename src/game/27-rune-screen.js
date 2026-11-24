@@ -152,11 +152,12 @@ function menuAct(k){
   else if(k==='ui'){ cycleUi(); renderMenu(); }
   else if(k==='snd'){ sndToggle(); renderMenu(); }
   else if(k==='perf'){ ui.perfOn=!ui.perfOn; renderStatus(); renderMenu(); }
-  else if(k==='title'){ if(gallery||titleArm>performance.now()){ titleArm=0; returnToTitle(); } else { titleArm=performance.now()+4000; renderMenu(); menuArmReset(); } }
-  else if(k==='new'){ if(newRunArm>performance.now()){ newRunArm=0; setMenu(false); newRun(); if(!plFailed)tryLock(); } else { newRunArm=performance.now()+4000; renderMenu(); menuArmReset(); } }
+  else if(k==='title'){ if(gallery||titleArm>performance.now()){ titleArm=0; returnToTitle(); } else { titleArm=performance.now()+4000; newRunArm=0; renderMenu(); menuArmReset(); } }
+  else if(k==='new'){ if(newRunArm>performance.now()){ newRunArm=0; setMenu(false); newRun(); if(!plFailed)tryLock(); } else { newRunArm=performance.now()+4000; titleArm=0; renderMenu(); menuArmReset(); } }
 }
-// the "press again to make sure" of the menu lasts 4 real seconds (game time stands still while the menu is open), then the label goes back
-function menuArmReset(){ setTimeout(()=>{ if(ui.menuOpen)renderMenu(); },4050);
+// the "press again to make sure" of the menu lasts 4 real seconds (game time stands still while the menu is open), then the label goes back.
+// Only one of the two is armed at a time. Draw the menu again only when one has run out (so a click in the middle is not lost)
+function menuArmReset(){ setTimeout(()=>{ const now=performance.now(), out=k=>k&&k<=now; if(!out(titleArm)&&!out(newRunArm))return; if(out(titleArm))titleArm=0; if(out(newRunArm))newRunArm=0; if(ui.menuOpen)renderMenu(); },4050);
 }
 // standing still a moment is enough to look around carefully (after Brogue's searching)
 let stillT=0, searchedAt=-1;

@@ -95,9 +95,21 @@ await withBrowser(
     await menu('new');
     await advance(pg, 6); // メニューを開いている間は止まっているので、ゲームの時刻は進まない（テストの時計は進む）
     await menu('new');
-    const still = await pg.evaluate(() => __test.state().paused);
+    let still = await pg.evaluate(() => __test.state().paused);
     if (!still) errs.push('メニューで「新しい冒険」を押してから6秒たって、もう一度押したら、確かめずに新しい冒険が始まった');
-    else await pg.keyboard.press('Escape');
+    else {
+      // 受付は1つだけ：「タイトルへ」を押すと「新しい冒険」の受付は戻る（すぐ「新しい冒険」を押しても、始まらずに確かめ直す）
+      await advance(pg, 6);
+      await menu('new');
+      await menu('title');
+      await menu('new');
+      still = await pg.evaluate(() => __test.state().paused);
+      if (!still)
+        errs.push(
+          'メニューで「新しい冒険」「タイトルへ」「新しい冒険」と押したら、確かめずに新しい冒険が始まった（受付が2つ同時に立っている）',
+        );
+      else await pg.keyboard.press('Escape');
+    }
   },
   { prod: process.argv.includes('--prod') },
 );
