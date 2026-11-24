@@ -3,7 +3,7 @@
 // 移す時は tools/state-move.mjs を使う（同じ名前の局所の変数は書き換えない）。初めの値は、古い JS の宣言のまま。
 // 入れ物の名前は、古い JS の局所の名前とぶつからない物にする（道具が確かめる。fx は座標の fx とぶつかるので vfx にした）。
 import { type BranchPlace, type InterPlace, type Level, type RealmPlace } from './generate.ts';
-import { type Meta } from './progress.ts';
+import { META_DEF, type Meta } from './progress.ts';
 import { type Rune } from './runes.ts';
 import { NCELL } from './world.ts';
 
@@ -422,10 +422,11 @@ export const here: Here = {
 /** 行った階の覚え（場所の名前 → 見えた所と覚えた色の写し）。丸ごと入れ替えないので、古い JS は今までどおり placeMem で読む */
 export const placeMem = new Map<string, { explored: Uint8Array; mem: Float32Array }>();
 
-/** 今の冒険の伝説の物（シード・物の一覧・持っている物・置いた物）。冒険が伝説の物を選ぶまでは null。物の型は、目的の処理を移す時に作る */
+/** 今の冒険の伝説の物（シード・物の種類 → 物・持っている物・置いた物）。冒険が伝説の物を選ぶまでは null。物の型は、目的の処理を移す時に作る */
 export interface Legend {
   seed: number;
-  items: unknown[];
+  /** 物の種類（LEGEND_ORDER の candle・bell・mirror）→ 物（名前・言い伝え・ある支道など） */
+  items: Record<string, unknown>;
   have: Set<string>;
   placed: Set<string>;
 }
@@ -442,7 +443,7 @@ export interface Saved {
   LEGEND: Legend | null;
 }
 export const saved: Saved = {
-  META: { lore: 0, spent: 0, unl: [], grave: null, trials: [] },
+  META: { ...META_DEF, unl: [], trials: [] },
   BOOK: new Set(),
   RSEEN: new Set(),
   SEEN: new Set(),
