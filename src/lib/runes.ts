@@ -586,9 +586,8 @@ export function rollTraits<T extends Rune | null | undefined>(ru: T, _r: () => n
 export const runeTier = (ru: Rune): number => Object.keys(ru.aff).length;
 /** ルーンの色（強い物は金、色の決まったルーンはその色、ほかは段の色。段が表の外なら、移す前と同じく undefined） */
 export const runeCol = (ru: Rune): readonly number[] | undefined => {
-  const d = lookup(RUNE_DEF, ru.type);
-  if (ru.strong) return TIER_COL[3];
-  return d.col || TIER_COL[runeTier(ru)];
+  if (ru.strong) return TIER_COL[3]; // 表を引く前に見る（移す前と同じ順）
+  return lookup(RUNE_DEF, ru.type).col || TIER_COL[runeTier(ru)];
 };
 /** 効き方のルーンの値（強い物は2倍。効き方でないルーンは、移す前と同じく NaN） */
 export const modVal = (ru: Rune): number => (lookup(RUNE_DEF, ru.type).val ?? NaN) * (ru.strong ? 2 : 1);

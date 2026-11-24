@@ -92,6 +92,10 @@ describe('ルーンの名前・付け方（src/lib/runes.ts）', () => {
     expect(R.handName(gear.hands?.L ?? { atk: null, elem: null })).toBe('氷の短弓');
     expect(R.handName({ atk: null, elem: null })).toBe('素手');
   });
+  it('色：強いルーンは、表を引く前に金（表に無い種類でも止まらない。移す前と同じ順）', () => {
+    expect(R.runeCol(ru(1, 'no_such_rune', { strong: true }))).toEqual(R.TIER_COL[3]);
+    expect(() => R.runeCol(ru(1, 'no_such_rune'))).toThrow();
+  });
   it('効き方が効くか、武器の特性', () => {
     expect(R.modWorks('chain', G.effHand('L'))).toBe(true);
     expect(R.modWorks('area', { atk: ru(1, 'blade'), slots: [], slotN: 2 })).toBe(false);
