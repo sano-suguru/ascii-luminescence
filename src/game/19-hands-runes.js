@@ -52,9 +52,9 @@ const VM_PART={fill:[0.46,0.48,0.56],edge:[0.86,0.89,0.96],metal:[0.7,0.72,0.8],
 const VM_BRIGHT={fill:0.8,edge:1.1,metal:0.95,wood:0.78,woodedge:1.0,hand:0.75,knuckle:0.9,arm:0.45,head:1.25,glow:1.3,string:0.6};
 const VM_TINT={edge:0.7,head:0.85,glow:0.85,fill:0.25};
 const vmKick={L:-9,R:-9};
-function drawViewWeapons(t){ if(ui.camMode==='tps'||!ui.started||adv.dead||!gear.hands||!D)return; if(gallery&&gallery.mode==='beast')return;
+function drawViewWeapons(t){ if(ui.camMode==='tps'||!ui.started||adv.dead||!gear.hands||!here.D)return; if(gallery&&gallery.mode==='beast')return;
   const [f,r,u]=handUp(), [ex,ey,ez]=aimOrigin(); let dw=0.62;
-  for(const side of [-0.3,0,0.3])for(let st=0.05;st<=0.62;st+=0.04){ const x=ex+f[0]*st+r[0]*side, z=ez+f[2]*st+r[2]*side, ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL); if(ci<0||ci>=NCELL||D.tile[ci]===TW||D.tile[ci]===TX||doorBlock(ci)){ dw=Math.min(dw,st-0.07); break; } }
+  for(const side of [-0.3,0,0.3])for(let st=0.05;st<=0.62;st+=0.04){ const x=ex+f[0]*st+r[0]*side, z=ez+f[2]*st+r[2]*side, ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL); if(ci<0||ci>=NCELL||here.D.tile[ci]===TW||here.D.tile[ci]===TX||doorBlock(ci)){ dw=Math.min(dw,st-0.07); break; } }
   const q=clamp(dw/0.62,0.3,1), spd=Math.hypot(player.vx||0,player.vz||0), bob=Math.sin(time*9)*0.007*Math.min(1,spd/4), sway=Math.cos(time*4.5)*0.004*Math.min(1,spd/4), two=isTwo();
   const kx=Math.min(1,(camera.aspect||1.78)/(16/9)), W=(x,y,z)=>{ x*=kx; return [ex+(f[0]*z+r[0]*x+u[0]*y)*q,ey+(f[1]*z+u[1]*y)*q,ez+(f[2]*z+r[2]*x+u[2]*y)*q]; };
   const one=(h,type,mirror)=>{ const M=VM_MODELS[type]||VM_MODELS.bare; const H=gear.hands[h], el=H.elem?H.elem.type:null, ec=elemCol(el);

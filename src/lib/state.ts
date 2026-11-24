@@ -2,7 +2,7 @@
 // 古い JS は src/game/imports.mjs で入れ物を読み、vfx.shake のように欄で読み書きする（入れ物そのものは差し替えない）。
 // 移す時は tools/state-move.mjs を使う（同じ名前の局所の変数は書き換えない）。初めの値は、古い JS の宣言のまま。
 // 入れ物の名前は、古い JS の局所の名前とぶつからない物にする（道具が確かめる。fx は座標の fx とぶつかるので vfx にした）。
-import { type BranchPlace, type InterPlace, type RealmPlace } from './generate.ts';
+import { type BranchPlace, type InterPlace, type Level, type RealmPlace } from './generate.ts';
 import { type Rune } from './runes.ts';
 
 /** 稲妻の光り（灯りの1つとして描く。t は残りの秒。900 より大きいと消えない） */
@@ -196,7 +196,7 @@ export interface Trans {
   regen?: boolean;
   go?: string;
 }
-/** 今いる場所と、階の中身（D 以外）。深さ・支道・異界・特別な階、生き物、灯りの備品、階を移る途中、着いた所 */
+/** 今いる場所と、階の中身。深さ・支道・異界・特別な階、生き物、灯りの備品、階を移る途中、着いた所 */
 export interface Here {
   /** 階の生き物。生き物の型は、生き物の処理を移す時に作る */
   monsters: unknown[];
@@ -213,6 +213,16 @@ export interface Here {
   fade: number;
   /** 図鑑の見本の階を作っているか */
   showroomGen: boolean;
+  /** 今の階の中身（generate.ts の generateLevel の結果）。冒険が始まるまでは null。後から足される欄（hub・doorAt など）は、使う処理を移す時に型を足す */
+  D: Level | null;
+  /** 見たことのあるマス。本当の初めの値（マスの数の長さ）は古い JS（06-world.js）が入れる。ここの空の配列は仮 */
+  explored: Uint8Array;
+  /** マスごとの覚えた色（マスの数×3）。本当の初めの値は古い JS が入れる。ここの空の配列は仮 */
+  mem: Float32Array;
+  /** 今見えているマスの印（fovStamp と同じなら見えている）。本当の初めの値は古い JS が入れる。ここの空の配列は仮 */
+  fovVis: Uint32Array;
+  /** 見えるマスを数え直すたびに増える印 */
+  fovStamp: number;
 }
 export const here: Here = {
   monsters: [],
@@ -225,6 +235,11 @@ export const here: Here = {
   arrive: null,
   fade: 0,
   showroomGen: false,
+  D: null,
+  explored: new Uint8Array(0),
+  mem: new Float32Array(0),
+  fovVis: new Uint32Array(0),
+  fovStamp: 1,
 };
 /** 行った階の覚え（場所の名前 → 見えた所と覚えた色の写し）。丸ごと入れ替えないので、古い JS は今までどおり placeMem で読む */
 export const placeMem = new Map<string, { explored: Uint8Array; mem: Float32Array }>();

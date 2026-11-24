@@ -59,7 +59,7 @@ document.getElementById('intropanel').addEventListener('click',e=>{
   adv.dead=false; { const de=document.getElementById('death'); if(de)de.classList.remove('show','won'); }
   adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:time,maxDepth:here.depth,book0:BOOK.size,beastsNew:0}; resetRunes();
   if(regen)newLevel();
-  ui.started=true; document.body.classList.add('started'); if(D)showStratum(D.stratum); setHelp(true); helpT=25; introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume();
+  ui.started=true; document.body.classList.add('started'); if(here.D)showStratum(here.D.stratum); setHelp(true); helpT=25; introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume();
 });
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 window.addEventListener('mousedown',e=>{

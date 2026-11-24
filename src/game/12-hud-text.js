@@ -20,7 +20,7 @@ function updateStealth(dt){
 const hudInfo={explored:0};
 let helpT=0;
 function renderStatus(){
-  const el=document.getElementById('status'); if(!el||!D)return;
+  const el=document.getElementById('status'); if(!el||!here.D)return;
   const lv=stealth.level, lc=LIGHT_COLS[lv];
   const meter=['.',':','*'].map((g,k)=>k<=lv?`<span class="glow" style="color:${lc}">${g}</span>`:`<span class="dim">${g}</span>`).join(' ');
   let l4='';
@@ -41,7 +41,7 @@ function renderChron(){
   el.innerHTML=boxText(lines);
 }
 function renderHelp(){
-  const el=document.getElementById('help'); if(!el||!D)return;
+  const el=document.getElementById('help'); if(!el||!here.D)return;
   const f=t=>`<span class="f">${t}</span>`;
   el.innerHTML=boxText([f('+-- 操作 ----------------------'),
     `${f('|')} <b>WASD</b>     移動        <b>マウス</b>  視点`,`${f('|')} <b>左クリック</b> 左手      <b>右クリック</b> 右手`,`${f('|')} 押して詠唱、満ちたら離して放つ`,`${f('|')} <b>ホイール</b> ビルド切替  <b>Space</b>  回避`,`${f('|')} <b>Shift</b>    走る`,`${f('|')} <b>Tab</b>      装備        <b>Esc</b>    メニュー`,`${f('|')} 立ち止まると、辺りを自動で調べる`,f('|'),
@@ -75,5 +75,5 @@ function drawMark(m,t,dp){
   else if(m.aware>0.35){ dyn(m.x,y+Math.sin(t*3)*0.04,m.z,G('?'),0.32,2.0*near,1.7*near,0.5*near); }
 }
 // lerpAngle は src/lib/math.ts（src/game/imports.mjs で読む）
-const flyOpen=(x,z)=>{ const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL); if(cx<0||cz<0||cx>=MW||cz>=MH)return false; const tt=D.tile[cz*MW+cx]; return tt!==TW&&tt!==TX; };
+const flyOpen=(x,z)=>{ const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL); if(cx<0||cz<0||cx>=MW||cz>=MH)return false; const tt=here.D.tile[cz*MW+cx]; return tt!==TW&&tt!==TX; };
 // mname は src/lib/names.ts（src/game/imports.mjs で読む）

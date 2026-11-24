@@ -34,9 +34,9 @@ function legendLine(){ const L=getLegend(); if(!L)return '';
 function lordFell(m){
   if(m.key!=='lord'||!here.branch)return;
   adv.runState.lordsDone.add(here.branch.key);
-  { let si=m.cz*MW+m.cx; for(const d of [1,-1,MW,-MW])if(D.tile[si+d]===TF&&!D.liquid[si+d]){ si+=d; break; } D.items.push({i:si,kind:'slot',taken:false,born:time}); }
+  { let si=m.cz*MW+m.cx; for(const d of [1,-1,MW,-MW])if(here.D.tile[si+d]===TF&&!here.D.liquid[si+d]){ si+=d; break; } here.D.items.push({i:si,kind:'slot',taken:false,born:time}); }
   const k=legendOfBranch(here.branch.key), L=getLegend();
-  if(k&&L&&!L.have.has(k)){ D.items.push({i:m.cz*MW+m.cx,kind:'legend',legend:k,taken:false,born:time});
+  if(k&&L&&!L.have.has(k)){ here.D.items.push({i:m.cz*MW+m.cx,kind:'legend',legend:k,taken:false,born:time});
     const c=LEGEND_KINDS[k].col; for(let q=0;q<60;q++){ const a=mr()*6.28; spawn(m.x,0.8+mr()*1.5,m.z,Math.cos(a)*2.2,0.5+mr()*2.4,Math.sin(a)*2.2,1.2+mr(),G(mpick(['*','+','.','\''])),0.2,c[0]*3,c[1]*3,c[2]*3,0); }
     sChime(m.x,m.z,0.6); setTimeout(()=>sChime(m.x,m.z,0.5),300);
     msg(`<b style="color:${css(c)}">${LEGEND_KINDS[k].ch}</b>${mname(m)}が崩れ落ちた。その胸の奥から、ひとつの光がこぼれ落ちた。`); }
@@ -51,7 +51,7 @@ function openSlot(cell){ const opts=[];
   if(!opts.length){ const ru=makeRune(randomRuneType(mr),0); msg('<b style="color:#ffe3a0">{ }</b>空の枠を手にした。開ける枠はもうない。枠は、ひとつのルーンに姿を変えた。'); takeRune(ru); return; }
   if(opts.length===1){ applyOpen(opts[0].target); msg(`<b style="color:#ffe3a0">{ }</b>空の枠を手にした。${opts[0].label}が開いた。`); return; }
   const grp='slotpick'+(++slotPickN);
-  opts.forEach((o,k)=>D.items.push({i:cell,kind:'rune',altar:true,grp,slot:k,opt:'open',target:o.target,label:o.label,rune:{uid:-1,type:'slotopt',aff:{}},taken:false}));
+  opts.forEach((o,k)=>here.D.items.push({i:cell,kind:'rune',altar:true,grp,slot:k,opt:'open',target:o.target,label:o.label,rune:{uid:-1,type:'slotopt',aff:{}},taken:false}));
   adv.runState.slotPend=grp; msg('<b style="color:#ffe3a0">{ }</b>空の枠を手にした。どの枠を開けるか、選ぶ。'); }
 
 function pickLegend(it){
@@ -68,13 +68,13 @@ function oracleLegendHints(){ const L=getLegend(); if(!L)return;
 function setupFinal(){
   // the bottom is the highest point of the cave the stairs end in, so the shadow can stand under the vault
   // the bottom: the place with the highest vault on this level, with open floor around it for the pedestals
-  let c0=D.stairs, bc=D.ceil[c0]||0; const open=i=>i>=0&&i<NCELL&&D.tile[i]===TF&&!D.liquid[i]&&!D.solid.has(i);
-  for(const rad of [3,2,1]){ for(let i=0;i<NCELL;i++){ if(!open(i)||D.ceil[i]<=bc)continue; const x=i%MW, z=(i/MW)|0; let ok=x>rad&&z>rad&&x<MW-rad-1&&z<MH-rad-1;
-      for(let dz=-rad;dz<=rad&&ok;dz++)for(let dx=-rad;dx<=rad;dx++)if(!open(i+dz*MW+dx)){ ok=false; break; } if(ok){ bc=D.ceil[i]; c0=i; } }
+  let c0=here.D.stairs, bc=here.D.ceil[c0]||0; const open=i=>i>=0&&i<NCELL&&here.D.tile[i]===TF&&!here.D.liquid[i]&&!here.D.solid.has(i);
+  for(const rad of [3,2,1]){ for(let i=0;i<NCELL;i++){ if(!open(i)||here.D.ceil[i]<=bc)continue; const x=i%MW, z=(i/MW)|0; let ok=x>rad&&z>rad&&x<MW-rad-1&&z<MH-rad-1;
+      for(let dz=-rad;dz<=rad&&ok;dz++)for(let dx=-rad;dx<=rad;dx++)if(!open(i+dz*MW+dx)){ ok=false; break; } if(ok){ bc=here.D.ceil[i]; c0=i; } }
     if(bc>=10)break; }
   const L=getLegend(), cx0=c0%MW, cz0=(c0/MW)|0;
   here.monsters=here.monsters.filter(m=>m.ty.critter);
-  const ok=c=>c>=0&&c<NCELL&&D.tile[c]===TF&&!D.liquid[c]&&!D.solid.has(c)&&c!==c0;
+  const ok=c=>c>=0&&c<NCELL&&here.D.tile[c]===TF&&!here.D.liquid[c]&&!here.D.solid.has(c)&&c!==c0;
   const cand=[]; for(let dz=-5;dz<=5;dz++)for(let dx=-5;dx<=5;dx++){ const d=Math.hypot(dx,dz); if(d<2.4||d>4.6)continue; const c=(cz0+dz)*MW+cx0+dx; if(ok(c))cand.push([Math.atan2(dz,dx),c]); }
   cand.sort((a,b)=>a[0]-b[0]); const peds=[];
   if(cand.length>=3){ const step=cand.length/3; for(let k=0;k<3;k++)peds.push({kind:LEGEND_ORDER[k],i:cand[Math.floor(k*step)][1]}); }
@@ -98,13 +98,13 @@ function updateFinal(dt){
   const b=finalSt.boss; if(b&&!b.dead&&!b.phase2&&b.hp<b.maxHp*0.5)transformShadow(b);
   if(b&&b.invulnT>0)b.invulnT-=dt;
   if(b&&!b.dead){ finalSt.summonT-=dt;
-    if(finalSt.summonT<=0){ finalSt.summonT=14; const n=here.monsters.filter(m=>!m.dead&&m.key==='W').length; if(n<4){ for(let k=0;k<2;k++){ const a=mr()*6.28, cx=Math.floor((b.x+Math.cos(a)*2.5)/CELL), cz=Math.floor((b.z+Math.sin(a)*2.5)/CELL), c=cz*MW+cx; if(D.tile[c]!==TF)continue;
+    if(finalSt.summonT<=0){ finalSt.summonT=14; const n=here.monsters.filter(m=>!m.dead&&m.key==='W').length; if(n<4){ for(let k=0;k<2;k++){ const a=mr()*6.28, cx=Math.floor((b.x+Math.cos(a)*2.5)/CELL), cz=Math.floor((b.z+Math.sin(a)*2.5)/CELL), c=cz*MW+cx; if(here.D.tile[c]!==TF)continue;
         const s=makeMonster({key:'W',cx,cz,g:-1,lead:true}); s.sleep=false; s.aware=1.25; s.noticed=true; here.monsters.push(s); for(let q=0;q<16;q++){ const an=mr()*6.28; spawn(s.x,0.6,s.z,Math.cos(an),0.4+mr(),Math.sin(an),0.8,G('.'),0.14,0.6,0.4,1.2,0); } }
         msg(`<b style="color:#a98cff">W</b>影が身をよじり、闇の中から亡霊を呼び出した。`); } } }
 }
 function spawnFinalBoss(){
   const R=HIST.rulers, last=R[R.length-1], cx=finalSt.c0%MW, cz=(finalSt.c0/MW)|0;
-  const ceilH=D.ceil[finalSt.c0]||6;
+  const ceilH=here.D.ceil[finalSt.c0]||6;
   MTYPES.final={...MTYPES.L,ch:'&',look:null,form:'shadowking',sk:'final',name:`${last.name}王の影`,scale:Math.max(2.0,Math.min(3.6,(ceilH-0.3)/3.3)),col:[0.62,0.48,1.0],boss:true,lich:false,light:6,verb:'王冠の形をした影が、底の闇から立ちのぼっている'};
   const b=makeMonster({key:'final',cx,cz,g:-1,lead:true}); b.sleep=false; b.aware=1.25; b.noticed=true; here.monsters.push(b); finalSt.boss=b;
   sRumble(0.9,3); vfx.shake=Math.max(vfx.shake,0.6); vfx.flash=Math.max(vfx.flash,0.3);
@@ -114,12 +114,12 @@ function spawnFinalBoss(){
 }
 // drawing: the pedestals, the pillars of light and their circles; the seal on the stairs at the last level before the bottom; legendary things lying where a lord fell
 function drawLegendWorld(t){
-  const L=getLegend(); if(!L||!D)return;
-  for(const it of (D.items||[])){ if(it.taken||it.kind!=='legend')continue; const [x,z]=cpos(it.i), c=LEGEND_KINDS[it.legend].col, b=2.4+0.6*Math.sin(t*2.5);
+  const L=getLegend(); if(!L||!here.D)return;
+  for(const it of (here.D.items||[])){ if(it.taken||it.kind!=='legend')continue; const [x,z]=cpos(it.i), c=LEGEND_KINDS[it.legend].col, b=2.4+0.6*Math.sin(t*2.5);
     dyn(x,1.0+Math.sin(t*1.6)*0.08,z,G(LEGEND_KINDS[it.legend].ch),0.7,c[0]*b,c[1]*b,c[2]*b);
     for(let k=0;k<10;k++){ const a=t*0.9+k/10*Math.PI*2; dyn(x+Math.cos(a)*0.5,0.3+k*0.04,z+Math.sin(a)*0.5,G('*'),0.1,c[0]*2,c[1]*2,c[2]*2); }
     for(let y=0;y<10;y++)dyn(x,1.4+y*0.5,z,G('|'),0.2,c[0]*(1.2-y*0.1),c[1]*(1.2-y*0.1),c[2]*(1.2-y*0.1)); }
-  if(descentSealed()){ const [x,z]=cpos(D.stairs); if(Math.hypot(x-player.x,z-player.z)<30)LEGEND_ORDER.forEach((k,j)=>{ const a=j/3*Math.PI*2+t*0.3, kd=LEGEND_KINDS[k], has=L.have.has(k), c=kd.col, br=has?2.4:0.35;
+  if(descentSealed()){ const [x,z]=cpos(here.D.stairs); if(Math.hypot(x-player.x,z-player.z)<30)LEGEND_ORDER.forEach((k,j)=>{ const a=j/3*Math.PI*2+t*0.3, kd=LEGEND_KINDS[k], has=L.have.has(k), c=kd.col, br=has?2.4:0.35;
       dyn(x+Math.cos(a)*1.1,0.9,z+Math.sin(a)*1.1,G(kd.ch),0.4,c[0]*br,c[1]*br,c[2]*br); for(let q=0;q<8;q++){ const b2=a+q*0.09; dyn(x+Math.cos(b2)*1.1,0.12,z+Math.sin(b2)*1.1,G('.'),0.1,0.5,0.45,0.7); } }); }
   if(finalSt&&isFinal()){ for(const p of finalSt.peds){ const [x,z]=cpos(p.i), kd=LEGEND_KINDS[p.kind], c=kd.col, lit=L.placed.has(p.kind), can=L.have.has(p.kind);
       dyn(x,0.25,z,G('#'),0.4,0.45,0.42,0.52); dyn(x,0.6,z,G('='),0.42,0.55,0.52,0.6);

@@ -70,7 +70,7 @@ function interAfter(d){ for(const k in SPECIALS)if(interAt(k)===d)return k; retu
 let lockCell=-1; // placeMem は src/lib/state.ts（src/game/imports.mjs で読む）
 const placeKey=()=>`${adv.runSeed}:`+(here.realm?`r:${here.realm.key}:${here.realm.ret}`:here.branch?`b:${here.branch.key}:${here.branch.lvl}`:here.inter?`i:${here.inter.key}`:`m:${here.depth}`);
 function advance(go){
-  if(D&&explored)placeMem.set(placeKey(),{explored:explored.slice(),mem:mem.slice()});
+  if(here.D&&here.explored)placeMem.set(placeKey(),{explored:here.explored.slice(),mem:here.mem.slice()});
   here.arrive=null;
   if(go==='up'){
     if(here.inter){ here.inter=null; here.arrive='stairs'; return; }
@@ -78,8 +78,8 @@ function advance(go){
     if(here.branch){ if(here.branch.lvl>1){ here.branch.lvl--; here.arrive='stairs'; return; } here.depth=here.branch.ret-1; here.branch=null; here.arrive='bstairs'; return; }
     return;
   }
-  if(go==='branch'&&D.bstairs){ const B=BRANCHES[D.bstairs.key]; here.branch={key:B.key,lvl:1,len:B.len,ret:here.depth+1}; return; }
-  if(go==='realm'&&D.portal){ here.realm={key:D.portal.key,ret:here.depth+1}; return; }
+  if(go==='branch'&&here.D.bstairs){ const B=BRANCHES[here.D.bstairs.key]; here.branch={key:B.key,lvl:1,len:B.len,ret:here.depth+1}; return; }
+  if(go==='realm'&&here.D.portal){ here.realm={key:here.D.portal.key,ret:here.depth+1}; return; }
   if(here.inter){ here.depth=here.inter.after+1; here.inter=null; return; }
   if(here.realm){ here.depth=here.realm.ret; here.realm=null; return; }
   if(here.branch){ if(here.branch.lvl<here.branch.len){ here.branch.lvl++; return; } here.depth=here.branch.ret; here.branch=null; return; }

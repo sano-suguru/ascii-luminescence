@@ -22,24 +22,24 @@ function galleryList(){
 // a quiet room from a fixed maze: everything else is cleared away
 function galleryRoom(seed){
   here.depth=1; here.branch=null; here.realm=null; here.inter=null; adv.runState.startChosen=true; adv.runState.altar1=true; newLevel(seed);
-  let best=null,bl=0; for(const r of D.rooms){ if(r.cells.length>bl&&!r.cave&&!r.vault){ bl=r.cells.length; best=r; } }
+  let best=null,bl=0; for(const r of here.D.rooms){ if(r.cells.length>bl&&!r.cave&&!r.vault){ bl=r.cells.length; best=r; } }
   const cs=best.cells, cx=Math.round(cs.reduce((s,i)=>s+i%MW,0)/cs.length), cz=Math.round(cs.reduce((s,i)=>s+((i/MW)|0),0)/cs.length);
-  D.items=[]; D.steles=[]; here.monsters=[]; projs=[]; clouds=[]; boltFx=[]; zapQueue=[];
-  if(D.tall)for(const i of cs)D.tall[i]=0;
+  here.D.items=[]; here.D.steles=[]; here.monsters=[]; projs=[]; clouds=[]; boltFx=[]; zapQueue=[];
+  if(here.D.tall)for(const i of cs)here.D.tall[i]=0;
   return {cx,cz,x:(cx+0.5)*CELL,z:(cz+0.5)*CELL};
 }
 // ---------------------------------------------------------------- the bestiary: one creature at a time, turning slowly in the light
 function showroom(){
   // a run seed whose depth 4 is the great hall
   adv.runSeed=7; here.depth=4; here.branch=null; here.realm=null; here.inter={key:'bigroom',after:4}; adv.runState.startChosen=true; adv.runState.altar1=true; here.showroomGen=true; newLevel(424242); here.showroomGen=false; here.inter=null;
-  const W=MW, open=i=>i>=0&&i<NCELL&&D.tile[i]===TF&&!D.liquid[i];
+  const W=MW, open=i=>i>=0&&i<NCELL&&here.D.tile[i]===TF&&!here.D.liquid[i];
   let best=-1, bc=-1; for(let i=W*2;i<NCELL-W*2;i++){ if(!open(i))continue; const cx=i%W, cz=(i/W)|0; let c=0;
       for(let r=1;r<=12;r++){ let ok=true; for(let a=0;a<16&&ok;a++){ const an=a/16*Math.PI*2, j=Math.round(cz+Math.sin(an)*r)*W+Math.round(cx+Math.cos(an)*r); if(!open(j))ok=false; } if(!ok)break; c=r; }
       if(c>bc){ bc=c; best=i; } }
   const cx=best%W, cz=(best/W)|0, x=(cx+0.5)*CELL, z=(cz+0.5)*CELL;
-  D.items=[]; D.steles=[]; here.monsters=[]; projs=[]; clouds=[]; boltFx=[]; zapQueue=[];
-  here.fixtures=here.fixtures.filter(f=>{ const d=Math.hypot(f.x-x,f.z-z); if(d<8&&f.li!==undefined&&D.lights[f.li])D.lights[f.li].int=0; return d>=8; });
-  for(const L of D.lights)if(Math.hypot(L.x-x,L.z-z)<8)L.int=0;
+  here.D.items=[]; here.D.steles=[]; here.monsters=[]; projs=[]; clouds=[]; boltFx=[]; zapQueue=[];
+  here.fixtures=here.fixtures.filter(f=>{ const d=Math.hypot(f.x-x,f.z-z); if(d<8&&f.li!==undefined&&here.D.lights[f.li])here.D.lights[f.li].int=0; return d>=8; });
+  for(const L of here.D.lights)if(Math.hypot(L.x-x,L.z-z)<8)L.int=0;
   // the open direction for the camera
   let dir=0, far=0; for(let a=0;a<16;a++){ const an=a/16*Math.PI*2; let d=0; for(let r=0.5;r<30;r+=0.5){ const j=Math.floor((z+Math.sin(an)*r)/CELL)*W+Math.floor((x+Math.cos(an)*r)/CELL); if(!open(j))break; d=r; } if(d>far){ far=d; dir=an; } }
   return {cx,cz,x,z,dir,far};

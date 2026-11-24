@@ -1,12 +1,14 @@
 // ---------------------------------------------------------------- world state
-let D=null, staticMesh=null, occMesh=null, glyphCount=0;
-let explored=new Uint8Array(NCELL), mem=new Float32Array(NCELL*3), fovVis=new Uint32Array(NCELL), fovStamp=1;
+let staticMesh=null, occMesh=null, glyphCount=0;
+here.explored=new Uint8Array(NCELL);
+here.mem=new Float32Array(NCELL*3);
+here.fovVis=new Uint32Array(NCELL);
 let visitedRooms=new Set(), stairsSeen=false, fogBase=0.05;
 // player は src/lib/state.ts（src/game/imports.mjs で読む。丸ごと入れ替えないので、名前はそのまま）
 const edge={t:0,k:'',idle:0};
 let hintHTML='';
 function showHint(h){ if(h===hintHTML)return; hintHTML=h; const el=document.getElementById('hint'); if(el)el.innerHTML=h; }
-const ceilAt=(x,z)=>{ const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL); if(cx<0||cz<0||cx>=MW||cz>=MH)return BASE_H; return D.ceil[cz*MW+cx]; };
+const ceilAt=(x,z)=>{ const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL); if(cx<0||cz<0||cx>=MW||cz>=MH)return BASE_H; return here.D.ceil[cz*MW+cx]; };
 
 // vnoise は src/lib/noise.ts（src/game/imports.mjs で読む）
 // hash3 は src/lib/noise.ts（古い JS は使わない。src/lib/ の生成などが使う）
@@ -26,11 +28,11 @@ function makeWater(){
 function updateWater(){
   const W2=waterTex.image.data, L2=waterLTex.image.data, oI=new Float32Array(3), oW=new Float32Array(3);
   for(let i=0;i<NCELL;i++){
-    const lq=D.liquid[i], o=i*4; W2[o]=W2[o+1]=W2[o+2]=W2[o+3]=0; L2[o]=L2[o+1]=L2[o+2]=L2[o+3]=0;
+    const lq=here.D.liquid[i], o=i*4; W2[o]=W2[o+1]=W2[o+2]=W2[o+3]=0; L2[o]=L2[o+1]=L2[o+2]=L2[o+3]=0;
     if(lq!==LQ_WATER&&lq!==LQ_DEEP)continue;
-    const r=D.roomOf[i]>=0?D.rooms[D.roomOf[i]]:null, lake=(r&&r.theme&&r.theme.k==='lake')||D.stratum.k==='cavern';
-    W2[o]=lq===LQ_DEEP?1:0.5; W2[o+1]=D.flow[i]?flowW(D.flow[i]):0; W2[o+2]=lake?1:0; W2[o+3]=D.algae&&D.algae[i]?1:0;
-    topLights(D.lights,(i%MW+0.5)*CELL,0.1,(((i/MW)|0)+0.5)*CELL,0,1,0,i,oI,oW,0);
+    const r=here.D.roomOf[i]>=0?here.D.rooms[here.D.roomOf[i]]:null, lake=(r&&r.theme&&r.theme.k==='lake')||here.D.stratum.k==='cavern';
+    W2[o]=lq===LQ_DEEP?1:0.5; W2[o+1]=here.D.flow[i]?flowW(here.D.flow[i]):0; W2[o+2]=lake?1:0; W2[o+3]=here.D.algae&&here.D.algae[i]?1:0;
+    topLights(here.D.lights,(i%MW+0.5)*CELL,0.1,(((i/MW)|0)+0.5)*CELL,0,1,0,i,oI,oW,0);
     L2[o]=oI[0]>=0?oI[0]+1:0; L2[o+1]=oW[0]; L2[o+2]=oI[1]>=0?oI[1]+1:0; L2[o+3]=oW[1];
   }
   waterTex.needsUpdate=true; waterLTex.needsUpdate=true;
@@ -41,8 +43,8 @@ function buildWorld(){
   for(const c of chunks){ scene.remove(c.mesh); c.mesh.geometry.dispose(); }
   chunks=[];
   if(occMesh){ scene.remove(occMesh); occMesh.geometry.dispose(); }
-  const {tile,liquid,surface,roomOf,rooms,lights,ceil}=D;
-  setNoiseSeed(D.noiseSeed);
+  const {tile,liquid,surface,roomOf,rooms,lights,ceil}=here.D;
+  setNoiseSeed(here.D.noiseSeed);
   const cap=360000;
   const M=new Float32Array(cap*16), GL=new Float32Array(cap), CO=new Float32Array(cap*3), EM=new Float32Array(cap*4), LI=new Float32Array(cap*3), LW=new Float32Array(cap*3);
   const CK=new Int16Array(cap), PY=new Float32Array(cap);
@@ -53,7 +55,7 @@ function buildWorld(){
     e.set(ex,ey,0,'YXZ'); q.setFromEuler(e); p.set(x,y,z); s.set(size,size,size); m4.compose(p,q,s); m4.toArray(M,n*16);
     GL[n]=g; CO[n*3]=r; CO[n*3+1]=gg; CO[n*3+2]=b; EM[n*4]=emis; EM[n*4+1]=rand(); EM[n*4+2]=kind; EM[n*4+3]=0;
     topLights(lights,x,y,z,nx,ny,nz,ref,LI,LW,n*3);
-    { const ci=cellOf(x,z), dm=ci>=0?D.darkMul[ci]:1; if(dm<1){ LW[n*3]*=dm; LW[n*3+1]*=dm; LW[n*3+2]*=dm; EM[n*4]*=0.3+0.7*dm; } }
+    { const ci=cellOf(x,z), dm=ci>=0?here.D.darkMul[ci]:1; if(dm<1){ LW[n*3]*=dm; LW[n*3+1]*=dm; LW[n*3+2]*=dm; EM[n*4]*=0.3+0.7*dm; } }
     CK[n]=clamp(Math.floor(x/(CELL*CHUNK)),0,CXN-1)+clamp(Math.floor(z/(CELL*CHUNK)),0,CZN-1)*CXN; PY[n]=y;
     n++;
   };
@@ -64,7 +66,7 @@ function buildWorld(){
   const RG='##==||[]HH#:=#|][', FGL='##H=+#|#=#';
   let faceStyle=null, faceSkip=null, faceVein=0;
   const face=(pcx,pcz,yaw,nX,nZ,y0,y1,ref,tint,layers,occl,th)=>{
-    const ruinW=D.stratum.k==='ruins', fortW=D.stratum.k==='fortress', rmF=roomOf[ref]>=0?rooms[roomOf[ref]]:null;
+    const ruinW=here.D.stratum.k==='ruins', fortW=here.D.stratum.k==='fortress', rmF=roomOf[ref]>=0?rooms[roomOf[ref]]:null;
     const tX=Math.cos(yaw), tZ=-Math.sin(yaw);
     const segs=[];
     if(y0<0)segs.push([y0,Math.min(y1,0),0.62,3,0.66]);
@@ -161,9 +163,9 @@ function buildWorld(){
       const yaw=Math.atan2(nx,nz), pitch=-Math.asin(clamp(ny,-1,1));
       for(let L=0;L<layers;L++){
         const d=L*0.27, sz=size*(1-0.14*L), dim=1-0.33*L; let v=(0.8+rand()*0.4)*dim;
-        const rk=D.rock, bnd=0.5+0.5*Math.sin(y*1.35+vnoise(px*0.15,y*0.3,pz*0.15)*5);
+        const rk=here.D.rock, bnd=0.5+0.5*Math.sin(y*1.35+vnoise(px*0.15,y*0.3,pz*0.15)*5);
         let c=[(rk.a[0]*(1-bnd)+rk.b[0]*bnd)*0.55+tint[0]*0.45,(rk.a[1]*(1-bnd)+rk.b[1]*bnd)*0.55+tint[1]*0.45,(rk.a[2]*(1-bnd)+rk.b[2]*bnd)*0.55+tint[2]*0.45], emis=(0.025+rand()*0.03)*dim, kind=8, g=G('#');
-        const wcI=cellOf(px-nx*0.6,pz-nz*0.6), ve=wcI>=0?D.vein[wcI]:0;
+        const wcI=cellOf(px-nx*0.6,pz-nz*0.6), ve=wcI>=0?here.D.vein[wcI]:0;
         if(L===0){
           const rr=rand();
           if(ve&&rr<0.32&&ny>-0.4){ kind=7; c=VEIN_COL[ve]; emis=R(0.35,0.6); g=G(ve===1?'$':'*'); }
@@ -179,7 +181,7 @@ function buildWorld(){
     };
     // cavern walls and vault
     if(!r.noShell){
-      const C=sdf(c=>tile[c]!==TW), top=(D.finalVault&&(D.rooms[D.roomOf[D.stairs]]===r||r.cells.includes(D.stairs)||(r.cells0&&r.cells0.includes(D.stairs))))?Math.max(th.base,13):th.base, dmx=Math.max(1.5,C.mx);
+      const C=sdf(c=>tile[c]!==TW), top=(here.D.finalVault&&(here.D.rooms[here.D.roomOf[here.D.stairs]]===r||r.cells.includes(here.D.stairs)||(r.cells0&&r.cells0.includes(here.D.stairs))))?Math.max(th.base,13):th.base, dmx=Math.max(1.5,C.mx);
       const gD=y=>y<Y0?0:dmx*Math.pow((y-Y0)/(top-Y0),1.6);
       for(const i of (r.shell?r.cells0.filter(i=>tile[i]!==TW):r.cells.concat(r.chasm))){ const sdc=samp(C.sd,(i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL); ceil[i]=Y0+(top-Y0)*Math.pow(clamp(sdc/dmx,0,1),1/1.6); }
       const ys=[];
@@ -189,11 +191,11 @@ function buildWorld(){
       slice(C.sd,(sv,x,y,z)=>sv+rockN(x,y,z)-gD(y),ys,acc,(px,y,pz,nx,ny,nz,ref,size,layers)=>rockGlyph(px,y,pz,nx,ny,nz,ref,size,layers,false),gD);
     }
     // chasm throat narrowing into the dark
-    if(r.chasm.length&&D.stratum.k!=='abyss'){
-      const Cc=sdf(c=>tile[c]===TC||D.bridge[c]===1), dmc=Math.max(1,Cc.mx);
+    if(r.chasm.length&&here.D.stratum.k!=='abyss'){
+      const Cc=sdf(c=>tile[c]===TC||here.D.bridge[c]===1), dmc=Math.max(1,Cc.mx);
       const ysc=[]; for(let y=-0.3;y>-CH_D+0.3;y-=0.55)ysc.push([y,0.52,0.58,2]);
       slice(Cc.sd,(sv,x,y,z)=>{ const nn=0.65*vnoise(x*0.5,y*0.5,z*0.5)+0.35*vnoise(x*1.25,y*1.25+11,z*1.25); const t=clamp(-y/2,0,1); return sv-((1-t)*nn*0.4+t*(nn-0.5)*1.3)-dmc*0.55*Math.pow(-y/CH_D,1.3); },
-        ysc,c=>(tile[c]===TC||D.bridge[c]===1)&&roomOf[c]===ri,(px,y,pz,nx,ny,nz,ref,size,layers)=>rockGlyph(px,y,pz,nx,ny,nz,ref,size,layers,true));
+        ysc,c=>(tile[c]===TC||here.D.bridge[c]===1)&&roomOf[c]===ri,(px,y,pz,nx,ny,nz,ref,size,layers)=>rockGlyph(px,y,pz,nx,ny,nz,ref,size,layers,true));
     }
   });
 
@@ -209,9 +211,9 @@ function buildWorld(){
         const ax=cx+f[0], az=cz+f[1], j=az*MW+ax;
         const nt=(ax<0||az<0||ax>=MW||az>=MH)?TW:tile[j];
         const yaw=f[2], nX=-f[0], nZ=-f[1], pcx=(cx+0.5+f[0]*0.5)*CELL, pcz=(cz+0.5+f[1]*0.5)*CELL;
-        if(nt===TW){ const vj=(ax<0||az<0||ax>=MW||az>=MH)?0:D.vaultCell[j]; faceStyle=vj?VAULTS[vj-1]:null;
+        if(nt===TW){ const vj=(ax<0||az<0||ax>=MW||az>=MH)?0:here.D.vaultCell[j]; faceStyle=vj?VAULTS[vj-1]:null;
           const top=vj&&c0>=5?VAULT_WALL_H:c0, vt=vj?[faceStyle.wcol[0]*0.85,faceStyle.wcol[1]*0.85,faceStyle.wcol[2]*0.85]:tint;
-          let eg=D.engr.get(i*4+fi); faceVein=D.vein[j]||0;
+          let eg=here.D.engr.get(i*4+fi); faceVein=here.D.vein[j]||0;
           const tX=Math.cos(yaw), tZ=-Math.sin(yaw);
           if(eg&&eg.skip){ const sa=ARTS[eg.art], sh=sa.length*0.42, pOff=-((eg.mi%MW-cx)*tX+(((eg.mi/MW)|0)-cz)*tZ)*CELL/2*-1;
             faceSkip=(u,yc)=>Math.abs(u-pOff)<2.0&&yc>1.95-sh/2-0.35&&yc<1.95+sh/2+0.35; eg=null; }
@@ -240,20 +242,20 @@ function buildWorld(){
     const deepWater=()=>{
       for(let a=0;a<2;a++)for(let bb=0;bb<2;bb++)push((cx+(a+0.5)/2)*CELL+R(-0.3,0.3),-0.7,(cz+(bb+0.5)/2)*CELL+R(-0.3,0.3),-Math.PI/2,R(0,6.28),0.5,G(pick(['.',':','~'])),0.08,0.18,0.45,0.07,2,i,0,1,0);
     };
-    if(D.stratum.k==='abyss'&&ti===TF&&!D.bridge[i]){
-      for(const f of FACES){ const ax=cx+f[0], az=cz+f[1]; if(ax<0||az<0||ax>=MW||az>=MH||tile[az*MW+ax]!==TC||D.bridge[az*MW+ax])continue;
+    if(here.D.stratum.k==='abyss'&&ti===TF&&!here.D.bridge[i]){
+      for(const f of FACES){ const ax=cx+f[0], az=cz+f[1]; if(ax<0||az<0||ax>=MW||az>=MH||tile[az*MW+ax]!==TC||here.D.bridge[az*MW+ax])continue;
         const dep=1.6+vnoise(ax*0.7,5.5,az*0.7)*4.2, pcx=(cx+0.5+f[0]*0.5)*CELL, pcz=(cz+0.5+f[1]*0.5)*CELL;
         faceStyle={wall:'%&8#:o',wcol:tint}; face(pcx,pcz,Math.atan2(f[0],f[1]),f[0],f[1],-dep,0,i,tint,1,false,th); faceStyle=null; }
     }
-    if(ti===TC||D.bridge[i]===1){
+    if(ti===TC||here.D.bridge[i]===1){
       for(let a=0;a<2;a++)for(let bb=0;bb<2;bb++){ if(rand()<0.35)continue; const c=th.col;
         push((cx+(a+0.5)/2)*CELL+R(-0.3,0.3),-CH_D+0.05,(cz+(bb+0.5)/2)*CELL+R(-0.3,0.3),-Math.PI/2,R(0,6.28),0.7,G(pick(['.','*',':','~','\''])),c[0],c[1]*0.7,c[2]*0.7,R(0.12,0.3),2,i,0,1,0); }
     }
     if(ti===TC){
-    } else if(D.bridge[i]){
-      const dir=D.bridgeDir[i], ax=dir===0?[1,0]:[0,1], pr=dir===0?[0,1]:[1,0], x0=(cx+0.5)*CELL, z0=(cz+0.5)*CELL, rope=D.bridge[i]===1;
+    } else if(here.D.bridge[i]){
+      const dir=here.D.bridgeDir[i], ax=dir===0?[1,0]:[0,1], pr=dir===0?[0,1]:[1,0], x0=(cx+0.5)*CELL, z0=(cz+0.5)*CELL, rope=here.D.bridge[i]===1;
       const deckY=rope?0.02:0.22, wood=[0.62,0.42,0.25], stoneC=[0.6,0.6,0.76], dc2=rope?wood:stoneC;
-      const nbW=(dx,dz)=>{ const x=cx+dx, z=cz+dz; if(x<0||z<0||x>=MW||z>=MH)return false; const j=z*MW+x; return tile[j]===TF&&(D.bridge[j]>0||(liquid[j]!==LQ_DEEP&&liquid[j]!==LQ_LAVA)); };
+      const nbW=(dx,dz)=>{ const x=cx+dx, z=cz+dz; if(x<0||z<0||x>=MW||z>=MH)return false; const j=z*MW+x; return tile[j]===TF&&(here.D.bridge[j]>0||(liquid[j]!==LQ_DEEP&&liquid[j]!==LQ_LAVA)); };
       const sideOpen=sd=>nbW(pr[0]*sd,pr[1]*sd), endOpen=e=>nbW(ax[0]*e,ax[1]*e), junction=sideOpen(-1)||sideOpen(1);
       for(let k=0;k<6;k++)for(let w=-1;w<=1;w++){ const u=(k+0.5)/6*CELL-CELL/2, px=x0+ax[0]*u+pr[0]*w*0.42, pz=z0+ax[1]*u+pr[1]*w*0.42;
         push(px,deckY,pz,-Math.PI/2,dir===0?Math.PI/2:0,0.46,G(rope?'=':pick(['#','=','#'])),dc2[0],dc2[1],dc2[2],0.04,rope?1:8,i,0,1,0); }
@@ -287,24 +289,24 @@ function buildWorld(){
         push((cx+(a+0.5)/3)*CELL+R(-0.15,0.15),0.03,(cz+(bb+0.5)/3)*CELL+R(-0.15,0.15),-Math.PI/2,R(0,6.28),0.5,G(crack?pick(['~','-','=']):pick(['#','%','=',':'])),
           crack?1.0:0.3,crack?0.34:0.22,crack?0.08:0.26,crack?R(0.35,0.8):0.03,crack?7:9,i,0,1,0); }
     } else if(liquid[i]===LQ_WATER){
-      const lake=th&&(th.k==='lake'||D.stratum.k==='cavern'), wc=lake?[0.22,0.72,1.0]:[0.28,0.62,1.0];
-      const wn=D.stratum.flood?3:4, ws=D.stratum.flood?0.6:0.5;
+      const lake=th&&(th.k==='lake'||here.D.stratum.k==='cavern'), wc=lake?[0.22,0.72,1.0]:[0.28,0.62,1.0];
+      const wn=here.D.stratum.flood?3:4, ws=here.D.stratum.flood?0.6:0.5;
       // the surface itself is drawn by the water plane
     } else if(surface[i]===SF_ICE){
-      const tn=D.thin[i];
+      const tn=here.D.thin[i];
       for(let a=0;a<3;a++)for(let bb=0;bb<3;bb++){ const v=(tn?0.6:0.8)+rand()*0.4; push((cx+(a+0.5)/3)*CELL+R(-0.08,0.08),0.04,(cz+(bb+0.5)/3)*CELL+R(-0.08,0.08),-Math.PI/2,Math.floor(rand()*2)*Math.PI/2,0.56,G(tn?pick(['/','\\','-','=']):pick(['=','#','-','='])),0.62*v,0.85*v,1.0*v,(tn?0.08:0.12)+rand()*0.08,tn?1:11,i,0,1,0); }
     } else if(cave){
       // uneven rubble floor, shaded by the same density ramp
       for(let a=0;a<3;a++)for(let bb=0;bb<3;bb++){ const v=0.7+rand()*0.5;
         push((cx+(a+0.5)/3)*CELL+R(-0.18,0.18),0.02+rand()*0.05,(cz+(bb+0.5)/3)*CELL+R(-0.18,0.18),-Math.PI/2+R(-0.25,0.25),R(0,6.28),0.52,G('.'),tint[0]*0.6*v,tint[1]*0.6*v,tint[2]*0.6*v,0.03,9,i,0,1,0); }
-      if(D.dfield[i]===1&&rand()<0.35){ const x0=(cx+R(0.2,0.8))*CELL, z0=(cz+R(0.2,0.8))*CELL; for(let k=0;k<RI(3,6);k++)pushX(x0+R(-0.3,0.3),0.12+k*0.12,z0+R(-0.3,0.3),0.34-k*0.03,G(pick(['o','0','O','.'])),[tint[0]*0.7,tint[1]*0.7,tint[2]*0.7],0.03,8,i); }
+      if(here.D.dfield[i]===1&&rand()<0.35){ const x0=(cx+R(0.2,0.8))*CELL, z0=(cz+R(0.2,0.8))*CELL; for(let k=0;k<RI(3,6);k++)pushX(x0+R(-0.3,0.3),0.12+k*0.12,z0+R(-0.3,0.3),0.34-k*0.03,G(pick(['o','0','O','.'])),[tint[0]*0.7,tint[1]*0.7,tint[2]*0.7],0.03,8,i); }
     } else if(surface[i]===SF_RUBBLE&&!liquid[i]){
       for(let a=0;a<3;a++)for(let bb=0;bb<3;bb++){ const v=0.7+rand()*0.5; push((cx+(a+0.5)/3)*CELL+R(-0.15,0.15),0.03,(cz+(bb+0.5)/3)*CELL+R(-0.15,0.15),-Math.PI/2,R(0,6.28),0.5,G(pick([':','.',',','%'])),tint[0]*0.55*v,tint[1]*0.5*v,tint[2]*0.5*v,0.03,9,i,0,1,0); }
       for(let k=0;k<RI(2,4);k++){ const x0=(cx+R(0.2,0.8))*CELL, z0=(cz+R(0.2,0.8))*CELL; for(let h2=0;h2<RI(1,3);h2++)pushX(x0+R(-0.15,0.15),0.14+h2*0.2,z0+R(-0.15,0.15),0.36-h2*0.06,G(pick(['#','%','o','='])),[tint[0]*0.75,tint[1]*0.7,tint[2]*0.72],0.03,8,i); }
-    } else if(D.decoCell.get(i)&&D.decoCell.get(i).k==='carpet'){
-    } else if(D.vaultCell[i]&&!cave){
+    } else if(here.D.decoCell.get(i)&&here.D.decoCell.get(i).k==='carpet'){
+    } else if(here.D.vaultCell[i]&&!cave){
       // mosaic floor: a fixed pattern marks vault ground as built, not natural
-      const vs=VAULTS[D.vaultCell[i]-1];
+      const vs=VAULTS[here.D.vaultCell[i]-1];
       for(let a=0;a<3;a++)for(let bb=0;bb<3;bb++){ const gx=cx*3+a, gz=cz*3+bb, ch=(gx+gz)%2?'.':(gx%3===1&&gz%3===1?'*':'+');
         push((cx+(a+0.5)/3)*CELL,0.02,(cz+(bb+0.5)/3)*CELL,-Math.PI/2,0,0.5,G(ch),vs.wcol[0]*0.5,vs.wcol[1]*0.5,vs.wcol[2]*0.5,ch==='*'?0.14:0.05,1,i,0,1,0); }
     } else {
@@ -323,7 +325,7 @@ function buildWorld(){
         for(let y=0.2;y<hgt;y+=0.42){ const top=y+0.42>=hgt; const ch=fung?(top?pick(['^','n','*']):'|'):(top?pick(['"','Y','*']):pick(['|','(',')','/','\\']));
           const c=fung?(top?gc:[0.55,0.6,0.62]):(top?[0.55,0.95,0.45]:[0.35,0.7,0.3]); pushX(x0,y,z0,top?0.32:0.28,G(ch),c,fung?(top?0.45:0.05):0.03,13,i); } }
     }
-    if(D.glyph[i]){ for(let a=0;a<3;a++)for(let bb=0;bb<3;bb++){ const ch=(a+bb)%2?'o':(a===1&&bb===1?'*':'+'); push((cx+(a+0.5)/3)*CELL,0.05,(cz+(bb+0.5)/3)*CELL,-Math.PI/2,0,0.5,G(ch),1.0,0.9,0.6,0.32,7,i,0,1,0); } }
+    if(here.D.glyph[i]){ for(let a=0;a<3;a++)for(let bb=0;bb<3;bb++){ const ch=(a+bb)%2?'o':(a===1&&bb===1?'*':'+'); push((cx+(a+0.5)/3)*CELL,0.05,(cz+(bb+0.5)/3)*CELL,-Math.PI/2,0,0.5,G(ch),1.0,0.9,0.6,0.32,7,i,0,1,0); } }
     if(surface[i]===SF_BRIM){ for(let a=0;a<3;a++)for(let bb=0;bb<3;bb++){ const v=0.8+rand()*0.4; push((cx+(a+0.5)/3)*CELL+R(-0.1,0.1),0.04,(cz+(bb+0.5)/3)*CELL+R(-0.1,0.1),-Math.PI/2,R(0,6.28),0.5,G(pick(['*','%',':','*'])),1.0*v,0.82*v,0.3*v,0.1,1,i,0,1,0); } }
     if(surface[i]===SF_MUD){ for(let a=0;a<3;a++)for(let bb=0;bb<3;bb++){ const v=0.7+rand()*0.4; push((cx+(a+0.5)/3)*CELL+R(-0.1,0.1),0.03,(cz+(bb+0.5)/3)*CELL+R(-0.1,0.1),-Math.PI/2,0,0.55,G(pick(['~','=','.','~'])),0.5*v,0.36*v,0.2*v,0.02,1,i,0,1,0); } }
     if(surface[i]===SF_HAY){ for(let k=0;k<7;k++){ const x0=(cx+0.1+rand()*0.8)*CELL, z0=(cz+0.1+rand()*0.8)*CELL; pushX(x0,0.18,z0,0.3,G(pick(['"','/','\\',','])),[0.95,0.8,0.4],0.04,5,i); } }
@@ -346,7 +348,7 @@ function buildWorld(){
   for(let i=0;i<NCELL;i++){
     if(tile[i]!==TX)continue;
     const cx=i%MW, cz=(i/MW)|0, ri=roomOf[i], th=ri>=0?rooms[ri].theme:null;
-    const col=D.xtalCol.get(i)||[0.6,0.85,1.0], top=Math.max(1.3,Math.min(ceil[i]-0.8,th&&th.k==='crystal'?6:3.2));
+    const col=here.D.xtalCol.get(i)||[0.6,0.85,1.0], top=Math.max(1.3,Math.min(ceil[i]-0.8,th&&th.k==='crystal'?6:3.2));
     for(let a=0;a<2;a++)for(let bb=0;bb<2;bb++)push((cx+(a+0.5)/2)*CELL,0.03,(cz+(bb+0.5)/2)*CELL,-Math.PI/2,R(0,6.28),0.5,G(pick(['.',':','*'])),col[0]*0.5,col[1]*0.5,col[2]*0.5,0.15,11,i,0,1,0);
     for(let sN=RI(3,5),sh=0;sh<sN;sh++){
       const bx=(cx+R(0.15,0.85))*CELL, bz=(cz+R(0.15,0.85))*CELL, H=R(1.0,top), lx=R(-0.4,0.4), lz=R(-0.4,0.4);
@@ -423,7 +425,7 @@ function buildWorld(){
   });
   // roofs over houses in tall halls (the town): a ceiling inside, a roof outside
   for(let i=0;i<NCELL;i++){
-    if(!D.vaultCell[i]||tile[i]===TW||ceil[i]<5)continue; const vs=VAULTS[D.vaultCell[i]-1]; if(!vs.roof)continue;
+    if(!here.D.vaultCell[i]||tile[i]===TW||ceil[i]<5)continue; const vs=VAULTS[here.D.vaultCell[i]-1]; if(!vs.roof)continue;
     const cx=i%MW, cz=(i/MW)|0;
     for(let a=0;a<2;a++)for(let bb=0;bb<2;bb++){ const x=(cx+(a+0.5)/2)*CELL, z=(cz+(bb+0.5)/2)*CELL;
       push(x,VAULT_WALL_H-0.02,z,Math.PI/2,0,0.6,G(pick(['.',':','='])),0.5,0.45,0.42,0.03,8,i,0,-1,0);
@@ -439,10 +441,10 @@ function buildWorld(){
   });
   // caps on low vault walls standing in tall halls, and vault carpets
   for(let i=0;i<NCELL;i++){
-    if(tile[i]!==TW||!D.vaultCell[i])continue;
+    if(tile[i]!==TW||!here.D.vaultCell[i])continue;
     let ref=-1, hi=0; for(const d of D4){ const j=i+d[0]+d[1]*MW; if(j>=0&&j<NCELL&&tile[j]!==TW){ if(ceil[j]>hi){hi=ceil[j];ref=j;} } }
     if(ref<0||hi<5)continue;
-    const vs=VAULTS[D.vaultCell[i]-1], cx=i%MW, cz=(i/MW)|0;
+    const vs=VAULTS[here.D.vaultCell[i]-1], cx=i%MW, cz=(i/MW)|0;
     for(let a=0;a<3;a++)for(let bb=0;bb<3;bb++)push((cx+(a+0.5)/3)*CELL,VAULT_WALL_H+0.02,(cz+(bb+0.5)/3)*CELL,-Math.PI/2,0,0.6,G(vs.wall[(a+bb)%vs.wall.length]),vs.wcol[0]*0.7,vs.wcol[1]*0.7,vs.wcol[2]*0.7,0.06,8,ref,0,1,0);
   }
   rooms.forEach(r=>{
@@ -518,7 +520,7 @@ function buildWorld(){
   // pillars (ordinary rooms)
   for(let i=0;i<NCELL;i++){
     if(tile[i]!==TP)continue;
-    const x0=(i%MW+0.5)*CELL, z0=(((i/MW)|0)+0.5)*CELL, SEG=12, rr=0.38, ph=(D.vaultCell[i]&&ceil[i]>=5)?4.4:ceil[i];
+    const x0=(i%MW+0.5)*CELL, z0=(((i/MW)|0)+0.5)*CELL, SEG=12, rr=0.38, ph=(here.D.vaultCell[i]&&ceil[i]>=5)?4.4:ceil[i];
     for(let k=0;k<SEG;k++){
       const a0=k/SEG*Math.PI*2, a1=(k+1)/SEG*Math.PI*2;
       const ax=x0+Math.cos(a0)*rr, az=z0+Math.sin(a0)*rr, bx=x0+Math.cos(a1)*rr, bz=z0+Math.sin(a1)*rr;

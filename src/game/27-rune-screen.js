@@ -161,7 +161,7 @@ function updateSearch(dt){
   const still=Math.hypot(player.vx,player.vz)<0.3, pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL);
   if(!still){ stillT=0; return; }
   stillT+=dt; if(stillT<1.5||searchedAt===pc)return; searchedAt=pc;
-  let found=0; for(const tr of (D.traps||[])){ if(!tr.hidden)continue; const [x,z]=cpos(tr.i); if(Math.hypot(x-player.x,z-player.z)<CELL*4.5){ tr.hidden=false; found++; } }
+  let found=0; for(const tr of (here.D.traps||[])){ if(!tr.hidden)continue; const [x,z]=cpos(tr.i); if(Math.hypot(x-player.x,z-player.z)<CELL*4.5){ tr.hidden=false; found++; } }
   let mim=0; for(const m of here.monsters){ if(m.hidden&&Math.hypot(m.x-player.x,m.z-player.z)<9){ m.revealNow=true; mim++; } }
   if(found||mim){ sChime(player.x,player.z,0.2); msg(`<b style="color:#bfe4ff">?</b>立ち止まって辺りを見回した。${found?`隠された罠を${found}つ見つけた。`:''}${mim?'浮かんでいた巻物が、ぴくりと動いた。':''}`); }
 }
