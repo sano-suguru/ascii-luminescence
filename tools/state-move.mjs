@@ -4,7 +4,8 @@
 //   node tools/state-move.mjs vfx shake flash --dry    書き換えずに、一覧だけ出す
 // 名前がどの宣言を指すかは eslint-scope で見分ける（同じ名前の局所の変数・引数は書き換えない）。
 //   - ゲームの状態を指す所を「入れ物.名前」にする。縮めた書き方 {shake} は {shake:vfx.shake} に開く
-//   - 元の宣言を消す（初めの値は一覧に出すので、src/lib/state.ts の入れ物に書く）。初めの値が関数を呼ぶなら、その場に代入として残す
+//   - 元の宣言を消す（初めの値は一覧に出すので、src/lib/state.ts の入れ物に書く）。初めの値が決まった値でなければ（関数の呼び出し・
+//     Math.random の読み取りなど）、その場に「入れ物.名前=…;」として残す（入れ物の初めの値は仮でよい）
 //   - 書き換える場所で、入れ物の名前が別の宣言に隠されていたら、何も書き換えずに止める
 // 書き漏れがあれば、宣言が無くなった名前を lint（定義されていない名前）が止める。入れ物は src/game/imports.mjs で読むこと。
 // 単体テスト（tests/unit/state-move.test.mjs）は、小さな見本のフォルダを dir に渡して確かめる。
@@ -16,6 +17,29 @@ import * as eslintScope from 'eslint-scope';
 import { gameLayout, gameSource } from './game-source.mjs';
 
 const GAME_DIR = join(import.meta.dirname, '..', 'src/game');
+
+// 決まった値か（入れ物に移してよい初めの値）：数・文字列・true などと、それだけでできた配列・オブジェクト、-1 のような符号、空の new Set()・new Map()。
+// 名前の読み取り（Math.random・undefined 以外の名前）、関数の呼び出し、ほかの new などは決まった値ではない（その場に残す）
+const fixed = (n) => {
+  switch (n.type) {
+    case 'Literal':
+      return true;
+    case 'Identifier':
+      return n.name === 'undefined';
+    case 'TemplateLiteral':
+      return n.expressions.length === 0;
+    case 'UnaryExpression':
+      return ['-', '+', '!'].includes(n.operator) && fixed(n.argument);
+    case 'ArrayExpression':
+      return n.elements.every((e) => e && e.type !== 'SpreadElement' && fixed(e));
+    case 'ObjectExpression':
+      return n.properties.every((p) => p.type === 'Property' && !p.computed && p.kind === 'init' && !p.method && fixed(p.value));
+    case 'NewExpression':
+      return n.callee.type === 'Identifier' && ['Set', 'Map'].includes(n.callee.name) && n.arguments.length === 0;
+    default:
+      return false;
+  }
+};
 
 /**
  * dir（既定は src/game/）の古い JS で、名前 names の状態を、入れ物 box の欄に移す。
@@ -74,20 +98,14 @@ export function stateMove({ dir = GAME_DIR, box, names, dry = false }) {
       d = def.node;
     if (d.id.type !== 'Identifier') throw new Error(`${name} は分割代入で宣言されている`);
     const init = d.init ? code.slice(d.init.start, d.init.end) : 'undefined';
-    // 初めの値が関数を呼ぶ（Math.random() など）なら、入れ物に移さず、その場で「入れ物.名前=初めの値;」にする。
-    // TypeScript のモジュールは古い JS より先に読まれるので、移すと呼ぶ時と順番が変わる（テスト用モードの乱数の入れ替えより前に引く、など）
-    let calls = false;
-    const seek = (n) => {
-      if (calls || !n || typeof n !== 'object') return;
-      if (Array.isArray(n)) return n.forEach(seek);
-      if (n.type === 'CallExpression') calls = true;
-      for (const key in n) if (key !== 'range') seek(n[key]);
-    };
-    seek(d.init);
+    // 初めの値が決まった値（数・文字列・true など、それだけでできた配列・オブジェクト、空の new Set()・new Map()）なら、入れ物に移す。
+    // ほかは（関数の呼び出し、Math.random のような名前や欄の読み取り、new Date() など）、入れ物に移さず、その場で「入れ物.名前=初めの値;」にする。
+    // TypeScript のモジュールは古い JS より先に読まれるので、移すと値を作る時と順番が変わる（テスト用モードの乱数の入れ替えより前に引く、など）
+    const keep = d.init ? !fixed(d.init) : false;
     // 宣言は、全部の名前を見てから、宣言ごとにまとめて消す（並んだ宣言の名前をいくつも移すと、消す範囲が重なるため）
-    if (calls && decl.declarations.length !== 1)
-      throw new Error(`${name} の初めの値は関数を呼ぶので、その場に残したいが、並んだ宣言の中にある（先に宣言を分ける）`);
-    (moved.get(decl) ?? moved.set(decl, new Map()).get(decl)).set(d, calls ? `${box}.${name}=${init};` : null);
+    if (keep && decl.declarations.length !== 1)
+      throw new Error(`${name} の初めの値は決まった値ではないので、その場に残したいが、並んだ宣言の中にある（先に宣言を分ける）`);
+    (moved.get(decl) ?? moved.set(decl, new Map()).get(decl)).set(d, keep);
     // ゲームの状態を指す所を書き換える（宣言の初めの値への書き込みは除く。宣言ごと消すので）
     const files = {};
     let n = 0;
@@ -112,14 +130,17 @@ export function stateMove({ dir = GAME_DIR, box, names, dry = false }) {
         const def0 = s.set.get(name).defs[0];
         return `${partAt(def0.name.start).name}（${def0.type}）`;
       });
-    report.push({ name, init, n, files, locals, kept: calls });
+    report.push({ name, init, n, files, locals, kept: keep });
   }
   // 宣言を消す。並んだ宣言の、移す宣言子の続き（ひとまとまり）ごとに、区切りのコンマと一緒に消す。残る宣言子の文には触れない
   // （残る宣言子の初めの値の中の書き換えと重ならないように）。全部を移すなら宣言ごと消し、1行それだけならその行ごと消す
   for (const [decl, ds] of moved) {
     const all = decl.declarations;
     if (all.length === 1 && ds.get(all[0])) {
-      edit(decl.start, decl.end, ds.get(all[0]));
+      // その場に残す：「let 名前」だけを「入れ物.名前」にする。「=」から後ろは元の文のまま（外側のかっこも残る。
+      // 初めの値の中の、ほかの移す名前の書き換えとも重ならない）
+      const d = all[0];
+      edit(decl.start, d.id.end, `${box}.${d.id.name}`);
       continue;
     }
     if (all.every((d) => ds.has(d))) {
@@ -177,7 +198,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
   for (const r of report) {
     console.log(
-      `${r.name}：初めの値 ${r.init}${r.kept ? '（関数を呼ぶので、その場に「入れ物.名前=…;」として残す。入れ物の初めの値は仮でよい）' : ''}、書き換え ${r.n} か所`,
+      `${r.name}：初めの値 ${r.init}${r.kept ? '（決まった値ではないので、その場に「入れ物.名前=…;」として残す。入れ物の初めの値は仮でよい）' : ''}、書き換え ${r.n} か所`,
     );
     console.log(
       `  ${Object.entries(r.files)

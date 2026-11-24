@@ -75,6 +75,28 @@ describe('状態を入れ物に移す（tools/state-move.mjs）', () => {
     expect(report[0].kept).toBe(true);
   });
 
+  it('その場に残す時は「=」から後ろを元の文のまま使う（外側のかっこが落ちて意味が変わらない）', () => {
+    make({ '00-a.js': 'let x=(f(),1);\nfunction g(){ return x; }\n' });
+    stateMove({ dir, box: 'adv', names: ['x'] });
+    expect(read('00-a.js')).toBe('adv.x=(f(),1);\nfunction g(){ return adv.x; }\n');
+  });
+
+  it('決まった値でない初めの値（関数を覚えるだけ・new Date()）も、その場に残す。決まった値（new Set() など）は移す', () => {
+    make({
+      '00-a.js':
+        'let rnd=Math.random;\nlet d=new Date();\nlet s=new Set(), o={a:[1,-2],b:"x"};\nfunction g(){ return rnd()+d+s.size+o.a; }\n',
+    });
+    const { report } = stateMove({ dir, box: 'adv', names: ['rnd', 'd', 's', 'o'] });
+    expect(read('00-a.js')).toBe('adv.rnd=Math.random;\nadv.d=new Date();\nfunction g(){ return adv.rnd()+adv.d+adv.s.size+adv.o.a; }\n');
+    expect(report.map((r) => r.kept)).toEqual([true, true, false, false]);
+  });
+
+  it('その場に残す宣言の初めの値に、一緒に移す別の名前があっても止まらない', () => {
+    make({ '00-a.js': 'let base=1;\nlet seed=f(base);\nfunction g(){ return seed; }\n' });
+    stateMove({ dir, box: 'adv', names: ['base', 'seed'] });
+    expect(read('00-a.js')).toBe('adv.seed=f(adv.base);\nfunction g(){ return adv.seed; }\n');
+  });
+
   it('dry なら書き換えない', () => {
     const src = 'let shake=0;\nfunction s(){ return shake; }\n';
     make({ '00-a.js': src });
