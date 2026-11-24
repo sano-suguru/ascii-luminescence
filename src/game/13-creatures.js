@@ -101,7 +101,7 @@ function machineWork(m,dt){
       m.work=(m.work||0)+dt; m.moving=0;
       if(mr()<dt*10)spawn(jx+(mr()-0.5)*0.4,0.3+mr()*0.6,jz+(mr()-0.5)*0.4,(mr()-0.5)*0.8,0.6+mr(),(mr()-0.5)*0.8,0.5,G(mpick(['*','.','+'])),0.1,ty.col[0]*2,ty.col[1]*2,ty.col[2]*2,0);
       if(m.work>(ty.critter==='engineer'?3:1.8)){
-        if(ty.critter==='engineer'){ const d=here.D.doors[m.job]; d.gone=false; d.o=0; fuel[d.i]=1.4; if(!repairMsg&&m.visible){ repairMsg=true; msg(`<b style="color:${css(ty.col)}">R</b>${mname(m)}が、焼け落ちた扉を黙々と作り直した。`); } }
+        if(ty.critter==='engineer'){ const d=here.D.doors[m.job]; if(!d.gone){ m.job=-1; m.work=0; return true; } d.gone=false; d.o=0; fuel[d.i]=1.4; burnt[d.i]=0; uploadCells(); if(!repairMsg&&m.visible){ repairMsg=true; msg(`<b style="color:${css(ty.col)}">R</b>${mname(m)}が、焼け落ちた扉を黙々と作り直した。`); } }
         else { burnt[m.job]=0; fire[m.job]=0; uploadCells(); }
         m.job=-1; m.work=0;
       }

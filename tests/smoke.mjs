@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // スモークテスト：ふだんのページが起動するか、開発用の冒険で dbg が動くか、冒険の始め直しで前の場所や状態が残らないか
-// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）。ページのエラーを確かめ、画面写真を tests/out/ に保存。
+// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
 //   node tests/smoke.mjs          テスト版（.build/test/。既定）
 //   node tests/smoke.mjs --prod   公開用の版（dist/）。JetBrains Mono を指定した所の日本語は、システムのフォントで描く
 import { join } from 'node:path';

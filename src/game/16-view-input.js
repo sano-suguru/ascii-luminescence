@@ -11,7 +11,7 @@ function computeFOV(){
       const tt=here.D.tile[i]; if(tt===TW)break;
       if(s>0.9&&i!==pcF&&tallAt(i))break;
       if(tt===TP&&Math.hypot(x-cx-0.5,z-cz-0.5)<0.28)break;
-      const di=here.D.doorAt[i]; if(di>=0&&!here.D.doors[di].gone&&here.D.doors[di].o<0.35&&s>0.3)break;
+      const di=here.D.doorAt[i]; if(di>=0&&i!==pcF&&!here.D.doors[di].gone&&here.D.doors[di].o<0.35&&s>0.3)break; // a door in the cell you stand in does not hide what is around you
     }
   }
 }
