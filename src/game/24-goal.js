@@ -1,11 +1,11 @@
 // ---------------------------------------------------------------- the goal (stage C): three legendary things held by lords, a sealed descent, the deepest place, the last king's shadow
 // FINAL_DEPTH は src/lib/world.ts（src/game/imports.mjs で読む）
 // LEGEND_KINDS・LEGEND_ORDER・BRANCH_HINT は src/lib/names.ts（src/game/imports.mjs で読む）
-let LEGEND=null, finalSt=null;
+let finalSt=null;
 MSTAT.final=[260,6,11,1.7];
 MSTAT.final2=[260,8,14,1.25];
 function getLegend(){
-  if(LEGEND&&LEGEND.seed===adv.runSeed)return LEGEND;
+  if(saved.LEGEND&&saved.LEGEND.seed===adv.runSeed)return saved.LEGEND;
   if(!HIST)return null;
   const r=mulberry32((adv.runSeed^0x1e9e3)>>>0), pk=a=>a[Math.floor(r()*a.length)], R=HIST.rulers, last=R[R.length-1], civ=HIST.civ;
   const pool=Object.keys(BRANCHES), take=k=>{ const i=pool.indexOf(k); if(i>=0)pool.splice(i,1); return k; };
@@ -20,8 +20,8 @@ function getLegend(){
     mirror:{name:`${r3.name}王の鏡`, lore:`${civ.ep}が、最後の光を映して封じた鏡。覗くと、今はない空が見える。`},
   };
   for(const k of LEGEND_ORDER){ items[k].branch=where[k]; items[k].kind=k; }
-  LEGEND={seed:adv.runSeed,items,have:new Set(),placed:new Set()};
-  return LEGEND;
+  saved.LEGEND={seed:adv.runSeed,items,have:new Set(),placed:new Set()};
+  return saved.LEGEND;
 }
 const legendOfBranch=bk=>{ const L=getLegend(); if(!L)return null; return LEGEND_ORDER.find(k=>L.items[k].branch===bk)||null; };
 const legendAll=()=>{ const L=getLegend(); return !!L&&L.have.size>=3; };

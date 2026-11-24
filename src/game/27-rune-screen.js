@@ -130,7 +130,7 @@ function setInv(on){
 }
 function renderBook(){
   const el=document.getElementById('help'); if(!el)return; const f=t=>`<span class="f">${t}</span>`;
-  const lines=[f('+-- 魔導書 ── 見つけた反応'),...Object.entries(REACT).map(([k,r])=>BOOK.has(k)?`${f('|')} <b>${r.name}</b>  <span class="lab">${r.pair}</span>\n${f('|')}   ${r.desc}`:`${f('|')} <span class="dim">？？？　まだ見ていない</span>`),
+  const lines=[f('+-- 魔導書 ── 見つけた反応'),...Object.entries(REACT).map(([k,r])=>saved.BOOK.has(k)?`${f('|')} <b>${r.name}</b>  <span class="lab">${r.pair}</span>\n${f('|')}   ${r.desc}`:`${f('|')} <span class="dim">？？？　まだ見ていない</span>`),
     f('|'),`${f('|')} <span class="lab">両手に違う性質を宿し、同じ敵に重ねると何かが起きる</span>`,`${f('|')} <span class="lab">記録は冒険をまたいで残る</span>`,f('+------------------------------')];
   el.innerHTML=boxText(lines);
 }

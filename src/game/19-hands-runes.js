@@ -155,7 +155,7 @@ const RES={
 };
 let runeUid=1;
 let packSnap=null, packSel=null;
-let BOOK=new Set(); try{ BOOK=new Set(JSON.parse(localStorage.getItem('al_book')||'[]')); }catch(e){}
+try{ saved.BOOK=new Set(JSON.parse(localStorage.getItem('al_book')||'[]')); }catch(e){}
 function makeRune(type,nAff,r){ r=r||mr; const def=RUNE_DEF[type], pool=def.aff.slice(), aff={}; let n=0;
   while(n-->0){ const k=pool.splice(Math.floor(r()*pool.length),1)[0]; aff[k]=AFFIX[k].roll(r); }
   return {uid:runeUid++,type,aff}; }
@@ -177,8 +177,8 @@ function handName(H){ if(!H.atk)return H.elem?`${RUNE_DEF[H.elem.type].pre}ç´ æ‰
 function resetRunes(){ fight.trigCd={L:0,R:0}; fight.hitSrcPoint=null;
   gear.hands={L:newHand('blade'), R:newHand('orb'), B:{b0:null,b1:null}};
   gear.bag=[]; gear.builds=[null,null,null]; gear.buildIdx=-1; gear.castSt=null; gear.swapSt=null; packSel=null; fight.beamSegs=[]; fight.clouds=[];
-  adv.runState={startChosen:false,altar1:false,taken:new Set(),lordsDone:new Set(),bodyOpen:0}; LEGEND=null; finalSt=null; adv.won=false; renderHotbar();
-  try{ if(!RSEEN.has('blade')||!RSEEN.has('bolt')){ RSEEN.add('blade'); RSEEN.add('bolt'); saveSet('al_runes',RSEEN); } }catch(e){}
+  adv.runState={startChosen:false,altar1:false,taken:new Set(),lordsDone:new Set(),bodyOpen:0}; saved.LEGEND=null; finalSt=null; adv.won=false; renderHotbar();
+  try{ if(!saved.RSEEN.has('blade')||!saved.RSEEN.has('bolt')){ saved.RSEEN.add('blade'); saved.RSEEN.add('bolt'); saveSet('al_runes',saved.RSEEN); } }catch(e){}
 }
 function newHand(w){ return {atk:makeRune(w,0),slots:[null,null],slotN:2,turn:0,elem:null,trig:null}; }
 // the element to be cast next (two different elements take turns) and the hand's trigger

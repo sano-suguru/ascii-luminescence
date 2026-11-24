@@ -26,7 +26,7 @@ const dbg={
     const m=what==='lord'?here.monsters.find(m=>(m.key==='lord'||m.key==='final')&&!m.dead):here.monsters.filter(m=>!m.dead).sort((a,b)=>Math.hypot(a.x-player.x,a.z-player.z)-Math.hypot(b.x-player.x,b.z-player.z))[0]; if(!m)return false; damageMonster(m,99999,'debug'); return true; },
   open(){ if(!here.D||!here.D.gate)return false; here.D.gate.open=true; return true; },
   step(x,z){ player.x=x; player.z=z; return [x,z]; },
-  lore(n){ META.lore=(META.lore||0)+(n||50); saveMeta(); return loreLeft(); },
+  lore(n){ saved.META.lore=(saved.META.lore||0)+(n||50); saveMeta(); return loreLeft(); },
   exp(n){ gainExp(n||20); return {lvl:adv.lvl.n,exp:adv.lvl.exp,pending:adv.lvl.pending}; },
   hurt(n){ const g=godMode; godMode=false; hurtPlayer(n||5,'debug'); godMode=g; return {hp:+player.hp.toFixed(1),rally:+(player.rally||0).toFixed(1)}; },
   hit(n){ const m=here.monsters.filter(m=>!m.dead&&!m.ty.critter&&!m.ty.peaceful).sort((a,b)=>Math.hypot(a.x-player.x,a.z-player.z)-Math.hypot(b.x-player.x,b.z-player.z))[0]; if(!m)return false; m.playerT=clock.time; damageMonster(m,n||4,'magic'); return {target:m.ty.name,dead:m.dead}; },
@@ -35,9 +35,9 @@ const dbg={
   items(){ return (here.D.items||[]).filter(o=>!o.taken).map(o=>({kind:o.kind,opt:o.opt||null,altar:!!o.altar,vault:!!o.vault,lord:!!o.lord,type:o.rune?o.rune.type:null,pos:cpos(o.i).map(v=>+v.toFixed(2)),slot:o.slot})); },
   clear(){ const n0=here.monsters.length; here.monsters=here.monsters.filter(m=>m.ty.boss||m.key==='lord'||m.key==='final'||m.ty.critter||Math.hypot(m.x-player.x,m.z-player.z)>25); return n0-here.monsters.length; },
 };
-window.dbg=new Proxy(dbg,{get(o,k){ const v=o[k]; if(typeof v!=='function')return v; return (...a)=>DEVALL?v(...a):'開発用モードがオフです（タイトルでオンにするか、URL に ?dev=1 を付けてください）'; }});
+window.dbg=new Proxy(dbg,{get(o,k){ const v=o[k]; if(typeof v!=='function')return v; return (...a)=>saved.DEVALL?v(...a):'開発用モードがオフです（タイトルでオンにするか、URL に ?dev=1 を付けてください）'; }});
 // the F2 screen
-function setDbg(on){ if(on===ui.dbgOpen)return; if(on&&(!DEVALL||!ui.started||adv.dead))return; ui.dbgOpen=on; document.body.classList.toggle('paused',isPaused()); const el=document.getElementById('dbgp'); if(!el)return; el.classList.toggle('show',on); if(on){ renderDbg(); if(document.pointerLockElement)document.exitPointerLock(); } else tryLock(); }
+function setDbg(on){ if(on===ui.dbgOpen)return; if(on&&(!saved.DEVALL||!ui.started||adv.dead))return; ui.dbgOpen=on; document.body.classList.toggle('paused',isPaused()); const el=document.getElementById('dbgp'); if(!el)return; el.classList.toggle('show',on); if(on){ renderDbg(); if(document.pointerLockElement)document.exitPointerLock(); } else tryLock(); }
 function renderDbg(){ const el=document.getElementById('dbgp'); if(!el)return; const f=t=>`<span class="f">${t}</span>`, I=dbg.info(), B=(c,t)=>`<button class="row" data-c="${c}">[${t}]</button>`;
   const where=I.realm?`異界：${REALMS[I.realm.key].name}`:I.branch?`支道：${BRANCHES[I.branch.key].name} ${I.branch.lvl}/${I.branch.len}階`:`深度 ${I.depth}`;
   const nx=I.next?(()=>{ const [k,v]=I.next.split(':'); const key=v.replace(' (strong)',''); return k==='stratum'?(STRATA.find(s=>s.k===key)||{}).name:k==='special'?SPECIALS[key].name:BRANCHES[key].name+(v.includes('strong')?'（主の階へ）':''); })():'変わらない';
@@ -56,8 +56,8 @@ function renderDbg(){ const el=document.getElementById('dbgp'); if(!el)return; c
     if(c==='go')dbg.go(+a); else if(c==='br')dbg.branch(a,+b2); else if(c==='re')dbg.realm(a); else if(c==='to')dbg.to(a); else if(c==='god')dbg.god(); else if(c==='heal')dbg.heal(); else if(c==='reveal')dbg.reveal(); else if(c==='give')dbg.give(a); else if(c==='clear')dbg.clear(); else if(c==='kill')dbg.kill(a); else if(c==='open')dbg.open();
     if(['go','br','re','to'].includes(c))setDbg(false); else renderDbg(); }; }
 // URL options: ?dev=1&seed=123&depth=8 | branch=crypt:2 | realm=ice &to=stairs &god=1 &reveal=1 &give=slot,body
-function dbgUrl(){ let q; try{ q=new URLSearchParams(location.search); }catch(e){ return; } if(q.get('dev')==='1'||TEST){ DEVALL=true; try{ localStorage.setItem('al_dev','1'); }catch(e){} buildIntroPanel(); }
-  if(!DEVALL)return; const sd=q.get('seed'); if(sd&&/^[0-9]{1,10}$/.test(sd)){ adv.runSeed=Number(sd)>>>0; const si=document.getElementById('seedIn'); if(si)si.value=sd; }
+function dbgUrl(){ let q; try{ q=new URLSearchParams(location.search); }catch(e){ return; } if(q.get('dev')==='1'||TEST){ saved.DEVALL=true; try{ localStorage.setItem('al_dev','1'); }catch(e){} buildIntroPanel(); }
+  if(!saved.DEVALL)return; const sd=q.get('seed'); if(sd&&/^[0-9]{1,10}$/.test(sd)){ adv.runSeed=Number(sd)>>>0; const si=document.getElementById('seedIn'); if(si)si.value=sd; }
   const dp=q.get('depth'), br=q.get('branch'), re=q.get('realm'); if(!dp&&!br&&!re&&!q.get('to'))return;
   if(br){ const [k,l]=br.split(':'); dbg.branch(k,+l||1); } else if(re){ if(dp)here.depth=+dp; dbg.realm(re); } else dbg.go(+dp||1);
   if(q.get('god')==='1')dbg.god(true); if(q.get('reveal')==='1')dbg.reveal(); for(const g of (q.get('give')||'').split(',').filter(Boolean))dbg.give(g); if(q.get('to'))dbg.to(q.get('to')); }

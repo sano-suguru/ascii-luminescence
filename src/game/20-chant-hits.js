@@ -222,7 +222,7 @@ function react(kind,m,sp,base){
     if(sndReady()){ const t=SND.ctx.currentTime; sEnv(sNoise(t,0.4,'highpass',4200,1.2,sOut(cx,cz,0.45)),t,0.002,0.35); } }
   else if(kind==='frostbite'){ st.poison=(st.poison||0)*2+3; st.chill=Math.max(st.chill||0,2); burst(['*','.'],[1.2,2.6,1.8],24,1.6); }
   else if(kind==='contagion'){ around(4*areaK,o=>{ if(o===m)return; const s2=o.st||(o.st={}); s2.poison=Math.max(s2.poison||0,st.poison||4); zapLine(m,o,RUNE_DEF.poison.col,'poison'); }); burst(['%','.'],[1.2,3.0,1.0],20,1.8); }
-  if(!BOOK.has(kind)){ BOOK.add(kind); try{ localStorage.setItem('al_book',JSON.stringify([...BOOK])); }catch(e){} setTimeout(()=>sChime(player.x,player.z,0.35),120); }
+  if(!saved.BOOK.has(kind)){ saved.BOOK.add(kind); try{ localStorage.setItem('al_book',JSON.stringify([...saved.BOOK])); }catch(e){} setTimeout(()=>sChime(player.x,player.z,0.35),120); }
 }
 // statuses tick on their own; chill slows, shock stops for a moment
 function updateStatuses(dt){

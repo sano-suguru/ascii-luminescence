@@ -38,7 +38,7 @@ function cloudsMeetFire(){ for(const c of fight.clouds){ if(c.t<=0)continue; con
     for(let q=0;q<46;q++){ const a=mr()*6.28, e=mr(); spawn(c.x+Math.cos(a)*e*R,0.4+mr()*1.2,c.z+Math.sin(a)*e*R,Math.cos(a)*2.4,0.8+mr()*2,Math.sin(a)*2.4,0.9+mr()*0.5,G(mpick(['*','#','%','\''])),0.22,3.2,1.8,0.6,0); }
     for(const o of here.monsters){ if(!foe(o)||Math.hypot(o.x-c.x,o.z-c.z)>R)continue; if(!losClear(c.x,0.6,c.z,...mCenter(o)))continue; damageMonster(o,roll(5,9),'fire'); }
     if(Math.hypot(player.x-c.x,player.z-c.z)<R*0.8)hurtPlayer(roll(1,3),'爆炎'); burstFire(cz*MW+cx,c.r/CELL+0.5,1.0); sBoom(0.4); vfx.shake=Math.max(vfx.shake,0.25); vfx.flash=Math.max(vfx.flash,0.3);
-    if(!BOOK.has('blast')){ BOOK.add('blast'); try{ localStorage.setItem('al_book',JSON.stringify([...BOOK])); }catch(e){} } } }
+    if(!saved.BOOK.has('blast')){ saved.BOOK.add('blast'); try{ localStorage.setItem('al_book',JSON.stringify([...saved.BOOK])); }catch(e){} } } }
 // a perfect dodge: the dodge rune answers only when an attack was actually evaded
 function onDodged(m){ if(!gear.hands)return; let any=false;
   for(const h of ['L','R']){ const H=gear.hands[h]; if(!(H.trig&&H.trig.type==='dodge'&&H.atk)||fight.trigCd[h]>0||gear.swapSt)continue;
