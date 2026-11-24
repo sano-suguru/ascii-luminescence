@@ -1,8 +1,52 @@
 // 層・テーマ・特別な階・支道と異界の中身・地形・群れ（もとは src/game/02-constants.js と 04-generate.js の levelDims）。
 // 迷宮の生成が読む表と、層・支道・階の大きさを決める小さな関数（stratumOf・branchAtDepth・levelDims）。
 // 生き物の表 MTYPES は、まだ古い JS にある。
+import { lookup, nth } from './array.ts';
 import { clamp } from './rng.ts';
-import { BRANCHES, type Branch, MH, MW } from './world.ts';
+import { BRANCHES, MH, MW } from './world.ts';
+
+/** 部屋や洞窟のテーマ（灯りの色・備品・入った時の言葉。洞窟は地形 BIOMES） */
+export interface Theme {
+  k: string;
+  col: number[];
+  msg: string;
+  fix?: string;
+  ruin?: boolean;
+  base?: number;
+  slope?: number;
+  cave?: boolean;
+}
+/** 層（本道の層・特別な階・支道・異界の中身） */
+export interface Stratum {
+  k: string;
+  name: string;
+  msg: string;
+  n?: number;
+  from?: number;
+  to?: number;
+  special?: boolean;
+  branch?: boolean;
+  realm?: boolean;
+  themes?: Theme[];
+  machines?: string[];
+  vaults?: string[];
+  hordes?: string[];
+  hordeMul?: number;
+  torchMul?: number;
+  fog?: number[];
+  cw?: Record<string, number>;
+  denseWebs?: boolean;
+  flood?: boolean;
+  freeze?: boolean;
+  fall?: string;
+}
+/** 群れ（strata.ts の HORDES の1つ）：頭の生き物 lead と、ついてくる生き物 [種類, 最少, 最多]、出る深さ d、重み w */
+export interface Horde {
+  lead: string;
+  fol: [string, number, number][];
+  d: [number, number];
+  w: number;
+}
 
 // strata (after Dwarf Fortress's layers and DCSS's branches): the way the world is built changes with depth
 /** 本道の層（深さ from から to まで） */
@@ -52,7 +96,7 @@ export const SPECIALS = {
     name: '放棄された砦',
     msg: 'ドワーフの砦の跡に出た。溶岩の熱を頼りに栄え、そして見捨てられた場所だ。',
   },
-};
+} satisfies Record<string, Stratum>;
 export const CRYPT_THEMES = [
   { k: 'c_cold', col: [0.45, 0.6, 1.0], fix: 'crystal', msg: '冷たい青い光の中に、石の棺が並んでいる。' },
   { k: 'c_violet', col: [0.62, 0.4, 1.0], fix: 'rune', msg: '菫色の魔法陣が、死者の眠りを見守っている。' },
@@ -63,7 +107,7 @@ export const LAB_THEMES = [
   { k: 'l_cyan', col: [0.3, 0.9, 1.0], fix: 'crystal', msg: '宙に浮かぶ水晶が、実験の続きを待っている。' },
   { k: 'l_violet', col: [0.65, 0.45, 1.0], fix: 'orb', msg: '灯の下に、書きかけの羊皮紙が散らばっている。' },
 ];
-export const SUNKEN_THEMES = [RUIN_THEMES[0], RUIN_THEMES[3]];
+export const SUNKEN_THEMES = [nth(RUIN_THEMES, 0), nth(RUIN_THEMES, 3)];
 /** 支道の中身（層の形・テーマ・からくり・宝物庫・群れ） */
 export const BRANCH_STRATA = {
   crypt: {
@@ -121,7 +165,7 @@ export const BRANCH_STRATA = {
     hordeMul: 0.9,
     fog: [0.002, 0.008, 0.014],
   },
-};
+} satisfies Record<string, Stratum>;
 /** 異界の中身 */
 export const REALM_STRATA = {
   ice: {
@@ -154,20 +198,20 @@ export const REALM_STRATA = {
     hordes: ['v', 'b', 'w'],
     fog: [0.022, 0.006, 0.002],
   },
-};
+} satisfies Record<string, Stratum>;
 /** 深さ d の本道の層 */
 export const stratumOf = (d: number): (typeof STRATA)[number] =>
-  STRATA.find((st) => d >= st.from && d <= st.to) || (STRATA[STRATA.length - 1] as (typeof STRATA)[number]);
+  STRATA.find((st) => d >= st.from && d <= st.to) || nth(STRATA, STRATA.length - 1);
 /** 深さ d に入口がある支道の名前（冒険のシード runSeed で決まる。無ければ null） */
 export function branchAtDepth(d: number, runSeed: number): string | null {
   const taken = new Set<number>();
   for (const k in BRANCHES) {
-    const B = BRANCHES[k] as Branch,
+    const B = lookup(BRANCHES, k),
       span: number[] = [];
     for (let x = B.at[0]; x <= B.at[1]; x++) if (!taken.has(x)) span.push(x);
     if (!span.length) continue;
     const h = Math.imul(runSeed ^ (k.length * 0x9e37 + k.charCodeAt(0)), 2654435761) >>> 0,
-      at = span[h % span.length] as number;
+      at = nth(span, h % span.length);
     taken.add(at);
     if (at === d) return k;
   }
@@ -311,10 +355,10 @@ export const BIOMES = {
     cave: true,
     msg: '灼熱の大空洞に出た。溶岩の河がゆっくりと流れ、岩肌が赤く脈打っている。',
   },
-};
+} satisfies Record<string, Theme>;
 // hordes (after Brogue): a leader and the followers that travel with it, gated by depth
 /** 群れ（頭の生き物と、ついてくる生き物の数、出る深さ、重み） */
-export const HORDES = [
+export const HORDES: Horde[] = [
   { lead: 'r', fol: [['r', 1, 3]], d: [1, 5], w: 3 },
   { lead: 'k', fol: [['k', 0, 2]], d: [1, 4], w: 3 },
   { lead: 'j', fol: [['j', 2, 4]], d: [1, 7], w: 2.5 },

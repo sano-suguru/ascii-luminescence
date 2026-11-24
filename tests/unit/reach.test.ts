@@ -1,9 +1,10 @@
 // 階に、歩いて行けない所が無いか（調べ方は tests/reach.mjs。ブラウザの tests/levels.mjs と同じ決まり）
 import { beforeAll, describe, expect, it } from 'vitest';
-import { PLACES, gen, isFinal, loadEnv } from '../gen-places.mjs';
+import type { GenEnv } from '../../src/lib/generate.ts';
 import { reachProblems } from '../reach.mjs';
+import { PLACES, gen, isFinal, loadEnv } from './gen-places.ts';
 
-let env;
+let env: GenEnv;
 beforeAll(async () => {
   env = await loadEnv();
 });
@@ -24,7 +25,7 @@ describe('歩いて行けるか', () => {
   });
   // ブラウザの tests/levels.mjs（20 シード）と同じ決まり。ここでは少ないシードで、編集のたびに確かめる
   it('始まりの場所から、階段・入口・門・置かれた物まで歩いて行ける（5 シード）', () => {
-    const fails = [];
+    const fails: string[] = [];
     for (const seed of [3, 58, 777, 4096, 31337])
       for (const pl of PLACES) {
         const missing = reachProblems(gen(env, seed, pl, seed).level, isFinal(pl));

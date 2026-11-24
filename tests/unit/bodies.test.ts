@@ -1,4 +1,5 @@
 // src/lib/bodies/ の単体テスト（生き物の形）
+import { nth } from '../../src/lib/array.ts';
 import { afterEach, describe, expect, it } from 'vitest';
 import * as beasts from '../../src/lib/bodies/beasts.ts';
 import { type Body, type BodyType } from '../../src/lib/bodies/kit.ts';
@@ -101,11 +102,11 @@ describe('生き物の形', () => {
     }
   });
   it('死者（亡霊・幻影）だけが、飾りの点を足さない印を持つ', () => {
-    const marked = TY_FORMS.filter((f) => seeded(() => f(TYS[0] as BodyType)).noExtra).map((f) => f.name);
+    const marked = TY_FORMS.filter((f) => seeded(() => f(nth(TYS, 0))).noExtra).map((f) => f.name);
     expect(marked).toEqual(['wraithForm2', 'phantomForm']);
   });
   it('眠った獣は、脚を体に畳み、低くなる', () => {
-    const spec = SPECS[0] as lords.BeastSpec,
+    const spec = nth(SPECS, 0),
       b = seeded(() => lords.beastForm(spec)),
       z = lords.beastSleep(b, { spec });
     expect(z.some((p) => p.part === 'legL' || p.part === 'legR')).toBe(false);

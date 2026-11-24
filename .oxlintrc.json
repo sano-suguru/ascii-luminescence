@@ -48,8 +48,16 @@
   "overrides": [
     {
       // TypeScript に移した物（src/lib/）とその単体テスト。名前が定義されているかは tsc が確かめる
-      "files": ["**/*.ts"],
-      "rules": { "no-undef": "off" }
+      "files": ["**/*.ts", "**/*.d.mts"],
+      "rules": {
+        "no-undef": "off",
+        // 型の言い切り（as・後ろの !）は、tsc に「確かめずに信じろ」と言う書き方。間違っていても黙って通り、型を付けた意味が薄れる。
+        // 配列や表を読む所は src/lib/array.ts の at・get（無ければその場で止まる）、範囲の外をわざと読む所は無い時の扱いをはっきり書く。
+        // as（as const は除く）と ! は、どれもエラー。どうしても要る所だけ、oxlint-disable-next-line と理由を書く
+        "typescript/no-unnecessary-type-assertion": "error",
+        "typescript/no-non-null-assertion": "error",
+        "typescript/consistent-type-assertions": ["error", { "assertionStyle": "never" }]
+      }
     },
     {
       // 道具・テスト・hooks（Node の ESM）

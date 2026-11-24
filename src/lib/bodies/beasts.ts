@@ -1,4 +1,5 @@
 // 四つ足・大きな生き物・死者の形（もとは src/game/09-bodies-creatures.js）。q2・q3 の道具で、面の向きに合わせて文字と明るさを決める。
+import { nth } from '../array.ts';
 import { mpick, mr } from '../random.ts';
 import { type Body, type BodyType, type Color, type Vec3, FUR, MUD, SCALE, SKINR, STONE, q2, q3 } from './kit.ts';
 
@@ -390,8 +391,8 @@ export function nagaForm(ty: BodyType): Body {
   }
   for (let i = 0; i < path.length - 1; i++)
     tube(
-      path[i] as Vec3,
-      path[i + 1] as Vec3,
+      nth(path, i),
+      nth(path, i + 1),
       0.06 + 0.08 * (i / path.length),
       0.06 + 0.08 * ((i + 1) / path.length),
       SCALE,
@@ -507,7 +508,7 @@ export function dragonSleepForm(ty: BodyType): Body {
   // 制御点を通る曲線（Catmull-Rom）を、step ごとの点にする
   const spl = (ctrl: readonly Vec3[], step: number): Vec3[] => {
     const out: Vec3[] = [],
-      at = (i: number): Vec3 => ctrl[i] as Vec3;
+      at = (i: number): Vec3 => nth(ctrl, i);
     for (let i = 0; i < ctrl.length - 1; i++)
       for (let t = 0; t < 1; t += step) {
         const a = at(Math.max(0, i - 1)),
@@ -523,7 +524,7 @@ export function dragonSleepForm(ty: BodyType): Body {
     out.push(at(ctrl.length - 1));
     return out;
   };
-  const seg = (a: readonly Vec3[], i: number): Vec3 => a[i] as Vec3;
+  const seg = (a: readonly Vec3[], i: number): Vec3 => nth(a, i);
   const body = spl(
     [
       [-0.42, 0.34, -0.3],

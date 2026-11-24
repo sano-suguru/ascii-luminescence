@@ -1,6 +1,7 @@
 // 生き物の形を作る道具（もとは src/game/07 から 09・13 の各所）。
 // 形は「文字の点（Glyph）」の配列。描画（src/game/13-creatures.js の drawMonster）が、part ごとに動かして描く。
 // 形を作る時に mr()（見た目の乱数）を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
+import { nth } from '../array.ts';
 import { G } from '../glyphs.ts';
 import { clamp } from '../rng.ts';
 import { mr } from '../random.ts';
@@ -49,9 +50,6 @@ export interface BodyType {
   scale: number;
   col: Color;
 }
-
-// 配列の i 番目（範囲の中だと分かっている所だけで使う）
-const nth = <T>(a: readonly T[], i: number): T => a[i] as T;
 
 /** 点を1つ足す（大きさ s・明るさ b をそのまま） */
 export function cpt(

@@ -1,4 +1,5 @@
 // 灯りの計算（もとは src/game/02-constants.js の light helpers）。
+import { nth } from './array.ts';
 import { CELL, MH, MW, NCELL, TP, TW } from './world.ts';
 
 /** 灯り（位置と届く半径。vis はその灯りから見えるマス） */
@@ -9,6 +10,8 @@ export interface Light {
   rad: number;
   vis: ArrayLike<number>;
 }
+/** topLights が読む灯り。迷宮の生成の灯りは、作ったばかりだと vis がまだ null（ref を使って選ぶ時は、入っていること） */
+export type LitLight = Omit<Light, 'vis'> & { vis: ArrayLike<number> | null };
 
 /** 灯りから見えるマス（壁と柱で遮る）。tile はマスごとのタイルの種類 */
 export function computeVis(L: Pick<Light, 'x' | 'z' | 'rad'>, tile: ArrayLike<number>): Uint8Array {
@@ -56,7 +59,7 @@ export function computeVis(L: Pick<Light, 'x' | 'z' | 'rad'>, tile: ArrayLike<nu
  * nx が null でなければ、面の向き (nx, ny, nz) で重みを変える。ref が 0 以上なら、そのマスが見える灯りだけ
  */
 export function topLights(
-  lights: readonly Light[],
+  lights: readonly LitLight[],
   x: number,
   y: number,
   z: number,
@@ -75,13 +78,17 @@ export function topLights(
     w1 = 0,
     w2 = 0;
   for (let li = 0; li < lights.length; li++) {
-    const L = lights[li] as Light,
+    const L = nth(lights, li),
       dx = L.x - x,
       dy = L.y - y,
       dz = L.z - z,
       d2 = dx * dx + dy * dy + dz * dz;
     if (d2 >= L.rad * L.rad) continue;
-    if (ref >= 0 && !L.vis[ref]) continue;
+    if (ref >= 0) {
+      const vis = L.vis;
+      if (vis === null) throw new TypeError('灯りの見えるマス vis が、まだ無い');
+      if (!vis[ref]) continue;
+    }
     const d = Math.sqrt(d2),
       f = 1 - d / L.rad;
     let w = f * f * (1 + 0.5 * f * f);
