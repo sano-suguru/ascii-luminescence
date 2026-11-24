@@ -466,7 +466,8 @@ export interface SoundState {
   L: Record<string, unknown>;
   /** まわりの音の様子を数え直すまでの秒 */
   envT: number;
-  /** まわりの音の様子（水・溶岩・崖・沼・水晶・燃えている所・火の強さと位置・洞窟か） */
+  /** まわりの音の様子（水・溶岩・崖・沼・水晶・燃えている所・火の強さと位置・洞窟か・滝の近さ）。sndUpdate が数え直す。
+   * 滝 fall はその時に初めて入る。洞窟か cave は、部屋の外では部屋の欄が無いので undefined になりうる */
   env: {
     water: number;
     lava: number;
@@ -477,7 +478,8 @@ export interface SoundState {
     fire: number;
     fx: number;
     fz: number;
-    cave: boolean;
+    cave?: boolean | undefined;
+    fall?: number;
   };
 }
 export const SND: SoundState = {
@@ -492,8 +494,17 @@ export const SND: SoundState = {
   envT: 0,
   env: { water: 0, lava: 0, chasm: 0, bog: 0, xtal: 0, burn: 0, fire: 0, fx: 0, fz: 0, cave: false },
 };
-/** 忍び足と灯り（明るさ lum・見つかりやすさの段 level・物音の届く距離 range・忍び足か・表示を描き直すかの印 hudKey）。丸ごと入れ替えない */
-export const stealth = { lum: 0, level: 1, range: 8, sneak: false, hudKey: '' };
+/** 忍び足と灯り（明るさ lum・見つかりやすさの段 level・物音の届く距離 range・忍び足か・表示を描き直すかの印 hudKey・見られているか seen）。丸ごと入れ替えない */
+export interface Stealth {
+  lum: number;
+  level: number;
+  range: number;
+  sneak: boolean;
+  hudKey: string;
+  /** 生き物に見られているか（12-hud-text.js の updateStealth が入れる。それまでは無い） */
+  seen?: boolean;
+}
+export const stealth: Stealth = { lum: 0, level: 1, range: 8, sneak: false, hudKey: '' };
 /** 手元の灯り（届く距離 r・強さ k）。丸ごと入れ替えない */
 export const lantern = { r: 8.2, k: 1 };
 /** 状態の表示の数（見たマスの割合 explored）。丸ごと入れ替えない */
