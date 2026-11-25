@@ -29,7 +29,7 @@ jobs:
         run: pnpm check
       - name: Chromium を入れる
         run: pnpm exec playwright install --with-deps chromium
-      - name: スモーク・同じ結果・全部の階・枠
+      - name: ブラウザのテスト（tests/run.mjs が7つを同時に3つずつ）
         run: pnpm test
       - name: 画面写真の比較（違えば失敗。違いの画像は下で残す）
         run: pnpm test:visual

@@ -12,7 +12,7 @@
     "test:unit": "vitest run",
     "typecheck": "tsc -p .",
     "check": "node tools/lint-game.mjs --quiet && oxlint --type-aware -c .oxlintrc.json tools tests .claude/hooks src/main.js src/lib vite.config.mjs vitest.config.mjs --quiet && tsc -p . && oxfmt --check && vitest run && node tests/glyphs.mjs && vite build --logLevel warn",
-    "test": "node tests/smoke.mjs && node tests/world.mjs && node tests/determinism.mjs && node tests/levels.mjs && node tests/panels.mjs && node tests/inventory.mjs",
+    "test": "node tests/run.mjs",
     "test:visual": "node tests/visual.mjs",
     "shots": "node tools/shots.mjs",
     "lords": "node tools/lords.mjs",
