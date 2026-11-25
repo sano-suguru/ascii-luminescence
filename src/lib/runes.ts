@@ -5,7 +5,7 @@ import { css, cssOf } from './color.ts';
 import { PACK_W } from './hud.ts';
 import { wrapPlain } from './text.ts';
 
-/** 特性の段（0 から 5）。古い JS は数のまま渡すので、範囲の外の段が来ると、移す前と同じく undefined や NaN の文字列になる */
+/** 特性の段（0 から 5）。特性の説明 trDesc は、範囲の外の段では空を返す */
 export type TraitLv = 0 | 1 | 2 | 3 | 4 | 5;
 /** 段の一覧（0 から 5） */
 export const TRAIT_LVS: readonly TraitLv[] = [0, 1, 2, 3, 4, 5];
@@ -584,7 +584,7 @@ export const runeCol = (ru: Rune): readonly number[] | undefined => {
   if (ru.strong) return TIER_COL[3]; // 表を引く前に見る（移す前と同じ順）
   return lookup(RUNE_DEF, ru.type).col || TIER_COL[0];
 };
-/** 効き方のルーンの値（強い物は2倍。効き方でないルーンは、移す前と同じく NaN） */
+/** 効き方のルーンの値（強い物は2倍。効き方でないルーンは、値 val が無いので NaN） */
 export const modVal = (ru: Rune): number => (lookup(RUNE_DEF, ru.type).val ?? NaN) * (ru.strong ? 2 : 1);
 /** ルーンの名前（効き方のルーンは「連鎖 +1」のように値も） */
 export const runeName = (ru: Rune): string => {

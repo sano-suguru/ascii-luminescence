@@ -105,8 +105,8 @@ function drawMap(){
 }
 
 // ---------------------------------------------------------------- messages
-// 伝言を出す msg と描き直す renderLog は src/lib/log.ts、伝言の一覧 msgs は src/lib/state.ts（src/game/imports.mjs で読む）
- setInterval(renderLog,1000);
+// 伝言を出す msg と描き直す renderLog は src/lib/log.ts（src/game/imports.mjs で読む）、伝言の一覧 msgs は src/lib/state.ts
+setInterval(renderLog,1000);
 
 // ---------------------------------------------------------------- collisions
 let blockType='';

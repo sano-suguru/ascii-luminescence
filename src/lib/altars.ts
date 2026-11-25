@@ -1,5 +1,6 @@
-// 祭壇とルーンを置く（もとは src/game/21-altars-heal.js）。状態の入れ物 here（今の階）・gear（手）・adv（探索）・player・saved（墓の記録）・ui（試しの間の中か）に頼る物。
-// 拾う・選ぶ・祭壇の画面は、伝言と画面に頼るので、まだ古い JS（21-altars-heal.js）にある。
+// 祭壇とルーンを置く・拾ったルーンを手か袋に入れる（もとは src/game/21-altars-heal.js）。
+// 状態の入れ物 here（今の階）・gear（手）・adv（探索）・player・saved（墓の記録・見たルーン）・ui（試しの間の中か・近くの祭壇・装備の画面が開いているか）に頼る物。
+// 床の物を拾う・祭壇の画面を開く・閉じる・選ぶは、まだ古い JS（21-altars-heal.js）にある（生き物を作る・粒子を出す・伝説の物の処理に頼るため）。
 import { lookup, must, nth } from './array.ts';
 import { css, cssOf } from './color.ts';
 import { MTYPES } from './creatures.ts';

@@ -69,8 +69,8 @@ function grabItem(it,k,x,z,dest){
       msg(`<b style="color:#bcdcff">T</b>${RUNE_DEF[w.type].name}の「${trName(w.type,{k:it.forgeK})}」が Lv${it.forgeTo} になった。`); sChime(x,z,0.5); renderHotbar(); if(ui.invOpen)renderInv(); return; }
     if(it.opt==='open'){ applyOpen(it.target); if(adv.runState.slotPend===it.grp)adv.runState.slotPend=null; msg(`<b style="color:#ffe3a0">{ }</b>${it.label}が開いた。`); sChime(x,z,0.5); return; }
     if(it.opt==='heal'){ player.hp=Math.min(adv.PLAYER_MAX,player.hp+adv.PLAYER_MAX*0.7); renderStatus(); msg('<b style="color:#ff9aa8">+</b>温かな光が、傷を塞いでいく。'); sChime(x,z,0.45); return; }
-    if(dest){ placeChosen(it.rune,dest,!!it.altar); sChime(x,z,0.45); return; }
-    takeRune(it.rune,it.grp==='start'?'R':null,!!it.altar); sChime(x,z,0.45); if(it.vault)vaultSprung(it);
+    if(dest){ placeChosen(it.rune); sChime(x,z,0.45); return; }
+    takeRune(it.rune,it.grp==='start'?'R':null); sChime(x,z,0.45); if(it.vault)vaultSprung(it);
 }
 // 拾ったルーンを手か袋に入れる（takeRune・placeChosen・mergeMod）・行き先の名前 runeDest・祭壇の画面の説明 altarDetail と選択肢 altarOpts は src/lib/altars.ts（src/game/imports.mjs で読む）
 // 祭壇の画面：灯った祭壇の近くで、3つの選択肢を並べる。クリックで選ぶ。開いている間は、ゲームが止まる

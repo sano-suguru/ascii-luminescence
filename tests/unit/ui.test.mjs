@@ -1,4 +1,4 @@
-// 伝言（src/lib/log.ts）・下の HUD（src/lib/hotbar.ts）・手の枠（src/lib/gear.ts の equipWeapon・slotSet・freeSlotFor・bodyN）・加護の段（src/lib/progress.ts の BL）・
+// 伝言（src/lib/log.ts）・下の HUD（src/lib/hotbar.ts）・手の枠（src/lib/gear.ts の equipWeapon・slotSet・freeSlotFor・bodyN）・加護の段（src/lib/monsters.ts の BL）・
 // 保存（src/lib/save.ts）・ルーンの説明（src/lib/runes.ts の trDesc・detailLines）・拾ったルーンを入れる処理と祭壇の画面の説明（src/lib/altars.ts）の単体テスト。
 // 指紋の値は、移す前の古い JS（src/game/16・17・18・19・21・25・26・27）でも同じになる（ui-cases.mjs の場合を、古い関数で数えて確かめた）。
 // テストを .mjs で書くのは、偽の画面の部品と偽の localStorage を、本物の型に合わせられないため。
@@ -7,7 +7,7 @@ import * as AL from '../../src/lib/altars.ts';
 import * as GR from '../../src/lib/gear.ts';
 import * as HB from '../../src/lib/hotbar.ts';
 import * as LOG from '../../src/lib/log.ts';
-import * as PR from '../../src/lib/progress.ts';
+import * as MO from '../../src/lib/monsters.ts';
 import { redraw } from '../../src/lib/redraw.ts';
 import * as RU from '../../src/lib/runes.ts';
 import * as SV from '../../src/lib/save.ts';
@@ -19,7 +19,7 @@ const fnv = (s) => {
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
   return (h >>> 0).toString(16).padStart(8, '0');
 };
-const F = { ...LOG, ...HB, ...GR, ...PR, ...SV, ...RU, ...AL };
+const F = { ...LOG, ...HB, ...GR, ...MO, ...SV, ...RU, ...AL };
 /** 偽の画面と、決まった時計で fn を呼ぶ（終わったら元に戻す） */
 function withPage(fn) {
   const page = fakePage(),
@@ -61,27 +61,38 @@ describe('伝言', () => {
 
 describe('装備の画面の描き直し（呼び口 redraw.inv）', () => {
   it('入れる前に呼ぶと止まる。装備の画面が開いている時だけ、拾ったルーンを入れた後に呼ぶ', () =>
-    withPage(() => {
-      const keep = { inv: redraw.inv, hands: gear.hands, bag: gear.bag, invOpen: ui.invOpen, rseen: saved.RSEEN };
+    withPage((page) => {
+      const keep = { inv: redraw.inv, hands: gear.hands, bag: gear.bag, invOpen: ui.invOpen, rseen: saved.RSEEN, runeUid: gear.runeUid };
       try {
         expect(() => redraw.inv()).toThrow('redraw.inv');
-        let n = 0;
-        redraw.inv = () => n++;
+        // 呼ばれた時に、伝言と下の HUD がもう書かれているか（描き直しは、伝言と下の HUD の後）
+        const seen = [];
+        redraw.inv = () => seen.push([msgs.at(-1)?.html ?? '', page.els.hotbar.innerHTML !== '']);
         gear.hands = { L: GR.newHand('blade'), R: GR.newHand('bolt'), B: { b0: null, b1: null } };
         gear.bag = [];
         saved.RSEEN = new Set();
         ui.invOpen = false;
         AL.takeRune({ uid: 1, type: 'fire' });
-        expect(n).toBe(0);
+        expect(seen.length).toBe(0);
         ui.invOpen = true;
-        AL.takeRune({ uid: 2, type: 'ice' });
-        AL.placeChosen({ uid: 3, type: 'bolt' });
-        AL.placeChosen({ uid: 4, type: 'm_chain' });
-        expect(AL.mergeMod({ uid: 5, type: 'm_chain' })).toBe(true);
-        expect(n).toBe(4);
+        const step = (fn) => {
+          page.els.hotbar.innerHTML = '';
+          msgs.length = 0;
+          fn();
+        };
+        step(() => AL.takeRune({ uid: 2, type: 'ice' }));
+        step(() => AL.placeChosen({ uid: 3, type: 'bolt' }));
+        step(() => AL.placeChosen({ uid: 4, type: 'm_chain' }));
+        step(() => expect(AL.mergeMod({ uid: 5, type: 'm_chain' })).toBe(true));
+        expect(seen.map(([m, hot]) => [/を手にした|強い版/.test(m), hot])).toEqual([
+          [true, true],
+          [true, true],
+          [true, true],
+          [true, true],
+        ]);
       } finally {
         Object.assign(redraw, { inv: keep.inv });
-        Object.assign(gear, { hands: keep.hands, bag: keep.bag });
+        Object.assign(gear, { hands: keep.hands, bag: keep.bag, runeUid: keep.runeUid });
         ui.invOpen = keep.invOpen;
         saved.RSEEN = keep.rseen;
       }
