@@ -135,7 +135,14 @@ await withBrowser(async ({ browser, base }) => {
     const [W, H] = sc.size || SIZE;
     const pg = await newPage(browser, errs, { width: W, height: H, still: true });
     await openTest(pg, base, sc.q);
-    await sc.go(pg);
+    // 場面を作れなかった時（図鑑に生き物が無い、など）は、その場面だけ失敗にして、残りの場面を続ける
+    try {
+      await sc.go(pg);
+    } catch (e) {
+      await pg.close();
+      rows.push([sc.name, '✗ 作れない', String(e && e.message ? e.message : e)]);
+      continue;
+    }
     await pg.evaluate(() => document.fonts.ready);
     await frames(pg, 1);
     const shot = PNG.sync.read(await pg.screenshot({ timeout: 90000 }));

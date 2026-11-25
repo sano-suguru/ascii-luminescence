@@ -286,6 +286,20 @@ await withBrowser(
         if (!(top.height > side.height + 1 && top.pitch < side.pitch - 0.5))
           bad.push(`pitch 0.8 で上から見下ろしていない：横から ${JSON.stringify(side)}、上から ${JSON.stringify(top)}`);
       }
+      // center：狙う点を画面の真ん中に写す（カメラの角度が、狙う点への角度と同じ）。書かなければ 0.16 だけ下を向いて、生き物を上に写す。
+      // 眠る竜は、眠った形（とぐろ）の高さの真ん中を狙う（起きた形より低い。眠った形は、初めて眠って描いた時に作られるので、少し進めてから見る）
+      const dragon = list.find((o) => o.name === '竜');
+      if (!dragon) bad.push('center の確かめに使う「竜」が図鑑に無い');
+      else {
+        const look = (opt) => (__test.galleryShow(dragon.n, opt), __test.advance(0.1), __test.galleryDraw().camera);
+        const toAim = (c) => Math.atan2(c.aimY - c.height, c.dist);
+        const [cOn, cOff, cSleep] = [look({ center: true }), look({}), look({ center: true, pose: 'sleep' })];
+        if (!(Math.abs(cOn.pitch - toAim(cOn)) < 0.003)) bad.push(`center:true で狙う点が真ん中に来ない：${JSON.stringify(cOn)}`);
+        if (!(Math.abs(cOff.pitch - (toAim(cOff) - 0.16)) < 0.003))
+          bad.push(`center を書かない時に、狙う点より 0.16 下を向いていない：${JSON.stringify(cOff)}`);
+        if (!(cSleep.aimY < cOn.aimY - 0.5))
+          bad.push(`眠る竜の center が、眠った形の高さで決まっていない：起きた形 ${cOn.aimY}、眠った形 ${cSleep.aimY}`);
+      }
       for (const opt of [
         { zoom: 0.4 },
         { zoom: 3.1 },

@@ -128,7 +128,7 @@ if(TEST)window.__test={
   // how many sparks it threw (a phantom is mostly sparks: its glyphs show only now and then), how many of those glyphs and sparks hold
   // a number that is not finite (place, colour, glyph, size, speed, life), the box the glyphs fill (width and depth across the floor, the lowest and highest point),
   // and where the camera is (distance across the floor to the creature, height, and how far it looks down: pitch is the camera's, so negative is down),
-  // the straight distance to the point it looks at (aimed), and what bounds it: the ceiling over the camera, the farthest the room lets it go,
+  // the height of the point it looks at (aimY) and the straight distance to it (aimed), and what bounds it: the ceiling over the camera, the farthest the room lets it go,
   // and the ball round the aimed point that holds the body (only worked out for a zoom in; otherwise null)
   galleryDraw(){ const m=ui.gallery&&ui.gallery.mode==='beast'&&ui.gallery.m; if(!m)return null;
     const d0=dn, p0=pN; let d1=d0, p1=p0; try{ drawMonster(m,clock.time); d1=dn; p1=pN; } finally{ dn=d0; pN=p0; }
@@ -140,7 +140,7 @@ if(TEST)window.__test={
     const cp=camera.position;
     return {name:m.ty.name,glyphs:n,sparks,bad,box:n?{w:f(hi[0]-lo[0]),d:f(hi[2]-lo[2]),y0:f(lo[1]),y1:f(hi[1])}:null,
       camera:{dist:+Math.hypot(cp.x-m.x,cp.z-m.z).toFixed(3),height:+cp.y.toFixed(3),pitch:+camera.rotation.x.toFixed(3),
-        aimed:+Math.hypot(cp.x-m.x,cp.y-(ui.gallery.aimY??0),cp.z-m.z).toFixed(3),ceil:+ceilAt(cp.x,cp.z).toFixed(3),roomR:+(ui.gallery.room.far-0.8).toFixed(3),
+        aimY:+(ui.gallery.aimY??0).toFixed(3),aimed:+Math.hypot(cp.x-m.x,cp.y-(ui.gallery.aimY??0),cp.z-m.z).toFixed(3),ceil:+ceilAt(cp.x,cp.z).toFixed(3),roomR:+(ui.gallery.room.far-0.8).toFixed(3),
         bodyR:ui.gallery.fix&&ui.gallery.fix.bodyR!==undefined?+ui.gallery.fix.bodyR.toFixed(3):null}}; },
   // remove every creature (lords too), so a check is not upset by one that happens to be near
   clearAll(){ const n=here.monsters.length; here.monsters=[]; return n; },

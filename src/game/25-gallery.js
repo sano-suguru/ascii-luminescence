@@ -73,13 +73,16 @@ function updateGallery(dt){
     { const ty=m.ty; if(ty.flier)m.y=(1.6+Math.sin(g.t*2.2)*0.15)*Math.max(1,sc*0.7); else if(ty.fl)m.y=ty.fl+Math.sin(g.t*1.3)*0.12; }
     const tall=m.ty.beast?1.3:m.ty.form==='lichking'?1.6:m.ty.form==='spiderqueen'?1.25:m.ty.form==='nagaqueen'?1.3:m.ty.form==='olddragon'?0.85:m.ty.form==='shadowking'?1.75:m.ty.form==='shadowserpent'?1.9:m.ty.form==='deepkraken'?2.0:1,
       zoom=fix?fix.zoom:1, tilt=fix?fix.pitch:null;
+    // the shape the camera is fitted to: a sleeping dragon or beast curls up into its own sleeping shape, which is built the first time it is drawn asleep;
+    // until then (one tick) the centre and the ball below wait for it
+    const shape=fix?(fix.pose==='sleep'&&((m.ty.form==='dragon'&&!m.ty.boss)||m.ty.beast)?m.formSleep:m.form):null;
     // center (set only by __test.galleryShow): look at the middle of the body's height (halfway between its lowest and highest point, worked out once per creature)
-    // and put it in the middle of the picture; otherwise aim a little lower than the camera looks, so the creature stands above the bestiary's panel
-    if(fix&&fix.center&&fix.midOff===undefined){ let lo=Infinity, hi=-Infinity; for(const p of (m.drawForm||m.form||[])){ const y=(p.y||0)*sc; if(y<lo)lo=y; if(y>hi)hi=y; } fix.midOff=lo<=hi?(lo+hi)/2:0; }
-    const centered=!!(fix&&fix.center), ty2=centered?Math.max(0.3,m.y+fix.midOff):Math.max(0.3,m.y+(m.ty.flier?0:0.6*sc*tall));
+    // and put it in the middle of the picture; otherwise turn the camera a little below the point it aims at, so the creature stands high, above the bestiary's panel
+    if(fix&&fix.center&&fix.midOff===undefined&&shape){ let lo=Infinity, hi=-Infinity; for(const p of shape){ const y=(p.y||0)*sc; if(y<lo)lo=y; if(y>hi)hi=y; } fix.midOff=lo<=hi?(lo+hi)/2:0; }
+    const centered=!!(fix&&fix.center&&fix.midOff!==undefined), ty2=centered?Math.max(0.3,m.y+fix.midOff):Math.max(0.3,m.y+(m.ty.flier?0:0.6*sc*tall));
     // a zoom in stops outside a ball round the point the camera looks at, wide enough to hold every point of the body (worked out once per creature)
-    if(fix&&zoom>1&&fix.bodyR===undefined)fix.bodyR=(m.drawForm||m.form||[]).reduce((r,p)=>Math.max(r,Math.hypot((p.x||0)*sc,(p.y||0)*sc+m.y-ty2,(p.z||0)*sc)),0);
-    const want=(3.0+2.0*sc)*tall/zoom, R=Math.max(Math.min(2,2/zoom),fix&&zoom>1?fix.bodyR+0.8:0,Math.min(want,g.room.far-0.8)), a=g.room.dir+0.25;
+    if(fix&&zoom>1&&fix.bodyR===undefined&&shape)fix.bodyR=shape.reduce((r,p)=>Math.max(r,Math.hypot((p.x||0)*sc,(p.y||0)*sc+m.y-ty2,(p.z||0)*sc)),0);
+    const want=(3.0+2.0*sc)*tall/zoom, R=Math.max(Math.min(2,2/zoom),fix&&zoom>1&&fix.bodyR!==undefined?fix.bodyR+0.8:0,Math.min(want,g.room.far-0.8)), a=g.room.dir+0.25;
     let Rh=tilt===null?R:R*Math.cos(tilt), ch;
     if(tilt===null)ch=(1.0+0.75*sc)*tall+(m.ty.flier||m.ty.fl>0.5?m.y*0.5:0);
     else { ch=Math.max(0.3,Math.min(ty2+R*Math.sin(tilt),ceilAt(g.room.x+Math.cos(a)*Rh,g.room.z+Math.sin(a)*Rh)-0.4));
