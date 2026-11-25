@@ -1,6 +1,7 @@
 // TypeScript に移した関数が、移す前の古い関数と「同じ文」かを、構文の木で確かめる道具（翻訳の検証）。
 //   node tools/same-code.mjs [--rev main | --old <古い src/game>] [--state 入れ物:名前,名前 …] src/lib/xx.ts …
 // 新しい方の型を外し、型のために書き換えた決まった形（下の「規則」）を元の形に戻してから、古い JS の同じ名前の一番外の宣言と比べる。
+// 比べるのは、古い JS から消えた名前だけ（src/lib の全部のファイルを渡してよい。今も古い JS にある同じ名前の別の物とは比べない）。
 // 整形・括弧・引用符・コメントの違いは、構文の木の段階で消える。違いが残れば、その場所を出して 1 で終わる。
 // 動かして比べるテストと違い、通るかどうかに関係なく全部の行を見る（係数・比べ方・乱数を引く順番・抜けた文を見つける）。
 //
@@ -8,12 +9,14 @@
 //   nth(a, i) → a[i]、lookup(o, k) → o[k]：範囲の外や無い欄では止まる（元は undefined）
 //   must(x, '…') → x：x が null・undefined の時は止まる（元はその先で止まるか、黙って進む）
 //   level() → here.D：そのファイルの level が () => must(here.D, …) の時だけ
-//   x ?? NaN → x：算術（- * / % **、文字でない物との +）・大小の比べ方・単項の - +・Math.* の引数の中だけ（undefined も NaN も同じ結果になる所）
+//   x ?? NaN → x：算術（- * / % **、もう片方が数と分かる +）・大小の比べ方・単項の - +・Math.* の引数の中だけ（undefined も NaN も同じ結果になる所）
 //   Number(x) → x：算術（- * / %）の中だけ（算術は、もともと数に直してから計算する）
 //   a op= b → a = a op b（両方に当てる。a は名前と欄の読み取りだけ）
-//   使わない引数の頭の _ は外す。ファイルの一番外の別名（const specials = SPECIALS など、型を広げるためだけの物）は元の名前に戻す
-//   先に読む：const X = 式（式は名前と欄の読み取りだけか、1回だけ使うオブジェクト）、const [a, b] = 式 の後ろで、X を式に戻す（両方に当てる）
-// 「先に読む」と「一番外の別名」は、間で式の中身が変わらないことを機械では言えないので、新しく足した物を「人が確かめる一覧」に出す。
+//   使わない引数の頭の _ は外す（本体がどちらの名前も読まない時だけ）。ファイルの一番外の別名（const specials = SPECIALS など、型を広げるためだけの物）は
+//   元の名前に戻す（関数の中で、どちらかの名前を宣言し直していない時だけ）
+//   先に読む：const X = 式（式は名前と欄の読み取りだけか、数・名前とその計算だけでできた、1回だけ使うオブジェクト）、const [a, b] = 式 の後ろで、
+//   X を式に戻す（両方に当てる。X を書き換えている時と、同じ名前を宣言し直している時は戻さない）
+// 「先に読む」と「一番外の別名」は、間で式の中身が変わらないことを機械では言えないので、新しく足した物と、古い方にあって新しい方でやめた物を「人が確かめる一覧」に出す。
 //
 // 古い JS は、--rev の git の版（既定 HEAD）か、--old のフォルダから読む。状態を入れ物に移した名前は、--state で古い側にも同じ書き換え
 // （tools/state-move.mjs の stateMove）をしてから比べる。古い JS から消えた名前で、渡した .ts のどれにも無い物は「比べていない」として出す（これも 1 で終わる）。
@@ -62,6 +65,8 @@ export const readGame = (dir) => new Map(gameParts(dir).map((f) => [f, readFileS
 const isCall = (n, name) => n?.type === 'CallExpression' && n.callee.type === 'Identifier' && n.callee.name === name;
 const ident = (name) => ({ type: 'Identifier', name });
 const member = (object, property, computed) => ({ type: 'MemberExpression', object, property, computed, optional: false });
+/** ?? NaN の印を外した形（先読みの一覧を、古い方と比べるため） */
+const unMark = (n) => walk(n, (x) => (x.type === 'NaNDefault' ? unMark(x.expr) : undefined));
 /** 名前と欄の読み取りだけの式（here.D・def.vy・c[0]・V[E[i]] など。?? NaN の印が付いた物も） */
 const isPath = (n) =>
   n?.type === 'Identifier' ||
@@ -124,13 +129,27 @@ function unNumber(n, ctx) {
 }
 /** ?? NaN の印を、undefined と NaN が同じ結果になる所だけ外す（ほかは残り、違いとして出る） */
 const NUM_OPS = new Set(['-', '*', '/', '%', '**', '<', '>', '<=', '>=']);
-const isText = (n) => (n?.type === 'Literal' && typeof n.value === 'string') || n?.type === 'TemplateLiteral';
+/** 数になると分かる式（数・?? NaN の印・単項の - +・算術・Math.* の呼び出し）。+ の中で ?? NaN を外すのは、もう片方がこれの時だけ（文字の変数との + は、undefined と NaN で結果が違う） */
+const isNum = (n) =>
+  (n?.type === 'Literal' && typeof n.value === 'number') ||
+  n?.type === 'NaNDefault' ||
+  (n?.type === 'UnaryExpression' && (n.operator === '-' || n.operator === '+')) ||
+  (n?.type === 'BinaryExpression' &&
+    (['-', '*', '/', '%', '**'].includes(n.operator) || (n.operator === '+' && isNum(n.left) && isNum(n.right)))) ||
+  (n?.type === 'CallExpression' &&
+    n.callee.type === 'MemberExpression' &&
+    n.callee.object.type === 'Identifier' &&
+    n.callee.object.name === 'Math');
 function resolveNaN(n, ctx) {
   return walk(n, (x) => {
     const fix = (child) => (child?.type === 'NaNDefault' ? (ctx.hit('?? NaN'), resolveNaN(child.expr, ctx)) : resolveNaN(child, ctx));
-    if (x.type === 'BinaryExpression' && (NUM_OPS.has(x.operator) || (x.operator === '+' && !isText(x.left) && !isText(x.right)))) {
-      return { ...x, left: fix(x.left), right: fix(x.right) };
-    }
+    if (x.type === 'BinaryExpression' && NUM_OPS.has(x.operator)) return { ...x, left: fix(x.left), right: fix(x.right) };
+    if (x.type === 'BinaryExpression' && x.operator === '+')
+      return {
+        ...x,
+        left: isNum(x.right) ? fix(x.left) : resolveNaN(x.left, ctx),
+        right: isNum(x.left) ? fix(x.right) : resolveNaN(x.right, ctx),
+      };
     if (x.type === 'UnaryExpression' && (x.operator === '-' || x.operator === '+')) return { ...x, argument: fix(x.argument) };
     if (
       x.type === 'CallExpression' &&
@@ -171,6 +190,12 @@ const subst = (n, name, expr) =>
       return x;
     return expr;
   });
+/** オブジェクトの別名に入れてよい値（数・文字・名前と、その計算だけ。欄の読み取りや呼び出しは入れない） */
+const plain = (n) =>
+  n?.type === 'Literal' ||
+  n?.type === 'Identifier' ||
+  (n?.type === 'UnaryExpression' && plain(n.argument)) ||
+  (n?.type === 'BinaryExpression' && plain(n.left) && plain(n.right));
 /** 先に読む書き換えを元に戻す。見つけた物を found に足す（where：関数の名前） */
 function unalias(n, where, found, show) {
   return walk(n, (x) => {
@@ -187,14 +212,15 @@ function unalias(n, where, found, show) {
           let names, exprs;
           if (dc.id.type === 'Identifier' && dc.init) {
             const u = uses([restDecls, tail], dc.id.name);
-            if (!isPath(dc.init) && !(u.n === 1 && dc.init.type === 'ObjectExpression')) continue;
+            if (!isPath(dc.init) && !(u.n === 1 && dc.init.type === 'ObjectExpression' && dc.init.properties.every((p) => plain(p.value))))
+              continue;
             names = [dc.id.name];
             exprs = [dc.init];
-            found.push(`${where}：${dc.id.name} = ${show(dc.init)}`);
+            found.push(`${where}：${dc.id.name} = ${show(unMark(dc.init))}`);
           } else if (dc.id.type === 'ArrayPattern' && dc.init && isPath(dc.init) && dc.id.elements.every((e) => e?.type === 'Identifier')) {
             names = dc.id.elements.map((e) => e.name);
             exprs = names.map((_, k) => member(dc.init, { type: 'Literal', value: k }, true));
-            found.push(`${where}：[${names.join(', ')}] = ${show(dc.init)}`);
+            found.push(`${where}：[${names.join(', ')}] = ${show(unMark(dc.init))}`);
           } else continue;
           if (
             names.some((nm) => {
@@ -364,10 +390,10 @@ function firstPos(n) {
 const lineAt = (text, pos) => (pos === undefined ? '?' : text.slice(0, pos).split('\n').length);
 
 /**
- * 新しい .ts の文（{ file, text } の並び）を、古い JS の宣言 old（legacyDecls）と比べる。
+ * 新しい .ts の文（{ file, text } の並び）を、古い JS の宣言 old（legacyDecls）と比べる（only を渡したら、その名前だけ）。
  * 返り値：関数ごとの結果 results（違い diffs は { old: 古い所, new: 新しい所, oldLine, newLine }）、人が確かめる一覧 review、当てた規則の数 used、比べた名前 compared
  */
-export function compareSources(old, files) {
+export function compareSources(old, files, only = null) {
   const used = {},
     review = [],
     results = [],
@@ -387,24 +413,37 @@ export function compareSources(old, files) {
     const tops = [...NEW].filter(
       ([k, v]) => !old.has(k) && v.node.type === 'VariableDeclaration' && v.node.declarations[0].init?.type === 'Identifier',
     );
-    for (const [k, v] of tops) review.push(`${basename(file)} の一番外：${k} = ${v.node.declarations[0].init.name}`);
     const ctx = { hit, levelIsHereD };
     for (const [name, nd] of NEW) {
       const od = old.get(name);
-      if (!od) continue;
+      // only を渡したら、その名前だけ（古い JS から消えた名前。今も古い JS にある同じ名前の別の物と取り違えないため）
+      if (!od || (only && !only.has(name))) continue;
       compared.add(name);
       const oldFound = [],
         newFound = [];
       const o = unalias(norm(od.node, ctx), name, oldFound, show);
       let n = unNumber(norm(undo(unType(nd.node), ctx), ctx), ctx);
-      for (const [k, v] of tops) n = subst(n, k, v.node.declarations[0].init);
+      // 関数の中で、別名か元の名前を宣言し直していれば戻さない（違いとして出る）
+      for (const [k, v] of tops) {
+        const orig = v.node.declarations[0].init;
+        if (!uses(n, k).n || uses(n, k).shadow || uses(n, orig.name).shadow) continue;
+        n = subst(n, k, orig);
+        const line = `${basename(file)} の一番外：${k} = ${orig.name}`;
+        if (!review.includes(line)) review.push(line);
+      }
       n = resolveNaN(unalias(n, name, newFound, show), ctx);
       // 使わない引数の名前の頭の _ は外す
-      for (const p of n.params ?? n.declarations?.[0]?.init?.params ?? [])
-        if (p.type === 'Identifier' && p.name.startsWith('_')) p.name = p.name.slice(1);
+      // （本体がどちらの名前も読まない時だけ。外の同じ名前を読んでいると、別の物を同じと言ってしまうため）
+      const fn = n.params ? n : n.declarations?.[0]?.init;
+      for (const p of fn?.params ?? [])
+        if (p.type === 'Identifier' && p.name.startsWith('_') && !uses(fn.body, p.name).n && !uses(fn.body, p.name.slice(1)).n)
+          p.name = p.name.slice(1);
       // 古い方にも同じ「先に読む」があれば、新しく足した物ではない
       const had = new Set(oldFound);
       review.push(...newFound.filter((x) => !had.has(x)));
+      // 古い方の「先に読む」を、新しい方でやめた物（読む時が遅くなる）
+      const now = new Set(newFound);
+      review.push(...oldFound.filter((x) => !now.has(x)).map((x) => `${x}（古い方の先読みを、やめた）`));
       const out = [];
       diff(o, n, out);
       results.push({
@@ -470,9 +509,12 @@ if (process.argv[1] && import.meta.filename === process.argv[1]) {
   const oldGame = oldDir ? readGame(oldDir) : gameAtRev(rev, states),
     old = legacyDecls(oldGame),
     now = legacyDecls(readGame(join(root, 'src/game')));
+  // 比べるのは、古い JS から消えた名前だけ（src/lib の名前が、今も古い JS にある別の物と同じ名前のこともある）
+  const goneAll = new Set([...old.keys()].filter((k) => !now.has(k)));
   const { results, review, used, compared } = compareSources(
     old,
     files.map((f) => ({ file: relative(root, f), text: readFileSync(f, 'utf8') })),
+    goneAll,
   );
   let bad = 0;
   for (const r of results) {
@@ -484,7 +526,7 @@ if (process.argv[1] && import.meta.filename === process.argv[1]) {
     bad += r.diffs.length;
   }
   // 古い JS から消えたのに、渡した .ts で比べていない名前
-  const gone = [...old.keys()].filter((k) => !now.has(k) && !compared.has(k));
+  const gone = [...goneAll].filter((k) => !compared.has(k));
   if (gone.length) console.log(`\n比べていない（古い JS から消えたが、渡した .ts に無い）：${gone.join('、')}`);
   if (review.length) console.log(`\n人が確かめる（間で中身が変わらないこと）${review.length} 件\n  ${review.join('\n  ')}`);
   console.log(`\n比べた ${results.length}　違い ${bad}　当てた規則 ${JSON.stringify(used)}`);

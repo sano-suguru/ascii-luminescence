@@ -94,6 +94,31 @@ describe('違うと言う物', () => {
     expect(r.n.f).toBeGreaterThan(0);
     expect(r.review).toEqual([]);
   });
+  it('?? NaN を、文字かもしれない物との + で外した時（もう片方が数と分かる時だけ外す）', () => {
+    expect(cmp(`function f(s,a){ return s+a; }`, `export function f(s, a) { return s + (a ?? NaN); }`).n).toEqual({ f: 1 });
+    expect(cmp(`function f(a,b){ return a+b*2; }`, `export function f(a, b) { return (a ?? NaN) + b * 2; }`).n).toEqual({ f: 0 });
+  });
+  it('頭に _ の付いた引数で、本体が外の同じ名前を読んでいる時は、名前を戻さない', () => {
+    expect(cmp(`function f(t){ return t; }`, `export function f(_t) { return t; }`).n.f).toBeGreaterThan(0);
+  });
+  it('一番外の別名と同じ名前を、関数の中で宣言し直している時は戻さない', () => {
+    const r = cmp(
+      `function f(SPECIALS){ return SPECIALS+SPECIALS; }`,
+      `const sp = SPECIALS;\nexport function f(sp) { return sp + SPECIALS; }`,
+    );
+    expect(r.n.f).toBeGreaterThan(0);
+  });
+  it('欄を読んだり呼び出したりするオブジェクトは、先に読む書き換えとして戻さない', () => {
+    expect(
+      cmp(`function f(){ g(); return {t: clock.time}[k]; }`, `export function f() { const at = { t: clock.time }; g(); return at[k]; }`).n
+        .f,
+    ).toBeGreaterThan(0);
+  });
+  it('古い方の先読みを、新しい方でやめた物も、人が確かめる一覧に出す', () => {
+    const r = cmp(`function f(o){ const c=o.col; g(); h(c); }`, `export function f(o) { g(); h(o.col); }`);
+    expect(r.n).toEqual({ f: 0 });
+    expect(r.review).toEqual(['f：c = o.col（古い方の先読みを、やめた）']);
+  });
   it('違いの場所（古い文と新しい文の行）を出す', () => {
     const r = cmp(`function f(a){\n  g(a);\n  h(a*2);\n}`, `export function f(a) {\n  g(a);\n  h(a * 3);\n}`);
     expect(r.results[0].diffs).toEqual([{ old: '2', new: '3', oldLine: 3, newLine: 3 }]);
