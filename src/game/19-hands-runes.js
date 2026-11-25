@@ -50,6 +50,9 @@ const VM_MODELS=(()=>{ const TV=Math.tan(37*Math.PI/180), AS=16/9, SZ=0.03, K=VM
   return M; })();
 const VM_PART={fill:[0.46,0.48,0.56],edge:[0.86,0.89,0.96],metal:[0.7,0.72,0.8],wood:[0.42,0.3,0.19],woodedge:[0.66,0.49,0.32],hand:[0.5,0.35,0.25],knuckle:[0.66,0.48,0.34],arm:[0.3,0.22,0.18],head:[0.95,0.9,0.75],glow:[1,0.95,0.82],string:[0.7,0.66,0.58]};
 const VM_BRIGHT={fill:0.8,edge:1.1,metal:0.95,wood:0.78,woodedge:1.0,hand:0.75,knuckle:0.9,arm:0.45,head:1.25,glow:1.3,string:0.6};
+// at rest the weapons in hand are dimmed, so they do not outshine the creatures in front: the bright parts (a staff's head and glow, a blade's edge) to VM_REST_HOT,
+// the rest to VM_REST. Chanting, holding a full chant, a swing and the kick of a shot bring them back up to full
+const VM_REST=0.75, VM_REST_HOT=0.5;
 const VM_TINT={edge:0.7,head:0.85,glow:0.85,fill:0.25};
 const vmKick={L:-9,R:-9};
 function drawViewWeapons(t){ if(ui.camMode==='tps'||!ui.started||adv.dead||!gear.hands||!here.D)return; if(ui.gallery&&ui.gallery.mode==='beast')return;
@@ -61,6 +64,7 @@ function drawViewWeapons(t){ if(ui.camMode==='tps'||!ui.started||adv.dead||!gear
     const chant=gear.castSt&&(gear.castSt.h===h||two)?Math.min(1,gear.castSt.t/Math.max(0.01,gear.castSt.need)):0, hold=gear.castSt&&(gear.castSt.h===h||two)&&gear.castSt.full?Math.min(1,gear.castSt.hold/2):0;
     const swingP=player.swing>0&&(player.swingH===h||two)?1-player.swing/0.22:-1, kick=Math.max(0,1-(clock.time-(vmKick[h]||-9))/0.16);
     let th=0, dx=sway, dy=bob, dz=0, glow=1;
+    const act=Math.max(chant,hold,swingP>=0?1:0,kick), calm=VM_REST+(1-VM_REST)*act, calmHot=VM_REST_HOT+(1-VM_REST_HOT)*act;
     if(M.kind==='sword'){ if(swingP>=0){ th=M.thrust?0.15-0.3*swingP:0.9-2.2*swingP; dz=Math.sin(swingP*Math.PI)*(M.thrust?0.2:0.08); dy+=Math.sin(swingP*Math.PI)*0.04; }
       if(two&&gear.castSt&&gear.castSt.h==='R'){ th=0.55*chant; dy+=0.06*chant; } dz+=kick*0.04; }
     else if(M.kind==='bow'){ dz-=kick*0.03; }
@@ -69,7 +73,7 @@ function drawViewWeapons(t){ if(ui.camMode==='tps'||!ui.started||adv.dead||!gear
     else { dy+=0.04*chant; dz+=0.05*chant+kick*0.04; glow=1+chant; }
     const pv=M.pivot, cs=Math.cos(th), sn=Math.sin(th);
     const put=(x,y,z,g,part,sz,bri)=>{ let lx=x-pv[0], ly=y-pv[1]; const rx=lx*cs-ly*sn+pv[0], ry=lx*sn+ly*cs+pv[1]; let X=rx+dx, Y=ry+dy, Z=z+dz; if(mirror){ X=-X; g=VM_MIRROR[g]||g; }
-      const base=VM_PART[part]||[0.8,0.8,0.8], tk=el?(VM_TINT[part]||0):0, bb=(VM_BRIGHT[part]||1)*(bri||1)*((part==='head'||part==='glow')?glow:1)*(part==='edge'&&swingP>=0?1.7:1);
+      const base=VM_PART[part]||[0.8,0.8,0.8], tk=el?(VM_TINT[part]||0):0, bb=(VM_BRIGHT[part]||1)*(bri||1)*((part==='head'||part==='glow')?glow:1)*(part==='edge'&&swingP>=0?1.7:1)*((part==='head'||part==='glow'||part==='edge')?calmHot:calm);
       const p=W(X,Y,Z); dyn(p[0],p[1],p[2],G(g),sz*q,(base[0]*(1-tk)+ec[0]*tk)*bb,(base[1]*(1-tk)+ec[1]*tk)*bb,(base[2]*(1-tk)+ec[2]*tk)*bb); return p; };
     for(const p of M.pts)put(p[0],p[1],p[2],p[3],p[4],p[5]);
     if(M.kind==='bow'){ const pull=chant, mid=[M.rest[0]+(M.draw[0]-M.rest[0])*pull,M.rest[1]+(M.draw[1]-M.rest[1])*pull,M.rest[2]+(M.draw[2]-M.rest[2])*pull];
