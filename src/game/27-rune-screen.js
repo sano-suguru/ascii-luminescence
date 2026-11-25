@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------- 装備の画面を開け閉めする・付け替えの詠唱・魔導書・メニュー
 // 装備の画面を作る renderInv と、その中のボタンの処理（選ぶ・はめる・袋のページ・ビルドの保存と呼び出し applyBuild）は src/lib/inventory.ts、
-// 手を写す・戻す snapHands・handsKey は src/lib/gear.ts、反応の表 REACT は src/lib/runes.ts、枠 boxText は src/lib/text.ts（src/game/imports.mjs で読む）。
+// 手を写す・戻す snapHands・handsKey は src/lib/gear.ts、枠 boxText は src/lib/text.ts（src/game/imports.mjs で読む）。
 // 装備の画面の状態（選んでいるルーン packSel など）は src/lib/state.ts の ui
 function startSwap(prev){
   if(nearStele()){ sChime(player.x,player.z,0.3); for(let q=0;q<16;q++){ const a=mr()*6.28; spawn(player.x+Math.cos(a)*0.7,0.4+mr()*1.2,player.z+Math.sin(a)*0.7,0,0.6,0,0.7,G('.'),0.1,0.8,1.1,1.6,0); } return; }

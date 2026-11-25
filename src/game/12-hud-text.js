@@ -1,9 +1,9 @@
 // stealth・lantern・hudInfo は src/lib/state.ts（src/game/imports.mjs で読む。丸ごと入れ替えないので、名前はそのまま）
-// LIGHT_NAMES・LIGHT_COLS は src/lib/hud.ts（src/game/imports.mjs で読む）
-// 状態の表示 renderStatus・明るさと気配 updateStealth・年代記 renderChron・操作の案内 renderHelp と setHelp・表示の量 cycleUi・忍び足 toggleSneak・
+// 明るさの段の名前と色 LIGHT_NAMES・LIGHT_COLS は src/lib/hud.ts（状態の表示 src/lib/status.ts が使う）
+// 状態の表示 renderStatus・明るさと気配 updateStealth・年代記 renderChron・操作の案内 renderHelp と setHelp・表示の量 cycleUi・
 // 見つかった時 onNoticed・物音 makeNoise・飛べるマス flyOpen は src/lib/status.ts（src/game/imports.mjs で読む）
-// ---------------------------------------------------------------- 生き物の頭の上の印（眠っている z・気づいた !・怪しんでいる ?）
 // パネルの文字の幅（visW）と枠（boxText）は src/lib/text.ts（src/game/imports.mjs で読む）
+// ---------------------------------------------------------------- 生き物の頭の上の印（眠っている z・気づいた !・怪しんでいる ?）
 // MARK_H は src/lib/hud.ts（src/game/imports.mjs で読む）
 function drawMark(m,t,dp){
   if(m.ty.peaceful||!m.visible||m.ty.invisible||dp>22)return;

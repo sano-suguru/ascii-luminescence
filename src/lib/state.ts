@@ -531,7 +531,6 @@ export const here: Here = {
 /** 行った階の覚え（場所の名前 → 見えた所と覚えた色の写し）。丸ごと入れ替えないので、古い JS は今までどおり placeMem で読む */
 export const placeMem = new Map<string, { explored: Uint8Array; mem: Float32Array }>();
 
-/** 今の探索の伝説の物（シード・物の種類 → 物・持っている物・置いた物）。探索が伝説の物を選ぶまでは null。物の型は、目的の処理を移す時に作る */
 /** 伝説の物（名前・言い伝え・ある支道 branch・種類 kind） */
 export interface LegendItem {
   name: string;
@@ -539,6 +538,7 @@ export interface LegendItem {
   branch: string | undefined;
   kind: string;
 }
+/** 今の探索の伝説の物（シード・物の種類 → 物・手にした物・置いた物）。src/lib/legend.ts の getLegend が、はじめて読んだ時に作る */
 export interface Legend {
   seed: number;
   /** 物の種類（LEGEND_ORDER の candle・bell・mirror）→ 物 */
@@ -635,7 +635,7 @@ export interface Stealth {
   range: number;
   sneak: boolean;
   hudKey: string;
-  /** 生き物に見られているか（12-hud-text.js の updateStealth が入れる。それまでは無い） */
+  /** 生き物に見られているか（src/lib/status.ts の updateStealth が入れる。それまでは無い） */
   seen?: boolean;
 }
 export const stealth: Stealth = { lum: 0, level: 1, range: 8, sneak: false, hudKey: '' };

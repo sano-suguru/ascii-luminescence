@@ -2,7 +2,7 @@
 // FINAL_DEPTH は src/lib/world.ts（src/game/imports.mjs で読む）
 // LEGEND_KINDS・LEGEND_ORDER・BRANCH_HINT は src/lib/names.ts（src/game/imports.mjs で読む）
 let finalSt=null;
-// 伝説の物 getLegend と、状態の表示の1行 legendLine は src/lib/legend.ts（src/game/imports.mjs で読む）
+// 伝説の物 getLegend は src/lib/legend.ts（src/game/imports.mjs で読む）。状態の表示の1行 legendLine も src/lib/legend.ts（状態の表示が使う）
 const legendOfBranch=bk=>{ const L=getLegend(); if(!L)return null; return LEGEND_ORDER.find(k=>L.items[k].branch===bk)||null; };
 const legendAll=()=>{ const L=getLegend(); return !!L&&L.have.size>=3; };
 const isFinal=()=>here.depth===FINAL_DEPTH&&!here.branch&&!here.realm&&!here.inter;

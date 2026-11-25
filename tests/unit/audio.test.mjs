@@ -1,5 +1,5 @@
 // 音を鳴らす処理（src/lib/audio.ts）の単体テスト。Node には Web Audio が無いので、偽の Web Audio（fake-audio.mjs）で確かめる。
-// 指紋の値は、移す前の古い JS（src/game/15-sound-fire.js）でも同じになる（audio-cases.mjs の場合を、古い関数で数えて確かめた）。
+// 指紋の値は、移す前の古い JS（src/game/15-sound-fire.js と、遠吠え・警報は 13-creatures.js）でも同じになる（audio-cases.mjs の場合を、古い関数で数えて確かめた）。
 // 迷宮の生成は使わないので、生成を変えてもこの指紋は変わらない。
 // テストを .mjs で書くのは、偽の Web Audio を AudioContext の型に合わせられないため（型の言い切り as を使わない）
 import { describe, expect, it } from 'vitest';

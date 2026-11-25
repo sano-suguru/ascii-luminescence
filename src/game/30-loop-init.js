@@ -150,7 +150,7 @@ if(TEST)window.__test={
   places(){ return [...Array.from({length:FINAL_DEPTH},(_,i)=>({depth:i+1})), ...Object.keys(SPECIALS).map(k=>({inter:k})),
     ...Object.values(BRANCHES).flatMap(B=>Array.from({length:B.len},(_,i)=>({branch:B.key,lvl:i+1}))), ...Object.values(REALMS).map(R=>({realm:R.key,depth:R.minD+2}))]; },
   // generate one level only (no meshes). It restores where the run is (seed, depth, branch, realm, special level),
-  // but not what generate() rewrites (the history HIST, the level random rand, the light tables): use it on a page of its own
+  // but not what generate() rewrites (the history adv.HIST, the level random rand, the light tables): use it on a page of its own
   gen(seed,pl){ const keep={runSeed:adv.runSeed,depth:here.depth,branch:here.branch,realm:here.realm,inter:here.inter};
     try{ adv.runSeed=seed>>>0; here.branch=null; here.realm=null; here.inter=null;
       if(pl.branch){ const B=BRANCHES[pl.branch]; here.depth=B.at[0]; here.branch={key:B.key,lvl:pl.lvl||1,len:B.len,ret:here.depth+1}; }

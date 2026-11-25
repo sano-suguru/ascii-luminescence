@@ -35,7 +35,7 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      names：名前と説明の表（見た時の説明・罠・伝説の物・図鑑の主・図鑑で眠っている間の説明 GALLERY_SLEEP）、sound：音の小さな表と道具、
                      audio：音を鳴らす（Web Audio。音の部品・効果音・まわりの音 sndUpdate。状態 SND に頼る物）、log：伝言 msg、hotbar：下の HUD renderHotbar、save：保存 saveSet・saveMeta、
                      inventory：装備の画面 renderInv（中のボタンの処理・ビルドの呼び出し applyBuild も）、
-                     status：状態の表示 renderStatus・明るさと気配 updateStealth・年代記・操作の案内・魔導書・表示の量・忍び足・見つかった時 onNoticed・物音 makeNoise・
+                     status：状態の表示 renderStatus・明るさと気配 updateStealth・年代記・操作の案内・魔導書・表示の量・見つかった時 onNoticed・物音 makeNoise・
                      立ち止まって調べる updateSearch・止まっているか isPaused・場所の名前 placeLabel・下の一言 showHint、legend：今の探索の伝説の物 getLegend と状態の表示の1行、
                      lightmap：マスの明るさ cellLight（状態に頼る。灯りの計算そのものは light）
 src/lib/state.ts     ゲームの状態の入れ物（分野ごと：clock＝時計（ゲームの時刻 time）、blaze＝火と地面のマス（fire・fuel・burnt・scent・凍らせた水 frozen など）、fight＝戦い（飛ぶ物 projs・光線・毒の霧・魔法の場・遅れて起きること・雨・床の目印・ヒットストップ・稲妻など）、vfx＝揺れと光り、ui＝画面の開け閉め（started・camMode・invOpen・近くの祭壇 altarNear・装備の画面で選んでいるルーン packSel・下の一言 hintHTML・メニューの確かめ待ち など）、adv＝今の探索（runSeed・lvl・dead・年代記 HIST など）、gear＝手と詠唱（hands・bag・castSt など）、here＝今いる場所と階の中身（D・depth・branch・monsters・見えたマス・部屋の出来事 events・川のマス riverCells など）、saved＝保存する記録（META・BOOK・RSEEN・SEEN・DEVALL と、今の探索の伝説の物 LEGEND）、player・placeMem・伝言の一覧 msgs・音 SND・忍び足 stealth・手元の灯り lantern・表示の数 hudInfo（今の階の見たマスの割合 explored・速さの表示の数）・押しているキー keys。古い JS は clock.time・vfx.shake・ui.started のように欄で読み書きする。player から keys までは丸ごと入れ替えないので名前のまま）
@@ -251,7 +251,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 | 09-bodies-creatures | 生き物の形：人型、リッチ、サラマンダーと沼の生き物のまわりの粒子（salamanderAura・bogAura）。小さな生き物・四つ足・大きな生き物（オーガ・竜も）・亡霊・幻影の形は src/lib/bodies/ |
 | 10-bodies-beast | 忘れられた獣の組み立て（buildForm）、獣の記録（眠った姿 beastSleep は src/lib/bodies/lords.ts） |
 | 11-monster-move | 生き物を作る（makeMonster）、歩ける所（canStep）、行き先（chooseNext） |
-| 12-hud-text | 生き物の頭の上の印（drawMark：眠っている z・気づいた !・怪しんでいる ?）。状態の表示 renderStatus・明るさと気配 updateStealth・年代記 renderChron・操作の案内 renderHelp と setHelp・表示の量 cycleUi・忍び足 toggleSneak・見つかった時 onNoticed・物音 makeNoise・飛べるマス flyOpen は src/lib/status.ts。パネルの文字の幅 visW と枠 boxText は src/lib/text.ts、lerpAngle は src/lib/math.ts、灯りの段階の名前・印の高さは src/lib/hud.ts、mname は src/lib/names.ts。忍び足 stealth・手元の灯り lantern・表示の数 hudInfo は src/lib/state.ts |
+| 12-hud-text | 生き物の頭の上の印（drawMark：眠っている z・気づいた !・怪しんでいる ?）。状態の表示 renderStatus・明るさと気配 updateStealth・年代記 renderChron・操作の案内 renderHelp と setHelp・表示の量 cycleUi・見つかった時 onNoticed・物音 makeNoise・飛べるマス flyOpen は src/lib/status.ts。パネルの文字の幅 visW と枠 boxText は src/lib/text.ts、lerpAngle は src/lib/math.ts、灯りの段階の名前・印の高さは src/lib/hud.ts、mname は src/lib/names.ts。忍び足 stealth・手元の灯り lantern・表示の数 hudInfo は src/lib/state.ts |
 | 13-creatures | 小さな生き物、群れ、大きな生き物の動き（updateMonster）、描く（drawMonster）。古い形は src/lib/bodies/small.ts、遠吠えと警報の音 sHowl・sAlarm は src/lib/audio.ts |
 | 14-lights-fixtures | 灯り、備品、扉。LANTERN は src/lib/light.ts、マスの明るさ cellLight は src/lib/lightmap.ts |
 | 15-sound-fire | 音量の切り替え（sndToggle）、ガス、火、火花、部屋の出来事、粒子。音を鳴らす処理（sndInit・効果音・まわりの音 sndUpdate など）は src/lib/audio.ts、SND_LV・sEnv は src/lib/sound.ts、cpos・FIRE_TYPES は src/lib/world.ts。火と地面のマスの状態は src/lib/state.ts の blaze、音 SND も src/lib/state.ts |
@@ -266,7 +266,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 | 24-goal | 目的（伝説の物、最深部、王の影）、勝利、稲妻、タイトルへ戻る。今の探索の伝説の物 getLegend と状態の表示の1行 legendLine は src/lib/legend.ts、伝説の物の表は src/lib/names.ts、jagged は src/lib/math.ts |
 | 25-gallery | 見た物の記録、図鑑、試しの間。図鑑の主・試しの間の的の表は src/lib/names.ts、保存する saveSet は src/lib/save.ts |
 | 26-spells-hud | 術と世界（扉・氷・雷）、詠唱の声。止まっているか isPaused は src/lib/status.ts、下の HUD renderHotbar は src/lib/hotbar.ts、詠唱の声の表は src/lib/sound.ts |
-| 27-rune-screen | 装備の画面を開け閉めする（setInv）・付け替えの詠唱（startSwap）、メニュー。魔導書 renderBook と立ち止まって調べる updateSearch は src/lib/status.ts。装備の画面を作る renderInv と中のボタンの処理（選ぶ・はめる・袋のページ・ビルドの保存と呼び出し applyBuild）は src/lib/inventory.ts、装備の画面の状態（選んでいるルーン packSel など）は src/lib/state.ts の ui。手を写す・戻す snapHands・handsKey は src/lib/gear.ts、反応の表 REACT は src/lib/runes.ts、枠 boxText は src/lib/text.ts |
+| 27-rune-screen | 装備の画面を開け閉めする（setInv）・付け替えの詠唱（startSwap）、メニュー。魔導書 renderBook と立ち止まって調べる updateSearch は src/lib/status.ts。装備の画面を作る renderInv と中のボタンの処理（選ぶ・はめる・袋のページ・ビルドの保存と呼び出し applyBuild）は src/lib/inventory.ts、装備の画面の状態（選んでいるルーン packSel など）は src/lib/state.ts の ui。手を写す・戻す snapHands・handsKey は src/lib/gear.ts、枠 boxText は src/lib/text.ts |
 | 28-camera-player | 1人称・3人称、プレイヤーの動き（updatePlayer）、霧と目の慣れ（updateAtmosphere：霧の濃さ・露出・溶岩の近くの熱のゆらぎ・水中の見え方）。AVATAR_TY は src/lib/names.ts |
 | 29-look | 見た時の説明（look）。説明の表と lookLine は src/lib/names.ts |
 | 30-loop-init | 大きさ、メインループ（frame・tick）、テスト用の `__test`、初期化（init）。ゲームの時刻 time は src/lib/state.ts の clock |

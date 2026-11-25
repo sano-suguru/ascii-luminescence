@@ -1,6 +1,6 @@
 // 状態の表示と、まわりへの気配（もとは src/game/12-hud-text.js、02-constants.js の placeLabel、06-world.js の showHint、26-spells-hud.js の isPaused、
-// 27-rune-screen.js の renderBook・updateSearch）。状態の入れ物 here・player・adv・ui・stealth・lantern・hudInfo・vfx・clock・keys に頼り、画面の #status・#help・#hint に書く。
-// 状態の表示（体力・経験・場所・明るさ・伝説の物・見つかっているか・速さ）、明るさと気配の範囲、年代記・操作の案内・魔導書、表示の量、忍び足、
+// 27-rune-screen.js の renderBook・updateSearch）。状態の入れ物 here・player・adv・ui・stealth・lantern・hudInfo・vfx・clock・keys・blaze（投げた火花）・saved（魔導書）に頼り、画面の #status・#help・#hint に書く。
+// 状態の表示（体力・経験・場所・明るさ・伝説の物・見つかっているか・速さ）、明るさと気配の範囲、年代記・操作の案内・魔導書、表示の量、
 // 生き物に見つかった時と物音、立ち止まって辺りを調べる
 import { lookup, must, nth } from './array.ts';
 import { sAlarm, sAlert, sChime, sHowl, sRoar } from './audio.ts';
@@ -180,12 +180,6 @@ export function cycleUi(): void {
     showHint(ui.uiMode === 0 ? '表示：通常' : '表示：最小');
     setTimeout(() => showHint(''), 1200);
   }
-}
-/** 忍び足を切り替える（ランタンを絞る・戻す） */
-export function toggleSneak(): void {
-  stealth.sneak = !stealth.sneak;
-  showHint(stealth.sneak ? 'ランタンを絞った。忍び足で、気配を殺して進む' : 'ランタンの灯りを戻した');
-  setTimeout(() => showHint(''), 1600);
 }
 /**
  * 生き物 m がこちらに気づいた。監視の機械は警報を鳴らして周りを起こし、野営の群れは遠吠えで仲間を起こし、猟犬は遠吠えを上げ、

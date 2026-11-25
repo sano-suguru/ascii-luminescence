@@ -101,5 +101,4 @@ function startRoll(){
   for(let q=0;q<10;q++){ const a=mr()*6.28; spawn(player.x,0.1,player.z,Math.cos(a)*0.8,0.2+mr()*0.4,Math.sin(a)*0.8,0.6,G(mpick(['.',',','\''])),0.14,0.5,0.48,0.55,1); }
 }
 
-// ---------------------------------------------------------------- inventory as a list; hotbar (wheel / 1-5, right click) and a pack screen (Tab); a menu (Esc)
 // 止まっているか isPaused は src/lib/status.ts（src/game/imports.mjs で読む）

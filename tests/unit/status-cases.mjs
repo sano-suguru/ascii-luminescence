@@ -1,4 +1,4 @@
-// テストの道具：状態の表示・明るさと気配・年代記・操作の案内・魔導書・表示の量・忍び足・見つかった時・物音・飛べるマス・立ち止まって調べる・
+// テストの道具：状態の表示・明るさと気配・年代記・操作の案内・魔導書・表示の量・見つかった時・物音・飛べるマス・立ち止まって調べる・
 // 伝説の物・マスの明るさを、たくさんの場合で呼び、返す値と、画面に書いた HTML（偽の画面の部品）・状態の変わり方を、1つの文字列にまとめる。
 // F は関数をまとめた物。status.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
 // 階は Node で本物の迷宮を生成する（gen-places.ts の全部の場所。灯りと罠が要るため）ので、迷宮の生成を変えると、この指紋も変わる。
@@ -38,7 +38,11 @@ const text = (v) =>
             ? null
             : x,
   );
-const KEYS = Object.keys(MTYPES).filter((k) => !MTYPES[k].dummy);
+/** 写しから元に戻す（写しに無い欄は消す） */
+const restore = (obj, copy) => {
+  for (const k of Object.keys(obj)) if (!(k in copy)) delete obj[k];
+  Object.assign(obj, copy);
+};
 
 /** seeds：場合の数 */
 export async function statusCases(F, seeds) {
@@ -63,7 +67,8 @@ export async function statusCases(F, seeds) {
     vfx: { ...vfx },
     blaze: { spark: blaze.spark, fireLight: blaze.fireLight },
     saved: { LEGEND: saved.LEGEND, BOOK: saved.BOOK },
-    gear: { hands: gear.hands },
+    gear: { hands: gear.hands, runeUid: gear.runeUid },
+    shift: Object.getOwnPropertyDescriptor(keys, 'ShiftLeft'),
     time: clock.time,
     ctx: SND.ctx,
     lord: MTYPES['lord'],
@@ -112,9 +117,12 @@ export async function statusCases(F, seeds) {
         stillT: r() < 0.5 ? 0 : r() * 2,
         searchedAt: r() < 0.3 ? c : -1,
       });
-      // 生き物（群れ・気づき・眠り・化けている・うなぎ）
+      // 生き物（群れ・気づき・眠り・化けている・うなぎ）。種類は、その階の主 lord と忘れられた獣 X を足した後の表から選ぶ。
+      // 見つかった時に特別なことが起きる種類（主・獣・監視の機械・野営の群れ・猟犬）は、少し多めに出す
+      const kinds = Object.keys(MTYPES).filter((k) => !MTYPES[k].dummy),
+        rare = kinds.filter((k) => k === 'lord' || k === 'X' || MTYPES[k].watcher || MTYPES[k].snap || MTYPES[k].hound);
       here.monsters = Array.from({ length: 3 + Math.floor(r() * 10) }, (_, k) => {
-        const key = pick(KEYS);
+        const key = r() < 0.3 && rare.length ? pick(rare) : pick(kinds);
         return {
           key,
           ty: MTYPES[key],
@@ -196,7 +204,6 @@ export async function statusCases(F, seeds) {
             ['setHelp', () => [r() < 0.5]],
             ['renderBook', () => []],
             ['cycleUi', () => []],
-            ['toggleSneak', () => []],
             ['onNoticed', () => [m]],
             ['makeNoise', () => [m.x + (r() - 0.5) * 6, m.z + (r() - 0.5) * 6, 2 + r() * 10, r() * 0.8]],
             ['flyOpen', () => [player.x + (r() - 0.5) * 20, player.z + (r() - 0.5) * 20]],
@@ -237,18 +244,20 @@ export async function statusCases(F, seeds) {
     else Reflect.deleteProperty(performance, 'now');
     Object.assign(here, keep.here);
     Object.assign(adv, keep.adv);
-    Object.assign(player, keep.player);
-    Object.assign(stealth, keep.stealth);
-    Object.assign(lantern, keep.lantern);
-    Object.assign(hudInfo, keep.hudInfo);
-    Object.assign(ui, keep.ui);
-    Object.assign(vfx, keep.vfx);
+    restore(player, keep.player);
+    restore(stealth, keep.stealth);
+    restore(lantern, keep.lantern);
+    restore(hudInfo, keep.hudInfo);
+    restore(ui, keep.ui);
+    restore(vfx, keep.vfx);
     Object.assign(blaze, keep.blaze);
     Object.assign(saved, keep.saved);
     gear.hands = keep.gear.hands;
+    gear.runeUid = keep.gear.runeUid;
     clock.time = keep.time;
     SND.ctx = keep.ctx;
-    delete keys['ShiftLeft'];
+    if (keep.shift) Object.defineProperty(keys, 'ShiftLeft', keep.shift);
+    else delete keys['ShiftLeft'];
     msgs.length = 0;
     if (keep.lord) MTYPES['lord'] = keep.lord;
     else delete MTYPES['lord'];

@@ -41,12 +41,12 @@ describe('止まっているか・場所の名前', () => {
 });
 
 describe('移す前と同じ', () => {
-  it('状態の表示・気配・年代記・操作の案内・魔導書・見つかった時・物音・立ち止まって調べる・伝説の物・マスの明るさ（300の場合、18の関数）の指紋', async () => {
+  it('状態の表示・気配・年代記・操作の案内・魔導書・見つかった時・物音・立ち止まって調べる・伝説の物・マスの明るさ（300の場合、17の関数）の指紋', async () => {
     const all = await statusCases({ ...ST, ...LG, ...LM }, 300),
       lines = all.split('\n'),
       names = new Set(lines.flatMap((l) => [...l.matchAll(/"name":"(\w+)"/g)].map((m) => m[1])));
-    // 場合が中身を通っているか：18の関数が全部呼ばれる
-    expect([lines.length, names.size]).toEqual([300, 18]);
-    expect([fnv(all), all.length]).toEqual(['91dfa022', 818746]);
+    // 場合が中身を通っているか：17の関数が全部呼ばれ、忘れられた獣が目を覚ます場合も通る
+    expect([lines.length, names.size, all.includes('目を覚まし')]).toEqual([300, 17, true]);
+    expect([fnv(all), all.length]).toEqual(['407aa11b', 844281]);
   }, 60000);
 });
