@@ -39,9 +39,9 @@ export const vfx: Vfx = { shake: 0, flash: 0, hurtFlash: 0, hpFlash: 0, zapFlash
 export interface Gallery {
   mode: 'beast' | 'range';
 }
-/** 画面の開け閉め（冒険が始まったか、1人称・3人称、マウスを捕まえているか、各画面が開いているか、表示の量、図鑑と試しの間） */
+/** 画面の開け閉め（探索が始まったか、1人称・3人称、マウスを捕まえているか、各画面が開いているか、表示の量、図鑑と試しの間） */
 export interface Ui {
-  /** 冒険が始まったか（タイトルの画面を閉じたか） */
+  /** 探索が始まったか（タイトルの画面を閉じたか） */
   started: boolean;
   /** 装備の画面 */
   invOpen: boolean;
@@ -92,12 +92,12 @@ export interface Lvl {
   bless: Record<string, number>;
   strata: Set<string>;
 }
-/** 冒険の記録（倒した数・始めた時刻）。後から足される欄（maxDepth・cause など）は、使う処理を移す時に型を足す */
+/** 探索の記録（倒した数・始めた時刻）。後から足される欄（maxDepth・cause など）は、使う処理を移す時に型を足す */
 export interface RunStats {
   kills: number;
   t0: number;
 }
-/** 冒険の進み（最初の武器を選んだか・最初の祭壇・取った物・倒した主・開いた体の枠の数）。古い JS が後から足すほかの欄は、使う処理を移す時に型を足す */
+/** 探索の進み（最初の武器を選んだか・最初の祭壇・取った物・倒した主・開いた体の枠の数）。古い JS が後から足すほかの欄は、使う処理を移す時に型を足す */
 export interface RunState {
   startChosen: boolean;
   altar1: boolean;
@@ -106,9 +106,9 @@ export interface RunState {
   /** 開いた体の枠の数（0 から 2） */
   bodyOpen?: number;
 }
-/** 今の冒険（シード・レベル・死んだか・勝ったか・記録・進み・試練・体力の上限・表示している体力） */
+/** 今の探索（シード・レベル・死んだか・勝ったか・記録・進み・試練・体力の上限・表示している体力） */
 export interface Adv {
-  /** 冒険のシード。本当の初めの値は、古い JS（18-level-player.js）がテスト用モードの乱数の入れ替えの後に入れる。ここの 0 は仮 */
+  /** 探索のシード。本当の初めの値は、古い JS（18-level-player.js）がテスト用モードの乱数の入れ替えの後に入れる。ここの 0 は仮 */
   runSeed: number;
   lvl: Lvl;
   dead: boolean;
@@ -196,7 +196,7 @@ export interface Build {
 }
 /** 手と詠唱（両手・持ち物・詠唱の途中・持ち替えの途中・覚えておいた組み合わせと、今どれか） */
 export interface Gear {
-  /** 両手。冒険が始まるまでは null */
+  /** 両手。探索が始まるまでは null */
   hands: Hands | null;
   /** 持ち物のルーン */
   bag: Rune[];
@@ -205,7 +205,7 @@ export interface Gear {
   builds: (Build | null)[];
   /** 今の組み合わせ（-1 はどれでもない） */
   buildIdx: number;
-  /** 次に作るルーンの番号（冒険の中で通し。src/lib/gear.ts の makeRune が数える） */
+  /** 次に作るルーンの番号（探索の中で通し。src/lib/gear.ts の makeRune が数える） */
   runeUid: number;
 }
 export const gear: Gear = { hands: null, bag: [], castSt: null, swapSt: null, builds: [null, null], buildIdx: -1, runeUid: 1 };
@@ -448,7 +448,7 @@ export const here: Here = {
 /** 行った階の覚え（場所の名前 → 見えた所と覚えた色の写し）。丸ごと入れ替えないので、古い JS は今までどおり placeMem で読む */
 export const placeMem = new Map<string, { explored: Uint8Array; mem: Float32Array }>();
 
-/** 今の冒険の伝説の物（シード・物の種類 → 物・持っている物・置いた物）。冒険が伝説の物を選ぶまでは null。物の型は、目的の処理を移す時に作る */
+/** 今の探索の伝説の物（シード・物の種類 → 物・持っている物・置いた物）。探索が伝説の物を選ぶまでは null。物の型は、目的の処理を移す時に作る */
 export interface Legend {
   seed: number;
   /** 物の種類（LEGEND_ORDER の candle・bell・mirror）→ 物（名前・言い伝え・ある支道など） */
@@ -457,7 +457,7 @@ export interface Legend {
   placed: Set<string>;
 }
 /** 保存する記録（localStorage）：伝承・解放・墓・試練 META、魔導書に記した反応 BOOK、見たルーン RSEEN、見た生き物 SEEN、開発用モード DEVALL、
- * それと今の冒険の伝説の物 LEGEND（これは保存しない）。
+ * それと今の探索の伝説の物 LEGEND（これは保存しない）。
  * 本当の初めの値は、古い JS が localStorage から読んでその場で入れる（META・DEVALL は 17-meta.js、BOOK は 19-hands-runes.js、
  * SEEN・RSEEN は 25-gallery.js）。ここの値は仮 */
 export interface Saved {

@@ -1,4 +1,4 @@
-// 祭壇とルーンを置く（もとは src/game/21-altars-heal.js）。状態の入れ物 here（今の階）・gear（手）・adv（冒険）・player に頼る物。
+// 祭壇とルーンを置く（もとは src/game/21-altars-heal.js）。状態の入れ物 here（今の階）・gear（手）・adv（探索）・player に頼る物。
 // 拾う・選ぶ・祭壇の画面は、伝言と画面に頼るので、まだ古い JS（21-altars-heal.js）にある。
 import { lookup, must, nth } from './array.ts';
 import { css } from './color.ts';
@@ -26,7 +26,7 @@ import { visW } from './text.ts';
 import { lockedOf, weaponPool } from './unlocks.ts';
 import { MH, MW, TF } from './world.ts';
 
-/** 今の階（冒険の始めからあるので、無ければその場で止まる） */
+/** 今の階（探索の始めからあるので、無ければその場で止まる） */
 const level = () => must(here.D, '今の階 here.D');
 /** 両手 */
 const hands = (): Hands => must(gear.hands, '両手 gear.hands');
@@ -183,7 +183,7 @@ export function placeAltar(at: number, grp: string, extra?: Partial<Item>): void
 /** 鍛えの祭壇がある層と、その中の深さの幅・シードから深さを決める時のずらし */
 const FORGE_SPAN: Partial<Record<string, readonly [number, number]>> = { cavern: [3, 5], ruins: [6, 8], magma: [9, 11] },
   FORGE_SHIFT: Record<string, number> = { cavern: 0, ruins: 3, magma: 6 };
-/** 鍛えの祭壇がある深さ（層 k の中で、冒険のシードで決める。大洞窟・古代の廃墟・溶岩の海のほかは -1） */
+/** 鍛えの祭壇がある深さ（層 k の中で、探索のシードで決める。大洞窟・古代の廃墟・溶岩の海のほかは -1） */
 export function forgeDepthOf(k: string): number {
   const h = Math.imul(adv.runSeed ^ 0x2f6b1c3d, 2654435761) >>> 0,
     span = FORGE_SPAN[k];

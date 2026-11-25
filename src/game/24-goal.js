@@ -135,7 +135,7 @@ function victory(){
   const secs=Math.floor(clock.time-adv.runStats.t0), mm=Math.floor(secs/60), ss=String(secs%60).padStart(2,'0'), f=t=>`<span class="f">${t}</span>`;
   const R=awardLore(true); graveCands=[]; document.body.classList.add('over');
   el.innerHTML=boxText([f('+-- 光 は 戻 っ た ---'),f('|'),...LEGEND_ORDER.map(k=>`${f('|')}  <b style="color:${css(LEGEND_KINDS[k].col)}">${LEGEND_KINDS[k].ch}</b> ${L.items[k].name}`),f('|'),
-    `${f('|')}  Lv${adv.lvl.n}　倒した敵 ${adv.runStats.kills}　時間 ${mm}:${ss}　シード ${adv.runSeed}`,f('|'),...loreRows(R,f),f('|'),`${f('|')}  ${HIST.civ.name}の地の底に、ひとつの灯りがともった。`,f('|'),`${f('|')}  <b>[Enter]</b> 新しい冒険へ`,f('+---')]);
+    `${f('|')}  Lv${adv.lvl.n}　倒した敵 ${adv.runStats.kills}　時間 ${mm}:${ss}　シード ${adv.runSeed}`,f('|'),...loreRows(R,f),f('|'),`${f('|')}  ${HIST.civ.name}の地の底に、ひとつの灯りがともった。`,f('|'),`${f('|')}  <b>[Enter]</b> 新しい探索へ`,f('+---')]);
   el.classList.add('show','won'); for(let k=0;k<4;k++)setTimeout(()=>sChime(player.x,player.z,0.5),k*380);
 }
 
@@ -155,7 +155,7 @@ function drawBoltFx(t,dt){
   fight.boltFx=fight.boltFx.filter(f=>f.t<f.life);
 }
 
-// ---------------------------------------------------------------- back to the title (the adventure ends)
+// ---------------------------------------------------------------- back to the title (the run ends)
 let titleArm=0;
 function returnToTitle(){
   setMenu(false); if(ui.invOpen)setInv(false); if(ui.locked&&document.exitPointerLock)document.exitPointerLock();

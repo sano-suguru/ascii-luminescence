@@ -216,7 +216,7 @@ void main(){
   gl_FragColor=vec4(vCol*k,1.0);
 }`;
 
-/** dyn の文字を、1回に描ける数 */
+/** 1フレームに置ける dyn の文字の上限（超えた分は描かない） */
 export const DYN_MAX = 12000;
 /** 粒子の入れ物の大きさ：塵 DUST_N・ガス GAS_N・そのほかの粒子 P_MAX。PT_TOTAL はその合計、P0 はそのほかの粒子の始まりの番号 */
 export const DUST_N = 900,

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 使う文字のもれのチェック（ブラウザ不要、数秒）：ゲームの文言（src/game/・src/lib/ と index.html）に出る文字が、パネルのフォントで描けるか。
+// 使う文字のもれのチェック（ブラウザ不要、数秒）：ゲームの文言（src/game/・src/lib/ と index.html）に出る文字が、パネルのフォントに字形があるか。
 //   - M PLUS 1 Code（パネルのフォント。太さ400・600・700のすべて）に入っている → よい
 //   - 入っていない → BIZ UDGothic で補ってよい文字の一覧（src/lib/text.ts の BIZ_CHARS）に入っていなければ失敗
 //   - ルーン文字（U+16A0–16FF）は Noto Sans Runic で描くので対象外
@@ -99,6 +99,6 @@ if (notInBiz.length) {
   fail = true;
   console.log(`✗ BIZ UDGothic にも無い文字が一覧にある：${notInBiz.join(' ')}`);
 }
-if (unused.size) console.log(`△ 一覧にあるが、M PLUS 1 Code で描ける（または使っていない）文字：${[...unused].join(' ')}`);
-if (!fail) console.log(`✓ ${chars.length} 文字、すべてパネルのフォントで描ける（補い ${extra.size - unused.size} 文字）`);
+if (unused.size) console.log(`△ 一覧にあるが、M PLUS 1 Code に字形がある（または使っていない）文字：${[...unused].join(' ')}`);
+if (!fail) console.log(`✓ ${chars.length} 文字、すべてパネルのフォントに字形がある（補い ${extra.size - unused.size} 文字）`);
 process.exit(fail ? 1 : 0);

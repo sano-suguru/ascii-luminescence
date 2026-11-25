@@ -16,14 +16,14 @@ export function expOf(m: {
   );
 }
 
-/** 冒険をまたいで残る物（伝承・使った伝承・解放した物・墓・試練）の初めの形 */
+/** 探索をまたいで残る物（伝承・使った伝承・解放した物・墓・試練）の初めの形 */
 export interface Meta {
   /** 持っている伝承と、使った伝承 */
   lore: number;
   spent: number;
   /** 解放した物の id（UNLOCKS） */
   unl: string[];
-  /** 前の冒険の墓 */
+  /** 前の探索の墓 */
   grave: unknown;
   /** 選んでいる試練（UNLOCKS の t） */
   trials: string[];

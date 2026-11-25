@@ -46,7 +46,7 @@ function look(){
     if(best.k==='m')aimMon=best.m;
     switch(best.k){
       case 'item': { if(best.it.forge){ h=lookLine('T',[0.7,0.85,1.0],'鍛えの祭壇','今持っている武器を、ひとつ鍛えられる（特性を上げる、または足す）'); break; }
-        if(best.it.kind==='grave'){ const g=best.it.g||{}; h=lookLine('+',[0.78,0.78,0.9],'前の冒険者の墓',`深度${g.depth}で、${g.cause||'何か'}に倒れた。${thingLabel(best.it.rune)}が眠っている`); break; }
+        if(best.it.kind==='grave'){ const g=best.it.g||{}; h=lookLine('+',[0.78,0.78,0.9],'先人の墓',`深度${g.depth}で、${g.cause||'何か'}に倒れた。${thingLabel(best.it.rune)}が眠っている`); break; }
         if(best.it.kind==='spring'){ h=lookLine('~',[0.5,0.9,1],'癒しの泉',best.it.taken?'もう光は残っていない':'触れると、傷がすっかり癒える。一度だけ'); break; }
         if(best.it.guardG!==undefined&&guardedNow(best.it)){ h=best.it.elitePrize?lookLine('*',[1,0.5,0.35],'守られた宝','強いものが守っている。番人を倒せば、手に取れる'):lookLine('_',[0.6,0.55,0.65],'眠っている祭壇','光はまだ眠っている。この部屋に巣くうものを退ければ、灯るだろう'); break; }
         const ru=best.it.rune; if(!ru)break; if(best.it.opt==='open'){ h=lookLine('{',[1,0.9,0.6],best.it.label,'空の枠が開けられる所。祭壇と同じく、選んで決める'); break; }
