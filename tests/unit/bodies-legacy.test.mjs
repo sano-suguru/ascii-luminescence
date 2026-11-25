@@ -1,6 +1,7 @@
 // 生き物の形（src/lib/bodies/build.ts）・まわりの飾りと王の影の変身（auras.ts）・図鑑の見本の獣（lords.ts の beastSamples）・
 // 忘れられた獣の記録（save.ts）の単体テスト。
-// 指紋の値は、移す前の古い JS（src/game/07・08・09・10）でも同じになる（bodies-legacy-cases.mjs の場合を、古い関数で数えて確かめた）。
+// 指紋の値は、移す前の古い JS（src/game/07・08・09・10）で数えた値から、移した後に作り直した所（王の影の一つ目の姿・蜘蛛の女王とナーガの女王の明るさ・
+// 二つ目の姿の大きさ）の分だけ違う（作り直す前の src/lib/bodies の lords.ts・bosses.ts・auras.ts に戻すと、古い JS と同じ値になることを確かめた）。
 // テストを .mjs で書くのは、偽の画面の部品・偽の Web Audio・偽の localStorage を、本物の型に合わせられないため。
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as AURAS from '../../src/lib/bodies/auras.ts';
@@ -66,7 +67,7 @@ describe('移す前と同じ', () => {
     expect(lines.length).toBe(476);
     expect(new Set(lines.map((l) => l.split(' ')[1]?.split(':')[0])).size).toBeGreaterThan(460);
     expect(lines.some((l) => l.includes(':1 '))).toBe(true);
-    expect(fp(all)).toEqual(['7b2726ee', 26964]);
+    expect(fp(all)).toEqual(['5c0ab061', 26964]);
   }, 60000);
   it('まわりの飾り・姿を変える途中・王の影の変身（880の場合）の指紋', () => {
     const all = auraCases({ ...AURAS, buildForm: BUILD.buildForm }, 880),
@@ -99,7 +100,7 @@ describe('移す前と同じ', () => {
       true,
       true,
     ]);
-    expect(fp(all)).toEqual(['609f44b5', 998942]);
+    expect(fp(all)).toEqual(['a39de468', 999086]);
   }, 60000);
   it('忘れられた獣の記録（保存の中身10通り×今の探索の記録3通り×保存が使えるか）の指紋', () => {
     const all = beastRecordCases(SAVE),

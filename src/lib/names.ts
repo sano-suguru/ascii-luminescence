@@ -82,7 +82,7 @@ export const LORD_GAL = {
   crypt: { base: 'L', name: '不死の王', scale: 1.7, verb: '王冠だけが、まだ光を失っていない亡霊' },
   lair: { base: 'D', name: '年老いた竜', scale: 3.6, verb: '巣の最奥で、とぐろを巻いて眠っている' },
   sunken: { base: 'K', name: '深みの主', scale: 3.6, verb: '沈んだ神殿の底から、無数の触手を伸ばしている' },
-  nest: { base: 'S', name: '蜘蛛の女王', scale: 2.4, verb: '巣の中心で、光る糸を紡ぎ続けている' },
+  nest: { base: 'S', name: '蜘蛛の女王', scale: 2.0, verb: '巣の中心で、光る糸を紡ぎ続けている' },
   snake: { base: 'N', name: 'ナーガの女王', scale: 2.6, verb: '水場のほとりで、冠のような鱗を光らせている' },
 };
 /** 試しの間の、起き上がる的 */

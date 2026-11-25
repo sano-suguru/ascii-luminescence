@@ -72,6 +72,6 @@ describe('迷宮の生成', () => {
   it('今の迷宮と同じになる（全部の場所の指紋）', () => {
     let all = '';
     for (const pl of PLACES) all += text(gen(202, pl));
-    expect([fnv(all), all.length]).toEqual(['85351adf', 20044570]);
+    expect([fnv(all), all.length]).toEqual(['32286f5d', 20044568]);
   }, 30000);
 });

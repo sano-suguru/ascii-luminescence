@@ -5,7 +5,7 @@ import { G, RUNE_CHARS } from '../glyphs.ts';
 import { clamp } from '../rng.ts';
 import { mpick, mr } from '../random.ts';
 import { type Body, type Color, type Extra, type Ramp, type Vec3, strokeCh } from './kit.ts';
-import { KRAKEN_T, KRAKEN_W } from './lords.ts';
+import { KRAKEN_T, KRAKEN_W, SHADOW_MIN_SC } from './lords.ts';
 
 const LD = [0.42, 0.72, 0.55] as const;
 /** 面の向き (nx, ny, nz) から、光の当たり方（0 から 1） */
@@ -45,6 +45,9 @@ const pathPt = (path: readonly Vec3[], i: number): Vec3 => nth(path, i);
 // ---------------------------------------------------------------- the Undead King (rebuilt): a floating upper body joined to its mantle only by the spine, one huge spiked shoulder and armoured arm,
 // one long bone arm holding a cold flame, a crown of tall light needles, a greatsword planted in the floor with chains and rune pendants.
 // Surfaces are filled densely; each glyph is chosen by how its surface faces the light (ASCII-art shading), by material.
+/** 文字が多く密な主（蜘蛛の女王・ナーガの女王）の明るさに掛ける数 */
+const BOSS_DIM = 0.6;
+
 export function lichKingForm(): Body {
   // readable glyphs: about 0.17 body units each (0.29 m at the king's size), spaced 1.2-1.5 glyphs apart; lines are drawn as one stroke of glyphs that follow their direction
   const pts: Body = [],
@@ -441,6 +444,8 @@ export function spiderQueenForm(): Body {
     lit(x, y - 0.04, z + 0.03, '*', S * 0.8, 1.8, COL.amber, 'body');
   }
   stroke([0, 0.92, -1.1], [0, 0.02, -1.45], COL.silver, 1.0, S * 0.75, 'body', 0.12);
+  // the whole body a little darker: it has many glyphs close together, and at full brightness the bloom melts them into one bright blob
+  for (const p of pts) p.b *= BOSS_DIM;
   return pts;
 }
 
@@ -617,6 +622,8 @@ export function nagaQueenForm(): Body {
   lit(0.38, 1.08, 0.43, '*', S * 1.3, 3.0, COL.mirror, 'body');
   arm([-0.18, 1.2, 0.06], [-0.3, 1.1, 0.3], [-0.28, 1.06, 0.55]);
   for (let f = 0; f < 4; f++) lit(-0.28 + (f - 1.5) * 0.03, 1.06, 0.62, "'", S * 0.8, 1.3, COL.skin, 'body');
+  // the whole body a little darker: it has many glyphs close together, and at full brightness the bloom melts them into one bright blob
+  for (const p of pts) p.b *= BOSS_DIM;
   return pts;
 }
 
@@ -789,9 +796,14 @@ export function oldDragonForm(): Body {
   return pts;
 }
 
-// ---------------------------------------------------------------- the Last King's Shadow, the second form: the seal broken. The cloak twisted into a long body, the wing bones grown into two great arms with torn membrane hanging,
-// the crown's shards grown into horns, the same single eye in a hollow skull with an open jaw; the starry dark and the trapped faces of the kings inside;
+// ---------------------------------------------------------------- the king's shadow, the second form: the seal broken. The cloak twisted into a long body with two great arms,
+// the crown's spikes grown into horns, a single eye in a hollow skull with an open jaw; the starry dark and the trapped faces of the kings inside;
 // top-heavy (the chest the thickest), flared ribs, muscle bands, great back fins, a thick double coil on the floor, leaning hard forward; the heart in the chest with light running down the belly
+/** 王の影の二つ目の姿の高さ（一番上の点。大きさ scale を掛ける前）。天井が低い所では、これで大きさを縮める */
+export const SHADOW_SERPENT_H = 3.6;
+/** 二つ目の姿の大きさ：一つ目の大きさ kingScale のまま。背が高いので、天井の高さ ceilH の所に収まらない時だけ縮める（SHADOW_MIN_SC より小さくはしない） */
+export const shadowSerpentScale = (kingScale: number, ceilH: number): number =>
+  Math.max(SHADOW_MIN_SC, Math.min(kingScale, (ceilH - 0.3) / SHADOW_SERPENT_H));
 export function shadowSerpentForm(): Body {
   const pts: Body = [],
     S = 0.08;

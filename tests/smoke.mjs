@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // スモークテスト：テスト用モードでない時にタイトルの画面が出るか、開発用の探索で dbg が動くか、探索の始め直しで前の場所や状態が残らないか
-// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの「もう一度押して確かめる」待ちが4秒で消えるか、図鑑を開いても探索の記録が変わらないか、開発用モードのまま読み直した時・保存が使えない時のタイトル、閉じた祭壇の画面が離れるまで開かないか、起きている竜を見た時の伝言。図鑑の生き物と図鑑を手で動かすのは tests/gallery.mjs、扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
+// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの「もう一度押して確かめる」待ちが4秒で消えるか、図鑑を開いても探索の記録が変わらないか、開発用モードのまま読み直した時・保存が使えない時のタイトル、閉じた祭壇の画面が離れるまで開かないか、起きている竜を見た時の伝言、最深部で王の影が出て二つ目の姿になるか（背の高さ・画面への収まり・天井）。図鑑の生き物と図鑑を手で動かすのは tests/gallery.mjs、扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
 //   node tests/smoke.mjs          テスト版（.build/test/。既定）
 //   node tests/smoke.mjs --prod   公開用の版（dist/）。JetBrains Mono を指定した所の日本語は、システムのフォントで描く
 import { join } from 'node:path';
@@ -262,6 +262,73 @@ await withBrowser(
         errs.push(`11：起きている竜を見た時の伝言が、起きている時の文でない：${log.slice(-200)}`);
     }
     await dr.close();
+
+    // 12. 最深部：伝説の物を3つ持って台座に置くと（dbg.to('pedestal')）、王の影が出る。背の高さは約6.7（天井より低い）で、8離れて見ると全身が画面に収まる。
+    // 光の柱のそば（台座の上）で体力を半分より減らすと二つ目の姿になり、大きさは一つ目のまま（天井が低い所だけ縮む）で、天井より低い
+    const fin = await newPage(browser, errs);
+    await openTest(fin, base, 'seed=202&depth=13&god=1');
+    await advance(fin, 1);
+    const king = await fin.evaluate(() => {
+      dbg.give('legends');
+      const peds = [];
+      for (let k = 0; k < 3; k++) {
+        const at = dbg.to('pedestal');
+        if (!at) return `台座が ${k} つしか見つからない`;
+        peds.push(at);
+        __test.advance(0.2);
+      }
+      __test.advance(4);
+      const b = __test.state().monsters.find((m) => m[0] === 'final');
+      if (!b) return '王の影が出ない';
+      const { w } = __test.size(),
+        ci = (x, z) => Math.floor(z / 2) * w + Math.floor(x / 2);
+      for (let k = 0; k < 16; k++) {
+        const a = (k / 16) * Math.PI * 2,
+          x = b[1] + Math.sin(a) * 8,
+          z = b[2] + Math.cos(a) * 8;
+        if (!__test.cell(ci(x, z)).floor) continue;
+        dbg.step(x, z);
+        __test.fov();
+        if (!__test.cell(ci(b[1], b[2])).seen) continue;
+        __test.advance(1 / 30);
+        dbg.look(b[1], 3.3, b[2]);
+        __test.advance(1 / 30);
+        const first = __test.monsterView('final');
+        // 二つ目の姿：台座の上に立って王の影を光の柱のそばまで来させ（闇の中では当たらない）、体力を半分より減らす
+        const p0 = peds[0];
+        dbg.step(p0[0], p0[1]);
+        for (let q = 0; q < 80; q++) {
+          __test.advance(0.1);
+          const m = __test.state().monsters.find((o) => o[0] === 'final');
+          if (m && Math.hypot(m[1] - p0[0], m[2] - p0[1]) < 3) break;
+        }
+        let second = null;
+        for (let q = 0; q < 40 && !second; q++) {
+          dbg.hit(25);
+          __test.advance(0.1);
+          const v = __test.monsterView('final');
+          if (v && v.form === 'shadowserpent') second = v;
+        }
+        __test.advance(3);
+        return { first, second, after: __test.monsterView('final') };
+      }
+      return '王の影を8離れて見通せる床が無い（テストの前提が崩れた）';
+    });
+    if (typeof king === 'string') errs.push(`12：${king}`);
+    else {
+      const { first, second, after } = king;
+      if (!(first.world.y1 > 6 && first.world.y1 < 7.6)) errs.push(`12：王の影の背の高さが約6.7でない：${JSON.stringify(first.world)}`);
+      if (!(first.world.y1 < first.ceil)) errs.push(`12：王の影が天井を突き抜ける：${first.world.y1} / ${first.ceil}`);
+      if (!(first.cut < 0.02)) errs.push(`12：8離れて見た王の影が、画面からはみ出す（${first.cut}）`);
+      if (!second) errs.push('12：光の柱のそばで体力を半分より減らしても、二つ目の姿にならない');
+      else {
+        const want = Math.max(1.2, Math.min(first.scale, (second.ceil - 0.3) / 3.6));
+        if (Math.abs(second.scale - want) > 0.05)
+          errs.push(`12：二つ目の姿の大きさが、一つ目のまま（天井が低い所だけ縮む）でない：${second.scale}（${want} のはず）`);
+        if (!(after && after.world.y1 < after.ceil)) errs.push(`12：二つ目の姿が天井を突き抜ける：${JSON.stringify(after)}`);
+      }
+    }
+    await fin.close();
   },
   { prod: process.argv.includes('--prod') },
 );

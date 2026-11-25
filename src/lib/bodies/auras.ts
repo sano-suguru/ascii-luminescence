@@ -14,9 +14,10 @@ import { clamp } from '../rng.ts';
 import { mpick, mr } from '../random.ts';
 import { sEnv } from '../sound.ts';
 import { type Monster, SND, adv, clock, here, player, vfx } from '../state.ts';
-import { cpos } from '../world.ts';
+import { BASE_H, CELL, MW, cpos } from '../world.ts';
 import { buildForm } from './build.ts';
 import type { Body } from './kit.ts';
+import { shadowSerpentScale } from './bosses.ts';
 import { KRAKEN_T } from './lords.ts';
 
 /** まわりの飾りを付ける生き物（足もとの高さ y と向き yaw を持つ） */
@@ -321,10 +322,13 @@ export function transformShadow(b: Monster & { form: Body }): void {
     for (const f of [55, 82.5, 110, 164.8]) sEnv(sTone(t0, 'sawtooth', f, f * 0.97, 3.5, o), t0, 0.4, 3, 0.25);
   }
   const from = b.form.filter((p) => p.part !== 'crack' && p.part !== 'heart');
+  // 二つ目の姿は一つ目の大きさのまま。背が高いので、天井に収まらない所だけ縮める（階が無い時は縮めない）
+  const ceilH = here.D ? (here.D.ceil[Math.floor(b.z / CELL) * MW + Math.floor(b.x / CELL)] ?? BASE_H) : Infinity;
   const final2 = {
     ...b.ty,
     form: 'shadowserpent',
     sk: 'final2',
+    scale: shadowSerpentScale(b.ty.scale, ceilH),
     speed: (b.ty.speed || 0.8) * 1.35,
     verb: '封印が破れ、底の闇から長い体をもたげた影',
   };
