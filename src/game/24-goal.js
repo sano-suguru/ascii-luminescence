@@ -4,8 +4,8 @@
 let finalSt=null;
 function getLegend(){
   if(saved.LEGEND&&saved.LEGEND.seed===adv.runSeed)return saved.LEGEND;
-  if(!HIST)return null;
-  const r=mulberry32((adv.runSeed^0x1e9e3)>>>0), pk=a=>a[Math.floor(r()*a.length)], R=HIST.rulers, last=R[R.length-1], civ=HIST.civ;
+  if(!adv.HIST)return null;
+  const r=mulberry32((adv.runSeed^0x1e9e3)>>>0), pk=a=>a[Math.floor(r()*a.length)], R=adv.HIST.rulers, last=R[R.length-1], civ=adv.HIST.civ;
   const pool=Object.keys(BRANCHES), take=k=>{ const i=pool.indexOf(k); if(i>=0)pool.splice(i,1); return k; };
   const where={};
   where.candle=(r()<0.75&&pool.includes('crypt'))?take('crypt'):take(pk(pool));
@@ -101,7 +101,7 @@ function updateFinal(dt){
         msg(`<b style="color:#a98cff">W</b>影が身をよじり、闇の中から亡霊を呼び出した。`); } } }
 }
 function spawnFinalBoss(){
-  const R=HIST.rulers, last=R[R.length-1], cx=finalSt.c0%MW, cz=(finalSt.c0/MW)|0;
+  const R=adv.HIST.rulers, last=R[R.length-1], cx=finalSt.c0%MW, cz=(finalSt.c0/MW)|0;
   const ceilH=here.D.ceil[finalSt.c0]||6;
   MTYPES.final={...MTYPES.L,ch:'&',look:null,form:'shadowking',sk:'final',name:`${last.name}王の影`,scale:Math.max(2.0,Math.min(3.6,(ceilH-0.3)/3.3)),col:[0.62,0.48,1.0],boss:true,lich:false,light:6,verb:'王冠の形をした影が、底の闇から立ちのぼっている'};
   const b=makeMonster({key:'final',cx,cz,g:-1,lead:true}); b.sleep=false; b.aware=1.25; b.noticed=true; here.monsters.push(b); finalSt.boss=b;
@@ -133,7 +133,7 @@ function victory(){
   const secs=Math.floor(clock.time-adv.runStats.t0), mm=Math.floor(secs/60), ss=String(secs%60).padStart(2,'0'), f=t=>`<span class="f">${t}</span>`;
   const R=awardLore(true); graveCands=[]; document.body.classList.add('over');
   el.innerHTML=boxText([f('+-- 光 は 戻 っ た ---'),f('|'),...LEGEND_ORDER.map(k=>`${f('|')}  <b style="color:${css(LEGEND_KINDS[k].col)}">${LEGEND_KINDS[k].ch}</b> ${L.items[k].name}`),f('|'),
-    `${f('|')}  Lv${adv.lvl.n}　倒した敵 ${adv.runStats.kills}　時間 ${mm}:${ss}　シード ${adv.runSeed}`,f('|'),...loreRows(R,f),f('|'),`${f('|')}  ${HIST.civ.name}の地の底に、ひとつの灯りがともった。`,f('|'),`${f('|')}  <b>[Enter]</b> 新しい探索へ`,f('+---')]);
+    `${f('|')}  Lv${adv.lvl.n}　倒した敵 ${adv.runStats.kills}　時間 ${mm}:${ss}　シード ${adv.runSeed}`,f('|'),...loreRows(R,f),f('|'),`${f('|')}  ${adv.HIST.civ.name}の地の底に、ひとつの灯りがともった。`,f('|'),`${f('|')}  <b>[Enter]</b> 新しい探索へ`,f('+---')]);
   el.classList.add('show','won'); for(let k=0;k<4;k++)setTimeout(()=>sChime(player.x,player.z,0.5),k*380);
 }
 
@@ -154,7 +154,6 @@ function drawBoltFx(t,dt){
 }
 
 // ---------------------------------------------------------------- back to the title (the run ends)
-let titleArm=0;
 function returnToTitle(){
   setMenu(false); if(ui.invOpen)setInv(false); if(ui.locked&&document.exitPointerLock)document.exitPointerLock();
   ui.started=false; adv.dead=false; adv.won=false; ui.gallery=null; gear.castSt=null; gear.swapSt=null; vfx.zapFlash=null;

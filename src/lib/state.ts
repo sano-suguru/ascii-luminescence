@@ -5,6 +5,7 @@
 import { type MonsterType } from './creatures.ts';
 import { type BranchPlace, type Fixture, type InterPlace, type Level, type RealmPlace } from './generate.ts';
 import { META_DEF, type Meta } from './progress.ts';
+import { type History } from './history.ts';
 import { type Rune } from './runes.ts';
 import { NCELL } from './world.ts';
 
@@ -68,6 +69,15 @@ export interface Ui {
   /** 装備の画面の袋の、種類ごとの今のページと、ページの数 */
   bagPage: Record<string, number>;
   bagPageN: Record<string, number>;
+  /** 操作の案内を出してからの秒（始まりに出し、しばらくすると消す） */
+  helpT: number;
+  /** 群れ（'g'＋番号）か1体（'m'＋並びの番号）ごとに、「気づいた」の伝言を出したゲームの時刻（同じ群れには12秒あける） */
+  noticeMsgT: Record<string, number>;
+  /** 画面の下の一言（同じ時は書き直さない） */
+  hintHTML: string;
+  /** メニューの「タイトルへ」「新しい探索」の、もう一度押して確かめる待ちが終わる時刻（待っていなければ 0） */
+  titleArm: number;
+  newRunArm: number;
   /** デバッグの画面（F2） */
   dbgOpen: boolean;
   /** 年代記の画面 */
@@ -94,6 +104,11 @@ export const ui: Ui = {
   packClick: { u: 0, t: 0 },
   bagPage: { atk: 0, elem: 0, trig: 0 },
   bagPageN: { atk: 1, elem: 1, trig: 1 },
+  helpT: 0,
+  noticeMsgT: {},
+  hintHTML: '',
+  titleArm: 0,
+  newRunArm: 0,
   dbgOpen: false,
   chronOn: false,
   uiMode: 0,
@@ -138,6 +153,9 @@ export interface Adv {
   won: boolean;
   /** 表示している体力（変わった時だけ描き直すため） */
   hpShown: number;
+  /** この探索の年代記（探索のシード HIST_SEED から、迷宮を作る時に作る。まだ作っていなければ null） */
+  HIST: History | null;
+  HIST_SEED: number;
 }
 export const adv: Adv = {
   runSeed: 0,
@@ -149,6 +167,8 @@ export const adv: Adv = {
   PLAYER_MAX: 40,
   won: false,
   hpShown: -1,
+  HIST: null,
+  HIST_SEED: -1,
 };
 
 /** プレイヤー（位置・速さ・向き・揺れ・目の高さ・体力）。丸ごと入れ替えることは無いので、古い JS は今までどおり player.x のように読む。
@@ -163,8 +183,13 @@ export interface Player {
   bob: number;
   eye: number;
   hp: number;
+  /** 取り戻せる体力（受けたダメージの一部。攻撃を当てると戻る） */
+  rally?: number;
+  /** 立ち止まっている秒と、最後に辺りを調べたマス（立ち止まると、隠された罠や化けた生き物が見つかる） */
+  stillT: number;
+  searchedAt: number;
 }
-export const player: Player = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, pitch: -0.04, bob: 0, eye: 1.62, hp: 40 };
+export const player: Player = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, pitch: -0.04, bob: 0, eye: 1.62, hp: 40, stillT: 0, searchedAt: -1 };
 
 /** 片手（L・R）の状態：武器のルーン atk と、付けたルーンの枠 slots（枠の数 slotN）。elem・trig は、その手の性質と発動のルーン。後から足される欄は、使う処理を移す時に型を足す。
  * runes.ts の Hand（handRunes などが読む、枠だけの形）とは別の物 */
@@ -592,7 +617,10 @@ export interface Stealth {
 export const stealth: Stealth = { lum: 0, level: 1, range: 8, sneak: false, hudKey: '' };
 /** 手元の灯り（届く距離 r・強さ k）。丸ごと入れ替えない */
 export const lantern = { r: 8.2, k: 1 };
-/** 状態の表示の数（見たマスの割合 explored）。丸ごと入れ替えない */
-export const hudInfo = { explored: 0 };
+/**
+ * 状態の表示の数（見たマスの割合 explored と、速さの表示：描いた文字の数 glyphCount・描いた区切りの文字の数 chunksDrawn・
+ * 1秒あたりのフレームの数 pfFps と、それを数える途中のフレームの数 pfFrames と秒 pfT）。丸ごと入れ替えない
+ */
+export const hudInfo = { explored: 0, glyphCount: 0, chunksDrawn: 0, pfFrames: 0, pfT: 0, pfFps: 0 };
 /** 押しているキー（キーの code → 押しているか）。丸ごと入れ替えない */
 export const keys: Record<string, boolean> = {};

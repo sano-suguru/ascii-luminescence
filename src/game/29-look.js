@@ -85,8 +85,8 @@ function look(){
       case 'xtal': { const xc=here.D.xtalCol.get(i)||[0.6,0.85,1.0]; h=lookLine('#',xc,'結晶','透き通った結晶が、内側から淡い光を放っている'); break; }
       case 'pillar': h=lookLine('0',[0.8,0.78,1.0],'石柱','縦に連なる石が天井を支えている'); break;
       case 'deco': { const dc=here.D.decoCell.get(i);
-        if(dc&&dc.ch==='+'){ if(i%3===0){ const ru=HIST.rulers[i%HIST.rulers.length]; h=lookLine('+',dc.col,`${ru.title}${ru.name}の墓`,'R.I.P. の下に、王の名が刻まれている'); } else h=lookLine('+',dc.col,`${HIST.civ.name}の民の墓`,'名前は風化して、もう読めない'); break; }
-        if(dc&&dc.k==='colossus'){ const ru=HIST.rulers[i%HIST.rulers.length]; h=lookLine('&',dc.col,`${ru.title}${ru.name}の巨像`,'その眼だけが、まだ光を宿している'); break; } const n=dc&&(dc.k&&DECO_K[dc.k]||DECO_NAMES[dc.ch]); if(n)h=lookLine(n[0],dc.col,n[1],n[2]); else h=lookLine('_',[1.0,0.82,0.42],'祭壇','石を積み上げた祭壇'); break; }
+        if(dc&&dc.ch==='+'){ if(i%3===0){ const ru=adv.HIST.rulers[i%adv.HIST.rulers.length]; h=lookLine('+',dc.col,`${ru.title}${ru.name}の墓`,'R.I.P. の下に、王の名が刻まれている'); } else h=lookLine('+',dc.col,`${adv.HIST.civ.name}の民の墓`,'名前は風化して、もう読めない'); break; }
+        if(dc&&dc.k==='colossus'){ const ru=adv.HIST.rulers[i%adv.HIST.rulers.length]; h=lookLine('&',dc.col,`${ru.title}${ru.name}の巨像`,'その眼だけが、まだ光を宿している'); break; } const n=dc&&(dc.k&&DECO_K[dc.k]||DECO_NAMES[dc.ch]); if(n)h=lookLine(n[0],dc.col,n[1],n[2]); else h=lookLine('_',[1.0,0.82,0.42],'祭壇','石を積み上げた祭壇'); break; }
       case 'chasm': h=lookLine(':',[0.6,0.4,1.0],'裂け目','底知れぬ闇。遥か下で燃える火が見える'); break;
       case 'ceil': h=cave?lookLine('*',[0.7,0.65,1.0],'岩の天蓋','遥か頭上で、星のような光が瞬いている'):lookLine('*',[0.7,0.65,1.0],'天井','まばらな光が、星のように瞬いている'); break;
       case 'floor': {

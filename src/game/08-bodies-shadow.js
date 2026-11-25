@@ -14,7 +14,7 @@ function shadowAura(m,t){ const sc=m.ty.scale||1, dp=Math.hypot(m.x-player.x,m.z
 // shadowSerpentForm（王の影の二つ目の姿）は src/lib/bodies/bosses.ts（src/game/imports.mjs で読む）
 // the change: the seal breaks; the glyphs of the first form flow into the shape of the second over 2.5 s
 function transformShadow(b){
-  const R=HIST.rulers, last=R[R.length-1];
+  const R=adv.HIST.rulers, last=R[R.length-1];
   b.phase2=true; b.invulnT=2.5; sRumble(1.0,3.2); vfx.shake=Math.max(vfx.shake,0.8); vfx.flash=Math.max(vfx.flash,0.5);
   const sc=b.ty.scale||3;
   for(let q=0;q<60;q++){ const a=mr()*6.28; spawn(b.x+Math.cos(a)*0.3,2.8*sc,b.z+Math.sin(a)*0.3,Math.cos(a)*3,2+mr()*3,Math.sin(a)*3,1.6+mr(),G(mpick(['/','\\','<','>','^'])),0.28,2.6,2.5,3.0,0); }

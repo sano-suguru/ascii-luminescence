@@ -34,7 +34,7 @@ function tick(raw,draw){
   updateStatuses(dt);
   for(const m of here.monsters)if(!m.galShow&&!m.ty.dummy)updateMonster(m,dt*monTimeK(m),t);
   if(here.monsters.some(m=>m.dead))here.monsters=here.monsters.filter(m=>!m.dead);
-  pfFrames++; pfT+=raw; if(pfT>=0.5){ pfFps=Math.round(pfFrames/pfT); pfFrames=0; pfT=0; if(ui.perfOn)renderStatus(); }
+  hudInfo.pfFrames++; hudInfo.pfT+=raw; if(hudInfo.pfT>=0.5){ hudInfo.pfFps=Math.round(hudInfo.pfFrames/hudInfo.pfT); hudInfo.pfFrames=0; hudInfo.pfT=0; if(ui.perfOn)renderStatus(); }
   regrow(); brimRecover(dt); if(!adv.dead){ updateTraps(dt); updateSearch(dt); } updateLife(dt);
   updateLights(t);
   updateAtmosphere(dt);
@@ -42,7 +42,7 @@ function tick(raw,draw){
   updateParticles(dt,t);
   fovT+=dt; if(fovT>0.1){ fovT=0; computeFOV(); checkEvents(false); look(); stepGas(); stepFire(); }
   mapT+=dt; if(mapT>0.11){ mapT=0; if(ui.uiMode===0)drawMap(); }
-  if(helpT>0){ helpT-=dt; if(helpT<=0&&ui.helpOn)setHelp(false); }
+  if(ui.helpT>0){ ui.helpT-=dt; if(ui.helpT<=0&&ui.helpOn)setHelp(false); }
   finalPass.uniforms.uTime.value=t; finalPass.uniforms.uFade.value=clamp(here.fade,0,1); finalPass.uniforms.uHurt.value=vfx.hurtFlash+(player.hp<adv.PLAYER_MAX*0.25&&!adv.dead?0.18+0.08*Math.sin(t*4):0);
   if(ui.started&&!here.trans&&!adv.dead&&!isPaused())pickupItems();
   if(gear.hands)updateCast(dt);

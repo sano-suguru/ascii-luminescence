@@ -16,7 +16,6 @@ function updateStealth(dt){
   if(key!==stealth.hudKey){ stealth.hudKey=key; renderStatus(); }
 }
 // ---- the HUD is drawn with glyphs only: depth, light, sparks, and state when it matters
-let helpT=0;
 function renderStatus(){
   const el=document.getElementById('status'); if(!el||!here.D)return;
   const lv=stealth.level, lc=LIGHT_COLS[lv];
@@ -26,15 +25,14 @@ function renderStatus(){
   const hpR=clamp((player.hp||0)/adv.PLAYER_MAX,0,1), hpN=Math.round(hpR*20), rlN=Math.max(0,Math.min(20-hpN,Math.round(clamp(((player.hp||0)+(player.rally||0))/adv.PLAYER_MAX,0,1)*20)-hpN)), hpC=vfx.hpFlash>0?'#fff0d8':hpR>0.5?'#ff8a7a':hpR>0.25?'#ffb05a':'#ff4a3a';
   const hpLine=`<span class="glow" style="color:${hpC}">${'#'.repeat(hpN)}</span><span style="color:#d9874a">${'='.repeat(rlN)}</span><span class="dim">${'.'.repeat(20-hpN-rlN)}</span>  <span class="lab">体力 ${Math.ceil(player.hp||0)}/${adv.PLAYER_MAX}</span>`;
   const xf=Math.round(clamp(adv.lvl.exp/expNeed(adv.lvl.n),0,1)*20), xpLine=`<span style="color:#c8b6ff">${'-'.repeat(xf)}</span><span class="dim">${'.'.repeat(20-xf)}</span>  <span class="lab">Lv${adv.lvl.n}</span>`;
-  el.innerHTML=hpLine+'\n'+xpLine+`\n<span class="glow" style="color:#ffbf6a">&gt; ${placeLabel()}</span>\n${meter}  <span class="lab">${LIGHT_NAMES[lv]}</span>`+(ui.started?'\n'+legendLine():'')+(l4?'\n'+l4:'')+(ui.perfOn?`\n<span class="lab">${pfFps} fps   文字 ${(glyphCount/10000).toFixed(1)}万   描画 ${(chunksDrawn/10000).toFixed(1)}万   生き物 ${here.monsters.length}</span>`:'');
+  el.innerHTML=hpLine+'\n'+xpLine+`\n<span class="glow" style="color:#ffbf6a">&gt; ${placeLabel()}</span>\n${meter}  <span class="lab">${LIGHT_NAMES[lv]}</span>`+(ui.started?'\n'+legendLine():'')+(l4?'\n'+l4:'')+(ui.perfOn?`\n<span class="lab">${hudInfo.pfFps} fps   文字 ${(hudInfo.glyphCount/10000).toFixed(1)}万   描画 ${(hudInfo.chunksDrawn/10000).toFixed(1)}万   生き物 ${here.monsters.length}</span>`:'');
 }
-let pfFrames=0, pfT=0, pfFps=0;
 // パネルの文字の幅（visW）と枠（boxText）は src/lib/text.ts（src/game/imports.mjs で読む）
 function renderChron(){
-  const el=document.getElementById('help'); if(!el||!HIST)return;
+  const el=document.getElementById('help'); if(!el||!adv.HIST)return;
   const f=t=>`<span class="f">${t}</span>`;
-  const lines=[f(`+-- 年代記 ── ${HIST.civ.name}（${HIST.civ.ep}）`)];
-  HIST.events.forEach(e=>{ const r=HIST.rulers[e.ruler]; lines.push(`${f('|')} <b>${r.title} ${r.name}</b>`); lines.push(`${f('|')}   ${e.text}`); });
+  const lines=[f(`+-- 年代記 ── ${adv.HIST.civ.name}（${adv.HIST.civ.ep}）`)];
+  adv.HIST.events.forEach(e=>{ const r=adv.HIST.rulers[e.ruler]; lines.push(`${f('|')} <b>${r.title} ${r.name}</b>`); lines.push(`${f('|')}   ${e.text}`); });
   lines.push(f('+------------------------------'));
   el.innerHTML=boxText(lines);
 }
@@ -49,7 +47,6 @@ function setHelp(on){ ui.helpOn=on; ui.chronOn=false; const el=document.getEleme
 function cycleUi(){ ui.uiMode=(ui.uiMode+1)%3; document.body.classList.toggle('ui-min',ui.uiMode===1); document.body.classList.toggle('ui-none',ui.uiMode===2);
   if(ui.uiMode<2){ showHint(ui.uiMode===0?'表示：通常':'表示：最小'); setTimeout(()=>showHint(''),1200); } }
 function toggleSneak(){ stealth.sneak=!stealth.sneak; showHint(stealth.sneak?'ランタンを絞った。忍び足で、気配を殺して進む':'ランタンの灯りを戻した'); setTimeout(()=>showHint(''),1600); }
-let noticeMsgT={};
 function onNoticed(m){
   if(m.ty.watcher&&!m.alarmed){ m.alarmed=true; sAlarm(m.x,m.z); vfx.shake=Math.max(vfx.shake,0.15); msg(`<b style="color:${css(m.ty.col)}">R</b>${mname(m)}が赤い光を明滅させ、警報を鳴らした！`); for(const o of here.monsters){ if(o===m||o.ty.critter||o.dead)continue; if(Math.hypot(o.x-m.x,o.z-m.z)<22){ o.sleep=false; o.aware=Math.max(o.aware,1.05); } } }
   if(m.ty.snap&&!m.howled){ for(const o of here.monsters)if(o.ty.snap)o.howled=true; sHowl(m.x,m.z); msg(`<b style="color:${css(m.ty.col)}">s</b>${mname(m)}が遠吠えを上げた。野営地じゅうが、こちらを向く。`); for(const o of here.monsters){ if(!o.ty.snap||o===m)continue; if(Math.hypot(o.x-m.x,o.z-m.z)<30){ o.sleep=false; o.aware=Math.max(o.aware,1.05); } } }
@@ -58,7 +55,7 @@ function onNoticed(m){
   const grp=m.g>=0?here.monsters.filter(o=>o.g===m.g):[m];
   for(const o of grp){ o.noticed=true; o.sleep=false; o.aware=Math.max(o.aware,1); o.mark=0; }
   const k=m.g>=0?'g'+m.g:'m'+here.monsters.indexOf(m);
-  if(clock.time-(noticeMsgT[k]||-99)>12){ noticeMsgT[k]=clock.time; msg(`<b style="color:#ff6a4a">!</b>${mname(m)}${grp.length>1?'の群れ':''}があなたに気づいた！`); sAlert(m.x,m.z); }
+  if(clock.time-(ui.noticeMsgT[k]||-99)>12){ ui.noticeMsgT[k]=clock.time; msg(`<b style="color:#ff6a4a">!</b>${mname(m)}${grp.length>1?'の群れ':''}があなたに気づいた！`); sAlert(m.x,m.z); }
 }
 function makeNoise(x,z,r,amt){
   for(const m of here.monsters){ const d=Math.hypot(m.x-x,m.z-z); if(d>r)continue; m.aware=Math.min(1.25,m.aware+amt*(1-d/r)); if(m.sleep&&m.aware>0.35){ m.sleep=false; m.wait=0.6; } }

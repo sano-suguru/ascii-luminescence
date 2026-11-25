@@ -145,8 +145,8 @@ function updateMonster(m,dt,t){
   if(ty.critter){ if(dp>30&&!ty.critter.startsWith('clean')&&ty.critter!=='engineer'){ m.visible=false; return; } updateCritter(m,dt,t,dp); return; }
   // perception (after Brogue's stealth): the brighter the spot you stand in, the farther away you can be noticed
   if(ty.peaceful){ m.aware=0; m.noticed=false; m.sleep=false;
-    if(dp<2.4&&clock.time-(m.talkT||-99)>14){ m.talkT=clock.time; const ru=HIST.rulers[Math.floor(mr()*HIST.rulers.length)];
-      const L=[`昔々、この上には${HIST.civ.name}の都があったんだとさ。`,`${ru.title}${ru.name}の巨像を見たかい？ 眼だけは、まだ光ってるんだ。`,'溶岩の海の先には、何もない闇があるって話だ。','灯りを絞って歩けば、獣にも見つからないよ。','神殿の巻物は、近づくと勝手にしゃべるんだ。',`${HIST.beast}の話を聞くと、子どもたちは眠れなくなる。`,'壁の彫刻を読んでごらん。この世界の昔話が刻んであるよ。'];
+    if(dp<2.4&&clock.time-(m.talkT||-99)>14){ m.talkT=clock.time; const ru=adv.HIST.rulers[Math.floor(mr()*adv.HIST.rulers.length)];
+      const L=[`昔々、この上には${adv.HIST.civ.name}の都があったんだとさ。`,`${ru.title}${ru.name}の巨像を見たかい？ 眼だけは、まだ光ってるんだ。`,'溶岩の海の先には、何もない闇があるって話だ。','灯りを絞って歩けば、獣にも見つからないよ。','神殿の巻物は、近づくと勝手にしゃべるんだ。',`${adv.HIST.beast}の話を聞くと、子どもたちは眠れなくなる。`,'壁の彫刻を読んでごらん。この世界の昔話が刻んであるよ。'];
       msg(`<b style="color:${css(ty.col)}">G</b><span style="color:${css(ty.col)}">ノーム</span>「${L[Math.floor(mr()*L.length)]}」`); } }
   else if(ty.form!=='eel'||m.surf>0){
     const sr=ui.started?stealth.range*(m.sleep?0.5:1):0;
