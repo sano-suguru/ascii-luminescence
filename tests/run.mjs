@@ -1,18 +1,18 @@
 #!/usr/bin/env node
-// ブラウザのテスト（pnpm test）をまとめて走らせる：テスト版を1回だけ組み立て（.build/test/）、7つのテストを同時に jobs 個ずつ走らせる。
+// ブラウザのテスト（pnpm test）をまとめて走らせる：テスト版を1回だけ組み立て（.build/test/）、9つのテスト（画面写真の比較 visual も）を同時に jobs 個ずつ走らせる。
 // どのテストも、自分のブラウザと、空いているポートの配信を使うので、互いにぶつからない（組み立ては、ここで済ませたことを AL_PREBUILT で伝える）。
 // 出力は、テストが終わるたびにまとめて出す（混ざらないように）。1つのテストが LIMIT_MIN 分を越えたら止めて、それまでの出力と「時間切れ」を出す。
 // どれかが失敗したら（時間切れ・シグナルで止められた時も）、終わりのコードを 1 にする。
 //   node tests/run.mjs              全部（同時に3つまで）
 //   node tests/run.mjs --jobs 2     同時に走らせる数（1 以上の整数）
-//   node tests/run.mjs smoke world  名前を挙げた物だけ（ほかの指定 --prod などは受け付けない。1つずつ node tests/smoke.mjs --prod のように走らせる）
+//   node tests/run.mjs smoke world  名前を挙げた物だけ（ほかの指定 --prod・--update などは受け付けない。1つずつ node tests/smoke.mjs --prod のように走らせる）
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { build } from 'vite';
 import { ROOT } from './lib.mjs';
 
 // 長くかかる物から始める（短い物が後ろで隙間を埋める）
-const ALL = ['smoke', 'world', 'gallery', 'inventory', 'determinism', 'levels', 'panels'];
+const ALL = ['smoke', 'title', 'visual', 'gallery', 'world', 'inventory', 'levels', 'determinism', 'panels'];
 const LIMIT_MIN = 10;
 const stop = (m) => {
   console.error(m);
