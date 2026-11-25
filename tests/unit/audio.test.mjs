@@ -1,10 +1,14 @@
-// 音を鳴らす処理（src/lib/audio.ts）の単体テスト。Node には Web Audio が無いので、偽の Web Audio（fake-audio.mjs）で確かめる。
+// 音を鳴らす処理（src/lib/audio.ts）と詠唱の声（src/game/26-spells-hud.js の chantStart）の単体テスト。Node には Web Audio が無いので、偽の Web Audio（fake-audio.mjs）で確かめる。
 // 指紋の値は、移す前の古い JS（src/game/15-sound-fire.js と、遠吠え・警報は 13-creatures.js）でも同じになる（audio-cases.mjs の場合を、古い関数で数えて確かめた）。
 // 迷宮の生成は使わないので、生成を変えてもこの指紋は変わらない。
+// 音の乱数を見た目の乱数から分けた時も、同じ並びを音の乱数（sr）に入れて、指紋が変わらないことを確かめた。
 // テストを .mjs で書くのは、偽の Web Audio を AudioContext の型に合わせられないため（型の言い切り as を使わない）
 import { describe, expect, it } from 'vitest';
+import { legacyValues } from '../../tools/legacy-eval.mjs';
 import * as A from '../../src/lib/audio.ts';
-import { SND, player } from '../../src/lib/state.ts';
+import { setSoundRand } from '../../src/lib/random.ts';
+import { mulberry32 } from '../../src/lib/rng.ts';
+import { SND, clock, gear, player } from '../../src/lib/state.ts';
 import { audioCases } from './audio-cases.mjs';
 import { fakeAudio, fakeAudioClass } from './fake-audio.mjs';
 
@@ -129,6 +133,56 @@ describe('移す前と同じ', () => {
     // 偽の Web Audio が作れずに、どの音も鳴らないまま比べていないか（1440 の場合のうち 1421 で音が鳴る）
     expect([lines.length, lines.filter((l) => l.includes('"start"')).length]).toEqual([1440, 1421]);
     expect([fnv(all), all.length]).toEqual(['b5c61e76', 4251819]);
+    expect(all.includes('"Math.random"')).toBe(false); // 音は見た目の乱数を引かない（引くと、音を変えただけで粒子などの並びがずれる）
     expect(JSON.stringify([player, SND.lv, SND.on, SND.ctx])).toBe(before); // 書き換えた状態は元に戻る
   }, 30000);
+});
+
+describe('詠唱の声（src/game/26-spells-hud.js の chantStart）', () => {
+  it('音節ごとの記録と、円の文字を光らせる音節の番号の指紋。見た目の乱数（Math.random）は引かない', async () => {
+    const { chantStart } = await legacyValues(['ELEM_ROOT', 'chantStart']);
+    const random = Math.random,
+      oldSound = setSoundRand(Math.random),
+      savedCast = gear.castSt,
+      savedTime = clock.time;
+    let calls = 0;
+    const out = [];
+    try {
+      Math.random = () => {
+        calls++;
+        return 0.5;
+      };
+      for (const [n, el] of [null, 'fire', 'ice', 'thunder', 'poison', 'other'].entries()) {
+        fresh();
+        const log = [];
+        SND.ctx = fakeAudio(log);
+        SND.master = SND.inp = SND.ctx.createGain();
+        SND.noise = { id: 'noise' };
+        setSoundRand(mulberry32(n * 13 + 5));
+        gear.castSt = { syl: -1, sylT: -1 };
+        const h = chantStart(el);
+        // 1.6秒、0.05秒ごとに溜めを進める（途中で溜めきる）。その後、止める（2回止めても1回だけ）
+        for (let k = 0; k < 32; k++) {
+          SND.ctx.currentTime = 12.5 + k * 0.05;
+          clock.time = k * 0.05;
+          h.tick(Math.min(1, k / 20), k >= 20);
+        }
+        h.stop();
+        h.stop();
+        h.tick(1, true); // 止めた後は鳴らない
+        out.push(JSON.stringify([el, gear.castSt, log]));
+      }
+      fresh();
+      expect(chantStart('fire')).toBe(null); // 音が鳴らせない時は作らない
+    } finally {
+      Math.random = random;
+      setSoundRand(oldSound);
+      gear.castSt = savedCast;
+      clock.time = savedTime;
+      fresh();
+    }
+    const all = out.join('\n');
+    expect(calls).toBe(0);
+    expect([fnv(all), all.length]).toEqual(['ba541717', 115649]); // 書き換える前（Math.random を直に引いていた版）と同じ
+  });
 });

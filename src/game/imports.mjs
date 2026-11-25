@@ -5,7 +5,7 @@ import { clamp, mulberry32 } from '../lib/rng.ts';
 import { boxText, clipHtml, padTo, visW, wrapPlain } from '../lib/text.ts';
 import { makeHistory } from '../lib/history.ts';
 import { G, RAMP_CH, RUNESET, RUNE_CHARS, SWAPSET, WG } from '../lib/glyphs.ts';
-import { R, RI, mpick, mr, pick, rand, roll, shuffle } from '../lib/random.ts';
+import { R, RI, mpick, mr, pick, rand, roll, setSoundRand, shuffle, sr } from '../lib/random.ts';
 import { dragonSleepForm } from '../lib/bodies/beasts.ts';
 import { beastSamples, beastSleep, SHADOW_KING_SC, shadowKingScale } from '../lib/bodies/lords.ts';
 import {

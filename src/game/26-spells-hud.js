@@ -59,22 +59,22 @@ function chantStart(el){
     const f1=ctx.createBiquadFilter(), f2=ctx.createBiquadFilter(); f1.type='bandpass'; f2.type='bandpass'; f1.frequency.value=vow[0]; f2.frequency.value=vow[1]; f1.Q.value=7; f2.Q.value=9;
     const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(amp,t+0.04); g.gain.setValueAtTime(amp,t+dur*0.6); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
     f1.connect(g); f2.connect(g); g.connect(out);
-    const n=1+Math.floor(k*3); for(let j=0;j<n;j++){ const o=ctx.createOscillator(); o.type='sawtooth'; o.frequency.value=f*[1,2,1.5,0.5][j]*Math.pow(2,(Math.random()-0.5)*0.014); o.connect(f1); o.connect(f2); o.start(t); o.stop(t+dur+0.05); }
+    const n=1+Math.floor(k*3); for(let j=0;j<n;j++){ const o=ctx.createOscillator(); o.type='sawtooth'; o.frequency.value=f*[1,2,1.5,0.5][j]*Math.pow(2,(sr()-0.5)*0.014); o.connect(f1); o.connect(f2); o.start(t); o.stop(t+dur+0.05); }
     // the whisper: breath through a vowel-shaped band
     const s0=ctx.createBufferSource(); s0.buffer=SND.noise; const wf=ctx.createBiquadFilter(); wf.type='bandpass'; wf.frequency.value=vow[1]; wf.Q.value=2.5;
     const wg=ctx.createGain(); wg.gain.setValueAtTime(0.0001,t); wg.gain.exponentialRampToValueAtTime(breath,t+0.03); wg.gain.exponentialRampToValueAtTime(0.0001,t+dur*0.9);
-    s0.connect(wf); wf.connect(wg); wg.connect(out); s0.start(t,Math.random()*1.5); s0.stop(t+dur+0.05);
+    s0.connect(wf); wf.connect(wg); wg.connect(out); s0.start(t,sr()*1.5); s0.stop(t+dur+0.05);
     // a consonant at the front of the syllable
-    sEnv(sNoise(t,0.04,'highpass',3500+Math.random()*2500,0.8,out),t,0.003,0.035,0.02*(0.5+0.5*(1-k)));
+    sEnv(sNoise(t,0.04,'highpass',3500+sr()*2500,0.8,out),t,0.003,0.035,0.02*(0.5+0.5*(1-k)));
     // the element's own colour
     if(el==='ice')sEnv(sTone(t,'sine',f*4,f*4,0.5,out),t,0.004,0.45,0.012);
-    else if(el==='thunder'&&Math.random()<0.6){ const tc=t+dur*(0.2+0.6*Math.random()); sEnv(sNoise(tc,0.04,'highpass',4500,1,out),tc,0.004,0.03,0.018); }
+    else if(el==='thunder'&&sr()<0.6){ const tc=t+dur*(0.2+0.6*sr()); sEnv(sNoise(tc,0.04,'highpass',4500,1,out),tc,0.004,0.03,0.018); }
     else if(el==='fire')sEnv(sTone(t,'sawtooth',f*0.5,f*0.5,dur,out),t,0.03,dur*0.9,0.01);
     else if(el==='poison'){ const o=sTone(t,'sine',root*0.5,root*0.48,dur,out); sEnv(o,t,0.05,dur*0.9,0.02); }
   };
   const startPad=()=>{ const t=ctx.currentTime; for(const [mul,vow] of [[2,VOWELS[0]],[3,VOWELS[1]],[4,VOWELS[0]]]){
       const o=ctx.createOscillator(), f1=ctx.createBiquadFilter(), g=ctx.createGain(), lfo=ctx.createOscillator(), lg=ctx.createGain(); o.type='sawtooth'; o.frequency.value=root*mul;
-      lfo.frequency.value=5+Math.random(); lg.gain.value=root*mul*0.006; lfo.connect(lg); lg.connect(o.frequency);
+      lfo.frequency.value=5+sr(); lg.gain.value=root*mul*0.006; lfo.connect(lg); lg.connect(o.frequency);
       f1.type='bandpass'; f1.frequency.value=vow[0]; f1.Q.value=6; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.03,t+0.12);
       o.connect(f1); f1.connect(g); g.connect(out); o.start(t); lfo.start(t); pad.push({o,lfo,g}); }
     sEnv(sTone(t,'sine',root*8,root*8,1.4,out),t,0.003,1.3,0.05); sEnv(sTone(t+0.02,'sine',root*12,root*12,1.0,out),t+0.02,0.003,0.9,0.025); };

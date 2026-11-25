@@ -1,7 +1,7 @@
 // 音を鳴らす（Web Audio。もとは src/game/15-sound-fire.js）。状態の入れ物 SND（音）・player（聞く位置と向き）・here・blaze（まわりの様子）に頼る物。
 // 音の表と小さな道具（SND_LV・sEnv など）は src/lib/sound.ts。
 import { must, nth } from './array.ts';
-import { mr } from './random.ts';
+import { sr } from './random.ts';
 import { clamp } from './rng.ts';
 import { SND_LV, sEnv } from './sound.ts';
 import { type DroneLoop, type SoundLoop, SND, blaze, here, player } from './state.ts';
@@ -44,7 +44,7 @@ export function sndInit(): void {
     const ir = ctx.createBuffer(2, Math.floor(ctx.sampleRate * 3.4), ctx.sampleRate);
     for (let c = 0; c < 2; c++) {
       const d = ir.getChannelData(c);
-      for (let i = 0; i < d.length; i++) d[i] = (mr() * 2 - 1) * Math.pow(1 - i / d.length, 2.4);
+      for (let i = 0; i < d.length; i++) d[i] = (sr() * 2 - 1) * Math.pow(1 - i / d.length, 2.4);
     }
     const conv = ctx.createConvolver();
     conv.buffer = ir;
@@ -60,7 +60,7 @@ export function sndInit(): void {
     // 雑音（2秒）
     const nb = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate),
       nd = nb.getChannelData(0);
-    for (let i = 0; i < nd.length; i++) nd[i] = mr() * 2 - 1;
+    for (let i = 0; i < nd.length; i++) nd[i] = sr() * 2 - 1;
     SND.noise = nb;
     const loop = (type: BiquadFilterType, freq: number, q: number): SoundLoop => {
       const s0 = ctx.createBufferSource();
@@ -121,7 +121,7 @@ export const sDist = (x?: number, z?: number): number =>
   x === undefined ? 1 : Math.pow(clamp(1 - Math.hypot(x - player.x, (z ?? NaN) - player.z) / 24, 0, 1), 1.4);
 /** 音の左右（向きから見た左右。位置が無い音は、でたらめに少し左右へ） */
 export const sPan = (x?: number, z?: number): number => {
-  if (x === undefined) return (mr() - 0.5) * 1.2;
+  if (x === undefined) return (sr() - 0.5) * 1.2;
   const dx = x - player.x,
     dz = (z ?? NaN) - player.z,
     l = Math.hypot(dx, dz) || 1;
@@ -154,7 +154,7 @@ export function sNoise(t: number, dur: number, type: BiquadFilterType, freq: num
   s0.connect(f);
   f.connect(e);
   e.connect(out);
-  s0.start(t, mr() * 1.5);
+  s0.start(t, sr() * 1.5);
   s0.stop(t + dur + 0.05);
   return e;
 }
@@ -178,15 +178,15 @@ export function sTone(t: number, type: OscillatorType, f1: number, f2: number, d
 export function sDrip(x: number | undefined, z: number | undefined, vol: number): void {
   if (!sndReady()) return;
   const t = actx().currentTime,
-    f = 900 + mr() * 1500;
+    f = 900 + sr() * 1500;
   sEnv(sTone(t, 'sine', f, f * 0.55, 0.12, sOut(x, z, vol)), t, 0.004, 0.2);
 }
 /** 火のはぜる音 */
 export function sCrackle(x: number | undefined, z: number | undefined, vol: number): void {
   if (!sndReady()) return;
   const t = actx().currentTime,
-    d = 0.004 + mr() * 0.014;
-  sEnv(sNoise(t, d, 'highpass', 1800 + mr() * 2500, 0.8, sOut(x, z, vol)), t, 0.001, d);
+    d = 0.004 + sr() * 0.014;
+  sEnv(sNoise(t, d, 'highpass', 1800 + sr() * 2500, 0.8, sOut(x, z, vol)), t, 0.001, d);
 }
 /** 続けてはぜる音（35ミリ秒ごとに8回） */
 export function sCrackleBurst(x: number | undefined, z: number | undefined): void {
@@ -202,7 +202,7 @@ export function sBubble(x: number | undefined, z: number | undefined, vol: numbe
 export function sChime(x: number | undefined, z: number | undefined, vol: number): void {
   if (!sndReady()) return;
   const t = actx().currentTime,
-    f = nth([1046.5, 1174.7, 1318.5, 1568, 1760, 2093], Math.floor(mr() * 6)),
+    f = nth([1046.5, 1174.7, 1318.5, 1568, 1760, 2093], Math.floor(sr() * 6)),
     o = sOut(x, z, vol);
   sEnv(sTone(t, 'sine', f, 0, 2.2, o), t, 0.005, 2.0, 0.6);
   sEnv(sTone(t, 'sine', f * 2.76, 0, 1.2, o), t, 0.003, 1.0, 0.15);
@@ -366,13 +366,13 @@ export function sndUpdate(dt: number): void {
     must(drone.o[1], '低い音の波').frequency.setTargetAtTime(82.6 * Math.pow(0.97, here.depth - 1), now, 2);
     must(SND.wet, '響き SND.wet').gain.setTargetAtTime(E.cave ? 0.6 : 0.32, now, 1);
   }
-  const roll = (r: number): boolean => mr() < r * dt;
+  const roll = (r: number): boolean => sr() < r * dt;
   if (roll(0.25 + E.water * 2.4 + (E.cave ? 0.4 : 0))) {
-    const a = mr() * 6.28,
-      r = 2 + mr() * 9;
-    sDrip(player.x + Math.cos(a) * r, player.z + Math.sin(a) * r, 0.2 + mr() * 0.15);
+    const a = sr() * 6.28,
+      r = 2 + sr() * 9;
+    sDrip(player.x + Math.cos(a) * r, player.z + Math.sin(a) * r, 0.2 + sr() * 0.15);
   }
-  if (roll(E.fire * 14 + E.burn * 30)) sCrackle(E.burn > E.fire ? undefined : E.fx, E.burn > E.fire ? undefined : E.fz, 0.25 + mr() * 0.25);
+  if (roll(E.fire * 14 + E.burn * 30)) sCrackle(E.burn > E.fire ? undefined : E.fx, E.burn > E.fire ? undefined : E.fz, 0.25 + sr() * 0.25);
   if (roll(E.bog * 2.5)) sBubble(undefined, undefined, 0.2, false);
   if (roll(E.lava * 2)) sBubble(undefined, undefined, 0.3, true);
   if (roll(E.xtal * 0.8)) sChime(undefined, undefined, 0.12);

@@ -197,4 +197,29 @@ describe('src/ の書き方', () => {
       );
     expect(bad).toEqual([]);
   });
+  // 音は音の乱数（sr。src/lib/random.ts）を使い、見た目の乱数（mr・Math.random）は引かない。引くと、音を足したり鳴らす頻度を変えたりしただけで、
+  // テスト用モードの見た目の乱数の並びがずれ、粒子の位置などが変わって、画面写真の基準が変わる
+  it('音を鳴らす所が、見た目の乱数を引かない', () => {
+    const audio = readFileSync(join(ROOT, 'src/lib/audio.ts'), 'utf8'),
+      spells = readFileSync(join(ROOT, 'src/game/26-spells-hud.js'), 'utf8'),
+      chant = spells.slice(spells.indexOf('function chantStart'), spells.indexOf('\n}\n', spells.indexOf('function chantStart')));
+    const names = [...audio.matchAll(/^export (?:function|const) (s[A-Z]\w*)/gm)].map((m) => m[1]);
+    expect(names.length).toBeGreaterThan(15);
+    // random.ts から読むのは sr だけ（sndUpdate の中の roll は、自分で作った「鳴らすか」の関数）
+    const visual = /\b(mr|mpick)\(|Math\.random/;
+    expect([...audio.matchAll(/^import .* from '\.\/random\.ts';$/gm)].map((m) => m[0])).toEqual(["import { sr } from './random.ts';"]);
+    expect([visual.test(audio.replace(/^\s*(\/\/|\*).*$/gm, '')), chant.length > 1000, visual.test(chant)]).toEqual([false, true, false]);
+    // ゲームの側で「この音を鳴らすか」を決める所（if(mr()<0.3)sBubble(…) など）も、音の乱数で決める
+    const call = new RegExp(`(\\bmr\\(\\)|Math\\.random\\(\\))[^;{}]{0,40}\\)\\s*(${names.join('|')})\\(`);
+    const root = join(ROOT, 'src');
+    const bad = readdirSync(root, { recursive: true })
+      .map(String)
+      .filter((f) => /\.(js|ts|mjs)$/.test(f))
+      .flatMap((f) =>
+        readFileSync(join(root, f), 'utf8')
+          .split('\n')
+          .flatMap((l, i) => (call.test(l) ? [`src/${f}:${i + 1}`] : [])),
+      );
+    expect(bad).toEqual([]);
+  });
 });
