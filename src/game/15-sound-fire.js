@@ -156,8 +156,8 @@ function updateEvents(dt,t){
       }
     } else if(ev.type==='oracle'){
       if(ev.done)continue; const [ox2,oz2]=cpos(ev.cell);
-      if(Math.hypot(ox2-player.x,oz2-player.z)<3.4){ ev.done=true; const ru=HIST.rulers[Math.floor(mr()*HIST.rulers.length)];
-        const hp=[`${ru.title}${ru.name}の名を口にする者は、もういない。`,`${HIST.civ.name}の民が最後に見たものを、お前もやがて見るだろう。`,`${HIST.beast}は、まだどこかで眠っている。`];
+      if(Math.hypot(ox2-player.x,oz2-player.z)<3.4){ ev.done=true; const ru=adv.HIST.rulers[Math.floor(mr()*adv.HIST.rulers.length)];
+        const hp=[`${ru.title}${ru.name}の名を口にする者は、もういない。`,`${adv.HIST.civ.name}の民が最後に見たものを、お前もやがて見るだろう。`,`${adv.HIST.beast}は、まだどこかで眠っている。`];
         const a=[hp[Math.floor(mr()*hp.length)],PROPHECIES[Math.floor(mr()*PROPHECIES.length)]];
         sChime(ox2,oz2,0.4); setTimeout(()=>sChime(ox2,oz2,0.3),500);
         msg('<b style="color:#bfe4ff">?</b>巻物の文字がひとりでに光り、声なき声が告げる──'); msg(`<b style="color:#bfe4ff">「</b>${a[0]}」`); msg(`<b style="color:#bfe4ff">「</b>${a[1]}」`); oracleLegendHints();

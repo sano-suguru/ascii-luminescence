@@ -1,5 +1,5 @@
 // 名前と説明の表（もとは src/game/12・18・24・25・28・29）：見た時の説明、罠・伝説の物・主の名前、試しの間の的、3人称の時の自分の姿。
-import { css } from './color.ts';
+import { css, cssOf } from './color.ts';
 
 type RGB = readonly [number, number, number];
 
@@ -7,8 +7,8 @@ type RGB = readonly [number, number, number];
 export const lookLine = (ch: string, col: RGB, name: string, desc: string): string =>
   `<b style="color:${css(col)}">${ch}</b>${name}<span>${desc}</span>`;
 /** 生き物の名前（色付き、文字を添えて） */
-export const mname = (m: { ty: { col: RGB; name: string; ch: string } }): string =>
-  `<span style="color:${css(m.ty.col)}">${m.ty.name}（${m.ty.ch}）</span>`;
+export const mname = (m: { ty: { col: readonly number[]; name: string; ch: string } }): string =>
+  `<span style="color:${cssOf(m.ty.col)}">${m.ty.name}（${m.ty.ch}）</span>`;
 /** 備品の、見た時の説明（[文字, 名前, 説明]） */
 export const FIX_NAMES = {
   brazier: ['*', '火鉢', '炎が揺れ、壁に火影を落としている'],

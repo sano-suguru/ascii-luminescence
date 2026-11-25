@@ -49,6 +49,6 @@ function advance(go){
   { const ik=interAfter(here.depth); if(ik){ here.inter={key:ik,after:here.depth}; return; } }
   here.depth++;
 }
-function placeLabel(){ if(here.inter)return SPECIALS[here.inter.key].name; if(here.realm)return REALMS[here.realm.key].name; if(here.branch)return `${BRANCHES[here.branch.key].name} ${here.branch.lvl}/${here.branch.len}`; return String(here.depth); }
+// 今いる場所の名前 placeLabel は src/lib/status.ts（src/game/imports.mjs で読む）
 
 
