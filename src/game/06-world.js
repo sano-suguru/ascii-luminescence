@@ -3,7 +3,7 @@ let staticMesh=null, occMesh=null;
 let visitedRooms=new Set(), stairsSeen=false, fogBase=0.05;
 // player は src/lib/state.ts（src/game/imports.mjs で読む。丸ごと入れ替えないので、名前はそのまま）
 const edge={t:0,k:'',idle:0};
-function showHint(h){ if(h===ui.hintHTML)return; ui.hintHTML=h; const el=document.getElementById('hint'); if(el)el.innerHTML=h; }
+// 画面の下の一言 showHint は src/lib/status.ts（src/game/imports.mjs で読む）
 const ceilAt=(x,z)=>{ const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL); if(cx<0||cz<0||cx>=MW||cz>=MH)return BASE_H; return here.D.ceil[cz*MW+cx]; };
 
 // vnoise は src/lib/noise.ts（src/game/imports.mjs で読む）

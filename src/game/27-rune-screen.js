@@ -13,12 +13,7 @@ function setInv(on){
   else { if(packSnap&&packSnap.key!==handsKey())startSwap(packSnap.snap); packSnap=null; if(!plFailed&&ui.started&&!adv.dead)tryLock(); }
   updateResume(); renderHotbar();
 }
-function renderBook(){
-  const el=document.getElementById('help'); if(!el)return; const f=t=>`<span class="f">${t}</span>`;
-  const lines=[f('+-- 魔導書 ── 見つけた反応'),...Object.entries(REACT).map(([k,r])=>saved.BOOK.has(k)?`${f('|')} <b>${r.name}</b>  <span class="lab">${r.pair}</span>\n${f('|')}   ${r.desc}`:`${f('|')} <span class="dim">？？？　まだ見ていない</span>`),
-    f('|'),`${f('|')} <span class="lab">両手に違う性質を宿し、同じ敵に重ねると何かが起きる</span>`,`${f('|')} <span class="lab">記録は探索をまたいで残る</span>`,f('+------------------------------')];
-  el.innerHTML=boxText(lines);
-}
+// 魔導書 renderBook と、立ち止まって調べる updateSearch は src/lib/status.ts（src/game/imports.mjs で読む）
 
 function renderMenu(){
   const el=document.getElementById('menu'); if(!el)return; const f=t=>`<span class="f">${t}</span>`;
@@ -43,14 +38,5 @@ function menuAct(k){
 // the "press again to make sure" of the menu lasts 4 real seconds (game time stands still while the menu is open), then the label goes back.
 // Only one of the two is armed at a time. Draw the menu again only when one has run out (so a click in the middle is not lost)
 function menuArmReset(){ setTimeout(()=>{ const now=performance.now(), out=k=>k&&k<=now; if(!out(ui.titleArm)&&!out(ui.newRunArm))return; if(out(ui.titleArm))ui.titleArm=0; if(out(ui.newRunArm))ui.newRunArm=0; if(ui.menuOpen)renderMenu(); },4050);
-}
-// standing still a moment is enough to look around carefully (after Brogue's searching)
-function updateSearch(dt){
-  const still=Math.hypot(player.vx,player.vz)<0.3, pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL);
-  if(!still){ player.stillT=0; return; }
-  player.stillT+=dt; if(player.stillT<1.5||player.searchedAt===pc)return; player.searchedAt=pc;
-  let found=0; for(const tr of (here.D.traps||[])){ if(!tr.hidden)continue; const [x,z]=cpos(tr.i); if(Math.hypot(x-player.x,z-player.z)<CELL*4.5){ tr.hidden=false; found++; } }
-  let mim=0; for(const m of here.monsters){ if(m.hidden&&Math.hypot(m.x-player.x,m.z-player.z)<9){ m.revealNow=true; mim++; } }
-  if(found||mim){ sChime(player.x,player.z,0.2); msg(`<b style="color:#bfe4ff">?</b>立ち止まって辺りを見回した。${found?`隠された罠を${found}つ見つけた。`:''}${mim?'浮かんでいた巻物が、ぴくりと動いた。':''}`); }
 }
 

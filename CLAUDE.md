@@ -34,8 +34,11 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      shaders：描画のシェーダーのソースと、描画用の配列の大きさ、title：タイトルのロゴ、hud：表示の大きさ（ミニマップ・装備の画面など）、
                      names：名前と説明の表（見た時の説明・罠・伝説の物・図鑑の主・図鑑で眠っている間の説明 GALLERY_SLEEP）、sound：音の小さな表と道具、
                      audio：音を鳴らす（Web Audio。音の部品・効果音・まわりの音 sndUpdate。状態 SND に頼る物）、log：伝言 msg、hotbar：下の HUD renderHotbar、save：保存 saveSet・saveMeta、
-                     inventory：装備の画面 renderInv（中のボタンの処理・ビルドの呼び出し applyBuild も）
-src/lib/state.ts     ゲームの状態の入れ物（分野ごと：clock＝時計（ゲームの時刻 time）、blaze＝火と地面のマス（fire・fuel・burnt・scent・凍らせた水 frozen など）、fight＝戦い（飛ぶ物 projs・光線・毒の霧・魔法の場・遅れて起きること・雨・床の目印・ヒットストップ・稲妻など）、vfx＝揺れと光り、ui＝画面の開け閉め（started・camMode・invOpen・近くの祭壇 altarNear・装備の画面で選んでいるルーン packSel など）、adv＝今の探索（runSeed・lvl・dead など）、gear＝手と詠唱（hands・bag・castSt など）、here＝今いる場所と階の中身（D・depth・branch・monsters・見えたマス・部屋の出来事 events・川のマス riverCells など）、saved＝保存する記録（META・BOOK・RSEEN・SEEN・DEVALL と、今の探索の伝説の物 LEGEND）、player・placeMem・伝言の一覧 msgs・音 SND・忍び足 stealth・手元の灯り lantern・表示の数 hudInfo（今の階の見たマスの割合 explored）・押しているキー keys。古い JS は clock.time・vfx.shake・ui.started のように欄で読み書きする。player から keys までは丸ごと入れ替えないので名前のまま）
+                     inventory：装備の画面 renderInv（中のボタンの処理・ビルドの呼び出し applyBuild も）、
+                     status：状態の表示 renderStatus・明るさと気配 updateStealth・年代記・操作の案内・魔導書・表示の量・忍び足・見つかった時 onNoticed・物音 makeNoise・
+                     立ち止まって調べる updateSearch・止まっているか isPaused・場所の名前 placeLabel・下の一言 showHint、legend：今の探索の伝説の物 getLegend と状態の表示の1行、
+                     lightmap：マスの明るさ cellLight（状態に頼る。灯りの計算そのものは light）
+src/lib/state.ts     ゲームの状態の入れ物（分野ごと：clock＝時計（ゲームの時刻 time）、blaze＝火と地面のマス（fire・fuel・burnt・scent・凍らせた水 frozen など）、fight＝戦い（飛ぶ物 projs・光線・毒の霧・魔法の場・遅れて起きること・雨・床の目印・ヒットストップ・稲妻など）、vfx＝揺れと光り、ui＝画面の開け閉め（started・camMode・invOpen・近くの祭壇 altarNear・装備の画面で選んでいるルーン packSel・下の一言 hintHTML・メニューの確かめ待ち など）、adv＝今の探索（runSeed・lvl・dead・年代記 HIST など）、gear＝手と詠唱（hands・bag・castSt など）、here＝今いる場所と階の中身（D・depth・branch・monsters・見えたマス・部屋の出来事 events・川のマス riverCells など）、saved＝保存する記録（META・BOOK・RSEEN・SEEN・DEVALL と、今の探索の伝説の物 LEGEND）、player・placeMem・伝言の一覧 msgs・音 SND・忍び足 stealth・手元の灯り lantern・表示の数 hudInfo（今の階の見たマスの割合 explored・速さの表示の数）・押しているキー keys。古い JS は clock.time・vfx.shake・ui.started のように欄で読み書きする。player から keys までは丸ごと入れ替えないので名前のまま）
 src/lib/generate.ts  迷宮の生成（generateLevel。「入力 → 結果」の形。入力 GenInput・古い JS の物 GenEnv・結果 GenResult と、部屋 Room などの型）
 src/lib/bodies/*.ts  生き物の形（kit：点の型と道具 q2・q3、small・beasts・lords：各生き物の形、bosses：主の形（不死の王・蜘蛛の女王・ナーガの女王・古竜・王の影の二つ目の姿））
 tsconfig.json        TypeScript 7 の設定（strict・noUncheckedIndexedAccess・exactOptionalPropertyTypes など）。対象は src/lib/ と tests/unit/*.ts
@@ -68,6 +71,8 @@ tests/unit/place.test.ts  階ごとに祭壇とルーンを置く処理と、階
                      迷宮の生成を変えると、この指紋も変わる）を使う
 tests/unit/ui.test.mjs  伝言・下の HUD・手の枠・保存・ルーンの説明・拾ったルーンを入れる処理の単体テスト。偽の画面の部品と偽の localStorage で、
                      たくさんの場合を作る ui-cases.mjs を使う
+tests/unit/status.test.mjs  状態の表示・気配・年代記・操作の案内・魔導書・見つかった時・物音・立ち止まって調べる・伝説の物・マスの明るさの単体テスト。
+                     たくさんの場合を作る status-cases.mjs（Node で本物の迷宮を生成し、偽の画面の部品に書く。迷宮の生成を変えると、この指紋も変わる）を使う
 tests/unit/modules.test.mjs  src/lib のどのモジュールも、単独で読めるか（読み込みが輪になって、まだ作っていない値を使っていないか。ファイルごとに別の Node で読む）
 tests/unit/audio.test.mjs  音を鳴らす処理の単体テスト。偽の Web Audio（fake-audio.mjs。作った部品・値・つなぎ方・鳴らす時刻を全部記録する。Node には Web Audio が無い）と、
                      たくさんの場合を作る audio-cases.mjs を使う
@@ -164,7 +169,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
    （古い関数も、TypeScript の状態の入れ物を同じ物として読む）。比べ方の見本は、tests/unit/gear.test.ts の頭にある。
    迷宮の生成は Node とブラウザで同じ迷宮になる（混ぜるのは shuffle）。生成に関わる変更は、Node の単体テストの指紋（generate.test.ts。欄の並びによらない）で、
    前の版と作り比べる。意図して迷宮を変えた時は、ブラウザの `__test.gen` でも Node と同じ指紋になることを確かめてから、指紋を作り直す
-   （生成した迷宮に祭壇などを置く place.test.ts の指紋も変わるので、一緒に作り直す）。
+   （生成した迷宮を使う place.test.ts と status.test.mjs の指紋も変わるので、一緒に作り直す）。
 4. `pnpm fmt`・`pnpm check`・`pnpm test`・`pnpm test:visual`（画素まで同じはず）。
 - 型を外すだけで組み立てる（Vite）。enum・namespace など、型を外すだけでは動かない書き方は使わない（`erasableSyntaxOnly`）。
 - import は `.ts` まで書く（`./rng.ts`）。`noUncheckedIndexedAccess` なので、配列の要素は `undefined` かもしれない物として扱う。
@@ -236,19 +241,19 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 |---|---|
 | 00-test-mode | テスト用モード（`TEST`、時計、乱数） |
 | 01-title | タイトルのロゴ。ロゴの絵 LOGO_ART・TITLE_LINES は src/lib/title.ts |
-| 02-constants | 特別な階の場所（interAt）。生き物の表 MTYPES は src/lib/creatures.ts。層・テーマ・支道と異界の中身・迷宮の乱数・迷宮の大きさ・タイル・灯りの計算などは src/lib/。飾りの文字の並び（RUNESET など）は src/lib/glyphs.ts |
-| 03-vaults-history | 歴史の飾り（壁の絵 ARTS）と、探索ごとの歴史（HIST。年代記の中身）。洞窟の形と宝物庫の絵は src/lib/vaults.ts、makeHistory は src/lib/history.ts、岩・鉱脈・宝物庫の壁の高さは src/lib/world.ts |
+| 02-constants | 特別な階の場所（interAt）。生き物の表 MTYPES は src/lib/creatures.ts。層・テーマ・支道と異界の中身・迷宮の乱数・迷宮の大きさ・タイル・灯りの計算などは src/lib/。飾りの文字の並び（RUNESET など）は src/lib/glyphs.ts、今いる場所の名前 placeLabel は src/lib/status.ts |
+| 03-vaults-history | 歴史の飾り（壁の絵 ARTS）。探索ごとの年代記の中身 HIST は src/lib/state.ts の adv、洞窟の形と宝物庫の絵は src/lib/vaults.ts、makeHistory は src/lib/history.ts、岩・鉱脈・宝物庫の壁の高さは src/lib/world.ts |
 | 04-generate | 迷宮の生成の呼び出し口（generate）：今のゲームの状態から入力を作り、src/lib/generate.ts の generateLevel を呼び、結果（階・主の種類・忘れられた獣）をゲームの状態に入れる |
 | 05-renderer | 描画（シェーダー、水面、文字の絵の表、dyn、粒子の配列）。シェーダーのソースと描画用の配列の大きさは src/lib/shaders.ts |
-| 06-world | 世界の組み立て（buildWorld）と、組み立てた物の状態（区切りごとの壁と床の形・壁の向こうを隠す板 occMesh・入った部屋 visitedRooms など）。今の階の中身 D・depth・monsters・player などは src/lib/state.ts。sstep は src/lib/math.ts、CHUNK は src/lib/world.ts、flowW は src/lib/math.ts |
+| 06-world | 世界の組み立て（buildWorld）と、組み立てた物の状態（区切りごとの壁と床の形・壁の向こうを隠す板 occMesh・入った部屋 visitedRooms など）。今の階の中身 D・depth・monsters・player などと、描いた文字の数 glyphCount・chunksDrawn（hudInfo）は src/lib/state.ts。画面の下の一言 showHint は src/lib/status.ts、sstep は src/lib/math.ts、CHUNK は src/lib/world.ts、flowW は src/lib/math.ts |
 | 07-bodies-lords | 生き物の形：人型の見た目（lookHumanoid・extraLook）、主のまわりの飾りの粒子と音（lichAura・spiderAura・nagaAura・dragonAura：周りに立つ剣・霜の輪・霧・低い音など）。主の形は src/lib/bodies/bosses.ts、古いトロル・古い獣・ゴーレムの形は src/lib/bodies/ |
 | 08-bodies-shadow | 生き物の形：王の影（変身 transformShadow、裾から台座へ流れる影と暗い霧 shadowAura）、深みの主（形 deepKrakenForm、まわりの粒子 krakenAura）、猟犬のまわりの粒子（houndAura）。一つ目の姿と機械の形は src/lib/bodies/lords.ts、二つ目の姿は src/lib/bodies/bosses.ts |
 | 09-bodies-creatures | 生き物の形：人型、リッチ、サラマンダーと沼の生き物のまわりの粒子（salamanderAura・bogAura）。小さな生き物・四つ足・大きな生き物（オーガ・竜も）・亡霊・幻影の形は src/lib/bodies/ |
 | 10-bodies-beast | 忘れられた獣の組み立て（buildForm）、獣の記録（眠った姿 beastSleep は src/lib/bodies/lords.ts） |
 | 11-monster-move | 生き物を作る（makeMonster）、歩ける所（canStep）、行き先（chooseNext） |
-| 12-hud-text | 忍び足と灯り、状態の表示（renderStatus）、操作・年代記の画面、物音（**パネルの文字の幅 visW と枠 boxText は src/lib/text.ts**、lerpAngle は src/lib/math.ts）。灯りの段階の名前・印の高さは src/lib/hud.ts、mname は src/lib/names.ts。忍び足 stealth・手元の灯り lantern・表示の数 hudInfo は src/lib/state.ts |
-| 13-creatures | 小さな生き物、群れ、大きな生き物の動き（updateMonster）、描く（drawMonster）。古い形は src/lib/bodies/small.ts |
-| 14-lights-fixtures | 灯り、備品、扉。LANTERN は src/lib/light.ts |
+| 12-hud-text | 生き物の頭の上の印（drawMark：眠っている z・気づいた !・怪しんでいる ?）。状態の表示 renderStatus・明るさと気配 updateStealth・年代記 renderChron・操作の案内 renderHelp と setHelp・表示の量 cycleUi・忍び足 toggleSneak・見つかった時 onNoticed・物音 makeNoise・飛べるマス flyOpen は src/lib/status.ts。パネルの文字の幅 visW と枠 boxText は src/lib/text.ts、lerpAngle は src/lib/math.ts、灯りの段階の名前・印の高さは src/lib/hud.ts、mname は src/lib/names.ts。忍び足 stealth・手元の灯り lantern・表示の数 hudInfo は src/lib/state.ts |
+| 13-creatures | 小さな生き物、群れ、大きな生き物の動き（updateMonster）、描く（drawMonster）。古い形は src/lib/bodies/small.ts、遠吠えと警報の音 sHowl・sAlarm は src/lib/audio.ts |
+| 14-lights-fixtures | 灯り、備品、扉。LANTERN は src/lib/light.ts、マスの明るさ cellLight は src/lib/lightmap.ts |
 | 15-sound-fire | 音量の切り替え（sndToggle）、ガス、火、火花、部屋の出来事、粒子。音を鳴らす処理（sndInit・効果音・まわりの音 sndUpdate など）は src/lib/audio.ts、SND_LV・sEnv は src/lib/sound.ts、cpos・FIRE_TYPES は src/lib/world.ts。火と地面のマスの状態は src/lib/state.ts の blaze、音 SND も src/lib/state.ts |
 | 16-view-input | 視界とミニマップ、伝言の1秒ごとの描き直し、通れない所の当たり判定（solidAt：壁・崖・溶岩・柱など）、入力の状態。伝言 msg・renderLog は src/lib/log.ts、伝言の一覧 msgs は src/lib/state.ts。ミニマップの大きさは src/lib/hud.ts、押しているキー keys は src/lib/state.ts |
 | 17-meta | 伝承・解放・墓・試練、タイトルの画面（buildIntroPanel）。UNLOCKS・META_DEF は src/lib/progress.ts、解放の確かめ（unlocked・lockedOf・weaponPool）と試練（trialOn）は src/lib/unlocks.ts、保存する記録 META などは src/lib/state.ts の saved、保存する saveMeta は src/lib/save.ts |
@@ -258,10 +263,10 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 | 21-altars-heal | ルーンの手に入れ方（主を倒した時の祭壇）、宝物庫の褒美を取った時、祭壇の画面、回復、拾う。階ごとに祭壇とルーンを置く・祭壇の中身・番人・鍛え方・泉を置く・石碑のそばか・祭壇の画面の1行と説明と選択肢・拾ったルーンを手か袋に入れる（placeRunesForLevel・mainPathAltars・altarFill・addGuards・forgeOptions・placeSpring・nearStele・altarLine・altarDetail・altarOpts・takeRune・placeChosen など）は src/lib/altars.ts、近くの祭壇 altarNear は src/lib/state.ts の ui、RALLY_FROM は src/lib/runes.ts、ALTAR_W は src/lib/hud.ts |
 | 22-world-hints | 先にある物の手がかり（computeOmen・drawOmens：階段から漏れる光と音、支道の入口の跡、異界の門の光）、方向の矢印、床のルーン、詠唱の見た目、照準。stratumAtDepth は src/lib/strata.ts |
 | 23-debug | デバッグ（dbg、F2 の画面、URL の指定） |
-| 24-goal | 目的（伝説の物、最深部、王の影）、勝利、稲妻、タイトルへ戻る。伝説の物の表は src/lib/names.ts、jagged は src/lib/math.ts |
+| 24-goal | 目的（伝説の物、最深部、王の影）、勝利、稲妻、タイトルへ戻る。今の探索の伝説の物 getLegend と状態の表示の1行 legendLine は src/lib/legend.ts、伝説の物の表は src/lib/names.ts、jagged は src/lib/math.ts |
 | 25-gallery | 見た物の記録、図鑑、試しの間。図鑑の主・試しの間の的の表は src/lib/names.ts、保存する saveSet は src/lib/save.ts |
-| 26-spells-hud | 術と世界（扉・氷・雷）、詠唱の声、止まっているか（isPaused）。下の HUD renderHotbar は src/lib/hotbar.ts、詠唱の声の表は src/lib/sound.ts |
-| 27-rune-screen | 装備の画面を開け閉めする（setInv）・付け替えの詠唱（startSwap）、魔導書、メニュー。装備の画面を作る renderInv と中のボタンの処理（選ぶ・はめる・袋のページ・ビルドの保存と呼び出し applyBuild）は src/lib/inventory.ts、装備の画面の状態（選んでいるルーン packSel など）は src/lib/state.ts の ui。手を写す・戻す snapHands・handsKey は src/lib/gear.ts、反応の表 REACT は src/lib/runes.ts、枠 boxText は src/lib/text.ts |
+| 26-spells-hud | 術と世界（扉・氷・雷）、詠唱の声。止まっているか isPaused は src/lib/status.ts、下の HUD renderHotbar は src/lib/hotbar.ts、詠唱の声の表は src/lib/sound.ts |
+| 27-rune-screen | 装備の画面を開け閉めする（setInv）・付け替えの詠唱（startSwap）、メニュー。魔導書 renderBook と立ち止まって調べる updateSearch は src/lib/status.ts。装備の画面を作る renderInv と中のボタンの処理（選ぶ・はめる・袋のページ・ビルドの保存と呼び出し applyBuild）は src/lib/inventory.ts、装備の画面の状態（選んでいるルーン packSel など）は src/lib/state.ts の ui。手を写す・戻す snapHands・handsKey は src/lib/gear.ts、反応の表 REACT は src/lib/runes.ts、枠 boxText は src/lib/text.ts |
 | 28-camera-player | 1人称・3人称、プレイヤーの動き（updatePlayer）、霧と目の慣れ（updateAtmosphere：霧の濃さ・露出・溶岩の近くの熱のゆらぎ・水中の見え方）。AVATAR_TY は src/lib/names.ts |
 | 29-look | 見た時の説明（look）。説明の表と lookLine は src/lib/names.ts |
 | 30-loop-init | 大きさ、メインループ（frame・tick）、テスト用の `__test`、初期化（init）。ゲームの時刻 time は src/lib/state.ts の clock |

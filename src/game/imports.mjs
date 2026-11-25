@@ -50,7 +50,7 @@ import { LANTERN, topLights } from '../lib/light.ts';
 import { flowW, jagged, lerpAngle, mCenter, sstep, turnDir } from '../lib/math.ts';
 import { css, hsl2rgb } from '../lib/color.ts';
 import {
-  CAT_BR, CAT_NAME, ELEM_POW, REACT, RUNE_FONT, RUNE_TYPES, RALLY_FROM, SLEEP_MULT, SLOT_MAX, TIER_COL, TL, TRAITS, TRAIT_V, WEAPON, elemCount, handRunes, serRune, sp_elem, trList, trName, tv, RES, RUNE_DEF, detailLines, elemCol, modVal, modWorks, rollTraits, runeCol, runeName, syncHand, thingLabel,
+  CAT_BR, CAT_NAME, ELEM_POW, RUNE_FONT, RUNE_TYPES, RALLY_FROM, SLEEP_MULT, SLOT_MAX, TIER_COL, TL, TRAITS, TRAIT_V, WEAPON, elemCount, handRunes, serRune, sp_elem, trList, trName, tv, RES, RUNE_DEF, detailLines, elemCol, modVal, modWorks, rollTraits, runeCol, runeName, syncHand, thingLabel,
 } from '../lib/runes.ts';
 import {
   allRunes, atkType, bodyN, effHand, equipWeapon, handsKey, isTwo, makeRune, makeStrong, newHand, randomRuneType, restoreHands, snapHands, syncHands, turnElem, wTL,
@@ -65,20 +65,25 @@ import { VAULTS } from '../lib/vaults.ts';
 import { generateLevel } from '../lib/generate.ts';
 import { LOGO_ART, TITLE_LINES } from '../lib/title.ts';
 import { DUST_N, DYN_MAX, DYN_VS, GAS_N, GLYPH_FS, P0, PT_FS, PT_TOTAL, PT_VS, P_MAX, STATIC_VS, WATER_FS, WATER_VS } from '../lib/shaders.ts';
-import { ALTAR_W, LIGHT_COLS, LIGHT_NAMES, MARK_H, MCH, MCW, MMC, MMR, MPAD, tone } from '../lib/hud.ts';
+import { ALTAR_W, MARK_H, MCH, MCW, MMC, MMR, MPAD, tone } from '../lib/hud.ts';
 import { AVATAR_TY, BRANCH_HINT, DECO_K, DECO_NAMES, DUMMY_KINDS, FIX_NAMES, GALLERY_SLEEP, LEGEND_KINDS, LEGEND_ORDER, LORD_GAL, TRAP_INFO, lookLine, mname } from '../lib/names.ts';
 import { CHANT_STEPS, SND_LV, SND_NAME, VOWELS, sEnv } from '../lib/sound.ts';
 import {
-  sAlert, sBoom, sBubble, sChime, sCrackleBurst, sCreak, sDist, sDrip, sHiss, sNoise, sOut, sRoar, sRumble, sSplash, sSqueak, sTone, sWhoosh, sndInit, sndReady, sndUpdate,
+  sAlarm, sBoom, sBubble, sChime, sCrackleBurst, sCreak, sDist, sDrip, sHiss, sHowl, sndInit, sndReady, sndUpdate, sNoise, sOut, sRumble, sSplash, sSqueak, sTone, sWhoosh,
 } from '../lib/audio.ts';
 import {
   altarDetail, altarFill, altarLine, altarOpts, guardedNow, nearStele, placeAltar, placeChosen, placeRunesForLevel, takeRune, vaultArea,
 } from '../lib/altars.ts';
-import { lockedOf, trialOn, unlocked, weaponPool } from '../lib/unlocks.ts';
+import { lockedOf, unlocked, weaponPool } from '../lib/unlocks.ts';
 import { levelSeed } from '../lib/levels.ts';
 import { msg, renderLog } from '../lib/log.ts';
 import { renderHotbar } from '../lib/hotbar.ts';
 import { applyBuild, renderInv } from '../lib/inventory.ts';
+import {
+  cycleUi, flyOpen, isPaused, makeNoise, onNoticed, placeLabel, renderBook, renderChron, renderHelp, renderStatus, setHelp, showHint, updateSearch, updateStealth,
+} from '../lib/status.ts';
+import { getLegend } from '../lib/legend.ts';
+import { cellLight } from '../lib/lightmap.ts';
 import { saveMeta, saveSet } from '../lib/save.ts';
 import { BL, statOf } from '../lib/monsters.ts';
 // three.js（r147）。npm の three から読んで、組み立てに入れる（CDN からは読まない）。

@@ -122,13 +122,13 @@ describe('音の土台', () => {
 });
 
 describe('移す前と同じ', () => {
-  it('音の部品・効果音・まわりの音の記録と状態の変わり方（60シード、1320の場合）の指紋', () => {
+  it('音の部品・効果音・まわりの音の記録と状態の変わり方（60シード、1440の場合）の指紋', () => {
     const before = JSON.stringify([player, SND.lv, SND.on, SND.ctx]);
     const all = audioCases(A, 60),
       lines = all.split('\n');
-    // 偽の Web Audio が作れずに、どの音も鳴らないまま比べていないか（1320 の場合のうち 1301 で音が鳴る）
-    expect([lines.length, lines.filter((l) => l.includes('"start"')).length]).toEqual([1320, 1301]);
-    expect([fnv(all), all.length]).toEqual(['e60f234e', 3860211]);
+    // 偽の Web Audio が作れずに、どの音も鳴らないまま比べていないか（1440 の場合のうち 1421 で音が鳴る）
+    expect([lines.length, lines.filter((l) => l.includes('"start"')).length]).toEqual([1440, 1421]);
+    expect([fnv(all), all.length]).toEqual(['b5c61e76', 4251819]);
     expect(JSON.stringify([player, SND.lv, SND.on, SND.ctx])).toBe(before); // 書き換えた状態は元に戻る
   }, 30000);
 });

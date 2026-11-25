@@ -459,6 +459,23 @@ export interface Monster {
   dead?: boolean;
   /** 群れの番号 */
   g?: number;
+  /** 水から出ている度合い（うなぎ。0 なら潜っている） */
+  surf?: number;
+  /** 気づいている度合い（0 から 1.25。0.35 を超えると、眠りから覚める）と、気づいたか・眠っているか */
+  aware?: number;
+  noticed?: boolean;
+  sleep?: boolean;
+  /** 起きた後、動き出すまでの秒 */
+  wait?: number;
+  /** 化けている（巻物の姿の幻影）。revealNow で正体を現す */
+  hidden?: boolean;
+  revealNow?: boolean;
+  /** 警報を鳴らしたか（監視の機械）・遠吠えを上げたか（野営の群れ・猟犬）・目を覚ましたか（忘れられた獣） */
+  alarmed?: boolean;
+  howled?: boolean;
+  woke?: boolean;
+  /** 頭の上の印（! ?）を出してからの秒 */
+  mark?: number;
 }
 /** 今いる場所と、階の中身。深さ・支道・異界・特別な階、生き物、灯りの備品、階を移る途中、着いた所 */
 export interface Here {
@@ -515,10 +532,17 @@ export const here: Here = {
 export const placeMem = new Map<string, { explored: Uint8Array; mem: Float32Array }>();
 
 /** 今の探索の伝説の物（シード・物の種類 → 物・持っている物・置いた物）。探索が伝説の物を選ぶまでは null。物の型は、目的の処理を移す時に作る */
+/** 伝説の物（名前・言い伝え・ある支道 branch・種類 kind） */
+export interface LegendItem {
+  name: string;
+  lore: string;
+  branch: string | undefined;
+  kind: string;
+}
 export interface Legend {
   seed: number;
-  /** 物の種類（LEGEND_ORDER の candle・bell・mirror）→ 物（名前・言い伝え・ある支道など） */
-  items: Record<string, unknown>;
+  /** 物の種類（LEGEND_ORDER の candle・bell・mirror）→ 物 */
+  items: Record<string, LegendItem>;
   have: Set<string>;
   placed: Set<string>;
 }

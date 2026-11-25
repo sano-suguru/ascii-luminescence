@@ -380,3 +380,55 @@ export function sndUpdate(dt: number): void {
     if (m.ty.flier && Math.hypot(m.x - player.x, m.z - player.z) < 10 && roll(0.35)) sSqueak(m.x, m.z);
   }
 }
+/** 遠吠え（野営の群れ・猟犬が気づいた時） */
+export function sHowl(x: number | undefined, z: number | undefined): void {
+  if (!sndReady()) return;
+  const ctx = actx(),
+    t = ctx.currentTime,
+    o = sOut(x, z, 0.45),
+    os = ctx.createOscillator(),
+    g = ctx.createGain(),
+    lfo = ctx.createOscillator(),
+    lg = ctx.createGain();
+  os.type = 'sawtooth';
+  os.frequency.setValueAtTime(320, t);
+  os.frequency.linearRampToValueAtTime(720, t + 0.5);
+  os.frequency.linearRampToValueAtTime(380, t + 1.6);
+  lfo.frequency.value = 6;
+  lg.gain.value = 18;
+  lfo.connect(lg);
+  lg.connect(os.frequency);
+  const f = ctx.createBiquadFilter();
+  f.type = 'lowpass';
+  f.frequency.value = 1400;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.09, t + 0.2);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 1.8);
+  os.connect(f);
+  f.connect(g);
+  g.connect(o);
+  os.start(t);
+  lfo.start(t);
+  os.stop(t + 1.85);
+  lfo.stop(t + 1.85);
+}
+/** 警報（監視の機械が気づいた時。高い音と低い音を3回ずつ交互に） */
+export function sAlarm(x: number | undefined, z: number | undefined): void {
+  if (!sndReady()) return;
+  const ctx = actx(),
+    t = ctx.currentTime,
+    o = sOut(x, z, 0.4);
+  for (let k = 0; k < 6; k++) {
+    const os = ctx.createOscillator(),
+      g = ctx.createGain();
+    os.type = 'square';
+    os.frequency.value = k % 2 ? 660 : 880;
+    g.gain.setValueAtTime(0, t + k * 0.22);
+    g.gain.linearRampToValueAtTime(0.06, t + k * 0.22 + 0.02);
+    g.gain.linearRampToValueAtTime(0, t + k * 0.22 + 0.2);
+    os.connect(g);
+    g.connect(o);
+    os.start(t + k * 0.22);
+    os.stop(t + k * 0.22 + 0.21);
+  }
+}

@@ -102,4 +102,4 @@ function startRoll(){
 }
 
 // ---------------------------------------------------------------- inventory as a list; hotbar (wheel / 1-5, right click) and a pack screen (Tab); a menu (Esc)
-const isPaused=()=>ui.invOpen||ui.menuOpen||ui.dbgOpen||ui.altarOpen||ui.lvlOpen;
+// 止まっているか isPaused は src/lib/status.ts（src/game/imports.mjs で読む）

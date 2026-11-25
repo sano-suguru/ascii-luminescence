@@ -34,15 +34,7 @@ function flicker(L,t){
   }
   return 1;
 }
-const _cl=[0,0,0];
-function cellLight(x,z){
-  _cl[0]=_cl[1]=_cl[2]=0;
-  const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL); if(cx<0||cz<0||cx>=MW||cz>=MH)return _cl;
-  const o=(cz*MW+cx)*3;
-  for(let k=0;k<3;k++){ const id=here.D.cellLI[o+k]; if(id<0)break; const L=here.D.lights[id], w=here.D.cellLW[o+k]*L.int*L.f; _cl[0]+=L.col[0]*w; _cl[1]+=L.col[1]*w; _cl[2]+=L.col[2]*w; }
-  const fl=blaze.fireLight[cz*MW+cx]; if(fl>0){ _cl[0]+=fl*2.2; _cl[1]+=fl*0.99; _cl[2]+=fl*0.26; }
-  return _cl;
-}
+// マスの明るさ cellLight は src/lib/lightmap.ts（src/game/imports.mjs で読む）
 // LANTERN は src/lib/light.ts（src/game/imports.mjs で読む）
 function updateLights(t){
   SL.fill(0);
