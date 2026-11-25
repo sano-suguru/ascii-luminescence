@@ -23,7 +23,7 @@ const BY_FORM = {
   nagaqueen: { yaw: 0.25 },
   shadowking: { yaw: 0.25, zoom: 1.3, pitch: 0.35 }, // 細い線だけで遠いので寄る。寄ると冠が上で切れるので、少し上から
   shadowserpent: { yaw: 0.25 },
-  olddragon: { yaw: 1.2, zoom: 0.8, pitch: 0.3 }, // 斜め前だと頭が画面の端や図鑑の枠に隠れる。少し引いて上から見ると、頭まで枠の上に収まる
+  olddragon: { yaw: 1.2, pitch: 0.3 }, // 斜め前だと頭が画面の端や図鑑の枠に隠れる。少し上から見ると、頭まで枠の上に収まる
   spiderqueen: { yaw: 1.1 }, // 横寄りの方が、胴と頭が脚に埋もれない
 };
 // 眠る姿も写す形（図鑑で寝起きをくり返す竜）

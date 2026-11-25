@@ -73,6 +73,10 @@ export const BRANCH_HINT = {
   nest: '糸の張りめぐらされた闇の奥',
   snake: '這うものたちの水場の奥',
 };
+/** 図鑑で眠っている間の説明（生き物の表の鍵ごと）。図鑑で寝起きをくり返す竜だけ。起きている間は生き物の表の verb */
+export const GALLERY_SLEEP: Record<string, string> = {
+  D: '翼を畳んで眠っている。寝息のたびに、周りの灯りが揺れる',
+};
 /** 図鑑の主（支道ごと。元の生き物 base・名前・大きさ・説明） */
 export const LORD_GAL = {
   crypt: { base: 'L', name: '不死の王', scale: 1.7, verb: '王冠だけが、まだ光を失っていない亡霊' },

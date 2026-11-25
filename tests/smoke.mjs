@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // スモークテスト：テスト用モードでない時にタイトルの画面が出るか、開発用の探索で dbg が動くか、探索の始め直しで前の場所や状態が残らないか
-// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの「もう一度押して確かめる」待ちが4秒で消えるか、図鑑を開いても探索の記録が変わらないか、開発用モードのまま読み直した時・保存が使えない時のタイトル、閉じた祭壇の画面が離れるまで開かないか、図鑑の全部の生き物を出して例外・描いた文字の数・NaN を確かめる。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
+// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの「もう一度押して確かめる」待ちが4秒で消えるか、図鑑を開いても探索の記録が変わらないか、開発用モードのまま読み直した時・保存が使えない時のタイトル、閉じた祭壇の画面が離れるまで開かないか、図鑑の全部の生き物を出して例外・描いた文字の数・NaN を確かめる、起きている竜を見た時の伝言。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
 //   node tests/smoke.mjs          テスト版（.build/test/。既定）
 //   node tests/smoke.mjs --prod   公開用の版（dist/）。JetBrains Mono を指定した所の日本語は、システムのフォントで描く
 import { join } from 'node:path';
@@ -312,6 +312,14 @@ await withBrowser(
         const r = __test.galleryShow(1, opt);
         if (typeof r !== 'string') bad.push(`範囲の外の値 ${JSON.stringify(opt, (k, v) => (Number.isNaN(v) ? 'NaN' : v))} を断らなかった`);
       }
+      // 竜の説明の文は姿に合わせる：起きている間は起きている時の文、眠っている間は眠っている時の文（図鑑の枠の文で見る）
+      if (dragon) {
+        const line = (pose) => (__test.galleryShow(dragon.n, { pose }), __test.advance(0.2), document.getElementById('gal').textContent);
+        const [awake, asleep] = [line('stand'), line('sleep')];
+        if (!awake.includes('熱い息を吐きながら') || awake.includes('眠っている'))
+          bad.push(`起きている竜の図鑑の文が、起きている時の文でない：${awake.slice(0, 120)}`);
+        if (!asleep.includes('翼を畳んで眠っている')) bad.push(`眠っている竜の図鑑の文が、眠っている時の文でない：${asleep.slice(0, 120)}`);
+      }
       // 図鑑の画面の「見つけた数 x / N」の N（図鑑の全部の数）。開発用モードでは、全部が一覧に並ぶはず
       const total = Number((document.getElementById('gal').textContent.match(/見つけた数\s*\d+\s*\/\s*(\d+)/) || [])[1]);
       return { n: list.length, total, bad };
@@ -320,10 +328,80 @@ await withBrowser(
     for (const b of gal.bad) errs.push(annotate(`図鑑：${b}`)); // 例外の場所に src/game/ のファイルと行を書き足す
     if (gal.n !== undefined && (gal.n < 40 || gal.n !== gal.total))
       errs.push(`図鑑の一覧に全部が並んでいない：一覧 ${gal.n}、図鑑の全部 ${gal.total}`);
+    // 竜が寝起きして枠の文が変わっても、押している途中の [>] ボタンは入れ替わらない（押して離すと、次の生き物へ進む）。
+    // ← → で竜へ移ると、止める印が消えて、図鑑は6秒ごとに寝起きをくり返す（0〜6秒は眠り）
+    const pos = await pg.evaluate(() => {
+      const t = document.getElementById('gal').textContent.match(/(\d+)\s*\/\s*\d+\s*（/);
+      return { cur: Number(t && t[1]), n: __test.gallery().find((o) => o.name === '竜')?.n };
+    });
+    if (!pos.n || !pos.cur) errs.push(`図鑑：竜へ移れない（テストの前提が崩れた）：${JSON.stringify(pos)}`);
+    else {
+      // 今が竜の時も、いったん隣へ移ってから戻る（galleryShow の止める印を消すため）
+      const steps = pos.cur === pos.n ? ['ArrowRight', 'ArrowLeft'] : [];
+      for (let i = pos.cur; i < pos.n; i++) steps.push('ArrowRight');
+      for (let i = pos.cur; i > pos.n; i--) steps.push('ArrowLeft');
+      for (const k of steps) await pg.keyboard.press(k);
+      await advance(pg, 5.8);
+      const box = await pg.locator('#gal button[data-g="next"]').boundingBox();
+      await pg.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await pg.mouse.down();
+      await advance(pg, 0.5); // ここで竜が目を覚まし、枠の文が起きている時の文に変わる
+      const woke = await pg.evaluate(() => document.getElementById('gal').textContent.includes('熱い息を吐きながら'));
+      await pg.mouse.up();
+      await advance(pg, 0.1);
+      const now = await pg.evaluate(() => Number((document.getElementById('gal').textContent.match(/(\d+)\s*\/\s*\d+\s*（/) || [])[1]));
+      if (!woke) errs.push('図鑑：竜が6秒たっても目を覚まさない（テストの前提が崩れた）');
+      else if (now !== pos.n + 1) errs.push(`図鑑：竜が目を覚ました時に押していた [>] で、次の生き物へ進まない：${pos.n} → ${now}`);
+    }
     await pg.keyboard.press('Escape');
     await advance(pg, 0.5);
     if (await pg.evaluate(() => document.getElementById('gal').classList.contains('show')))
       errs.push('図鑑で Esc を押しても、タイトルへ戻らない');
+
+    // 12. 探索の中で、起きている竜を初めて見た時の伝言は、起きている時の文（眠っている時の文ではない）
+    const dr = await newPage(browser, errs);
+    await openTest(dr, base, 'seed=202&depth=9&god=1');
+    await advance(dr, 2);
+    const placed = await dr.evaluate(() => {
+      __test.clearAll();
+      const { w, h } = __test.size(),
+        fl = (x, z) => x >= 0 && z >= 0 && x < w && z < h && __test.cell(z * w + x).floor;
+      // 前後に開けた床の筋（幅5マス・長さ8マス）を探して、端に立ち、5マス先に竜を置く
+      for (let z = 0; z < h; z++)
+        for (let x = 0; x < w; x++)
+          for (const [dx, dz] of [
+            [1, 0],
+            [-1, 0],
+            [0, 1],
+            [0, -1],
+          ]) {
+            let ok = true;
+            for (let k = -1; k <= 7 && ok; k++) for (let s = -2; s <= 2 && ok; s++) ok = fl(x + dx * k + dz * s, z + dz * k + dx * s);
+            if (!ok) continue;
+            dbg.step((x + 0.5) * 2, (z + 0.5) * 2);
+            const r = __test.summon('D', (z + dz * 5) * w + (x + dx * 5), { unseen: true });
+            if (typeof r === 'string') return r;
+            const m = __test.state().monsters[0];
+            dbg.look(m[1], 2, m[2]);
+            return { cell: (z + dz * 5) * w + (x + dx * 5) };
+          }
+      return '竜を置ける開けた床が無い';
+    });
+    if (typeof placed === 'string') errs.push(`12：${placed}（テストの前提が崩れた）`);
+    else {
+      await advance(dr, 1);
+      // 前提：竜は起きていて、見えている（どちらかが崩れると、伝言の文を確かめられない）
+      const pre = await dr.evaluate((cell) => {
+        __test.fov();
+        const m = __test.state().monsters.find((o) => o[0] === 'D');
+        return { awake: !!m && m[4] === 0, seen: __test.cell(cell).seen };
+      }, placed.cell);
+      if (!pre.awake || !pre.seen) errs.push(`12：竜が起きていないか、見えていない（テストの前提が崩れた）：${JSON.stringify(pre)}`);
+      const log = await dr.evaluate(() => document.getElementById('log').textContent);
+      if (!log.includes('大きな翼を広げ、熱い息を吐きながら辺りを見回している') || log.includes('翼を畳んで眠っている'))
+        errs.push(`12：起きている竜を見た時の伝言が、起きている時の文でない：${log.slice(-200)}`);
+    }
+    await dr.close();
   },
   { prod: process.argv.includes('--prod') },
 );
