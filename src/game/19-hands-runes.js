@@ -101,7 +101,6 @@ function drawSwing(){
 // what each kind of creature tends to drop, and how much each element hurts it (0 = no effect, 2 = badly)
 const ELEM_OF={l:'fire',Zf:'fire',D:'fire',Zi:'ice',L:'ice',K:'ice',Zl:'thunder',Rc:'thunder',Re:'thunder',Rw:'thunder',S:'poison',n:'poison',N:'poison',B:'poison'};
 // RES は src/lib/runes.ts（src/game/imports.mjs で読む）
-let packSnap=null;
 try{ saved.BOOK=new Set(JSON.parse(localStorage.getItem('al_book')||'[]')); }catch(e){}
 // ルーンの種類を選ぶ randomRuneType は src/lib/gear.ts（src/game/imports.mjs で読む）
 // 幅に合わせて HTML を切る clipHtml は src/lib/text.ts（src/game/imports.mjs で読む）

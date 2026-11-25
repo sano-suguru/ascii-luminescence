@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------- ambient sound (procedural, Web Audio)
-// SND_LV・SND_NAME・sEnv は src/lib/sound.ts、音を鳴らす処理（sndReady・sndInit・sOut・sNoise・sTone・効果音・まわりの音 sndUpdate）は src/lib/audio.ts（どれも src/game/imports.mjs で読む）
+// SND_NAME・sEnv は src/lib/sound.ts、音を鳴らす処理（sndReady・sndInit・sOut・sNoise・sTone・効果音・まわりの音 sndUpdate）は src/lib/audio.ts（どれも src/game/imports.mjs で読む）
 // SND は src/lib/state.ts（src/game/imports.mjs で読む。丸ごと入れ替えないので、名前はそのまま）
-function sndToggle(){ SND.lv=(SND.lv+1)%SND_LV.length; SND.on=SND_LV[SND.lv]>0; if(SND.master)SND.master.gain.setTargetAtTime(SND_LV[SND.lv],SND.ctx.currentTime,0.25); showHint('音量：'+SND_NAME[SND.lv]); setTimeout(()=>showHint(''),1200); }
+// 音量を次の段にする sndToggle は src/lib/screens.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- swamp gas
 let gasTmp=new Float32Array(NCELL);
@@ -296,7 +296,7 @@ function updateParticles(dt,t){
     ptCol[i3]=(0.012+l[0]*0.2+lan*lan*0.09)*k; ptCol[i3+1]=(0.01+l[1]*0.2+lan*lan*0.085)*k; ptCol[i3+2]=(0.026+l[2]*0.2+lan*lan*0.13)*k;
     ptSize[i]=dust.s[i]; ptGly[i]=dust.g[i];
   }
-  for(let i=0;i<pN;){
+  for(let i=0;i<buf.pN;){
     P.age[i]+=dt; if(P.age[i]>=P.life[i]){ killP(i); continue; }
     const ph=P.ph[i], ty=P.ty[i];
     P.vx[i]+=Math.sin(t*1.7+ph)*0.35*dt; P.vz[i]+=Math.cos(t*1.3+ph*1.3)*0.35*dt;
@@ -313,7 +313,7 @@ function updateParticles(dt,t){
     i++;
   }
   updateGasPoints(t);
-  const total=P0+pN;
+  const total=P0+buf.pN;
   ptGeo.setDrawRange(0,total);
   for(const [a,s] of [[bpPos,3],[bpCol,3],[bpSize,1],[bpGly,1]]){ a.updateRange.offset=0; a.updateRange.count=total*s; a.needsUpdate=true; }
 }

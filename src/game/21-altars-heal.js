@@ -10,8 +10,8 @@ function dropRune(m){
 }
 // ---------------------------------------------------------------- 祭壇
 // 祭壇の中身 altarFill・番人が生きているか guardedNow・祭壇を置く placeAltar・宝物庫のまわり vaultArea・祭壇の画面の1行 altarLine・
-// 階ごとに祭壇とルーンを置く placeRunesForLevel・石碑のそばか nearStele は src/lib/altars.ts（src/game/imports.mjs で読む）。
-// 番人を置く・鍛え方・泉を置くなど、ほかの祭壇の処理も src/lib/altars.ts にある（古い JS は読まない）
+// 階ごとに祭壇とルーンを置く placeRunesForLevel は src/lib/altars.ts（src/game/imports.mjs で読む）。
+// 番人を置く・鍛え方・泉を置く・石碑のそばか nearStele など、ほかの祭壇の処理も src/lib/altars.ts にある（古い JS は読まない）
 // the treasury's prize: taking it wakes guardians, or brings the ceiling down
 let rockfall=null;
 function vaultSprung(it){ const ri=here.D.roomOf[it.i], room=ri>=0&&here.D.rooms[ri]&&here.D.rooms[ri].cells.length>6?here.D.rooms[ri]:{cells:vaultArea(it,4)};
@@ -94,7 +94,7 @@ function setAltarDetail(o){ const el=document.getElementById('altarp'); if(!el)r
 function openAltar(){ const el=document.getElementById('altarp'); if(!el)return; ui.altarOpen=true; document.body.classList.toggle('paused',true);
   if(gear.castSt){ gear.castSt=null; fight.beamSegs=[]; } if(ui.locked&&document.exitPointerLock)document.exitPointerLock(); renderAltar(); el.classList.add('show','open'); renderHotbar(); }
 function closeAltar(dismiss){ const el=document.getElementById('altarp'); ui.altarOpen=false; if(dismiss)altarDismissed=ui.altarNear; if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused());
-  if(!plFailed&&ui.started&&!adv.dead)tryLock(); updateResume(); }
+  if(!ui.plFailed&&ui.started&&!adv.dead)tryLock(); updateResume(); }
 function updateAltarPanel(){ const el=document.getElementById('altarp'); if(!el)return; if(ui.lvlOpen)return; if(adv.lvl.pending>0&&ui.started&&!adv.dead&&!isPaused()){ openLevelUp(); return; }
   if(ui.altarOpen){ if(!here.D||!ui.started||adv.dead||!altarOpts().length)closeAltar(false); return; }
   ui.altarNear=null;

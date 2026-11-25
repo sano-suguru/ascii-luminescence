@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------- first / third person (chosen in the menu)
 try{ ui.camMode=localStorage.getItem('al_cam')||'fps'; }catch(e){}
 // AVATAR_TY は src/lib/names.ts（src/game/imports.mjs で読む）
-let avatar=null, camPos=null;
+let avatar=null;
 function headPos(){ return [player.x,player.eye+0.05-(player.roll?Math.sin(Math.PI*player.roll.t/0.32)*0.55:0),player.z]; }
 // where attacks and thrown things start: the eye in first person, the head of the avatar in third person
 function aimOrigin(){ return ui.camMode==='tps'?headPos():[camera.position.x,camera.position.y,camera.position.z]; }
@@ -14,11 +14,11 @@ function camBlocked(x,y,z){
 function placeThirdPerson(dt,sk){
   const h=headPos(), [dx,dy,dz]=viewDir(), rx=Math.cos(player.yaw), rz=-Math.sin(player.yaw);
   const tx=h[0]-dx*4.0+rx*0.5, ty=Math.max(0.4,h[1]-dy*4.0+0.5), tz=h[2]-dz*4.0+rz*0.5;
-  if(!camPos)camPos=[tx,ty,tz];
-  const k=Math.min(1,dt*14); camPos[0]+=(tx-camPos[0])*k; camPos[1]+=(ty-camPos[1])*k; camPos[2]+=(tz-camPos[2])*k;
-  camera.position.set(camPos[0]+(mr()-0.5)*sk,camPos[1]+(mr()-0.5)*sk,camPos[2]);
+  if(!ui.camPos)ui.camPos=[tx,ty,tz];
+  const k=Math.min(1,dt*14); ui.camPos[0]+=(tx-ui.camPos[0])*k; ui.camPos[1]+=(ty-ui.camPos[1])*k; ui.camPos[2]+=(tz-ui.camPos[2])*k;
+  camera.position.set(ui.camPos[0]+(mr()-0.5)*sk,ui.camPos[1]+(mr()-0.5)*sk,ui.camPos[2]);
   camera.rotation.set(player.pitch,player.yaw,0);
-  U.uCamP.value.set(camPos[0],camPos[1],camPos[2]); U.uCutP.value.set(h[0],h[1]-0.25,h[2]); U.uCut.value=1;
+  U.uCamP.value.set(ui.camPos[0],ui.camPos[1],ui.camPos[2]); U.uCutP.value.set(h[0],h[1]-0.25,h[2]); U.uCut.value=1;
 }
 function updateAvatar(dt){
   if(!avatar)avatar={ty:AVATAR_TY,form:buildForm(AVATAR_TY),x:0,z:0,y:0,yaw:0,walk:0,moving:0,ph:1.3,glow:1.1,surf:0};
@@ -34,8 +34,8 @@ function rockAt(x,y,z){
   if(y>here.D.ceil[i])return true; if(y<0&&tt!==TC)return true; return false;
 }
 function drawSection(){
-  if(ui.camMode!=='tps'||!camPos)return;
-  const C=camPos, h=headPos(), P=[h[0],h[1]-0.25,h[2]], sx=P[0]-C[0], sy=P[1]-C[1], sz=P[2]-C[2], L=Math.hypot(sx,sy,sz)||1, ax=sx/L, ay=sy/L, az=sz/L;
+  if(ui.camMode!=='tps'||!ui.camPos)return;
+  const C=ui.camPos, h=headPos(), P=[h[0],h[1]-0.25,h[2]], sx=P[0]-C[0], sy=P[1]-C[1], sz=P[2]-C[2], L=Math.hypot(sx,sy,sz)||1, ax=sx/L, ay=sy/L, az=sz/L;
   // two directions perpendicular to the line from the camera to you
   let ux=-az, uy=0, uz=ax; const ul=Math.hypot(ux,uz)||1; ux/=ul; uz/=ul;
   const vx=ay*uz-az*uy, vy=az*ux-ax*uz, vz=ax*uy-ay*ux;
@@ -44,7 +44,7 @@ function drawSection(){
       if(!rockAt(px,py,pz))continue; const hsh=((k*73+r*151)%7), b=0.2+0.06*(hsh%3);
       dyn(px,py,pz,G(hsh<3?'#':hsh<5?'%':':'),0.38,b*1.25,b*1.1,b*1.35); } }
 }
-function setCamMode(m){ ui.camMode=m; camPos=null; try{ localStorage.setItem('al_cam',m); }catch(e){} }
+// 視点を変える setCamMode は src/lib/screens.ts、3人称のカメラの位置 ui.camPos は src/lib/state.ts（src/game/imports.mjs で読む）
 
 function updatePlayer(dt){
   if(adv.dead)return;
