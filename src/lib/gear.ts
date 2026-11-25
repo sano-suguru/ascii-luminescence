@@ -1,7 +1,7 @@
 // 手と持ち物の処理（もとは src/game/19-hands-runes.js）。状態の入れ物 gear（両手・持ち物）に頼る物。
 // 表だけに頼る物（ルーンの名前・色・付けられるか）は src/lib/runes.ts。
 import { lookup, must } from './array.ts';
-import { RUNE_DEF, RUNE_TYPES, type Rune, TWO_SLOTS, slotsAllow, syncHand, trList, canPut } from './runes.ts';
+import { RUNE_DEF, RUNE_TYPES, type Rune, type SavedRune, TWO_SLOTS, slotsAllow, syncHand, trList, canPut } from './runes.ts';
 import { type HandState, type Hands, gear } from './state.ts';
 import { lockedOf, weaponPool } from './unlocks.ts';
 
@@ -169,3 +169,10 @@ export const wTL = (h: Side, k: string): number => {
   for (const t of trList(effHand(h).atk)) if (t.k === k) return t.lv;
   return 0;
 };
+/** 墓に残したルーン g から、拾うルーンを作る（強い版ではなくなり、特性はそれぞれ1段下がる。0段になった特性は消える） */
+export function graveRune(g: SavedRune): Rune {
+  const ru = makeRune(g.type);
+  ru.strong = false;
+  if (g.traits && g.traits.length) ru.traits = g.traits.map((t) => ({ k: t.k, lv: t.lv - 1 })).filter((t) => t.lv > 0);
+  return ru;
+}

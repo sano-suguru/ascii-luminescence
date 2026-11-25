@@ -7,7 +7,7 @@ try{ saved.DEVALL=localStorage.getItem('al_dev')==='1'; }catch(e){}
 function saveMeta(){ try{ localStorage.setItem('al_meta',JSON.stringify(saved.META)); }catch(e){} }
 // 解放の確かめ（unlocked・lockedOf・weaponPool）は src/lib/unlocks.ts（src/game/imports.mjs で読む）
 const loreLeft=()=>Math.max(0,(saved.META.lore||0)-(saved.META.spent||0));
-const trialOn=k=>adv.runTrials.includes(k);
+// trialOn は src/lib/unlocks.ts（src/game/imports.mjs で読む）
 let introMode='main';
 function buildUnlockPanel(){ const el=document.getElementById('intropanel'); if(!el)return; const f=t=>`<span class="f">${t}</span>`, KIND={weapon:'武器',rune:'ルーン',bless:'恩恵',build:'ビルド',trial:'試練'};
   const rows=[f('+-- 解放 ---'),`${f('|')} 伝承を使って、選べるものを増やす。　使える伝承 <b style="color:#ffe3a0">${loreLeft()}</b>`,f('|')];

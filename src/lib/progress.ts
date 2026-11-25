@@ -1,4 +1,5 @@
 // 経験・伝承・解放（もとは src/game/17-meta.js と 18-level-player.js の一部）。
+import { type SavedRune } from './runes.ts';
 
 /** レベル n から次へ上がるのに要る経験 */
 export const expNeed = (n: number): number => (n <= 1 ? 4 : 8 + 14 * (n - 2));
@@ -24,9 +25,16 @@ export interface Meta {
   /** 解放した物の id（UNLOCKS） */
   unl: string[];
   /** 前の探索の墓 */
-  grave: unknown;
+  grave: Grave | null;
   /** 選んでいる試練（UNLOCKS の t） */
   trials: string[];
+}
+/** 墓（倒れた層 k・深さ・倒れた訳と、残したルーン。次の探索の同じ深さに置く） */
+export interface Grave {
+  k: string;
+  depth: number;
+  cause: string;
+  item: SavedRune;
 }
 export const META_DEF: Meta = { lore: 0, spent: 0, unl: [], grave: null, trials: [] };
 /** 伝承で解放できる物 */

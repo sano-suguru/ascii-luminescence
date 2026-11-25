@@ -54,7 +54,7 @@ import {
   RES, RUNE_DEF, elemCol, handName, modTargets, modVal, modWorks, rollTraits, runeCol, runeName, runeShort, syncHand, thingLabel,
 } from '../lib/runes.ts';
 import {
-  allRunes, atkType, canPutAt, effHand, handsKey, isTwo, makeRune, makeStrong, newHand, randomRuneType, restoreHands, snapHands, syncHands, turnElem, wTL,
+  allRunes, atkType, canPutAt, effHand, graveRune, handsKey, isTwo, makeRune, makeStrong, newHand, randomRuneType, restoreHands, snapHands, syncHands, turnElem, wTL,
 } from '../lib/gear.ts';
 import { BLESS, META_DEF, UNLOCKS, expNeed, expOf } from '../lib/progress.ts';
 import { MTYPES } from '../lib/creatures.ts';
@@ -73,9 +73,11 @@ import {
   sAlert, sBoom, sBubble, sChime, sCrackleBurst, sCreak, sDist, sDrip, sHiss, sNoise, sOut, sRoar, sRumble, sSplash, sSqueak, sTone, sWhoosh, sndInit, sndReady, sndUpdate,
 } from '../lib/audio.ts';
 import {
-  addGuards, altarFill, altarLine, forgeDepthOf, guardedNow, hostileKeys, nextGroup, placeAltar, placeSpring, vaultArea,
+  altarFill, altarLine, guardedNow, nearStele, placeAltar, placeRunesForLevel, vaultArea,
 } from '../lib/altars.ts';
-import { lockedOf, unlocked, weaponPool } from '../lib/unlocks.ts';
+import { lockedOf, trialOn, unlocked, weaponPool } from '../lib/unlocks.ts';
+import { levelSeed } from '../lib/levels.ts';
+import { statOf } from '../lib/monsters.ts';
 // three.js（r147）。npm の three から読んで、組み立てに入れる（CDN からは読まない）。
 // 光のにじみの4つの部品（examples/jsm の EffectComposer・RenderPass・ShaderPass・UnrealBloomPass）は、古い JS が T.EffectComposer などで使うので、00-test-mode.js で T に一緒に入れる
 import * as THREE from 'three';
