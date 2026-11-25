@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------- test mode (?test=1): the same result every time, for automated checks
-// Math.random is seeded, and the clock (performance.now / setTimeout / setInterval) only moves when the game steps.
+// Math.random is seeded, and the clock (performance.now / setTimeout / setInterval / the audio clock AudioContext.currentTime) only moves when the game steps.
 // The game does not step by itself: window.__test.frames(n) draws n frames, __test.advance(sec) steps without drawing.
 const TEST=(()=>{ try{ return new URLSearchParams(location.search).get('test')==='1'; }catch(e){ return false; } })();
 const TEST_STEP=1/30;
@@ -11,11 +11,14 @@ const TESTCLK=TEST?(()=>{
   window.setTimeout=(fn,ms,...args)=>{ const id=nextId++; timers.set(id,{at:now+Math.max(0,+ms||0),fn,args}); return id; };
   window.setInterval=(fn,ms,...args)=>{ const id=nextId++; const every=Math.max(1,+ms||0); timers.set(id,{at:now+every,fn,args,every}); return id; };
   window.clearTimeout=window.clearInterval=id=>{ timers.delete(id); };
-  // 音の時計（currentTime）もゲームの時計に合わせ、音の部品はいつも動いている扱いにする。詠唱の声は音の時計で音節の数を決め、音節ごとに Math.random を引き、
-  // 効果音は部品が動いている時だけ鳴る（乱数も引く）。実時間のままだと、マシンの混み具合で乱数を引く数が変わり、その後の結果（火花の位置など）がずれる
+  // 音：時計（currentTime）はゲームの時計、部品はいつも動いている扱い（state）、音の速さ（sampleRate）は 44100 に決める。
+  // 詠唱の声は音の時計で音節の数を決めて音節ごとに Math.random を引き、効果音は部品が動いている時だけ鳴って乱数を引き、始めに作る響きと雑音は
+  // 音の速さの数だけ乱数を引く。どれも実時間やマシンで変わると、乱数を引く数が変わり、その後の結果（火花の位置など）がずれる。
+  // 本物の音の部品は実時間で鳴るので、ゲームを速く進めると、鳴らす音は先の時刻に予約され、その時刻まで残る（テストの間だけのことなので、そのままにする）
   if(window.BaseAudioContext){ const P=BaseAudioContext.prototype;
     Object.defineProperty(P,'currentTime',{configurable:true,get(){ return now/1000; }});
-    Object.defineProperty(P,'state',{configurable:true,get(){ return 'running'; }}); }
+    Object.defineProperty(P,'state',{configurable:true,get(){ return 'running'; }});
+    Object.defineProperty(P,'sampleRate',{configurable:true,get(){ return 44100; }}); }
   return { advance(ms){ const end=now+ms;
     for(;;){ let id=-1, e=null; for(const [k,v] of timers)if(v.at<=end&&(!e||v.at<e.at||(v.at===e.at&&k<id))){ id=k; e=v; }
       if(!e)break; now=Math.max(now,e.at); if(e.every)e.at+=e.every; else timers.delete(id);
