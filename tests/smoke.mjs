@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // スモークテスト：テスト用モードでない時にタイトルの画面が出るか、開発用の探索で dbg が動くか、探索の始め直しで前の場所や状態が残らないか
-// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの「もう一度押して確かめる」待ちが4秒で消えるか、図鑑を開いても探索の記録が変わらないか、開発用モードのまま読み直した時・保存が使えない時のタイトル、閉じた祭壇の画面が離れるまで開かないか、図鑑の全部の生き物を出して例外・描いた文字の数・NaN を確かめる、起きている竜を見た時の伝言。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
+// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの「もう一度押して確かめる」待ちが4秒で消えるか、図鑑を開いても探索の記録が変わらないか、開発用モードのまま読み直した時・保存が使えない時のタイトル、閉じた祭壇の画面が離れるまで開かないか、図鑑の全部の生き物を出して例外・描いた文字の数・NaN を確かめる、起きている竜を見た時の伝言、図鑑を手で動かす（ホイール・ドラッグ・R）。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
 //   node tests/smoke.mjs          テスト版（.build/test/。既定）
 //   node tests/smoke.mjs --prod   公開用の版（dist/）。JetBrains Mono を指定した所の日本語は、システムのフォントで描く
 import { join } from 'node:path';
@@ -352,6 +352,65 @@ await withBrowser(
       const now = await pg.evaluate(() => Number((document.getElementById('gal').textContent.match(/(\d+)\s*\/\s*\d+\s*（/) || [])[1]));
       if (!woke) errs.push('図鑑：竜が6秒たっても目を覚まさない（テストの前提が崩れた）');
       else if (now !== pos.n + 1) errs.push(`図鑑：竜が目を覚ました時に押していた [>] で、次の生き物へ進まない：${pos.n} → ${now}`);
+    }
+    // 図鑑を手で動かす：ホイールで寄る・引く、ドラッグで回す（横）と見下ろす角度（縦）、R で戻す。手を離して3秒たつと、また自動で回る。
+    // ← → で移ると元に戻る。ネズミ（1番目）で見る。枠の外（画面の上の方）で操作する
+    {
+      await pg.keyboard.press('ArrowLeft'); // 今が何番目でも、1番目へ移る（← → で止める印も消える）
+      const goFirst = await pg.evaluate(() => Number((document.getElementById('gal').textContent.match(/(\d+)\s*\/\s*\d+\s*（/) || [])[1]));
+      for (let i = goFirst; i > 1; i--) await pg.keyboard.press('ArrowLeft');
+      await advance(pg, 0.5);
+      const cam = () => pg.evaluate(() => __test.galleryDraw());
+      const hint = await pg.evaluate(() => document.getElementById('gal').textContent.includes('ホイールで寄る'));
+      if (!hint) errs.push('図鑑：枠に「ドラッグで回す　ホイールで寄る　R で戻す」の案内が無い');
+      const c0 = await cam();
+      await pg.mouse.move(480, 80);
+      for (let i = 0; i < 4; i++) await pg.mouse.wheel(0, -100); // 寄る
+      await advance(pg, 0.2);
+      const cIn = await cam();
+      for (let i = 0; i < 10; i++) await pg.mouse.wheel(0, 100); // 引く（いちばん遠くまで）
+      await advance(pg, 0.2);
+      const cOut = await cam();
+      if (!(cIn.camera.dist < c0.camera.dist * 0.8)) errs.push(`図鑑：ホイールで寄っていない：${c0.camera.dist} → ${cIn.camera.dist}`);
+      if (!(cOut.camera.dist > c0.camera.dist * 1.5 && cOut.camera.dist <= c0.camera.dist * 2.01))
+        errs.push(`図鑑：ホイールで引いていないか、2倍より遠い：${c0.camera.dist} → ${cOut.camera.dist}`);
+      // ドラッグ：横で回り、縦（下へ）で上から見下ろす。離した後3秒は回らず、その後また回る
+      await pg.mouse.move(480, 80);
+      await pg.mouse.down();
+      await pg.mouse.move(580, 80, { steps: 4 });
+      await pg.mouse.move(580, 160, { steps: 4 });
+      await pg.mouse.up();
+      await advance(pg, 0.1);
+      const cDrag = await cam();
+      const turned = Math.abs(Math.atan2(Math.sin(cDrag.turn - cOut.turn), Math.cos(cDrag.turn - cOut.turn)));
+      if (!(turned > 0.7)) errs.push(`図鑑：横にドラッグしても回らない：${cOut.turn} → ${cDrag.turn}`);
+      if (!(cDrag.camera.pitch < cOut.camera.pitch - 0.2))
+        errs.push(`図鑑：下へドラッグしても、上から見下ろさない：${cOut.camera.pitch} → ${cDrag.camera.pitch}`);
+      await advance(pg, 2);
+      const cHold = await cam();
+      if (Math.abs(cHold.turn - cDrag.turn) > 0.01) errs.push(`図鑑：手を離して2秒で、もう回り始めた：${cDrag.turn} → ${cHold.turn}`);
+      await advance(pg, 2);
+      const cBack = await cam();
+      if (!(Math.abs(cBack.turn - cHold.turn) > 0.1))
+        errs.push(`図鑑：手を離して4秒たっても、また回り始めない：${cHold.turn} → ${cBack.turn}`);
+      if (Math.abs(cBack.camera.dist - cDrag.camera.dist) > 0.01 || Math.abs(cBack.camera.pitch - cDrag.camera.pitch) > 0.01)
+        errs.push(
+          `図鑑：また回り始めた時に、寄りや角度が戻ってしまった：${JSON.stringify(cDrag.camera)} → ${JSON.stringify(cBack.camera)}`,
+        );
+      // R で戻す
+      await pg.keyboard.press('KeyR');
+      await advance(pg, 0.2);
+      const cR = await cam();
+      if (Math.abs(cR.camera.dist - c0.camera.dist) > 0.01 || Math.abs(cR.camera.pitch - c0.camera.pitch) > 0.01)
+        errs.push(`図鑑：R で寄りと角度が戻らない：はじめ ${JSON.stringify(c0.camera)}、R の後 ${JSON.stringify(cR.camera)}`);
+      // ← → で移ると戻る（寄ってから、隣へ移って、また戻る）
+      for (let i = 0; i < 4; i++) await pg.mouse.wheel(0, -100);
+      await pg.keyboard.press('ArrowRight');
+      await pg.keyboard.press('ArrowLeft');
+      await advance(pg, 0.2);
+      const cSw = await cam();
+      if (Math.abs(cSw.camera.dist - c0.camera.dist) > 0.01)
+        errs.push(`図鑑：← → で移っても、寄りが戻らない：${c0.camera.dist} → ${cSw.camera.dist}`);
     }
     await pg.keyboard.press('Escape');
     await advance(pg, 0.5);
