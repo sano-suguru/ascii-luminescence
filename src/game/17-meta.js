@@ -5,9 +5,7 @@ saved.META=loadMeta();
 // developer mode (al_dev) is read here, before the title is built below (it was read later, in 25-gallery.js, so the first title missed the trials)
 try{ saved.DEVALL=localStorage.getItem('al_dev')==='1'; }catch(e){}
 function saveMeta(){ try{ localStorage.setItem('al_meta',JSON.stringify(saved.META)); }catch(e){} }
-const unlocked=id=>saved.DEVALL||saved.META.unl.includes(id);
-const lockedOf=(kind,t)=>{ const u=UNLOCKS.find(x=>x.kind===kind&&x.t===t); return !!u&&!unlocked(u.id); };
-const weaponPool=()=>RUNE_TYPES.atk.filter(t=>!lockedOf('weapon',t));
+// 解放の確かめ（unlocked・lockedOf・weaponPool）は src/lib/unlocks.ts（src/game/imports.mjs で読む）
 const loreLeft=()=>Math.max(0,(saved.META.lore||0)-(saved.META.spent||0));
 const trialOn=k=>adv.runTrials.includes(k);
 let introMode='main';

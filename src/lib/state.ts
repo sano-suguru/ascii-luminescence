@@ -90,12 +90,14 @@ export interface RunStats {
   kills: number;
   t0: number;
 }
-/** 冒険の進み（最初の武器を選んだか・最初の祭壇・取った物・倒した主）。後から足される欄（bodyOpen など）は、使う処理を移す時に型を足す */
+/** 冒険の進み（最初の武器を選んだか・最初の祭壇・取った物・倒した主・開いた体の枠の数）。古い JS が後から足すほかの欄は、使う処理を移す時に型を足す */
 export interface RunState {
   startChosen: boolean;
   altar1: boolean;
   taken: Set<string>;
   lordsDone: Set<string>;
+  /** 開いた体の枠の数（0 から 2） */
+  bodyOpen?: number;
 }
 /** 今の冒険（シード・レベル・死んだか・勝ったか・記録・進み・試練・体力の上限・表示している体力） */
 export interface Adv {
@@ -371,11 +373,19 @@ export interface Trans {
   regen?: boolean;
   go?: string;
 }
+/** 今の階に、古い JS が後から足す欄（型は、使う処理を移す時に足す） */
+export interface LevelExtra {
+  /** 最深部の階（伝説の物の台座がある。18-level-player.js の newLevel が入れる） */
+  finalVault?: boolean;
+}
 /** 階の生き物（位置と種類） */
 export interface Monster {
   x: number;
   z: number;
   ty: MonsterType;
+  dead?: boolean;
+  /** 群れの番号 */
+  g?: number;
 }
 /** 今いる場所と、階の中身。深さ・支道・異界・特別な階、生き物、灯りの備品、階を移る途中、着いた所 */
 export interface Here {
@@ -394,8 +404,8 @@ export interface Here {
   fade: number;
   /** 図鑑の見本の階を作っているか */
   showroomGen: boolean;
-  /** 今の階の中身（generate.ts の generateLevel の結果）。初期化（30-loop-init.js の init）で1つ目の階を作るまでは null。後から足される欄（hub など）は、使う処理を移す時に型を足す */
-  D: Level | null;
+  /** 今の階の中身（generate.ts の generateLevel の結果）。初期化（30-loop-init.js の init）で1つ目の階を作るまでは null。古い JS が後から足す欄は LevelExtra（まだ型の無い hub などは、使う処理を移す時に足す） */
+  D: (Level & LevelExtra) | null;
   /** 見たことのあるマス（階に入るたびに作り直す。18-level-player.js の newLevel） */
   explored: Uint8Array;
   /** マスごとの覚えた色（マスの数×3） */

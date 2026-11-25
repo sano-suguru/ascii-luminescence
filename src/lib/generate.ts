@@ -257,13 +257,30 @@ export interface Trap {
   used: boolean;
   order?: number[];
 }
-/** 床に置かれた物 */
+/** 床に置かれた物（祭壇の選択肢は、祭壇の組 grp・何番目か slot と、選んだ時のこと opt などを持つ。祭壇の中身は src/lib/altars.ts の altarFill が入れる） */
 export interface Item {
   i: number;
   kind: string;
   taken: boolean;
-  rune?: Rune;
+  rune?: Rune | null;
   vault?: boolean;
+  /** 祭壇の組（'altar1'・'start' など） */
+  grp?: string;
+  altar?: boolean;
+  slot?: number;
+  /** 主の祭壇（強い選択肢）・鍛えの祭壇 */
+  lord?: boolean;
+  forge?: boolean;
+  /** 選ぶと何が起きるか（'rune'・'heal'・'forge'・'open'） */
+  opt?: string;
+  /** 鍛える武器・特性・上げた後の段 */
+  forgeW?: Rune;
+  forgeK?: string;
+  forgeTo?: number;
+  /** 番人の群れ（この群れが生きている間は暗く、取れない） */
+  guardG?: number;
+  /** 枠を開ける選択肢の名前 */
+  label?: string;
 }
 /** その階の主の種類（生き物の表の1つを元に、名前や形を変えた物。古い JS が MTYPES.lord に入れる） */
 export type LordType = MonsterType & { sk: string; boss: boolean };
