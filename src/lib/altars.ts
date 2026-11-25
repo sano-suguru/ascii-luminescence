@@ -1,10 +1,14 @@
 // 祭壇とルーンを置く（もとは src/game/21-altars-heal.js）。状態の入れ物 here（今の階）・gear（手）・adv（探索）・player・saved（墓の記録）・ui（試しの間の中か）に頼る物。
 // 拾う・選ぶ・祭壇の画面は、伝言と画面に頼るので、まだ古い JS（21-altars-heal.js）にある。
 import { lookup, must, nth } from './array.ts';
-import { css } from './color.ts';
+import { css, cssOf } from './color.ts';
 import { MTYPES } from './creatures.ts';
 import { type Item, type Room, type Spawn } from './generate.ts';
-import { graveRune, makeRune, makeStrong, randomRuneType } from './gear.ts';
+import { type Side, equipWeapon, freeSlotFor, graveRune, isTwo, makeRune, makeStrong, randomRuneType, slotSet, syncHands } from './gear.ts';
+import { renderHotbar } from './hotbar.ts';
+import { msg } from './log.ts';
+import { redraw } from './redraw.ts';
+import { saveSet } from './save.ts';
 import { RUNE_CHARS } from './glyphs.ts';
 import { levelSeed } from './levels.ts';
 import { statOf } from './monsters.ts';
@@ -18,9 +22,12 @@ import {
   type Rune,
   TIER_COL,
   TRAITS,
+  detailLines,
   rollTraits,
   runeCol,
   runeName,
+  thingLabel,
+  trDesc,
   trList,
   trName,
   weaponCol,
@@ -36,11 +43,6 @@ const level = () => must(here.D, '今の階 here.D');
 const hands = (): Hands => must(gear.hands, '両手 gear.hands');
 /** 体の枠 i のルーン（枠は b0・b1 の2つ。ほかは無い） */
 const bodySlot = (B: Hands['B'], i: number): Rune | null | undefined => (i === 0 ? B.b0 : i === 1 ? B.b1 : undefined);
-/** 色（3つの数）を css の色に（足りなければ止まる） */
-const cssOf = (c: readonly number[] | undefined): string => {
-  const v = must(c, '色');
-  return css([nth(v, 0), nth(v, 1), nth(v, 2)]);
-};
 
 /** 祭壇の選択肢（選ぶと何が起きるか opt と、見せるルーン rune。鍛える選択肢は、武器・特性・上げた後の段も） */
 export type AltarOpt = Pick<Item, 'opt' | 'rune' | 'forgeW' | 'forgeK' | 'forgeTo'>;
@@ -684,3 +686,133 @@ export const nearStele = (): boolean => {
     D.items.some((o) => o.altar && o.slot === 1 && near(o.i))
   );
 };
+
+// ---------------------------------------------------------------- 拾ったルーンを手か袋に入れる・祭壇の画面の説明
+/** 体の枠を開いた数のうち、空いている一番前の枠の番号（無ければ undefined） */
+const freeBody = (): number | undefined => [0, 1].slice(0, adv.runState.bodyOpen || 0).find((i) => !bodySlot(hands().B, i));
+/** 種類 t のルーンを、見たルーンの記録に足す（はじめての時だけ保存する） */
+function seeRune(t: string): void {
+  if (!saved.RSEEN.has(t)) {
+    saved.RSEEN.add(t);
+    saveSet('al_runes', saved.RSEEN);
+  }
+}
+/** 拾ったルーン ru の行き先の名前（体の枠・空いた手・手のルーンの枠。どこも空いていなければ袋） */
+export function runeDest(ru: Rune): string {
+  const cat = lookup(RUNE_DEF, ru.type).cat,
+    hs = hands();
+  if (cat === 'body') return freeBody() !== undefined ? '身の護符の枠へ' : '袋へ';
+  if (cat === 'atk') {
+    const h = (['R', 'L'] as const).find((x) => !hs[x].atk);
+    return h ? `${h === 'L' ? '左' : '右'}手へ` : '袋へ';
+  }
+  const p = freeSlotFor(ru);
+  return p ? `${p[0] === 'L' ? '左' : '右'}手のルーンの枠へ` : '袋へ';
+}
+/** 祭壇の選択肢 o の説明の5行（祭壇の画面の下に出す。HTML の文字列。o が無ければ、案内の1行） */
+export function altarDetail(o: Item | null | undefined): string[] {
+  if (!o) return ['<span class="lab">選択肢にマウスを乗せると、ここに説明が出る</span>', '', '', '', ''];
+  if (o.opt === 'heal')
+    return [
+      '<b style="color:#ff9aa8">+</b> 癒し',
+      `    <span class="lab">体力 ${Math.round(player.hp)} → ${Math.round(Math.min(adv.PLAYER_MAX, player.hp + adv.PLAYER_MAX * 0.7))}</span>`,
+      '    <span class="lab">温かな光が、傷を大きく塞ぐ</span>',
+      '',
+      '',
+    ];
+  if (o.opt === 'open')
+    return [
+      `<b style="color:#ffe3a0">{ }</b> ${String(o.label)}`,
+      '    <span class="lab">選ぶと、その枠が開く。ほかの選択肢は消える</span>',
+      '',
+      '',
+      '',
+    ];
+  if (o.opt === 'forge') {
+    const w = must(o.forgeW, '鍛える武器');
+    return [
+      `<b style="color:#bcdcff">T</b> ${lookup(RUNE_DEF, w.type).name}を鍛える`,
+      `    <span class="lab">${trName(w.type, { k: String(o.forgeK), lv: 0 })} Lv${String(o.forgeTo)}：${trDesc(w.type, { k: o.forgeK, lv: o.forgeTo })}</span>`,
+      '    <span class="dim">今持っている武器が、その場で鍛えられる</span>',
+      '',
+      '',
+    ];
+  }
+  return detailLines(o.rune);
+}
+/** 近くの祭壇（ui.altarNear）の、まだ取っていない選択肢（台の順） */
+export const altarOpts = (): Item[] =>
+  [0, 1, 2].map((k) => level().items.find((o) => o.grp === ui.altarNear && o.slot === k && !o.taken)).filter((o): o is Item => Boolean(o));
+/** 効き方のルーン ru を、袋の同じ種類（強い版でない物）と1つの強い版にまとめる。まとめたら true */
+export function mergeMod(ru: Rune): boolean {
+  const d = lookup(RUNE_DEF, ru.type);
+  if (d.cat !== 'mod' || ru.strong) return false;
+  const tw = gear.bag.find((b) => b.type === ru.type && !b.strong);
+  if (!tw) return false;
+  tw.strong = true;
+  msg(
+    `<b class="rn" style="color:${cssOf(TIER_COL[3])}">${String(d.ch)}</b>2つの「${String(d.nm)}」のルーンが、ひとつの強い版にまとまった（${runeName(tw)}）。`,
+  );
+  renderHotbar();
+  if (ui.invOpen) redraw.inv();
+  return true;
+}
+/** 祭壇で選んだルーン ru を袋に入れる（効き方のルーンは、袋の同じ種類とまとめる） */
+export function placeChosen(ru: Rune): void {
+  seeRune(ru.type);
+  if (mergeMod(ru)) return;
+  const def = lookup(RUNE_DEF, ru.type),
+    col = runeCol(ru);
+  gear.bag.push(ru);
+  msg(
+    `<b class="rn" style="color:${cssOf(col)}">${String(def.ch)}</b>${thingLabel(ru)}を手にした。袋に収めた。Tab で付け替えられる（祭壇のそばなら詠唱はいらない）。`,
+  );
+  renderHotbar();
+  if (ui.invOpen) redraw.inv();
+}
+/**
+ * 拾ったルーン ru を、空いた所に入れる（護符は体の枠、武器は空いた手、ほかは手のルーンの枠。prefer の手を先に）。どこも空いていなければ袋。
+ * 効き方のルーンは、袋の同じ種類とまとめる
+ */
+export function takeRune(ru: Rune, prefer?: Side | null): void {
+  seeRune(ru.type);
+  if (mergeMod(ru)) return;
+  const def = lookup(RUNE_DEF, ru.type),
+    col = runeCol(ru),
+    order: Side[] = prefer ? [prefer, prefer === 'R' ? 'L' : 'R'] : ['R', 'L'],
+    hs = hands();
+  let where = '';
+  if (def.cat === 'body') {
+    const i = freeBody();
+    if (i !== undefined) {
+      slotSet('B', 'b' + i, ru);
+      where = '身に着けた';
+    } else {
+      gear.bag.push(ru);
+      where = '袋に収めた';
+    }
+  } else if (def.cat === 'atk') {
+    const two = def.two,
+      h = two ? (!hs.L.atk && !hs.R.atk ? 'R' : null) : isTwo() ? null : order.find((x) => !hs[x].atk);
+    if (h) {
+      equipWeapon(h, ru);
+      where = two ? '両手で持った' : `${h === 'L' ? '左' : '右'}手に持った`;
+    } else {
+      gear.bag.push(ru);
+      where = '袋に収めた';
+    }
+  } else {
+    const p = freeSlotFor(ru, order);
+    if (p) {
+      slotSet(p[0], p[1], ru);
+      where = `${p[0] === 'L' ? '左' : '右'}手に宿った`;
+    } else {
+      gear.bag.push(ru);
+      where = '袋に収めた';
+    }
+  }
+  syncHands();
+  msg(`<b class="rn" style="color:${cssOf(col)}">${String(def.ch)}</b>${thingLabel(ru)}を手にした。${where}。`);
+  renderHotbar();
+  if (ui.invOpen) redraw.inv();
+}

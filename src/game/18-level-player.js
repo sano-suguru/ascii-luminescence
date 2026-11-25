@@ -143,8 +143,7 @@ function initMonsterLife(m){ const st=statOf(m); m.maxHp=Math.round(st[0]*(m.ty.
 // ---------------------------------------------------------------- levelling: defeating creatures gives experience; at each level time stops and you choose one of three
 // (two blessings - strengths tied to actions and elements, some with a price - and one rune or charm). Max health does not grow with level: it grows by 4 on entering each new stratum.
 let lvlOpenT=0, lvlOpts=[];
-// BLESS は src/lib/progress.ts（src/game/imports.mjs で読む）
-const BL=k=>adv.lvl.bless[k]||0;
+// BLESS と加護の段 BL は src/lib/progress.ts（src/game/imports.mjs で読む）
 // a cold snap: the creatures around are chilled (and fire goes out, water freezes)
 function coldSnap(x,z,r){ chillArea(x,z,r); for(const m of here.monsters){ if(m.dead||m.ty.critter)continue; if(Math.hypot(m.x-x,m.z-z)<r+0.3*m.ty.scale){ const st=m.st||(m.st={}); st.chill=Math.max(st.chill||0,4); } }
   for(let q=0;q<28;q++){ const a=q/28*Math.PI*2; spawn(x+Math.cos(a)*r*0.9,0.15,z+Math.sin(a)*r*0.9,Math.cos(a)*0.6,0.4,Math.sin(a)*0.6,0.6,G(mpick(['*','.','+'])),0.14,1.2,1.7,2.2,0); } }

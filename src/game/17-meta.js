@@ -4,7 +4,6 @@ function loadMeta(){ try{ return Object.assign({},META_DEF,JSON.parse(localStora
 saved.META=loadMeta();
 // developer mode (al_dev) is read here, before the title is built below (the title's trials row depends on it)
 try{ saved.DEVALL=localStorage.getItem('al_dev')==='1'; }catch(e){}
-function saveMeta(){ try{ localStorage.setItem('al_meta',JSON.stringify(saved.META)); }catch(e){} }
 // 解放の確かめ（unlocked・lockedOf・weaponPool）は src/lib/unlocks.ts（src/game/imports.mjs で読む）
 const loreLeft=()=>Math.max(0,(saved.META.lore||0)-(saved.META.spent||0));
 // trialOn は src/lib/unlocks.ts（src/game/imports.mjs で読む）

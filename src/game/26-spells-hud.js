@@ -87,15 +87,7 @@ function chantStart(el){
 }
 
 // ---------------------------------------------------------------- HUD at the bottom: what each hand holds, the chant
-function renderHotbar(){
-  const el=document.getElementById('hotbar'); if(!el||!gear.hands)return;
-  const part=h=>{ const H=effHand(h); syncHand(H); const c=elemCol(H.elem?H.elem.type:null), gl=[...new Set(handRunes(H).filter(r=>RUNE_DEF[r.type].cat==='elem').map(r=>r.type))].map(t=>`<span class="rn" style="color:${css(RUNE_DEF[t].col)}${H.elem&&H.elem.type===t?'':';opacity:0.45'}">${RUNE_DEF[t].ch}</span>`).join('');
-    const tg=H.trig?` <span class="rn dim2" style="color:${css(TIER_COL[0])}">${RUNE_DEF[H.trig.type].ch}</span>`:'';
-    let bar=''; if(gear.castSt&&gear.castSt.h===h){ const k=Math.min(1,gear.castSt.t/Math.max(0.01,gear.castSt.need)), n=Math.round(k*8); bar=`\n<span style="color:${css(c)}">${'='.repeat(n)}</span><span class="dim">${'-'.repeat(8-n)}</span>`; }
-    return `<span class="${gear.castSt&&gear.castSt.h===h?'on':''}"><span class="dim">${h==='L'?'左':'右'}</span> ${gl||'<span class="dim">-</span>'} <span style="color:${css(c)}">${handName(H)}</span>${tg}${bar}</span>`; };
-  let sw=''; if(gear.swapSt){ const n=Math.round(gear.swapSt.t/gear.swapSt.dur*10); sw=`\n<span class="lab">付け替え</span> ${'='.repeat(n)}<span class="dim">${'-'.repeat(10-n)}</span>`; }
-  el.innerHTML=part('L')+'      '+part('R')+sw;
-}
+// 下の HUD を描き直す renderHotbar は src/lib/hotbar.ts（src/game/imports.mjs で読む）
 
 // dodge roll (after Minecraft Dungeons): a quick burst in the direction you are moving, untouchable while it lasts
 function startRoll(){

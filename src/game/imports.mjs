@@ -48,15 +48,15 @@ import {
   TW, TX, VAULT_WALL_H, FINAL_DEPTH, VEIN_COL, VEIN_NAME, blocksWalk, cpos, FIRE_TYPES, } from '../lib/world.ts';
 import { LANTERN, topLights } from '../lib/light.ts';
 import { flowW, jagged, lerpAngle, mCenter, sstep, turnDir } from '../lib/math.ts';
-import { css, hsl2rgb } from '../lib/color.ts';
+import { css, cssOf, hsl2rgb } from '../lib/color.ts';
 import {
   CAT_BR, CAT_NAME, ELEM_POW, REACT, RUNE_FONT, RUNE_TYPES, RALLY_FROM, SLEEP_MULT, SLOT_MAX, TIER_COL, TL, TRAITS, TRAIT_V, TWO_SLOTS, WEAPON, elemCount, emptyChip, handRunes, serRune, sp_elem, trList, trName, tv, weaponCol,
-  RES, RUNE_DEF, elemCol, handName, modTargets, modVal, modWorks, rollTraits, runeCol, runeName, runeShort, syncHand, thingLabel,
+  RES, RUNE_DEF, detailLines, elemCol, handName, modTargets, modVal, modWorks, rollTraits, runeCol, runeName, runeShort, syncHand, thingLabel, trDesc,
 } from '../lib/runes.ts';
 import {
-  allRunes, atkType, canPutAt, effHand, handsKey, isTwo, makeRune, makeStrong, newHand, randomRuneType, restoreHands, snapHands, syncHands, turnElem, wTL,
+  allRunes, atkType, bodyN, canPutAt, effHand, equipWeapon, freeSlotFor, handsKey, isTwo, makeRune, makeStrong, newHand, randomRuneType, restoreHands, slotSet, snapHands, syncHands, turnElem, wTL,
 } from '../lib/gear.ts';
-import { BLESS, META_DEF, UNLOCKS, expNeed, expOf } from '../lib/progress.ts';
+import { BL, BLESS, META_DEF, UNLOCKS, expNeed, expOf } from '../lib/progress.ts';
 import { MTYPES } from '../lib/creatures.ts';
 import { VM_K, VM_MIRROR, VM_ST, vmGlyph, vmGlyphS } from '../lib/hands.ts';
 import {
@@ -73,10 +73,14 @@ import {
   sAlert, sBoom, sBubble, sChime, sCrackleBurst, sCreak, sDist, sDrip, sHiss, sNoise, sOut, sRoar, sRumble, sSplash, sSqueak, sTone, sWhoosh, sndInit, sndReady, sndUpdate,
 } from '../lib/audio.ts';
 import {
-  altarFill, altarLine, guardedNow, nearStele, placeAltar, placeRunesForLevel, vaultArea,
+  altarDetail, altarFill, altarLine, altarOpts, guardedNow, mergeMod, nearStele, placeAltar, placeChosen, placeRunesForLevel, runeDest, takeRune, vaultArea,
 } from '../lib/altars.ts';
 import { lockedOf, trialOn, unlocked, weaponPool } from '../lib/unlocks.ts';
 import { levelSeed } from '../lib/levels.ts';
+import { msg, renderLog } from '../lib/log.ts';
+import { renderHotbar } from '../lib/hotbar.ts';
+import { redraw } from '../lib/redraw.ts';
+import { saveMeta, saveSet } from '../lib/save.ts';
 import { statOf } from '../lib/monsters.ts';
 // three.js（r147）。npm の three から読んで、組み立てに入れる（CDN からは読まない）。
 // 光のにじみの4つの部品（examples/jsm の EffectComposer・RenderPass・ShaderPass・UnrealBloomPass）は、古い JS が T.EffectComposer などで使うので、00-test-mode.js で T に一緒に入れる
@@ -85,4 +89,4 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { SND, adv, blaze, clock, fight, gear, here, hudInfo, keys, lantern, placeMem, player, saved, stealth, ui, vfx } from '../lib/state.ts';
+import { SND, adv, blaze, clock, fight, gear, here, hudInfo, keys, lantern, msgs, placeMem, player, saved, stealth, ui, vfx } from '../lib/state.ts';

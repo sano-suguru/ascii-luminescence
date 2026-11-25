@@ -72,22 +72,10 @@ function grabItem(it,k,x,z,dest){
     if(dest){ placeChosen(it.rune,dest,!!it.altar); sChime(x,z,0.45); return; }
     takeRune(it.rune,it.grp==='start'?'R':null,!!it.altar); sChime(x,z,0.45); if(it.vault)vaultSprung(it);
 }
-// a rune put where the player chose: into a hand (what was there goes to the bag), or into the bag
-function placeChosen(ru,dest,fromAltar){ if(!saved.RSEEN.has(ru.type)){ saved.RSEEN.add(ru.type); saveSet('al_runes',saved.RSEEN); } if(mergeMod(ru))return; const def=RUNE_DEF[ru.type], col=runeCol(ru);
-  gear.bag.push(ru); msg(`<b class="rn" style="color:${css(col)}">${def.ch}</b>${thingLabel(ru)}を手にした。袋に収めた。Tab で付け替えられる（祭壇のそばなら詠唱はいらない）。`); renderHotbar(); if(ui.invOpen)renderInv(); }
+// 拾ったルーンを手か袋に入れる（takeRune・placeChosen・mergeMod）・行き先の名前 runeDest・祭壇の画面の説明 altarDetail と選択肢 altarOpts は src/lib/altars.ts（src/game/imports.mjs で読む）
 // 祭壇の画面：灯った祭壇の近くで、3つの選択肢を並べる。クリックで選ぶ。開いている間は、ゲームが止まる
-let altarNear=null, altarPanelKey='', altarSel=null, altarAim=-1, altarDismissed=null;
-function runeDest(ru){ const def=RUNE_DEF[ru.type], cat=def.cat;
-  if(cat==='body'){ const i=[0,1].slice(0,adv.runState.bodyOpen||0).find(i=>!gear.hands.B['b'+i]); return i!==undefined?'身の護符の枠へ':'袋へ'; }
-  if(cat==='atk'){ const h=['R','L'].find(h=>!gear.hands[h].atk); return h?`${h==='L'?'左':'右'}手へ`:'袋へ'; }
-  const p=freeSlotFor(ru); return p?`${p[0]==='L'?'左':'右'}手のルーンの枠へ`:'袋へ'; }
-function altarDetail(o){ if(!o)return ['<span class="lab">選択肢にマウスを乗せると、ここに説明が出る</span>','','','',''];
-  if(o.opt==='heal')return ['<b style="color:#ff9aa8">+</b> 癒し',`    <span class="lab">体力 ${Math.round(player.hp)} → ${Math.round(Math.min(adv.PLAYER_MAX,player.hp+adv.PLAYER_MAX*0.7))}</span>`,'    <span class="lab">温かな光が、傷を大きく塞ぐ</span>','',''];
-  if(o.opt==='open')return [`<b style="color:#ffe3a0">{ }</b> ${o.label}`,'    <span class="lab">選ぶと、その枠が開く。ほかの選択肢は消える</span>','','',''];
-  if(o.opt==='forge'){ const w=o.forgeW; return [`<b style="color:#bcdcff">T</b> ${RUNE_DEF[w.type].name}を鍛える`,`    <span class="lab">${trName(w.type,{k:o.forgeK})} Lv${o.forgeTo}：${trDesc(w.type,{k:o.forgeK,lv:o.forgeTo})}</span>`,'    <span class="dim">今持っている武器が、その場で鍛えられる</span>','','']; }
-  return detailLines(o.rune); }
+let altarPanelKey='', altarSel=null, altarAim=-1, altarDismissed=null;
 // ALTAR_W は src/lib/hud.ts（src/game/imports.mjs で読む）
-function altarOpts(){ return [0,1,2].map(k=>here.D.items.find(o=>o.grp===altarNear&&o.slot===k&&!o.taken)).filter(Boolean); }
 function renderAltar(){ const el=document.getElementById('altarp'); if(!el)return; const opts=altarOpts(); if(!opts.length){ closeAltar(false); return; }
   const f=t=>`<span class="f">${t}</span>`, rows=[f(opts[0].lord?'+-- 主の祭壇 ---':opts[0].opt==='open'?'+-- 空の枠 ---':opts[0].forge?'+-- 鍛えの祭壇 ---':'+-- ルーンの祭壇 ---'),f('|')];
   for(const o of opts)rows.push(`${f('|')}  <button class="row ao" data-k="${o.slot}">${clipHtml(altarLine(o),ALTAR_W-6)}</button>`);
@@ -105,27 +93,17 @@ function renderAltar(){ const el=document.getElementById('altarp'); if(!el)retur
 function setAltarDetail(o){ const el=document.getElementById('altarp'); if(!el)return; const L=altarDetail(o); el.querySelectorAll('.adet').forEach((sp,i)=>{ sp.innerHTML=padTo(clipHtml(L[i]||'',ALTAR_W-4),ALTAR_W-3); }); }
 function openAltar(){ const el=document.getElementById('altarp'); if(!el)return; ui.altarOpen=true; document.body.classList.toggle('paused',true);
   if(gear.castSt){ gear.castSt=null; fight.beamSegs=[]; } if(ui.locked&&document.exitPointerLock)document.exitPointerLock(); renderAltar(); el.classList.add('show','open'); renderHotbar(); }
-function closeAltar(dismiss){ const el=document.getElementById('altarp'); ui.altarOpen=false; if(dismiss)altarDismissed=altarNear; if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused());
+function closeAltar(dismiss){ const el=document.getElementById('altarp'); ui.altarOpen=false; if(dismiss)altarDismissed=ui.altarNear; if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused());
   if(!plFailed&&ui.started&&!adv.dead)tryLock(); updateResume(); }
 function updateAltarPanel(){ const el=document.getElementById('altarp'); if(!el)return; if(ui.lvlOpen)return; if(adv.lvl.pending>0&&ui.started&&!adv.dead&&!isPaused()){ openLevelUp(); return; }
   if(ui.altarOpen){ if(!here.D||!ui.started||adv.dead||!altarOpts().length)closeAltar(false); return; }
-  altarNear=null;
-  if(ui.started&&!adv.dead&&!isPaused()&&here.D){ let best=null, bd=1.5; for(const it of (here.D.items||[])){ if(it.taken||!it.altar||!it.rune||it.slot!==1)continue; if(it.guardG!==undefined&&guardedNow(it))continue; const [x,z]=cpos(it.i), d=Math.hypot(x-player.x,z-player.z); if(d<bd){ bd=d; best=it; } } if(best)altarNear=best.grp; }
+  ui.altarNear=null;
+  if(ui.started&&!adv.dead&&!isPaused()&&here.D){ let best=null, bd=1.5; for(const it of (here.D.items||[])){ if(it.taken||!it.altar||!it.rune||it.slot!==1)continue; if(it.guardG!==undefined&&guardedNow(it))continue; const [x,z]=cpos(it.i), d=Math.hypot(x-player.x,z-player.z); if(d<bd){ bd=d; best=it; } } if(best)ui.altarNear=best.grp; }
   // 止まっている間（装備の画面・メニューなど）は、近くの祭壇が無いことにするが、閉じた記録は消さない（離れるまで開かない）
-  if(!altarNear){ if(!(ui.started&&!adv.dead&&here.D&&isPaused()))altarDismissed=null; if(el.classList.contains('show'))el.classList.remove('show','open'); return; }
-  if(altarDismissed===altarNear)return;
+  if(!ui.altarNear){ if(!(ui.started&&!adv.dead&&here.D&&isPaused()))altarDismissed=null; if(el.classList.contains('show'))el.classList.remove('show','open'); return; }
+  if(altarDismissed===ui.altarNear)return;
   openAltar(); }
-function chooseAltar(n){ if(!altarNear)return false; const k=here.D.items.findIndex(o=>o.grp===altarNear&&o.slot===n&&!o.taken); if(k<0)return false; const it=here.D.items[k];
+function chooseAltar(n){ if(!ui.altarNear)return false; const k=here.D.items.findIndex(o=>o.grp===ui.altarNear&&o.slot===n&&!o.taken); if(k<0)return false; const it=here.D.items[k];
   const [x,z]=cpos(it.i); if(!it.opt||it.opt==='rune')grabItem(it,k,x+(it.slot-1)*0.55,z,'bag'); else grabItem(it,k,x+(it.slot-1)*0.55,z); altarSel=null; altarPanelKey=''; if(ui.altarOpen)closeAltar(false); return true; }
 function altarPlace(dest){ if(!altarSel)return false; const k=here.D.items.findIndex(o=>o.grp===altarSel.grp&&o.slot===altarSel.slot&&!o.taken); altarSel=null; altarPanelKey=''; if(k<0)return false; const it=here.D.items[k], [x,z]=cpos(it.i); grabItem(it,k,x+(it.slot-1)*0.55,z,dest); return true; }
 
-function mergeMod(ru){ if(RUNE_DEF[ru.type].cat!=='mod'||ru.strong)return false; const tw=gear.bag.find(b=>b.type===ru.type&&!b.strong); if(!tw)return false; tw.strong=true; msg(`<b class="rn" style="color:${css(TIER_COL[3])}">${RUNE_DEF[ru.type].ch}</b>2つの「${RUNE_DEF[ru.type].nm}」のルーンが、ひとつの強い版にまとまった（${runeName(tw)}）。`); renderHotbar(); if(ui.invOpen)renderInv(); return true; }
-function takeRune(ru,prefer,fromAltar){
-  if(!saved.RSEEN.has(ru.type)){ saved.RSEEN.add(ru.type); saveSet('al_runes',saved.RSEEN); }
-  if(mergeMod(ru))return;
-  const def=RUNE_DEF[ru.type], col=runeCol(ru), order=prefer?[prefer,prefer==='R'?'L':'R']:['R','L']; let where='';
-  if(def.cat==='body'){ const i=[0,1].slice(0,adv.runState.bodyOpen||0).find(i=>!gear.hands.B['b'+i]); if(i!==undefined){ gear.hands.B['b'+i]=ru; where='身に着けた'; } else { gear.bag.push(ru); where='袋に収めた'; } }
-  else if(def.cat==='atk'){ const two=def.two, h=two?(!gear.hands.L.atk&&!gear.hands.R.atk?'R':null):(isTwo()?null:order.find(h=>!gear.hands[h].atk)); if(h){ equipWeapon(h,ru); where=two?'両手で持った':`${h==='L'?'左':'右'}手に持った`; } else { gear.bag.push(ru); where='袋に収めた'; } }
-  else { const p=freeSlotFor(ru,order); if(p){ slotSet(p[0],p[1],ru); where=`${p[0]==='L'?'左':'右'}手に宿った`; } else { gear.bag.push(ru); where='袋に収めた'; } }
-  syncHands(); msg(`<b class="rn" style="color:${css(col)}">${def.ch}</b>${thingLabel(ru)}を手にした。${where}。`); renderHotbar(); if(ui.invOpen)renderInv();
-}

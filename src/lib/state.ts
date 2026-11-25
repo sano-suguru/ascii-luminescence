@@ -57,6 +57,8 @@ export interface Ui {
   lvlOpen: boolean;
   /** 祭壇の画面 */
   altarOpen: boolean;
+  /** 今いる近くの、灯った祭壇の組（祭壇の真ん中の台から1.5より近い時。無ければ null。祭壇の画面が開いている間は、開いた時の組のまま） */
+  altarNear: string | null;
   /** デバッグの画面（F2） */
   dbgOpen: boolean;
   /** 年代記の画面 */
@@ -77,6 +79,7 @@ export const ui: Ui = {
   camMode: 'fps',
   lvlOpen: false,
   altarOpen: false,
+  altarNear: null,
   dbgOpen: false,
   chronOn: false,
   uiMode: 0,
@@ -402,6 +405,13 @@ export interface LevelExtra {
   /** 階段と門のそばの石碑（マス i と、刻まれた文字 g。どの階でも、src/lib/altars.ts の placeRunesForLevel が入れる） */
   steles?: { i: number; g: string }[];
 }
+/** 伝言（html と、出した時刻 t） */
+export interface LogMsg {
+  html: string;
+  t: number;
+}
+/** 画面の伝言（新しい物が後ろ。src/lib/log.ts の msg が足し、renderLog が古い物を消す）。丸ごと入れ替えない */
+export const msgs: LogMsg[] = [];
 /** 階の生き物（位置と種類） */
 export interface Monster {
   x: number;

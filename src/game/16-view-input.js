@@ -105,14 +105,8 @@ function drawMap(){
 }
 
 // ---------------------------------------------------------------- messages
-const logEl=document.getElementById('log'); const msgs=[];
-function msg(html){ msgs.push({html,t:performance.now()}); if(msgs.length>3)msgs.shift(); renderLog(); }
-function renderLog(){
-  const now=performance.now();
-  while(msgs.length&&(now-msgs[0].t)/1000>13)msgs.shift();
-  logEl.innerHTML=msgs.map((m,i)=>{ const age=(now-m.t)/1000, rank=msgs.length-1-i; const o=(1-rank*0.3)*clamp(1-(age-7)/5,0,1); return `<div class="m" style="opacity:${o.toFixed(2)}">${m.html}</div>`; }).join('');
-}
-setInterval(renderLog,1000);
+// 伝言を出す msg と描き直す renderLog は src/lib/log.ts、伝言の一覧 msgs は src/lib/state.ts（src/game/imports.mjs で読む）
+ setInterval(renderLog,1000);
 
 // ---------------------------------------------------------------- collisions
 let blockType='';

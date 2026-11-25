@@ -1,5 +1,9 @@
-// 経験・伝承・解放（もとは src/game/17-meta.js と 18-level-player.js の一部）。
+// 経験・伝承・解放の表と、加護の段 BL（もとは src/game/17-meta.js と 18-level-player.js の一部）。BL だけは、状態の入れ物 adv（加護の段）に頼る。
 import { type SavedRune } from './runes.ts';
+import { adv } from './state.ts';
+
+/** 加護 k の今の段（取っていなければ 0） */
+export const BL = (k: string): number => adv.lvl.bless[k] || 0;
 
 /** レベル n から次へ上がるのに要る経験 */
 export const expNeed = (n: number): number => (n <= 1 ? 4 : 8 + 14 * (n - 2));
