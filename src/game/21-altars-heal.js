@@ -117,7 +117,7 @@ function placeRunesForLevel(){
     const rooms=here.D.rooms.filter((ro,ri)=>ri>0&&!ro.cave&&ro.cells.length>12); const ro=rooms.length?rooms[Math.floor(r()*rooms.length)]:null;
     const c=ro?ro.cells.filter(free):[]; if(c.length){ const at=c[Math.floor(c.length/2)];
       const opts=[...shuffle(RUNE_TYPES.elem.slice(),r).slice(0,2),RUNE_TYPES.trig[Math.floor(r()*2)]];
-      opts.forEach((t,k)=>{ r(); /* 前は飾りの数を決めて乱数を1回引いていた（飾りは付かない）。迷宮を変えないため、同じ数だけ引く */ here.D.items.push({i:at,kind:'rune',rune:makeRune(t),grp:'altar1',altar:true,slot:k,taken:false}); }); } }
+      opts.forEach((t,k)=>{ r(); /* ルーンごとに乱数を1回引く（使わないが、引く数を変えると同じシードで違う迷宮になる） */ here.D.items.push({i:at,kind:'rune',rune:makeRune(t),grp:'altar1',altar:true,slot:k,taken:false}); }); } }
   else if(here.depth>1||here.branch||here.realm)mainPathAltars(r,free);
   for(const it of here.D.items)if(it.vault&&!it.ev)it.ev=r()<0.5?'guard':'collapse';
   // steles beside the stairs and gates: swap runes there at once

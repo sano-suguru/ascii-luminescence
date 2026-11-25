@@ -1,4 +1,4 @@
-// ---------------------------------------------------------------- the goal (stage C): three legendary things held by lords, a sealed descent, the deepest place, the last king's shadow
+// ---------------------------------------------------------------- the goal: three legendary things held by lords, a sealed descent, the deepest place, the last king's shadow
 // FINAL_DEPTH は src/lib/world.ts（src/game/imports.mjs で読む）
 // LEGEND_KINDS・LEGEND_ORDER・BRANCH_HINT は src/lib/names.ts（src/game/imports.mjs で読む）
 let finalSt=null;

@@ -1,4 +1,4 @@
-// src/lib/ の表と小さな道具の単体テスト（world・light・runes・progress・hands・math・color、段階7a で移した title・glyphs・shaders・hud・names・sound など）
+// src/lib/ の表と小さな道具の単体テスト（world・light・runes・progress・hands・math・color、title・glyphs・shaders・hud・names・sound など）
 import { lookup, nth } from '../../src/lib/array.ts';
 import { describe, expect, it } from 'vitest';
 import { css } from '../../src/lib/color.ts';
@@ -169,10 +169,10 @@ describe('小さな道具', () => {
   });
 });
 
-// 段階7a（後半）で移した物。どれも、移す前の実装で出した値（シェーダーの文は1字も違わないこと）
-describe('段階7a（後半）で移した物：移す前と同じ値', () => {
+// タイトル・文字の並び・シェーダー・小さな関数。どれも、移す前の実装で出した値（シェーダーのソースは1字も違わないこと）
+describe('タイトル・文字の並び・シェーダー・小さな関数：移す前と同じ値', () => {
   const asJson = (v: unknown): unknown => JSON.parse(JSON.stringify(v, (_k, x: unknown) => (x instanceof Set ? ['Set', ...x] : x)));
-  it('タイトル・文字の並び・シェーダーの文・描画の入れ物の大きさ', () => {
+  it('タイトル・文字の並び・シェーダーのソース・描画用の配列の大きさ', () => {
     const v = [
       TI.TITLE_LINES,
       TI.LOGO_ART,

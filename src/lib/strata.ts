@@ -108,7 +108,7 @@ export const LAB_THEMES = [
   { k: 'l_violet', col: [0.65, 0.45, 1.0], fix: 'orb', msg: '灯の下に、書きかけの羊皮紙が散らばっている。' },
 ];
 export const SUNKEN_THEMES = [nth(RUIN_THEMES, 0), nth(RUIN_THEMES, 3)];
-/** 支道の中身（層の形・テーマ・からくり・宝物庫・群れ） */
+/** 支道の中身（層の形・テーマ・部屋の仕掛け・宝物庫・群れ） */
 export const BRANCH_STRATA = {
   crypt: {
     k: 'maze',

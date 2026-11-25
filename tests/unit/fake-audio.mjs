@@ -9,7 +9,7 @@ export function fakeAudioClass(log, state = 'running', panner = true) {
     return fakeAudio(log, state, panner);
   };
 }
-/** 記録を1つの文字にする（NaN・Infinity・undefined も、null にまとめずに見分ける） */
+/** 記録を1つの文字列にする（NaN・Infinity・undefined も、null にまとめずに見分ける） */
 export const logText = (v) =>
   JSON.stringify(v, (k, x) => (x === undefined ? 'undefined' : typeof x === 'number' && !Number.isFinite(x) ? String(x) : x));
 const finite = (a) => {

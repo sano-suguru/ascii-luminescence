@@ -5,7 +5,7 @@ import { lookup, nth } from '../../src/lib/array.ts';
 describe('nth', () => {
   it('i 番目を返す（型付き配列も）', () => {
     expect(nth([3, 4, 5], 1)).toBe(4);
-    expect(nth(new Uint8Array([7, 0]), 1)).toBe(0); // 0 や空の文字も、ある値として返す
+    expect(nth(new Uint8Array([7, 0]), 1)).toBe(0); // 0 や空の文字列も、ある値として返す
     expect(nth([''], 0)).toBe('');
   });
   it('無ければ止まる（範囲の外・負・穴）', () => {

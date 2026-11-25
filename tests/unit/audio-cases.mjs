@@ -1,5 +1,5 @@
-// テストの道具：音を鳴らす関数を、たくさんの場合で呼び、偽の Web Audio の記録と状態の変わり方を、1つの文字にまとめる。
-// F は関数の入れ物（src/lib/audio.ts の import * など）。audio.test.mjs が、この文字の指紋を、移す前の古い JS と同じ値として確かめる。
+// テストの道具：音を鳴らす関数を、たくさんの場合で呼び、偽の Web Audio の記録と状態の変わり方を、1つの文字列にまとめる。
+// F は関数をまとめた物（src/lib/audio.ts の import * など）。audio.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
 // 場合は、音の大きさ・向き・位置・音が出せる状態か・左右の部品の有無・まわりの様子を、シードの乱数で変える。
 // まわりの様子は、迷宮の生成を使わずに、ここで小さな地図（水・溶岩・沼・崖・水晶の塊と、洞窟の部屋）を作る（迷宮の生成を変えても、この指紋は変わらない）。
 // 書き換えた状態（SND・player・here・blaze）と、setTimeout・Math.random・window は、終わったら元に戻す。
@@ -88,7 +88,7 @@ export function audioCases(F, seeds) {
       }),
     );
   };
-  // 音の部品を作る窓（鳴らせるのは約85%。左右の部品が無いのは約15%）
+  // 音の部品を作る偽の window（鳴らせるのは約85%。左右の部品が無いのは約15%）
   const audioWindow = (r) => ({ AudioContext: fakeAudioClass(log, r() < 0.85 ? 'running' : 'suspended', r() >= 0.15) });
   const base = (r, withCtx = true) => {
     player.x = 4 + r() * (MW * CELL - 8);

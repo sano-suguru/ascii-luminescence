@@ -93,7 +93,7 @@ function drawSwing(){
     dyn(cx0+fx*0.9+rx*u+ux*v,cy0+fy*0.9+uy*v,cz0+fz*0.9+rz*u+uz*v,G(q%2?'/':'-'),0.16,(player.swingCol||[0.8,0.75,0.65])[0]*2*(1-k*0.6),(player.swingCol||[0.8,0.75,0.65])[1]*2*(1-k*0.6),(player.swingCol||[0.8,0.75,0.65])[2]*2*(1-k*0.6)); }
 }
 
-// ---------------------------------------------------------------- runes (stage B): attacks and elements held in each hand, random modifiers, chanting, reactions
+// ---------------------------------------------------------------- runes: attacks and elements held in each hand, chanting, reactions
 // RUNE_DEF は src/lib/runes.ts（src/game/imports.mjs で読む）
 // ルーンの名前・色・付けられるか（runeName・canPut など）は src/lib/runes.ts、手と持ち物の処理（makeRune・effHand・isTwo など）は src/lib/gear.ts
 // what a trait does at its level: its first or third step, and the fifth when reached

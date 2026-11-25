@@ -14,7 +14,7 @@ import { parseAst } from 'vite';
 import { gameSource, gameLayout, locate } from './game-source.mjs';
 
 const root = join(import.meta.dirname, '..');
-// 状態の入れ物（段階7b）。無ければ空（入れ物の名前の確かめをしない）
+// 状態の入れ物（src/lib/state.ts の export）。無ければ空（入れ物の名前の確かめをしない）
 const STATE = join(root, 'src/lib/state.ts');
 const stateExports = existsSync(STATE) ? await import(STATE) : {};
 const quiet = process.argv.includes('--quiet');

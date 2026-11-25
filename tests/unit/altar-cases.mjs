@@ -1,5 +1,5 @@
-// テストの道具：祭壇とルーンを置く関数を、たくさんの場合で呼び、返す値と、階の床の物・湧く所の変わり方を、1つの文字にまとめる。
-// F は関数の入れ物（src/lib/altars.ts・unlocks.ts の関数と、gear.ts の randomRuneType）。altars.test.mjs が、この文字の指紋を、移す前の古い JS と同じ値として確かめる。
+// テストの道具：祭壇とルーンを置く関数を、たくさんの場合で呼び、返す値と、階の床の物・湧く所の変わり方を、1つの文字列にまとめる。
+// F は関数をまとめた物（src/lib/altars.ts・unlocks.ts の関数と、gear.ts の randomRuneType）。altars.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
 // 階は、迷宮の生成を使わずに、ここで小さな階（部屋・床・水・湧く所）を作る（迷宮の生成を変えても、この指紋は変わらない）。
 // 場合ごとに、手（武器・特性・枠・体の枠）・解放・開発用モード・深さ・体力・探索のシード・番人の群れを、シードの乱数で変える。
 // 書き換えた状態（here・gear・adv・player・saved）と Math.random は、終わったら元に戻す。
@@ -126,7 +126,7 @@ export function altarCases(F, seeds) {
         res.push(F.forgeOptions(Math.floor(r() * 4)).map((f) => [f.w.uid, f.k, f.from, f.to]));
         for (const k of ['cavern', 'ruins', 'magma', 'deep']) res.push(F.forgeDepthOf(k));
         res.push(F.vaultArea({ i: cell() }, 1 + Math.floor(r() * 4)));
-        // 祭壇：ふつう・主（番人つき）・鍛え。2回目の altarFill は何もしない
+        // 祭壇：ルーンの祭壇・主の祭壇（番人つき）・鍛えの祭壇。2回目の altarFill は何もしない
         F.placeAltar(cell(), 'a0');
         F.placeAltar(cell(), 'a1', { lord: true, guardG: Math.floor(r() * 6) });
         F.placeAltar(cell(), 'a2', { forge: true });
