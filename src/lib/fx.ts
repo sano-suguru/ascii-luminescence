@@ -1,14 +1,15 @@
 // 火と術の跡を描く（もとは src/game/15-sound-fire.js の drawFire、26-spells-hud.js の drawFrozen、24-goal.js の addBolt・sparkCrown・drawBoltFx、
 // 20-chant-hits.js の drawZones）：燃えているマスの炎と投げた火花、凍らせた水、たどれる稲妻（ぎざぎざの線がちらつき、遅れて落ちる稲妻を順に起こす）、
-// 当たった生き物の頭の火花の輪、床の目印。毎フレーム、世界の中に文字を置き（dyn）、粒子を出す（spawn）。
+// 当たった生き物の頭の火花の輪、床の目印と魔法の場。毎フレーム、世界の中に文字を置き（dyn）、粒子を出す（spawn）。
 // 状態の入れ物 blaze（火）・fight（稲妻・目印）・vfx（稲妻の光り）・player に頼る。呼ぶのは古い JS の描画（30-loop-init.js の tick と
 // 22-world-hints.js の drawRunesWorld）と、稲妻を出す処理（20-chant-hits.js・26-spells-hud.js）。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
-import { nth } from './array.ts';
+import { must, nth } from './array.ts';
 import { G } from './glyphs.ts';
 import { jagged } from './math.ts';
 import { dyn, spawn } from './particles.ts';
 import { mpick, mr } from './random.ts';
+import { elemCol } from './runes.ts';
 import { type Monster, blaze, fight, player, vfx } from './state.ts';
 import { CELL, MW, cpos } from './world.ts';
 
@@ -167,7 +168,7 @@ export function drawBoltFx(_t: number, dt: number): void {
   fight.boltFx = fight.boltFx.filter((f) => f.t < f.life);
 }
 
-/** 床の目印（雨や落ちてくる物の落ちる場所）：回る点の輪。星の目印は + の輪と、真ん中の * */
+/** 床の目印（雨や落ちてくる物の落ちる場所）：回る点の輪。星の目印は + の輪と、真ん中の *。魔法の場（30 より遠い物は描かない）：性質ごとの文字の輪（できてから 1.5 秒かけて明るくなる） */
 export function drawZones(t: number): void {
   for (const mk of fight.marks) {
     const n = mk.star ? 14 : 18,
@@ -191,5 +192,30 @@ export function drawZones(t: number): void {
       );
     }
     if (mk.star) dyn(mk.x, 0.08, mk.z, G('*'), 0.3, c0 * 2.5 * b, c1 * 2.5 * b, c2 * 2.5 * b, 0, 0);
+  }
+  for (const zn of fight.zones) {
+    if (Math.hypot(zn.x - player.x, zn.z - player.z) > 30) continue;
+    const c = elemCol(zn.el),
+      f = Math.min(1, zn.t / 1.5),
+      n = Math.round(10 + zn.r * 8);
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + t * 0.3,
+        rr = zn.r * (0.92 + 0.08 * Math.sin(t * 3 + k)),
+        b = (zn.el ? 0.9 : 0.35) * f * (0.7 + 0.3 * Math.sin(t * 4 + k * 1.3));
+      // 色の無い性質は無い（無ければ、元と同じく、ここで止まる）
+      const col = must(c, '魔法の場の色');
+      dyn(
+        zn.x + Math.cos(a) * rr,
+        0.05,
+        zn.z + Math.sin(a) * rr,
+        G(zn.el === 'fire' ? '^' : zn.el === 'ice' ? '*' : zn.el === 'thunder' ? '/' : zn.el === 'poison' ? '%' : '.'),
+        0.15,
+        (col[0] ?? NaN) * b * 1.8,
+        (col[1] ?? NaN) * b * 1.8,
+        (col[2] ?? NaN) * b * 1.8,
+        0,
+        0,
+      );
+    }
   }
 }

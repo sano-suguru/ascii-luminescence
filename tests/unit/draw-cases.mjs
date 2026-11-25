@@ -3,7 +3,7 @@
 // 返す値と、置いた文字と粒子の配列の中身・見た目の乱数を引いた数・伝言・偽の Web Audio の記録・状態の変わり方を、1つの文字列にまとめる。
 // F は関数をまとめた物。draw.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
 // 階は Node で本物の迷宮を生成する（gen-places.ts の全部の場所。本物の備品・扉・灯り・巣・階段が要るため）ので、迷宮の生成を変えると、この指紋も変わる。
-// 1つの場合では、本物の階に、全部の種類の備品・巣・泉・墓・伝説の物・燃えるマス・凍ったマス・稲妻・床の目印・生き物（扉のそば・クモ・階段の番）を
+// 1つの場合では、本物の階に、全部の種類の備品・巣・泉・墓・伝説の物・燃えるマス・凍ったマス・稲妻・床の目印・魔法の場・生き物（扉のそば・クモ・階段の番）を
 // シードの乱数で足し、プレイヤーをどれかのそばに置いて、関数を続けて呼ぶ。
 // テストを .mjs で書くのは、偽の画面の部品・偽の Web Audio を、本物の型に合わせられないため。
 // 書き換えた状態と、document・window・Math.random は、終わったら元に戻す。
@@ -338,6 +338,21 @@ export async function drawCases(F, seeds) {
         c: [r(), r(), r()],
         ...(chance(0.5) ? { star: chance(0.7) } : {}),
       }));
+      // 魔法の場（性質の無い場も）
+      fight.zones = Array.from({ length: 3 }, () => {
+        const r0 = r() * 3;
+        return {
+          x: px + (r() - 0.5) * 50,
+          z: pz + (r() - 0.5) * 50,
+          r: r0,
+          r0,
+          sp: null,
+          el: chance(0.2) ? null : pick(['fire', 'ice', 'thunder', 'poison', ...RUNE_TYPES.elem]),
+          t: r() * 3,
+          tick: 0,
+          grow: false,
+        };
+      });
       vfx.zapFlash = chance(0.3) ? null : { x: px, y: 1, z: pz, col: [1, 1, 1], t: chance(0.3) ? 999 : r(), r: 8 };
       ui.gallery = chance(0.1) ? { mode: 'beast' } : null;
       clock.time = 50 + r() * 200;

@@ -54,6 +54,6 @@ describe('移す前と同じ', () => {
     expect(calls.filter((c) => c.dn > 0).length).toBeGreaterThan(1000);
     expect(calls.filter((c) => c.pN > 0).length).toBeGreaterThan(300);
     expect(calls.filter((c) => c.threw).length).toBeLessThan(5);
-    expect([fnv(all), all.length]).toEqual(['4512cf7c', 5470336]);
+    expect([fnv(all), all.length]).toEqual(['be90f75b', 5447285]);
   }, 60000);
 });

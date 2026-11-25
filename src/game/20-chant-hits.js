@@ -320,7 +320,7 @@ function updateZones(dt){ updateRains(dt); for(const L of fight.laters)if(clock.
   for(const zn of fight.zones){ zn.t-=dt; zn.tick-=dt; if(zn.grow)zn.r=Math.min(zn.r0*1.7,zn.r+dt*0.18);
     if(zn.tick<=0&&zn.el){ zn.tick=0.5; for(const m of here.monsters){ if(!hittable(m)||m.ty.critter)continue; if(Math.hypot(m.x-zn.x,m.z-zn.z)<zn.r+0.3*m.ty.scale){ m.playerT=clock.time; applyElem(m,zn.el,zn.sp,1); } } } }
   fight.zones=fight.zones.filter(zn=>zn.t>0); }
-// 床の目印を描く drawZones は src/lib/fx.ts（src/game/imports.mjs で読む）
+// 床の目印と魔法の場を描く drawZones は src/lib/fx.ts（src/game/imports.mjs で読む）
 // a hit somewhere in the world from other code
 function burstFire(i,r,str){
   const cx=i%MW, cz=(i/MW)|0, rr=Math.ceil(r);
