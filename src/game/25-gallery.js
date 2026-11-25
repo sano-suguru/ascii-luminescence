@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------- what has been met and found (kept across runs); a developer switch shows everything
+// 保存する saveSet は src/lib/save.ts（src/game/imports.mjs で読む）
 const loadSet=k=>{ try{ return new Set(JSON.parse(localStorage.getItem(k)||'[]')); }catch(e){ return new Set(); } };
-const saveSet=(k,s)=>{ try{ localStorage.setItem(k,JSON.stringify([...s])); }catch(e){} };
 saved.SEEN=loadSet('al_seen');
 saved.RSEEN=loadSet('al_runes');
 // developer mode (saved.DEVALL) is read in 17-meta.js, before the title is built

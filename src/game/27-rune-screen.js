@@ -17,14 +17,8 @@ function handSummary(h){ const H=effHand(h); syncHand(H); const rs=handRunes(H),
   if(H.trig)parts.push(`${RUNE_DEF[H.trig.type].name}、ひとりでに撃つ`);
   const no=rs.filter(r=>RUNE_DEF[r.type].cat==='mod'&&!modWorks(RUNE_DEF[r.type].mk,H)).map(r=>runeName(r)); if(no.length)parts.push(`<span class="dim">${no.join('・')}はこの手には効かない</span>`);
   return parts.join('　'); }
+// ルーンの説明の5行 detailLines は src/lib/runes.ts、武器を持つ equipWeapon・手の枠に入れる slotSet・空いた枠 freeSlotFor・着けた護符の数 bodyN は src/lib/gear.ts（src/game/imports.mjs で読む）
 const handResult=h=>{ const H=gear.hands[h]; return (H.trig?`${RUNE_DEF[H.trig.type].name}：`:'')+handName(H); };
-function detailLines(ru){ const W=PACK_W-4;
-  if(!ru)return ['<span class="lab">武器・ルーン・護符にマウスを乗せると、ここに説明が出る</span>','','','',''];
-  const d=RUNE_DEF[ru.type], desc=wrapPlain(d.desc,W-4), g=`<b class="rn" style="color:${css(runeCol(ru))}">${d.ch}</b>`;
-  if(d.cat==='atk'){ const tr=trList(ru); return [`${d.name}　<span class="lab">（${d.wk||'武器'}・${d.chant>0?`詠唱 ${d.chant}秒`:'詠唱なし'}）</span>`,`    <span class="lab">攻撃　${d.desc}</span>`,...[0,1,2].map(i=>tr[i]?`    <span style="color:${css(TIER_COL[1])}">特性　${trName(ru.type,tr[i])} Lv${tr[i].lv}</span><span class="lab">：${trDesc(ru.type,tr[i])}</span>`:(i===0?'    <span class="dim">特性なし</span>':''))]; }
-  if(d.cat==='body')return [`${g} ${d.name}`,`    <span class="lab">${desc[0]||''}</span>`,`    <span class="lab">${desc[1]||''}</span>`,`    <span class="dim">同じ護符を二つ着けると、効果が重なる</span>`,`    <span class="lab">着ける所：身の護符の枠（開いている枠だけ。どのビルドでも共通）</span>`];
-  if(d.cat==='mod')return [`${g} ${runeName(ru)}　<span class="lab">（効き方のルーン${ru.strong?'・強い版':''}）</span>`,`    <span class="lab">${desc[0]||''}</span>`,`    <span class="lab">${desc[1]||''}</span>`,`    <span class="dim">効くもの：${modTargets(d.mk)}</span>`,`    <span class="lab">はめる所：手のルーンの枠（同じ変化は1つの手に2つまで）</span>`];
-  return [`${g} ${d.name}のルーン　<span class="lab">（${CAT_NAME[d.cat]}）</span>`,`    <span class="lab">${desc[0]||''}</span>`,`    <span class="lab">${desc[1]||''}</span>`,d.cat==='trig'?'':`    <span class="dim">2種類なら交互に撃つ。同じ性質を重ねると強まる</span>`,`    <span class="lab">はめる所：手のルーンの枠（${d.cat==='trig'?'発動は1つの手に1つまで':'性質は1つの手に2種類まで'}）</span>`]; }
 function setPackDetail(ru){ const el=document.getElementById('pack'); if(!el)return; const L=detailLines(ru);
   el.querySelectorAll('.pdet').forEach((sp,i)=>{ sp.innerHTML=padTo(clipHtml(L[i]||'',PACK_W-3),PACK_W-2); }); }
 // choosing only changes marks and highlights
@@ -84,22 +78,14 @@ function renderInv(){
     el.addEventListener('mouseleave',()=>{ if(packHover){ packHover=null; setPackDetail(packSel&&packSel.ru); } });
     el.addEventListener('contextmenu',e=>{ e.preventDefault(); if(packSel){ packSel=null; updatePackSel(); } }); }
 }
-function equipWeapon(h,ru){ const out=[]; if(isTwo()){ out.push(gear.hands.R.atk); gear.hands.L.atk=null; gear.hands.R.atk=null; }
-  if(ru&&RUNE_DEF[ru.type].two){ for(const k of ['L','R'])if(gear.hands[k].atk&&!out.includes(gear.hands[k].atk))out.push(gear.hands[k].atk); gear.hands.L.atk=ru; gear.hands.R.atk=ru; }
-  else { if(gear.hands[h].atk&&!out.includes(gear.hands[h].atk))out.push(gear.hands[h].atk); gear.hands[h].atk=ru||null; }
-  syncHands(); return out.filter(Boolean); }
+redraw.inv=renderInv; // TypeScript の側（src/lib/altars.ts の takeRune など）が、装備の画面を描き直す時に呼ぶ（src/lib/redraw.ts）
 function slotGet(h,s){ if(h==='B')return gear.hands.B[s]; if(s==='atk')return gear.hands[h].atk; return gear.hands[h].slots[+s.slice(1)]||null; }
-function slotSet(h,s,v){ if(h==='B')gear.hands.B[s]=v; else if(s==='atk')gear.hands[h].atk=v; else gear.hands[h].slots[+s.slice(1)]=v; }
 function slotAccepts(h,s,ru){ const c=RUNE_DEF[ru.type].cat; if(h==='B')return c==='body'&&(+s.slice(1))<(adv.runState.bodyOpen||0); if(s==='atk')return c==='atk'; return canPutAt(h,+s.slice(1),ru); }
-function freeSlotFor(ru,order){ let ord=(order||['R','L']).slice(); const d=RUNE_DEF[ru.type]; if(d.cat==='mod')ord.sort((a,b)=>(modWorks(d.mk,gear.hands[b])?1:0)-(modWorks(d.mk,gear.hands[a])?1:0));
-  for(const h of ord){ const H=gear.hands[h]; for(let i=0;i<(H.slotN||2);i++)if(!H.slots[i]&&canPutAt(h,i,ru))return [h,'s'+i]; } return null; }
 function autoEquip(ru){ const cat=RUNE_DEF[ru.type].cat; let pick=null;
   if(cat==='body'){ const n=adv.runState.bodyOpen||0; if(!n)return false; let i=[0,1].slice(0,n).find(i=>!gear.hands.B['b'+i]); if(i===undefined)i=0; pick=['B','b'+i]; }
   else if(cat==='atk'){ const j=gear.bag.indexOf(ru); if(j>=0)gear.bag.splice(j,1); const out=equipWeapon(isTwo()?'R':(['R','L'].find(h=>!gear.hands[h].atk)||'R'),ru); gear.bag.push(...out); packSel=null; return true; }
   else { pick=freeSlotFor(ru); if(!pick){ for(const h of ['R','L']){ const H=gear.hands[h]; for(let i=0;i<(H.slotN||2)&&!pick;i++)if(H.slots[i]&&RUNE_DEF[H.slots[i].type].cat===cat&&canPutAt(h,i,ru))pick=[h,'s'+i]; } } }
   if(!pick)return false; const old=slotGet(pick[0],pick[1]), j=gear.bag.indexOf(ru); if(j>=0)gear.bag.splice(j,1); if(old)gear.bag.push(old); slotSet(pick[0],pick[1],ru); packSel=null; syncHands(); return true; }
-// how many of a charm sit in the open body slots
-function bodyN(type){ if(!gear.hands||!gear.hands.B)return 0; let n=0; for(let i=0;i<(adv.runState.bodyOpen||0);i++){ const ru=gear.hands.B['b'+i]; if(ru&&ru.type===type)n++; } return n; }
 function packSlot(h,s){
   const cur=slotGet(h,s);
   if(packSel&&packSel.from==='bag'){ const ru=packSel.ru; if(slotAccepts(h,s,ru)){ const i=gear.bag.indexOf(ru); if(i>=0)gear.bag.splice(i,1); if(s==='atk')gear.bag.push(...equipWeapon(h,ru)); else { if(cur)gear.bag.push(cur); slotSet(h,s,ru); } packSel=null; } }
