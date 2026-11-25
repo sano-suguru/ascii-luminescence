@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------- level control
 let expo=1.1;
 adv.runSeed=(Math.random()*1e9)>>>0;
-const levelSeed=()=>((Math.imul(adv.runSeed,2654435761)^Math.imul(here.depth,1013904223)^(here.branch?Math.imul(here.branch.lvl*31+here.branch.key.charCodeAt(0),0x27d4eb2d):0)^(here.realm?Math.imul(here.realm.key.charCodeAt(0)+7,0x165667b1):0)^(here.inter?Math.imul(here.inter.key.charCodeAt(0)+13,0x2c1b3c6d):0))>>>0)||1;
+// levelSeed は src/lib/levels.ts（src/game/imports.mjs で読む）
 function setFog(){ const k=here.D.prof.fogDark, f=(here.D.stratum.fog?here.D.stratum.fog:here.D.stratum.k==='magma'?[0.016,0.004,0.003]:here.D.stratum.k==='abyss'?[0.007,0.003,0.014]:FOGS[(here.depth-1)%FOGS.length]).map(v=>v*k); fogCol.set(f[0],f[1],f[2]); renderer.setClearColor(new T.Color(f[0],f[1],f[2]),1); fogBase=0.05+Math.min(here.depth-1,6)*0.002; U.uFogDen.value=fogBase; }
 let lastStratum=null;
 function showStratum(st){
@@ -130,14 +130,9 @@ function drawTraps(t){
 }
 
 // ---------------------------------------------------------------- life and death, and plain real-time melee
-// numbers are this game's own, set by tier (not copied from any other game's tables)
-// [hp, min damage, max damage, seconds between attacks]
-const MSTAT={r:[6,1,3,1.0],k:[7,1,4,1.1],j:[8,2,4,0.9],e:[18,3,7,1.4],m:[12,1,3,0.9],b:[4,0,0,9],g:[15,2,5,1.1],c:[10,2,4,1.3],J:[50,1,3,1.0],v:[18,2,6,0.8],
-  O:[55,9,13,1.8],w:[10,4,8,1.6],W:[50,6,13,1.5],P:[20,4,9,1.4],S:[20,3,7,1.1],Zf:[25,4,8,1.0],Zi:[25,4,8,1.0],Zl:[25,4,8,1.0],s:[18,2,6,1.2],sw:[22,3,7,1.2],
-  B:[55,3,7,1.6],N:[75,7,11,1.5],l:[60,5,11,1.4],K:[120,8,15,2.0],T:[65,10,15,1.7],Y:[300,4,8,2.2],D:[150,20,30,2.4],L:[35,8,14,1.8],n:[12,2,5,1.0],X:[200,12,20,2.0]};
+// 生き物の強さ statOf は src/lib/monsters.ts（src/game/imports.mjs で読む）。強さの表 MSTAT は src/lib/creatures.ts（statOf だけが読む）
 // WEAPON・SLEEP_MULT は src/lib/runes.ts（src/game/imports.mjs で読む）
 // roll は src/lib/random.ts（src/game/imports.mjs で読む）
-const statOf=m=>{ const st=MSTAT[m.ty.sk||m.key]||[12,2,5,1.2]; return trialOn('fury')?[st[0]*1.3,st[1]*1.3,st[2]*1.3,st[3]]:st; };
 const hostile=m=>!m.ty.critter&&!m.ty.peaceful&&!m.ty.watcher&&m.ty.form!=='bloat'&&!m.dead;
 const hittable=m=>!m.dead&&!m.ty.peaceful;
 const foe=m=>hittable(m)&&(hostile(m)||m.ty.watcher||m.ty.form==='bloat'||m.ty.form==='shroom'||(m.ty.critter==='mimic'&&!m.hidden));
@@ -210,7 +205,7 @@ function loreRows(R,f){ if(!R)return []; const rows=[`${f('|')}  <b>伝承</b>`]
   else { const nx=UNLOCKS.filter(u=>!unlocked(u.id)).sort((a,b)=>a.cost-b.cost)[0]; if(nx)rows.push(`${f('|')}    <span class="lab">次の解放まで あと ${nx.cost-loreLeft()}（${nx.name} ${nx.cost}）</span>`); } return rows; }
 // the grave: what the fallen player leaves (one thing, chosen on the results screen)
 let graveSel=0, graveCands=[];
-function graveRune(g){ const ru=makeRune(g.type); ru.strong=false; if(g.traits&&g.traits.length)ru.traits=g.traits.map(t=>({k:t.k,lv:t.lv-1})).filter(t=>t.lv>0); return ru; }
+// 墓のルーンを作る graveRune は src/lib/gear.ts（祭壇などを置く src/lib/altars.ts が使う）
 function graveCandidates(){ const out=[], seen=new Set(), add=ru=>{ if(ru&&!seen.has(ru)){ seen.add(ru); out.push(ru); } };
   add(gear.hands.L.atk); add(gear.hands.R.atk); for(const h of ['L','R'])for(const r of gear.hands[h].slots)add(r); if(gear.hands.B){ add(gear.hands.B.b0); add(gear.hands.B.b1); } for(const r of gear.bag)add(r); return out.slice(0,10); }
 function saveGrave(){ if(adv.won||!graveCands)return; const ru=graveSel>0?graveCands[graveSel-1]:null; saved.META.grave=ru?{k:(STRATA.find(st=>here.depth>=st.from&&here.depth<=st.to)||{}).k||'',depth:here.depth,cause:adv.runStats.cause||'',item:serRune(ru)}:null; saveMeta(); graveCands=[]; }

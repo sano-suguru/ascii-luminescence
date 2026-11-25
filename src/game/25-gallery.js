@@ -105,7 +105,7 @@ function renderGallery(){
 }
 // ---------------------------------------------------------------- the testing chamber: every rune found so far, and dummies that get back up
 // DUMMY_KINDS は src/lib/names.ts（src/game/imports.mjs で読む）
-for(const d of DUMMY_KINDS){ MTYPES[d.k]={ch:'+',name:d.name,col:d.col,form:'humanoid',scale:0.95,speed:0,fl:0,light:1.6,trail:0,dummy:true,verb:'藁と石で組まれた的。何度倒れても、また起き上がる'}; MSTAT[d.k]=[60,0,0,99]; }
+for(const d of DUMMY_KINDS){ MTYPES[d.k]={ch:'+',name:d.name,col:d.col,form:'humanoid',scale:0.95,speed:0,fl:0,light:1.6,trail:0,dummy:true,verb:'藁と石で組まれた的。何度倒れても、また起き上がる'}; }
 RES.dummyF={fire:0.2,ice:2}; RES.dummyP={poison:0.2,fire:2}; RES.dummyT={thunder:2,fire:0.5};
 function spawnDummy(d){ const m=makeMonster({key:d.k,cx:Math.floor(d.x/CELL),cz:Math.floor(d.z/CELL),g:-1,lead:true}); m.x=d.x; m.z=d.z; m.yaw=0; m.sleep=false; m.wait=1e9; m.noticed=false; m.dsum=0;
   here.monsters.push(m); d.m=m; d.respawn=1.5; for(let q=0;q<14;q++){ const a=mr()*6.28; spawn(d.x,0.4,d.z,Math.cos(a),0.6+mr(),Math.sin(a),0.6,G('.'),0.12,1.2,1.1,0.9,0); } }

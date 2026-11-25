@@ -15,6 +15,7 @@ import { makeBeastType } from './bodies/lords.ts';
 import type { Art, History, HistoryEvent } from './history.ts';
 import type { Rune } from './runes.ts';
 import type { MonsterType } from './creatures.ts';
+import type { Grave } from './progress.ts';
 import {
   type Horde,
   type Stratum,
@@ -277,10 +278,18 @@ export interface Item {
   forgeW?: Rune;
   forgeK?: string;
   forgeTo?: number;
-  /** 番人の群れ（この群れが生きている間は暗く、取れない） */
-  guardG?: number;
+  /** 番人の群れ（この群れが生きている間は暗く、取れない。番人を置けなかった祭壇では undefined の欄がある） */
+  guardG?: number | undefined;
   /** 枠を開ける選択肢の名前 */
   label?: string;
+  /** 深さ1の始まりのそばの台（3つから1つ選ぶ） */
+  pedestal?: boolean;
+  /** 強敵の部屋の褒美（強敵が倒れるまで取れない） */
+  elitePrize?: boolean;
+  /** 宝物庫の褒美を取った時に起きること（'guard'：番人が目を覚ます、'collapse'：天井が崩れる） */
+  ev?: string;
+  /** 墓の記録（kind が 'grave' の物） */
+  g?: Grave;
 }
 /** その階の主の種類（生き物の表の1つを元に、名前や形を変えた物。古い JS が MTYPES.lord に入れる） */
 export type LordType = MonsterType & { sk: string; boss: boolean };

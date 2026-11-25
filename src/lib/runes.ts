@@ -181,6 +181,12 @@ export const RUNE_TYPES = {
 };
 /** ルーン文字を描くフォント */
 export const RUNE_FONT = '"Noto Sans Runic","Segoe UI Historic","Segoe UI Symbol",FreeMono,Unifont,serif';
+/** 保存したルーン（墓の記録などに書く形。前の版の記録には、strong・traits が無いこともある） */
+export interface SavedRune {
+  type: string;
+  strong?: boolean;
+  traits?: RuneTrait[];
+}
 /** ルーンを保存する形（種類・強い印・特性） */
 export const serRune = (ru: Rune): { type: string; strong: boolean; traits: RuneTrait[] } => ({
   type: ru.type,
