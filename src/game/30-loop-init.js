@@ -150,7 +150,7 @@ if(TEST)window.__test={
   // where a creature is drawn (the first one alive with this key, e.g. 'lord' or 'final'): its glyphs' box in the world (y0, y1: lowest and highest), the ceiling above it,
   // their box on the screen in CSS pixels (x0..x1, y0..y1, kept to the screen), and the share of glyphs that fall outside the screen (cut)
   monsterView(key){ const m=here.monsters.find(m=>m.key===key&&!m.dead); if(!m)return null;
-    const d0=dn, p0=pN; let d1=d0; const pts=[]; try{ drawMonster(m,clock.time); d1=dn; for(let k=d0;k<d1;k++)pts.push([dPos[k*3],dPos[k*3+1],dPos[k*3+2]]); } finally{ dn=d0; pN=p0; }
+    const d0=buf.dn, p0=buf.pN; let d1=d0; const pts=[]; try{ drawMonster(m,clock.time); d1=buf.dn; for(let k=d0;k<d1;k++)pts.push([dPos[k*3],dPos[k*3+1],dPos[k*3+2]]); } finally{ buf.dn=d0; buf.pN=p0; }
     if(!pts.length)return {key,x:m.x,z:m.z,glyphs:0};
     camera.updateMatrixWorld(); const W=canvas.clientWidth, H=canvas.clientHeight, v=new T.Vector3(); let out=0, y0=1e9, y1=-1e9; const sb=[1e9,1e9,-1e9,-1e9];
     for(const [x,y,z] of pts){ y0=Math.min(y0,y); y1=Math.max(y1,y); v.set(x,y,z).project(camera); const sx=(v.x+1)/2*W, sy=(1-v.y)/2*H;
