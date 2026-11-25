@@ -7,8 +7,8 @@ import { MTYPES } from './creatures.ts';
 import { type Item, type Room, type Spawn } from './generate.ts';
 import { type Side, equipWeapon, freeSlotFor, graveRune, isTwo, makeRune, makeStrong, randomRuneType, slotSet, syncHands } from './gear.ts';
 import { renderHotbar } from './hotbar.ts';
+import { renderInv } from './inventory.ts';
 import { msg } from './log.ts';
-import { redraw } from './redraw.ts';
 import { saveSet } from './save.ts';
 import { RUNE_CHARS } from './glyphs.ts';
 import { levelSeed } from './levels.ts';
@@ -755,7 +755,7 @@ export function mergeMod(ru: Rune): boolean {
     `<b class="rn" style="color:${cssOf(TIER_COL[3])}">${String(d.ch)}</b>2つの「${String(d.nm)}」のルーンが、ひとつの強い版にまとまった（${runeName(tw)}）。`,
   );
   renderHotbar();
-  if (ui.invOpen) redraw.inv();
+  if (ui.invOpen) renderInv();
   return true;
 }
 /** 祭壇で選んだルーン ru を袋に入れる（効き方のルーンは、袋の同じ種類とまとめる） */
@@ -769,7 +769,7 @@ export function placeChosen(ru: Rune): void {
     `<b class="rn" style="color:${cssOf(col)}">${String(def.ch)}</b>${thingLabel(ru)}を手にした。袋に収めた。Tab で付け替えられる（祭壇のそばなら詠唱はいらない）。`,
   );
   renderHotbar();
-  if (ui.invOpen) redraw.inv();
+  if (ui.invOpen) renderInv();
 }
 /**
  * 拾ったルーン ru を、空いた所に入れる（護符は体の枠、武器は空いた手、ほかは手のルーンの枠。prefer の手を先に）。どこも空いていなければ袋。
@@ -815,5 +815,5 @@ export function takeRune(ru: Rune, prefer?: Side | null): void {
   syncHands();
   msg(`<b class="rn" style="color:${cssOf(col)}">${String(def.ch)}</b>${thingLabel(ru)}を手にした。${where}。`);
   renderHotbar();
-  if (ui.invOpen) redraw.inv();
+  if (ui.invOpen) renderInv();
 }
