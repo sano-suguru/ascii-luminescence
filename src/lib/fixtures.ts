@@ -34,10 +34,10 @@ export function drawFixtures(t: number, dt: number): void {
       x = f.x,
       z = f.z,
       ly = L ? L.y : 1.5;
-    // 色（3つより短い色は、元と同じく NaN になる）
-    const c0 = c[0] ?? NaN,
-      c1 = c[1] ?? NaN,
-      c2 = c[2] ?? NaN;
+    // 色（どの備品にも3つある）
+    const c0 = nth(c, 0),
+      c1 = nth(c, 1),
+      c2 = nth(c, 2);
     switch (f.type) {
       case 'brazier': {
         for (let k = 0; k < 3; k++) {
@@ -986,8 +986,9 @@ export function drawFixtures(t: number, dt: number): void {
           const q = Math.min(1, f.bt),
             rr = 0.15 + q * 0.7,
             b = 2.6 * (1 - q),
-            bx = f.bx ?? NaN,
-            bz = f.bz ?? NaN;
+            // 泡の位置は、泡が弾けていく度合い bt と一緒に入れる
+            bx = must(f.bx, '溶岩の泡の位置'),
+            bz = must(f.bz, '溶岩の泡の位置');
           for (let k = 0; k < 8; k++) {
             const a = (k / 8) * Math.PI * 2;
             dyn(

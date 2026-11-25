@@ -37,5 +37,5 @@ export const ceilAt = (x: number, z: number): number => {
   const cx = Math.floor(x / CELL),
     cz = Math.floor(z / CELL);
   if (cx < 0 || cz < 0 || cx >= MW || cz >= MH) return BASE_H;
-  return must(here.D, '今の階 here.D').ceil[cz * MW + cx] ?? NaN;
+  return nth(must(here.D, '今の階 here.D').ceil, cz * MW + cx);
 };

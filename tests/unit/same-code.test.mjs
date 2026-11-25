@@ -1,0 +1,104 @@
+// 構文の木で、移した関数と移す前の古い関数を比べる道具（tools/same-code.mjs）の単体テスト。
+// 規則ごとに「同じと言う物」と「違うと言う物」を小さな見本で確かめ、写し漏れ・係数・比べ方・乱数を引く順番の違いを見つけることも確かめる。
+import { describe, expect, it } from 'vitest';
+import { compareSources, legacyDecls } from '../../tools/same-code.mjs';
+
+/** 古い JS の文 oldJs と新しい .ts の文 newTs を比べ、関数ごとの違いの数・人が確かめる一覧・比べた名前を返す */
+function cmp(oldJs, newTs) {
+  const { results, review, compared } = compareSources(legacyDecls(new Map([['01-a.js', oldJs]])), [{ file: 'src/lib/a.ts', text: newTs }]);
+  return { n: Object.fromEntries(results.map((r) => [r.name, r.diffs.length])), review, compared: [...compared], results };
+}
+
+describe('同じと言う物', () => {
+  it('整形・括弧・引用符・コメント・型・export の違い', () => {
+    const r = cmp(
+      `function f(a,b){ const x=(a+b)*2; return g('s',x); }`,
+      `// 説明\nexport function f(a: number, b?: number): string {\n  const x = (a + b) * 2; // 型の無い所\n  return g("s", x);\n}\n`,
+    );
+    expect(r.n).toEqual({ f: 0 });
+  });
+  it('nth・lookup・must を元の読み方に戻す', () => {
+    expect(
+      cmp(`function f(a,o,x){ return a[1]+o[k]+x.y; }`, `export function f(a, o, x) { return nth(a, 1) + lookup(o, k) + must(x, 'x').y; }`)
+        .n,
+    ).toEqual({ f: 0 });
+  });
+  it('level() は、そのファイルの level が () => must(here.D, …) の時だけ here.D に戻す', () => {
+    const old = `function f(){ return here.D.stairs; }`;
+    expect(cmp(old, `const level = () => must(here.D, '今の階');\nexport function f() { return level().stairs; }`).n).toEqual({ f: 0 });
+    expect(cmp(old, `const level = () => here.D;\nexport function f() { return level().stairs; }`).n).toEqual({ f: 1 });
+  });
+  it('?? NaN は、算術・大小の比べ方・単項の -・Math.* の中だけ外す', () => {
+    expect(
+      cmp(
+        `function f(a,b){ return [a*2, a<b, -a, Math.max(a,1), a+1]; }`,
+        `export function f(a, b) { return [(a ?? NaN) * 2, (a ?? NaN) < b, -(a ?? NaN), Math.max(a ?? NaN, 1), (a ?? NaN) + 1]; }`,
+      ).n,
+    ).toEqual({ f: 0 });
+  });
+  it('Number(x) は、算術の中だけ外す', () => {
+    expect(cmp(`function f(a,dt){ return (a||0)-dt; }`, `export function f(a, dt) { return Number(a || 0) - dt; }`).n).toEqual({ f: 0 });
+  });
+  it('a op= b と a = a op b', () => {
+    expect(cmp(`function f(o,dt){ o.t-=dt; o.n+=1; }`, `export function f(o, dt) { o.t = (o.t ?? NaN) - dt; o.n += 1; }`).n).toEqual({
+      f: 0,
+    });
+  });
+  it('先に読む（const D = here.D、const [a, b] = 式）は戻し、新しく足した物だけを人が確かめる一覧に出す', () => {
+    const r = cmp(
+      `function f(E,i){ const c=here.col; g(here.D.x, here.D.y, E[i][0], E[i][1], c); }`,
+      `export function f(E, i) { const D = here.D, c = here.col; const [a, b] = nth(E, i); g(D.x, D.y, a, b, c); }`,
+    );
+    expect(r.n).toEqual({ f: 0 });
+    expect(r.review).toEqual(['f：D = here.D', 'f：[a, b] = E[i]']);
+  });
+  it('使わない引数の頭の _ と、ファイルの一番外の別名', () => {
+    const r = cmp(
+      `function f(t,dt){ return SPECIALS[dt]; }`,
+      `const specials: Record<string, number> = SPECIALS;\nexport function f(_t: number, dt: number) { return specials[dt]; }`,
+    );
+    expect(r.n).toEqual({ f: 0 });
+    expect(r.review).toEqual(['a.ts の一番外：specials = SPECIALS']);
+  });
+  it('型だけの書き方（as const・後ろの !）と、名前の ?', () => {
+    expect(
+      cmp(
+        `const T=['a','b']; function f(x){ return x.y; }`,
+        `export const T = ['a', 'b'] as const;\nexport function f(x?: { y: number }) { return x!.y; }`,
+      ).n,
+    ).toEqual({ T: 0, f: 0 });
+  });
+});
+
+describe('違うと言う物', () => {
+  const old = `function f(L,t,dt){ for(const a of L){ if(a.d<2.3)g(a); } for(const b of M){ h(b,mr(),mr()*2); } t+=dt; }`;
+  it('抜けた文（2つ目のループ）', () => {
+    expect(cmp(old, `export function f(L, t, dt) { for (const a of L) { if (a.d < 2.3) g(a); } t += dt; }`).n).toEqual({ f: 1 });
+  });
+  it('係数・比べ方・乱数を引く順番', () => {
+    expect(cmp(old, old.replace('2.3', '2.2')).n).toEqual({ f: 1 });
+    expect(cmp(old, old.replace('a.d<2.3', 'a.d<=2.3')).n).toEqual({ f: 1 });
+    expect(cmp(old, old.replace('h(b,mr(),mr()*2)', 'h(b,mr()*2,mr())')).n.f).toBeGreaterThan(0);
+  });
+  it('?? NaN を、undefined と NaN で結果が変わりうる所で外した時（=== ・関数に渡す・文字との +）', () => {
+    expect(cmp(`function f(a){ return a===undefined; }`, `export function f(a) { return (a ?? NaN) === undefined; }`).n).toEqual({ f: 1 });
+    expect(cmp(`function f(a){ g(a); }`, `export function f(a) { g(a ?? NaN); }`).n).toEqual({ f: 1 });
+    expect(cmp(`function f(a){ return 'x'+a; }`, `export function f(a) { return 'x' + (a ?? NaN); }`).n).toEqual({ f: 1 });
+  });
+  it('Number(x) を算術の外で使った時・a?.b と a.b', () => {
+    expect(cmp(`function f(a){ g(a||0); }`, `export function f(a) { g(Number(a || 0)); }`).n).toEqual({ f: 1 });
+    expect(cmp(`function f(a){ return a?.b; }`, `export function f(a) { return a.b; }`).n).toEqual({ f: 1 });
+  });
+  it('先に読んだ名前を、後で書き換えている時は戻さない', () => {
+    const r = cmp(`function f(){ g(here.D.x); }`, `export function f() { const D = here.D; D = 1; g(D.x); }`);
+    expect(r.n.f).toBeGreaterThan(0);
+    expect(r.review).toEqual([]);
+  });
+  it('違いの場所（古い文と新しい文の行）を出す', () => {
+    const r = cmp(`function f(a){\n  g(a);\n  h(a*2);\n}`, `export function f(a) {\n  g(a);\n  h(a * 3);\n}`);
+    expect(r.results[0].diffs).toEqual([{ old: '2', new: '3', oldLine: 3, newLine: 3 }]);
+  });
+  it('古い JS に無い名前は比べない', () => {
+    expect(cmp(`function f(){}`, `export function f() {}\nexport function g() { return 1; }`).compared).toEqual(['f']);
+  });
+});
