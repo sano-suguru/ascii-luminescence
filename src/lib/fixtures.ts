@@ -268,7 +268,7 @@ export function drawFixtures(t: number, dt: number): void {
         break;
       }
       case 'lamp': {
-        const top = ceilAt(x, z) - 0.15,
+        const top = (ceilAt(x, z) ?? NaN) - 0.15,
           yy = ly + Math.sin(t * 1.2 + f.ph) * 0.03;
         for (let y = top, k = 0; y > yy + 0.2 && k < 40; y -= 0.22, k++) dyn(x, y, z, G(':'), 0.2, c0 * 0.5, c1 * 0.5, c2 * 0.5);
         dyn(x, yy, z, G('o'), 0.36, c0 * 1.5 * fl, c1 * 1.5 * fl, c2 * 1.5 * fl);
@@ -506,7 +506,7 @@ export function drawFixtures(t: number, dt: number): void {
       }
       case 'fall': {
         // 宝物庫の光る裂け目から落ちる水の柱
-        const top = Math.max(4, ceilAt(x, z) - 0.15);
+        const top = Math.max(4, (ceilAt(x, z) ?? NaN) - 0.15);
         for (let s2 = 0; s2 < 5; s2++) {
           const a = (s2 / 5) * Math.PI * 2 + t * 0.3,
             ox = Math.cos(a) * 0.22,
@@ -719,7 +719,7 @@ export function drawFixtures(t: number, dt: number): void {
       }
       case 'well':
       case 'sun': {
-        const top = ceilAt(x, z) - 0.05;
+        const top = (ceilAt(x, z) ?? NaN) - 0.05;
         for (let k = 0; k < 10; k++) {
           const a = (k / 10) * Math.PI * 2 + t * 0.05;
           dyn(x + Math.cos(a) * 0.45, top, z + Math.sin(a) * 0.45, G(k % 2 ? '.' : '*'), 0.22, c0 * 2.2, c1 * 2.15, c2 * 2.05);

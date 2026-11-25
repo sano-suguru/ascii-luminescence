@@ -115,6 +115,7 @@ export async function drawCases(F, seeds) {
     lord: MTYPES['lord'],
     X: MTYPES['X'],
     random: Math.random,
+    msgs: [...msgs],
   };
   const els = { log: { innerHTML: '' } },
     alog = [];
@@ -466,7 +467,7 @@ export async function drawCases(F, seeds) {
     restore(SND, keep.SND);
     restore(buf, keep.buf);
     clock.time = keep.time;
-    msgs.length = 0;
+    msgs.splice(0, msgs.length, ...keep.msgs);
     if (keep.lord) MTYPES['lord'] = keep.lord;
     else delete MTYPES['lord'];
     if (keep.X) MTYPES['X'] = keep.X;

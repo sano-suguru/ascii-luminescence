@@ -1,7 +1,7 @@
 // 構文の木で、移した関数と移す前の古い関数を比べる道具（tools/same-code.mjs）の単体テスト。
 // 規則ごとに「同じと言う物」と「違うと言う物」を小さな見本で確かめ、写し漏れ・係数・比べ方・乱数を引く順番の違いを見つけることも確かめる。
 import { describe, expect, it } from 'vitest';
-import { boxFields, compareSources, detectStates, legacyDecls } from '../../tools/same-code.mjs';
+import { boxFields, compareSources, detectStates, legacyDecls, wasUnused } from '../../tools/same-code.mjs';
 
 /** 古い JS の文 oldJs と新しい .ts の文 newTs を比べ、関数ごとの違いの数・人が確かめる一覧・比べた名前を返す */
 function cmp(oldJs, newTs) {
@@ -143,6 +143,68 @@ describe('違うと言う物', () => {
     expect(r.n).toEqual({ f: 0 });
     expect(r.review).toEqual(['f：c = o.col（古い方の先読みを、やめた）']);
   });
+  it('両方にある先読みでも、書き込みの前後で位置が変わった時（レビューの指摘）', () => {
+    expect(
+      cmp(`function f(x){ here.D = x; const D = here.D; use(D); }`, `export function f(x) { const D = here.D; here.D = x; use(D); }`).n.f,
+    ).toBeGreaterThan(0);
+    expect(
+      cmp(`function f(it){ it.v = 1; const c = it.v; g(c); }`, `export function f(it) { const c = it.v; it.v = 1; g(c); }`).n.f,
+    ).toBeGreaterThan(0);
+    // 同じ位置なら同じ
+    expect(
+      cmp(`function f(x){ here.D = x; const D = here.D; use(D); }`, `export function f(x) { here.D = x; const D = here.D; use(D); }`).n,
+    ).toEqual({ f: 0 });
+  });
+  it('置き換える式の中の名前が、内側の宣言に捕まる時（レビューの指摘）', () => {
+    expect(
+      cmp(`function f(L){ return L.map((o) => o.p + o); }`, `export function f(L) { const q = o.p; return L.map((o) => q + o); }`).n.f,
+    ).toBeGreaterThan(0);
+    const helper = `const toPlayer = (m) => Math.hypot(m.x - player.x, m.z - player.z);\n`,
+      oldHypot = 'Math.hypot(m.x-player.x,m.z-player.z)';
+    expect(
+      cmp(
+        `function f(list){ return list.map(({player, m}) => ${oldHypot}); }`,
+        `${helper}export function f(list) { return list.map(({ player, m }) => toPlayer(m)); }`,
+      ).n.f,
+    ).toBeGreaterThan(0);
+    expect(
+      cmp(
+        `function f(m){ try{ g(); }catch(player){ return ${oldHypot}; } }`,
+        `${helper}export function f(m) { try { g(); } catch (player) { return toPlayer(m); } }`,
+      ).n.f,
+    ).toBeGreaterThan(0);
+    // 渡す値の名前を、道具の中で宣言し直している
+    expect(
+      cmp(
+        `function f(L,p){ return L.map((p) => p + p); }`,
+        `const add = (L, q) => L.map((p) => p + q);\nexport function f(L, p) { return add(L, p); }`,
+      ).n.f,
+    ).toBeGreaterThan(0);
+  });
+  it('一番外の別名が let の時と、書き換えている時は戻さない（レビューの指摘）', () => {
+    expect(cmp(`function g(){ return INIT; }`, `let mode = INIT;\nexport function g() { return mode; }`).n.g).toBeGreaterThan(0);
+    expect(
+      cmp(
+        `function g(){ return INIT; } function s(m){ INIT = m; }`,
+        `const mode = INIT;\nexport function g() { return mode; }\nexport function s(m) { mode = m; }`,
+      ).n.g,
+    ).toBeGreaterThan(0);
+  });
+  it('ループの中で使うオブジェクトの別名は戻さない。一覧にはオブジェクトの中身を出す（レビューの指摘）', () => {
+    expect(
+      cmp(`function f(L){ for (const x of L) g(x, {n: 0}); }`, `export function f(L) { const o = { n: 0 }; for (const x of L) g(x, o); }`).n
+        .f,
+    ).toBeGreaterThan(0);
+    const r = cmp(`function f(k){ return {a: 1, b: 2}[k]; }`, `export function f(k) { const at = { a: 1, b: 2 }; return at[k]; }`);
+    expect([r.n, r.review]).toEqual([{ f: 0 }, ['f：at = { a: 1, b: 2 }']]);
+  });
+  it('?? NaN どうしの + では外さない（レビューの指摘）', () => {
+    expect(cmp(`function f(a,b){ return a + b; }`, `export function f(a, b) { return (a ?? NaN) + (b ?? NaN); }`).n).toEqual({ f: 2 });
+  });
+  it('BigInt の数でも止まらない', () => {
+    expect(cmp(`function f(){ return 1n; }`, `export function f() { return 1n; }`).n).toEqual({ f: 0 });
+    expect(cmp(`function f(){ return 1n; }`, `export function f() { return 2n; }`).n).toEqual({ f: 1 });
+  });
   it('違いの場所（古い文と新しい文の行）を出す', () => {
     const r = cmp(`function f(a){\n  g(a);\n  h(a*2);\n}`, `export function f(a) {\n  g(a);\n  h(a * 3);\n}`);
     expect(r.results[0].diffs).toEqual([{ old: '2', new: '3', oldLine: 3, newLine: 3 }]);
@@ -172,5 +234,20 @@ describe('状態を入れ物に移した名前を見つける（--auto-state）'
     expect(detectStates(old, ['both'], 'ui.both=2; xhere.both=1;', fields)).toEqual([{ box: 'ui', names: ['both'] }]);
     expect(detectStates(old, ['both'], 'here.both=1; ui.both=2;', fields)).toEqual([]);
     expect(detectStates(old, ['both'], '', fields)).toEqual([]);
+  });
+});
+
+describe('使っていない物を消しただけか（wasUnused）', () => {
+  const game = new Map([
+    ['01-a.js', 'function dead(x){ return dead(x-1); }\nfunction live(){ return 1; }\nlet flag=0;\n'],
+    ['02-b.js', 'live(); o.dead = 1; // live のコメント\n'],
+    ['imports.mjs', "import { flag } from './x.ts';\n"],
+  ]);
+  const old = legacyDecls(game);
+  it('自分の宣言の外から使われていない物（自分を呼ぶだけ・欄の名前・imports.mjs は数えない）', () => {
+    expect(['dead', 'live', 'flag'].map((n) => wasUnused(game, old, n))).toEqual([true, false, true]);
+  });
+  it('古い JS に無い名前は「使っていない」と言わない', () => {
+    expect(wasUnused(game, old, 'none')).toBe(false);
   });
 });

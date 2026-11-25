@@ -32,10 +32,10 @@ export function cellLight(x: number, z: number): [number, number, number] {
   return out;
 }
 
-/** x・z のマスの天井の高さ。マップの外は BASE_H */
-export const ceilAt = (x: number, z: number): number => {
+/** x・z のマスの天井の高さ。マップの外は BASE_H。座標が NaN の時は、範囲の確かめをすり抜けて undefined（呼ぶ側の計算で NaN になる） */
+export const ceilAt = (x: number, z: number): number | undefined => {
   const cx = Math.floor(x / CELL),
     cz = Math.floor(z / CELL);
   if (cx < 0 || cz < 0 || cx >= MW || cz >= MH) return BASE_H;
-  return nth(must(here.D, '今の階 here.D').ceil, cz * MW + cx);
+  return must(here.D, '今の階 here.D').ceil[cz * MW + cx];
 };

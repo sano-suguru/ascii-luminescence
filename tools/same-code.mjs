@@ -1,5 +1,5 @@
 // TypeScript に移した関数が、移す前の古い関数と「同じ文」かを、構文の木で確かめる道具（翻訳の検証）。
-//   node tools/same-code.mjs [--rev main | --old <古い src/game>] [--state 入れ物:名前,名前 … | --auto-state] src/lib/xx.ts …（フォルダも渡せる）
+//   node tools/same-code.mjs [--rev origin/main | --old <古い src/game>] [--state 入れ物:名前,名前 … | --auto-state] src/lib/xx.ts …（フォルダも渡せる）
 // 新しい方の型を外し、型のために書き換えた決まった形（下の「規則」）を元の形に戻してから、古い JS の同じ名前の一番外の宣言と比べる。
 // 比べるのは、古い JS から消えた名前だけ（src/lib の全部のファイルを渡してよい。今も古い JS にある同じ名前の別の物とは比べない）。
 // 整形・括弧・引用符・コメントの違いは、構文の木の段階で消える。違いが残れば、その場所を出して 1 で終わる。
@@ -9,20 +9,23 @@
 //   nth(a, i) → a[i]、lookup(o, k) → o[k]：範囲の外や無い欄では止まる（元は undefined）
 //   must(x, '…') → x：x が null・undefined の時は止まる（元はその先で止まるか、黙って進む）
 //   level() → here.D：そのファイルの level が () => must(here.D, …) の時だけ
-//   x ?? NaN → x：算術（- * / % **、もう片方が数と分かる +）・大小の比べ方・単項の - +・Math.* の引数の中だけ（undefined も NaN も同じ結果になる所）
+//   x ?? NaN → x：算術（- * / % **、もう片方が数と分かる +）・大小の比べ方・単項の - +・Math.* の引数の中だけ（undefined も NaN も同じ結果になる所）。
+//     null は undefined と結果が違う（null * 2 は 0）が、道具は型を見ないので見分けられない。値が null にならない所でだけ ?? NaN を書くこと
 //   Number(x) → x：算術（- * / %）の中だけ（算術は、もともと数に直してから計算する）
 //   a op= b → a = a op b（両方に当てる。a は名前と欄の読み取りだけ）
 //   使わない catch の引数は外す（両方に当てる）。使わない引数の頭の _ は外す（本体がどちらの名前も読まない時だけ）。ファイルの一番外の別名（const specials = SPECIALS など、型を広げるためだけの物）は
-//   元の名前に戻す（関数の中で、どちらかの名前を宣言し直していない時だけ）
+//   元の名前に戻す（const で、ファイルのどこでも書き換えず、関数の中でどちらかの名前を宣言し直していない時だけ）
 //   ファイルの小さな道具（古い JS に無い名前の、const 名前 = (引数) => 式 の形の物）は、使う所で開く。渡す値が名前と欄の読み取りか定数で、
-//   使う所で、道具の中の名前を宣言し直していない時だけ（toPlayer(m) → Math.hypot(m.x - player.x, m.z - player.z) など）
-//   先に読む：const X = 式（式は名前と欄の読み取りだけか、数・名前とその計算だけでできた、1回だけ使うオブジェクト）、const [a, b] = 式 の後ろで、
-//   X を式に戻す（両方に当てる。X を書き換えている時と、同じ名前を宣言し直している時は戻さない）
+//   使う所で道具の中の名前を宣言し直さず、道具の中で渡す値の名前を宣言し直さない時だけ（toPlayer(m) → Math.hypot(m.x - player.x, m.z - player.z) など）
+//   先に読む：const X = 式（式は名前と欄の読み取りだけか、数・名前とその計算だけでできた、ループや関数の内側でない所で1回だけ使うオブジェクト）、
+//   const [a, b] = 式 の後ろで、X を式に戻す（両方に当てる。X を書き換えている・宣言し直している時と、式が読む名前をその先で宣言し直している時は戻さない。
+//   古い方と新しい方の両方にある先読みは、消した所に印を残し、位置も比べる）
 // 「先に読む」と「一番外の別名」は、間で式の中身が変わらないことを機械では言えないので、新しく足した物と、古い方にあって新しい方でやめた物を「人が確かめる一覧」に出す。
 //
 // 古い JS は、--rev の git の版（既定 HEAD）か、--old のフォルダから読む。状態を入れ物に移した名前は、--state で古い側にも同じ書き換え
 // （tools/state-move.mjs の stateMove）をしてから比べる。--auto-state は、それを自分で見つける（古い JS から消えた変数の名前 X で、
-// src/lib/state.ts の入れ物の欄として初めの値を書いてある物。CI はこれを使う。詳しくは detectStates）。古い JS から消えた名前で、渡した .ts のどれにも無い物は「比べていない」として出す（これも 1 で終わる）。
+// src/lib/state.ts の入れ物の欄として初めの値を書いてある物。CI はこれを使う。詳しくは detectStates）。
+// 古い JS から消えた名前で、古い JS でも使われていなかった物は、使っていない物を消しただけなので「消した」として出し、止めない。古い JS から消えた名前で、渡した .ts のどれにも無い物は「比べていない」として出す（これも 1 で終わる）。
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -136,10 +139,12 @@ function unNumber(n, ctx) {
 }
 /** ?? NaN の印を、undefined と NaN が同じ結果になる所だけ外す（ほかは残り、違いとして出る） */
 const NUM_OPS = new Set(['-', '*', '/', '%', '**', '<', '>', '<=', '>=']);
-/** 数になると分かる式（数・?? NaN の印・単項の - +・算術・Math.* の呼び出し）。+ の中で ?? NaN を外すのは、もう片方がこれの時だけ（文字の変数との + は、undefined と NaN で結果が違う） */
+/**
+ * 数になると分かる式（数・単項の - +・算術・Math.* の呼び出し）。+ の中で ?? NaN を外すのは、もう片方がこれの時だけ（文字の変数との + は、undefined と NaN で結果が違う）。
+ * ?? NaN の印の付いた物は数に数えない（(a ?? NaN) + (b ?? NaN) で、b が文字かもしれない）
+ */
 const isNum = (n) =>
   (n?.type === 'Literal' && typeof n.value === 'number') ||
-  n?.type === 'NaNDefault' ||
   (n?.type === 'UnaryExpression' && (n.operator === '-' || n.operator === '+')) ||
   (n?.type === 'BinaryExpression' &&
     (['-', '*', '/', '%', '**'].includes(n.operator) || (n.operator === '+' && isNum(n.left) && isNum(n.right)))) ||
@@ -170,19 +175,32 @@ function resolveNaN(n, ctx) {
 }
 
 // ---------------------------------------------------------------- 先に読む
+/** 宣言の形（名前・分けて読む形・既定値・残り）が作る名前 */
+function boundNames(p, out = []) {
+  if (!p) return out;
+  if (p.type === 'Identifier') out.push(p.name);
+  else if (p.type === 'ObjectPattern') for (const q of p.properties) boundNames(q.type === 'RestElement' ? q.argument : q.value, out);
+  else if (p.type === 'ArrayPattern') for (const e of p.elements) boundNames(e, out);
+  else if (p.type === 'RestElement') boundNames(p.argument, out);
+  else if (p.type === 'AssignmentPattern') boundNames(p.left, out);
+  return out;
+}
+/** この物が宣言する名前（変数・引数・catch の引数・関数とクラスの名前） */
+function declares(n) {
+  if (n.type === 'VariableDeclarator') return boundNames(n.id);
+  if (n.type === 'CatchClause') return boundNames(n.param);
+  if (n.type?.includes('Function')) return [...(n.id ? [n.id.name] : []), ...n.params.flatMap((p) => boundNames(p))];
+  if (n.type === 'ClassDeclaration' || n.type === 'ClassExpression') return n.id ? [n.id.name] : [];
+  return [];
+}
 /** name を使う数・書き換えるか・同じ名前を宣言し直すか */
 function uses(n, name, acc = { n: 0, write: false, shadow: false }) {
   if (Array.isArray(n)) n.forEach((x) => uses(x, name, acc));
   else if (n && typeof n === 'object') {
     if (n.type === 'Identifier' && n.name === name) acc.n++;
     const target = n.type === 'AssignmentExpression' ? n.left : n.type === 'UpdateExpression' ? n.argument : null;
-    if (target?.type === 'Identifier' && target.name === name) acc.write = true;
-    if (
-      (n.type === 'VariableDeclarator' && n.id.type === 'Identifier' && n.id.name === name) ||
-      ((n.type === 'FunctionDeclaration' || n.type?.includes('Function')) &&
-        n.params?.some((p) => p.type === 'Identifier' && p.name === name))
-    )
-      acc.shadow = true;
+    if (target && boundNames(target).includes(name)) acc.write = true;
+    if (declares(n).includes(name)) acc.shadow = true;
     for (const k in n)
       if (k !== 'type' && !(k === 'property' && n.type === 'MemberExpression' && !n.computed) && !(k === 'key' && !n.computed))
         uses(n[k], name, acc);
@@ -197,14 +215,42 @@ const subst = (n, name, expr) =>
       return x;
     return expr;
   });
+/** 式が読む名前（欄の名前 a.name の name や、オブジェクトの鍵は除く） */
+function readNames(n) {
+  const out = new Set();
+  walk(n, (x, parent, k) => {
+    if (
+      x.type === 'Identifier' &&
+      !(k === 'property' && parent?.type === 'MemberExpression' && !parent.computed) &&
+      !(k === 'key' && parent && !parent.computed)
+    )
+      out.add(x.name);
+    return undefined;
+  });
+  return out;
+}
+/** name を、ループか関数の内側で使っている数（その外で1回作った物を、内側で何度も使うと、物の同一性が変わる） */
+function usesInLoops(n, name, inside = false) {
+  if (Array.isArray(n)) return n.reduce((a, x) => a + usesInLoops(x, name, inside), 0);
+  if (!n || typeof n !== 'object') return 0;
+  const loop = inside || /^(For|ForIn|ForOf|While|DoWhile)Statement$/.test(n.type) || n.type?.includes('Function');
+  let c = n.type === 'Identifier' && n.name === name && inside ? 1 : 0;
+  for (const k in n)
+    if (k !== 'type' && !(k === 'property' && n.type === 'MemberExpression' && !n.computed) && !(k === 'key' && !n.computed))
+      c += usesInLoops(n[k], name, loop);
+  return c;
+}
 /** オブジェクトの別名に入れてよい値（数・文字・名前と、その計算だけ。欄の読み取りや呼び出しは入れない） */
 const plain = (n) =>
   n?.type === 'Literal' ||
   n?.type === 'Identifier' ||
   (n?.type === 'UnaryExpression' && plain(n.argument)) ||
   (n?.type === 'BinaryExpression' && plain(n.left) && plain(n.right));
-/** 先に読む書き換えを元に戻す。見つけた物を found に足す（where：関数の名前） */
-function unalias(n, where, found, show) {
+/**
+ * 先に読む書き換えを元に戻す。見つけた物を found に足す（where：関数の名前）。
+ * mark に入っている先読み（古い方と新しい方の両方にある物）は、消した所に印を残す（両方で同じ位置にあるかも比べるため）
+ */
+function unalias(n, where, found, show, mark = new Set()) {
   return walk(n, (x) => {
     for (const key of ['body', 'consequent']) {
       const list = x[key];
@@ -219,8 +265,13 @@ function unalias(n, where, found, show) {
           let names, exprs;
           if (dc.id.type === 'Identifier' && dc.init) {
             const u = uses([restDecls, tail], dc.id.name);
-            if (!isPath(dc.init) && !(u.n === 1 && dc.init.type === 'ObjectExpression' && dc.init.properties.every((p) => plain(p.value))))
-              continue;
+            // オブジェクトは、数・名前とその計算だけでできていて、ループや関数の内側でない所で1回だけ使う物
+            const obj =
+              u.n === 1 &&
+              dc.init.type === 'ObjectExpression' &&
+              dc.init.properties.every((p) => p.type === 'Property' && plain(p.value)) &&
+              !usesInLoops([restDecls, tail], dc.id.name);
+            if (!isPath(dc.init) && !obj) continue;
             names = [dc.id.name];
             exprs = [dc.init];
             found.push(`${where}：${dc.id.name} = ${show(unMark(dc.init))}`);
@@ -229,29 +280,32 @@ function unalias(n, where, found, show) {
             exprs = names.map((_, k) => member(dc.init, { type: 'Literal', value: k }, true));
             found.push(`${where}：[${names.join(', ')}] = ${show(unMark(dc.init))}`);
           } else continue;
+          // 先読みした名前を書き換える・宣言し直す所があるか、置き換える式が読む名前を、その先で宣言し直している（捕まる）なら戻さない
+          const reads = new Set(exprs.flatMap((e) => [...readNames(e)]));
           if (
             names.some((nm) => {
               const u = uses([restDecls, tail], nm);
               return u.write || u.shadow;
-            })
+            }) ||
+            [...reads].some((nm) => uses([restDecls, tail], nm).shadow)
           ) {
             found.pop();
             continue;
           }
+          const markIt = mark.has(found[found.length - 1]);
           let decls = restDecls,
             rest = tail;
           names.forEach((nm, k) => {
             decls = subst(decls, nm, exprs[k]);
             rest = subst(rest, nm, exprs[k]);
           });
-          decls = [...st.declarations.slice(0, d), ...decls];
-          // 並びが変わったので、この入れ物を初めから見直す
-          return unalias(
-            { ...x, [key]: [...list.slice(0, i), ...(decls.length ? [{ ...st, declarations: decls }] : []), ...rest] },
-            where,
-            found,
-            show,
-          );
+          const before = st.declarations.slice(0, d),
+            stmt = (ds) => (ds.length ? [{ ...st, declarations: ds }] : []);
+          // 並びが変わったので、この入れ物を初めから見直す（印を残す時は、宣言を印の前と後ろに分ける）
+          const next = markIt
+            ? [...list.slice(0, i), ...stmt(before), { type: 'AliasMark', text: found[found.length - 1] }, ...stmt(decls), ...rest]
+            : [...list.slice(0, i), ...stmt([...before, ...decls]), ...rest];
+          return unalias({ ...x, [key]: next }, where, found, show, mark);
         }
       }
     }
@@ -280,7 +334,9 @@ function inlineHelpers(fnNode, helpers, opened) {
     if (x.type !== 'CallExpression' || x.callee.type !== 'Identifier') return undefined;
     const f = helpers.get(x.callee.name);
     if (!f || f.params.length !== x.arguments.length || !x.arguments.every(okArg)) return undefined;
+    // 道具の中の名前を、使う所で宣言し直している時と、渡す値が読む名前を、道具の中で宣言し直している時（捕まる）は開かない
     if ([...free(f)].some((nm) => uses(fnNode, nm).shadow)) return undefined;
+    if (x.arguments.some((a) => [...readNames(a)].some((nm) => uses(f.body, nm).shadow))) return undefined;
     let body = f.body;
     f.params.forEach((p, i) => (body = subst(body, p.name, x.arguments[i])));
     opened(x.callee.name);
@@ -302,9 +358,12 @@ const SKIP = new Set([
   'decorators',
   'definite',
   'declare',
+  // BigInt の数は value と、同じ値の文字 bigint の両方を持つ
+  'bigint',
 ]);
 /** 比べる形：位置・raw・型の欄などを落とす（名前の optional は TS の ? だけなので落とす。a?.b の optional は残す） */
 function canon(n) {
+  if (typeof n === 'bigint') return `${n}n`;
   if (Array.isArray(n)) return n.map(canon);
   if (!n || typeof n !== 'object') return n;
   const o = {};
@@ -361,12 +420,15 @@ function diff(a, b, out, pa = null, pb = null) {
 function show(n) {
   if (n === undefined) return '（無い）';
   if (Array.isArray(n)) return n.length ? n.map(show).join('; ') : '（無い）';
+  if (typeof n === 'bigint') return `${n}n`;
   if (!n || typeof n !== 'object') return JSON.stringify(n);
   switch (n.type) {
     case 'Identifier':
       return n.name;
+    case 'ObjectExpression':
+      return `{ ${n.properties.map((p) => (p.type === 'Property' ? `${show(p.key)}: ${show(p.value)}` : p.type)).join(', ')} }`;
     case 'Literal':
-      return n.value === undefined ? String(n.raw) : JSON.stringify(n.value);
+      return n.value === undefined ? String(n.raw) : typeof n.value === 'bigint' ? `${n.value}n` : JSON.stringify(n.value);
     case 'NaNDefault':
       return `(${show(n.expr)} ?? NaN)`;
     case 'MemberExpression':
@@ -445,9 +507,14 @@ export function compareSources(old, files, only = null) {
       lv.params.length === 0 &&
       isCall(lv.body, 'must') &&
       show(lv.body.arguments[0]) === 'here.D';
-    // ファイルの一番外の別名（古い JS に無い名前で、初めの値が名前だけの物）
+    // ファイルの一番外の別名（古い JS に無い名前で、初めの値が名前だけの const。ファイルのどこでも書き換えない物）
     const tops = [...NEW].filter(
-      ([k, v]) => !old.has(k) && v.node.type === 'VariableDeclaration' && v.node.declarations[0].init?.type === 'Identifier',
+      ([k, v]) =>
+        !old.has(k) &&
+        v.node.type === 'VariableDeclaration' &&
+        v.node.kind === 'const' &&
+        v.node.declarations[0].init?.type === 'Identifier' &&
+        !uses(ast.body, k).write,
     );
     // ファイルの小さな道具（本体が式1つの矢印関数。level は上の規則で戻す）
     const helpers = new Map(
@@ -468,9 +535,7 @@ export function compareSources(old, files, only = null) {
       // only を渡したら、その名前だけ（古い JS から消えた名前。今も古い JS にある同じ名前の別の物と取り違えないため）
       if (!od || (only && !only.has(name))) continue;
       compared.add(name);
-      const oldFound = [],
-        newFound = [];
-      const o = unalias(norm(od.node, ctx), name, oldFound, show);
+      const o0 = norm(od.node, ctx);
       let n = unType(nd.node);
       for (let round = 0; round < 5; round++) {
         const before = key(n);
@@ -489,7 +554,14 @@ export function compareSources(old, files, only = null) {
         const line = `${basename(file)} の一番外：${k} = ${orig.name}`;
         if (!review.includes(line)) review.push(line);
       }
-      n = resolveNaN(unalias(n, name, newFound, show), ctx);
+      // 先に読む書き換え：まず両方の先読みを集め、両方にある物は、消した所に印を残して位置も比べる
+      const oldFound = [],
+        newFound = [];
+      unalias(o0, name, oldFound, show);
+      unalias(n, name, newFound, show);
+      const shared = new Set(oldFound.filter((x) => newFound.includes(x)));
+      const o = unalias(o0, name, [], show, shared);
+      n = resolveNaN(unalias(n, name, [], show, shared), ctx);
       // 使わない引数の名前の頭の _ は外す
       // （本体がどちらの名前も読まない時だけ。外の同じ名前を読んでいると、別の物を同じと言ってしまうため）
       const fn = n.params ? n : n.declarations?.[0]?.init;
@@ -525,6 +597,28 @@ export function compareSources(old, files, only = null) {
   return { results, review, used, compared };
 }
 
+/**
+ * 古い JS の名前 name が、古い JS の中で、自分の宣言の外から使われていなかったか（使っていない物を消しただけなら、比べる物は無い）。
+ * 文字で数えるので、コメントや文字列に名前があれば「使われていた」になる（止まる方に倒れる）
+ */
+export function wasUnused(oldGame, old, name) {
+  const d = old.get(name);
+  if (!d) return false;
+  const re = new RegExp(`(?<![\\w$.])${name.replace(/\$/g, '\\$')}(?![\\w$])`, 'g'),
+    count = (t) => (t.match(re) ?? []).length;
+  const all = [...oldGame].filter(([f]) => /^\d{2}-[a-z0-9-]+\.js$/.test(f)).reduce((a, [, t]) => a + count(t), 0),
+    own = count(d.text.slice(firstPos(d.node) - d.base, lastPos(d.node) - d.base));
+  return all - own === 0;
+}
+/** 構文の木の中で、いちばん後ろの位置 */
+function lastPos(n) {
+  let m = -1;
+  walk(n, (x) => {
+    if (typeof x.end === 'number' && x.end > m) m = x.end;
+    return undefined;
+  });
+  return m;
+}
 /** git の版 rev の src/game（ファイル名 → 文） */
 function readRev(rev) {
   const names = execFileSync('git', ['ls-tree', '--name-only', rev, 'src/game/'], { cwd: root, encoding: 'utf8' })
@@ -592,6 +686,10 @@ if (process.argv[1] && import.meta.filename === process.argv[1]) {
     else if (args[i] === '--state') {
       const [box, names] = args[++i].split(':');
       states.push({ box, names: names.split(',') });
+    } else if (args[i].startsWith('--')) {
+      console.log(`知らない指定：${args[i]}`);
+      files.length = 0;
+      break;
     } else if (statSync(args[i]).isDirectory())
       // フォルダは、その中の全部の .ts（.d.ts は除く）
       files.push(
@@ -605,7 +703,7 @@ if (process.argv[1] && import.meta.filename === process.argv[1]) {
   }
   if (!files.length) {
     console.log(
-      '使い方：node tools/same-code.mjs [--rev main | --old <古い src/game>] [--state 入れ物:名前,名前 … | --auto-state] src/lib/xx.ts …',
+      '使い方：node tools/same-code.mjs [--rev origin/main | --old <古い src/game>] [--state 入れ物:名前,名前 … | --auto-state] src/lib/xx.ts …',
     );
     process.exit(2);
   }
@@ -646,8 +744,12 @@ if (process.argv[1] && import.meta.filename === process.argv[1]) {
     }
     bad += r.diffs.length;
   }
-  // 古い JS から消えたのに、渡した .ts で比べていない名前
-  const gone = [...goneAll].filter((k) => !compared.has(k));
+  // 古い JS から消えたのに、渡した .ts で比べていない名前（古い JS でも使われていなかった物は、消しただけなので止めない）
+  const unchecked = [...goneAll].filter((k) => !compared.has(k)),
+    oldGame = withStates(rawOld, states),
+    deleted = unchecked.filter((k) => wasUnused(oldGame, old, k)),
+    gone = unchecked.filter((k) => !deleted.includes(k));
+  if (deleted.length) console.log(`\n消した（古い JS でも使われていなかった）：${deleted.join('、')}`);
   if (gone.length) console.log(`\n比べていない（古い JS から消えたが、渡した .ts に無い）：${gone.join('、')}`);
   if (review.length) console.log(`\n人が確かめる（間で中身が変わらないこと）${review.length} 件\n  ${review.join('\n  ')}`);
   console.log(`\n比べた ${results.length}　違い ${bad}　当てた規則 ${JSON.stringify(used)}`);
