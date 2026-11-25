@@ -146,6 +146,22 @@ if(TEST)window.__test={
       camera:{dist:+Math.hypot(cp.x-m.x,cp.z-m.z).toFixed(3),height:+cp.y.toFixed(3),pitch:+camera.rotation.x.toFixed(3),
         aimY:+(ui.gallery.aimY??0).toFixed(3),aimed:+Math.hypot(cp.x-m.x,cp.y-(ui.gallery.aimY??0),cp.z-m.z).toFixed(3),ceil:+ceilAt(cp.x,cp.z).toFixed(3),roomR:+(ui.gallery.room.far-0.8).toFixed(3),
         bodyR:(ui.gallery.fix||ui.gallery.view)?.bodyR!==undefined?+(ui.gallery.fix||ui.gallery.view).bodyR.toFixed(3):null}}; },
+  // where a creature's body is drawn (the first one alive with this key, e.g. 'lord' or 'final'; only the body and the deep lord's tentacles, not its aura or the sign
+  // over its head): its glyphs' box in the world (y0, y1: lowest and highest), the ceiling above it, their box on the screen in CSS pixels (x0..x1, y0..y1,
+  // kept to the screen), and the share of glyphs that fall outside the screen (cut)
+  monsterView(key){ const m=here.monsters.find(m=>m.key===key&&!m.dead); if(!m)return null;
+    const d0=buf.dn, p0=buf.pN; let d1=d0; const pts=[];
+    try{ drawBodyOnly=true; if(m.ty.habitat==='deep')drawTentacles(m,clock.time); drawMonster0(m,clock.time); d1=buf.dn; for(let k=d0;k<d1;k++)pts.push([dPos[k*3],dPos[k*3+1],dPos[k*3+2]]); }
+    finally{ drawBodyOnly=false; buf.dn=d0; buf.pN=p0; }
+    if(!pts.length)return {key,x:m.x,z:m.z,glyphs:0};
+    camera.updateMatrixWorld(); const W=canvas.clientWidth, H=canvas.clientHeight, v=new T.Vector3(); let out=0, y0=1e9, y1=-1e9; const sb=[1e9,1e9,-1e9,-1e9];
+    for(const [x,y,z] of pts){ y0=Math.min(y0,y); y1=Math.max(y1,y); v.set(x,y,z).project(camera); const sx=(v.x+1)/2*W, sy=(1-v.y)/2*H;
+      if(v.z>1||sx<0||sx>W||sy<0||sy>H){ out++; if(v.z>1)continue; } sb[0]=Math.min(sb[0],sx); sb[1]=Math.min(sb[1],sy); sb[2]=Math.max(sb[2],sx); sb[3]=Math.max(sb[3],sy); }
+    const c=(a,lo,hi)=>Math.round(Math.max(lo,Math.min(hi,a)));
+    return {key,name:m.ty.name,form:m.ty.form,scale:m.ty.scale,x:m.x,z:m.z,glyphs:pts.length,world:{y0:+y0.toFixed(2),y1:+y1.toFixed(2)},ceil:+ceilAt(m.x,m.z).toFixed(2),
+      screen:{x0:c(sb[0],0,W),y0:c(sb[1],0,H),x1:c(sb[2],0,W),y1:c(sb[3],0,H)},cut:+(out/pts.length).toFixed(3)}; },
+  // stop drawing a creature (the first one alive with this key) for a moment, and draw it again (on false). It stays in the level, so its light still shines
+  hideMonster(key,on){ const m=here.monsters.find(m=>m.key===key&&!m.dead); if(!m)return false; m.drawHide=!!on; return true; },
   // remove every creature (lords too), so a check is not upset by one that happens to be near
   clearAll(){ const n=here.monsters.length; here.monsters=[]; return n; },
   // every place a run can visit, for generation checks

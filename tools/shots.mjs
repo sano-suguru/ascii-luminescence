@@ -21,7 +21,7 @@ const BY_FORM = {
   troll: { yaw: 0.25 }, // 人型の大きな物と主は、ほぼ正面の方が形が分かる
   lichking: { yaw: 0.25 },
   nagaqueen: { yaw: 0.25 },
-  shadowking: { yaw: 0.25, zoom: 1.3, pitch: 0.35 }, // 細い線だけで遠いので寄る。寄ると冠が上で切れるので、少し上から
+  shadowking: { yaw: 0.25 },
   shadowserpent: { yaw: 0.25 },
   olddragon: { yaw: 1.2, pitch: 0.3 }, // 斜め前だと頭が画面の端や図鑑の枠に隠れる。少し上から見ると、頭まで枠の上に収まる
   spiderqueen: { yaw: 1.1 }, // 横寄りの方が、胴と頭が脚に埋もれない
@@ -39,8 +39,8 @@ const PICK = [
   '蜘蛛の女王',
   'ナーガの女王',
   '深みの主',
-  '最後の王の影',
-  '最後の王の影（底の闇）',
+  '王の影',
+  '王の影（底の闇）',
 ];
 const POSE_NAME = { stand: '', walk: '-歩く', sleep: '-眠り' };
 const WAIT = 3; // 出してから写すまでのゲームの秒（灯りと姿が落ち着くまで。眠りから起きる時の形の移り変わりは約1秒）
