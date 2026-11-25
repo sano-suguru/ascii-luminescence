@@ -25,10 +25,10 @@ export interface HandsSnap {
   bag: Rune[];
 }
 
-/** 両手（冒険の始めからあるので、無ければその場で止まる） */
+/** 両手（探索の始めからあるので、無ければその場で止まる） */
 const hands = (): Hands => must(gear.hands, '両手 gear.hands');
 
-/** ルーンを作る（番号 uid は冒険の中で通し） */
+/** ルーンを作る（番号 uid は探索の中で通し） */
 export function makeRune(type: string): Rune {
   lookup(RUNE_DEF, type); // 表に無い種類は、ここで止まる（前と同じ）
   return { uid: gear.runeUid++, type };

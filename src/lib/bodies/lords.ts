@@ -561,7 +561,7 @@ export function beastSleep(form: readonly Glyph[], ty: { spec: { plan: string } 
 
 /**
  * 忘れられた獣の種類（生き物の表 MTYPES の X）。年代記の獣（H.beastSpec）から、体の形・色・言い伝えを決める。
- * 色の乱数は冒険のシード runSeed で決まる（迷宮の乱数は使わない）
+ * 色の乱数は探索のシード runSeed で決まる（迷宮の乱数は使わない）
  */
 export function makeBeastType(H: History, runSeed: number) {
   const sp = H.beastSpec,

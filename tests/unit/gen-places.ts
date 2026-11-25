@@ -18,7 +18,7 @@ export interface Place {
   realm?: RealmPlace;
   inter?: InterPlace;
 }
-// 全部の場所（ブラウザの __test.places と同じ並び。特別な階の深さは、冒険のシードで少し変わるので、ここでは決まった深さにする）
+// 全部の場所（ブラウザの __test.places と同じ並び。特別な階の深さは、探索のシードで少し変わるので、ここでは決まった深さにする）
 const SPECIAL_AT: Record<string, number> = { town: 2, bigroom: 3, oracle: 5, fortress: 9 };
 export const PLACES: Place[] = [
   ...Array.from({ length: FINAL_DEPTH }, (_, i) => ({ depth: i + 1 })),
@@ -30,7 +30,7 @@ export const PLACES: Place[] = [
 ];
 /** 最深部か（階段が無くてよい） */
 export const isFinal = (pl: Place): boolean => pl.depth === FINAL_DEPTH && !pl.branch && !pl.realm && !pl.inter;
-/** 場所 place を、階のシード seed・冒険のシード runSeed で生成する */
+/** 場所 place を、階のシード seed・探索のシード runSeed で生成する */
 export const gen = (env: GenEnv, seed: number, place: Place, runSeed = 42): GenResult =>
   generateLevel(
     seed,

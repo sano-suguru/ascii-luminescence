@@ -202,7 +202,7 @@ export const REALM_STRATA = {
 /** 深さ d の本道の層 */
 export const stratumOf = (d: number): (typeof STRATA)[number] =>
   STRATA.find((st) => d >= st.from && d <= st.to) || nth(STRATA, STRATA.length - 1);
-/** 深さ d に入口がある支道の名前（冒険のシード runSeed で決まる。無ければ null） */
+/** 深さ d に入口がある支道の名前（探索のシード runSeed で決まる。無ければ null） */
 export function branchAtDepth(d: number, runSeed: number): string | null {
   const taken = new Set<number>();
   for (const k in BRANCHES) {

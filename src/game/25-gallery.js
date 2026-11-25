@@ -1,4 +1,4 @@
-// ---------------------------------------------------------------- what has been met and found (kept across adventures); a developer switch shows everything
+// ---------------------------------------------------------------- what has been met and found (kept across runs); a developer switch shows everything
 const loadSet=k=>{ try{ return new Set(JSON.parse(localStorage.getItem(k)||'[]')); }catch(e){ return new Set(); } };
 const saveSet=(k,s)=>{ try{ localStorage.setItem(k,JSON.stringify([...s])); }catch(e){} };
 saved.SEEN=loadSet('al_seen');
@@ -49,7 +49,7 @@ function showroom(){
 function openBestiary(){
   const all=galleryList(), list=saved.DEVALL?all:all.filter(e=>saved.SEEN.has(e.key));
   introEl.classList.add('gone');
-  // 部屋を作る前に入れる（階を作る処理が、図鑑の中だと分かるように。冒険の届いた深さや墓に触れない）
+  // 部屋を作る前に入れる（階を作る処理が、図鑑の中だと分かるように。探索の届いた深さや墓に触れない）
   ui.gallery={mode:'beast',list,all:all.length,idx:0,room:null,m:null,t:0}; ui.gallery.room=showroom();
   showBeast(0); renderGallery(); document.getElementById('gal').classList.add('show');
 }
@@ -81,7 +81,7 @@ function renderGallery(){
   const el=document.getElementById('gal'); if(!el||!ui.gallery)return; const g=ui.gallery, f=t=>`<span class="f">${t}</span>`;
   if(g.mode==='beast'){ const e=g.list[g.idx], ty=e&&e.ty, GW=64;
     const head=ty?`<b style="color:${css(ty.col||[1,1,1])}">${ty.ch==='&'?'&amp;':ty.ch}</b> <b>${ty.name}</b>`:'<span class="lab">まだ、何にも出会っていない</span>';
-    const desc=wrapPlain(ty?ty.verb||'':'冒険で出会ったものが、ここに並ぶ',GW-4); while(desc.length<2)desc.push('');
+    const desc=wrapPlain(ty?ty.verb||'':'探索で出会ったものが、ここに並ぶ',GW-4); while(desc.length<2)desc.push('');
     el.innerHTML=boxText([f('+-- 図鑑 ---'),`${f('|')} ${head}`,`${f('|')} <span class="lab">${desc[0]}</span>`,`${f('|')} <span class="lab">${desc[1]}</span>`,f('|'),
       `${f('|')} <button class="row" data-g="prev">[&lt;]</button> ${String(g.list.length?g.idx+1:0).padStart(2,' ')} / ${String(g.list.length).padStart(2,' ')}  <span class="lab">（見つけた数 ${String([...saved.SEEN].filter(k=>k).length).padStart(2,' ')} / ${g.all}）</span> <button class="row" data-g="next">[&gt;]</button>`,
       `${f('|')} <button class="row" data-g="back">[タイトルへ戻る]</button>   <span class="lab">← → で切り替え　Esc で戻る</span>`,f('+---')],GW);
