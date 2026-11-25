@@ -365,11 +365,11 @@ await withBrowser(
       if (!hint) errs.push('図鑑：枠に「ドラッグで回す　ホイールで寄る　R で戻す」の案内が無い');
       const c0 = await cam();
       await pg.mouse.move(480, 80);
-      for (let i = 0; i < 4; i++) await pg.mouse.wheel(0, -100); // 寄る
-      await advance(pg, 0.2);
+      for (let i = 0; i < 4; i++) await pg.mouse.wheel(0, -100); // 寄る（カメラは約0.5秒かけて動くので、1秒待つ）
+      await advance(pg, 1);
       const cIn = await cam();
       for (let i = 0; i < 10; i++) await pg.mouse.wheel(0, 100); // 引く（いちばん遠くまで）
-      await advance(pg, 0.2);
+      await advance(pg, 1);
       const cOut = await cam();
       if (!(cIn.camera.dist < c0.camera.dist * 0.8)) errs.push(`図鑑：ホイールで寄っていない：${c0.camera.dist} → ${cIn.camera.dist}`);
       if (!(cOut.camera.dist > c0.camera.dist * 1.5 && cOut.camera.dist <= c0.camera.dist * 2.01))
@@ -459,12 +459,38 @@ await withBrowser(
         await advance(pg, 0.5);
         const l0 = await cam();
         for (let i = 0; i < 8; i++) await pg.mouse.wheel(0, -100); // 寄りきる
-        await advance(pg, 0.2);
+        await advance(pg, 1);
         const lIn = await cam();
         if (!(lIn.camera.aimY > l0.camera.aimY + 0.5))
           errs.push(`図鑑：不死の王に寄っても、狙う点が上がらない：${l0.camera.aimY} → ${lIn.camera.aimY}`);
         if (!(lIn.camera.bodyR !== null && lIn.camera.aimed >= lIn.camera.bodyR + 0.79))
           errs.push(`図鑑：不死の王に寄ると、体を包む球の中に入る：${JSON.stringify(lIn.camera)}`);
+      }
+      // 寄った竜が起きる時（図鑑に出てから6秒）、カメラは1フレームで跳ばず、なめらかに起きた体に合わせる
+      const dragonN = await pg.evaluate(() => __test.gallery().find((e) => e.name === '竜')?.n);
+      if (!dragonN) errs.push('図鑑：竜が見つからない');
+      else {
+        const at = await pg.evaluate(() => Number((document.getElementById('gal').textContent.match(/(\d+)\s*\/\s*\d+\s*（/) || [])[1]));
+        for (let i = at; i !== dragonN; i += dragonN > at ? 1 : -1) await pg.keyboard.press(dragonN > at ? 'ArrowRight' : 'ArrowLeft');
+        for (let i = 0; i < 8; i++) await pg.mouse.wheel(0, -100); // 寄りきる
+        await advance(pg, 5.8);
+        const steps = [await cam()];
+        for (let k = 0; k < 15; k++) {
+          await advance(pg, 1 / 30);
+          steps.push(await cam());
+        }
+        let maxStep = 0;
+        for (let k = 1; k < steps.length; k++)
+          maxStep = Math.max(
+            maxStep,
+            Math.abs(steps[k].camera.dist - steps[k - 1].camera.dist),
+            Math.abs(steps[k].camera.aimY - steps[k - 1].camera.aimY),
+          );
+        const first = steps[0].camera,
+          last = steps[steps.length - 1].camera;
+        if (!(Math.abs(last.dist - first.dist) > 0.3))
+          errs.push(`図鑑：寄った竜が起きても、カメラが合わせない：${first.dist} → ${last.dist}`);
+        if (maxStep > 0.25) errs.push(`図鑑：寄った竜が起きる時に、カメラが1フレームで ${maxStep.toFixed(3)} 跳ぶ`);
       }
     }
     await pg.keyboard.press('Escape');

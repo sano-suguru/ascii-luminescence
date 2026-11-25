@@ -54,7 +54,7 @@ function openBestiary(){
   showBeast(0); renderGallery(); document.getElementById('gal').classList.add('show');
 }
 function showBeast(i){
-  const g=ui.gallery; here.monsters=[]; g.m=null; g.fix=null; g.view=null; g.drag=null; if(!g.list.length){ renderGallery(); return; }
+  const g=ui.gallery; here.monsters=[]; g.m=null; g.fix=null; g.view=null; g.drag=null; g.aimY=undefined; g.rNow=undefined; if(!g.list.length){ renderGallery(); return; }
   g.idx=(i+g.list.length)%g.list.length; const e=g.list[g.idx];
   MTYPES.__gal=e.ty; const m=makeMonster({key:'__gal',cx:g.room.cx,cz:g.room.cz,g:-1,lead:true});
   m.x=g.room.x; m.z=g.room.z; m.sleep=false; m.hidden=false; m.wait=1e9; m.galShow=true; m.heartOn=true; m.rise=1; m.surf=1; m.yaw=0; if(e.ty.form==='eel')m.y=0;
@@ -64,8 +64,11 @@ function showBeast(i){
 // the player's hands on the bestiary: the wheel moves in and out (the distance from 0.6 to 2 times the usual one), a drag with the left button turns the creature
 // (across) and moves the camera up and down round it (up and down), R puts it back. After GAL_IDLE s with no hands on it, the creature turns by itself again;
 // the distance and the angle stay. Moving to another creature puts everything back (showBeast)
-const GAL_IDLE=3, GAL_ZOOM=[0.5,1/0.6];
-function galleryView(){ const g=ui.gallery; if(!g.view)g.view={zoom:1,pitch:null,t:g.t}; g.view.t=g.t; return g.view; }
+// GAL_EASE: in the player's view, the aim and the distance move toward new ones at this rate (per second; most of the way in about half a second),
+// so the camera does not jump when the wheel turns or a dragon wakes or falls asleep (its body changes over about a second)
+const GAL_IDLE=3, GAL_ZOOM=[0.5,1/0.6], GAL_EASE=8;
+// a new view starts its eased aim and distance from where the camera is now (g.aimY, g.rNow), so the first turn of the wheel does not jump either
+function galleryView(){ const g=ui.gallery; if(!g.view)g.view={zoom:1,pitch:null,t:g.t,aimS:g.aimY,rS:g.rNow}; g.view.t=g.t; return g.view; }
 // dy: the wheel's movement in pixels (one notch of a mouse wheel is about 100, a 10% step; a trackpad sends many small ones, each a small step)
 function galleryWheel(dy){ const g=ui.gallery; if(!g||g.mode!=='beast'||!g.m||g.fix||!dy)return; const v=galleryView(); v.zoom=clamp(v.zoom*Math.pow(1.1,-clamp(dy,-100,100)/100),GAL_ZOOM[0],GAL_ZOOM[1]); }
 function galleryDrag(dx,dy){ const g=ui.gallery; if(!g||g.mode!=='beast'||!g.m||g.fix)return; const v=galleryView();
@@ -96,11 +99,14 @@ function updateGallery(dt){
     // the player's zoom in (g.view): the closer the camera, the more the aim rises from the usual point to the middle of the body's height, so a tall creature's head stays in the picture
     if(!fix&&g.view&&shape&&g.view.midFor!==shape){ let lo=Infinity, hi=-Infinity; for(const p of shape){ const y=(p.y||0)*sc; if(y<lo)lo=y; if(y>hi)hi=y; } g.view.midFor=shape; g.view.midOff=lo<=hi?(lo+hi)/2:0; }
     const lift=!fix&&g.view&&g.view.midOff!==undefined?clamp((zoom-1)/(GAL_ZOOM[1]-1),0,1):0, usual=m.y+(m.ty.flier?0:0.6*sc*tall);
-    const centered=!!(fix&&fix.center&&fix.midOff!==undefined), ty2=centered?Math.max(0.3,m.y+fix.midOff):Math.max(0.3,lift?usual+lift*Math.max(0,m.y+g.view.midOff-usual):usual);
+    const centered=!!(fix&&fix.center&&fix.midOff!==undefined); let ty2=centered?Math.max(0.3,m.y+fix.midOff):Math.max(0.3,lift?usual+lift*Math.max(0,m.y+g.view.midOff-usual):usual);
+    const ease=Math.min(1,dt*GAL_EASE);
+    if(!fix&&g.view){ g.view.aimS=g.view.aimS===undefined?ty2:g.view.aimS+(ty2-g.view.aimS)*ease; ty2=g.view.aimS; }
     // a zoom in stops outside a ball round the point the camera looks at, wide enough to hold every point of the body (worked out again when the shape or that point changes)
     if(cam&&zoom>1&&shape&&(cam.bodyFor!==shape||Math.abs(cam.bodyAt-ty2)>0.01)){ cam.bodyFor=shape; cam.bodyAt=ty2; cam.bodyR=shape.reduce((r,p)=>Math.max(r,Math.hypot((p.x||0)*sc,(p.y||0)*sc+m.y-ty2,(p.z||0)*sc)),0); }
     const ball=cam&&zoom>1&&cam.bodyR!==undefined?cam.bodyR+0.8:0;
-    const want=(3.0+2.0*sc)*tall/zoom, R=Math.max(Math.min(2,2/zoom),ball,Math.min(want,g.room.far-0.8)), a=g.room.dir+0.25;
+    const want=(3.0+2.0*sc)*tall/zoom, a=g.room.dir+0.25; let R=Math.max(Math.min(2,2/zoom),ball,Math.min(want,g.room.far-0.8));
+    if(!fix&&g.view){ g.view.rS=g.view.rS===undefined?R:g.view.rS+(R-g.view.rS)*ease; R=g.view.rS; } g.rNow=R;
     // Rt: how far the camera sits from the point it looks at when it has a pitch (the player's view keeps the distance it had before the first move up or down, see galleryDrag)
     const Rt=R*(cam&&cam.stretch||1);
     let Rh=tilt===null?R:Rt*Math.cos(tilt), ch;
