@@ -137,7 +137,7 @@ function renderBook(){
 
 function renderMenu(){
   const el=document.getElementById('menu'); if(!el)return; const f=t=>`<span class="f">${t}</span>`;
-  const items=[['resume','冒険を続ける'],['pack','持ち物を見る'],['help',`操作の案内`],['chron','年代記'],['book','魔導書'],['cam',`視点：${ui.camMode==='tps'?'三人称':'一人称'}`],['ui',`表示：${['通常','最小','なし'][ui.uiMode]}`],['snd',`音量：${SND_NAME[SND.lv]}`],['perf',`速度の表示：${ui.perfOn?'オン':'オフ'}`],['new',newRunArm>performance.now()?'本当に最初からやり直す？（もう一度押す）':'新しい冒険を始める'],['title',gallery?'タイトルに戻る':(titleArm>performance.now()?'本当にタイトルに戻る？（冒険は終わる）':'タイトルに戻る')]];
+  const items=[['resume','冒険を続ける'],['pack','持ち物を見る'],['help',`操作の案内`],['chron','年代記'],['book','魔導書'],['cam',`視点：${ui.camMode==='tps'?'三人称':'一人称'}`],['ui',`表示：${['通常','最小','なし'][ui.uiMode]}`],['snd',`音量：${SND_NAME[SND.lv]}`],['perf',`速度の表示：${ui.perfOn?'オン':'オフ'}`],['new',newRunArm>performance.now()?'本当に最初からやり直す？（もう一度押す）':'新しい冒険を始める'],['title',ui.gallery?'タイトルに戻る':(titleArm>performance.now()?'本当にタイトルに戻る？（冒険は終わる）':'タイトルに戻る')]];
   el.innerHTML=boxText([f('+-- メニュー --------------------'),...items.map(([k,l])=>`${f('|')} <button class="row" data-k="${k}"><span class="mk"> </span>${l}</button>`),f('+--------------------------------')]);
   for(const b of el.querySelectorAll('button.row'))b.onclick=()=>menuAct(b.dataset.k);
 }
@@ -152,7 +152,7 @@ function menuAct(k){
   else if(k==='ui'){ cycleUi(); renderMenu(); }
   else if(k==='snd'){ sndToggle(); renderMenu(); }
   else if(k==='perf'){ ui.perfOn=!ui.perfOn; renderStatus(); renderMenu(); }
-  else if(k==='title'){ if(gallery||titleArm>performance.now()){ titleArm=0; returnToTitle(); } else { titleArm=performance.now()+4000; newRunArm=0; renderMenu(); menuArmReset(); } }
+  else if(k==='title'){ if(ui.gallery||titleArm>performance.now()){ titleArm=0; returnToTitle(); } else { titleArm=performance.now()+4000; newRunArm=0; renderMenu(); menuArmReset(); } }
   else if(k==='new'){ if(newRunArm>performance.now()){ newRunArm=0; setMenu(false); newRun(); if(!plFailed)tryLock(); } else { newRunArm=performance.now()+4000; titleArm=0; renderMenu(); menuArmReset(); } }
 }
 // the "press again to make sure" of the menu lasts 4 real seconds (game time stands still while the menu is open), then the label goes back.

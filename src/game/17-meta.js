@@ -82,7 +82,7 @@ window.addEventListener('mousemove',e=>{
   player.pitch=clamp(player.pitch,-1.35,1.35);
 });
 window.addEventListener('keydown',e=>{
-  if(gallery&&gallery.mode==='beast'){ if(e.code==='ArrowLeft')showBeast(gallery.idx-1); else if(e.code==='ArrowRight')showBeast(gallery.idx+1); else if(e.code==='Escape')returnToTitle(); e.preventDefault(); return; }
+  if(ui.gallery&&ui.gallery.mode==='beast'){ if(e.code==='ArrowLeft')showBeast(ui.gallery.idx-1); else if(e.code==='ArrowRight')showBeast(ui.gallery.idx+1); else if(e.code==='Escape')returnToTitle(); e.preventDefault(); return; }
   if(e.target&&e.target.tagName==='INPUT'){ if(e.code==='Enter'){ e.preventDefault(); document.getElementById('enter').click(); } return; }
   keys[e.code]=true;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();

@@ -5,10 +5,10 @@ saved.SEEN=loadSet('al_seen');
 saved.RSEEN=loadSet('al_runes');
 // developer mode (saved.DEVALL) is read in 17-meta.js, before the title is built
 
-let seenT=0, gallery=null;
+let seenT=0;
 const seenKey=m=>m.ty.beast?'beast:'+adv.runSeed+':'+m.ty.name:m.key==='lord'?'lord:'+(here.branch?here.branch.key:m.ty.sk):(m.key==='final'&&m.phase2)?'final2':m.key;
 function trackSeen(dt){
-  if(!ui.started||gallery)return; seenT-=dt; if(seenT>0)return; seenT=0.5; const n0=saved.SEEN.size;
+  if(!ui.started||ui.gallery)return; seenT-=dt; if(seenT>0)return; seenT=0.5; const n0=saved.SEEN.size;
   for(const m of here.monsters){ if(m.dead||m.hidden||!m.visible||m.ty.dummy)continue; if(Math.hypot(m.x-player.x,m.z-player.z)<26){ saved.SEEN.add(seenKey(m)); if(m.ty.beast)recordBeast(m.ty); } }
   if(saved.SEEN.size!==n0)saveSet('al_seen',saved.SEEN);
 }
@@ -49,11 +49,11 @@ function showroom(){
 function openBestiary(){
   const all=galleryList(), list=saved.DEVALL?all:all.filter(e=>saved.SEEN.has(e.key));
   introEl.classList.add('gone'); const room=showroom();
-  gallery={mode:'beast',list,all:all.length,idx:0,room,m:null,t:0};
+  ui.gallery={mode:'beast',list,all:all.length,idx:0,room,m:null,t:0};
   showBeast(0); renderGallery(); document.getElementById('gal').classList.add('show');
 }
 function showBeast(i){
-  const g=gallery; here.monsters=[]; g.m=null; if(!g.list.length){ renderGallery(); return; }
+  const g=ui.gallery; here.monsters=[]; g.m=null; if(!g.list.length){ renderGallery(); return; }
   g.idx=(i+g.list.length)%g.list.length; const e=g.list[g.idx];
   MTYPES.__gal=e.ty; const m=makeMonster({key:'__gal',cx:g.room.cx,cz:g.room.cz,g:-1,lead:true});
   m.x=g.room.x; m.z=g.room.z; m.sleep=false; m.hidden=false; m.wait=1e9; m.galShow=true; m.heartOn=true; m.rise=1; m.surf=1; m.yaw=0; if(e.ty.form==='eel')m.y=0;
@@ -61,7 +61,7 @@ function showBeast(i){
   here.monsters.push(m); g.m=m; g.t=0; renderGallery();
 }
 function updateGallery(dt){
-  if(!gallery)return; const g=gallery;
+  if(!ui.gallery)return; const g=ui.gallery;
   if(g.mode==='beast'&&g.m){ const m=g.m, sc=m.ty.scale||1; g.t+=dt; const walking=Math.floor(g.t/4)%2===1;
     m.moving+=((walking?1:0)-m.moving)*Math.min(1,dt*4); m.walk+=dt*2.2*m.moving; m.yaw+=dt*0.45; m.x=g.room.x; m.z=g.room.z;
     if(m.ty.form==='dragon'&&!m.ty.boss){ m.sleep=Math.floor(g.t/6)%2===0; if(m.sleep){ m.moving=0; } }
@@ -74,7 +74,7 @@ function updateGallery(dt){
   if(g.mode==='range'){ for(const d of g.dummies){ if(d.m.dead){ d.respawn-=dt; if(d.respawn<=0)spawnDummy(d); } else { d.respawn=1.5; d.m.dT=Math.max(0,(d.m.dT||0)-dt); if(d.m.dT<=0)d.m.dsum=0; } } }
 }
 function renderGallery(){
-  const el=document.getElementById('gal'); if(!el||!gallery)return; const g=gallery, f=t=>`<span class="f">${t}</span>`;
+  const el=document.getElementById('gal'); if(!el||!ui.gallery)return; const g=ui.gallery, f=t=>`<span class="f">${t}</span>`;
   if(g.mode==='beast'){ const e=g.list[g.idx], ty=e&&e.ty, GW=64;
     const head=ty?`<b style="color:${css(ty.col||[1,1,1])}">${ty.ch==='&'?'&amp;':ty.ch}</b> <b>${ty.name}</b>`:'<span class="lab">まだ、何にも出会っていない</span>';
     const desc=wrapPlain(ty?ty.verb||'':'冒険で出会ったものが、ここに並ぶ',GW-4); while(desc.length<2)desc.push('');
@@ -91,22 +91,22 @@ function spawnDummy(d){ const m=makeMonster({key:d.k,cx:Math.floor(d.x/CELL),cz:
   here.monsters.push(m); d.m=m; d.respawn=1.5; for(let q=0;q<14;q++){ const a=mr()*6.28; spawn(d.x,0.4,d.z,Math.cos(a),0.6+mr(),Math.sin(a),0.6,G('.'),0.12,1.2,1.1,0.9,0); } }
 function openRange(){
   introEl.classList.add('gone'); sndInit(); resetRunes(); const room=galleryRoom(52571);
-  gallery={mode:'range',room,dummies:[]};
+  ui.gallery={mode:'range',room,dummies:[]};
   const types=Object.keys(RUNE_DEF).filter(t=>RUNE_DEF[t].cat!=='open'&&RUNE_DEF[t].cat!=='sub'&&(RUNE_DEF[t].cat!=='mod'||RUNE_TYPES.mod.includes(t))&&(saved.DEVALL||saved.RSEEN.has(t)||t==='blade'||t==='bolt'||RUNE_DEF[t].cat==='mod'));
   gear.bag=[]; for(const t of types)gear.bag.push(makeRune(t));
   for(const h of ['L','R']){ gear.hands[h].slotN=SLOT_MAX; while(gear.hands[h].slots.length<SLOT_MAX)gear.hands[h].slots.push(null); } for(const t of RUNE_TYPES.mod)gear.bag.push(makeStrong(t)); for(const w of RUNE_TYPES.atk)for(const k of Object.keys(TRAITS[w]))for(const lv of [3,5]){ const ru=makeRune(w); ru.traits=[{k,lv}]; gear.bag.push(ru); } gear.hands.B=gear.hands.B||{b0:null,b1:null}; adv.runState.bodyOpen=2;
-  DUMMY_KINDS.forEach((dk,j)=>{ const d={k:dk.k,x:room.x+(j-1.5)*2.4,z:room.z-5}; gallery.dummies.push(d); spawnDummy(d); });
+  DUMMY_KINDS.forEach((dk,j)=>{ const d={k:dk.k,x:room.x+(j-1.5)*2.4,z:room.z-5}; ui.gallery.dummies.push(d); spawnDummy(d); });
   player.x=room.x; player.z=room.z+3; player.yaw=0; player.pitch=-0.05; player.hp=adv.PLAYER_MAX;
   adv.dead=false; ui.started=true; document.body.classList.add('started'); adv.runStats={kills:0,t0:clock.time};
   canvas.focus(); tryLock(); updateResume(); renderHotbar(); renderStatus();
   setTimeout(()=>{ msg('<b style="color:#bfe4ff">+</b>試しの間。<b>Tab</b> で武器・ルーン・護符を自由に付け替えられる（ここでは付け替えが一瞬で済む）。'); msg('<span class="lab">的の人形は動かず、何度倒れても起き上がる。頭の上の数字は、直前に与えたダメージの合計。メニューからタイトルへ戻れる。</span>'); },400);
 }
 function drawGallery(t){
-  if(!gallery)return;
-  if(gallery.mode==='beast'&&gallery.m){ const g=gallery, sc=gallery.m.ty.scale||1, r=0.9+0.7*sc, n=Math.round(18+8*sc);
+  if(!ui.gallery)return;
+  if(ui.gallery.mode==='beast'&&ui.gallery.m){ const g=ui.gallery, sc=ui.gallery.m.ty.scale||1, r=0.9+0.7*sc, n=Math.round(18+8*sc);
     for(let k=0;k<n;k++){ const a=k/n*Math.PI*2+t*0.05; dyn(g.room.x+Math.cos(a)*r,0.06,g.room.z+Math.sin(a)*r,G('.'),0.1,0.35,0.33,0.4); }
     if(g.water)for(let k=0;k<Math.round(30*sc);k++){ const a=k*2.399, rr=(0.4+((k*0.37)%1))*1.6*sc; dyn(g.room.x+Math.cos(a)*rr,0.05+0.03*Math.sin(t*2+k),g.room.z+Math.sin(a)*rr,G('~'),0.22,0.25,0.55,0.9); } }
-  if(gallery.mode==='range'){ for(const d of gallery.dummies){ const m=d.m; if(!m||m.dead||!(m.dsum>0))continue; const s=String(Math.round(m.dsum)), y=m.y+2.2;
+  if(ui.gallery.mode==='range'){ for(const d of ui.gallery.dummies){ const m=d.m; if(!m||m.dead||!(m.dsum>0))continue; const s=String(Math.round(m.dsum)), y=m.y+2.2;
       for(let k=0;k<s.length;k++)dyn(m.x+(k-(s.length-1)/2)*0.26,y,m.z,G(s[k]),0.32,2.6,2.3,1.6); } }
 }
 
