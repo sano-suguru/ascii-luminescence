@@ -1,5 +1,5 @@
 // TypeScript に移した関数が、移す前の古い関数と「同じ文」かを、構文の木で確かめる道具（翻訳の検証）。
-//   node tools/same-code.mjs [--rev main | --old <古い src/game>] [--state 入れ物:名前,名前 …] src/lib/xx.ts …
+//   node tools/same-code.mjs [--rev main | --old <古い src/game>] [--state 入れ物:名前,名前 … | --auto-state] src/lib/xx.ts …（フォルダも渡せる）
 // 新しい方の型を外し、型のために書き換えた決まった形（下の「規則」）を元の形に戻してから、古い JS の同じ名前の一番外の宣言と比べる。
 // 比べるのは、古い JS から消えた名前だけ（src/lib の全部のファイルを渡してよい。今も古い JS にある同じ名前の別の物とは比べない）。
 // 整形・括弧・引用符・コメントの違いは、構文の木の段階で消える。違いが残れば、その場所を出して 1 で終わる。
@@ -19,9 +19,10 @@
 // 「先に読む」と「一番外の別名」は、間で式の中身が変わらないことを機械では言えないので、新しく足した物と、古い方にあって新しい方でやめた物を「人が確かめる一覧」に出す。
 //
 // 古い JS は、--rev の git の版（既定 HEAD）か、--old のフォルダから読む。状態を入れ物に移した名前は、--state で古い側にも同じ書き換え
-// （tools/state-move.mjs の stateMove）をしてから比べる。古い JS から消えた名前で、渡した .ts のどれにも無い物は「比べていない」として出す（これも 1 で終わる）。
+// （tools/state-move.mjs の stateMove）をしてから比べる。--auto-state は、それを自分で見つける（古い JS から消えた変数の名前 X で、
+// 今の文に「入れ物.X」があり、入れ物が1つに決まる物。CI はこれを使う）。古い JS から消えた名前で、渡した .ts のどれにも無い物は「比べていない」として出す（これも 1 で終わる）。
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, relative } from 'node:path';
 import { parseAst } from 'vite';
@@ -53,6 +54,7 @@ function topDecls(body, file, text, base) {
 export function legacyDecls(files) {
   const out = new Map();
   for (const [file, text] of files) {
+    if (!/^\d{2}-[a-z0-9-]+\.js$/.test(file)) continue; // imports.mjs などは、包みの中の文ではない
     const body = parseAst(`${WRAP}${text}\n})`, { lang: 'js' }).body[0].expression.body.body;
     for (const [k, v] of topDecls(body, file, text, WRAP.length)) out.set(k, v);
   }
@@ -467,20 +469,37 @@ export function compareSources(old, files, only = null) {
   return { results, review, used, compared };
 }
 
-/** git の版 rev の src/game を一時フォルダに写し、--state の書き換えをしてから読む */
-function gameAtRev(rev, states) {
+/** git の版 rev の src/game（ファイル名 → 文） */
+function readRev(rev) {
+  const names = execFileSync('git', ['ls-tree', '--name-only', rev, 'src/game/'], { cwd: root, encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean);
+  return new Map(names.map((p) => [basename(p), execFileSync('git', ['show', `${rev}:${p}`], { cwd: root, encoding: 'utf8' })]));
+}
+/** 古い JS（ファイル名 → 文）に、状態を入れ物に移す書き換え（tools/state-move.mjs の stateMove）を当てた物。一時フォルダで行う */
+function withStates(game, states) {
+  if (!states.length) return game;
   const dir = mkdtempSync(join(tmpdir(), 'same-code-'));
   try {
-    const names = execFileSync('git', ['ls-tree', '--name-only', rev, 'src/game/'], { cwd: root, encoding: 'utf8' })
-      .split('\n')
-      .filter(Boolean);
-    for (const p of names)
-      writeFileSync(join(dir, basename(p)), execFileSync('git', ['show', `${rev}:${p}`], { cwd: root, encoding: 'utf8' }));
+    for (const [f, t] of game) writeFileSync(join(dir, f), t);
     for (const s of states) stateMove({ dir, box: s.box, names: s.names });
     return readGame(dir);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+}
+/**
+ * 状態を入れ物に移した名前を見つける：古い JS から消えた変数の名前 X で、今の文（古い JS と src/lib）に「入れ物.X」があり、その入れ物が1つだけの物。
+ * boxes は入れ物の名前（src/lib/state.ts の export のうち、オブジェクトの物）。返り値は stateMove に渡す形 [{ box, names }]
+ */
+export function detectStates(old, gone, text, boxes) {
+  const by = new Map();
+  for (const x of gone) {
+    if (old.get(x)?.node.type !== 'VariableDeclaration') continue;
+    const hit = [...boxes].filter((b) => new RegExp(`(?<![\\w$.])${b}\\.${x.replace(/\$/g, '\\$')}(?![\\w$])`).test(text));
+    if (hit.length === 1) (by.get(hit[0]) ?? by.set(hit[0], []).get(hit[0])).push(x);
+  }
+  return [...by].map(([box, names]) => ({ box, names }));
 }
 
 // ---------------------------------------------------------------- コマンドとして
@@ -489,33 +508,61 @@ if (process.argv[1] && import.meta.filename === process.argv[1]) {
     states = [],
     files = [];
   let rev = 'HEAD',
-    oldDir = null;
+    oldDir = null,
+    auto = false;
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--rev') rev = args[++i];
     else if (args[i] === '--old') oldDir = args[++i];
+    else if (args[i] === '--auto-state') auto = true;
     else if (args[i] === '--state') {
       const [box, names] = args[++i].split(':');
       states.push({ box, names: names.split(',') });
-    } else files.push(args[i]);
+    } else if (statSync(args[i]).isDirectory())
+      // フォルダは、その中の全部の .ts（.d.ts は除く）
+      files.push(
+        ...readdirSync(args[i], { recursive: true })
+          .map(String)
+          .filter((f) => f.endsWith('.ts') && !f.endsWith('.d.ts'))
+          .sort()
+          .map((f) => join(args[i], f)),
+      );
+    else files.push(args[i]);
   }
   if (!files.length) {
-    console.log('使い方：node tools/same-code.mjs [--rev main | --old <古い src/game>] [--state 入れ物:名前,名前 …] src/lib/xx.ts …');
+    console.log(
+      '使い方：node tools/same-code.mjs [--rev main | --old <古い src/game>] [--state 入れ物:名前,名前 … | --auto-state] src/lib/xx.ts …',
+    );
     process.exit(2);
   }
-  if (oldDir && states.length) {
-    console.log('--old のフォルダには --state を当てない（写したフォルダに、先に tools/state-move.mjs を当てること）');
-    process.exit(2);
+  const rawOld = oldDir ? readGame(oldDir) : readRev(rev),
+    nowGame = readGame(join(root, 'src/game')),
+    now = legacyDecls(nowGame),
+    sources = files.map((f) => ({ file: relative(root, f), text: readFileSync(f, 'utf8') }));
+  if (auto) {
+    // 状態の入れ物の名前と、今の文（古い JS と src/lib の全部）
+    const state = await import(join(root, 'src/lib/state.ts')),
+      boxes = new Set(Object.keys(state).filter((k) => state[k] && typeof state[k] === 'object' && !Array.isArray(state[k]))),
+      lib = execFileSync('git', ['ls-files', 'src/lib'], { cwd: root, encoding: 'utf8' })
+        .split('\n')
+        .filter((f) => f.endsWith('.ts')),
+      text = [...nowGame.values(), ...lib.map((f) => readFileSync(join(root, f), 'utf8'))].join('\n'),
+      old0 = legacyDecls(rawOld),
+      gone0 = [...old0.keys()].filter((k) => !now.has(k));
+    // .ts に同じ名前の一番外の宣言がある物は、状態ではなく移した物
+    const tsNames = new Set(sources.flatMap((s) => [...topDecls(parseAst(s.text, { lang: 'ts' }).body, s.file, s.text, 0).keys()]));
+    const found = detectStates(
+      old0,
+      gone0.filter((k) => !tsNames.has(k)),
+      text,
+      boxes,
+    );
+    for (const s of found) console.log(`状態を入れ物に移したと見た：${s.names.map((n) => `${s.box}.${n}`).join('、')}`);
+    states.push(...found);
   }
-  const oldGame = oldDir ? readGame(oldDir) : gameAtRev(rev, states),
-    old = legacyDecls(oldGame),
-    now = legacyDecls(readGame(join(root, 'src/game')));
+  const old = legacyDecls(withStates(rawOld, states));
   // 比べるのは、古い JS から消えた名前だけ（src/lib の名前が、今も古い JS にある別の物と同じ名前のこともある）
   const goneAll = new Set([...old.keys()].filter((k) => !now.has(k)));
-  const { results, review, used, compared } = compareSources(
-    old,
-    files.map((f) => ({ file: relative(root, f), text: readFileSync(f, 'utf8') })),
-    goneAll,
-  );
+  const { results, review, used, compared } = compareSources(old, sources, goneAll);
   let bad = 0;
   for (const r of results) {
     console.log(`${r.diffs.length ? '✗' : '✓'} ${r.file} ${r.name}${r.diffs.length ? `：違い ${r.diffs.length}` : ''}`);

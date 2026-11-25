@@ -58,7 +58,8 @@ tools/lint-game.mjs  src/game/ をつないで構文と lint を調べ、場所�
 tools/state-move.mjs 状態を入れ物に移す道具：古い JS の一番外の状態を、src/lib/state.ts の入れ物の欄に移す書き換え（名前の見分けは eslint-scope）。単体テストは tests/unit/state-move.test.mjs（小さな見本で確かめる）
 tools/legacy-eval.mjs  テストの道具：古い JS のトップレベルの宣言を名前で取り出して評価する（移す前の古い関数を取り出して、新しい関数と結果を比べる。まだ古い JS にある関数を単体テストで本物のまま使う。型は .d.mts）
 tools/same-code.mjs  移した関数が、移す前の古い関数と「同じ文」かを、構文の木で確かめる道具（型を外し、型のための決まった書き換えを元に戻して比べる。
-                     規則と使い方はファイルの頭。古い JS は git の版（--rev）から読み、状態を移した名前は --state で古い側にも同じ書き換えをする）。単体テストは tests/unit/same-code.test.mjs
+                     規則と使い方はファイルの頭。古い JS は git の版（--rev）から読み、状態を移した名前は --state か --auto-state で古い側にも同じ書き換えをする。
+                     PR の CI も、元の版と比べて走らせる）。単体テストは tests/unit/same-code.test.mjs
 tools/where.mjs      組み立てた JS の場所 → src/game/ のどのファイルの何行目か（ソースマップで戻す）
 tools/map.mjs        ゲーム本体の地図（ファイルごとの行の数と見出し）
 tools/serve.mjs      静的ファイルの小さなサーバー
@@ -109,7 +110,7 @@ pnpm-workspace.yaml  pnpm のサプライチェーン対策（公開24時間未�
 .node-version        Node の版（26.13.1）。CI・SessionStart hook・Cloudflare が読む
 wrangler.jsonc       Cloudflare Workers（静的アセット）の設定。公開は dist/
 .claude/settings.json  権限と hooks
-.github/workflows/ci.yml  確かめるだけの CI（check・test・画面写真の比較。どれも違えば失敗）
+.github/workflows/ci.yml  確かめるだけの CI（check・test・画面写真の比較・PR では移した関数の文の比べ合わせ。どれも違えば失敗）
 .github/workflows/dependency-review.yml  PR で増える依存の脆弱性とライセンス
 .github/workflows/codeql.yml  CodeQL（JavaScript の静的解析。PR と毎週）
 .github/dependabot.yml  依存の更新の PR（Dependabot。毎週。公開から1日たった版だけ。three.js と Playwright は minor 以上を手で上げる）
@@ -186,8 +187,8 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
    src/lib/ のファイルの頭の「もとは src/game/〜」と、古い JS の「〜は src/lib/xx.ts」の行は、移している間の手がかり。古い JS を全部移し終えたら消す。
    消し忘れると、包みの中の古い定義が import を黙って隠す。lint-game（pnpm check と編集直後の hook）が、包みの一番外での宣言をエラーにして止める
    （関数の中で同じ名前を使い直すのは、その中だけのことなので止めない。色の名前の `EYE` など）。
-3. 移した関数が、移す前と同じ文かを `node tools/same-code.mjs --rev main [--state 入れ物:名前,…] src/lib/xx.ts …` で確かめる（違いが0、比べていない名前が無いこと。
-   src/lib の全部のファイルを渡してよい。比べるのは古い JS から消えた名前だけ）。
+3. 移した関数が、移す前と同じ文かを `node tools/same-code.mjs --rev main --auto-state src/lib` で確かめる（違いが0、比べていない名前が無いこと。
+   比べるのは古い JS から消えた名前だけ。状態を入れ物に移した名前は --auto-state が見つける。見つからない時は --state 入れ物:名前,… で渡す）。PR の CI も同じことをする。
    型のための書き換えは、道具の規則（nth・lookup・must・level()・算術の中の `?? NaN` など。ファイルの頭）の形だけにする。規則に無い書き換えは違いとして出るので、
    写し方を規則に合わせる（無い値をそのまま渡す・返す所は `?? NaN` ではなく `nth`・`must`）。「先に読む」（`const D = here.D` など）は、道具が出す一覧を見て、
    間で中身が変わらないことを確かめる。道具は通るかどうかに関係なく全部の行を見るので、写し漏れ・係数・比べ方・乱数を引く順番の違いはここで見つける。

@@ -1,7 +1,7 @@
 // 構文の木で、移した関数と移す前の古い関数を比べる道具（tools/same-code.mjs）の単体テスト。
 // 規則ごとに「同じと言う物」と「違うと言う物」を小さな見本で確かめ、写し漏れ・係数・比べ方・乱数を引く順番の違いを見つけることも確かめる。
 import { describe, expect, it } from 'vitest';
-import { compareSources, legacyDecls } from '../../tools/same-code.mjs';
+import { compareSources, detectStates, legacyDecls } from '../../tools/same-code.mjs';
 
 /** 古い JS の文 oldJs と新しい .ts の文 newTs を比べ、関数ごとの違いの数・人が確かめる一覧・比べた名前を返す */
 function cmp(oldJs, newTs) {
@@ -125,5 +125,20 @@ describe('違うと言う物', () => {
   });
   it('古い JS に無い名前は比べない', () => {
     expect(cmp(`function f(){}`, `export function f() {}\nexport function g() { return 1; }`).compared).toEqual(['f']);
+  });
+});
+
+describe('状態を入れ物に移した名前を見つける（--auto-state）', () => {
+  const old = legacyDecls(new Map([['01-a.js', 'let webMsg=false, both=0, gone=1, longer=2; function draw(){}']]));
+  const boxes = new Set(['here', 'ui']);
+  it('今の文に「入れ物.名前」があり、入れ物が1つに決まる変数だけ', () => {
+    const text = 'if(!here.webMsg) here.webMsg=true; here.both=1; ui.both=2; xhere.gone=1; here.longerX=1; here.draw();';
+    expect(detectStates(old, ['webMsg', 'both', 'gone', 'longer', 'draw'], text, boxes)).toEqual([{ box: 'here', names: ['webMsg'] }]);
+  });
+  it('入れ物ごとにまとめる', () => {
+    expect(detectStates(old, ['webMsg', 'gone'], 'here.webMsg; ui.gone', boxes)).toEqual([
+      { box: 'here', names: ['webMsg'] },
+      { box: 'ui', names: ['gone'] },
+    ]);
   });
 });
