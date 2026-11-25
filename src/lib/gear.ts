@@ -1,8 +1,9 @@
 // 手と持ち物の処理（もとは src/game/19-hands-runes.js）。状態の入れ物 gear（両手・持ち物）に頼る物。
 // 表だけに頼る物（ルーンの名前・色・付けられるか）は src/lib/runes.ts。
 import { lookup, must } from './array.ts';
-import { RUNE_DEF, type Rune, TWO_SLOTS, slotsAllow, syncHand, trList, canPut } from './runes.ts';
+import { RUNE_DEF, RUNE_TYPES, type Rune, TWO_SLOTS, slotsAllow, syncHand, trList, canPut } from './runes.ts';
 import { type HandState, type Hands, gear } from './state.ts';
+import { lockedOf, weaponPool } from './unlocks.ts';
 
 /** 左手・右手 */
 export type Side = 'L' | 'R';
@@ -37,6 +38,23 @@ export function makeStrong(t: string): Rune {
   const ru = makeRune(t);
   if (lookup(RUNE_DEF, t).cat === 'mod') ru.strong = true;
   return ru;
+}
+/** ルーンの種類の重み（武器・性質・発動・効き方・護符） */
+export type RuneWeights = Partial<Record<'atk' | 'elem' | 'trig' | 'mod' | 'body', number>>;
+/** でたらめにルーンの種類を選ぶ（重み weights の割合で種類を選び、その中から解放した物を1つ。選べなければ火） */
+export function randomRuneType(r: () => number, weights?: RuneWeights): string {
+  const w = weights || { elem: 0.45, trig: 0.12, mod: 0.33, body: 0.1 };
+  let x = r();
+  for (const c of ['atk', 'elem', 'trig', 'mod', 'body'] as const) {
+    const wc = w[c];
+    if (!wc) continue;
+    if (x < wc) {
+      const a = c === 'atk' ? weaponPool() : RUNE_TYPES[c].filter((t) => !lockedOf('rune', t));
+      return a[Math.floor(r() * a.length)] || 'fire';
+    }
+    x -= wc;
+  }
+  return 'fire';
 }
 /** 武器 w を持った、空の手 */
 export function newHand(w: string): HandState {
