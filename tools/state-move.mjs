@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 段階7b の道具：古い JS（src/game/）の一番外の状態（let など）を、TypeScript の入れ物（src/lib/state.ts）の欄に移す書き換え。
+// 状態を入れ物に移す道具：古い JS（src/game/）の一番外の状態（let など）を、TypeScript の入れ物（src/lib/state.ts）の欄に移す書き換え。
 //   node tools/state-move.mjs vfx shake flash          書き換えて、一覧を出す
 //   node tools/state-move.mjs vfx shake flash --dry    書き換えずに、一覧だけ出す
 // 名前がどの宣言を指すかは eslint-scope で見分ける（同じ名前の局所の変数・引数は書き換えない）。

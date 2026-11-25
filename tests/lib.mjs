@@ -46,7 +46,7 @@ export async function withBrowser(fn, { prod = false } = {}) {
   mapDir = join(ROOT, '.build/maps', mode);
   const srv = await serve(dir);
   // システムのフォントを見せない（tests/fonts.conf）。テスト版は日本語も同梱のフォントで描くので、どのマシンでも同じ文字になる。
-  // 公開用の版（prod）は、JetBrains Mono を指定した所の日本語をシステムのフォントで描くので、ふつうの設定のままにする。
+  // 公開用の版（prod）は、JetBrains Mono を指定した所の日本語をシステムのフォントで描くので、FONTCONFIG_FILE を替えない（システムのフォントも見せる）。
   const env = prod ? process.env : { ...process.env, FONTCONFIG_FILE: join(ROOT, 'tests/fonts.conf') };
   const browser = await chromium.launch({ args: GL_ARGS, env });
   try {
@@ -58,7 +58,7 @@ export async function withBrowser(fn, { prod = false } = {}) {
 }
 
 // ページを作る。ページのエラーは errs に集める。ポインタロックは止める。
-// still: CSS のアニメーションとトランジションを止める（実際の時間で進むので、画面写真が揺れる。いつも終わった後の姿にする）
+// still: CSS のアニメーションとトランジションを止める（実際の時間で進むので、撮るたびに画面写真が変わる。いつも終わった後の姿にする）
 export async function newPage(browser, errs, { width = 960, height = 540, still = false } = {}) {
   const pg = await browser.newPage({ viewport: { width, height } });
   pg.on('pageerror', (e) => errs.push(annotate(String(e.stack || e)).slice(0, 600)));

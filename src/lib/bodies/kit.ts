@@ -16,7 +16,7 @@ export interface Glyph {
   x: number;
   y: number;
   z: number;
-  /** 文字の図鑑の番号（G） */
+  /** 文字の絵の表の番号（G） */
   g: number;
   /** 大きさ */
   s: number;

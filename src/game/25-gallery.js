@@ -64,7 +64,7 @@ function showBeast(i){
 function updateGallery(dt){
   if(!ui.gallery)return; const g=ui.gallery;
   // g.fix (set only by __test.galleryShow): hold the creature at one angle (yaw from facing the camera) and one pose, and move the camera:
-  // zoom divides the distance (still kept inside the room), pitch puts the camera that many radians above the creature's middle (null: the usual height)
+  // zoom divides the distance (still kept inside the room), pitch puts the camera that many radians above the creature's middle (null: the height the bestiary works out from the creature's size)
   if(g.mode==='beast'&&g.m){ const m=g.m, sc=m.ty.scale||1, fix=g.fix; g.t+=dt; const walking=fix?fix.pose==='walk':Math.floor(g.t/4)%2===1;
     m.moving+=((walking?1:0)-m.moving)*Math.min(1,dt*4); m.walk+=dt*2.2*m.moving; if(!fix)m.yaw+=dt*0.45; m.x=g.room.x; m.z=g.room.z;
     if(fix){ m.sleep=fix.pose==='sleep'; if(m.sleep)m.moving=0; }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // スモークテスト：テスト用モードでない時にタイトルの画面が出るか、開発用の探索で dbg が動くか、探索の始め直しで前の場所や状態が残らないか
-// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの確かめの受付が切れるか、図鑑を開いても探索の記録が変わらないか、開発用モードのまま読み直した時・保存が使えない時のタイトル、図鑑の全部の生き物を出して例外・描いた文字の数・NaN を確かめる。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
+// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの「もう一度押して確かめる」待ちが4秒で消えるか、図鑑を開いても探索の記録が変わらないか、開発用モードのまま読み直した時・保存が使えない時のタイトル、図鑑の全部の生き物を出して例外・描いた文字の数・NaN を確かめる。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
 //   node tests/smoke.mjs          テスト版（.build/test/。既定）
 //   node tests/smoke.mjs --prod   公開用の版（dist/）。JetBrains Mono を指定した所の日本語は、システムのフォントで描く
 import { join } from 'node:path';
@@ -36,7 +36,7 @@ await withBrowser(
     await advance(pg, 2);
     const inBig = await pg.evaluate(() => dbg.info());
     if (inBig.inter !== 'bigroom') errs.push(`大広間に入れていない：${JSON.stringify(inBig).slice(0, 160)}`);
-    await pg.evaluate(() => dbg.hurt(9999)); // god=1 でも dbg.hurt は傷を受ける
+    await pg.evaluate(() => dbg.hurt(9999)); // god=1 でも、dbg.hurt では体力が減る
     await advance(pg, 1);
     await pg.keyboard.press('Enter');
     await advance(pg, 2);
@@ -66,7 +66,7 @@ await withBrowser(
     const afterStairs = await pg.evaluate(() => dbg.info());
     if (afterStairs.depth !== 1) errs.push(`下りる途中に死んだ後の新しい探索が深さ1で始まっていない：深さ${afterStairs.depth}`);
 
-    // 5. 試しの間からメニューで新しい探索を始めると、試しの間でない探索（傷を受ける）になる（試しの間のままだと、傷を受けない）
+    // 5. 試しの間からメニューで新しい探索を始めると、試しの間でない探索（攻撃を受けると体力が減る）になる（試しの間のままだと、体力が減らない）
     const menu = async (k) => {
       await pg.evaluate((k) => document.querySelector(`#menu button.row[data-k="${k}"]`).click(), k);
       await advance(pg, 0.1);
@@ -87,9 +87,9 @@ await withBrowser(
     await pg.evaluate(() => dbg.hurt(5));
     await advance(pg, 0.1);
     const hp1 = await pg.evaluate(() => dbg.info().hp);
-    if (!(hp1 < hp0)) errs.push(`試しの間から始めた新しい探索で、傷を受けない：体力 ${hp0} → ${hp1}`);
+    if (!(hp1 < hp0)) errs.push(`試しの間から始めた新しい探索で、体力が減らない：体力 ${hp0} → ${hp1}`);
 
-    // 6. メニューの「新しい探索」の、もう一度押して確かめる受付は、4秒で切れる（メニューを開いていて、ゲームの時刻が止まっていても）
+    // 6. メニューの「新しい探索」の、もう一度押して確かめる待ちは、4秒で消える（メニューを開いていて、ゲームの時刻が止まっていても）
     await pg.keyboard.press('Escape');
     await advance(pg, 0.1);
     await menu('new');
@@ -98,7 +98,7 @@ await withBrowser(
     let still = await pg.evaluate(() => __test.state().paused);
     if (!still) errs.push('メニューで「新しい探索」を押してから6秒たって、もう一度押したら、確かめずに新しい探索が始まった');
     else {
-      // 受付は1つだけ：「タイトルへ」を押すと「新しい探索」の受付は戻る（すぐ「新しい探索」を押しても、始まらずに確かめ直す）
+      // 確かめる待ちは1つだけ：「タイトルへ」を押すと「新しい探索」の待ちは消える（すぐ「新しい探索」を押しても、始まらずに確かめ直す）
       await advance(pg, 6);
       await menu('new');
       await menu('title');
@@ -106,7 +106,7 @@ await withBrowser(
       still = await pg.evaluate(() => __test.state().paused);
       if (!still)
         errs.push(
-          'メニューで「新しい探索」「タイトルへ」「新しい探索」と押したら、確かめずに新しい探索が始まった（受付が2つ同時に立っている）',
+          'メニューで「新しい探索」「タイトルへ」「新しい探索」と押したら、確かめずに新しい探索が始まった（確かめる待ちが2つ同時に残っている）',
         );
       else await pg.keyboard.press('Escape');
     }
@@ -158,7 +158,7 @@ await withBrowser(
     await blocked.close();
 
     // 10. 図鑑：全部の生き物（テスト用モードは開発用モードなので、全部並ぶ）を、立つ・歩く・眠るの姿で出して、少し進める。
-    //    例外が出ないか、文字を描いているか（ファントムは、ほとんど火花で描く）、描いた文字に NaN などが混じらないか。最後に Esc でタイトルへ戻る
+    //    例外が出ないか、文字を描いているか（ファントムは、ほとんど火花で描く）、描いた文字と火花に NaN や Infinity が混じらないか。最後に Esc でタイトルへ戻る
     await openTest(pg, base);
     await advance(pg, 1);
     const gal = await pg.evaluate(() => {
@@ -177,7 +177,7 @@ await withBrowser(
             __test.advance(pose === 'walk' ? 1.5 : 0.5); // 歩く姿は、歩幅がいっぱいになるまで（約1秒）
             const r = __test.galleryDraw();
             if (r.glyphs + r.sparks < 15) bad.push(`${e.name}（${pose}）が、ほとんど描かれていない：文字 ${r.glyphs}・火花 ${r.sparks}`);
-            if (r.bad) bad.push(`${e.name}（${pose}）の文字と火花のうち ${r.bad} 個に、数でない値（NaN など）がある`);
+            if (r.bad) bad.push(`${e.name}（${pose}）の文字と火花のうち ${r.bad} 個に、数でない値（NaN か Infinity）がある`);
           } catch (err) {
             bad.push(`${e.name}（${pose}）で例外：${String(err && err.stack ? err.stack : err).slice(0, 300)}`);
           }
@@ -203,7 +203,8 @@ await withBrowser(
             const r = __test.galleryDraw();
             if (r.glyphs + r.sparks < 15)
               bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）が、ほとんど描かれていない：文字 ${r.glyphs}・火花 ${r.sparks}`);
-            if (r.bad) bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）の文字と火花のうち ${r.bad} 個に、数でない値（NaN など）がある`);
+            if (r.bad)
+              bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）の文字と火花のうち ${r.bad} 個に、数でない値（NaN か Infinity）がある`);
             const c = r.camera;
             if (![c.dist, c.height, c.pitch].every(Number.isFinite) || c.height < 0.3)
               bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）のカメラの位置がおかしい：${JSON.stringify(c)}`);

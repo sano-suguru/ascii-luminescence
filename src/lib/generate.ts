@@ -2,7 +2,7 @@
 //   generateLevel(seed, depth, input, env) → { level, lordType, beastType }
 //   input：探索のシード runSeed、場所（branch・realm・inter）、図鑑の見本か（showroom）、年代記（hist）、試練（trials）、使える武器（weapons）
 //   env：生き物の表 MTYPES（src/lib/creatures.ts。読むだけ）と、ルーンを作る makeRune（src/lib/gear.ts）・特性を決める rollTraits（src/lib/runes.ts）
-//   結果：階（level）と、その階の主の種類（lordType）・忘れられた獣（beastType）。生き物の表への書き込みは、古い JS の包み（generate）が行う
+//   結果：階（level）と、その階の主の種類（lordType）・忘れられた獣（beastType）。生き物の表への書き込みは、古い JS の生成の呼び出し口（04-generate.js の generate）が行う
 // 迷宮の乱数（setRand）とノイズの種（setNoiseSeed）は、ここで階のシードから入れ替える。
 import { lookup, must, nth } from './array.ts';
 import { type Light, computeVis, topLights } from './light.ts';
@@ -287,7 +287,7 @@ export type LordType = MonsterType & { sk: string; boss: boolean };
 
 /**
  * 部屋を作る。必須の欄（床のマス cells、深い水 deep などの中の配列）をすべてそろえて作る。
- * 中心 cx・cy は四角の真ん中。more は、宝物庫の印・テーマ・廃墟の種類など部屋ごとの欄（同じ名前なら more が勝つ）
+ * 中心 cx・cy は四角の真ん中。more は、宝物庫の印・テーマ・廃墟の種類など部屋ごとの欄（同じ名前なら more の値で上書きする）
  */
 function newRoom(x: number, y: number, w: number, h: number, shape: string, more: Partial<Room> = {}): Room {
   return {

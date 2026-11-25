@@ -113,7 +113,7 @@ if(TEST)window.__test={
     return ui.gallery.list.map((e,i)=>({n:i+1,key:e.key,name:e.ty.name,form:e.ty.form})); },
   // show entry n held still: yaw 0 faces the camera, + turns it to the right as seen from the camera; pose 'stand' | 'walk' | 'sleep'.
   // zoom (0.5-3, default 1) divides the camera's distance: 2 is half as far, so the creature looks bigger (the room still bounds it).
-  // pitch (-0.3 to 1.3 radians) moves the camera up around the creature: 0 looks from the side, + looks down from above (left out: the usual height).
+  // pitch (-0.3 to 1.3 radians) moves the camera up around the creature: 0 looks from the side, + looks down from above (left out: the height the bestiary works out from the creature's size).
   // It empties the sparks first (so a full pool does not swallow the sparks of a phantom, which is mostly sparks), then steps one tick so the angle
   // and pose take hold (a walk needs about 1 s more to reach its full stride). Returns what galleryDraw() returns
   galleryShow(n,{yaw=0,pose='stand',zoom=1,pitch=null}={}){ const list=this.gallery(); if(typeof list==='string')return list;

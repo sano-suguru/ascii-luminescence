@@ -76,8 +76,8 @@ import {
   addGuards, altarFill, altarLine, forgeDepthOf, guardedNow, hostileKeys, nextGroup, placeAltar, placeSpring, vaultArea,
 } from '../lib/altars.ts';
 import { lockedOf, unlocked, weaponPool } from '../lib/unlocks.ts';
-// three.js（r147）。npm の three から読んで、組み立てに入れる（前は CDN の <script> で、ページ全体の THREE に入っていた）。
-// 光のにじみなどの部品（examples/jsm）は、古い JS が T.EffectComposer などで使うので、00-test-mode.js で T に一緒に入れる
+// three.js（r147）。npm の three から読んで、組み立てに入れる（CDN からは読まない）。
+// 光のにじみの4つの部品（examples/jsm の EffectComposer・RenderPass・ShaderPass・UnrealBloomPass）は、古い JS が T.EffectComposer などで使うので、00-test-mode.js で T に一緒に入れる
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';

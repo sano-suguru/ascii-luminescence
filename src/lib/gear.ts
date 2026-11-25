@@ -139,7 +139,7 @@ export const allRunes = (): Rune[] => {
     ),
   ];
 };
-/** 両手と体の枠の並びを、ルーンの番号で表した文字（変わったかを見るため） */
+/** 両手と体の枠の並びを、ルーンの番号で表した文字列（変わったかを見るため） */
 export const handsKey = (): string => {
   const hs = hands();
   const side = (h: Side): string => [hs[h].atk, ...hs[h].slots].map((r) => (r ? r.uid : 0)).join(',') + ':' + (hs[h].slotN || 2);

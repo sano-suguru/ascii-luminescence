@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------- drawing: runes on the floor, pedestals, altars, steles, beams, a ring while swapping, the chant at your hands
-// ---------------------------------------------------------------- what lies ahead (stage B): not told in words but felt - what leaks up the stairs, traces at branch doors, the light of other realms;
+// ---------------------------------------------------------------- what lies ahead: not told in words but felt - what leaks up the stairs, traces at branch doors, the light of other realms;
 // quiet enough to notice only up close
 const STRATUM_OMEN={
  cavern:{col:[0.55,0.85,0.5],gl:[',','.',"'"],vy:0.5,look:'下から、湿った土と苔の匂いが上がってくる。遠くで、水の滴る音がする',snd:'drip'},
@@ -62,7 +62,7 @@ function drawOmens(t,dt){ if(!here.D||ui.gallery)return; const o=omenOf(); if(!o
 }
 
 // ---------------------------------------------------------------- direction arrows: from a point just above the hands, arrows spread out toward places - straight-line direction only, never the way;
-// near ones short and thick, far ones long and thin. The stairs are always known; gates once seen; altars from 20 m; springs, treasuries and guarded prizes from 12 m. A place in plain sight needs no arrow.
+// near ones short and thick, far ones long and thin. The stairs are always known; branch stairs and gates once seen; altars, springs, treasuries, guarded prizes and graves from 20 m (1.5x at the crossroads), the last four as '?' until seen. A place in plain sight needs no arrow.
 const arrowCv=document.getElementById('arrows'), arrowCtx=arrowCv?arrowCv.getContext('2d'):null;
 function arrowTargets(){ const out=[]; if(!here.D||!ui.started||adv.dead)return out; const pc=((player.z/CELL)|0)*MW+((player.x/CELL)|0), atHub=here.D.hub&&here.D.roomOf[pc]===here.D.hub.ri, far=atHub?1.5:1;
   // standing at the crossroads, presences around are felt from farther off

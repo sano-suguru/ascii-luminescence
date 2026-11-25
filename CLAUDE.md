@@ -23,22 +23,22 @@ src/main.js          ページの入口のモジュール（フォント（@font
 src/game/*.js        ゲーム本体の古い JS（31ファイル。下の「ゲーム本体の地図」）
 src/game/imports.mjs ゲーム本体が使う TypeScript のモジュールを読む import の文（包みの関数の前に置かれる）
 src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整形もする
-                     array：配列と表を読む nth・lookup・must（無ければその場で止まる。as の代わり）、rng：シードの乱数を作る mulberry32 と clamp、random：見た目の乱数 mr・mpick と迷宮の乱数 rand・R・RI・pick（入れ替えは setRand）と混ぜる shuffle、glyphs：文字の図鑑の番号 G と飾りの文字の並び、color：css・hsl2rgb、math：角度・稲妻の線など、
-                     text：パネルの文字の幅と枠、history：年代記、world：迷宮の大きさ・タイル・液体と地面・支道と異界・層ごとの変化・岩、
+                     array：配列と表を読む nth・lookup・must（無ければその場で止まる。as の代わり）、rng：シードの乱数を作る mulberry32 と clamp、random：見た目の乱数 mr・mpick と迷宮の乱数 rand・R・RI・pick（入れ替えは setRand）と混ぜる shuffle、glyphs：文字の絵の表（アトラス）の番号 G と飾りの文字の並び、color：css・hsl2rgb、math：角度・稲妻の線など、
+                     text：パネルの文字の幅と枠、history：年代記、world：迷宮の大きさ・タイル・液体と地面・支道と異界・深さごとの係数（depthProfile）と深さごとに順に使う霧の色（FOGS）・岩、
                      light：灯りの計算、runes：ルーンの定義 RUNE_DEF・性質の効き目 RES・特性・反応・手の枠・ルーンの名前と色と付けられるか（表だけに頼る物）、
                      gear：手と持ち物の処理（makeRune・randomRuneType・effHand・isTwo・canPutAt など。状態 gear に頼る物）、progress：経験・伝承・解放・加護 BLESS（表）、
                      unlocks：解放の確かめ（unlocked・lockedOf・weaponPool。状態 saved に頼る物）、altars：祭壇とルーンを置く（祭壇の中身 altarFill・番人・鍛え方・泉・祭壇の画面の1行）、hands：手元の武器の文字、
                      creatures：生き物の表 MTYPES（探索の途中で種類が足される）、
                      strata：層・テーマ・特別な階・支道と異界の中身・地形・群れ、noise：ノイズ（種は setNoiseSeed）、vaults：洞窟と宝物庫の絵、
-                     shaders：描画のシェーダーの文と入れ物の大きさ、title：タイトルのロゴ、hud：表示の大きさ（ミニマップ・装備の画面など）、
+                     shaders：描画のシェーダーのソースと、描画用の配列の大きさ、title：タイトルのロゴ、hud：表示の大きさ（ミニマップ・装備の画面など）、
                      names：名前と説明の表（見た時の説明・罠・伝説の物・図鑑の主）、sound：音の小さな表と道具、
                      audio：音を鳴らす（Web Audio。音の部品・効果音・まわりの音 sndUpdate。状態 SND に頼る物）
-src/lib/state.ts     ゲームの状態の入れ物（分野ごと：clock＝時計（ゲームの時刻 time）、blaze＝火と地面のマス（fire・fuel・burnt・scent・凍らせた水 frozen など）、fight＝戦い（飛ぶ物 projs・光線・毒の霧・魔法の場・遅れて起きること・雨・床の印・ヒットストップ・稲妻など）、vfx＝揺れと光り、ui＝画面の開け閉め（started・camMode・invOpen など）、adv＝今の探索（runSeed・lvl・dead など）、gear＝手と詠唱（hands・bag・castSt など）、here＝今いる場所と階の中身（D・depth・branch・monsters・見えたマス・部屋の出来事 events・川のマス riverCells など）、saved＝保存する記録（META・BOOK・RSEEN・SEEN・DEVALL と、今の探索の伝説の物 LEGEND）、player・placeMem・音 SND・忍び足 stealth・手元の灯り lantern・表示の数 hudInfo・押しているキー keys。古い JS は clock.time・vfx.shake・ui.started のように欄で読み書きする。player から keys までは丸ごと入れ替えないので名前のまま）
+src/lib/state.ts     ゲームの状態の入れ物（分野ごと：clock＝時計（ゲームの時刻 time）、blaze＝火と地面のマス（fire・fuel・burnt・scent・凍らせた水 frozen など）、fight＝戦い（飛ぶ物 projs・光線・毒の霧・魔法の場・遅れて起きること・雨・床の目印・ヒットストップ・稲妻など）、vfx＝揺れと光り、ui＝画面の開け閉め（started・camMode・invOpen など）、adv＝今の探索（runSeed・lvl・dead など）、gear＝手と詠唱（hands・bag・castSt など）、here＝今いる場所と階の中身（D・depth・branch・monsters・見えたマス・部屋の出来事 events・川のマス riverCells など）、saved＝保存する記録（META・BOOK・RSEEN・SEEN・DEVALL と、今の探索の伝説の物 LEGEND）、player・placeMem・音 SND・忍び足 stealth・手元の灯り lantern・表示の数 hudInfo（今の階の見たマスの割合 explored）・押しているキー keys。古い JS は clock.time・vfx.shake・ui.started のように欄で読み書きする。player から keys までは丸ごと入れ替えないので名前のまま）
 src/lib/generate.ts  迷宮の生成（generateLevel。「入力 → 結果」の形。入力 GenInput・古い JS の物 GenEnv・結果 GenResult と、部屋 Room などの型）
 src/lib/bodies/*.ts  生き物の形（kit：点の型と道具 q2・q3、small・beasts・lords：各生き物の形、bosses：主の形（不死の王・蜘蛛の女王・ナーガの女王・古竜・王の影の二つ目の姿））
 tsconfig.json        TypeScript 7 の設定（strict・noUncheckedIndexedAccess・exactOptionalPropertyTypes など）。対象は src/lib/ と tests/unit/*.ts
 vite.config.mjs      組み立て（Vite 8）。公開用は dist/、テスト用（--mode test）は .build/test/
-tools/vite-plugins.mjs  Vite のプラグイン：legacyGame（src/game をつないで1つのモジュールに）・testPage（テスト版）・privateMaps（ソースマップを公開物の外へ）・noCssStub（ページの <style> の空の部品を消す）・fontCss（@fontsource の CSS を絞る：woff を外し、BIZ UDGothic は BIZ_CHARS を含む面だけ）
+tools/vite-plugins.mjs  Vite のプラグイン：legacyGame（src/game をつないで1つのモジュールに）・testPage（テスト版）・privateMaps（ソースマップを公開物の外へ）・noCssStub（ページの <style> から作られる空のモジュールを消す）・fontCss（@fontsource の CSS を絞る：woff を外し、BIZ UDGothic は BIZ_CHARS を含む面だけ）
 tools/game-source.mjs   ゲーム本体をつなぐ処理（gameSource）・行の対応・ソースマップ・テスト版のフォント
 tools/sourcemap.mjs  ソースマップの読み書き（自前の小さな道具）
 tools/lint-game.mjs  src/game/ をつないで構文と lint を調べ、場所を元のファイルの行で出す（読んだ名前の宣言し直しと、状態の入れ物の名前の宣言も止める。入れ物の名前は src/lib/state.ts の export から取る）
@@ -49,8 +49,8 @@ tools/map.mjs        ゲーム本体の地図（ファイルごとの行の数�
 tools/serve.mjs      静的ファイルの小さなサーバー
 tools/shots.mjs      図鑑の生き物を、見やすい角度で写す（pnpm shots。向き・寄る引く・見下ろす角度は形ごとの表。写真は tests/out/shots/）
 tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ・テスト用モードのページ）
-tests/smoke.mjs      テスト用モードでない時に、タイトルの画面が出るか ＋ 開発用の探索で dbg が動くか ＋ 探索の始め直しで前の場所や状態が残らないか ＋ メニューの確かめの受付が切れるか ＋ 図鑑を開いても探索の記録が変わらないか ＋ 開発用モードのまま読み直した時・保存が使えない時のタイトル ＋ 図鑑の全部の生き物を立つ・歩く・眠るの姿で出して、例外・描いた文字の数・NaN を確かめる（画面写真は tests/out/）
-tests/world.mjs      世界とのやり取り：扉・火・小さな生き物が世界に何かをする流れ（扉が視界を遮る・燃え尽きる・修復機が作り直す、階に残る物が階を移ると消える、猟犬が匂いの無いマスを追わない、硫黄・氷・冷気と火）。生き物は全部消してから、要る物だけ置く
+tests/smoke.mjs      テスト用モードでない時に、タイトルの画面が出るか ＋ 開発用の探索で dbg が動くか ＋ 探索の始め直しで前の場所や状態が残らないか ＋ メニューの「もう一度押して確かめる」待ちが4秒で消えるか ＋ 図鑑を開いても探索の記録が変わらないか ＋ 開発用モードのまま読み直した時・保存が使えない時のタイトル ＋ 図鑑の全部の生き物を立つ・歩く・眠るの姿で出して、例外・描いた文字の数・NaN を確かめる（画面写真は tests/out/）
+tests/world.mjs      世界とのやり取り：扉・火・氷と冷気・小さな生き物（修復機・清掃機・猟犬）がマスや扉を変える処理（扉が視界を遮る・燃え尽きる・修復機が作り直す、階に残る物が階を移ると消える、猟犬が匂いの無いマスを追わない、硫黄・氷・冷気と火）。生き物は全部消してから、要る物だけ置く
 tests/determinism.mjs  同じシードで同じ結果になるか
 tests/levels.mjs     全部の階（20シード×30か所）をブラウザで生成し、例外と、歩いて行けるかを確かめる
 tests/reach.mjs      歩いて行けるかの調べ方（levels.mjs と tests/unit/reach.test.ts が使う。型は reach.d.mts）
@@ -97,7 +97,7 @@ pnpm map [語]         # ゲーム本体の地図。語を付けると、見出�
 pnpm where index-D0mETEmY.js:4321:12   # 組み立てた JS のその場所が、src/game/ のどこか（行だけも可。--test でテスト版）
 pnpm test             # スモーク・世界とのやり取り・同じ結果・全部の階・枠（オフラインで動く。40秒ほど）
 pnpm test:visual      # 画面写真の比較（30秒ほど）。違えば tests/out/visual/ に違いの画像
-pnpm shots [名前…]    # 図鑑の生き物を見やすい角度で写す（既定は竜・主たちなど12枚。--all で全部、--bare で図鑑の枠を隠す、--out で置き場所）
+pnpm shots [名前…]    # 図鑑の生き物を見やすい角度で写す（既定は竜・主たちの12枚（tools/shots.mjs の PICK）。--all で全部、--bare で図鑑の枠を隠す、--out で置き場所）
 node tests/visual.mjs --update [--only 場面]   # 基準の画像を作り直す（見た目を意図して変えた時だけ）
 node tests/levels.mjs --seed 202               # 1つのシードだけ（--seeds 100 で数を変える）
 node tests/smoke.mjs --prod                    # 公開用の版（dist/）で起動（JetBrains Mono の所の日本語はシステムのフォント）
@@ -125,9 +125,9 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
   スモークテストの 8・9（開発用モードのまま読み直した時・保存が使えない時のタイトル）も、`?test=1` を付けずにページを開く（テスト用モードは開発用モードを必ずオンにするので、
   その場面を作れない）。待つのはタイトルが出るまでだけで、時間がたつのは待たない。
   画面写真には `timeout: 90000` を付ける。
-- three.js（r147）は、npm の `three` を組み立てに入れる（`src/game/imports.mjs` で読み、`00-test-mode.js` で光のにじみなどの部品と一緒に `T` にする）。CDN からは読まない。
+- three.js（r147）は、npm の `three` を組み立てに入れる（`src/game/imports.mjs` で読み、`00-test-mode.js` で画面の後処理の4つの部品（EffectComposer・RenderPass・ShaderPass・光のにじみの UnrealBloomPass）と一緒に `T` にする）。CDN からは読まない。
 - フォントも、npm の @fontsource を組み立てに入れる（`src/main.js` で読む。Google Fonts は読まない）。テスト版（`vite build --mode test`。テストが自分で組み立てる）も同じ。
-  テストのブラウザには、システムのフォントを見せない（`tests/fonts.conf`、最後の頼みは npm パッケージの DejaVu だけ）。
+  テストのブラウザには、システムのフォントを見せない（`tests/fonts.conf`、指定したフォントに無い文字の代わり（fallback）は、npm パッケージの DejaVu だけ）。
   JetBrains Mono を指定した所の日本語は、テスト版のほか（公開用の版・開発用サーバー）ではシステムの日本語フォントで描画されるが、テスト版では M PLUS 1 Code
   （全角の ！？ などは BIZ UDGothic）を組み合わせて描く（`tools/game-source.mjs` の `cjkFallback`）。マシンが違っても同じ画素になる。
 - ポインタロックは、テストでは `HTMLCanvasElement.prototype.requestPointerLock` を差し替えて止める（tests/lib.mjs）。
@@ -143,6 +143,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
    TypeScript のモジュールは、古い JS より先に読まれる。読んだ時に値を覚える書き方（`const mr=Math.random` など）は、
    テスト用モードの入れ替えより前の値を覚えてしまうので、呼んだ時に読む形にする（`mr = () => Math.random()`）。
 2. `src/game/imports.mjs` に import を足し、src/game/ から元の定義を消す（「〜は src/lib/xx.ts」と1行残す）。
+   src/lib/ のファイルの頭の「もとは src/game/〜」と、古い JS の「〜は src/lib/xx.ts」の行は、移している間の手がかり。古い JS を全部移し終えたら消す。
    消し忘れると、包みの中の古い定義が import を黙って隠す。lint-game（pnpm check と編集直後の hook）が、包みの一番外での宣言をエラーにして止める
    （関数の中で同じ名前を使い直すのは、その中だけのことなので止めない。色の名前の `EYE` など）。
 3. 移す前の実装と、たくさんの入力で同じ結果になることを確かめる（Node 26 は .ts をそのまま動かせる。古い関数は git の版から取り出す）。
@@ -177,8 +178,8 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 テスト用モードでない時（`?test=1` なし）の動きには影響しない（`src/game/00-test-mode.js` の `TEST` で分けている）。
 - `Math.random` はシードで決まる。時計（`performance.now`・`setTimeout`・`setInterval`）は、ゲームが進む時だけ進む。
 - ゲームは自分では進まない。`__test.advance(秒)`（描かずに進める。速い）か `__test.frames(n)`（描いて進める）で進める。1フレーム＝ゲームの1/30秒。
-- `window.__test`：`ready()`、`error()`、`advance(秒)`、`frames(n)`、`state()`（体力・位置・敵・飛ぶ物・溜め・切り替え・探索の届いた深さ など）、
-  `equip(手, 武器)`（例：`equip('L','bolt')`）、`bless(n)`（全部の加護を n 段目にする）、`width(文字列)`（visW）、`press(手)`・`release(手)`（ボタンを押す・離す）、`doors()`（扉の一覧）・`cell(i)`（マスの真ん中・床か・今見えているか・灰の印・硫黄か氷の床か・水か・火の強さ・燃える物）・`size()`（マップの横と縦のマスの数）・`ignite(i, gas)`（火をつける。gas は燃えるガスのように燃える物を少し残す）・`chill(i, r)`（マスの周りに冷気）・`burning(i)`（燃えているマスの一覧に何回入っているか）・`clearAll()`（生き物を全部消す）・`summon(種類, マス)`（生き物を置く。例：`summon('Re', i)`）・`fov()`（見えるマスを今すぐ数え直す。ゲームは0.1秒ごと）・`addTraces()`・`traces()`（階に残る物：魔法の場・遅れて当たる攻撃・雨・床の印・撃っている途中の光線・稲妻・稲妻の光を置く、数える。引き金の待ちも置く）・`failLater(文)`（遅れて起きることの中で例外を起こす。テスト用モードではページのエラーになる。テスト用モードでない時は、コンソールに出して続ける）、`gallery()`（タイトルから図鑑を開き、一覧 `[{n,key,name,form}]` を返す）・`galleryShow(n, {yaw, pose, zoom, pitch})`（n 番目を、向きと姿を止めて出す。yaw は0でこちらを向き、＋でこちらから見て右へ回る。pose は `'stand'`・`'walk'`・`'sleep'`。zoom は寄る・引く（距離を 1/zoom 倍。0.5〜3、ふつうは 1。部屋の壁より外には引かない）。pitch は見下ろす角度（ラジアン。0 で真横から、＋で上から。-0.3〜1.3。書かなければ図鑑のふつうの高さ））・`galleryDraw()`（出している生き物が描く物：文字の数 glyphs・火花の数 sparks・数でない値の混じった文字と火花の数 bad・描いた範囲 box・カメラの距離と高さと角度 camera）、`places()`、`gen(シード, 場所)`（生成だけ。描画の状態を壊すので専用のページで）
+- `window.__test`：`ready()`、`error()`、`advance(秒)`、`frames(n)`、`state()`（時刻 time・シード seed・場所 place・深さ depth・始まったか started・死んだか dead・体力 hp・位置 pos・向き yaw・レベル lvl・生き物 monsters・飛ぶ物の数 projs・階を移る途中 trans・届いた深さ maxDepth・溜め cast・立ち直り recover・止まっているか paused）、
+  `equip(手, 武器)`（例：`equip('L','bolt')`）、`bless(n)`（全部の加護を n 段目にする）、`width(文字列)`（visW）、`press(手)`・`release(手)`（ボタンを押す・離す）、`doors()`（扉の一覧）・`cell(i)`（マスの真ん中・床か・今見えているか・灰の印・硫黄か氷の床か・水か・火の強さ・燃える物）・`size()`（マップの横と縦のマスの数）・`ignite(i, gas)`（火をつける。gas は燃えるガスのように燃える物を少し残す）・`chill(i, r)`（マスの周りに冷気）・`burning(i)`（燃えているマスの一覧に何回入っているか）・`clearAll()`（生き物を全部消す）・`summon(種類, マス)`（生き物を置く。例：`summon('Re', i)`）・`fov()`（見えるマスを今すぐ数え直す。ゲームは0.1秒ごと）・`addTraces()`・`traces()`（階に残る物：魔法の場・遅れて当たる攻撃・雨・床の目印・撃っている途中の光線・稲妻・稲妻の光を置く、数える。発動のルーンの待ち時間も置く）・`failLater(文)`（遅れて起きることの中で例外を起こす。テスト用モードではページのエラーになる。テスト用モードでない時は、コンソールに出して続ける）、`gallery()`（タイトルから図鑑を開き、一覧 `[{n,key,name,form}]` を返す）・`galleryShow(n, {yaw, pose, zoom, pitch})`（n 番目を、向きと姿を止めて出す。yaw は0でこちらを向き、＋でこちらから見て右へ回る。pose は `'stand'`・`'walk'`・`'sleep'`。zoom は寄る・引く（距離を 1/zoom 倍。0.5〜3。書かなければ 1。部屋の壁より外には引かない）。pitch は見下ろす角度（ラジアン。0 で真横から、＋で上から。-0.3〜1.3。書かなければ、図鑑が生き物の大きさから決める高さ））・`galleryDraw()`（出している生き物が描く物：文字の数 glyphs・火花の数 sparks・数でない値の混じった文字と火花の数 bad・描いた範囲 box・カメラの距離と高さと角度 camera）、`places()`、`gen(シード, 場所)`（生成だけ。描画の状態を壊すので専用のページで）
 - 気をつけること：
   - 溜めている間は、ゲームの時間が半分の速さで進む。ヒットストップ中は1/20。
   - 階に入ると、約1.25秒かけて明るくなる。写す前に `advance(2)` する。
@@ -191,7 +192,8 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 - **編集の直後**（PostToolUse）：`src/` などの JS を編集すると、構文と lint を確かめる（`src/game/` は全部をつないで調べる）。TypeScript は型（tsc）と、型の情報を使う lint。エラーなら差し戻されるので、その場で直す。
 - **終える前**（Stop）：`src/`・`tools/`・`tests/`・設定が変わっていれば `pnpm check` を通す。通らなければ終われない。
 - **セッションの始め**（SessionStart、クラウドのみ）：.node-version の Node と packageManager の pnpm を用意し（~/.cache）、依存が変わっていれば `pnpm install --frozen-lockfile`。
-- 権限：`pnpm` のスクリプト（check・lint・test など）・git の読み取り・commit・push・ブランチの切り替えは確認なし。
+- 権限：`pnpm run` のスクリプト（`pnpm run deploy` を除く）と、check・lint・fmt・test・build・typecheck・dev・map・where・verify・serve などの `pnpm` の直接の呼び出し、`pnpm exec` の oxlint・oxfmt・vitest・vite、`node tools/*`・`node tests/*`、
+  git の読み取り・add・commit・push・fetch・merge・stash・ブランチの切り替えは確認なし（一覧は .claude/settings.json の allow）。
   依存の追加と更新（`pnpm add`・`pnpm update`・`pnpm approve-builds`・`pnpm dlx`）・公開（`pnpm run deploy`・wrangler）・`rm -rf`・`git reset --hard`・`git clean`・変更を捨てる `git checkout` は確認あり。
   force push（`+ブランチ` の形も）・リモートのブランチの削除、npm での依存のインストール、`dist/` と `pnpm-lock.yaml` の直接編集、`.env`・`.dev.vars` を読むことは禁止。
   ただし権限は文字列の一致で見るだけなので、完全な安全柵ではない（別の書き方ならすり抜けうる）。
@@ -224,32 +226,32 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 | 00-test-mode | テスト用モード（`TEST`、時計、乱数） |
 | 01-title | タイトルのロゴ。ロゴの絵 LOGO_ART・TITLE_LINES は src/lib/title.ts |
 | 02-constants | 特別な階の場所（interAt）。生き物の表 MTYPES は src/lib/creatures.ts。層・テーマ・支道と異界の中身・迷宮の乱数・迷宮の大きさ・タイル・灯りの計算などは src/lib/。飾りの文字の並び（RUNESET など）は src/lib/glyphs.ts |
-| 03-vaults-history | 歴史の飾り（壁の絵 ARTS）と、探索ごとの歴史の入れ物（HIST）。洞窟の形と宝物庫の絵は src/lib/vaults.ts、makeHistory は src/lib/history.ts、岩・鉱脈・宝物庫の壁の高さは src/lib/world.ts |
-| 04-generate | 迷宮の生成の包み（generate）：今のゲームの状態から入力を作り、src/lib/generate.ts の generateLevel を呼び、結果（階・主の種類・忘れられた獣）をゲームの状態に入れる |
-| 05-renderer | 描画（シェーダー、水面、文字の図鑑、dyn、粒子の入れ物）。シェーダーの文と入れ物の大きさは src/lib/shaders.ts |
-| 06-world | 世界の組み立て（buildWorld）と、その部品の状態。今の階の中身 D・depth・monsters・player などは src/lib/state.ts。sstep は src/lib/math.ts、CHUNK は src/lib/world.ts、flowW は src/lib/math.ts |
-| 07-bodies-lords | 生き物の形：人型の見た目（lookHumanoid・extraLook）、主のまわりの気配（不死の王・蜘蛛の女王・ナーガ・竜）。主の形は src/lib/bodies/bosses.ts、古いトロル・古い獣・ゴーレムの形は src/lib/bodies/ |
-| 08-bodies-shadow | 生き物の形：王の影（変身・気配）、深みの主。一つ目の姿と機械の形は src/lib/bodies/lords.ts、二つ目の姿は src/lib/bodies/bosses.ts |
-| 09-bodies-creatures | 生き物の形：人型、リッチ、気配の動き。小さな生き物・四つ足・大きな生き物（オーガ・竜も）・亡霊・幻影の形は src/lib/bodies/ |
+| 03-vaults-history | 歴史の飾り（壁の絵 ARTS）と、探索ごとの歴史（HIST。年代記の中身）。洞窟の形と宝物庫の絵は src/lib/vaults.ts、makeHistory は src/lib/history.ts、岩・鉱脈・宝物庫の壁の高さは src/lib/world.ts |
+| 04-generate | 迷宮の生成の呼び出し口（generate）：今のゲームの状態から入力を作り、src/lib/generate.ts の generateLevel を呼び、結果（階・主の種類・忘れられた獣）をゲームの状態に入れる |
+| 05-renderer | 描画（シェーダー、水面、文字の絵の表、dyn、粒子の配列）。シェーダーのソースと描画用の配列の大きさは src/lib/shaders.ts |
+| 06-world | 世界の組み立て（buildWorld）と、組み立てた物の状態（区切りごとの壁と床の形・壁の向こうを隠す板 occMesh・入った部屋 visitedRooms など）。今の階の中身 D・depth・monsters・player などは src/lib/state.ts。sstep は src/lib/math.ts、CHUNK は src/lib/world.ts、flowW は src/lib/math.ts |
+| 07-bodies-lords | 生き物の形：人型の見た目（lookHumanoid・extraLook）、主のまわりの飾りの粒子と音（lichAura・spiderAura・nagaAura・dragonAura：周りに立つ剣・霜の輪・霧・低い音など）。主の形は src/lib/bodies/bosses.ts、古いトロル・古い獣・ゴーレムの形は src/lib/bodies/ |
+| 08-bodies-shadow | 生き物の形：王の影（変身 transformShadow、裾から台座へ流れる影と暗い霧 shadowAura）、深みの主（形 deepKrakenForm、まわりの粒子 krakenAura）、猟犬のまわりの粒子（houndAura）。一つ目の姿と機械の形は src/lib/bodies/lords.ts、二つ目の姿は src/lib/bodies/bosses.ts |
+| 09-bodies-creatures | 生き物の形：人型、リッチ、サラマンダーと沼の生き物のまわりの粒子（salamanderAura・bogAura）。小さな生き物・四つ足・大きな生き物（オーガ・竜も）・亡霊・幻影の形は src/lib/bodies/ |
 | 10-bodies-beast | 忘れられた獣の組み立て（buildForm）、獣の記録（眠った姿 beastSleep は src/lib/bodies/lords.ts） |
 | 11-monster-move | 生き物を作る（makeMonster）、歩ける所（canStep）、行き先（chooseNext） |
 | 12-hud-text | 忍び足と灯り、状態の表示（renderStatus）、操作・年代記の画面、物音（**パネルの文字の幅 visW と枠 boxText は src/lib/text.ts**、lerpAngle は src/lib/math.ts）。灯りの段階の名前・印の高さは src/lib/hud.ts、mname は src/lib/names.ts。忍び足 stealth・手元の灯り lantern・表示の数 hudInfo は src/lib/state.ts |
 | 13-creatures | 小さな生き物、群れ、大きな生き物の動き（updateMonster）、描く（drawMonster）。古い形は src/lib/bodies/small.ts |
 | 14-lights-fixtures | 灯り、備品、扉。LANTERN は src/lib/light.ts |
 | 15-sound-fire | 音量の切り替え（sndToggle）、ガス、火、火花、部屋の出来事、粒子。音を鳴らす処理（sndInit・効果音・まわりの音 sndUpdate など）は src/lib/audio.ts、SND_LV・sEnv は src/lib/sound.ts、cpos・FIRE_TYPES は src/lib/world.ts。火と地面のマスの状態は src/lib/state.ts の blaze、音 SND も src/lib/state.ts |
-| 16-view-input | 視界とミニマップ、伝言（msg）、当たり（solidAt）、入力の状態。ミニマップの大きさは src/lib/hud.ts、押しているキー keys は src/lib/state.ts |
+| 16-view-input | 視界とミニマップ、伝言（msg）、通れない所の当たり判定（solidAt：壁・崖・溶岩・柱など）、入力の状態。ミニマップの大きさは src/lib/hud.ts、押しているキー keys は src/lib/state.ts |
 | 17-meta | 伝承・解放・墓・試練（trialOn）、タイトルの画面（buildIntroPanel）。UNLOCKS・META_DEF は src/lib/progress.ts、解放の確かめ（unlocked・lockedOf・weaponPool）は src/lib/unlocks.ts、保存する記録 META などは src/lib/state.ts の saved |
-| 18-level-player | 階の切り替え（newLevel）、罠、生き物の強さ（MSTAT）、生と死、レベルアップ（levelChoices、lvlLine。加護の表 BLESS は src/lib/progress.ts）。expNeed・expOf は src/lib/progress.ts、serRune は src/lib/runes.ts。TRAP_INFO は src/lib/names.ts、WEAPON・SLEEP_MULT は src/lib/runes.ts、roll は src/lib/random.ts |
+| 18-level-player | 階の切り替え（newLevel）、罠、生き物の強さ（MSTAT）、プレイヤーと生き物のダメージ（hurtPlayer・damageMonster）、当たった生き物のひるみと吹き飛び（hitReact）、生き物の近接の攻撃（monsterStrike）、死と始め直し（die・newRun）、レベルアップ（levelChoices、lvlLine。加護の表 BLESS は src/lib/progress.ts）。expNeed・expOf は src/lib/progress.ts、serRune は src/lib/runes.ts。TRAP_INFO は src/lib/names.ts、WEAPON・SLEEP_MULT は src/lib/runes.ts、roll は src/lib/random.ts |
 | 19-hands-runes | 手元の武器（VM_MODELS、drawViewWeapons）、性質と反応、術の中身（specOf）。ルーンを作る・ルーンの種類を選ぶ・手と持ち物の処理は src/lib/gear.ts、ルーンの名前と色と付けられるかは src/lib/runes.ts。ルーンの定義 RUNE_DEF・性質の効き目 RES・TRAITS・REACT・手の枠は src/lib/runes.ts |
-| 20-chant-hits | 詠唱（beginCast、castNow…）、当たり（applyHit）、反応、飛ぶ物。turnDir は src/lib/math.ts、sp_elem は src/lib/runes.ts。戦いの状態は src/lib/state.ts の fight |
+| 20-chant-hits | 詠唱（beginCast、castNow…）、攻撃の当たり（applyHit）、反応、飛ぶ物。turnDir は src/lib/math.ts、sp_elem は src/lib/runes.ts。戦いの状態は src/lib/state.ts の fight |
 | 21-altars-heal | ルーンの手に入れ方、階ごとの祭壇の配置（mainPathAltars）、祭壇の画面、回復、拾う。祭壇の中身・番人・鍛え方・泉を置く・祭壇の画面の1行（altarFill・addGuards・forgeOptions・placeSpring・altarLine など）は src/lib/altars.ts、RALLY_FROM は src/lib/runes.ts、ALTAR_W は src/lib/hud.ts |
-| 22-world-hints | 先にある物の気配、方向の矢印、床のルーン、詠唱の見た目、照準。stratumAtDepth は src/lib/strata.ts |
+| 22-world-hints | 先にある物の手がかり（computeOmen・drawOmens：階段から漏れる光と音、支道の入口の跡、異界の門の光）、方向の矢印、床のルーン、詠唱の見た目、照準。stratumAtDepth は src/lib/strata.ts |
 | 23-debug | デバッグ（dbg、F2 の画面、URL の指定） |
 | 24-goal | 目的（伝説の物、最深部、王の影）、勝利、稲妻、タイトルへ戻る。伝説の物の表は src/lib/names.ts、jagged は src/lib/math.ts |
 | 25-gallery | 見た物の記録、図鑑、試しの間。図鑑の主・試しの間の的の表は src/lib/names.ts |
 | 26-spells-hud | 術と世界（扉・氷・雷）、詠唱の声、下の HUD（renderHotbar）、止まっているか（isPaused）。詠唱の声の表は src/lib/sound.ts |
 | 27-rune-screen | 装備の画面（renderInv、packSlot、equipWeapon、ビルド）、魔導書、メニュー。padTo・wrapPlain は src/lib/text.ts、CAT_BR・CAT_NAME・emptyChip・reactionOf は src/lib/runes.ts、PACK_W・PACK_SLOT・BAG_LINES は src/lib/hud.ts |
-| 28-camera-player | 1人称・3人称、プレイヤーの動き（updatePlayer）、空気（updateAtmosphere）。AVATAR_TY は src/lib/names.ts |
+| 28-camera-player | 1人称・3人称、プレイヤーの動き（updatePlayer）、霧と目の慣れ（updateAtmosphere：霧の濃さ・露出・溶岩の近くの熱のゆらぎ・水中の見え方）。AVATAR_TY は src/lib/names.ts |
 | 29-look | 見た時の説明（look）。説明の表と lookLine は src/lib/names.ts |
 | 30-loop-init | 大きさ、メインループ（frame・tick）、テスト用の `__test`、初期化（init）。ゲームの時刻 time は src/lib/state.ts の clock |
 結果の画面は `die()` / `victory()` / `newRun()`、タイトルは `buildIntroPanel()` / `buildUnlockPanel()`。
@@ -270,7 +272,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
   エンジン次第で、Chromium では最適化（Maglev）の前と後でも変わる（同じシードで違う迷宮になる。Node とブラウザでも違う）。単体テストが src/ を調べて止める。
 - **乱数とシフト**：32bitの値を `>>` で右シフトすると負になりうる。符号なしにしたい時は `>>>`。
 - **手元の武器**：dyn の文字は世界の中に描くので、壁に沈みうる（壁が近い時は、目に向かって相似に縮めている）。
-  斜めの線の文字は、奥行きを割った「画面での傾き」で選ぶ（vmGlyphS）。
+  斜めの線の文字は、奥行きで割った「画面での傾き」で選ぶ（vmGlyphS）。
 - **右上のミニマップ**：画面の右上3分の1を覆う。手元の武器の頭や刃先を、そこに入れない。
 - **開発用モード**：すべて解放済みになるので、解放の確かめは `al_dev` を `0` にして行う。
-- **祭壇の画面**：プレイヤーが閉じると、離れて戻るまで開かない。選ぶと、ほかの選択肢は消える。
+- **祭壇の画面**：プレイヤーが閉じると、祭壇の真ん中の台から1.5より離れて、また近づくまで開かない。選ぶと、ほかの選択肢は消える。

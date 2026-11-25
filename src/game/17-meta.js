@@ -1,8 +1,8 @@
-// ---------------------------------------------------------------- stage D: lore (points kept between runs), unlocks, the last run's grave, trials
+// ---------------------------------------------------------------- lore (points kept between runs), unlocks, the last run's grave, trials
 // META_DEF・UNLOCKS は src/lib/progress.ts（src/game/imports.mjs で読む）
 function loadMeta(){ try{ return Object.assign({},META_DEF,JSON.parse(localStorage.getItem('al_meta')||'{}')); }catch(e){ return Object.assign({},META_DEF); } }
 saved.META=loadMeta();
-// developer mode (al_dev) is read here, before the title is built below (it was read later, in 25-gallery.js, so the first title missed the trials)
+// developer mode (al_dev) is read here, before the title is built below (the title's trials row depends on it)
 try{ saved.DEVALL=localStorage.getItem('al_dev')==='1'; }catch(e){}
 function saveMeta(){ try{ localStorage.setItem('al_meta',JSON.stringify(saved.META)); }catch(e){} }
 // 解放の確かめ（unlocked・lockedOf・weaponPool）は src/lib/unlocks.ts（src/game/imports.mjs で読む）

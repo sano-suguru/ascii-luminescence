@@ -791,7 +791,6 @@ export function oldDragonForm(): Body {
 // ---------------------------------------------------------------- the Last King's Shadow, the second form: the seal broken. The cloak twisted into a long body, the wing bones grown into two great arms with torn membrane hanging,
 // the crown's shards grown into horns, the same single eye in a hollow skull with an open jaw; the starry dark and the trapped faces of the kings inside;
 // top-heavy (the chest the thickest), flared ribs, muscle bands, great back fins, a thick double coil on the floor, leaning hard forward; the heart in the chest with light running down the belly
-// （もとの古い JS には、使われていない太い線の関数 thick もあったが、移す時に除いた）
 export function shadowSerpentForm(): Body {
   const pts: Body = [],
     S = 0.08;
@@ -1021,7 +1020,6 @@ export function shadowSerpentForm(): Body {
       lit(w[0] + Math.cos(a) * rr * 0.14, w[1] + y * 0.11, w[2] + Math.sin(a) * rr * 0.14, mpick(['%', '#']), S, 0.9, EDGE, 'serp');
     }
     for (let c = 0; c < 4; c++) {
-      // もとの x には - sd*0.0（いつも 0）が付いていた。値は変わらないので除いた
       const spread = (c - 1.5) * 0.13,
         base: Vec3 = [w[0] + dir[0] * 0.1, w[1] + spread + dir[1] * 0.1, w[2] + dir[2] * 0.1];
       let prev = base;

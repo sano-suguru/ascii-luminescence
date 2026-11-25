@@ -1,8 +1,8 @@
-// 描画のシェーダーの文と、描画の入れ物の大きさ（もとは src/game/05-renderer.js）。
-// シェーダーの文は、three.js の ShaderMaterial に渡す GLSL。迷宮の大きさ（MW・MH・CELL）と灯りの数（NSL・NDL）を文に埋め込む。
+// 描画のシェーダーのソース（GLSL の文字列）と、描画用の配列の大きさ（もとは src/game/05-renderer.js）。
+// シェーダーのソースは、three.js の ShaderMaterial に渡す GLSL。迷宮の大きさ（MW・MH・CELL）と灯りの数（NSL・NDL）をソースに埋め込む。
 import { CELL, MH, MW, NDL, NSL } from './world.ts';
 
-/** どのシェーダーも使う関数（hash と、文字の図鑑の中の座標 glyphUV） */
+/** どのシェーダーも使う関数（hash と、文字の絵の表の中の座標 glyphUV） */
 export const GLSL_COMMON = `
 float hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
 vec2 glyphUV(float g, vec2 uv){ uv=uv*0.94+0.03; float cx=mod(g,16.0); float cy=floor(g/16.0); return vec2((cx+uv.x)/16.0, 1.0-(cy+1.0-uv.y)/7.0); }
@@ -218,7 +218,7 @@ void main(){
 
 /** 1フレームに置ける dyn の文字の上限（超えた分は描かない） */
 export const DYN_MAX = 12000;
-/** 粒子の入れ物の大きさ：塵 DUST_N・ガス GAS_N・そのほかの粒子 P_MAX。PT_TOTAL はその合計、P0 はそのほかの粒子の始まりの番号 */
+/** 粒子の配列の大きさ：塵 DUST_N・ガス GAS_N・そのほかの粒子 P_MAX。PT_TOTAL はその合計、P0 はそのほかの粒子の始まりの番号 */
 export const DUST_N = 900,
   GAS_N = 700,
   P_MAX = 3600,
