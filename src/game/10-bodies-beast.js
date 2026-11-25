@@ -42,7 +42,7 @@ function beastForm2(ty){
   if(spec.sing){ const tops=bodyPts.slice().sort((a,b)=>b.y-a.y).slice(0,7); for(const p of tops){ for(let q=0;q<3;q++){ const dx=(q-1)*0.06; for(let j=1;j<=3;j++)lit(p.x+dx*j/3,p.y+j*0.07,p.z,j===3?'*':'|',1,2.4,[0.6,0.95,1.0],'pulse'); } } }
   pts.noExtra=true; return pts;
 }
-// the beasts met, kept across adventures (the bestiary lists each by name)
+// the beasts met, kept across runs (the bestiary lists each by name)
 function loadBeasts(){ try{ return JSON.parse(localStorage.getItem('al_beasts')||'[]'); }catch(e){ return []; } }
 function recordBeast(ty){ try{ const all=loadBeasts(); if(all.some(b=>b.seed===adv.runSeed&&b.name===ty.name))return; all.push({seed:adv.runSeed,name:ty.name,col:ty.col,spec:ty.spec,lore:ty.lore,scale:ty.scale,fl:ty.fl,flier:ty.flier}); if(adv.runStats)adv.runStats.beastsNew=(adv.runStats.beastsNew||0)+1; localStorage.setItem('al_beasts',JSON.stringify(all.slice(-60))); }catch(e){} }
 function beastSamples(){ const K=[['獣','六本脚の','quad'],['竜','燃える鱗の','quad'],['大蛇','千の眼を持つ','serpent'],['蛾','歌う','moth'],['百足','影を喰らう','centipede']];

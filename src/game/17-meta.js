@@ -1,4 +1,4 @@
-// ---------------------------------------------------------------- stage D: lore (points kept between adventures), unlocks, the last adventurer's grave, trials
+// ---------------------------------------------------------------- stage D: lore (points kept between runs), unlocks, the last run's grave, trials
 // META_DEF・UNLOCKS は src/lib/progress.ts（src/game/imports.mjs で読む）
 function loadMeta(){ try{ return Object.assign({},META_DEF,JSON.parse(localStorage.getItem('al_meta')||'{}')); }catch(e){ return Object.assign({},META_DEF); } }
 saved.META=loadMeta();

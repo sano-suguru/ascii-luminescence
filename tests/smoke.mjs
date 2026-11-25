@@ -66,7 +66,7 @@ await withBrowser(
     const afterStairs = await pg.evaluate(() => dbg.info());
     if (afterStairs.depth !== 1) errs.push(`下りる途中に死んだ後の新しい探索が深さ1で始まっていない：深さ${afterStairs.depth}`);
 
-    // 5. 試しの間からメニューで新しい探索を始めると、ふつうの探索になる（試しの間のままだと、傷を受けない）
+    // 5. 試しの間からメニューで新しい探索を始めると、試しの間でない探索（傷を受ける）になる（試しの間のままだと、傷を受けない）
     const menu = async (k) => {
       await pg.evaluate((k) => document.querySelector(`#menu button.row[data-k="${k}"]`).click(), k);
       await advance(pg, 0.1);

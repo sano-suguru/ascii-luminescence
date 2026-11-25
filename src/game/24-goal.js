@@ -155,7 +155,7 @@ function drawBoltFx(t,dt){
   fight.boltFx=fight.boltFx.filter(f=>f.t<f.life);
 }
 
-// ---------------------------------------------------------------- back to the title (the adventure ends)
+// ---------------------------------------------------------------- back to the title (the run ends)
 let titleArm=0;
 function returnToTitle(){
   setMenu(false); if(ui.invOpen)setInv(false); if(ui.locked&&document.exitPointerLock)document.exitPointerLock();

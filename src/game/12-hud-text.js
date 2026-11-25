@@ -43,7 +43,7 @@ function renderHelp(){
   const f=t=>`<span class="f">${t}</span>`;
   el.innerHTML=boxText([f('+-- 操作 ----------------------'),
     `${f('|')} <b>WASD</b>     移動        <b>マウス</b>  視点`,`${f('|')} <b>左クリック</b> 左手      <b>右クリック</b> 右手`,`${f('|')} 押して詠唱、満ちたら離して放つ`,`${f('|')} <b>ホイール</b> ビルド切替  <b>Space</b>  回避`,`${f('|')} <b>Shift</b>    走る`,`${f('|')} <b>Tab</b>      装備        <b>Esc</b>    メニュー`,`${f('|')} 立ち止まると、辺りを自動で調べる`,f('|'),
-    `${f('|')} 深度 ${here.depth}${here.branch||here.realm?`（${placeLabel()}）`:''}    探索 ${hudInfo.explored}%`,`${f('|')} シード ${adv.runSeed}`,f('+------------------------------')]);
+    `${f('|')} 深度 ${here.depth}${here.branch||here.realm?`（${placeLabel()}）`:''}    地図 ${hudInfo.explored}%`,`${f('|')} シード ${adv.runSeed}`,f('+------------------------------')]);
 }
 function setHelp(on){ ui.helpOn=on; ui.chronOn=false; const el=document.getElementById('help'); if(!el)return; if(on)renderHelp(); el.classList.toggle('off',!on); }
 function cycleUi(){ ui.uiMode=(ui.uiMode+1)%3; document.body.classList.toggle('ui-min',ui.uiMode===1); document.body.classList.toggle('ui-none',ui.uiMode===2);

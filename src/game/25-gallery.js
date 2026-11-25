@@ -1,4 +1,4 @@
-// ---------------------------------------------------------------- what has been met and found (kept across adventures); a developer switch shows everything
+// ---------------------------------------------------------------- what has been met and found (kept across runs); a developer switch shows everything
 const loadSet=k=>{ try{ return new Set(JSON.parse(localStorage.getItem(k)||'[]')); }catch(e){ return new Set(); } };
 const saveSet=(k,s)=>{ try{ localStorage.setItem(k,JSON.stringify([...s])); }catch(e){} };
 saved.SEEN=loadSet('al_seen');

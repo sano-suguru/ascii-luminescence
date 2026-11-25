@@ -208,7 +208,7 @@ function loreRows(R,f){ if(!R)return []; const rows=[`${f('|')}  <b>伝承</b>`]
   rows.push(`${f('|')}    ${padTo('合計',34)}<b style="color:#ffe3a0">${String('+'+R.total).padStart(4)}</b>`, `${f('|')}    <span class="lab">累計 ${saved.META.lore}　　使える伝承 ${loreLeft()}</span>`);
   if(UNLOCKS.some(u=>!unlocked(u.id)&&u.cost<=loreLeft()))rows.push(`${f('|')}    <span style="color:#ffe3a0">解放できるものがある（タイトルの［解放］から）</span>`);
   else { const nx=UNLOCKS.filter(u=>!unlocked(u.id)).sort((a,b)=>a.cost-b.cost)[0]; if(nx)rows.push(`${f('|')}    <span class="lab">次の解放まで あと ${nx.cost-loreLeft()}（${nx.name} ${nx.cost}）</span>`); } return rows; }
-// the grave: what the fallen adventurer leaves (one thing, chosen on the results screen)
+// the grave: what the fallen player leaves (one thing, chosen on the results screen)
 let graveSel=0, graveCands=[];
 function graveRune(g){ const ru=makeRune(g.type); ru.strong=false; if(g.traits&&g.traits.length)ru.traits=g.traits.map(t=>({k:t.k,lv:t.lv-1})).filter(t=>t.lv>0); return ru; }
 function graveCandidates(){ const out=[], seen=new Set(), add=ru=>{ if(ru&&!seen.has(ru)){ seen.add(ru); out.push(ru); } };

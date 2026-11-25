@@ -120,13 +120,13 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 - ヘッドレスのChromiumは、`--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader --ignore-gpu-blocklist` で動く。
   とても遅い（960x540で1秒に1フレームくらい）。**テストはテスト用モードで書き、実時間では待たない**。
   例外は、スモークテストの「テスト用モードでない時に、タイトルの画面が出るか」の確認だけ（テスト用モードではないので、ゲームを止めて進められない）。
-  スモークテストの 8・9（開発用モードのまま読み直した時・保存が使えない時のタイトル）も、テスト用モードを付けずにページを開く（テスト用モードは開発用モードを必ずオンにするので、
+  スモークテストの 8・9（開発用モードのまま読み直した時・保存が使えない時のタイトル）も、`?test=1` を付けずにページを開く（テスト用モードは開発用モードを必ずオンにするので、
   その場面を作れない）。待つのはタイトルが出るまでだけで、時間がたつのは待たない。
   画面写真には `timeout: 90000` を付ける。
 - three.js（r147）は、npm の `three` を組み立てに入れる（`src/game/imports.mjs` で読み、`00-test-mode.js` で光のにじみなどの部品と一緒に `T` にする）。CDN からは読まない。
 - フォントも、npm の @fontsource を組み立てに入れる（`src/main.js` で読む。Google Fonts は読まない）。テスト版（`vite build --mode test`。テストが自分で組み立てる）も同じ。
   テストのブラウザには、システムのフォントを見せない（`tests/fonts.conf`、最後の頼みは npm パッケージの DejaVu だけ）。
-  JetBrains Mono を指定した所の日本語は、公開用の版ではシステムの日本語フォントで描画されるが、テスト版では M PLUS 1 Code
+  JetBrains Mono を指定した所の日本語は、テスト版のほか（公開用の版・開発用サーバー）ではシステムの日本語フォントで描画されるが、テスト版では M PLUS 1 Code
   （全角の ！？ などは BIZ UDGothic）を組み合わせて描く（`tools/game-source.mjs` の `cjkFallback`）。マシンが違っても同じ画素になる。
 - ポインタロックは、テストでは `HTMLCanvasElement.prototype.requestPointerLock` を差し替えて止める（tests/lib.mjs）。
 - Playwright は 1.63.0 に固定（クラウド環境の /opt/pw-browsers の Chromium と版を合わせている）。上げる時はそろえること。
