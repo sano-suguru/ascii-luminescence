@@ -7,14 +7,13 @@ import { must, nth } from '../array.ts';
 import { sNoise, sOut, sRumble, sTone, sndReady } from '../audio.ts';
 import { MTYPES } from '../creatures.ts';
 import { G } from '../glyphs.ts';
-import { isFinal } from '../levels.ts';
 import { msg } from '../log.ts';
 import { dyn, spawn } from '../particles.ts';
 import { clamp } from '../rng.ts';
 import { mpick, mr } from '../random.ts';
 import { sEnv } from '../sound.ts';
 import { type Monster, SND, adv, clock, here, player, vfx } from '../state.ts';
-import { BASE_H, CELL, MW, cpos } from '../world.ts';
+import { BASE_H, CELL, MW } from '../world.ts';
 import { buildForm } from './build.ts';
 import type { Body } from './kit.ts';
 import { shadowSerpentScale } from './bosses.ts';
@@ -195,7 +194,7 @@ export function dragonAura(m: Mon, _t: number): void {
 }
 
 /**
- * 王の影：裾から床を渡って台座へ流れる影の筋（最深部の台座が無ければ、まわりの3方向へ）と暗い霧。
+ * 王の影：裾から床を渡って、まわりの3方向へ流れる影の筋と暗い霧。
  * 一つ目の姿は、傷つくほど体から光のかけらがこぼれる
  */
 export function shadowAura(m: Mon, t: number): void {
@@ -221,14 +220,10 @@ export function shadowAura(m: Mon, t: number): void {
       0,
     );
   }
-  const F = here.finalSt;
-  const targets: (readonly [number, number])[] =
-    F && F.peds && isFinal()
-      ? F.peds.map((p) => cpos(p.i))
-      : [0, 1, 2].map((k) => {
-          const a = (k / 3) * Math.PI * 2 + 0.5;
-          return [m.x + Math.cos(a) * 4.5 * sc, m.z + Math.sin(a) * 4.5 * sc] as const;
-        });
+  const targets: (readonly [number, number])[] = [0, 1, 2].map((k) => {
+    const a = (k / 3) * Math.PI * 2 + 0.5;
+    return [m.x + Math.cos(a) * 4.5 * sc, m.z + Math.sin(a) * 4.5 * sc] as const;
+  });
   for (const [tx, tz] of targets) {
     const dx = tx - m.x,
       dz = tz - m.z,

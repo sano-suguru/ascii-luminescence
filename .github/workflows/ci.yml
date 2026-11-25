@@ -1,4 +1,7 @@
-# 確かめるだけの CI（公開は Cloudflare Workers Builds が行う）。PR では、TypeScript に移した関数が移す前と同じ文かも確かめる（tools/same-code.mjs）。
+# 確かめるだけの CI（公開は Cloudflare Workers Builds が行う）。
+# 速さのために、構文から組み立てまで（static）と、ブラウザのテスト（browser）を、別のランナーで同時に走らせる。
+# 最後の check が2つの結果をまとめる（ブランチの保護で必須にするのは check だけでよい）。
+# PR では static で、TypeScript に移した関数が移す前と同じ文かも確かめる（tools/same-code.mjs）。
 name: check
 on:
   push:
@@ -10,9 +13,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  check:
+  static:
+    name: 構文・lint・型・整形・単体テスト・使う文字・組み立て
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -27,17 +31,31 @@ jobs:
           cache: pnpm
       - name: 依存を入れる（lockfile どおり。保護の設定は pnpm-workspace.yaml）
         run: pnpm install --frozen-lockfile
-      - name: 構文・lint・整形・単体テスト・使う文字・組み立て
-        run: pnpm check
+      - run: pnpm check
       - name: 移した関数が、移す前と同じ文か（PR の元の版の古い JS と比べる。移していない PR は比べる物が無い）
         if: github.event_name == 'pull_request'
         run: node tools/same-code.mjs --rev HEAD^1 --auto-state src/lib
-      - name: Chromium を入れる
-        run: pnpm exec playwright install --with-deps chromium
-      - name: ブラウザのテスト（tests/run.mjs が7つを同時に3つずつ）
+  browser:
+    name: ブラウザのテストと画面写真の比較
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # pnpm の版は package.json の packageManager から読む
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - name: 依存を入れる（lockfile どおり。保護の設定は pnpm-workspace.yaml）
+        run: pnpm install --frozen-lockfile
+      # テストは chromium.launch() の既定（headless shell）だけを使うので、Chrome の本体は入れない
+      - name: Chromium（headless shell）を入れる
+        run: pnpm exec playwright install --with-deps --only-shell chromium
+      - name: ブラウザのテストと画面写真の比較（tests/run.mjs が9つを同時に3つずつ。画面写真は違えば失敗）
         run: pnpm test
-      - name: 画面写真の比較（違えば失敗。違いの画像は下で残す）
-        run: pnpm test:visual
       - name: 画面写真を残す
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -45,3 +63,17 @@ jobs:
           name: screenshots
           path: tests/out/
           if-no-files-found: ignore
+  check:
+    needs: [static, browser]
+    # 片方が落ちても走らせて、失敗を返す（skipped のままだと、必須のチェックとしては通った扱いになる）。取り消された時だけ走らせない
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 2つのジョブが通ったか
+        env:
+          STATIC: ${{ needs.static.result }}
+          BROWSER: ${{ needs.browser.result }}
+        run: |
+          echo "構文から組み立てまで：$STATIC、ブラウザのテスト：$BROWSER"
+          test "$STATIC" = success && test "$BROWSER" = success

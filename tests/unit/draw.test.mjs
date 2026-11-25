@@ -43,17 +43,17 @@ describe('特別な階の場所・天井の高さ', () => {
 });
 
 describe('移す前と同じ', () => {
-  it('描く処理と手がかり・伝説の物の読み方（300の場合、27の関数）の指紋', async () => {
+  it('描く処理と手がかり・伝説の物の読み方（300の場合、25の関数）の指紋', async () => {
     const all = await drawCases({ ...FX, ...FXX, ...OM, ...LG, ...LV, ...LM }, 300),
       lines = all.split('\n'),
       calls = lines.flatMap((l) => JSON.parse(l).calls),
       names = new Set(calls.map((c) => c.name)),
       msgs = new Set(calls.flatMap((c) => c.msg));
-    // 場合が中身を通っているか：27の関数が全部呼ばれ、文字を置き、粒子を出し、4つの一度だけの伝言（巣に絡まる・巣が燃える・ブラッドワート・階段の封）が出る
-    expect([lines.length, names.size, msgs.size]).toEqual([300, 27, 4]);
+    // 場合が中身を通っているか：25の関数が全部呼ばれ、文字を置き、粒子を出し、4つの一度だけの伝言（巣に絡まる・巣が燃える・ブラッドワート・階段の封）が出る
+    expect([lines.length, names.size, msgs.size]).toEqual([300, 25, 4]);
     expect(calls.filter((c) => c.dn > 0).length).toBeGreaterThan(1000);
     expect(calls.filter((c) => c.pN > 0).length).toBeGreaterThan(300);
     expect(calls.filter((c) => c.threw).length).toBeLessThan(5);
-    expect([fnv(all), all.length]).toEqual(['be90f75b', 5447285]);
+    expect([fnv(all), all.length]).toEqual(['b97b9f25', 5466965]);
   }, 60000);
 });

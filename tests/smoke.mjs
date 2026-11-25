@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-// スモークテスト：テスト用モードでない時にタイトルの画面が出るか、開発用の探索で dbg が動くか、探索の始め直しで前の場所や状態が残らないか
-// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの「もう一度押して確かめる」待ちが4秒で消えるか、図鑑を開いても探索の記録が変わらないか、開発用モードのまま読み直した時・保存が使えない時のタイトル、閉じた祭壇の画面が離れるまで開かないか、起きている竜を見た時の伝言、最深部で王の影が出て二つ目の姿になるか（背の高さ・画面への収まり・天井）。図鑑の生き物と図鑑を手で動かすのは tests/gallery.mjs、扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
+// スモークテスト：開発用の探索で dbg が動くか、探索の始め直しで前の場所や状態が残らないか（特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、
+// メニューの「もう一度押して確かめる」待ちが4秒で消えるか、図鑑を開いても探索の記録が変わらないか、閉じた祭壇の画面が離れるまで開かないか、起きている竜を見た時の伝言、
+// 最深部で王の影が出て二つ目の姿になるか（背の高さ・画面への収まり・天井）、伝説の物が揃っていない時に12階の異界から最深部へ出ないか。テスト用モードでない時のタイトルの画面は tests/title.mjs、図鑑の生き物と図鑑を手で動かすのは
+// tests/gallery.mjs、扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
 //   node tests/smoke.mjs          テスト版（.build/test/。既定）
 //   node tests/smoke.mjs --prod   公開用の版（dist/）。JetBrains Mono を指定した所の日本語は、システムのフォントで描く
 import { join } from 'node:path';
@@ -10,22 +12,7 @@ const errs = [];
 await withBrowser(
   async ({ browser, base }) => {
     const pg = await newPage(browser, errs);
-    // 1. テスト用モードでない時：タイトルの画面が出るまで
-    await pg.goto(base, { waitUntil: 'commit', timeout: 120000 });
-    await pg.waitForSelector('#enter', { timeout: 90000 });
-    await pg.waitForFunction(() => document.fonts.status === 'loaded', null, { timeout: 90000 });
-    // メインループが背景の迷宮を描くまで（テスト用モードでないので、描いたフレームが2つ進むのを待つ）
-    await pg.evaluate(
-      () =>
-        new Promise((ok) => {
-          let n = 0;
-          const f = () => (++n >= 2 ? ok() : requestAnimationFrame(f));
-          requestAnimationFrame(f);
-        }),
-    );
-    await pg.screenshot({ path: join(OUT, 'title.png'), timeout: 90000 });
-
-    // 2. テスト用モードで、開発用の探索（すべて解放済み、dbg が使える）
+    // 1. テスト用モードで、開発用の探索（すべて解放済み、dbg が使える）
     await openTest(pg, base, 'seed=202&depth=3&god=1');
     await advance(pg, 2); // 階に入った時の明るくなる演出（約1.25秒）を終わらせる
     await frames(pg, 2);
@@ -39,7 +26,7 @@ await withBrowser(
     await frames(pg, 2);
     await pg.screenshot({ path: join(OUT, 'run.png'), timeout: 90000 });
 
-    // 3. 特別な階（大広間）で死んで、Enter で新しい探索を始めると、深さ1から（特別な階は残らない）
+    // 2. 特別な階（大広間）で死んで、Enter で新しい探索を始めると、深さ1から（特別な階は残らない）
     await pg.evaluate(() => dbg.inter('bigroom'));
     await advance(pg, 2);
     const inBig = await pg.evaluate(() => dbg.info());
@@ -52,7 +39,7 @@ await withBrowser(
     if (again.depth !== 1 || again.inter !== null)
       errs.push(`新しい探索が深さ1の普通の階で始まっていない：${JSON.stringify(again).slice(0, 160)}`);
 
-    // 4. 階段を下りて暗くなる途中に死んで、すぐ Enter で始め直しても、深さ1から（階を移る途中が残って深さ2へ動かない）
+    // 3. 階段を下りて暗くなる途中に死んで、すぐ Enter で始め直しても、深さ1から（階を移る途中が残って深さ2へ動かない）
     await pg.evaluate(() => dbg.go(3));
     await advance(pg, 2);
     await pg.evaluate(() => {
@@ -74,7 +61,7 @@ await withBrowser(
     const afterStairs = await pg.evaluate(() => dbg.info());
     if (afterStairs.depth !== 1) errs.push(`下りる途中に死んだ後の新しい探索が深さ1で始まっていない：深さ${afterStairs.depth}`);
 
-    // 5. 試しの間からメニューで新しい探索を始めると、試しの間でない探索（攻撃を受けると体力が減る）になる（試しの間のままだと、体力が減らない）
+    // 4. 試しの間からメニューで新しい探索を始めると、試しの間でない探索（攻撃を受けると体力が減る）になる（試しの間のままだと、体力が減らない）
     const menu = async (k) => {
       await pg.evaluate((k) => document.querySelector(`#menu button.row[data-k="${k}"]`).click(), k);
       await advance(pg, 0.1);
@@ -97,7 +84,7 @@ await withBrowser(
     const hp1 = await pg.evaluate(() => dbg.info().hp);
     if (!(hp1 < hp0)) errs.push(`試しの間から始めた新しい探索で、体力が減らない：体力 ${hp0} → ${hp1}`);
 
-    // 6. メニューの「新しい探索」の、もう一度押して確かめる待ちは、4秒で消える（メニューを開いていて、ゲームの時刻が止まっていても）
+    // 5. メニューの「新しい探索」の、もう一度押して確かめる待ちは、4秒で消える（メニューを開いていて、ゲームの時刻が止まっていても）
     await pg.keyboard.press('Escape');
     await advance(pg, 0.1);
     await menu('new');
@@ -119,7 +106,7 @@ await withBrowser(
       else await pg.keyboard.press('Escape');
     }
 
-    // 7. タイトルから図鑑を開いても、探索の記録の「届いた深さ」は変わらない（図鑑の見本の部屋は深さ4。部屋を作る間も、図鑑の中だと分かっていること）
+    // 6. タイトルから図鑑を開いても、探索の記録の「届いた深さ」は変わらない（図鑑の見本の部屋は深さ4。部屋を作る間も、図鑑の中だと分かっていること）
     await pg.keyboard.press('Escape');
     await advance(pg, 0.1);
     await menu('title');
@@ -134,52 +121,21 @@ await withBrowser(
     await pg.keyboard.press('Escape');
     await advance(pg, 0.5);
 
-    // 8. 開発用モードをオンにしたまま（localStorage の al_dev が '1'）、?dev=1 も ?test=1 も付けずにページを読み直しても、
-    //    タイトルは開発用モードの形で出る（試練の行がある。ボタンは「オン」）。テスト用モードではないので、タイトルが出るまでだけ待つ
-    const dev = await newPage(browser, errs);
-    await dev.addInitScript(() => {
-      try {
-        localStorage.setItem('al_dev', '1');
-      } catch {}
-    });
-    await dev.goto(base, { waitUntil: 'commit', timeout: 120000 });
-    await dev.waitForSelector('#enter', { timeout: 90000 });
-    const title = await dev.evaluate(() => document.getElementById('intropanel').innerText);
-    if (!title.includes('開発用モード：オン')) errs.push('開発用モードのまま読み直したのに、タイトルのボタンが「オン」でない');
-    if (!title.includes('試練'))
-      errs.push('開発用モードのまま読み直したのに、タイトルに試練の行が出ない（開発用モードではすべて解放済みのはず）');
-    await dev.close();
-    // 9. localStorage が使えない時（保存を止めたブラウザ）も、開発用モードのボタンを押すと、表示が「オン」に変わる
-    const blocked = await newPage(browser, errs);
-    await blocked.addInitScript(() => {
-      const no = () => {
-        throw new Error('storage blocked');
-      };
-      Storage.prototype.getItem = no;
-      Storage.prototype.setItem = no;
-    });
-    await blocked.goto(base, { waitUntil: 'commit', timeout: 120000 });
-    await blocked.waitForSelector('#galDev', { timeout: 90000 });
-    await blocked.evaluate(() => document.getElementById('galDev').click());
-    const label = await blocked.evaluate(() => document.getElementById('galDev').innerText);
-    if (!label.includes('オン')) errs.push(`保存が使えない時、開発用モードを押しても表示が「オン」にならない：${label}`);
-    await blocked.close();
-
-    // 10. 祭壇の画面を閉じると、祭壇から離れて、また近づくまで開かない（装備の画面やメニューを開いて閉じても、開かない）
+    // 7. 祭壇の画面を閉じると、祭壇から離れて、また近づくまで開かない（装備の画面やメニューを開いて閉じても、開かない）
     const al = await newPage(browser, errs);
     await openTest(al, base, 'seed=202&depth=3&god=1');
     await advance(al, 2);
-    if (!(await nearAltar(al))) errs.push('10：祭壇が見つからない（テストの前提が崩れた）');
+    if (!(await nearAltar(al))) errs.push('7：祭壇が見つからない（テストの前提が崩れた）');
     const lvl0 = await al.evaluate(() => __test.state().lvl);
     const altarShown = async () => {
       await advance(al, 0.5);
       return al.evaluate(() => document.getElementById('altarp').classList.contains('open'));
     };
-    if (!(await altarShown())) errs.push('10：祭壇の近くに立っても、祭壇の画面が開かない（テストの前提が崩れた）');
+    if (!(await altarShown())) errs.push('7：祭壇の近くに立っても、祭壇の画面が開かない（テストの前提が崩れた）');
     // 開いてしまった時は、Esc で閉じてから次を確かめる（前の失敗で、次の確かめのキーがずれないように）
     const stayClosed = async (what) => {
       if (!(await altarShown())) return;
-      errs.push(`10：祭壇の画面を閉じた後、${what}、離れていないのに祭壇の画面がまた開いた`);
+      errs.push(`7：祭壇の画面を閉じた後、${what}、離れていないのに祭壇の画面がまた開いた`);
       await al.keyboard.press('Escape');
       await advance(al, 0.2);
     };
@@ -208,17 +164,17 @@ await withBrowser(
       if (best) dbg.step(best.x, best.z);
       return best && [x, z];
     });
-    if (!back) errs.push('10：祭壇から離れた床のマスが見つからない（テストの前提が崩れた）');
-    else if (await altarShown()) errs.push('10：祭壇から離れた所で、祭壇の画面が開いている（テストの前提が崩れた）');
+    if (!back) errs.push('7：祭壇から離れた床のマスが見つからない（テストの前提が崩れた）');
+    else if (await altarShown()) errs.push('7：祭壇から離れた所で、祭壇の画面が開いている（テストの前提が崩れた）');
     else {
       await al.evaluate(([x, z]) => dbg.step(x, z), back);
-      if (!(await altarShown())) errs.push('10：祭壇から離れて、また近づいたのに、祭壇の画面が開かない');
+      if (!(await altarShown())) errs.push('7：祭壇から離れて、また近づいたのに、祭壇の画面が開かない');
     }
     // 祭壇の画面とレベルアップの画面は同じ部品なので、途中でレベルが上がると、開いたかどうかを読み違える
-    if ((await al.evaluate(() => __test.state().lvl)) !== lvl0) errs.push('10：途中でレベルが上がった（テストの前提が崩れた）');
+    if ((await al.evaluate(() => __test.state().lvl)) !== lvl0) errs.push('7：途中でレベルが上がった（テストの前提が崩れた）');
     await al.close();
 
-    // 11. 探索の中で、起きている竜を初めて見た時の伝言は、起きている時の文（眠っている時の文ではない）
+    // 8. 探索の中で、起きている竜を初めて見た時の伝言は、起きている時の文（眠っている時の文ではない）
     const dr = await newPage(browser, errs);
     await openTest(dr, base, 'seed=202&depth=9&god=1');
     await advance(dr, 2);
@@ -247,7 +203,7 @@ await withBrowser(
           }
       return '竜を置ける開けた床が無い';
     });
-    if (typeof placed === 'string') errs.push(`11：${placed}（テストの前提が崩れた）`);
+    if (typeof placed === 'string') errs.push(`8：${placed}（テストの前提が崩れた）`);
     else {
       await advance(dr, 1);
       // 前提：竜は起きていて、見えている（どちらかが崩れると、伝言の文を確かめられない）
@@ -256,27 +212,22 @@ await withBrowser(
         const m = __test.state().monsters.find((o) => o[0] === 'D');
         return { awake: !!m && m[4] === 0, seen: __test.cell(cell).seen };
       }, placed.cell);
-      if (!pre.awake || !pre.seen) errs.push(`11：竜が起きていないか、見えていない（テストの前提が崩れた）：${JSON.stringify(pre)}`);
+      if (!pre.awake || !pre.seen) errs.push(`8：竜が起きていないか、見えていない（テストの前提が崩れた）：${JSON.stringify(pre)}`);
       const log = await dr.evaluate(() => document.getElementById('log').textContent);
       if (!log.includes('大きな翼を広げ、熱い息を吐きながら辺りを見回している') || log.includes('翼を畳んで眠っている'))
-        errs.push(`11：起きている竜を見た時の伝言が、起きている時の文でない：${log.slice(-200)}`);
+        errs.push(`8：起きている竜を見た時の伝言が、起きている時の文でない：${log.slice(-200)}`);
     }
     await dr.close();
 
-    // 12. 最深部：伝説の物を3つ持って台座に置くと（dbg.to('pedestal')）、王の影が出る。背の高さは約6.7（天井より低い）で、8離れて見ると全身が画面に収まる。
-    // 光の柱のそば（台座の上）で体力を半分より減らすと二つ目の姿になり、大きさは一つ目のまま（天井が低い所だけ縮む）で、天井より低い
+    // 9. 最深部：伝説の物を3つ持つと、少しして王の影が出る（持っていない間は出ない）。背の高さは約7（天井より低い）で、8離れて見ると全身が画面に収まる。
+    // どこでも攻撃が当たり、体力を半分より減らすと二つ目の姿になる。大きさは一つ目のまま（天井が低い所だけ縮む）で、天井より低い
     const fin = await newPage(browser, errs);
     await openTest(fin, base, 'seed=202&depth=13&god=1');
     await advance(fin, 1);
     const king = await fin.evaluate(() => {
+      __test.advance(4);
+      if (__test.state().monsters.some((m) => m[0] === 'final')) return '伝説の物を持っていないのに、王の影が出た';
       dbg.give('legends');
-      const peds = [];
-      for (let k = 0; k < 3; k++) {
-        const at = dbg.to('pedestal');
-        if (!at) return `台座が ${k} つしか見つからない`;
-        peds.push(at);
-        __test.advance(0.2);
-      }
       __test.advance(4);
       const b = __test.state().monsters.find((m) => m[0] === 'final');
       if (!b) return '王の影が出ない';
@@ -294,14 +245,7 @@ await withBrowser(
         dbg.look(b[1], 3.3, b[2]);
         __test.advance(1 / 30);
         const first = __test.monsterView('final');
-        // 二つ目の姿：台座の上に立って王の影を光の柱のそばまで来させ（闇の中では当たらない）、体力を半分より減らす
-        const p0 = peds[0];
-        dbg.step(p0[0], p0[1]);
-        for (let q = 0; q < 80; q++) {
-          __test.advance(0.1);
-          const m = __test.state().monsters.find((o) => o[0] === 'final');
-          if (m && Math.hypot(m[1] - p0[0], m[2] - p0[1]) < 3) break;
-        }
+        // 二つ目の姿：その場で攻撃して、体力を半分より減らす
         let second = null;
         for (let q = 0; q < 40 && !second; q++) {
           dbg.hit(25);
@@ -314,21 +258,54 @@ await withBrowser(
       }
       return '王の影を8離れて見通せる床が無い（テストの前提が崩れた）';
     });
-    if (typeof king === 'string') errs.push(`12：${king}`);
+    if (typeof king === 'string') errs.push(`9：${king}`);
     else {
       const { first, second, after } = king;
-      if (!(first.world.y1 > 6 && first.world.y1 < 7.6)) errs.push(`12：王の影の背の高さが約6.7でない：${JSON.stringify(first.world)}`);
-      if (!(first.world.y1 < first.ceil)) errs.push(`12：王の影が天井を突き抜ける：${first.world.y1} / ${first.ceil}`);
-      if (!(first.cut < 0.02)) errs.push(`12：8離れて見た王の影が、画面からはみ出す（${first.cut}）`);
-      if (!second) errs.push('12：光の柱のそばで体力を半分より減らしても、二つ目の姿にならない');
+      if (!(first.world.y1 > 6 && first.world.y1 < 7.6)) errs.push(`9：王の影の背の高さが約7でない：${JSON.stringify(first.world)}`);
+      if (!(first.world.y1 < first.ceil)) errs.push(`9：王の影が天井を突き抜ける：${first.world.y1} / ${first.ceil}`);
+      if (!(first.cut < 0.02)) errs.push(`9：8離れて見た王の影が、画面からはみ出す（${first.cut}）`);
+      if (!second) errs.push('9：体力を半分より減らしても、二つ目の姿にならない');
       else {
         const want = Math.max(1.2, Math.min(first.scale, (second.ceil - 0.3) / 3.6));
         if (Math.abs(second.scale - want) > 0.05)
-          errs.push(`12：二つ目の姿の大きさが、一つ目のまま（天井が低い所だけ縮む）でない：${second.scale}（${want} のはず）`);
-        if (!(after && after.world.y1 < after.ceil)) errs.push(`12：二つ目の姿が天井を突き抜ける：${JSON.stringify(after)}`);
+          errs.push(`9：二つ目の姿の大きさが、一つ目のまま（天井が低い所だけ縮む）でない：${second.scale}（${want} のはず）`);
+        if (!(after && after.world.y1 < after.ceil)) errs.push(`9：二つ目の姿が天井を突き抜ける：${JSON.stringify(after)}`);
       }
     }
     await fin.close();
+
+    // 10. 最深部の1つ上の階（12）の異界の門から入り、異界を抜けて下りる：伝説の物が3つ揃っていなければ12階の門に戻され（最深部には出ない）、揃っていれば最深部（13）に出る
+    const rl = await newPage(browser, errs);
+    await openTest(rl, base, 'seed=202&depth=12&god=1');
+    await advance(rl, 1);
+    const realmExit = await rl.evaluate(() => {
+      const out = [];
+      for (const legends of [false, true]) {
+        dbg.go(12);
+        __test.advance(2);
+        if (legends) dbg.give('legends');
+        const r = dbg.realm('ice');
+        if (typeof r === 'string') return `異界に入れない：${r}`;
+        __test.advance(2);
+        const from = __test.state().place;
+        const sp = dbg.info().stairsPos;
+        if (!sp) return '異界に下り階段が無い（テストの前提が崩れた）';
+        dbg.step(sp[0], sp[1]);
+        for (let k = 0; k < 40 && __test.state().place === from; k++) __test.advance(0.2);
+        __test.advance(1);
+        out.push({ legends, depth: __test.state().depth, place: __test.state().place });
+      }
+      return out;
+    });
+    if (typeof realmExit === 'string') errs.push(`10：${realmExit}`);
+    else {
+      const [without, withAll] = realmExit;
+      if (!(without && without.depth === 12 && without.place === '12'))
+        errs.push(`10：伝説の物が揃っていないのに、12階の異界から最深部へ出た：${JSON.stringify(without)}`);
+      if (!(withAll && withAll.depth === 13))
+        errs.push(`10：伝説の物が揃っているのに、12階の異界から最深部へ出ない：${JSON.stringify(withAll)}`);
+    }
+    await rl.close();
   },
   { prod: process.argv.includes('--prod') },
 );

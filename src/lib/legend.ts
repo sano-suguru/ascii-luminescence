@@ -1,14 +1,12 @@
-// 伝説の物（もとは src/game/24-goal.js）。状態の入れ物 saved（今の探索の伝説の物 LEGEND）・adv（探索のシードと年代記）・here（今いる場所と最深部の状態）に頼る物。
-// 伝説の物の読み方（どの支道にあるか・3つそろったか・最深部の手前の封・台座に置いたか・王の影が無防備か）と、世界の中に描く物（床の伝説の物・封の印・台座）。
+// 伝説の物（もとは src/game/24-goal.js）。状態の入れ物 saved（今の探索の伝説の物 LEGEND）・adv（探索のシードと年代記）・here（今いる場所）に頼る物。
+// 伝説の物の読み方（どの支道にあるか・3つそろったか・最深部の手前の封）と、世界の中に描く物（床の伝説の物・封の印）。
 import { lookup, must, nth } from './array.ts';
 import { cssOf } from './color.ts';
 import { G } from './glyphs.ts';
-import { isFinal } from './levels.ts';
 import { LEGEND_KINDS, LEGEND_ORDER } from './names.ts';
 import { dyn } from './particles.ts';
-import { mr } from './random.ts';
 import { mulberry32 } from './rng.ts';
-import { type Legend, type Monster, adv, here, player, saved } from './state.ts';
+import { type Legend, adv, here, player, saved } from './state.ts';
 import { BRANCHES, FINAL_DEPTH, cpos } from './world.ts';
 
 /**
@@ -58,17 +56,17 @@ export function getLegend(): Legend | null {
       kind: 'mirror',
     },
   };
-  saved.LEGEND = { seed: adv.runSeed, items, have: new Set(), placed: new Set() };
+  saved.LEGEND = { seed: adv.runSeed, items, have: new Set() };
   return saved.LEGEND;
 }
-/** 状態の表示の1行：伝説の物の印（手にしたか置いた物は光る）と名前 */
+/** 状態の表示の1行：伝説の物の印（手にした物は光る）と名前 */
 export function legendLine(): string {
   const L = getLegend();
   if (!L) return '';
   return (
     LEGEND_ORDER.map((k) => {
       const kd = lookup(LEGEND_KINDS, k),
-        has = L.have.has(k) || L.placed.has(k);
+        has = L.have.has(k);
       return has ? `<span class="glow" style="color:${cssOf(kd.col)}">${kd.ch}</span>` : `<span class="dim">${kd.ch}</span>`;
     }).join(' ') + `  <span class="lab">${LEGEND_ORDER.map((k) => lookup(LEGEND_KINDS, k).name).join('・')}</span>`
   );
@@ -87,25 +85,7 @@ export const legendAll = (): boolean => {
 };
 /** 最深部の手前の階で、下りが封じられているか（伝説の物が3つそろうまで。支道・異界にはない） */
 export const descentSealed = (): boolean => here.depth === FINAL_DEPTH - 1 && !here.branch && !here.realm && !legendAll();
-/** 最深部の台座 p に、伝説の物を置いたか */
-export const pedLit = (p: { kind: string }): boolean => {
-  const L = getLegend();
-  return !!L && L.placed.has(p.kind);
-};
-/** 生き物 m（王の影）が無防備か：伝説の物を置いた台座から 4.5 以内にいる。最深部の状態が無ければ true */
-export function finalExposed(m: Monster): boolean {
-  if (!here.finalSt) return true;
-  return here.finalSt.peds.some((p) => {
-    if (!pedLit(p)) return false;
-    const [x, z] = cpos(p.i);
-    return Math.hypot(m.x - x, m.z - z) < 4.5;
-  });
-}
-
-/**
- * 伝説の物を世界の中に描く：床に落ちている伝説の物（光の柱）、封じられた下り階段のまわりの3つの印（手にした物は光る）、
- * 最深部の台座（置いた物は光の柱と輪）。最深部では、王の影が無防備な間、体を明るくし、心臓を見せる
- */
+/** 伝説の物を世界の中に描く：床に落ちている伝説の物（光の柱）と、封じられた下り階段のまわりの3つの印（手にした物は光る） */
 export function drawLegendWorld(t: number): void {
   const L = getLegend();
   if (!L || !here.D) return;
@@ -139,52 +119,5 @@ export function drawLegendWorld(t: number): void {
           dyn(x + Math.cos(b2) * 1.1, 0.12, z + Math.sin(b2) * 1.1, G('.'), 0.1, 0.5, 0.45, 0.7);
         }
       });
-  }
-  if (here.finalSt && isFinal()) {
-    for (const p of here.finalSt.peds) {
-      const [x, z] = cpos(p.i),
-        kd = lookup(LEGEND_KINDS, p.kind),
-        c = kd.col,
-        lit = L.placed.has(p.kind),
-        can = L.have.has(p.kind);
-      dyn(x, 0.25, z, G('#'), 0.4, 0.45, 0.42, 0.52);
-      dyn(x, 0.6, z, G('='), 0.42, 0.55, 0.52, 0.6);
-      const br = lit ? 3 : can ? 1.4 + 0.8 * Math.sin(t * 4) : 0.3;
-      dyn(x, 1.0, z, G(kd.ch), 0.48, nth(c, 0) * br, nth(c, 1) * br, nth(c, 2) * br);
-      if (lit) {
-        for (let y = 0; y < 14; y++) {
-          const fl = 0.75 + 0.25 * Math.sin(t * 3 + y);
-          dyn(
-            x + (mr() - 0.5) * 0.05,
-            1.3 + y * 0.45,
-            z,
-            G(y % 3 ? '|' : '*'),
-            0.22,
-            nth(c, 0) * 2.2 * fl * (1 - y / 18),
-            nth(c, 1) * 2.2 * fl * (1 - y / 18),
-            nth(c, 2) * 2.2 * fl * (1 - y / 18),
-          );
-        }
-        for (let k = 0; k < 28; k++) {
-          const a = (k / 28) * Math.PI * 2 + t * 0.15;
-          dyn(
-            x + Math.cos(a) * 4.5,
-            0.1,
-            z + Math.sin(a) * 4.5,
-            G(k % 4 ? '.' : '+'),
-            0.16,
-            nth(c, 0) * 1.3,
-            nth(c, 1) * 1.3,
-            nth(c, 2) * 1.3,
-          );
-        }
-      }
-    }
-    const b = here.finalSt.boss;
-    if (b && !b.dead && b.visible !== false) {
-      const ex = finalExposed(b);
-      b.glow = ex ? 2.2 + 0.4 * Math.sin(t * 9) : 0.55;
-      b.heartOn = ex;
-    }
   }
 }

@@ -39,35 +39,21 @@ function pickLegend(it){
 function oracleLegendHints(){ const L=getLegend(); if(!L)return;
   LEGEND_ORDER.forEach((k,j)=>{ if(L.have.has(k))return; const it=L.items[k]; setTimeout(()=>msg(`<b style="color:#bfe4ff">「</b>${LEGEND_KINDS[k].name}は、${BRANCH_HINT[it.branch]}で、主に抱かれている」`),900+j*700); }); }
 
-// ---------------------------------------------------------------- the deepest place: three pedestals around where the stairs would go down
+// ---------------------------------------------------------------- the deepest place: with the three legendary things in hand, the king's shadow rises there
 function setupFinal(){
-  // the bottom is the highest point of the cave the stairs end in, so the shadow can stand under the vault
-  // the bottom: the place with the highest vault on this level, with open floor around it for the pedestals
+  // the bottom: the place with the highest vault on this level, with open floor around it, so the shadow can stand under the vault
   let c0=here.D.stairs, bc=here.D.ceil[c0]||0; const open=i=>i>=0&&i<NCELL&&here.D.tile[i]===TF&&!here.D.liquid[i]&&!here.D.solid.has(i);
   for(const rad of [3,2,1]){ for(let i=0;i<NCELL;i++){ if(!open(i)||here.D.ceil[i]<=bc)continue; const x=i%MW, z=(i/MW)|0; let ok=x>rad&&z>rad&&x<MW-rad-1&&z<MH-rad-1;
       for(let dz=-rad;dz<=rad&&ok;dz++)for(let dx=-rad;dx<=rad;dx++)if(!open(i+dz*MW+dx)){ ok=false; break; } if(ok){ bc=here.D.ceil[i]; c0=i; } }
     if(bc>=10)break; }
-  const L=getLegend(), cx0=c0%MW, cz0=(c0/MW)|0;
   here.monsters=here.monsters.filter(m=>m.ty.critter);
-  const ok=c=>c>=0&&c<NCELL&&here.D.tile[c]===TF&&!here.D.liquid[c]&&!here.D.solid.has(c)&&c!==c0;
-  const cand=[]; for(let dz=-5;dz<=5;dz++)for(let dx=-5;dx<=5;dx++){ const d=Math.hypot(dx,dz); if(d<2.4||d>4.6)continue; const c=(cz0+dz)*MW+cx0+dx; if(ok(c))cand.push([Math.atan2(dz,dx),c]); }
-  cand.sort((a,b)=>a[0]-b[0]); const peds=[];
-  if(cand.length>=3){ const step=cand.length/3; for(let k=0;k<3;k++)peds.push({kind:LEGEND_ORDER[k],i:cand[Math.floor(k*step)][1]}); }
-  else { const free=[]; for(let i=0;i<NCELL;i++)if(ok(i))free.push(i); free.sort((a,b)=>Math.hypot(a%MW-cx0,((a/MW)|0)-cz0)-Math.hypot(b%MW-cx0,((b/MW)|0)-cz0)); for(let k=0;k<3;k++)peds.push({kind:LEGEND_ORDER[k],i:free[2+k*3]}); }
-  here.finalSt={c0,peds,boss:null,bossT:-1,summonT:12,said:false};
-  for(const k of LEGEND_ORDER)if(L.placed.has(k))L.have.delete(k);
-  if(L.placed.size===3)here.finalSt.bossT=1.5;
+  here.finalSt={c0,boss:null,bossT:-1,summonT:12,said:false};
 }
-// 台座に置いたか pedLit・王の影が無防備か finalExposed は src/lib/legend.ts（src/game/imports.mjs で読む）
 function updateFinal(dt){
-  if(!here.finalSt||!isFinal()||adv.dead)return; const L=getLegend();
-  if(!here.finalSt.said&&ui.started){ here.finalSt.said=true; setTimeout(()=>msg('<b style="color:#bfe4ff">.</b>底に着いた。光の届かない、静かな闇だ。三つの台座が、何かを待っている。'),1600); }
-  for(const p of here.finalSt.peds){ if(L.placed.has(p.kind)||!L.have.has(p.kind))continue; const [x,z]=cpos(p.i); if(Math.hypot(x-player.x,z-player.z)>1.4)continue;
-    L.have.delete(p.kind); L.placed.add(p.kind); renderStatus(); const c=LEGEND_KINDS[p.kind].col;
-    for(let q=0;q<70;q++){ const a=mr()*6.28; spawn(x,0.5+mr()*4,z,Math.cos(a)*1.2,0.6+mr()*2.5,Math.sin(a)*1.2,1.4+mr(),G(mpick(['|','*','.','\''])),0.2,c[0]*3,c[1]*3,c[2]*3,0); }
-    sChime(x,z,0.7); vfx.flash=Math.max(vfx.flash,0.35);
-    msg(`<b style="color:${css(c)}">${LEGEND_KINDS[p.kind].ch}</b>${L.items[p.kind].name}を台座に置いた。光の柱が、闇を押し返していく。`);
-    if(L.placed.size===3)here.finalSt.bossT=2.6; }
+  if(!here.finalSt||!isFinal()||adv.dead)return;
+  if(!here.finalSt.said&&ui.started){ here.finalSt.said=true; setTimeout(()=>msg('<b style="color:#bfe4ff">.</b>底に着いた。光の届かない、静かな闇だ。手の中で、三つの光が震えている。'),1600); }
+  // with the three legendary things in hand, the shadow rises a little after you arrive
+  if(!here.finalSt.boss&&here.finalSt.bossT<0&&legendAll())here.finalSt.bossT=3.2;
   if(here.finalSt.bossT>0){ here.finalSt.bossT-=dt; if(here.finalSt.bossT<=0)spawnFinalBoss(); }
   const b=here.finalSt.boss; if(b&&!b.dead&&!b.phase2&&b.hp<b.maxHp*0.5)transformShadow(b);
   if(b&&b.invulnT>0)b.invulnT-=dt;
@@ -81,11 +67,11 @@ function spawnFinalBoss(){
   const R=adv.HIST.rulers, last=R[R.length-1], cx=here.finalSt.c0%MW, cz=(here.finalSt.c0/MW)|0;
   const ceilH=here.D.ceil[here.finalSt.c0]||6;
   MTYPES.final={...MTYPES.L,ch:'&',look:null,form:'shadowking',sk:'final',name:`${last.name}王の影`,scale:shadowKingScale(ceilH),col:[0.62,0.48,1.0],boss:true,lich:false,light:6,verb:'黒い太陽を頭に浮かべ、長い剣を手に、底の闇から立ち上がった'};
-  const b=makeMonster({key:'final',cx,cz,g:-1,lead:true}); b.sleep=false; b.aware=1.25; b.noticed=true; here.monsters.push(b); here.finalSt.boss=b;
+  const b=makeMonster({key:'final',cx,cz,g:-1,lead:true}); b.sleep=false; b.aware=1.25; b.noticed=true; b.heartOn=true; here.monsters.push(b); here.finalSt.boss=b;
   sRumble(0.9,3); vfx.shake=Math.max(vfx.shake,0.6); vfx.flash=Math.max(vfx.flash,0.3);
   for(let q=0;q<90;q++){ const a=mr()*6.28, e=mr(); spawn(b.x+Math.cos(a)*e*2,0.2,b.z+Math.sin(a)*e*2,Math.cos(a)*0.6,1+mr()*3,Math.sin(a)*0.6,1.6+mr(),G(mpick(['%','#','.','&'])),0.24,0.5,0.35,0.9,0); }
   msg(`<b style="color:#a98cff">&amp;</b>三つの光に照らされて、底の闇がひとところに集まっていく……`);
-  setTimeout(()=>msg(`<b style="color:#a98cff">&amp;</b><b style="color:#c9b8ff">${last.title}${last.name}の影</b>が立ち上がった。闇の外では、その影に触れることさえできない。`),1400);
+  setTimeout(()=>msg(`<b style="color:#a98cff">&amp;</b><b style="color:#c9b8ff">${last.title}${last.name}の影</b>が立ち上がった。`),1400);
 }
 // 伝説の物を世界の中に描く drawLegendWorld は src/lib/legend.ts（src/game/imports.mjs で読む）
 // the end: a screen like the one for death, but light

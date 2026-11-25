@@ -237,13 +237,12 @@ export async function drawCases(F, seeds) {
         if (kind === 'legend') it.legend = pick(LEGEND_ORDER);
         D.items.push(it);
       }
-      // 年代記と伝説の物（手にした物・置いた物）
+      // 年代記と伝説の物（手にした物）
       adv.HIST = chance(0.9) ? makeHistory(adv.runSeed) : null;
       saved.LEGEND = null;
       const L = getLegend();
       if (L) {
         for (const k of LEGEND_ORDER) if (chance(0.5)) L.have.add(k);
-        for (const k of LEGEND_ORDER) if (chance(0.3)) L.placed.add(k);
       }
       // 生き物：扉のそば・クモ・階段の番（群れ 1）・ほか
       here.monsters = [];
@@ -273,27 +272,6 @@ export async function drawCases(F, seeds) {
         if (chance(0.1)) d.gone = true;
         if (chance(0.3)) d.o = r();
         if (chance(0.2)) d.creaked = chance(0.5);
-      }
-      // 最深部の台座と王の影（最深部でない階にも、少しだけ置く）
-      if ((place.depth === FINAL_DEPTH && !place.branch && !place.realm && !place.inter) || chance(0.1)) {
-        const boss = chance(0.8)
-          ? mon('lord', px + (r() - 0.5) * 10, pz + (r() - 0.5) * 10, { visible: pick([true, false, undefined]), dead: chance(0.1) })
-          : null;
-        here.finalSt = {
-          c0,
-          peds: LEGEND_ORDER.map((kind) => ({ kind, i: cellNear(px, pz, 12) })),
-          boss,
-          bossT: 0,
-          summonT: 0,
-          said: false,
-        };
-        // 王の影を、台座から 4.5 のすぐ内か外に置くことも
-        if (boss && chance(0.5)) {
-          const [bx, bz] = cpos(pick(here.finalSt.peds).i),
-            a = r() * 6.28,
-            d = 4.5 + (chance(0.5) ? -0.02 : 0.02);
-          Object.assign(boss, { x: bx + Math.cos(a) * d, z: bz + Math.sin(a) * d });
-        }
       }
       // 稲妻・遅れて落ちる稲妻・床の目印・稲妻の光り
       const zapLog = [];
@@ -370,7 +348,6 @@ export async function drawCases(F, seeds) {
         ...(D.stairs >= 0 ? [cpos(D.stairs), cpos(D.stairs)] : []),
         ...(D.bstairs ? [cpos(D.bstairs.cell)] : []),
         ...(D.portal ? [cpos(D.portal.cell)] : []),
-        ...(here.finalSt ? here.finalSt.peds.map((p) => cpos(p.i)) : []),
       ];
       const blood = here.fixtures.filter((f) => f.type === 'bloodwort' || f.type === 'portal').map((f) => [f.x, f.z]);
       const placeNear = () => {
@@ -423,8 +400,6 @@ export async function drawCases(F, seeds) {
         ['legendOfBranch', () => [pick([...Object.keys(BRANCHES), 'none'])]],
         ['legendAll', () => []],
         ['descentSealed', () => []],
-        ['pedLit', () => [{ kind: pick([...LEGEND_ORDER, 'none']) }]],
-        ['finalExposed', () => [someMon()]],
         ['drawLegendWorld', () => [clock.time]],
         ['ceilAt', () => [player.x + (r() - 0.5) * 300, player.z + (r() - 0.5) * 300]],
       ];
@@ -473,7 +448,7 @@ export async function drawCases(F, seeds) {
         omen: D.omen,
         seal: [D.sealSnd, D.sealOpenMsg],
         flags: [here.webMsg, here.webBurnMsg],
-        legend: L && [L.have, L.placed],
+        legend: L && L.have,
       };
       out.push(text({ s, place, calls, state }));
     }

@@ -48,7 +48,7 @@ import { applyBuild, renderInv, setInv, startSwap } from '../lib/inventory.ts';
 import {
   cycleUi, drawMark, flyOpen, isPaused, makeNoise, onNoticed, placeLabel, renderBook, renderChron, renderHelp, renderStatus, setHelp, showHint, updateSearch, updateStealth,
 } from '../lib/status.ts';
-import { descentSealed, drawLegendWorld, finalExposed, getLegend, legendAll, legendOfBranch, pedLit } from '../lib/legend.ts';
+import { descentSealed, drawLegendWorld, getLegend, legendAll, legendOfBranch } from '../lib/legend.ts';
 import { ceilAt, cellLight } from '../lib/lightmap.ts';
 import { drawDoors, drawFixtures, drawGraves, drawSprings, drawWebs, webTouch } from '../lib/fixtures.ts';
 import { addBolt, drawBoltFx, drawFire, drawFrozen, drawZones, sparkCrown } from '../lib/fx.ts';
