@@ -11,6 +11,11 @@ const TESTCLK=TEST?(()=>{
   window.setTimeout=(fn,ms,...args)=>{ const id=nextId++; timers.set(id,{at:now+Math.max(0,+ms||0),fn,args}); return id; };
   window.setInterval=(fn,ms,...args)=>{ const id=nextId++; const every=Math.max(1,+ms||0); timers.set(id,{at:now+every,fn,args,every}); return id; };
   window.clearTimeout=window.clearInterval=id=>{ timers.delete(id); };
+  // 音の時計（currentTime）もゲームの時計に合わせ、音の部品はいつも動いている扱いにする。詠唱の声は音の時計で音節の数を決め、音節ごとに Math.random を引き、
+  // 効果音は部品が動いている時だけ鳴る（乱数も引く）。実時間のままだと、マシンの混み具合で乱数を引く数が変わり、その後の結果（火花の位置など）がずれる
+  if(window.BaseAudioContext){ const P=BaseAudioContext.prototype;
+    Object.defineProperty(P,'currentTime',{configurable:true,get(){ return now/1000; }});
+    Object.defineProperty(P,'state',{configurable:true,get(){ return 'running'; }}); }
   return { advance(ms){ const end=now+ms;
     for(;;){ let id=-1, e=null; for(const [k,v] of timers)if(v.at<=end&&(!e||v.at<e.at||(v.at===e.at&&k<id))){ id=k; e=v; }
       if(!e)break; now=Math.max(now,e.at); if(e.every)e.at+=e.every; else timers.delete(id);
