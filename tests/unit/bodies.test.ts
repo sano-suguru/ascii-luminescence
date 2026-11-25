@@ -157,6 +157,11 @@ describe('生き物の形', () => {
     const sword = b.filter((p) => p.part === 'body' && Math.abs(p.x + 0.55) < 0.05);
     expect(Math.max(...sword.map((p) => p.y))).toBeGreaterThan(crownTop);
     expect(Math.min(...sword.map((p) => p.y))).toBeLessThan(0.1);
+    // 横から見た厚み：前後は左右の8割以上あり、後ろには床を引きずる裾が伸びる（前より後ろへ長い）
+    const zs = b.map((p) => p.z),
+      xs = b.filter((p) => p.part !== 'halo').map((p) => p.x);
+    expect(Math.max(...zs) - Math.min(...zs)).toBeGreaterThan(0.8 * (Math.max(...xs) - Math.min(...xs)));
+    expect(-Math.min(...zs)).toBeGreaterThan(Math.max(...zs) + 0.3);
     // 幅は翼が無いので、裾の広がりまで（左右に約1.4以内）
     expect(Math.max(...b.map((p) => Math.abs(p.x)))).toBeLessThan(1.45);
   });
