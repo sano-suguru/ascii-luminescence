@@ -2,7 +2,9 @@
 // F は関数をまとめた物（src/lib/audio.ts の import * など）。audio.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
 // 場合は、音の大きさ・向き・位置・音が出せる状態か・左右の部品の有無・まわりの様子を、シードの乱数で変える。
 // まわりの様子は、迷宮の生成を使わずに、ここで小さな地図（水・溶岩・沼・崖・水晶の塊と、洞窟の部屋）を作る（迷宮の生成を変えても、この指紋は変わらない）。
-// 書き換えた状態（SND・player・here・blaze）と、setTimeout・Math.random・window は、終わったら元に戻す。
+// 音の乱数（sndRand）は場合ごとにシードで決める。音は見た目の乱数（Math.random）を引かないはずなので、Math.random を呼ぶと、記録に ['Math.random'] が残る。
+// 書き換えた状態（SND・player・here・blaze）と、setTimeout・Math.random・音の乱数・window は、終わったら元に戻す。
+import { setSoundRand } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 import { SND, blaze, here, player } from '../../src/lib/state.ts';
 import { CELL, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MH, MW, NCELL, TC, TX } from '../../src/lib/world.ts';
@@ -49,6 +51,7 @@ export function audioCases(F, seeds) {
     saved = {
       setTimeout: globalThis.setTimeout,
       random: Math.random,
+      sound: setSoundRand(Math.random),
       window: globalThis.window,
       SND: { ...SND },
       player: { ...player },
@@ -60,14 +63,18 @@ export function audioCases(F, seeds) {
     fn();
     return 0;
   };
+  Math.random = () => {
+    log.push(['Math.random']);
+    return 0.5;
+  };
   const sum = (b) => (b ? b.data.reduce((s, d) => s + d.reduce((a, x) => a + x, 0), 0) : null);
   // 1つの場合：状態を作り（setup）、呼ぶ（call）。状態を作る間と呼ぶ間の乱数は、それぞれシードで決める
   const run = (seed, setup, call) => {
     const r = mulberry32(seed);
     log = [];
-    Math.random = mulberry32(seed * 3 + 2);
+    setSoundRand(mulberry32(seed * 3 + 2));
     setup(r);
-    Math.random = mulberry32(seed * 7 + 1);
+    setSoundRand(mulberry32(seed * 7 + 1));
     let ret,
       err = null;
     try {
@@ -191,6 +198,7 @@ export function audioCases(F, seeds) {
   } finally {
     globalThis.setTimeout = saved.setTimeout;
     Math.random = saved.random;
+    setSoundRand(saved.sound);
     if (hadWindow) globalThis.window = saved.window;
     else delete globalThis.window;
     Object.assign(SND, saved.SND);

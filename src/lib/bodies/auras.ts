@@ -10,7 +10,7 @@ import { G } from '../glyphs.ts';
 import { msg } from '../log.ts';
 import { dyn, spawn } from '../particles.ts';
 import { clamp } from '../rng.ts';
-import { mpick, mr } from '../random.ts';
+import { mpick, mr, sndRand } from '../random.ts';
 import { sEnv } from '../sound.ts';
 import { type Monster, SND, adv, clock, here, player, vfx } from '../state.ts';
 import { BASE_H, CELL, MW } from '../world.ts';
@@ -145,7 +145,7 @@ export function nagaAura(m: Mon, t: number): void {
     }
   }
   if (dp < 12 && clock.time > (m.hissT || 0) && sndReady()) {
-    m.hissT = clock.time + 4 + mr() * 3;
+    m.hissT = clock.time + 4 + sndRand() * 3;
     const t0 = now();
     sEnv(sNoise(t0, 0.9, 'highpass', 3000, 0.7, sOut(m.x, m.z, 0.18)), t0, 0.15, 0.7);
   }

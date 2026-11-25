@@ -44,7 +44,7 @@ function drawOmens(t,dt){ if(!here.D||ui.gallery)return; const o=omenOf(); if(!o
   const near=(x,z,r)=>Math.hypot(x-player.x,z-player.z)<r, rate=(n)=>mr()<n*(dt||0.016);
   const rise=(x,z,def,n,spread)=>{ if(!rate(n))return; const a=mr()*6.28, rr=mr()*(spread||0.7), down=def.vy<0;
     spawn(x+Math.cos(a)*rr,down?2.2+mr()*0.6:0.15,z+Math.sin(a)*rr,(mr()-0.5)*0.15,def.vy*(0.7+mr()*0.6),(mr()-0.5)*0.15,2.4+mr(),G(mpick(def.gl)),0.12,def.col[0]*1.3,def.col[1]*1.3,def.col[2]*1.3,0); };
-  const sound=(key,kind,x,z)=>{ if(!kind||!near(x,z,10))return; if(clock.time<(o.sndT[key]||0))return; o.sndT[key]=clock.time+6+mr()*5; omenSound(kind,x,z); };
+  const sound=(key,kind,x,z)=>{ if(!kind||!near(x,z,10))return; if(clock.time<(o.sndT[key]||0))return; o.sndT[key]=clock.time+6+sndRand()*5; omenSound(kind,x,z); };
   // the stairs: what lies below leaks up
   if(o.stairs&&o.stairs.kind!=='branch'){ const def=o.stairs.kind==='special'?SPECIAL_OMEN[o.stairs.key]:STRATUM_OMEN[o.stairs.key]; const [x,z]=cpos(here.D.stairs);
     if(def&&near(x,z,20)){ rise(x,z,def,3.2); if(def.glow)for(let k=0;k<16;k++){ const a=k/16*Math.PI*2+t*0.1, b=0.5+0.25*Math.sin(t*1.7+k); dyn(x+Math.cos(a)*1.3,0.04,z+Math.sin(a)*1.3,G('.'),0.15,def.glow[0]*b,def.glow[1]*b,def.glow[2]*b,0,0); } sound('st',def.snd,x,z); } }
@@ -101,7 +101,7 @@ function drawArrows(){ if(!arrowCtx)return; const W=Math.round(arrowCv.clientWid
     glyph(t.ch,mx,my+ms*0.02,0,ms,rgb,Math.min(1,alpha+0.1),true); } }
 const stairsGuarded=()=>here.D&&here.D.stairGuard!==undefined&&here.monsters.some(m=>!m.dead&&m.g===here.D.stairGuard);
 function drawStairSeal(t){ if(!here.D||here.D.stairGuard===undefined)return; const [x,z]=cpos(here.D.stairs); const d=Math.hypot(x-player.x,z-player.z); if(d>26)return; const on=stairsGuarded();
-  if(on){ for(let k=0;k<18;k++){ const a=k/18*Math.PI*2+t*0.4, b=0.7+0.3*Math.sin(t*2+k); dyn(x+Math.cos(a)*0.9,0.3+0.12*Math.sin(t*1.5+k),z+Math.sin(a)*0.9,G(k%3?'=':'#'),0.18,1.4*b,0.4*b,0.55*b,0,0); } if(d<12&&clock.time>(here.D.sealSnd||0)){ here.D.sealSnd=clock.time+7+mr()*4; omenSound('growl',x,z); } }
+  if(on){ for(let k=0;k<18;k++){ const a=k/18*Math.PI*2+t*0.4, b=0.7+0.3*Math.sin(t*2+k); dyn(x+Math.cos(a)*0.9,0.3+0.12*Math.sin(t*1.5+k),z+Math.sin(a)*0.9,G(k%3?'=':'#'),0.18,1.4*b,0.4*b,0.55*b,0,0); } if(d<12&&clock.time>(here.D.sealSnd||0)){ here.D.sealSnd=clock.time+7+sndRand()*4; omenSound('growl',x,z); } }
   else if(!here.D.sealOpenMsg){ here.D.sealOpenMsg=true; msg('<b style="color:#ffd27a">=</b>階段を閉ざしていた封が、静かに解けた。'); sChime(x,z,0.4); } }
 // the air of each part of a level: the crossroads a little brighter, the way to the stairs a little darker and quieter
 let ambK=1;
