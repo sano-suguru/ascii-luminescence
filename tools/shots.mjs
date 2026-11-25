@@ -11,15 +11,18 @@ import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { withBrowser, newPage, openTest, advance, frames, arg, OUT } from '../tests/lib.mjs';
 
-// 角度（yaw）：0 でこちらを向き、＋でこちらから見て右へ回る（ラジアン）。図鑑の形（form）ごとに決める。無い形は DEFAULT
+// 写し方は図鑑の形（form）ごとに決める。無い形は DEFAULT。無い欄は図鑑のふつうの写し方のまま
+//   yaw：0 でこちらを向き、＋でこちらから見て右へ回る（ラジアン）
+//   zoom：寄る・引く（距離を 1/zoom 倍。0.5〜3、ふつうは 1）
+//   pitch：見下ろす角度（ラジアン。0 で真横から、＋で上から。-0.3〜1.3。書かなければ図鑑のふつうの高さ）
 const DEFAULT = { yaw: 0.6 }; // 斜め前（約35°）
 const BY_FORM = {
   troll: { yaw: 0.25 }, // 人型の大きな物と主は、ほぼ正面の方が形が分かる
   lichking: { yaw: 0.25 },
   nagaqueen: { yaw: 0.25 },
-  shadowking: { yaw: 0.25 },
+  shadowking: { yaw: 0.25, zoom: 1.3, pitch: 0.35 }, // 細い線だけで遠いので寄る。寄ると冠が上で切れるので、少し上から
   shadowserpent: { yaw: 0.25 },
-  olddragon: { yaw: 1.2 }, // 斜め前だと、頭が画面の端や図鑑の枠に隠れる
+  olddragon: { yaw: 1.2, zoom: 0.8, pitch: 0.3 }, // 斜め前だと頭が画面の端や図鑑の枠に隠れる。少し引いて上から見ると、頭まで枠の上に収まる
   spiderqueen: { yaw: 1.1 }, // 横寄りの方が、胴と頭が脚に埋もれない
 };
 // 眠る姿も写す形（図鑑で寝起きをくり返す竜）
@@ -72,9 +75,15 @@ await withBrowser(async ({ browser, base }) => {
   }
   if (bare) await pg.addStyleTag({ content: '#gal{visibility:hidden!important}' });
   for (const e of want) {
-    const { yaw } = BY_FORM[e.form] || DEFAULT;
+    const { yaw, zoom = 1, pitch = null } = BY_FORM[e.form] || DEFAULT;
     for (const pose of ALSO_SLEEP.has(e.form) ? ['stand', 'sleep'] : ['stand']) {
-      const r = await pg.evaluate(({ n, yaw, pose }) => __test.galleryShow(n, { yaw, pose }), { n: e.n, yaw, pose });
+      const r = await pg.evaluate(({ n, yaw, pose, zoom, pitch }) => __test.galleryShow(n, { yaw, pose, zoom, pitch }), {
+        n: e.n,
+        yaw,
+        pose,
+        zoom,
+        pitch,
+      });
       if (typeof r === 'string') throw new Error(r);
       await advance(pg, WAIT);
       await frames(pg, 2);

@@ -183,6 +183,47 @@ await withBrowser(
           }
         }
       }
+      // 寄る・引く・見下ろす角度の端の値でも、例外や NaN が出ないか（大きい物・小さい物・飛ぶ物・ほとんど火花で描く物）。範囲の外の値は断るか
+      for (const name of ['年老いた竜', 'ネズミ', '吸血コウモリ', 'ファントム', '最後の王の影'])
+        for (const [zoom, pitch] of [
+          [0.5, -0.3],
+          [3, 1.3],
+          [3, -0.3],
+          [0.5, 1.3],
+        ]) {
+          const e = list.find((o) => o.name === name);
+          if (!e) {
+            bad.push(`寄る・引くの確かめに使う「${name}」が図鑑に無い`);
+            break;
+          }
+          try {
+            const r0 = __test.galleryShow(e.n, { zoom, pitch });
+            if (typeof r0 === 'string') throw new Error(r0);
+            __test.advance(0.5);
+            const r = __test.galleryDraw();
+            if (r.glyphs + r.sparks < 15)
+              bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）が、ほとんど描かれていない：文字 ${r.glyphs}・火花 ${r.sparks}`);
+            if (r.bad) bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）の文字と火花のうち ${r.bad} 個に、数でない値（NaN など）がある`);
+            const c = r.camera;
+            if (![c.dist, c.height, c.pitch].every(Number.isFinite) || c.height < 0.3)
+              bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）のカメラの位置がおかしい：${JSON.stringify(c)}`);
+          } catch (err) {
+            bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）で例外：${String(err && err.stack ? err.stack : err).slice(0, 300)}`);
+          }
+        }
+      // 寄ると近づき、上からだと高く・下向きになる（竜。図鑑の部屋は、竜の距離の2倍より広い）
+      {
+        const n = list.find((o) => o.name === '竜')?.n ?? 1;
+        const cam = (opt) => (__test.galleryShow(n, opt), __test.galleryDraw().camera);
+        const [c1, c2, side, top] = [cam({}), cam({ zoom: 2 }), cam({ pitch: 0 }), cam({ pitch: 0.8 })];
+        if (!(c2.dist < c1.dist * 0.6)) bad.push(`zoom 2 で寄っていない：距離 ${c1.dist} → ${c2.dist}`);
+        if (!(top.height > side.height + 1 && top.pitch < side.pitch - 0.5))
+          bad.push(`pitch 0.8 で上から見下ろしていない：横から ${JSON.stringify(side)}、上から ${JSON.stringify(top)}`);
+      }
+      for (const opt of [{ zoom: 0.4 }, { zoom: 3.1 }, { zoom: NaN }, { pitch: -0.31 }, { pitch: 1.31 }, { pitch: '0.3' }]) {
+        const r = __test.galleryShow(1, opt);
+        if (typeof r !== 'string') bad.push(`範囲の外の値 ${JSON.stringify(opt)} を断らなかった`);
+      }
       // 図鑑の画面の「見つけた数 x / N」の N（図鑑の全部の数）。開発用モードでは、全部が一覧に並ぶはず
       const total = Number((document.getElementById('gal').textContent.match(/見つけた数\s*\d+\s*\/\s*(\d+)/) || [])[1]);
       return { n: list.length, total, bad };

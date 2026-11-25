@@ -63,14 +63,18 @@ function showBeast(i){
 }
 function updateGallery(dt){
   if(!ui.gallery)return; const g=ui.gallery;
-  // g.fix (set only by __test.galleryShow): hold the creature at one angle (yaw from facing the camera) and one pose
+  // g.fix (set only by __test.galleryShow): hold the creature at one angle (yaw from facing the camera) and one pose, and move the camera:
+  // zoom divides the distance (still kept inside the room), pitch puts the camera that many radians above the creature's middle (null: the usual height)
   if(g.mode==='beast'&&g.m){ const m=g.m, sc=m.ty.scale||1, fix=g.fix; g.t+=dt; const walking=fix?fix.pose==='walk':Math.floor(g.t/4)%2===1;
     m.moving+=((walking?1:0)-m.moving)*Math.min(1,dt*4); m.walk+=dt*2.2*m.moving; if(!fix)m.yaw+=dt*0.45; m.x=g.room.x; m.z=g.room.z;
     if(fix){ m.sleep=fix.pose==='sleep'; if(m.sleep)m.moving=0; }
     else if(m.ty.form==='dragon'&&!m.ty.boss){ m.sleep=Math.floor(g.t/6)%2===0; if(m.sleep){ m.moving=0; } }
     { const ty=m.ty; if(ty.flier)m.y=(1.6+Math.sin(g.t*2.2)*0.15)*Math.max(1,sc*0.7); else if(ty.fl)m.y=ty.fl+Math.sin(g.t*1.3)*0.12; }
-    const tall=m.ty.beast?1.3:m.ty.form==='lichking'?1.6:m.ty.form==='spiderqueen'?1.25:m.ty.form==='nagaqueen'?1.3:m.ty.form==='olddragon'?0.85:m.ty.form==='shadowking'?1.75:m.ty.form==='shadowserpent'?1.9:m.ty.form==='deepkraken'?2.0:1, want=(3.0+2.0*sc)*tall, R=Math.max(2,Math.min(want,g.room.far-0.8)), a=g.room.dir+0.25, cx=g.room.x+Math.cos(a)*R, cz=g.room.z+Math.sin(a)*R, ch=(1.0+0.75*sc)*tall+(m.ty.flier||m.ty.fl>0.5?m.y*0.5:0), ty2=Math.max(0.3,m.y+(m.ty.flier?0:0.6*sc*tall));
-    player.x=cx; player.z=cz; player.yaw=Math.atan2(-(g.room.x-cx),-(g.room.z-cz)); player.pitch=Math.atan2(ty2-ch,R)-0.16;
+    const tall=m.ty.beast?1.3:m.ty.form==='lichking'?1.6:m.ty.form==='spiderqueen'?1.25:m.ty.form==='nagaqueen'?1.3:m.ty.form==='olddragon'?0.85:m.ty.form==='shadowking'?1.75:m.ty.form==='shadowserpent'?1.9:m.ty.form==='deepkraken'?2.0:1,
+      zoom=fix?fix.zoom:1, tilt=fix?fix.pitch:null, want=(3.0+2.0*sc)*tall/zoom, R=Math.max(Math.min(2,2/zoom),Math.min(want,g.room.far-0.8)), Rh=tilt===null?R:R*Math.cos(tilt),
+      a=g.room.dir+0.25, cx=g.room.x+Math.cos(a)*Rh, cz=g.room.z+Math.sin(a)*Rh, ty2=Math.max(0.3,m.y+(m.ty.flier?0:0.6*sc*tall)),
+      ch=tilt===null?(1.0+0.75*sc)*tall+(m.ty.flier||m.ty.fl>0.5?m.y*0.5:0):Math.max(0.3,ty2+R*Math.sin(tilt));
+    player.x=cx; player.z=cz; player.yaw=Math.atan2(-(g.room.x-cx),-(g.room.z-cz)); player.pitch=Math.atan2(ty2-ch,Rh)-0.16;
     if(fix)m.yaw=player.yaw+fix.yaw;
     camera.position.set(cx,ch,cz); camera.rotation.set(player.pitch,player.yaw,0);
     if(R<want-0.2){ U.uCamP.value.set(cx,ch,cz); U.uCutP.value.set(g.room.x,ty2,g.room.z); U.uCut.value=1; } else U.uCut.value=0;
