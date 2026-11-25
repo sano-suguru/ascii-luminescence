@@ -2,8 +2,6 @@
 // FINAL_DEPTH は src/lib/world.ts（src/game/imports.mjs で読む）
 // LEGEND_KINDS・LEGEND_ORDER・BRANCH_HINT は src/lib/names.ts（src/game/imports.mjs で読む）
 let finalSt=null;
-MSTAT.final=[260,6,11,1.7];
-MSTAT.final2=[260,8,14,1.25];
 function getLegend(){
   if(saved.LEGEND&&saved.LEGEND.seed===adv.runSeed)return saved.LEGEND;
   if(!HIST)return null;

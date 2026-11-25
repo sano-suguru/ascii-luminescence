@@ -384,6 +384,23 @@ export interface Trans {
 export interface LevelExtra {
   /** 最深部の階（伝説の物の台座がある。18-level-player.js の newLevel が入れる） */
   finalVault?: boolean;
+  /**
+   * ここから stairGuard までは、深さ2から下（と支道・異界）の祭壇などを置く時（src/lib/altars.ts の mainPathAltars）に入れる。深さ1・特別な階・最深部には無い。
+   * 始まりのマスから各マスへの歩数（行けないマスは -1）
+   */
+  dS?: Int32Array;
+  /** 始まりから階段までの歩数（階段が無い・行けない時は 0） */
+  pathL?: number;
+  /** 十字路（本道の真ん中あたりの一番大きい部屋の番号 ri と、その真ん中 cx・cz） */
+  hub?: { ri: number; cx: number; cz: number };
+  /** 十字路から矢印が届く所にある、寄り道の場所の数 */
+  hubNear?: number;
+  /** 強敵の部屋を置いたかの手がかり（dbg が見せる。部屋の数・本道から5以上外れた部屋の数・選んだ部屋があるか・強敵の種類・引いた乱数） */
+  eliteWhy?: { rooms: number; far: number; er: boolean; key: string | null; roll: number };
+  /** 階段の前の部屋で待つ群れの番号（この群れが倒れるまで、階段は封じられる） */
+  stairGuard?: number;
+  /** 階段と門のそばの石碑（マス i と、刻まれた文字 g。どの階でも、src/lib/altars.ts の placeRunesForLevel が入れる） */
+  steles?: { i: number; g: string }[];
 }
 /** 階の生き物（位置と種類） */
 export interface Monster {

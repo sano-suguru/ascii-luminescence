@@ -26,9 +26,10 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      array：配列と表を読む nth・lookup・must（無ければその場で止まる。as の代わり）、rng：シードの乱数を作る mulberry32 と clamp、random：見た目の乱数 mr・mpick と迷宮の乱数 rand・R・RI・pick（入れ替えは setRand）と混ぜる shuffle、glyphs：文字の絵の表（アトラス）の番号 G と飾りの文字の並び、color：css・hsl2rgb、math：角度・稲妻の線など、
                      text：パネルの文字の幅と枠、history：年代記、world：迷宮の大きさ・タイル・液体と地面・支道と異界・深さごとの係数（depthProfile）と深さごとに順に使う霧の色（FOGS）・岩、
                      light：灯りの計算、runes：ルーンの定義 RUNE_DEF・性質の効き目 RES・特性・反応・手の枠・ルーンの名前と色と付けられるか（表だけに頼る物）、
-                     gear：手と持ち物の処理（makeRune・randomRuneType・effHand・isTwo・canPutAt など。状態 gear に頼る物）、progress：経験・伝承・解放・加護 BLESS（表）、
-                     unlocks：解放の確かめ（unlocked・lockedOf・weaponPool。状態 saved に頼る物）、altars：祭壇とルーンを置く（祭壇の中身 altarFill・番人・鍛え方・泉・祭壇の画面の1行）、hands：手元の武器の文字、
-                     creatures：生き物の表 MTYPES（探索の途中で種類が足される）、
+                     gear：手と持ち物の処理（makeRune・randomRuneType・effHand・isTwo・canPutAt・墓のルーン graveRune など。状態 gear に頼る物）、progress：経験・伝承・解放・加護 BLESS（表）、
+                     unlocks：解放の確かめ（unlocked・lockedOf・weaponPool。状態 saved に頼る物）と試練（trialOn）、altars：祭壇とルーンを置く（階ごとに置く placeRunesForLevel・mainPathAltars、祭壇の中身 altarFill・番人・鍛え方・泉・石碑のそばか nearStele・祭壇の画面の1行）、
+                     levels：階のシード levelSeed、monsters：生き物の処理（強さ statOf）、hands：手元の武器の文字、
+                     creatures：生き物の表 MTYPES（探索の途中で種類が足される）と強さの表 MSTAT、
                      strata：層・テーマ・特別な階・支道と異界の中身・地形・群れ、noise：ノイズ（種は setNoiseSeed）、vaults：洞窟と宝物庫の絵、
                      shaders：描画のシェーダーのソースと、描画用の配列の大きさ、title：タイトルのロゴ、hud：表示の大きさ（ミニマップ・装備の画面など）、
                      names：名前と説明の表（見た時の説明・罠・伝説の物・図鑑の主）、sound：音の小さな表と道具、
@@ -59,6 +60,8 @@ tests/panels.mjs     枠のテスト（全部の文字の幅が visW どおり�
 tests/unit/generate.test.ts  迷宮の生成の単体テスト（同じ入力なら同じ迷宮・生き物の表に書き込まない・全部の場所の指紋。Node で数秒）。
                      歩いて行けるか（5シード）は reach.test.ts（ファイルを分けて、並べて走らせる）。共通部分（全部の場所・gen）は gen-places.ts
 tests/unit/altars.test.mjs  祭壇とルーンを置く処理の単体テスト。たくさんの場合を作る altar-cases.mjs（テストの中で小さな階を作る）を使う
+tests/unit/place.test.ts  階ごとに祭壇とルーンを置く処理と、階のシード・生き物の強さ・墓のルーン・試練の単体テスト。たくさんの場合を作る place-cases.ts（Node で本物の迷宮を生成する。
+                     迷宮の生成を変えると、この指紋も変わる）を使う
 tests/unit/audio.test.mjs  音を鳴らす処理の単体テスト。偽の Web Audio（fake-audio.mjs。作った部品・値・つなぎ方・鳴らす時刻を全部記録する。Node には Web Audio が無い）と、
                      たくさんの場合を作る audio-cases.mjs を使う
 tests/glyphs.mjs     使う文字が、パネルのフォント（M PLUS 1 Code ＋ BIZ UDGothic の補い）に字形があるか（ブラウザ不要）
@@ -153,7 +156,8 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
    状態に頼る関数は、古い JS を消す前に、legacyValues で取り出した古い関数と新しい関数に同じ状態（gear など）を入れ、たくさんの場合で結果と状態の変わり方を比べてから消す
    （古い関数も、TypeScript の状態の入れ物を同じ物として読む）。比べ方の見本は、tests/unit/gear.test.ts の頭にある。
    迷宮の生成は Node とブラウザで同じ迷宮になる（混ぜるのは shuffle）。生成に関わる変更は、Node の単体テストの指紋（generate.test.ts。欄の並びによらない）で、
-   前の版と作り比べる。意図して迷宮を変えた時は、ブラウザの `__test.gen` でも Node と同じ指紋になることを確かめてから、指紋を作り直す。
+   前の版と作り比べる。意図して迷宮を変えた時は、ブラウザの `__test.gen` でも Node と同じ指紋になることを確かめてから、指紋を作り直す
+   （生成した迷宮に祭壇などを置く place.test.ts の指紋も変わるので、一緒に作り直す）。
 4. `pnpm fmt`・`pnpm check`・`pnpm test`・`pnpm test:visual`（画素まで同じはず）。
 - 型を外すだけで組み立てる（Vite）。enum・namespace など、型を外すだけでは動かない書き方は使わない（`erasableSyntaxOnly`）。
 - import は `.ts` まで書く（`./rng.ts`）。`noUncheckedIndexedAccess` なので、配列の要素は `undefined` かもしれない物として扱う。
@@ -240,11 +244,11 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 | 14-lights-fixtures | 灯り、備品、扉。LANTERN は src/lib/light.ts |
 | 15-sound-fire | 音量の切り替え（sndToggle）、ガス、火、火花、部屋の出来事、粒子。音を鳴らす処理（sndInit・効果音・まわりの音 sndUpdate など）は src/lib/audio.ts、SND_LV・sEnv は src/lib/sound.ts、cpos・FIRE_TYPES は src/lib/world.ts。火と地面のマスの状態は src/lib/state.ts の blaze、音 SND も src/lib/state.ts |
 | 16-view-input | 視界とミニマップ、伝言（msg）、通れない所の当たり判定（solidAt：壁・崖・溶岩・柱など）、入力の状態。ミニマップの大きさは src/lib/hud.ts、押しているキー keys は src/lib/state.ts |
-| 17-meta | 伝承・解放・墓・試練（trialOn）、タイトルの画面（buildIntroPanel）。UNLOCKS・META_DEF は src/lib/progress.ts、解放の確かめ（unlocked・lockedOf・weaponPool）は src/lib/unlocks.ts、保存する記録 META などは src/lib/state.ts の saved |
-| 18-level-player | 階の切り替え（newLevel）、罠、生き物の強さ（MSTAT）、プレイヤーと生き物のダメージ（hurtPlayer・damageMonster）、当たった生き物のひるみと吹き飛び（hitReact）、生き物の近接の攻撃（monsterStrike）、死と始め直し（die・newRun）、レベルアップ（levelChoices、lvlLine。加護の表 BLESS は src/lib/progress.ts）。expNeed・expOf は src/lib/progress.ts、serRune は src/lib/runes.ts。TRAP_INFO は src/lib/names.ts、WEAPON・SLEEP_MULT は src/lib/runes.ts、roll は src/lib/random.ts |
+| 17-meta | 伝承・解放・墓・試練、タイトルの画面（buildIntroPanel）。UNLOCKS・META_DEF は src/lib/progress.ts、解放の確かめ（unlocked・lockedOf・weaponPool）と試練（trialOn）は src/lib/unlocks.ts、保存する記録 META などは src/lib/state.ts の saved |
+| 18-level-player | 階の切り替え（newLevel）、罠、プレイヤーと生き物のダメージ（hurtPlayer・damageMonster）、当たった生き物のひるみと吹き飛び（hitReact）、生き物の近接の攻撃（monsterStrike）、死と始め直し（die・newRun）、レベルアップ（levelChoices、lvlLine。加護の表 BLESS は src/lib/progress.ts）。階のシード levelSeed は src/lib/levels.ts、生き物の強さの表 MSTAT は src/lib/creatures.ts、statOf は src/lib/monsters.ts、墓のルーン graveRune は src/lib/gear.ts。expNeed・expOf は src/lib/progress.ts、serRune は src/lib/runes.ts。TRAP_INFO は src/lib/names.ts、WEAPON・SLEEP_MULT は src/lib/runes.ts、roll は src/lib/random.ts |
 | 19-hands-runes | 手元の武器（VM_MODELS、drawViewWeapons）、性質と反応、術の中身（specOf）。ルーンを作る・ルーンの種類を選ぶ・手と持ち物の処理は src/lib/gear.ts、ルーンの名前と色と付けられるかは src/lib/runes.ts。ルーンの定義 RUNE_DEF・性質の効き目 RES・TRAITS・REACT・手の枠は src/lib/runes.ts |
 | 20-chant-hits | 詠唱（beginCast、castNow…）、攻撃の当たり（applyHit）、反応、飛ぶ物。turnDir は src/lib/math.ts、sp_elem は src/lib/runes.ts。戦いの状態は src/lib/state.ts の fight |
-| 21-altars-heal | ルーンの手に入れ方、階ごとの祭壇の配置（mainPathAltars）、祭壇の画面、回復、拾う。祭壇の中身・番人・鍛え方・泉を置く・祭壇の画面の1行（altarFill・addGuards・forgeOptions・placeSpring・altarLine など）は src/lib/altars.ts、RALLY_FROM は src/lib/runes.ts、ALTAR_W は src/lib/hud.ts |
+| 21-altars-heal | ルーンの手に入れ方（主を倒した時の祭壇）、宝物庫の褒美を取った時、祭壇の画面、回復、拾う。階ごとに祭壇とルーンを置く・祭壇の中身・番人・鍛え方・泉を置く・石碑のそばか・祭壇の画面の1行（placeRunesForLevel・mainPathAltars・altarFill・addGuards・forgeOptions・placeSpring・nearStele・altarLine など）は src/lib/altars.ts、RALLY_FROM は src/lib/runes.ts、ALTAR_W は src/lib/hud.ts |
 | 22-world-hints | 先にある物の手がかり（computeOmen・drawOmens：階段から漏れる光と音、支道の入口の跡、異界の門の光）、方向の矢印、床のルーン、詠唱の見た目、照準。stratumAtDepth は src/lib/strata.ts |
 | 23-debug | デバッグ（dbg、F2 の画面、URL の指定） |
 | 24-goal | 目的（伝説の物、最深部、王の影）、勝利、稲妻、タイトルへ戻る。伝説の物の表は src/lib/names.ts、jagged は src/lib/math.ts |
