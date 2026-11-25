@@ -8,7 +8,7 @@
 // 同じ所を写し（主の灯りは残る）、主の体がある時だけ明るさ（輝度）が 200 以上になる画素。光のにじみで形が白や色の塊になった所）と、
 // 主の体の文字のうち画面の外に出た割合（はみ出し）を出し、summary.json にも書く。眩しさと大きさを、目で見るのと数で比べる時に使う。
 // <場所>.glare.png は、数えた眩しい画素を赤く、主の体の範囲を黄色い枠で塗った写真（主の体を描かないと、目の慣れなどで周りの明るさもわずかに変わるので、
-// 範囲の外は数えない）。主は、見通せて床のある向きのうち最初の物から写す（16の向きを順に試す）。王の影は、伝説の物を3つ台座に置いて呼び出す。
+// 範囲の外は数えない）。主は、見通せて床のある向きのうち最初の物から写す（16の向きを順に試す）。王の影は、最深部で伝説の物を3つ持って呼び出す。
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { PNG } from 'pngjs';
@@ -67,10 +67,6 @@ await withBrowser(async ({ browser, base }) => {
         const mk = key === 'final' ? 'final' : 'lord';
         if (key === 'final') {
           dbg.give('legends');
-          for (let k = 0; k < 3; k++) {
-            dbg.to('pedestal');
-            __test.advance(0.2);
-          }
           __test.advance(4);
         } else {
           dbg.branch(key, 2);

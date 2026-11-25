@@ -543,20 +543,15 @@ await withBrowser(
     }
     await dr.close();
 
-    // 13. 最深部：伝説の物を3つ持って台座に置くと（dbg.to('pedestal')）、王の影が出る。背の高さは約6.7（天井より低い）で、8離れて見ると全身が画面に収まる。
-    // 光の柱のそば（台座の上）で体力を半分より減らすと二つ目の姿になり、大きさは一つ目のまま（天井が低い所だけ縮む）で、天井より低い
+    // 13. 最深部：伝説の物を3つ持つと、少しして王の影が出る（持っていない間は出ない）。背の高さは約7（天井より低い）で、8離れて見ると全身が画面に収まる。
+    // どこでも攻撃が当たり、体力を半分より減らすと二つ目の姿になる。大きさは一つ目のまま（天井が低い所だけ縮む）で、天井より低い
     const fin = await newPage(browser, errs);
     await openTest(fin, base, 'seed=202&depth=13&god=1');
     await advance(fin, 1);
     const king = await fin.evaluate(() => {
+      __test.advance(4);
+      if (__test.state().monsters.some((m) => m[0] === 'final')) return '伝説の物を持っていないのに、王の影が出た';
       dbg.give('legends');
-      const peds = [];
-      for (let k = 0; k < 3; k++) {
-        const at = dbg.to('pedestal');
-        if (!at) return `台座が ${k} つしか見つからない`;
-        peds.push(at);
-        __test.advance(0.2);
-      }
       __test.advance(4);
       const b = __test.state().monsters.find((m) => m[0] === 'final');
       if (!b) return '王の影が出ない';
@@ -574,14 +569,7 @@ await withBrowser(
         dbg.look(b[1], 3.3, b[2]);
         __test.advance(1 / 30);
         const first = __test.monsterView('final');
-        // 二つ目の姿：台座の上に立って王の影を光の柱のそばまで来させ（闇の中では当たらない）、体力を半分より減らす
-        const p0 = peds[0];
-        dbg.step(p0[0], p0[1]);
-        for (let q = 0; q < 80; q++) {
-          __test.advance(0.1);
-          const m = __test.state().monsters.find((o) => o[0] === 'final');
-          if (m && Math.hypot(m[1] - p0[0], m[2] - p0[1]) < 3) break;
-        }
+        // 二つ目の姿：その場で攻撃して、体力を半分より減らす
         let second = null;
         for (let q = 0; q < 40 && !second; q++) {
           dbg.hit(25);
@@ -597,10 +585,10 @@ await withBrowser(
     if (typeof king === 'string') errs.push(`13：${king}`);
     else {
       const { first, second, after } = king;
-      if (!(first.world.y1 > 6 && first.world.y1 < 7.6)) errs.push(`13：王の影の背の高さが約6.7でない：${JSON.stringify(first.world)}`);
+      if (!(first.world.y1 > 6 && first.world.y1 < 7.6)) errs.push(`13：王の影の背の高さが約7でない：${JSON.stringify(first.world)}`);
       if (!(first.world.y1 < first.ceil)) errs.push(`13：王の影が天井を突き抜ける：${first.world.y1} / ${first.ceil}`);
       if (!(first.cut < 0.02)) errs.push(`13：8離れて見た王の影が、画面からはみ出す（${first.cut}）`);
-      if (!second) errs.push('13：光の柱のそばで体力を半分より減らしても、二つ目の姿にならない');
+      if (!second) errs.push('13：体力を半分より減らしても、二つ目の姿にならない');
       else {
         const want = Math.max(1.2, Math.min(first.scale, (second.ceil - 0.3) / 3.6));
         if (Math.abs(second.scale - want) > 0.05)

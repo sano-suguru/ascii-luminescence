@@ -53,7 +53,7 @@ export function getLegend(): Legend | null {
       kind: 'mirror',
     },
   };
-  saved.LEGEND = { seed: adv.runSeed, items, have: new Set(), placed: new Set() };
+  saved.LEGEND = { seed: adv.runSeed, items, have: new Set() };
   return saved.LEGEND;
 }
 /** 状態の表示の1行：伝説の物の印（手にしたか置いた物は光る）と名前 */
@@ -63,7 +63,7 @@ export function legendLine(): string {
   return (
     LEGEND_ORDER.map((k) => {
       const kd = lookup(LEGEND_KINDS, k),
-        has = L.have.has(k) || L.placed.has(k);
+        has = L.have.has(k);
       return has ? `<span class="glow" style="color:${cssOf(kd.col)}">${kd.ch}</span>` : `<span class="dim">${kd.ch}</span>`;
     }).join(' ') + `  <span class="lab">${LEGEND_ORDER.map((k) => lookup(LEGEND_KINDS, k).name).join('・')}</span>`
   );
