@@ -1,5 +1,4 @@
 // 灯りの計算（もとは src/game/02-constants.js の light helpers）。
-import { nth } from './array.ts';
 import { CELL, MH, MW, NCELL, TP, TW } from './world.ts';
 
 /** 灯り（位置と届く半径。vis はその灯りから見えるマス） */
@@ -77,9 +76,10 @@ export function topLights(
     w0 = 0,
     w1 = 0,
     w2 = 0;
-  for (let li = 0; li < lights.length; li++) {
-    const L = nth(lights, li),
-      dx = L.x - x,
+  let li = -1;
+  for (const L of lights) {
+    li++;
+    const dx = L.x - x,
       dy = L.y - y,
       dz = L.z - z,
       d2 = dx * dx + dy * dy + dz * dz;

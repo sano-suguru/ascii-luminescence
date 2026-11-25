@@ -40,9 +40,11 @@ export const annotate = (s) =>
 export async function withBrowser(fn, { prod = false } = {}) {
   mkdirSync(OUT, { recursive: true });
   // テスト版は .build/test/、prod は公開用と同じ dist/（three.js とフォントは、どちらも組み立てに入っている。違いはテスト版の cjkFallback だけ）
+  // テストをまとめて走らせる時（tests/run.mjs）は、テスト版を先に1回だけ組み立てて AL_PREBUILT を渡すので、ここでは組み立てない
+  // （同時に走るテストが、同じ .build/test/ に組み立てるとぶつかるため）
   const mode = prod ? 'production' : 'test',
     dir = join(ROOT, prod ? 'dist' : '.build/test');
-  await build({ configFile: join(ROOT, 'vite.config.mjs'), mode, logLevel: 'warn' });
+  if (prod || process.env.AL_PREBUILT !== '1') await build({ configFile: join(ROOT, 'vite.config.mjs'), mode, logLevel: 'warn' });
   mapDir = join(ROOT, '.build/maps', mode);
   const srv = await serve(dir);
   // システムのフォントを見せない（tests/fonts.conf）。テスト版は日本語も同梱のフォントで描くので、どのマシンでも同じ文字になる。

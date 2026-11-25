@@ -335,7 +335,8 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     liquid = new Uint8Array(N),
     surface = new Uint8Array(N),
     roomOf = new Int16Array(N).fill(-1);
-  const walk = (j: number): boolean => tile[j] === TF && !blocksWalk(nth(liquid, j));
+  // tile[j] が TF なら j は範囲の中なので、liquid[j] もある（?? 0 は型のため）
+  const walk = (j: number): boolean => tile[j] === TF && !blocksWalk(liquid[j] ?? 0);
   const bridge = new Uint8Array(N),
     bridgeDir = new Uint8Array(N),
     xtalCol = new Map<number, number[]>();
@@ -718,8 +719,9 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       for (let y = 1; y < UH - 1; y++)
         for (let x = 1; x < UW - 1; x++) {
           let n = 0;
-          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (dx || dy) n += nth(g, (y + dy) * W + x + dx);
-          ng[y * W + x] = edgeOf(x, y) < 2 ? 0 : n >= 5 ? 1 : n < 4 ? 0 : nth(g, y * W + x);
+          // x・y は 1 から幅・高さ-2 までなので、まわりのマスはどれも範囲の中（?? 0 は型のため）
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (dx || dy) n += g[(y + dy) * W + x + dx] ?? 0;
+          ng[y * W + x] = edgeOf(x, y) < 2 ? 0 : n >= 5 ? 1 : n < 4 ? 0 : (g[y * W + x] ?? 0);
         }
       g = ng;
     }
@@ -1219,23 +1221,29 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     for (const i of must(r.cells0)) ceil[i] = Math.round(Math.min(must(B.base), 3.6 + (nth(dfield, i) - 1) * must(B.slope)) / 0.4) * 0.4;
   });
   const startI = nth(rooms, 0).cy * W + nth(rooms, 0).cx;
+  // 始まりの場所 from から歩いて行けるマスの数（from も数える）。見たマスの印と積む場所は、毎回作らずに使い回す。
+  // まわりのマスは上下左右（数だけを返すので、調べる順番は数に関わらない）。範囲の外のマスは walk が偽になる
+  const floodSeen = new Uint8Array(N),
+    floodStack = new Int32Array(N);
   const flood = (from: number): number => {
-    const seen = new Uint8Array(N),
-      st = [from];
-    seen[from] = 1;
-    let c = 0;
-    while (st.length) {
-      const i = must(st.pop());
-      c++;
-      const x = i % W,
-        y = (i / W) | 0;
-      for (const d of D4) {
-        const j = (y + d[1]) * W + x + d[0];
-        if (!seen[j] && walk(j)) {
-          seen[j] = 1;
-          st.push(j);
-        }
+    floodSeen.fill(0);
+    floodSeen[from] = 1;
+    floodStack[0] = from;
+    let sp = 1,
+      c = 0;
+    const visit = (j: number): void => {
+      if (j >= 0 && j < N && !floodSeen[j] && walk(j)) {
+        floodSeen[j] = 1;
+        floodStack[sp++] = j;
       }
+    };
+    while (sp) {
+      const i = floodStack[--sp] ?? 0;
+      c++;
+      visit(i - W);
+      visit(i + W);
+      visit(i - 1);
+      visit(i + 1);
     }
     return c;
   };
