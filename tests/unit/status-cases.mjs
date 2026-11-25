@@ -100,8 +100,7 @@ export async function statusCases(F, seeds) {
           : {
               seed: r() < 0.7 ? adv.runSeed : 1,
               items: {},
-              have: new Set(LEGEND_ORDER.filter(() => r() < 0.4)),
-              placed: new Set(LEGEND_ORDER.filter(() => r() < 0.3)),
+              have: new Set([...LEGEND_ORDER.filter(() => r() < 0.4), ...LEGEND_ORDER.filter(() => r() < 0.3)]),
             };
       // プレイヤー：床のマス（生き物の近く）
       const floors = [];

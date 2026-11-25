@@ -165,7 +165,7 @@ function fakeWorld() {
 
 /**
  * まわりの飾り・王の影の変身・姿を変える途中：場合ごとに、種類と生き物（位置・向き・歩き・体力・覚えた物の有無）・プレイヤーとの距離・時刻・
- * 最深部の台座・鳴らせる偽の Web Audio をシードの乱数で作り、関数を1つ選んで、何フレームか続けて呼ぶ（変身は1回）。置いた文字と出した粒子の配列・音の記録・生き物と状態の変わり方を記録する
+ * 最深部の状態・鳴らせる偽の Web Audio をシードの乱数で作り、関数を1つ選んで、何フレームか続けて呼ぶ（変身は1回）。置いた文字と出した粒子の配列・音の記録・生き物と状態の変わり方を記録する
  */
 export function auraCases(F, seeds) {
   const keep = {
@@ -244,14 +244,14 @@ export function auraCases(F, seeds) {
           r() < 0.6
             ? {
                 c0: 0,
-                peds: [0, 1, 2].map(() => ({ kind: 'crown', i: Math.floor(r() * 6000) })),
+                ...[0, 1, 2].reduce((o) => (r(), o), {}), // 乱数を引く数を前と同じに保つ
                 boss: null,
                 bossT: -1,
                 summonT: 12,
                 said: false,
               }
             : r() < 0.5
-              ? { c0: 0, peds: null }
+              ? { c0: 0 }
               : null;
         adv.HIST = {
           rulers: [

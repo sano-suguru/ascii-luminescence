@@ -41,36 +41,21 @@ function pickLegend(it){
 function oracleLegendHints(){ const L=getLegend(); if(!L)return;
   LEGEND_ORDER.forEach((k,j)=>{ if(L.have.has(k))return; const it=L.items[k]; setTimeout(()=>msg(`<b style="color:#bfe4ff">「</b>${LEGEND_KINDS[k].name}は、${BRANCH_HINT[it.branch]}で、主に抱かれている」`),900+j*700); }); }
 
-// ---------------------------------------------------------------- the deepest place: three pedestals around where the stairs would go down
+// ---------------------------------------------------------------- the deepest place: with the three legendary things in hand, the king's shadow rises there
 function setupFinal(){
-  // the bottom is the highest point of the cave the stairs end in, so the shadow can stand under the vault
-  // the bottom: the place with the highest vault on this level, with open floor around it for the pedestals
+  // the bottom: the place with the highest vault on this level, with open floor around it, so the shadow can stand under the vault
   let c0=here.D.stairs, bc=here.D.ceil[c0]||0; const open=i=>i>=0&&i<NCELL&&here.D.tile[i]===TF&&!here.D.liquid[i]&&!here.D.solid.has(i);
   for(const rad of [3,2,1]){ for(let i=0;i<NCELL;i++){ if(!open(i)||here.D.ceil[i]<=bc)continue; const x=i%MW, z=(i/MW)|0; let ok=x>rad&&z>rad&&x<MW-rad-1&&z<MH-rad-1;
       for(let dz=-rad;dz<=rad&&ok;dz++)for(let dx=-rad;dx<=rad;dx++)if(!open(i+dz*MW+dx)){ ok=false; break; } if(ok){ bc=here.D.ceil[i]; c0=i; } }
     if(bc>=10)break; }
-  const L=getLegend(), cx0=c0%MW, cz0=(c0/MW)|0;
   here.monsters=here.monsters.filter(m=>m.ty.critter);
-  const ok=c=>c>=0&&c<NCELL&&here.D.tile[c]===TF&&!here.D.liquid[c]&&!here.D.solid.has(c)&&c!==c0;
-  const cand=[]; for(let dz=-5;dz<=5;dz++)for(let dx=-5;dx<=5;dx++){ const d=Math.hypot(dx,dz); if(d<2.4||d>4.6)continue; const c=(cz0+dz)*MW+cx0+dx; if(ok(c))cand.push([Math.atan2(dz,dx),c]); }
-  cand.sort((a,b)=>a[0]-b[0]); const peds=[];
-  if(cand.length>=3){ const step=cand.length/3; for(let k=0;k<3;k++)peds.push({kind:LEGEND_ORDER[k],i:cand[Math.floor(k*step)][1]}); }
-  else { const free=[]; for(let i=0;i<NCELL;i++)if(ok(i))free.push(i); free.sort((a,b)=>Math.hypot(a%MW-cx0,((a/MW)|0)-cz0)-Math.hypot(b%MW-cx0,((b/MW)|0)-cz0)); for(let k=0;k<3;k++)peds.push({kind:LEGEND_ORDER[k],i:free[2+k*3]}); }
-  here.finalSt={c0,peds,boss:null,bossT:-1,summonT:12,said:false};
-  for(const k of LEGEND_ORDER)if(L.placed.has(k))L.have.delete(k);
-  if(L.placed.size===3)here.finalSt.bossT=1.5;
+  here.finalSt={c0,boss:null,bossT:-1,summonT:12,said:false};
 }
-const pedLit=p=>{ const L=getLegend(); return !!L&&L.placed.has(p.kind); };
-function finalExposed(m){ if(!here.finalSt)return true; return here.finalSt.peds.some(p=>{ if(!pedLit(p))return false; const [x,z]=cpos(p.i); return Math.hypot(m.x-x,m.z-z)<4.5; }); }
 function updateFinal(dt){
-  if(!here.finalSt||!isFinal()||adv.dead)return; const L=getLegend();
-  if(!here.finalSt.said&&ui.started){ here.finalSt.said=true; setTimeout(()=>msg('<b style="color:#bfe4ff">.</b>底に着いた。光の届かない、静かな闇だ。三つの台座が、何かを待っている。'),1600); }
-  for(const p of here.finalSt.peds){ if(L.placed.has(p.kind)||!L.have.has(p.kind))continue; const [x,z]=cpos(p.i); if(Math.hypot(x-player.x,z-player.z)>1.4)continue;
-    L.have.delete(p.kind); L.placed.add(p.kind); renderStatus(); const c=LEGEND_KINDS[p.kind].col;
-    for(let q=0;q<70;q++){ const a=mr()*6.28; spawn(x,0.5+mr()*4,z,Math.cos(a)*1.2,0.6+mr()*2.5,Math.sin(a)*1.2,1.4+mr(),G(mpick(['|','*','.','\''])),0.2,c[0]*3,c[1]*3,c[2]*3,0); }
-    sChime(x,z,0.7); vfx.flash=Math.max(vfx.flash,0.35);
-    msg(`<b style="color:${css(c)}">${LEGEND_KINDS[p.kind].ch}</b>${L.items[p.kind].name}を台座に置いた。光の柱が、闇を押し返していく。`);
-    if(L.placed.size===3)here.finalSt.bossT=2.6; }
+  if(!here.finalSt||!isFinal()||adv.dead)return;
+  if(!here.finalSt.said&&ui.started){ here.finalSt.said=true; setTimeout(()=>msg('<b style="color:#bfe4ff">.</b>底に着いた。光の届かない、静かな闇だ。手の中で、三つの光が震えている。'),1600); }
+  // with the three legendary things in hand, the shadow rises a little after you arrive
+  if(!here.finalSt.boss&&here.finalSt.bossT<0&&legendAll())here.finalSt.bossT=3.2;
   if(here.finalSt.bossT>0){ here.finalSt.bossT-=dt; if(here.finalSt.bossT<=0)spawnFinalBoss(); }
   const b=here.finalSt.boss; if(b&&!b.dead&&!b.phase2&&b.hp<b.maxHp*0.5)transformShadow(b);
   if(b&&b.invulnT>0)b.invulnT-=dt;
@@ -84,13 +69,13 @@ function spawnFinalBoss(){
   const R=adv.HIST.rulers, last=R[R.length-1], cx=here.finalSt.c0%MW, cz=(here.finalSt.c0/MW)|0;
   const ceilH=here.D.ceil[here.finalSt.c0]||6;
   MTYPES.final={...MTYPES.L,ch:'&',look:null,form:'shadowking',sk:'final',name:`${last.name}王の影`,scale:shadowKingScale(ceilH),col:[0.62,0.48,1.0],boss:true,lich:false,light:6,verb:'黒い太陽を頭に浮かべ、長い剣を手に、底の闇から立ち上がった'};
-  const b=makeMonster({key:'final',cx,cz,g:-1,lead:true}); b.sleep=false; b.aware=1.25; b.noticed=true; here.monsters.push(b); here.finalSt.boss=b;
+  const b=makeMonster({key:'final',cx,cz,g:-1,lead:true}); b.sleep=false; b.aware=1.25; b.noticed=true; b.heartOn=true; here.monsters.push(b); here.finalSt.boss=b;
   sRumble(0.9,3); vfx.shake=Math.max(vfx.shake,0.6); vfx.flash=Math.max(vfx.flash,0.3);
   for(let q=0;q<90;q++){ const a=mr()*6.28, e=mr(); spawn(b.x+Math.cos(a)*e*2,0.2,b.z+Math.sin(a)*e*2,Math.cos(a)*0.6,1+mr()*3,Math.sin(a)*0.6,1.6+mr(),G(mpick(['%','#','.','&'])),0.24,0.5,0.35,0.9,0); }
   msg(`<b style="color:#a98cff">&amp;</b>三つの光に照らされて、底の闇がひとところに集まっていく……`);
-  setTimeout(()=>msg(`<b style="color:#a98cff">&amp;</b><b style="color:#c9b8ff">${last.title}${last.name}の影</b>が立ち上がった。闇の外では、その影に触れることさえできない。`),1400);
+  setTimeout(()=>msg(`<b style="color:#a98cff">&amp;</b><b style="color:#c9b8ff">${last.title}${last.name}の影</b>が立ち上がった。`),1400);
 }
-// drawing: the pedestals, the pillars of light and their circles; the seal on the stairs at the last level before the bottom; legendary things lying where a lord fell
+// drawing: the seal on the stairs at the last level before the bottom; legendary things lying where a lord fell
 function drawLegendWorld(t){
   const L=getLegend(); if(!L||!here.D)return;
   for(const it of (here.D.items||[])){ if(it.taken||it.kind!=='legend')continue; const [x,z]=cpos(it.i), c=LEGEND_KINDS[it.legend].col, b=2.4+0.6*Math.sin(t*2.5);
@@ -99,12 +84,6 @@ function drawLegendWorld(t){
     for(let y=0;y<10;y++)dyn(x,1.4+y*0.5,z,G('|'),0.2,c[0]*(1.2-y*0.1),c[1]*(1.2-y*0.1),c[2]*(1.2-y*0.1)); }
   if(descentSealed()){ const [x,z]=cpos(here.D.stairs); if(Math.hypot(x-player.x,z-player.z)<30)LEGEND_ORDER.forEach((k,j)=>{ const a=j/3*Math.PI*2+t*0.3, kd=LEGEND_KINDS[k], has=L.have.has(k), c=kd.col, br=has?2.4:0.35;
       dyn(x+Math.cos(a)*1.1,0.9,z+Math.sin(a)*1.1,G(kd.ch),0.4,c[0]*br,c[1]*br,c[2]*br); for(let q=0;q<8;q++){ const b2=a+q*0.09; dyn(x+Math.cos(b2)*1.1,0.12,z+Math.sin(b2)*1.1,G('.'),0.1,0.5,0.45,0.7); } }); }
-  if(here.finalSt&&isFinal()){ for(const p of here.finalSt.peds){ const [x,z]=cpos(p.i), kd=LEGEND_KINDS[p.kind], c=kd.col, lit=L.placed.has(p.kind), can=L.have.has(p.kind);
-      dyn(x,0.25,z,G('#'),0.4,0.45,0.42,0.52); dyn(x,0.6,z,G('='),0.42,0.55,0.52,0.6);
-      const br=lit?3:can?1.4+0.8*Math.sin(t*4):0.3; dyn(x,1.0,z,G(kd.ch),0.48,c[0]*br,c[1]*br,c[2]*br);
-      if(lit){ for(let y=0;y<14;y++){ const fl=0.75+0.25*Math.sin(t*3+y); dyn(x+(mr()-0.5)*0.05,1.3+y*0.45,z,G(y%3?'|':'*'),0.22,c[0]*2.2*fl*(1-y/18),c[1]*2.2*fl*(1-y/18),c[2]*2.2*fl*(1-y/18)); }
-        for(let k=0;k<28;k++){ const a=k/28*Math.PI*2+t*0.15; dyn(x+Math.cos(a)*4.5,0.1,z+Math.sin(a)*4.5,G(k%4?'.':'+'),0.16,c[0]*1.3,c[1]*1.3,c[2]*1.3); } } }
-    const b=here.finalSt.boss; if(b&&!b.dead&&b.visible!==false){ const ex=finalExposed(b); b.glow=ex?2.2+0.4*Math.sin(t*9):0.55; b.heartOn=ex; } }
 }
 // the end: a screen like the one for death, but light
 function victory(){

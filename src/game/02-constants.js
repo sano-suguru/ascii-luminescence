@@ -43,6 +43,8 @@ function advance(go){
   if(go==='branch'&&here.D.bstairs){ const B=BRANCHES[here.D.bstairs.key]; here.branch={key:B.key,lvl:1,len:B.len,ret:here.depth+1}; return; }
   if(go==='realm'&&here.D.portal){ here.realm={key:here.D.portal.key,ret:here.depth+1}; return; }
   if(here.inter){ here.depth=here.inter.after+1; here.inter=null; return; }
+  // a realm entered just above the bottom: without all three legendary things its way out leads back to the portal, as the stairs stay sealed
+  if(here.realm&&here.realm.ret>=FINAL_DEPTH&&!legendAll()){ here.depth=here.realm.ret-1; here.realm=null; here.arrive='portal'; advance.bounced=true; return; }
   if(here.realm){ here.depth=here.realm.ret; here.realm=null; return; }
   if(here.branch){ if(here.branch.lvl<here.branch.len){ here.branch.lvl++; return; } here.depth=here.branch.ret; here.branch=null; return; }
   if(here.depth>=FINAL_DEPTH||(here.depth===FINAL_DEPTH-1&&!legendAll())){ advance.bounced=true; return; }

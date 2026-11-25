@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // スモークテスト：開発用の探索で dbg が動くか、探索の始め直しで前の場所や状態が残らないか（特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、
 // メニューの「もう一度押して確かめる」待ちが4秒で消えるか、図鑑を開いても探索の記録が変わらないか、閉じた祭壇の画面が離れるまで開かないか、起きている竜を見た時の伝言、
-// 最深部で王の影が出て二つ目の姿になるか（背の高さ・画面への収まり・天井）。テスト用モードでない時のタイトルの画面は tests/title.mjs、図鑑の生き物と図鑑を手で動かすのは
+// 最深部で王の影が出て二つ目の姿になるか（背の高さ・画面への収まり・天井）、伝説の物が揃っていない時に12階の異界から最深部へ出ないか。テスト用モードでない時のタイトルの画面は tests/title.mjs、図鑑の生き物と図鑑を手で動かすのは
 // tests/gallery.mjs、扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
 //   node tests/smoke.mjs          テスト版（.build/test/。既定）
 //   node tests/smoke.mjs --prod   公開用の版（dist/）。JetBrains Mono を指定した所の日本語は、システムのフォントで描く
@@ -219,20 +219,15 @@ await withBrowser(
     }
     await dr.close();
 
-    // 9. 最深部：伝説の物を3つ持って台座に置くと（dbg.to('pedestal')）、王の影が出る。背の高さは約6.7（天井より低い）で、8離れて見ると全身が画面に収まる。
-    // 光の柱のそば（台座の上）で体力を半分より減らすと二つ目の姿になり、大きさは一つ目のまま（天井が低い所だけ縮む）で、天井より低い
+    // 9. 最深部：伝説の物を3つ持つと、少しして王の影が出る（持っていない間は出ない）。背の高さは約7（天井より低い）で、8離れて見ると全身が画面に収まる。
+    // どこでも攻撃が当たり、体力を半分より減らすと二つ目の姿になる。大きさは一つ目のまま（天井が低い所だけ縮む）で、天井より低い
     const fin = await newPage(browser, errs);
     await openTest(fin, base, 'seed=202&depth=13&god=1');
     await advance(fin, 1);
     const king = await fin.evaluate(() => {
+      __test.advance(4);
+      if (__test.state().monsters.some((m) => m[0] === 'final')) return '伝説の物を持っていないのに、王の影が出た';
       dbg.give('legends');
-      const peds = [];
-      for (let k = 0; k < 3; k++) {
-        const at = dbg.to('pedestal');
-        if (!at) return `台座が ${k} つしか見つからない`;
-        peds.push(at);
-        __test.advance(0.2);
-      }
       __test.advance(4);
       const b = __test.state().monsters.find((m) => m[0] === 'final');
       if (!b) return '王の影が出ない';
@@ -250,14 +245,7 @@ await withBrowser(
         dbg.look(b[1], 3.3, b[2]);
         __test.advance(1 / 30);
         const first = __test.monsterView('final');
-        // 二つ目の姿：台座の上に立って王の影を光の柱のそばまで来させ（闇の中では当たらない）、体力を半分より減らす
-        const p0 = peds[0];
-        dbg.step(p0[0], p0[1]);
-        for (let q = 0; q < 80; q++) {
-          __test.advance(0.1);
-          const m = __test.state().monsters.find((o) => o[0] === 'final');
-          if (m && Math.hypot(m[1] - p0[0], m[2] - p0[1]) < 3) break;
-        }
+        // 二つ目の姿：その場で攻撃して、体力を半分より減らす
         let second = null;
         for (let q = 0; q < 40 && !second; q++) {
           dbg.hit(25);
@@ -273,10 +261,10 @@ await withBrowser(
     if (typeof king === 'string') errs.push(`9：${king}`);
     else {
       const { first, second, after } = king;
-      if (!(first.world.y1 > 6 && first.world.y1 < 7.6)) errs.push(`9：王の影の背の高さが約6.7でない：${JSON.stringify(first.world)}`);
+      if (!(first.world.y1 > 6 && first.world.y1 < 7.6)) errs.push(`9：王の影の背の高さが約7でない：${JSON.stringify(first.world)}`);
       if (!(first.world.y1 < first.ceil)) errs.push(`9：王の影が天井を突き抜ける：${first.world.y1} / ${first.ceil}`);
       if (!(first.cut < 0.02)) errs.push(`9：8離れて見た王の影が、画面からはみ出す（${first.cut}）`);
-      if (!second) errs.push('9：光の柱のそばで体力を半分より減らしても、二つ目の姿にならない');
+      if (!second) errs.push('9：体力を半分より減らしても、二つ目の姿にならない');
       else {
         const want = Math.max(1.2, Math.min(first.scale, (second.ceil - 0.3) / 3.6));
         if (Math.abs(second.scale - want) > 0.05)
@@ -285,6 +273,39 @@ await withBrowser(
       }
     }
     await fin.close();
+
+    // 10. 最深部の1つ上の階（12）の異界の門から入り、異界を抜けて下りる：伝説の物が3つ揃っていなければ12階の門に戻され（最深部には出ない）、揃っていれば最深部（13）に出る
+    const rl = await newPage(browser, errs);
+    await openTest(rl, base, 'seed=202&depth=12&god=1');
+    await advance(rl, 1);
+    const realmExit = await rl.evaluate(() => {
+      const out = [];
+      for (const legends of [false, true]) {
+        dbg.go(12);
+        __test.advance(2);
+        if (legends) dbg.give('legends');
+        const r = dbg.realm('ice');
+        if (typeof r === 'string') return `異界に入れない：${r}`;
+        __test.advance(2);
+        const from = __test.state().place;
+        const sp = dbg.info().stairsPos;
+        if (!sp) return '異界に下り階段が無い（テストの前提が崩れた）';
+        dbg.step(sp[0], sp[1]);
+        for (let k = 0; k < 40 && __test.state().place === from; k++) __test.advance(0.2);
+        __test.advance(1);
+        out.push({ legends, depth: __test.state().depth, place: __test.state().place });
+      }
+      return out;
+    });
+    if (typeof realmExit === 'string') errs.push(`10：${realmExit}`);
+    else {
+      const [without, withAll] = realmExit;
+      if (!(without && without.depth === 12 && without.place === '12'))
+        errs.push(`10：伝説の物が揃っていないのに、12階の異界から最深部へ出た：${JSON.stringify(without)}`);
+      if (!(withAll && withAll.depth === 13))
+        errs.push(`10：伝説の物が揃っているのに、12階の異界から最深部へ出ない：${JSON.stringify(withAll)}`);
+    }
+    await rl.close();
   },
   { prod: process.argv.includes('--prod') },
 );
