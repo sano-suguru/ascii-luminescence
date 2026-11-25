@@ -411,6 +411,21 @@ await withBrowser(
       const cSw = await cam();
       if (Math.abs(cSw.camera.dist - c0.camera.dist) > 0.01)
         errs.push(`図鑑：← → で移っても、寄りが戻らない：${c0.camera.dist} → ${cSw.camera.dist}`);
+      // 背の高い生き物（不死の王）に寄ると、狙う点が体の高さの真ん中へ上がり（冠が画面の上で切れない）、カメラは体を包む球の外に止まる
+      const lich = await pg.evaluate(() => __test.gallery().find((e) => e.form === 'lichking')?.n);
+      if (!lich) errs.push('図鑑：不死の王が見つからない');
+      else {
+        for (let i = 1; i < lich; i++) await pg.keyboard.press('ArrowRight');
+        await advance(pg, 0.5);
+        const l0 = await cam();
+        for (let i = 0; i < 8; i++) await pg.mouse.wheel(0, -100); // 寄りきる
+        await advance(pg, 0.2);
+        const lIn = await cam();
+        if (!(lIn.camera.aimY > l0.camera.aimY + 0.5))
+          errs.push(`図鑑：不死の王に寄っても、狙う点が上がらない：${l0.camera.aimY} → ${lIn.camera.aimY}`);
+        if (!(lIn.camera.bodyR !== null && lIn.camera.aimed >= lIn.camera.bodyR + 0.79))
+          errs.push(`図鑑：不死の王に寄ると、体を包む球の中に入る：${JSON.stringify(lIn.camera)}`);
+      }
     }
     await pg.keyboard.press('Escape');
     await advance(pg, 0.5);

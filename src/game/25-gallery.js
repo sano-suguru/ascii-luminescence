@@ -91,9 +91,12 @@ function updateGallery(dt){
     // center (set only by __test.galleryShow): look at the middle of the body's height (halfway between its lowest and highest point, worked out once per creature)
     // and put it in the middle of the picture; otherwise turn the camera a little below the point it aims at, so the creature stands high, above the bestiary's panel
     if(fix&&fix.center&&fix.midOff===undefined&&shape){ let lo=Infinity, hi=-Infinity; for(const p of shape){ const y=(p.y||0)*sc; if(y<lo)lo=y; if(y>hi)hi=y; } fix.midOff=lo<=hi?(lo+hi)/2:0; }
-    const centered=!!(fix&&fix.center&&fix.midOff!==undefined), ty2=centered?Math.max(0.3,m.y+fix.midOff):Math.max(0.3,m.y+(m.ty.flier?0:0.6*sc*tall));
-    // a zoom in stops outside a ball round the point the camera looks at, wide enough to hold every point of the body (worked out once per shape)
-    if(cam&&zoom>1&&shape&&cam.bodyFor!==shape){ cam.bodyFor=shape; cam.bodyR=shape.reduce((r,p)=>Math.max(r,Math.hypot((p.x||0)*sc,(p.y||0)*sc+m.y-ty2,(p.z||0)*sc)),0); }
+    // the player's zoom in (g.view): the closer the camera, the more the aim rises from the usual point to the middle of the body's height, so a tall creature's head stays in the picture
+    if(!fix&&g.view&&shape&&g.view.midFor!==shape){ let lo=Infinity, hi=-Infinity; for(const p of shape){ const y=(p.y||0)*sc; if(y<lo)lo=y; if(y>hi)hi=y; } g.view.midFor=shape; g.view.midOff=lo<=hi?(lo+hi)/2:0; }
+    const lift=!fix&&g.view&&g.view.midFor===shape?clamp((zoom-1)/(GAL_ZOOM[1]-1),0,1):0, usual=m.y+(m.ty.flier?0:0.6*sc*tall);
+    const centered=!!(fix&&fix.center&&fix.midOff!==undefined), ty2=centered?Math.max(0.3,m.y+fix.midOff):Math.max(0.3,lift?usual+lift*Math.max(0,m.y+g.view.midOff-usual):usual);
+    // a zoom in stops outside a ball round the point the camera looks at, wide enough to hold every point of the body (worked out again when the shape or that point changes)
+    if(cam&&zoom>1&&shape&&(cam.bodyFor!==shape||Math.abs(cam.bodyAt-ty2)>0.01)){ cam.bodyFor=shape; cam.bodyAt=ty2; cam.bodyR=shape.reduce((r,p)=>Math.max(r,Math.hypot((p.x||0)*sc,(p.y||0)*sc+m.y-ty2,(p.z||0)*sc)),0); }
     const ball=cam&&zoom>1&&shape&&cam.bodyFor===shape?cam.bodyR+0.8:0;
     const want=(3.0+2.0*sc)*tall/zoom, R=Math.max(Math.min(2,2/zoom),ball,Math.min(want,g.room.far-0.8)), a=g.room.dir+0.25;
     let Rh=tilt===null?R:R*Math.cos(tilt), ch;
