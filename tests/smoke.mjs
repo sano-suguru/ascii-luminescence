@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // スモークテスト：テスト用モードでない時にタイトルの画面が出るか、開発用の探索で dbg が動くか、探索の始め直しで前の場所や状態が残らないか
-// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの「もう一度押して確かめる」待ちが4秒で消えるか、図鑑を開いても探索の記録が変わらないか、開発用モードのまま読み直した時・保存が使えない時のタイトル。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
+// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの「もう一度押して確かめる」待ちが4秒で消えるか、図鑑を開いても探索の記録が変わらないか、開発用モードのまま読み直した時・保存が使えない時のタイトル、閉じた祭壇の画面が離れるまで開かないか。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
 //   node tests/smoke.mjs          テスト版（.build/test/。既定）
 //   node tests/smoke.mjs --prod   公開用の版（dist/）。JetBrains Mono を指定した所の日本語は、システムのフォントで描く
 import { join } from 'node:path';
-import { withBrowser, newPage, openTest, frames, advance, OUT } from './lib.mjs';
+import { withBrowser, newPage, openTest, frames, advance, nearAltar, OUT } from './lib.mjs';
 
 const errs = [];
 await withBrowser(
@@ -156,6 +156,44 @@ await withBrowser(
     const label = await blocked.evaluate(() => document.getElementById('galDev').innerText);
     if (!label.includes('オン')) errs.push(`保存が使えない時、開発用モードを押しても表示が「オン」にならない：${label}`);
     await blocked.close();
+
+    // 10. 祭壇の画面を閉じると、祭壇から離れて、また近づくまで開かない（装備の画面やメニューを開いて閉じても、開かない）
+    const al = await newPage(browser, errs);
+    await openTest(al, base, 'seed=202&depth=3&god=1');
+    await advance(al, 2);
+    if (!(await nearAltar(al))) errs.push('10：祭壇が見つからない（テストの前提が崩れた）');
+    const altarShown = async () => {
+      await advance(al, 0.5);
+      return al.evaluate(() => document.getElementById('altarp').classList.contains('open'));
+    };
+    if (!(await altarShown())) errs.push('10：祭壇の近くに立っても、祭壇の画面が開かない（テストの前提が崩れた）');
+    // 開いてしまった時は、Esc で閉じてから次を確かめる（前の失敗で、次の確かめのキーがずれないように）
+    const stayClosed = async (what) => {
+      if (!(await altarShown())) return;
+      errs.push(`10：祭壇の画面を閉じた後、${what}、離れていないのに祭壇の画面がまた開いた`);
+      await al.keyboard.press('Escape');
+      await advance(al, 0.2);
+    };
+    await al.keyboard.press('Escape'); // 祭壇の画面を閉じる
+    await stayClosed('その場で');
+    await al.keyboard.press('Tab'); // 装備の画面を開いて閉じる
+    await advance(al, 0.2);
+    await al.keyboard.press('Escape');
+    await stayClosed('装備の画面を開いて閉じたら');
+    await al.keyboard.press('Escape'); // メニューを開いて閉じる
+    await advance(al, 0.2);
+    await al.keyboard.press('Escape');
+    await stayClosed('メニューを開いて閉じたら');
+    // 離れて、また近づくと開く
+    const back = await al.evaluate(() => {
+      const [x, z] = __test.state().pos;
+      dbg.step(x + 6, z);
+      return [x, z];
+    });
+    await advance(al, 0.5);
+    await al.evaluate(([x, z]) => dbg.step(x, z), back);
+    if (!(await altarShown())) errs.push('10：祭壇から離れて、また近づいたのに、祭壇の画面が開かない');
+    await al.close();
   },
   { prod: process.argv.includes('--prod') },
 );

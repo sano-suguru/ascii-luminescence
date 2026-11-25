@@ -186,7 +186,8 @@ function updateAltarPanel(){ const el=document.getElementById('altarp'); if(!el)
   if(ui.altarOpen){ if(!here.D||!ui.started||adv.dead||!altarOpts().length)closeAltar(false); return; }
   altarNear=null;
   if(ui.started&&!adv.dead&&!isPaused()&&here.D){ let best=null, bd=1.5; for(const it of (here.D.items||[])){ if(it.taken||!it.altar||!it.rune||it.slot!==1)continue; if(it.guardG!==undefined&&guardedNow(it))continue; const [x,z]=cpos(it.i), d=Math.hypot(x-player.x,z-player.z); if(d<bd){ bd=d; best=it; } } if(best)altarNear=best.grp; }
-  if(!altarNear){ altarDismissed=null; if(el.classList.contains('show'))el.classList.remove('show','open'); return; }
+  // 止まっている間（装備の画面・メニューなど）は、近くの祭壇が無いことにするが、閉じた記録は消さない（離れるまで開かない）
+  if(!altarNear){ if(!(ui.started&&!adv.dead&&here.D&&isPaused()))altarDismissed=null; if(el.classList.contains('show'))el.classList.remove('show','open'); return; }
   if(altarDismissed===altarNear)return;
   openAltar(); }
 function chooseAltar(n){ if(!altarNear)return false; const k=here.D.items.findIndex(o=>o.grp===altarNear&&o.slot===n&&!o.taken); if(k<0)return false; const it=here.D.items[k];
