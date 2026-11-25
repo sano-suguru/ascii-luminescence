@@ -217,7 +217,10 @@ export function shadowKingForm(): Body {
   // its right edge (on the right as it faces you) is torn into small rags. Dark inside, only its edges thin and bright like cut paper.
   // a narrow hood rising to a point, with one slit of cold light for a face and two small eyes at its top; a crown of five long thin spikes;
   // a black sun high above the crown (a dim rim round a dark middle, a ring of dots and a ring of marks, turning slowly);
-  // a long sword taller than the king, held at the chest, its shaft down to the floor; a fold of the cloak across the body; lights down the front, and the heart.
+  // a long sword taller than the king, held at the chest, its shaft down to the floor, with a pommel, curled guard ends and rings at the foot of the blade.
+  // the cloak opens down the front, wider toward the hem, and shows the body inside: the spine's joints, ribs on the chest, an ornament at the hips, two ribbed legs
+  // with their knees; three lights down the middle (the heart at the chest, the belly, the hips); a chain with three small skulls hanging from the left shoulder;
+  // star-like holes and long folds in the cloak.
   // cracks of cold light (part 'crack', each with a health threshold) open as it weakens, letting the starry dark show through
   const pts: Body = [],
     S = 0.08,
@@ -230,7 +233,8 @@ export function shadowKingForm(): Body {
     CRACK: Color = [0.8, 0.9, 1.0],
     STAR: Color = [0.7, 0.72, 1.0],
     BLADE: Color = [0.82, 0.9, 1.0],
-    GRIP: Color = [0.6, 0.54, 0.76];
+    GRIP: Color = [0.6, 0.54, 0.76],
+    BONE: Color = [0.86, 0.82, 0.74];
   const lit = (x: number, y: number, z: number, ch: string, s: number, b: number, col: Color, part?: string, extra?: Extra) => {
     pts.push(Object.assign({ x, y, z, g: G(ch), s, b, part: part || 'body', ph: mr() * 6.28, piv: 0, pz: 0, col }, extra || {}));
   };
@@ -264,6 +268,13 @@ export function shadowKingForm(): Body {
     const h = shadowCloakHalf(y);
     return nx > 0 ? h * (y < 0.95 ? 1.12 : 1.05) + rag(y) * nx : h;
   };
+  // the front opening: from the chest down, wider toward the hem (half its width, at height y)
+  const gapAt = (y: number): number => (y < 1.55 ? 0.05 + 0.2 * ((1.55 - y) / 1.55) : 0);
+  // a point on the front of the cloak, at x across and height y
+  const frontZ = (x: number, y: number, inset = 0): number => {
+    const h = shadowCloakHalf(y);
+    return Math.sqrt(Math.max(0, h * h - x * x)) * ZS * (1 - inset) + 0.01;
+  };
   for (let y = 0.04; y < 2.1; y += 0.1) {
     const r0 = shadowCloakHalf(y),
       slope = (shadowCloakHalf(y + 0.05) - shadowCloakHalf(y - 0.05)) / 0.1,
@@ -273,6 +284,7 @@ export function shadowKingForm(): Body {
         nx = Math.cos(a),
         nz = Math.sin(a),
         r = halfAt(y, nx);
+      if (nz > 0 && Math.abs(nx * r) < gapAt(y)) continue; // the opening
       if (y < 0.25 && mr() < 0.4) {
         lit(nx * r * (1 + mr() * 0.3), 0.03, nz * r * ZS * (1 + mr() * 0.3), '~', S, 0.6, DARK, 'robe');
         continue;
@@ -296,25 +308,70 @@ export function shadowKingForm(): Body {
         'robe',
       );
   }
-  // a fold of the cloak across the body, from the left shoulder down to the right hip (on the front)
-  for (let k = 0; k <= 14; k++) {
-    const f = k / 14,
-      x = -0.26 + 0.6 * f,
-      y = 1.9 - 0.95 * f,
-      h = shadowCloakHalf(y),
-      z = Math.sqrt(Math.max(0, h * h - x * x)) * ZS + 0.01;
-    lit(x, y, z, '\\', S, 1.7, EDGE, y < 1.0 ? 'robe' : 'body');
+  // the edges of the opening, bright
+  for (let y = 0.06; y < 1.55; y += 0.06)
+    for (const sd of [-1, 1]) {
+      const x = sd * gapAt(y);
+      lit(x, y, frontZ(x, y), sd < 0 ? ')' : '(', S, 1.8, EDGE, y < 1.0 ? 'robe' : 'body');
+    }
+  // the body inside the cloak (a little behind its front): the spine's joints from the neck to the hips, and ribs on the chest
+  for (let y = 1.15; y < 1.95; y += 0.07) lit(0, y, frontZ(0, y, 0.08), '=', S, 1.0, EDGE, 'body');
+  for (let k = 0; k < 4; k++) {
+    const y0 = 1.82 - k * 0.09;
+    for (const sd of [-1, 1])
+      for (let q = 0; q <= 5; q++) {
+        const f = q / 5,
+          x = sd * (0.05 + 0.15 * Math.sin(f * 1.4)),
+          y = y0 - 0.06 * f * f;
+        lit(x, y, frontZ(x, y, 0.04), sd < 0 ? '(' : ')', S * 0.85, 0.9, EDGE, 'body');
+      }
   }
-  // lights down the front (the larger at the chest and the belly)
-  for (const [y, big] of [
-    [1.38, false],
-    [1.22, true],
-    [1.05, false],
-    [0.88, true],
-    [0.7, false],
-    [0.52, false],
+  // the ornament at the hips: a small ring round a glowing core
+  for (let q = 0; q < 12; q++) {
+    const a = (q / 12) * Math.PI * 2,
+      x = Math.cos(a) * 0.08,
+      y = 1.02 + Math.sin(a) * 0.06;
+    lit(x, y, frontZ(x, y, 0.1), '.', S * 0.9, 1.3, EDGE, 'body');
+  }
+  // three lights down the middle: the belly and the hips (the heart, at the chest, is below)
+  for (const y of [1.3, 1.02]) lit(0, y, frontZ(0, y, 0.06), 'o', S * 1.2, 2.6, STAR, y < 1.0 ? 'robe' : 'body');
+  // two ribbed legs inside the opening, with their knees and hips
+  for (const sd of [-1, 1]) {
+    for (const o of [-0.03, 0, 0.03])
+      for (let y = 0.08; y < 0.95; y += 0.08) {
+        const x = sd * (0.09 + (0.03 * (0.95 - y)) / 0.87) + o;
+        lit(x, y, frontZ(x, y, 0.15), '|', S * 0.8, 0.8, GRIP, 'robe');
+      }
+    lit(sd * 0.105, 0.55, frontZ(sd * 0.105, 0.55, 0.12), '@', S, 1.4, EDGE, 'robe');
+    lit(sd * 0.095, 0.9, frontZ(sd * 0.095, 0.9, 0.12), 'o', S * 0.9, 1.1, EDGE, 'robe');
+  }
+  // a chain hanging from the left shoulder across the chest, with three small skulls
+  for (let q = 0; q <= 8; q++) {
+    const f = q / 8,
+      x = -0.22 + 0.3 * f,
+      y = 1.88 - 0.25 * Math.sin(f * Math.PI);
+    lit(x, y, frontZ(x, y) + 0.01, 'o', S * 0.75, 1.6, EDGE, 'body');
+  }
+  for (const [x, y] of [
+    [-0.15, 1.7],
+    [0.02, 1.63],
+    [0.12, 1.72],
   ] as const)
-    lit(0, y, shadowCloakHalf(y) * ZS * 0.98, big ? 'o' : '.', S * (big ? 1.2 : 0.9), big ? 2.6 : 1.6, STAR, y < 1.0 ? 'robe' : 'body');
+    lit(x, y, frontZ(x, y) + 0.02, '@', S * 1.5, 2.0, BONE, 'body');
+  // star-like holes in the cloak, and long folds
+  for (let q = 0; q < 26; q++) {
+    const y = 0.15 + mr() * 1.6,
+      side = q % 2 ? 1 : -1,
+      x = side * (gapAt(y) + 0.06 + mr() * Math.max(0, shadowCloakHalf(y) - gapAt(y) - 0.08));
+    lit(x, y, frontZ(x, y), mpick(['.', '+', "'"]), S * 0.8, 2.0, STAR, y < 1.0 ? 'robe' : 'body');
+  }
+  for (const x0 of [-0.22, -0.32, 0.24, 0.36])
+    for (let k = 0; k <= 16; k++) {
+      const f = k / 16,
+        y = 1.6 - 1.52 * f,
+        x = x0 * (0.6 + 1.1 * f);
+      lit(x, y, frontZ(x, y), x0 < 0 ? '/' : '\\', S * 0.8, 0.7, EDGE, y < 1.0 ? 'robe' : 'body');
+    }
   // ragged tufts along the shoulders
   for (let k = 0; k < 24; k++) {
     const sd = mr() < 0.5 ? -1 : 1,
@@ -380,6 +437,11 @@ export function shadowKingForm(): Body {
   for (const e of [-0.02, 0.02]) stroke([SX + e, 1.9, SZ], [SX + e * 0.5, 3.05, SZ], BLADE, 2.4, S * 0.85, 'body', 0.08);
   for (let y = 1.95; y < 3.0; y += 0.15) lit(SX, y, SZ, '.', S * 0.8, 1.0, BLADE, 'body');
   lit(SX, 3.18, SZ, '^', S, 3.0, BLADE, 'body');
+  // the sword's ornaments: a pommel, curled ends of the guard, rings at the foot of the blade
+  lit(SX, 1.6, SZ, 'o', S * 1.1, 2.0, SHARD, 'body');
+  lit(SX - 0.13, 1.88, SZ, '(', S, 2.0, SHARD, 'body');
+  lit(SX + 0.13, 1.88, SZ, ')', S, 2.0, SHARD, 'body');
+  for (const y of [2.0, 2.06, 2.12]) lit(SX, y, SZ + 0.01, 'o', S * 0.6, 1.6, BLADE, 'body');
   // the heart (seen in the light)
   const hz = shadowCloakHalf(1.6) * ZS + 0.02;
   lit(0, 1.6, hz, '*', S * 2.6, 4.0, HEART, 'heart');
