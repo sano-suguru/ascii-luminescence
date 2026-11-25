@@ -1,11 +1,11 @@
-// 主の形（もとは src/game/07-bodies-lords.js・08-bodies-shadow.js）：不死の王・蜘蛛の女王・ナーガの女王・古竜・王の影の二つ目の姿。
+// 主の形（もとは src/game/07-bodies-lords.js・08-bodies-shadow.js）：不死の王・蜘蛛の女王・ナーガの女王・古竜・深みの主・王の影の二つ目の姿。
 // どれも、面の向きと材質で文字と明るさを決める点（put）と、文字をそのまま置く点（lit）で作る。形を作る時に mr()（見た目の乱数）を引く順番を変えないこと。
 import { nth } from '../array.ts';
 import { G, RUNE_CHARS } from '../glyphs.ts';
 import { clamp } from '../rng.ts';
 import { mpick, mr } from '../random.ts';
 import { type Body, type Color, type Extra, type Ramp, type Vec3, strokeCh } from './kit.ts';
-import { SHADOW_MIN_SC } from './lords.ts';
+import { KRAKEN_T, KRAKEN_W, SHADOW_MIN_SC } from './lords.ts';
 
 const LD = [0.42, 0.72, 0.55] as const;
 /** 面の向き (nx, ny, nz) から、光の当たり方（0 から 1） */
@@ -1225,5 +1225,191 @@ export function shadowSerpentForm(): Body {
     stroke([H[0], yb, z], [H[0], yb + h, z - 0.16], EDGE, 2.0, S, 'serp', 0.06);
     lit(H[0], yb + h + 0.04, z - 0.19, '^', S * 1.2, 2.6, EDGE, 'serp');
   }
+  return pts;
+}
+
+// ---- 深みの主（作り直した物。もとは src/game/08-bodies-shadow.js）：水から立ち上がる高い丸い頭、顔の真ん中の稜線、
+// 対になった小さな赤い目と額の菱形の目、口から水へ垂れる短い触手の房、
+// 体のそばの4本と水面から出る10本の触手（巻いた内側に吸盤）、背中に折れた神殿の柱が2本
+/** 深みの主の形（触手の通り道と太さは src/lib/bodies/lords.ts の KRAKEN_T・KRAKEN_W） */
+export function deepKrakenForm(): Body {
+  const pts: Body = [],
+    S = 0.08,
+    LD = [0.42, 0.72, 0.55] as const;
+  const COL = {
+    skin: [0.36, 0.5, 0.62],
+    dark: [0.2, 0.26, 0.36],
+    stone: [0.64, 0.66, 0.6],
+    moss: [0.42, 0.72, 0.4],
+    eye: [1.0, 0.32, 0.24],
+    sucker: [0.7, 0.85, 0.95],
+    ridge: [0.6, 0.72, 0.85],
+  } as const satisfies Record<string, Color>;
+  const RAMP = { skin: ['.', ':', '~', '%', '#'] } as const;
+  const put = (x: number, y: number, z: number, nx: number, ny: number, nz: number, part?: string, extra?: Extra): void => {
+    const l = Math.hypot(nx, ny, nz) || 1,
+      d = (nx * LD[0] + ny * LD[1] + nz * LD[2]) / l,
+      i = clamp(0.2 + 0.8 * Math.max(0, d), 0, 1),
+      R = RAMP.skin;
+    pts.push(
+      Object.assign(
+        {
+          x,
+          y,
+          z,
+          g: G(nth(R, Math.min(R.length - 1, Math.floor(i * R.length)))),
+          s: S,
+          b: 0.45 + 0.95 * i,
+          part: part || 'body',
+          ph: mr() * 6.28,
+          piv: 0,
+          pz: 0,
+          col: COL.skin,
+        },
+        extra || {},
+      ),
+    );
+  };
+  const lit = (x: number, y: number, z: number, ch: string, s: number, b: number, col: Color, part?: string, extra?: Extra): void => {
+    pts.push(Object.assign({ x, y, z, g: G(ch), s, b, part: part || 'body', ph: mr() * 6.28, piv: 0, pz: 0, col }, extra || {}));
+  };
+  const spline = (ctrl: readonly Vec3[], step: number): Vec3[] => {
+    const out: Vec3[] = [];
+    for (let i = 0; i < ctrl.length - 1; i++)
+      for (let t = 0; t < 1; t += step) {
+        const a = nth(ctrl, Math.max(0, i - 1)),
+          b = nth(ctrl, i),
+          c = nth(ctrl, i + 1),
+          d = nth(ctrl, Math.min(ctrl.length - 1, i + 2)),
+          t2 = t * t,
+          t3 = t2 * t;
+        const at = (k: 0 | 1 | 2): number =>
+          0.5 * (2 * b[k] + (-a[k] + c[k]) * t + (2 * a[k] - 5 * b[k] + 4 * c[k] - d[k]) * t2 + (-a[k] + 3 * b[k] - 3 * c[k] + d[k]) * t3);
+        out.push([at(0), at(1), at(2)]);
+      }
+    out.push(nth(ctrl, ctrl.length - 1));
+    return out;
+  };
+  // 1. 頭：水から立ち上がる首が、高い丸い頭になる。水際は太い首、大きな丸い頭は少し後ろへ傾く
+  const hr = (y: number): number =>
+      y < 1.25 ? 0.66 - 0.06 * Math.min(1, y / 1.25) : 0.62 * Math.sqrt(Math.max(0, 1 - Math.pow((y - 1.25) / 0.95, 2))) + 0.02,
+    hl = (y: number): number => 0.14 * Math.max(0, y - 1.1);
+  const fz = (y: number): number => hr(y) * 0.92 - hl(y);
+  for (let y = 0.05; y < 2.22; y += 0.12) {
+    const r = hr(y),
+      n = Math.max(6, Math.round((2 * Math.PI * r) / 0.13));
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2,
+        nx = Math.cos(a),
+        nz = Math.sin(a);
+      if (nz > 0.82 && y > 0.95 && y < 1.75) continue;
+      put(nx * r, y, nz * r * 0.92 - hl(y), nx, y > 1.25 ? (y - 1.25) / 0.97 : 0.15, nz, 'head');
+    }
+  }
+  // 顔：真ん中の稜線、額のしわ、対の目、額の菱形の目
+  for (let y = 1.0; y < 2.05; y += 0.08) lit(0, y, fz(y) + 0.02, '|', S * 1.05, 1.7, COL.ridge, 'head');
+  for (const sd of [1, -1])
+    for (let k = 0; k < 4; k++) {
+      const y = 1.62 - k * 0.16;
+      lit(sd * 0.22, y, fz(y) - 0.03, sd > 0 ? '(' : ')', S * 1.1, 0.9, COL.dark, 'head');
+      lit(sd * 0.36, y - 0.04, fz(y) - 0.1, sd > 0 ? '(' : ')', S, 0.8, COL.dark, 'head');
+    }
+  for (const [y, x] of [
+    [1.38, 0.11],
+    [1.24, 0.145],
+    [1.1, 0.1],
+  ] as const)
+    for (const sd of [1, -1]) {
+      lit(sd * x, y, fz(y) - 0.01, '(', S * 0.9, 0.5, COL.dark, 'head');
+      lit(sd * x, y, fz(y) + 0.01, '*', S * 1.2, 4.4, COL.eye, 'eye');
+    }
+  lit(-0.03, 1.62, fz(1.62) + 0.01, '<', S, 3.6, COL.eye, 'eye');
+  lit(0.03, 1.62, fz(1.62) + 0.01, '>', S, 3.6, COL.eye, 'eye');
+  // 口から水へ垂れる短い触手の房
+  for (let k = 0; k < 8; k++) {
+    const f = k / 7 - 0.5,
+      x0 = f * 0.38,
+      z0 = fz(0.95) - Math.abs(f) * 0.1;
+    for (let q = 0; q < 9; q++) {
+      const t = q / 8;
+      lit(
+        x0 + Math.sin(t * 3 + k) * 0.05,
+        0.95 - t * 0.85,
+        z0 + t * 0.12,
+        t > 0.85 ? '~' : q % 2 ? ')' : '(',
+        S * 0.95,
+        1.0,
+        COL.skin,
+        'tent',
+        {
+          piv: q,
+          ti: k + 10,
+        },
+      );
+    }
+  }
+  // 2. 背中の折れた神殿の柱2本と、その苔
+  for (const [x, z, h, lean] of [
+    [-0.27, -0.52, 0.9, -0.25],
+    [0.24, -0.5, 0.7, 0.2],
+  ] as const) {
+    for (let y = 0; y < h; y += 0.1) lit(x + lean * y * 0.4, 1.4 + y, z - y * 0.25, '|', S * 1.15, 1.1, COL.stone, 'head');
+    lit(x + lean * h * 0.4, 1.4 + h, z - h * 0.25, mpick(['%', '#']), S * 1.2, 1.1, COL.stone, 'head');
+    lit(x, 1.5, z + 0.02, mpick([',', '"']), S, 1.2, COL.moss, 'head');
+  }
+  // 3. 触手（体のそばの4本と、水面から出る10本）。巻いた内側に吸盤
+  KRAKEN_T.forEach((ctrl, ti) => {
+    const P = spline(ctrl, ti < 4 ? 0.12 : 0.15),
+      N = P.length,
+      W0 = KRAKEN_W[ti] || 0.15;
+    for (let i = 1; i < N - 1; i++) {
+      const a = nth(P, i),
+        nx1 = nth(P, i + 1),
+        pv1 = nth(P, i - 1),
+        f = i / (N - 1),
+        w = W0 * (1 - f * 0.84),
+        tx = nx1[0] - pv1[0],
+        ty = nx1[1] - pv1[1],
+        tz = nx1[2] - pv1[2],
+        tl = Math.hypot(tx, ty, tz) || 1;
+      let cx = nx1[0] - 2 * a[0] + pv1[0],
+        cy = nx1[1] - 2 * a[1] + pv1[1],
+        cz = nx1[2] - 2 * a[2] + pv1[2];
+      const dot = (cx * tx + cy * ty + cz * tz) / tl;
+      cx -= (dot * tx) / tl;
+      cy -= (dot * ty) / tl;
+      cz -= (dot * tz) / tl;
+      let cl = Math.hypot(cx, cy, cz);
+      if (cl < 1e-4) {
+        cx = 0;
+        cy = -1;
+        cz = 0;
+        cl = 1;
+      }
+      cx /= cl;
+      cy /= cl;
+      cz /= cl;
+      const bx = (ty * cz - tz * cy) / tl,
+        by = (tz * cx - tx * cz) / tl,
+        bz = (tx * cy - ty * cx) / tl,
+        n = Math.max(5, Math.round((2 * Math.PI * w) / (ti < 4 ? 0.13 : 0.15)));
+      for (let k = 0; k < n; k++) {
+        const an = (k / n) * Math.PI * 2,
+          ox = Math.cos(an) * cx + Math.sin(an) * bx,
+          oy = Math.cos(an) * cy + Math.sin(an) * by,
+          oz = Math.cos(an) * cz + Math.sin(an) * bz;
+        if (a[1] + oy * w < 0.02) continue;
+        if (Math.cos(an) > 0.75) {
+          if (i % 2 === 0)
+            lit(a[0] + ox * w, a[1] + oy * w, a[2] + oz * w, 'o', S * (0.7 + 0.5 * (1 - f)), 1.7, COL.sucker, 'tent', {
+              piv: i * 0.45,
+              ti,
+            });
+        } else put(a[0] + ox * w, a[1] + oy * w, a[2] + oz * w, ox, oy, oz, 'tent', { piv: i * 0.45, ti });
+      }
+    }
+    const e = nth(P, N - 1);
+    lit(e[0], e[1], e[2], '~', S, 1.4, COL.skin, 'tent', { piv: N * 0.45, ti });
+  });
   return pts;
 }

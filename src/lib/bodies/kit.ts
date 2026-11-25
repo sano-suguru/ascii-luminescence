@@ -29,7 +29,8 @@ export interface Glyph {
   /** 回す軸の高さと奥行き（脚など） */
   piv: number;
   pz: number;
-  col?: Color;
+  /** 点の色（無い時と null の時は、生き物の色で描く） */
+  col?: Color | null | undefined;
   // 部位ごとの動きの値（翼の向き・半径、ひびの閾値、回る物の中心と速さ、触手の番号、炎の高さ）
   sd?: number;
   r?: number;
@@ -38,7 +39,7 @@ export interface Glyph {
   cx?: number;
   cy?: number;
   cz?: number;
-  ti?: number;
+  ti?: number | undefined;
   fh?: number;
   // 爪（王の影の二つ目の姿の手）：握る先の手首の位置と、指のどこか（0 から 1）
   hx?: number;
@@ -169,7 +170,7 @@ export interface Kit3 extends Kit2 {
   box: (c: Vec3, w: number, h: number, d: number, ramp: Ramp, col: Color, part?: string, extra?: Extra) => void;
 }
 
-export function q2(ty: BodyType): Kit2 {
+export function q2(ty: Pick<BodyType, 'scale'>): Kit2 {
   const S = Math.min(0.36, 0.2 / ty.scale),
     pts: Body = [],
     LD = [0.42, 0.72, 0.55] as const;
@@ -230,7 +231,7 @@ export function q2(ty: BodyType): Kit2 {
   return { S, pts, put, lit, stroke, ell };
 }
 
-export function q3(ty: BodyType): Kit3 {
+export function q3(ty: Pick<BodyType, 'scale'>): Kit3 {
   const H = q2(ty);
   const { S, put } = H;
   const tube: Kit3['tube'] = (a, b, r0, r1, ramp, col, part, extra, bulge) => {

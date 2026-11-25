@@ -7,6 +7,7 @@ import { type BranchPlace, type Fixture, type InterPlace, type Level, type Realm
 import { META_DEF, type Meta } from './progress.ts';
 import { type History } from './history.ts';
 import type { HandsSnap } from './gear.ts';
+import type { Body, Glyph } from './bodies/kit.ts';
 import { type Rune } from './runes.ts';
 import { NCELL } from './world.ts';
 
@@ -138,6 +139,8 @@ export interface Lvl {
 export interface RunStats {
   kills: number;
   t0: number;
+  /** この探索で新しく記録した忘れられた獣の数 */
+  beastsNew?: number;
 }
 /** 探索の進み（最初の武器を選んだか・最初の祭壇・取った物・倒した主・開いた体の枠の数）。古い JS が後から足すほかの欄は、使う処理を移す時に型を足す */
 export interface RunState {
@@ -490,6 +493,28 @@ export interface Monster {
   woke?: boolean;
   /** 頭の上の印（! ?）を出してからの秒 */
   mark?: number;
+  /** 向き（ラジアン）と、歩いている度合い（0 から 1） */
+  yaw?: number;
+  moving?: number;
+  /** 体力と、その最大 */
+  hp?: number;
+  maxHp?: number;
+  /** 形（src/lib/bodies/build.ts の buildForm） */
+  form?: Body;
+  /** 姿を変える途中（前の姿の点 from、始めたゲームの時刻 t0、かかる秒 dur。王の影の変身） */
+  morph?: { from: Glyph[]; t0: number; dur: number } | null;
+  /** 王の影：二つ目の姿になったか、攻撃が効かない残りの秒 */
+  phase2?: boolean;
+  invulnT?: number;
+  /** まわりの粒子が初めに作って覚える物（src/lib/bodies/auras.ts）：不死の王の剣、古竜の宝、深みの主の灯り、光の猟犬の残像と、残した時刻 */
+  swords?: { x: number; z: number; tx: number; tz: number; h: number }[];
+  hoard?: { x: number; z: number; y: number; ch: string }[];
+  lamps?: [number, number, number][];
+  ghosts?: { x: number; y: number; z: number; yaw: number; t: number }[];
+  ghostT?: number;
+  /** 次に低い音・息の音を鳴らせるゲームの時刻（不死の王・ナーガの女王） */
+  droneT?: number;
+  hissT?: number;
 }
 /** 今いる場所と、階の中身。深さ・支道・異界・特別な階、生き物、灯りの備品、階を移る途中、着いた所 */
 export interface Here {
@@ -522,6 +547,17 @@ export interface Here {
   events: unknown[];
   /** 川のマスの一覧 */
   riverCells: number[];
+  /** 最深部の状態（最深部の階に入った時に作る。ほかの階では null。24-goal.js の setupFinal） */
+  finalSt: FinalState | null;
+}
+/** 最深部の状態：一番高い天井のマス c0、伝説の物を置く3つの台座 peds、王の影 boss と、現れるまで・呼び出すまでの秒、着いた時の伝言を出したか */
+export interface FinalState {
+  c0: number;
+  peds: { kind: string; i: number }[];
+  boss: Monster | null;
+  bossT: number;
+  summonT: number;
+  said: boolean;
 }
 export const here: Here = {
   monsters: [],
@@ -541,6 +577,7 @@ export const here: Here = {
   fovStamp: 1,
   events: [],
   riverCells: [],
+  finalSt: null,
 };
 /** 行った階の覚え（場所の名前 → 見えた所と覚えた色の写し）。丸ごと入れ替えないので、古い JS は今までどおり placeMem で読む */
 export const placeMem = new Map<string, { explored: Uint8Array; mem: Float32Array }>();

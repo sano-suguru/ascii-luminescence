@@ -18,7 +18,7 @@ const dbg={
   realm(key){ if(!REALMS[key])return 'no such realm: '+Object.keys(REALMS).join(','); here.branch=null; here.inter=null; here.realm={key,ret:here.depth+1}; dbgEnter(); return dbg.info(); },
   to(what){ if(!here.D)return false;
     // the deepest place: stand on a pedestal that has nothing on it yet (with the three legendary things in hand, each one is placed there)
-    if(what==='pedestal'){ const p=finalSt&&finalSt.peds.find(p=>!pedLit(p)); if(!p)return false; const [x,z]=cpos(p.i); player.x=x; player.z=z; return [x,z]; }
+    if(what==='pedestal'){ const p=here.finalSt&&here.finalSt.peds.find(p=>!pedLit(p)); if(!p)return false; const [x,z]=cpos(p.i); player.x=x; player.z=z; return [x,z]; }
     const cell=what==='forge'?((here.D.items||[]).find(o=>o.forge&&!o.taken)||{i:-1}).i:what==='hub'?(here.D.hub?((Math.round(here.D.hub.cz))*MW+Math.round(here.D.hub.cx)):-1):what==='spring'?((here.D.items||[]).find(o=>o.kind==='spring'&&!o.taken)||{i:-1}).i:what==='altar'?((here.D.items||[]).find(o=>o.altar&&!o.taken)||{i:-1}).i:what==='elite'?((here.D.items||[]).find(o=>o.elitePrize&&!o.taken)||{i:-1}).i:what==='vault'?(here.D.gate?here.D.gate.cell:-1):what==='stairs'?here.D.stairs:what==='branch'?(here.D.bstairs&&here.D.bstairs.cell):what==='portal'?(here.D.portal&&here.D.portal.cell):what==='lord'?(()=>{ const m=here.monsters.find(m=>(m.key==='lord'||m.key==='final')&&!m.dead); return m?m.cz*MW+m.cx:-1; })():-1; return dbgNear(cell); },
   god(on){ godMode=on===undefined?!godMode:!!on; return godMode; },
   heal(){ player.hp=adv.PLAYER_MAX; return player.hp; },

@@ -1,5 +1,5 @@
 // 主・機械・忘れられた獣の形（もとは src/game/07-bodies-lords.js・08-bodies-shadow.js・10-bodies-beast.js）。
-import { nth } from '../array.ts';
+import { must, nth } from '../array.ts';
 import { hsl2rgb } from '../color.ts';
 import { G } from '../glyphs.ts';
 import type { History } from '../history.ts';
@@ -14,13 +14,16 @@ import {
   type Vec3,
   BRASS,
   BRASS_R,
+  FUR,
   mLit,
   mPut,
+  q3,
   strokeCh,
   adder,
 } from './kit.ts';
+import { dragonForm } from './beasts.ts';
 
-/** 忘れられた獣の作り（年代記の獣から決まる。src/game/10-bodies-beast.js） */
+/** 忘れられた獣の作り（年代記の獣から決まる） */
 export interface BeastSpec {
   /** 体の形：四つ足・大蛇・百足・蛾 など */
   plan: string;
@@ -30,6 +33,17 @@ export interface BeastSpec {
   wings?: boolean;
   eyes?: number;
   core?: string;
+}
+
+/** 忘れられた獣の体の作り（年代記の獣から決まる。図鑑の見本も同じ形） */
+export interface BeastBody extends BeastSpec {
+  legs: number;
+  wings: boolean;
+  eyes: number;
+  /** 燃える鱗の・影を喰らう・歌う */
+  fire: boolean;
+  shadow: boolean;
+  sing: boolean;
 }
 
 /** 忘れられた獣（古い形） */
@@ -584,7 +598,7 @@ export function watcherForm(ty: BodyType): Body {
   return pts;
 }
 
-// ---- 忘れられた獣（src/game/10-bodies-beast.js）
+// ---- 忘れられた獣（もとは src/game/10-bodies-beast.js）
 /** 獣の大きさ（獣の大きさで、文字が約 0.3 m になる） */
 export const BEAST_S = { scale: 2.35 };
 /** 獣の体の色から、飾りの色（補色寄り）を作る */
@@ -614,6 +628,256 @@ export function beastSleep(form: readonly Glyph[], ty: { spec: { plan: string } 
     out.push(q);
   }
   return out;
+}
+
+/**
+ * 忘れられた獣の形（もとは src/game/10-bodies-beast.js）：年代記から決まる体の作り spec（獣・竜・大蛇・蛾・百足）の上に、特徴
+ * （六本脚の・翼なき・千の眼を持つ・燃える鱗の・影を喰らう・歌う）を重ねる。体の色と、飾りの色（beastAcc）
+ */
+export function beastForm2(ty: { col: Color; spec?: BeastBody | undefined }): Body {
+  const spec = must(ty.spec, '忘れられた獣の体の作り spec'),
+    C = ty.col,
+    A = beastAcc(C),
+    H = q3(BEAST_S),
+    { S, pts, lit, stroke, ell, tube } = H;
+  const R = ['.', ':', ...spec.glyphs.slice(0, 2), '#'],
+    BONE: Color = [0.9, 0.86, 0.76],
+    EYE: Color = [1, 0.85, 0.35];
+  const belly = (_ox: number, oy: number): Color => (oy < -0.5 ? A : C),
+    belly4 = (_ox: number, oy: number): Color => (oy < -0.4 ? A : C);
+  if (spec.kind === '竜') {
+    const d = dragonForm({ ...ty, scale: 2.35 });
+    for (const p of d) {
+      if (!p.col || p.col === ty.col) p.col = C;
+    }
+    pts.push(...d);
+  } else if (spec.plan === 'quad') {
+    tube([0, 0.5, -0.5], [0, 0.7, 0.35], 0.24, 0.3, R, belly, 'body', undefined, 0.2);
+    ell([0, 0.95, 0.22], 0.24, 0.18, 0.24, R, () => C, 'body');
+    for (let z = -0.45; z <= 0.42; z += 0.13)
+      for (const x of [-0.14, 0, 0.14]) {
+        const top = 0.5 + (0.2 * (z + 0.5)) / 0.85 + (Math.abs(z - 0.22) < 0.2 ? 0.38 : 0.28);
+        lit(x, top, z, '#', 1.05, 1.4, A, 'body');
+        lit(x, top + 0.07, z - 0.02, '^', 1, 1.6, A, 'body');
+      }
+    const legs: readonly (readonly [number, number])[] =
+      spec.legs === 6
+        ? [
+            [0.34, 0.62],
+            [-0.05, 0.58],
+            [-0.45, 0.55],
+          ]
+        : [
+            [0.34, 0.62],
+            [-0.45, 0.55],
+          ];
+    legs.forEach(([z, top], k) => {
+      for (const sd of [-1, 1]) {
+        const part = (k % 2 === 0) === sd > 0 ? 'legL' : 'legR',
+          ex = { piv: top, pz: z };
+        tube([sd * 0.24, top, z], [sd * 0.3, 0.22, z + 0.06], 0.11, 0.08, R, C, part, ex, 0.2);
+        tube([sd * 0.3, 0.22, z + 0.06], [sd * 0.3, 0.03, z + 0.1], 0.08, 0.07, R, C, part, ex);
+        for (let c = 0; c < 3; c++) lit(sd * 0.3 + (c - 1) * 0.05, 0.01, z + 0.18, 'v', 0.9, 1.5, BONE, part, ex);
+      }
+    });
+    ell([0, 0.56, 0.78], 0.18, 0.15, 0.2, R, (_nx, ny) => (ny < -0.4 ? A : C), 'head');
+    for (const sd of [-1, 1]) {
+      lit(sd * 0.08, 0.6, 0.95, '*', 1, 3.4, EYE, 'head');
+      stroke([sd * 0.12, 0.66, 0.8], [sd * 0.3, 0.84, 0.62], BONE, 1.6, 1, 'head');
+      stroke([sd * 0.3, 0.84, 0.62], [sd * 0.36, 0.8, 0.42], BONE, 1.6, 1, 'head');
+      lit(sd * 0.07, 0.42, 0.95, '^', 1, 2.2, BONE, 'head');
+    }
+    tube([0, 0.5, -0.55], [0, 0.28, -1.0], 0.14, 0.05, R, C, 'tail', { piv: 1 });
+  } else if (spec.plan === 'serpent') {
+    const coil: Vec3[] = [];
+    for (let t = 0; t <= 1; t += 0.04) {
+      const a = t * Math.PI * 2 * 2.2,
+        r = 0.85 - 0.45 * t;
+      coil.push([Math.cos(a) * r, 0.18 + 0.3 * t, Math.sin(a) * r]);
+    }
+    for (let i = 0; i < coil.length - 1; i++) tube(nth(coil, i), nth(coil, i + 1), 0.22, 0.22, R, belly4, 'body');
+    const e = nth(coil, coil.length - 1),
+      neck: Vec3[] = [e, [e[0] * 0.5, 0.8, e[2] * 0.5 + 0.15], [0, 1.15, 0.45], [0, 1.2, 0.75]];
+    for (let i = 0; i < neck.length - 1; i++) tube(nth(neck, i), nth(neck, i + 1), 0.2 - i * 0.03, 0.18 - i * 0.03, R, belly4, 'head');
+    ell([0, 1.2, 0.88], 0.14, 0.11, 0.2, R, () => C, 'head');
+    for (const sd of [-1, 1]) lit(sd * 0.07, 1.25, 1.02, '*', 1, 3.4, EYE, 'head');
+    for (let k = 0; k < 6; k++) stroke([0, 1.3 - k * 0.03, 0.85 - k * 0.1], [0, 1.5 - k * 0.05, 0.75 - k * 0.12], A, 1.8, 1, 'head');
+    for (let i = 2; i < coil.length; i += 2) {
+      const p = nth(coil, i);
+      stroke([p[0], p[1] + 0.2, p[2]], [p[0], p[1] + 0.34, p[2]], A, 1.4, 0.9, 'body');
+    }
+  } else if (spec.plan === 'moth') {
+    ell([0, 0, 0.1], 0.18, 0.17, 0.2, FUR, () => C, 'body');
+    ell([0, -0.04, -0.4], 0.15, 0.14, 0.36, FUR, (_nx, _ny, nz) => (Math.sin(nz * 12) > 0.3 ? A : C), 'body');
+    ell([0, 0.02, 0.36], 0.12, 0.11, 0.11, FUR, () => C, 'head');
+    for (const sd of [-1, 1]) {
+      lit(sd * 0.07, 0.05, 0.44, '@', 1.3, 3.6, EYE, 'head');
+      let pv: Vec3 = [sd * 0.05, 0.12, 0.42];
+      for (let k = 1; k <= 6; k++) {
+        const nx: Vec3 = [sd * (0.05 + k * 0.06), 0.12 + k * 0.07, 0.42 + k * 0.04];
+        stroke(pv, nx, A, 1.4, 0.85, 'head');
+        lit(nx[0] + sd * 0.04, nx[1] - 0.02, nx[2], '-', 0.7, 1.2, A, 'head');
+        pv = nx;
+      }
+    }
+    for (const sd of [-1, 1])
+      for (let l = 0; l < 3; l++) stroke([sd * 0.1, -0.12, 0.15 - l * 0.1], [sd * 0.2, -0.4, 0.2 - l * 0.12], C, 1.0, 0.85, 'body');
+    for (const sd of [-1, 1])
+      for (const [z0, rmax] of [
+        [0.08, 1.35],
+        [-0.22, 0.95],
+      ] as const)
+        for (let r = 0.2; r <= rmax; r += S * 1.0)
+          for (let dz = -0.32; dz <= 0.32; dz += S * 1.0) {
+            const f = r / rmax,
+              edge = Math.abs(dz) > 0.3 * (1 - f * 0.35);
+            if (Math.abs(dz) > 0.34 * (1 - f * 0.35)) continue;
+            const spot = Math.hypot(r - rmax * 0.6, dz) < 0.12,
+              ch = spot ? (Math.hypot(r - rmax * 0.6, dz) < 0.05 ? '@' : 'O') : edge ? '~' : mpick(['%', ':', '.']);
+            lit(0, 0.04 + dz * 0.2, z0 + dz, ch, 1, spot ? 2.6 : edge ? 1.4 : 0.95, spot ? A : edge ? A : C, 'wing', { sd, r });
+          }
+  } else if (spec.plan === 'centipede') {
+    const segs = 14;
+    for (let i = 0; i < segs; i++) {
+      const f = i / (segs - 1),
+        z = 0.9 - f * 2.4,
+        y = f < 0.25 ? 0.9 - f * 2.6 : 0.26,
+        c = [0, y, z] as const;
+      for (let k = 0; k < 12; k++) {
+        const a = (k / 12) * Math.PI,
+          x = Math.cos(a) * 0.22,
+          yy = Math.sin(a) * 0.16;
+        lit(
+          c[0] + x,
+          c[1] + yy,
+          c[2],
+          k === 0 || k === 11 ? '=' : mpick(['#', '%', '=']),
+          1,
+          1.0 + 0.4 * Math.sin(a),
+          k === 0 || k === 11 ? A : C,
+          'seg',
+          { piv: i },
+        );
+      }
+      for (const sd of [-1, 1]) {
+        const part = (i % 2 === 0) === sd > 0 ? 'legL' : 'legR',
+          top = c[1];
+        stroke([sd * 0.22, top, z], [sd * 0.42, top + 0.1, z + 0.04], C, 1.1, 0.9, part, { piv: top, pz: z });
+        stroke([sd * 0.42, top + 0.1, z + 0.04], [sd * 0.5, 0.02, z + 0.08], C, 1.1, 0.9, part, { piv: top, pz: z });
+      }
+    }
+    const hd: Vec3 = [0, 0.98, 1.0];
+    ell(hd, 0.15, 0.12, 0.14, R, () => C, 'head');
+    for (const sd of [-1, 1]) {
+      lit(sd * 0.07, 1.02, 1.12, '*', 1, 3.2, EYE, 'head');
+      stroke([sd * 0.08, 0.92, 1.12], [sd * 0.16, 0.86, 1.3], A, 1.8, 1, 'head');
+      stroke([sd * 0.16, 0.86, 1.3], [sd * 0.06, 0.84, 1.4], A, 1.8, 1, 'head');
+      let pv: Vec3 = [sd * 0.06, 1.08, 1.1];
+      for (let k = 1; k <= 6; k++) {
+        const nx: Vec3 = [sd * (0.06 + k * 0.05), 1.08 + k * 0.08, 1.1 + k * 0.07];
+        stroke(pv, nx, A, 1.3, 0.85, 'head');
+        pv = nx;
+      }
+    }
+  }
+  // 体の上の特徴
+  if (!spec.wings) for (let i = pts.length - 1; i >= 0; i--) if (pts[i]?.part === 'wing' && spec.plan !== 'moth') pts.splice(i, 1);
+  const bodyPts = pts.filter((p) => p.part !== 'wing');
+  if (spec.eyes > 0)
+    for (let k = 0; k < 32; k++) {
+      const p = nth(bodyPts, Math.floor(mr() * bodyPts.length));
+      lit(p.x * 1.02, p.y + 0.01, p.z * 1.02, mr() < 0.5 ? 'o' : '*', 0.9, 3.2, [1, 0.9, 0.4], p.part, { piv: p.piv, pz: p.pz, ti: p.ti });
+    }
+  if (spec.fire) {
+    for (let k = 0; k < 50; k++) {
+      const p = nth(bodyPts, Math.floor(mr() * bodyPts.length));
+      p.col = [1, 0.4, 0.12];
+      p.g = G(mpick(['/', '\\']));
+      p.b = 2.4;
+    }
+    const tops = bodyPts
+      .slice()
+      .sort((a, b) => b.y - a.y)
+      .slice(0, 14);
+    for (const p of tops)
+      for (let q = 0; q < 3; q++) {
+        const f = q / 2;
+        lit(p.x, p.y + 0.06 + f * 0.14, p.z, '^', 1 - f * 0.3, 2.2 + 1.2 * f, [1, 0.3 + 0.55 * f, 0.08 + 0.4 * f], 'flame', { fh: f });
+      }
+  }
+  if (spec.shadow) {
+    for (const p of pts) {
+      if (p.col === EYE) continue;
+      if (mr() < 0.22) {
+        p.col = [0.88, 0.84, 1.0];
+        p.b = 2.2;
+      } else {
+        p.col = [0.24, 0.17, 0.38];
+        p.b *= 0.6;
+      }
+    }
+  }
+  if (spec.sing) {
+    const tops = bodyPts
+      .slice()
+      .sort((a, b) => b.y - a.y)
+      .slice(0, 7);
+    for (const p of tops) {
+      for (let q = 0; q < 3; q++) {
+        const dx = (q - 1) * 0.06;
+        for (let j = 1; j <= 3; j++) lit(p.x + (dx * j) / 3, p.y + j * 0.07, p.z, j === 3 ? '*' : '|', 1, 2.4, [0.6, 0.95, 1.0], 'pulse');
+      }
+    }
+  }
+  pts.noExtra = true;
+  return pts;
+}
+
+/** 図鑑の見本の忘れられた獣（開発用。5つの体の作りと特徴を1つずつ） */
+export function beastSamples(): {
+  seed: number;
+  name: string;
+  col: Color;
+  spec: BeastBody;
+  lore: string;
+  scale: number;
+  fl: number;
+  flier: boolean;
+}[] {
+  const K = [
+    ['獣', '六本脚の', 'quad'],
+    ['竜', '燃える鱗の', 'quad'],
+    ['大蛇', '千の眼を持つ', 'serpent'],
+    ['蛾', '歌う', 'moth'],
+    ['百足', '影を喰らう', 'centipede'],
+  ] as const;
+  const GLYPHS = [
+    ['#', '%', '&'],
+    ['=', '~', 'x'],
+    ['%', '*', '#'],
+    ['&', '8', '%'],
+    ['#', '=', '%'],
+  ] as const;
+  return K.map(([kind, feat, plan], i) => ({
+    seed: -1 - i,
+    name: `${feat}${kind}（見本）`,
+    col: feat === '燃える鱗の' ? [1.0, 0.42, 0.14] : feat === '影を喰らう' ? [0.5, 0.32, 0.8] : hsl2rgb(i * 0.21 + 0.05, 0.75, 0.6),
+    spec: {
+      plan,
+      kind,
+      legs: feat === '六本脚の' ? 6 : 4,
+      wings: kind === '竜' || kind === '蛾',
+      eyes: feat === '千の眼を持つ' ? 26 : 0,
+      fire: feat === '燃える鱗の',
+      shadow: feat === '影を喰らう',
+      sing: feat === '歌う',
+      glyphs: [...nth(GLYPHS, i)],
+    },
+    lore: '開発用の見本。探索で出会った獣は、名前と年代記の一節とともにここへ記される。',
+    scale: plan === 'moth' ? 3.0 : 3.6,
+    fl: plan === 'moth' ? 2.4 : 0,
+    flier: plan === 'moth',
+  }));
 }
 
 /**
