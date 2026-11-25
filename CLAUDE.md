@@ -54,7 +54,7 @@ tests/world.mjs      世界とのやり取り：扉・火・氷と冷気・小�
 tests/determinism.mjs  同じシードで同じ結果になるか
 tests/levels.mjs     全部の階（20シード×30か所）をブラウザで生成し、例外と、歩いて行けるかを確かめる
 tests/reach.mjs      歩いて行けるかの調べ方（levels.mjs と tests/unit/reach.test.ts が使う。型は reach.d.mts）
-tests/visual.mjs     画面写真の比較（16場面：層ごとの世界・手元の武器・パネル、図鑑の生き物4体（枠を隠し、__test.galleryShow で向きと姿を止め、寄って真ん中に写す）。基準は tests/baseline/）
+tests/visual.mjs     画面写真の比較（16場面：層ごとの世界・手元の武器・パネル、図鑑の生き物4体（1280×720。枠を隠し、__test.galleryShow で向きと姿を止め、寄って真ん中に写す）。基準は tests/baseline/）
 tests/panels.mjs     枠のテスト（全部の文字の幅が visW どおりか、操作・装備・メニュー・レベルアップ・祭壇・結果の縦線と、一覧の名前の列が揃うか）
 tests/unit/generate.test.ts  迷宮の生成の単体テスト（同じ入力なら同じ迷宮・生き物の表に書き込まない・全部の場所の指紋。Node で数秒）。
                      歩いて行けるか（5シード）は reach.test.ts（ファイルを分けて、並べて走らせる）。共通部分（全部の場所・gen）は gen-places.ts

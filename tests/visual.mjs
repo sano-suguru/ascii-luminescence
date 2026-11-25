@@ -25,7 +25,8 @@ const enter = async (pg) => {
 const ev = (pg, f, a) => pg.evaluate(f, a);
 // 図鑑の生き物を、向きと姿を止めて写す（__test.galleryShow）。図鑑の枠（名前と説明の文）は隠して、生き物の形だけを見張る
 // （パネルの文字は tests/panels.mjs が見る）。寄って（zoom）、体の高さの真ん中を画面の真ん中に写す（center）。生き物の画素が多いほど、小さな違いに気づける。
-// zoom は、生き物が画面の高さの6〜7割を占め、どこも切れない値。出してから3秒進めて、灯りが落ち着いてから写す
+// zoom は、生き物が画面の高さの6〜7割を占め、どこも切れない値。出してから3秒進めて、灯りが落ち着いてから写す。
+// 大きさは 1280×720（体を作る文字の形まで読めるので、違いの画像を見て何が変わったか分かる。違いの割合は大きさでほぼ変わらない）
 const bestiary = (name, yaw, pose, zoom) => async (pg) => {
   const why = await ev(
     pg,
@@ -116,10 +117,10 @@ const SCENES = [
     },
   },
   // 生き物の形：図鑑の部屋で、描く処理の違う所を別々の生き物で押さえる
-  { name: 'gal-dragon', q: '', go: bestiary('竜', 0.6, 'stand', 1.15) }, // 四つ足の大きな形・翼・頭
-  { name: 'gal-ogre', q: '', go: bestiary('オーガ', 0.25, 'walk', 2) }, // 人型の見た目（lookHumanoid・extraLook）と歩く足
-  { name: 'gal-lichking', q: '', go: bestiary('不死の王', 0.25, 'stand', 1.7) }, // 主の形とまわりの粒子（lichAura）・冠の光
-  { name: 'gal-beast', q: '', go: bestiary('燃える鱗の竜（見本）', 0.6, 'stand', 1.6) }, // 忘れられた獣の組み立て（buildForm）
+  { name: 'gal-dragon', q: '', size: [1280, 720], go: bestiary('竜', 0.6, 'stand', 1.15) }, // 四つ足の大きな形・翼・頭
+  { name: 'gal-ogre', q: '', size: [1280, 720], go: bestiary('オーガ', 0.25, 'walk', 2) }, // 人型の見た目（lookHumanoid・extraLook）と歩く足
+  { name: 'gal-lichking', q: '', size: [1280, 720], go: bestiary('不死の王', 0.25, 'stand', 1.7) }, // 主の形とまわりの粒子（lichAura）・冠の光
+  { name: 'gal-beast', q: '', size: [1280, 720], go: bestiary('燃える鱗の竜（見本）', 0.6, 'stand', 1.6) }, // 忘れられた獣の組み立て（buildForm）
 ];
 
 mkdirSync(BASE, { recursive: true });
