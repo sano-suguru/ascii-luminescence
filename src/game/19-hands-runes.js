@@ -104,7 +104,7 @@ const ELEM_OF={l:'fire',Zf:'fire',D:'fire',Zi:'ice',L:'ice',K:'ice',Zl:'thunder'
 // RES は src/lib/runes.ts（src/game/imports.mjs で読む）
 let packSnap=null, packSel=null;
 try{ saved.BOOK=new Set(JSON.parse(localStorage.getItem('al_book')||'[]')); }catch(e){}
-function randomRuneType(r,weights){ const w=weights||{elem:0.45,trig:0.12,mod:0.33,body:0.1}; let x=r(); for(const c of ['atk','elem','trig','mod','body']){ if(!w[c])continue; if(x<w[c]){ const a=(c==='atk'?weaponPool():RUNE_TYPES[c].filter(t=>!lockedOf('rune',t))); return a[Math.floor(r()*a.length)]||'fire'; } x-=w[c]; } return 'fire'; }
+// ルーンの種類を選ぶ randomRuneType は src/lib/gear.ts（src/game/imports.mjs で読む）
 // cut html to a visible width (text beyond it is dropped), so a long line never widens a fixed box
 function clipHtml(html,w){ if(visW(html)<=w)return html; const box=document.createElement('span'); box.innerHTML=html; let left=w; const walk=n=>{ for(const c of [...n.childNodes]){ if(left<=0){ n.removeChild(c); continue; } if(c.nodeType===3){ let out=''; for(const ch of c.textContent){ const cw=visW(ch); if(cw>left){ left=0; break; } out+=ch; left-=cw; } c.textContent=out; } else walk(c); } }; walk(box); return box.innerHTML; }
 // called only when a run starts, after the page has loaded (saved.RSEEN is filled from al_runes in 25-gallery.js; before that it is an empty placeholder)

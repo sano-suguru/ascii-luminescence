@@ -9,32 +9,10 @@ function dropRune(m){
   for(let q=0;q<14;q++){ const a=mr()*6.28; spawn(m.x,0.6,m.z,Math.cos(a)*1.2,0.6+mr(),Math.sin(a)*1.2,0.8,G('.'),0.12,1.6,1.4,2.2,0); }
 }
 // ---------------------------------------------------------------- rune altars (predictable rewards): one on the main path of each level, sometimes another off it; three choices made when you come near:
-// a new rune (leaning to empty open slots), sometimes a weapon, or healing. Lords leave an altar of strong choices (forging a weapon among them). Treasuries hold the unpredictable.
-function altarFill(grp){ const its=(here.D.items||[]).filter(o=>o.grp===grp&&o.altar); if(!its.length||its[0].rune)return; const lord=its[0].lord;
-  if(its[0].forge){ const fo=forgeOptions(3); its.forEach((it,k)=>{ const f=fo[k]; Object.assign(it,f?{opt:'forge',forgeW:f.w,forgeK:f.k,forgeTo:f.to,rune:{uid:-1,type:'forgeopt'}}:{opt:'heal',rune:{uid:-1,type:'mend'}}); }); return; }
-  const opts=[], usedT=new Set(), usedC=new Set(), held=new Set([gear.hands.L.atk,gear.hands.R.atk].filter(Boolean).map(r=>r.type));
-  const newRune=()=>{ const empty=[]; for(const h of ['L','R']){ const H=gear.hands[h]; for(let i=0;i<(H.slotN||2);i++)if(!H.slots[i])empty.push(mpick(['elem','mod','mod','trig'])); } for(let i=0;i<(adv.runState.bodyOpen||0);i++)if(!gear.hands.B['b'+i])empty.push('body');
-    for(let tries=0;tries<16;tries++){ let t; if(empty.length&&mr()<0.5){ const c=empty[Math.floor(mr()*empty.length)], a=RUNE_TYPES[c].filter(t=>!lockedOf('rune',t)); t=a[Math.floor(mr()*a.length)]; } else t=randomRuneType(mr,lord?{elem:0.3,trig:0.15,mod:0.35,body:0.2}:{elem:0.4,trig:0.12,mod:0.38,body:0.1}); if(usedT.has(t)||(tries<10&&usedC.has(RUNE_DEF[t].cat)))continue; usedT.add(t); usedC.add(RUNE_DEF[t].cat); return {opt:'rune',rune:RUNE_DEF[t].cat==='mod'&&mr()<(lord?0.5:0.05)?makeStrong(t):makeRune(t)}; } return null; };
-  const weapon=()=>{ const pool=weaponPool().filter(t=>!usedT.has(t)); if(!pool.length)return null; const t=pool[Math.floor(mr()*pool.length)]; usedT.add(t); return {opt:'rune',rune:rollTraits(makeRune(t),here.depth,lord?2:0)}; };
-  const heal=()=>player.hp<adv.PLAYER_MAX*0.85?{opt:'heal',rune:{uid:-1,type:'mend'}}:null;
-  const forge=()=>{ const f=forgeOptions(1)[0]; return f?{opt:'forge',forgeW:f.w,forgeK:f.k,forgeTo:f.to,rune:{uid:-1,type:'forgeopt'}}:null; };
-  opts.push((lord||mr()<0.08)?(weapon()||newRune()):newRune()); opts.push(lord?(forge()||newRune()):newRune()); opts.push(heal()||newRune()); for(let k=0;k<3;k++)if(!opts[k])opts[k]={opt:'heal',rune:{uid:-1,type:'mend'}};
-  shuffle(opts,mr); its.forEach((it,k)=>Object.assign(it,opts[k])); }
-// guards for altars and the strong one's room: groups added to this level's spawns, kept in their room; an altar or prize is dark until its guards are gone
-function hostileKeys(){ const n={}; for(const s of (here.D.spawns||[])){ const ty=MTYPES[s.key]; if(!ty||ty.critter||ty.peaceful||ty.boss||s.key==='lord'||s.key==='final'||ty.habitat||ty.form==='eel')continue; n[s.key]=(n[s.key]||0)+1; } return n; }
-function nextGroup(){ return (here.D.spawns||[]).reduce((a,s)=>Math.max(a,s.g||0),0)+1; }
-function addGuards(at,r){ const ri=here.D.roomOf[at]; if(ri<0)return undefined; const hk=hostileKeys(), kinds=Object.keys(hk); if(!kinds.length)return undefined;
-  const key=kinds.sort((a,b)=>hk[b]-hk[a])[0], cells=here.D.rooms[ri].cells.filter(c=>here.D.tile[c]===TF&&!here.D.liquid[c]&&!here.D.solid.has(c)&&Math.hypot((c%MW)-(at%MW),((c/MW)|0)-((at/MW)|0))>=2), g=nextGroup(), n=2+(r()<0.5?1:0);
-  if(cells.length<n)return undefined; for(let k=0;k<n;k++){ const c=cells.splice(Math.floor(r()*cells.length),1)[0]; here.D.spawns.push({key,cx:c%MW,cz:(c/MW)|0,g,lead:k===0,home:ri}); } return g; }
+// 祭壇の中身（altarFill）・番人（hostileKeys・nextGroup・addGuards・guardedNow）・鍛え方（forgeOptions）・祭壇を置く（placeAltar）・鍛えの祭壇の深さ（forgeDepthOf）・
+// 宝物庫のまわり（vaultArea）・泉を置く（placeSpring）・祭壇の画面の1行（altarLine）は src/lib/altars.ts（src/game/imports.mjs で読む）
 function strongestKey(){ const kinds=Object.keys(hostileKeys()).filter(k=>!MTYPES[k].beast&&!MTYPES[k].dragon&&k!=='X'&&k!=='D'); let best=null, bh=-1; for(const k of kinds){ let h=0; try{ h=statOf({ty:MTYPES[k],key:k})[0]; }catch(e){} if(h>bh){ bh=h; best=k; } } return best; }
 
-function forgeOptions(n){ const ws=[...new Set([gear.hands.L.atk,gear.hands.R.atk].filter(Boolean))], cands=[];
-  for(const w of ws){ const pool=Object.keys(TRAITS[w.type]||{}), tr=trList(w);
-    for(const t of tr)if(t.lv<5)cands.push({w,k:t.k,from:t.lv,to:t.lv+1});
-    for(const k of pool)if(!tr.some(t=>t.k===k))cands.push({w,k,from:0,to:1}); }
-  const out=[]; while(out.length<n&&cands.length){ out.push(cands.splice(Math.floor(mr()*cands.length),1)[0]); } return out; }
-function placeAltar(at,grp,extra){ for(let k=0;k<3;k++)here.D.items.push(Object.assign({i:at,kind:'rune',rune:null,grp,altar:true,slot:k,taken:false},extra||{})); }
-function forgeDepthOf(k){ const h=Math.imul(adv.runSeed^0x2f6b1c3d,2654435761)>>>0, span={cavern:[3,5],ruins:[6,8],magma:[9,11]}[k]; if(!span)return -1; return span[0]+(h>>>({cavern:0,ruins:3,magma:6}[k]))%(span[1]-span[0]+1); }
 function mainPathAltars(r,free){ if(here.D.stratum.special||here.D.finalVault)return; const W=MW, N=here.D.tile.length, ok=i=>i>=0&&i<N&&here.D.tile[i]===TF&&here.D.liquid[i]!==LQ_DEEP&&here.D.liquid[i]!==LQ_LAVA;
   const bfs=s=>{ const d=new Int32Array(N).fill(-1); if(s==null||s<0||!ok(s))return d; const q=[s]; d[s]=0; for(let h=0;h<q.length;h++){ const c=q[h]; for(const o of [1,-1,W,-W]){ const j=c+o; if(ok(j)&&d[j]<0){ d[j]=d[c]+1; q.push(j); } } } return d; };
   const dS=bfs(here.D.start), goal=here.D.stairs>=0?here.D.stairs:(here.D.bstairs?here.D.bstairs.cell:-1), dT=bfs(goal), L=goal>=0&&dS[goal]>0?dS[goal]:0;
@@ -90,7 +68,6 @@ function mainPathAltars(r,free){ if(here.D.stratum.special||here.D.finalVault)re
   }
 // the treasury's prize: taking it wakes guardians, or brings the ceiling down
 let rockfall=null;
-function vaultArea(it,R){ const out=[], cx=it.i%MW, cz=(it.i/MW)|0; for(let dz=-R;dz<=R;dz++)for(let dx=-R;dx<=R;dx++){ if(cx+dx<0||cx+dx>=MW||cz+dz<0||cz+dz>=MH)continue; const c=(cz+dz)*MW+cx+dx; if(here.D.tile[c]!==TF||here.D.liquid[c]||Math.hypot(dx,dz)>R)continue; out.push(c); } return out; }
 function vaultSprung(it){ const ri=here.D.roomOf[it.i], room=ri>=0&&here.D.rooms[ri]&&here.D.rooms[ri].cells.length>6?here.D.rooms[ri]:{cells:vaultArea(it,4)};
   if(it.ev==='guard'){ const pool=here.monsters.filter(m=>!m.dead&&!m.ty.critter&&!m.ty.peaceful&&!m.ty.boss&&m.key!=='lord'&&MTYPES[m.key]); const key=pool.length?pool.sort((a,b)=>(b.maxHp||0)-(a.maxHp||0))[0].key:'O';
     const cells=vaultArea(it,5).filter(c=>{ const [x,z]=cpos(c); return Math.hypot(x-player.x,z-player.z)>2.0; });
@@ -105,7 +82,7 @@ function updateRockfall(dt){ if(!rockfall)return; const R=rockfall; R.t+=dt; R.n
   R.rocks=R.rocks.filter(k=>k.t<1.2); if(R.t>=R.dur&&!R.rocks.length)rockfall=null; }
 
 // ---------------------------------------------------------------- healing: no regeneration over time. Part of each wound lingers as recoverable (shown on the bar); strike back before it fades
-// and the light of what you strike flows into you; a kill gives more. Altars, a little on going down, rare healing springs, and the town and the oracle heal.
+// and the light of what you strike flows into you; a kill gives more. Altars, a little on going down, healing springs, and the town and the oracle heal.
 let rallyMotes=[], rallyShown=-1, rallyChime=0;
 // RALLY_FROM は src/lib/runes.ts（src/game/imports.mjs で読む）
 function rallyOnHit(m,n,how){ if(!(player.rally>0)||!RALLY_FROM.has(how)||m.ty.critter||!(clock.time-(m.playerT||-99)<1.2))return; const mn=bodyN('mend');
@@ -123,9 +100,7 @@ function updateRally(dt){ if(adv.dead)return; const mn=bodyN('mend');
   rallyMotes=rallyMotes.filter(p=>!p.done);
   vfx.hpFlash=Math.max(0,vfx.hpFlash-dt);
   const rs=Math.round((player.rally||0)*4)+(vfx.hpFlash>0?1000:0); if(rs!==rallyShown){ rallyShown=rs; renderStatus(); } }
-// healing springs: rare, off the path; one use heals fully
-function placeSpring(r,free,scored,spreadPick){ if(here.D.stratum.special||here.D.finalVault||r()>=0.25)return; const pool=(scored||[]).filter(o=>o.det>=5&&!here.D.items.some(it=>here.D.roomOf[it.i]===o.ri)); const pick=spreadPick?spreadPick(pool.length?pool:(scored||[])):(pool.length?pool:(scored||[]))[Math.floor(r()*Math.max(1,(pool.length?pool:(scored||[])).length))];
-  if(!pick)return; const c=pick.ro.cells.filter(free); if(!c.length)return; here.D.items.push({i:c[Math.floor(c.length/2)],kind:'spring',taken:false}); }
+// 癒しの泉を描く（1つで1回、全回復。泉を置くのは src/lib/altars.ts の placeSpring）
 function drawSprings(t){ for(const it of (here.D.items||[])){ if(it.kind!=='spring')continue; const [x,z]=cpos(it.i); if(Math.hypot(x-player.x,z-player.z)>26)continue; const used=it.taken;
     for(let k=0;k<16;k++){ const a=k/16*Math.PI*2+t*0.25, rr=0.55+0.05*Math.sin(t*2+k), b=used?0.25:0.7+0.3*Math.sin(t*1.8+k); dyn(x+Math.cos(a)*rr,0.05,z+Math.sin(a)*rr,G('~'),0.15,0.35*b,0.85*b,1.0*b,0,0); }
     if(!used){ dyn(x,0.06,z,G('o'),0.3,0.8,1.6,2.0,0,0); if(mr()<0.2)spawn(x+(mr()-0.5)*0.6,0.1,z+(mr()-0.5)*0.6,0,0.6,0,1.4,G(mpick(['.','\''])),0.1,0.6,1.5,1.8,0); } } }
@@ -151,7 +126,6 @@ function placeRunesForLevel(){
   here.D.items.forEach((it,k)=>{ if(adv.runState.taken.has(seed+':'+k+':'+it.kind))it.taken=true; });
 }
 const nearStele=()=>(gallery&&gallery.mode==='range')||(here.D.steles||[]).some(s=>{ const [x,z]=cpos(s.i); return Math.hypot(x-player.x,z-player.z)<2.6; })||(here.D.items||[]).some(o=>o.altar&&o.slot===1&&(()=>{ const [x,z]=cpos(o.i); return Math.hypot(x-player.x,z-player.z)<2.6; })());
-const guardedNow=it=>it.guardG!==undefined&&here.monsters.some(m=>!m.dead&&m.g===it.guardG);
 function pickupItems(){
   for(let k=0;k<(here.D.items||[]).length;k++){ const it=here.D.items[k]; if(it.taken)continue; if(it.kind==='rune'&&it.guardG!==undefined){ const gd=guardedNow(it); if(it.wasGuarded&&!gd&&!(here.D.lit||(here.D.lit=new Set())).has(it.grp||it.i)){ here.D.lit.add(it.grp||it.i); const [lx,lz]=cpos(it.i); sChime(lx,lz,0.5); msg(it.elitePrize?'<b style="color:#ffd27a">*</b>番人が倒れた。守られていたルーンが、手の届く光になった。':'<b style="color:#ffd27a">_</b>祭壇に光が灯った。'); } it.wasGuarded=gd; if(gd)continue; }
     if(it.kind==='legend'){ if(it.born&&clock.time-it.born<1)continue; const [lx,lz]=cpos(it.i); if(Math.hypot(lx-player.x,lz-player.z)<0.9){ it.taken=true; pickLegend(it); } continue; }
@@ -182,13 +156,6 @@ function runeDest(ru){ const def=RUNE_DEF[ru.type], cat=def.cat;
   if(cat==='body'){ const i=[0,1].slice(0,adv.runState.bodyOpen||0).find(i=>!gear.hands.B['b'+i]); return i!==undefined?'身の護符の枠へ':'袋へ'; }
   if(cat==='atk'){ const h=['R','L'].find(h=>!gear.hands[h].atk); return h?`${h==='L'?'左':'右'}手へ`:'袋へ'; }
   const p=freeSlotFor(ru); return p?`${p[0]==='L'?'左':'右'}手のルーンの枠へ`:'袋へ'; }
-function altarLine(o){ const K=t=>t+' '.repeat(Math.max(2,12-visW(t))); // the label column is 12 wide (the longest, 枠を開ける, is 10)
-  if(o.opt==='heal')return `${K('癒し')}<b style="color:#ff9aa8">+</b> 体力 ${Math.round(player.hp)} → ${Math.round(Math.min(adv.PLAYER_MAX,player.hp+adv.PLAYER_MAX*0.7))}`;
-  if(o.opt==='open')return `${K('枠を開ける')}<b style="color:#ffe3a0">{ }</b> ${o.label}`;
-  if(o.opt==='forge'){ const w=o.forgeW, cur=(trList(w).find(t=>t.k===o.forgeK)||{lv:0}).lv; return `${K('鍛える')}<span style="color:#bcdcff">${RUNE_DEF[w.type].name}</span>の ${trName(w.type,{k:o.forgeK})}　<span class="lab">${cur?`Lv${cur} → Lv${o.forgeTo}`:`を足す（Lv1）`}</span>`; }
-  const d=RUNE_DEF[o.rune.type], br=CAT_BR[d.cat]||['',''], kind=d.cat==='atk'?'武器':d.cat==='body'?'護符':'ルーン';
-  if(d.cat==='atk'){ const tr=trList(o.rune), wc=weaponCol(o.rune); return `${K(kind)}<span${wc?` style="color:${wc}"`:''}>${d.name}</span>　<span class="lab">${tr.length?tr.map(t=>`${trName(o.rune.type,t)} Lv${t.lv}`).join('・'):d.desc}</span>`; }
-  return `${K(kind)}${br[0]}<b class="rn" style="color:${css(runeCol(o.rune))}">${d.ch}</b> <span${o.rune.strong?` style="color:${css(TIER_COL[3])}"`:''}>${runeName(o.rune)}</span>${br[1]}　<span class="lab">${CAT_NAME[d.cat]}${o.rune.strong?'・強い版':''}</span>`; }
 function altarDetail(o){ if(!o)return ['<span class="lab">選択肢にマウスを乗せると、ここに説明が出る</span>','','','',''];
   if(o.opt==='heal')return ['<b style="color:#ff9aa8">+</b> 癒し',`    <span class="lab">体力 ${Math.round(player.hp)} → ${Math.round(Math.min(adv.PLAYER_MAX,player.hp+adv.PLAYER_MAX*0.7))}</span>`,'    <span class="lab">温かな光が、傷を大きく塞ぐ</span>','',''];
   if(o.opt==='open')return [`<b style="color:#ffe3a0">{ }</b> ${o.label}`,'    <span class="lab">選ぶと、その枠が開く。ほかの選択肢は消える</span>','','',''];

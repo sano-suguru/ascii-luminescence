@@ -26,7 +26,8 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      array：配列と表を読む nth・lookup・must（無ければその場で止まる。as の代わり）、rng：シードの乱数を作る mulberry32 と clamp、random：見た目の乱数 mr・mpick と迷宮の乱数 rand・R・RI・pick（入れ替えは setRand）と混ぜる shuffle、glyphs：文字の図鑑の番号 G と飾りの文字の並び、color：css・hsl2rgb、math：角度・稲妻の線など、
                      text：パネルの文字の幅と枠、history：年代記、world：迷宮の大きさ・タイル・液体と地面・支道と異界・層ごとの変化・岩、
                      light：灯りの計算、runes：ルーンの定義 RUNE_DEF・性質の効き目 RES・特性・反応・手の枠・ルーンの名前と色と付けられるか（表だけに頼る物）、
-                     gear：手と持ち物の処理（makeRune・effHand・isTwo・canPutAt など。状態 gear に頼る物）、progress：経験・伝承・解放・加護 BLESS、hands：手元の武器の文字、
+                     gear：手と持ち物の処理（makeRune・randomRuneType・effHand・isTwo・canPutAt など。状態 gear に頼る物）、progress：経験・伝承・解放・加護 BLESS（表）、
+                     unlocks：解放の確かめ（unlocked・lockedOf・weaponPool。状態 saved に頼る物）、altars：祭壇とルーンを置く（祭壇の中身 altarFill・番人・鍛え方・泉・祭壇の画面の1行）、hands：手元の武器の文字、
                      creatures：生き物の表 MTYPES（冒険の途中で種類が足される）、
                      strata：層・テーマ・特別な階・支道と異界の中身・地形・群れ、noise：ノイズ（種は setNoiseSeed）、vaults：洞窟と宝物庫の絵、
                      shaders：描画のシェーダーの文と入れ物の大きさ、title：タイトルのロゴ、hud：表示の大きさ（ミニマップ・装備の画面など）、
@@ -56,6 +57,7 @@ tests/visual.mjs     画面写真の比較（12場面。基準は tests/baseline
 tests/panels.mjs     枠のテスト（全部の文字の幅が visW どおりか、操作・装備・メニュー・レベルアップ・祭壇・結果の縦線と、一覧の名前の列が揃うか）
 tests/unit/generate.test.ts  迷宮の生成の単体テスト（同じ入力なら同じ迷宮・生き物の表に書き込まない・全部の場所の指紋。Node で数秒）。
                      歩いて行けるか（5シード）は reach.test.ts（ファイルを分けて、並べて走らせる）。共通部分（全部の場所・gen）は gen-places.ts
+tests/unit/altars.test.mjs  祭壇とルーンを置く処理の単体テスト。たくさんの場合を作る altar-cases.mjs（テストの中で小さな階を作る）を使う
 tests/unit/audio.test.mjs  音を鳴らす処理の単体テスト。偽の Web Audio（fake-audio.mjs。作った部品・値・つなぎ方・鳴らす時刻を全部記録する。Node には Web Audio が無い）と、
                      たくさんの場合を作る audio-cases.mjs を使う
 tests/glyphs.mjs     使う文字が、パネルのフォント（M PLUS 1 Code ＋ BIZ UDGothic の補い）で描けるか（ブラウザ不要）
@@ -234,11 +236,11 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 | 14-lights-fixtures | 灯り、備品、扉。LANTERN は src/lib/light.ts |
 | 15-sound-fire | 音量の切り替え（sndToggle）、ガス、火、火花、部屋の出来事、粒子。音を鳴らす処理（sndInit・効果音・まわりの音 sndUpdate など）は src/lib/audio.ts、SND_LV・sEnv は src/lib/sound.ts、cpos・FIRE_TYPES は src/lib/world.ts。火と地面のマスの状態は src/lib/state.ts の blaze、音 SND も src/lib/state.ts |
 | 16-view-input | 視界とミニマップ、伝言（msg）、当たり（solidAt）、入力の状態。ミニマップの大きさは src/lib/hud.ts、押しているキー keys は src/lib/state.ts |
-| 17-meta | 伝承・解放・墓・試練（weaponPool、trialOn）、タイトルの画面（buildIntroPanel）。UNLOCKS・META_DEF は src/lib/progress.ts、保存する記録 META などは src/lib/state.ts の saved |
+| 17-meta | 伝承・解放・墓・試練（trialOn）、タイトルの画面（buildIntroPanel）。UNLOCKS・META_DEF は src/lib/progress.ts、解放の確かめ（unlocked・lockedOf・weaponPool）は src/lib/unlocks.ts、保存する記録 META などは src/lib/state.ts の saved |
 | 18-level-player | 階の切り替え（newLevel）、罠、生き物の強さ（MSTAT）、生と死、レベルアップ（levelChoices、lvlLine。加護の表 BLESS は src/lib/progress.ts）。expNeed・expOf は src/lib/progress.ts、serRune は src/lib/runes.ts。TRAP_INFO は src/lib/names.ts、WEAPON・SLEEP_MULT は src/lib/runes.ts、roll は src/lib/random.ts |
-| 19-hands-runes | 手元の武器（VM_MODELS、drawViewWeapons）、性質と反応、術の中身（specOf）。ルーンを作る・手と持ち物の処理は src/lib/gear.ts、ルーンの名前と色と付けられるかは src/lib/runes.ts。ルーンの定義 RUNE_DEF・性質の効き目 RES・TRAITS・REACT・手の枠は src/lib/runes.ts |
+| 19-hands-runes | 手元の武器（VM_MODELS、drawViewWeapons）、性質と反応、術の中身（specOf）。ルーンを作る・ルーンの種類を選ぶ・手と持ち物の処理は src/lib/gear.ts、ルーンの名前と色と付けられるかは src/lib/runes.ts。ルーンの定義 RUNE_DEF・性質の効き目 RES・TRAITS・REACT・手の枠は src/lib/runes.ts |
 | 20-chant-hits | 詠唱（beginCast、castNow…）、当たり（applyHit）、反応、飛ぶ物。turnDir は src/lib/math.ts、sp_elem は src/lib/runes.ts。戦いの状態は src/lib/state.ts の fight |
-| 21-altars-heal | ルーンの手に入れ方、祭壇（altarFill、forgeOptions、mainPathAltars、altarLine）、回復、拾う。RALLY_FROM は src/lib/runes.ts、ALTAR_W は src/lib/hud.ts |
+| 21-altars-heal | ルーンの手に入れ方、階ごとの祭壇の配置（mainPathAltars）、祭壇の画面、回復、拾う。祭壇の中身・番人・鍛え方・泉を置く・祭壇の画面の1行（altarFill・addGuards・forgeOptions・placeSpring・altarLine など）は src/lib/altars.ts、RALLY_FROM は src/lib/runes.ts、ALTAR_W は src/lib/hud.ts |
 | 22-world-hints | 先にある物の気配、方向の矢印、床のルーン、詠唱の見た目、照準。stratumAtDepth は src/lib/strata.ts |
 | 23-debug | デバッグ（dbg、F2 の画面、URL の指定） |
 | 24-goal | 目的（伝説の物、最深部、王の影）、勝利、稲妻、タイトルへ戻る。伝説の物の表は src/lib/names.ts、jagged は src/lib/math.ts |
