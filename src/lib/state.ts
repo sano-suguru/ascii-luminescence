@@ -71,7 +71,7 @@ export interface Ui {
   bagPageN: Record<string, number>;
   /** 操作の案内を出してからの秒（始まりに出し、しばらくすると消す） */
   helpT: number;
-  /** 群れ（'g'＋番号）か1体（'m'＋並びの番号）ごとに、「気づいた」の伝言を出したゲームの時刻（同じ群れには12秒あける） */
+  /** 群れ（'g' と群れの番号）か1体（'m' と並びの番号）ごとに、「気づいた」の伝言を出したゲームの時刻（同じ群れには12秒あける） */
   noticeMsgT: Record<string, number>;
   /** 画面の下の一言（同じ時は書き直さない） */
   hintHTML: string;
