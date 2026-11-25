@@ -4,10 +4,11 @@
 //   pnpm lords nest final         場所の鍵で選ぶ（crypt・lair・sunken・nest・snake・final）
 //   --dist <数>                   主からの床の上の距離（既定 8）
 //   --out <ディレクトリ>          置き場所（既定 tests/out/lords/）
-// 写真ごとに、主が描かれた画面の範囲の中で、主が足した眩しい画素の割合（眩しさ：主を一度消して同じ所を写し、主がいる時だけ明るさ（輝度）が 200 以上になる画素。
-// 光のにじみで形が白や色の塊になった所。床や壁の明るさは数えない）と、
-// 主の文字のうち画面の外に出た割合（はみ出し）を出し、summary.json にも書く。眩しさと大きさを、目で見るのと数で比べる時に使う。
-// <場所>.glare.png は、主が足した眩しい画素を赤く塗った写真。主は、見通せて床のある向きのうち最初の物から写す（16の向きを順に試す）。王の影は、伝説の物を3つ台座に置いて呼び出す。
+// 写真ごとに、主の体が描かれた画面の範囲（まわりの飾りの粒子や頭の上の印は含めない）の中で、主が足した眩しい画素の割合（眩しさ：主の体だけを描かずに
+// 同じ所を写し（主の灯りは残る）、主の体がある時だけ明るさ（輝度）が 200 以上になる画素。光のにじみで形が白や色の塊になった所）と、
+// 主の体の文字のうち画面の外に出た割合（はみ出し）を出し、summary.json にも書く。眩しさと大きさを、目で見るのと数で比べる時に使う。
+// <場所>.glare.png は、数えた眩しい画素を赤く、主の体の範囲を黄色い枠で塗った写真（主の体を描かないと、目の慣れなどで周りの明るさもわずかに変わるので、
+// 範囲の外は数えない）。主は、見通せて床のある向きのうち最初の物から写す（16の向きを順に試す）。王の影は、伝説の物を3つ台座に置いて呼び出す。
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { PNG } from 'pngjs';
@@ -39,7 +40,7 @@ if (bad.length) usage(`知らない場所：${bad.join('、')}`);
 const want = names.length ? names : Object.keys(PLACES);
 mkdirSync(outDir, { recursive: true });
 
-// 画面の範囲 box の中で、主がいる時（png）だけ眩しい（明るさ（輝度）200 以上の）画素の割合。without は主を消した時の写真
+// 画面の範囲 box の中で、主の体がある時（png）だけ眩しい（明るさ（輝度）200 以上の）画素の割合。without は主の体を描かなかった時の写真
 const lum = (png, i) => 0.2126 * png.data[i] + 0.7152 * png.data[i + 1] + 0.0722 * png.data[i + 2];
 const glare = (png, without, box) => {
   let n = 0,
@@ -105,24 +106,35 @@ await withBrowser(async ({ browser, base }) => {
     }
     await frames(pg, 2);
     const view = await pg.evaluate((mk) => __test.monsterView(mk), r.mk);
+    if (!view || !view.world) {
+      errs.push(`${key}：主の体が描かれていない`);
+      await pg.close();
+      continue;
+    }
     const buf = await pg.screenshot({ timeout: 90000 });
     const file = join(outDir, `${key}.png`);
     writeFileSync(file, buf);
     const png = PNG.sync.read(buf);
-    // 主だけを消して写す（描き直すために1フレーム（1/30秒）だけ進める。床や壁の明るさはほぼ変わらない）
+    // 主の体だけを描かずに写す（主は階に残るので、主の灯りはそのまま。描き直すために1フレーム（1/30秒）だけ進める）
     await pg.evaluate((mk) => __test.hideMonster(mk, true), r.mk);
     await pg.evaluate(() => __test.frames(1));
     const without = PNG.sync.read(await pg.screenshot({ timeout: 90000 }));
-    await pg.evaluate(() => __test.hideMonster('', false));
-    // 主が足した眩しい画素だけを赤く塗った写真（どこが眩しいかを見る）
-    const mask = new PNG({ width: png.width, height: png.height });
-    for (let i = 0; i < png.data.length; i += 4) {
-      const hot = lum(png, i) >= 200 && lum(without, i) < 200;
-      mask.data[i] = hot ? 255 : png.data[i] * 0.35;
-      mask.data[i + 1] = hot ? 40 : png.data[i + 1] * 0.35;
-      mask.data[i + 2] = hot ? 40 : png.data[i + 2] * 0.35;
-      mask.data[i + 3] = 255;
-    }
+    await pg.evaluate((mk) => __test.hideMonster(mk, false), r.mk);
+    // 数えた画素だけを赤く塗った写真（主の体の範囲の中だけ。範囲の枠は黄色。範囲の外は暗くするだけ）
+    const mask = new PNG({ width: png.width, height: png.height }),
+      b = view.screen;
+    for (let y = 0; y < png.height; y++)
+      for (let x = 0; x < png.width; x++) {
+        const i = (y * png.width + x) * 4,
+          inBox = x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1,
+          edge = inBox && (x === b.x0 || x === b.x1 - 1 || y === b.y0 || y === b.y1 - 1),
+          hot = inBox && lum(png, i) >= 200 && lum(without, i) < 200;
+        const c = edge ? [255, 220, 60] : hot ? [255, 40, 40] : [png.data[i] * 0.35, png.data[i + 1] * 0.35, png.data[i + 2] * 0.35];
+        mask.data[i] = c[0];
+        mask.data[i + 1] = c[1];
+        mask.data[i + 2] = c[2];
+        mask.data[i + 3] = 255;
+      }
     writeFileSync(join(outDir, `${key}.glare.png`), PNG.sync.write(mask));
     const row = {
       key,

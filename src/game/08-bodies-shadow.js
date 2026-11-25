@@ -1,6 +1,5 @@
 // ---------------------------------------------------------------- the king's shadow: a king of darkness in a long cloak (its shape, shadowKingForm, is in src/lib/bodies/lords.ts);
-// its torn hem dissolves into streams that run across the floor to the pedestals
-// streams of shadow running from its hem across the floor to the pedestals; dark mist
+// its torn hem dissolves into streams that run across the floor to the pedestals, and dark mist rises round it
 function shadowAura(m,t){ const sc=m.ty.scale||1, dp=Math.hypot(m.x-player.x,m.z-player.z); if(dp>40)return;
   if(!m.phase2&&m.maxHp&&m.hp/m.maxHp<0.95&&mr()<(1-m.hp/m.maxHp)*0.6){ const a=mr()*6.28, y=(0.4+mr()*1.4)*sc; spawn(m.x+Math.cos(a)*0.55*sc,y,m.z+Math.sin(a)*0.45*sc,Math.cos(a)*0.4,0.3,Math.sin(a)*0.4,1.4,G(mpick(['.','+','*'])),0.14,1.4,1.5,2.2,0); }
   const targets=(finalSt&&finalSt.peds&&isFinal())?finalSt.peds.map(p=>cpos(p.i)):[0,1,2].map(k=>{ const a=k/3*Math.PI*2+0.5; return [m.x+Math.cos(a)*4.5*sc,m.z+Math.sin(a)*4.5*sc]; });
@@ -21,7 +20,8 @@ function transformShadow(b){
   for(let q=0;q<70;q++){ const a=mr()*6.28, r=mr()*0.9*sc; spawn(b.x+Math.cos(a)*r,0.5+mr()*1.8*sc,b.z+Math.sin(a)*r,Math.cos(a)*0.6,-0.4-mr(),Math.sin(a)*0.6,2.2,G(mpick(['%','#','~'])),0.3,0.3,0.22,0.5,1); }
   if(sndReady()){ const t0=SND.ctx.currentTime, o=sOut(b.x,b.z,0.3); for(const f of [55,82.5,110,164.8])sEnv(sTone(t0,'sawtooth',f,f*0.97,3.5,o),t0,0.4,3,0.25); }
   const from=b.form.filter(p=>p.part!=='crack'&&p.part!=='heart');
-  MTYPES.final2={...b.ty,form:'shadowserpent',sk:'final2',speed:(b.ty.speed||0.8)*1.35,verb:'封印が破れ、底の闇から長い体をもたげた影'};
+  // the second form keeps the first one's size, smaller only where its taller shape would go through the ceiling
+  MTYPES.final2={...b.ty,form:'shadowserpent',sk:'final2',scale:shadowSerpentScale(b.ty.scale,ceilAt(b.x,b.z)),speed:(b.ty.speed||0.8)*1.35,verb:'封印が破れ、底の闇から長い体をもたげた影'};
   b.ty=MTYPES.final2; b.form=buildForm(b.ty); b.morph={from,t0:clock.time,dur:2.5};
   msg(`<b style="color:#a98cff">&amp;</b>王の姿が砕け、封じられていた闇があふれ出した。`);
   setTimeout(()=>msg(`<b style="color:#a98cff">&amp;</b>${last.title}${last.name}の影が、底の闇から長い体をもたげた。`),1500);

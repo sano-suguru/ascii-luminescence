@@ -80,9 +80,7 @@ function updateFinal(dt){
         const s=makeMonster({key:'W',cx,cz,g:-1,lead:true}); s.sleep=false; s.aware=1.25; s.noticed=true; here.monsters.push(s); for(let q=0;q<16;q++){ const an=mr()*6.28; spawn(s.x,0.6,s.z,Math.cos(an),0.4+mr(),Math.sin(an),0.8,G('.'),0.14,0.6,0.4,1.2,0); } }
         msg(`<b style="color:#a98cff">W</b>影が身をよじり、闇の中から亡霊を呼び出した。`); } } }
 }
-// the king's shadow's size: about four times the player's eye height (SHADOW_KING_SC), smaller only under a ceiling too low for it
-const SHADOW_KING_SC=2.0;
-function shadowKingScale(ceilH){ return Math.max(1.2,Math.min(SHADOW_KING_SC,(ceilH-0.3)/SHADOW_KING_H)); }
+// SHADOW_KING_SC・shadowKingScale は src/lib/bodies/lords.ts、shadowSerpentScale は src/lib/bodies/bosses.ts（src/game/imports.mjs で読む）
 function spawnFinalBoss(){
   const R=adv.HIST.rulers, last=R[R.length-1], cx=finalSt.c0%MW, cz=(finalSt.c0/MW)|0;
   const ceilH=here.D.ceil[finalSt.c0]||6;

@@ -185,6 +185,11 @@ export const LOOK_PROP: Record<string, keyof typeof HUM_PROP> = {
 
 /** 王の影の一つ目の姿の高さ（足元から、頭の上の黒い太陽の外の印まで。大きさ scale を掛ける前） */
 export const SHADOW_KING_H = 3.37;
+/** 王の影の大きさ：プレイヤーの目の高さの約4倍。天井が低い所だけ縮める（SHADOW_MIN_SC より小さくはしない。最深部は高い天井の所なので、そこまで低い天井は無い） */
+export const SHADOW_KING_SC = 2.0,
+  SHADOW_MIN_SC = 1.2;
+/** 天井の高さ ceilH の所に出る、王の影の一つ目の姿の大きさ */
+export const shadowKingScale = (ceilH: number): number => Math.max(SHADOW_MIN_SC, Math.min(SHADOW_KING_SC, (ceilH - 0.3) / SHADOW_KING_H));
 
 export function shadowKingForm(): Body {
   // the first form: a king of shadow in a long cloak whose torn hem spreads over the floor. Dark inside, only its edges thin and bright like cut paper.
@@ -321,10 +326,16 @@ export function shadowKingForm(): Body {
     lit(x * 1.15, 2.31 + h, z, '^', S * 1.1, 2.8, SHARD, 'head');
   });
   // the black sun above the crown: an inner ring of dots and an outer ring of marks, turning slowly the other way; nothing is drawn in the middle
-  for (let k = 0; k < 24; k++)
-    lit(0, 2.95, -0.08, '.', S * 1.2, 2.6, SHARD, 'halo', { cy: 2.95, r: 0.26, sp: 0.15, ph: (k / 24) * Math.PI * 2 });
-  for (let k = 0; k < 12; k++)
-    lit(0, 2.95, -0.08, "'", S * 1.4, 3.0, SHARD, 'halo', { cy: 2.95, r: 0.42, sp: -0.1, ph: (k / 12) * Math.PI * 2 });
+  // each point is stored where it starts on its ring (x, y), so code that reads the shape without the animation (the change into the second form,
+  // the bestiary's framing) sees the ring
+  const ring = (n: number, r: number, sp: number, ch: string, s: number, b: number) => {
+    for (let k = 0; k < n; k++) {
+      const ph = (k / n) * Math.PI * 2;
+      lit(Math.cos(ph) * r, 2.95 + Math.sin(ph) * r, -0.08, ch, s, b, SHARD, 'halo', { cy: 2.95, r, sp, ph });
+    }
+  };
+  ring(24, 0.26, 0.15, '.', S * 1.2, 2.6);
+  ring(12, 0.42, -0.1, "'", S * 1.4, 3.0);
   // the long sword, held upright in its right hand (on the left as it faces you): pommel, grip, cross guard, and a blade with two bright edges
   const SX = -0.58,
     SZ = 0.28;

@@ -4,7 +4,18 @@
 export const LIGHT_NAMES = ['暗がり', '薄明かり', '光の中'],
   LIGHT_COLS = ['#8a92d6', '#d8c07e', '#ffd27a'];
 /** 生き物の頭の上の印の高さ（形ごと。無い形は 1.5） */
-export const MARK_H = { humanoid: 2.05, quad: 0.95, orb: 0.55, bat: 0.38, bloat: 0.68, wraith: 2.35, jelly: 0.85, eel: 1.2 };
+export const MARK_H = {
+  humanoid: 2.05,
+  quad: 0.95,
+  orb: 0.55,
+  bat: 0.38,
+  bloat: 0.68,
+  wraith: 2.35,
+  jelly: 0.85,
+  eel: 1.2,
+  shadowking: 3.45,
+  shadowserpent: 3.7,
+};
 /** ミニマップの大きさ：マスの数（横 MMC・縦 MMR）、1マスの幅 MCW・高さ MCH、余白 MPAD */
 export const MMC = 45,
   MMR = 27,

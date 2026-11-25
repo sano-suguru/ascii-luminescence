@@ -138,7 +138,12 @@ describe('生き物の形', () => {
     const halo = parts('halo');
     expect(halo.length).toBe(36);
     expect(new Set(halo.map((p) => p.r)).size).toBe(2);
-    const top = Math.max(...b.map((p) => (p.part === 'halo' ? (p.cy ?? 0) + (p.r ?? 0) : p.y)));
+    // 黒い太陽の点は、輪の上の初めの位置に置いてある（動きを付けずに形を読む所でも、輪に見える）
+    for (const p of halo) {
+      expect(p.x).toBeCloseTo(Math.cos(p.ph) * (p.r ?? 0), 6);
+      expect(p.y).toBeCloseTo((p.cy ?? 0) + Math.sin(p.ph) * (p.r ?? 0), 6);
+    }
+    const top = Math.max(...b.map((p) => p.y));
     expect(top).toBeCloseTo(lords.SHADOW_KING_H, 2);
     expect(Math.min(...b.map((p) => p.y))).toBeGreaterThanOrEqual(0);
     expect(parts('heart').length).toBe(9);
@@ -148,6 +153,26 @@ describe('生き物の形', () => {
     expect(Math.max(...blade.map((p) => p.y)) - Math.min(...blade.map((p) => p.y))).toBeGreaterThan(1.3);
     // 幅は翼が無いので、裾の広がりまで（左右に約1.3以内）
     expect(Math.max(...b.map((p) => Math.abs(p.x)))).toBeLessThan(1.35);
+  });
+  it('王の影の大きさ：ふだんは SHADOW_KING_SC。天井が低い所だけ、二つの姿とも天井の下に収まるように縮める', () => {
+    expect(lords.shadowKingScale(16)).toBe(lords.SHADOW_KING_SC);
+    expect(bosses.shadowSerpentScale(lords.SHADOW_KING_SC, 16)).toBe(lords.SHADOW_KING_SC);
+    for (const ceil of [5, 6, 7, 7.3]) {
+      const k = lords.shadowKingScale(ceil),
+        s = bosses.shadowSerpentScale(k, ceil);
+      expect(k * lords.SHADOW_KING_H).toBeLessThanOrEqual(ceil - 0.3 + 1e-9);
+      expect(s * bosses.SHADOW_SERPENT_H).toBeLessThanOrEqual(ceil - 0.3 + 1e-9);
+      expect(s).toBeLessThanOrEqual(k);
+    }
+    // 7.3 の天井：一つ目は 2.0 倍のまま（6.74）だが、背の高い二つ目は縮める
+    expect(lords.shadowKingScale(7.3)).toBe(lords.SHADOW_KING_SC);
+    expect(bosses.shadowSerpentScale(lords.SHADOW_KING_SC, 7.3)).toBeLessThan(lords.SHADOW_KING_SC);
+  });
+  it('王の影の二つ目の姿の高さは SHADOW_SERPENT_H 以内（天井が低い所で、これで大きさを縮める）', () => {
+    const b = seeded(bosses.shadowSerpentForm);
+    const top = Math.max(...b.map((p) => p.y));
+    expect(top).toBeLessThanOrEqual(bosses.SHADOW_SERPENT_H);
+    expect(top).toBeGreaterThan(bosses.SHADOW_SERPENT_H - 0.05);
   });
   it('深みの主の触手：体のそばの4本と、水面から出る10本。移す前と同じ値', () => {
     expect(lords.KRAKEN_T.length).toBe(14);

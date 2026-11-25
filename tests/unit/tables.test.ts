@@ -231,7 +231,7 @@ describe('タイトル・文字の並び・シェーダー・小さな関数：�
       W.FIRE_TYPES,
       LANTERN,
     ]);
-    expect(fingerprint(v)).toEqual(['fce4c564', 3067]);
+    expect(fingerprint(v)).toEqual(['c72199ee', 3105]);
   });
   it('小さな関数（たくさんの入力で）', () => {
     const out: unknown[] = [];

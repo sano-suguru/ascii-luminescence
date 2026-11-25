@@ -242,8 +242,11 @@ function splash(x,z,c){
   for(let q=0;q<14;q++){ const a=mr()*6.28; spawn(x+Math.cos(a)*0.3,0.1,z+Math.sin(a)*0.3,Math.cos(a)*0.8,0.8+mr()*1.2,Math.sin(a)*0.8,0.9+mr()*0.5,G(mpick(['~','.','\'','o'])),0.13,0.25,0.55,0.9,1); }
 }
 let aimMon=null;
+// drawBodyOnly (set only by __test.monsterView): draw the body and nothing round it (auras, the elite ring, the sign over the head)
+let drawBodyOnly=false;
 function drawMonster(m,t){
-  if(m.wind>0){ const sc=m.ty.scale, h=m.y+(m.ty.habitat==='deep'?2.2:1.9*sc); dyn(m.x,h,m.z,G('!'),0.5,3.2,0.6,0.4); }
+  if(m.drawHide)return; // __test.hideMonster: not drawn for a moment (its light stays)
+  if(m.wind>0){ const sc=m.ty.scale, h=m.y+(m.ty.habitat==='deep'?2.2:(m.key==='final'?MARK_H[m.ty.form]:1.9)*sc); dyn(m.x,h,m.z,G('!'),0.5,3.2,0.6,0.4); }
   if(m.hitT>0){ const g0=m.glow; m.glow*=3; drawMonster1(m,t); m.glow=g0; return; }
   drawMonster1(m,t);
 }
@@ -258,6 +261,7 @@ function drawMonster0(m,t){
   if((m.ty.form==='dragon'&&!m.ty.boss)||m.ty.beast){ if(!m.formSleep)m.formSleep=m.ty.beast?beastSleep(m.form,m.ty):dragonSleepForm(m.ty);
     if(m.wasSleep&&!m.sleep&&!m.morph)m.morph={from:m.formSleep,t0:clock.time,dur:1.0};
     m.wasSleep=!!m.sleep; m.drawForm=m.sleep&&!m.morph?m.formSleep:null; }
+  if(!drawBodyOnly){
   if(m.ty.form==='lichking'&&!m.dead)lichAura(m,t);
   if(m.ty.form==='spiderqueen'&&!m.dead)spiderAura(m,t);
   if(m.ty.form==='nagaqueen'&&!m.dead)nagaAura(m,t);
@@ -268,6 +272,7 @@ function drawMonster0(m,t){
   if(m.elite&&!m.dead&&Math.hypot(m.x-player.x,m.z-player.z)<26){ const r=0.75*(m.ty.scale||1); for(let k=0;k<14;k++){ const a=k/14*Math.PI*2+t*0.6; dyn(m.x+Math.cos(a)*r,m.y+0.04,m.z+Math.sin(a)*r,G('.'),0.15,1.4,0.45,0.25,0,0); } }
   if(m.ty.look==='salamander'&&!m.dead)salamanderAura(m,t);
   if(m.ty.form==='bog'&&!m.ty.boss&&!m.dead)bogAura(m,t);
+  }
   if(m.morph&&drawMorph(m,t))return;
   const dx=m.x-player.x, dz=m.z-player.z, d2=dx*dx+dz*dz; if(d2>44*44)return;
   if(m.hidden){ const y=1.3+Math.sin(t*1.1+m.ph)*0.06, sh=Math.sin(t*23+m.ph)*0.012; dyn(m.x+sh,y,m.z,G('?'),0.5,2.2,1.75,0.85); for(let k=0;k<6;k++){ const a=t*0.7+k/6*Math.PI*2; dyn(m.x+Math.cos(a)*0.35,y-0.25,m.z+Math.sin(a)*0.35,G('.'),0.12,1.4,1.1,0.5); } return; }
@@ -302,7 +307,6 @@ function drawMonster0(m,t){
       case 'claw': { const k=Math.max(0,p.y-0.4); lx+=Math.sin(t*0.9-p.y*1.3+m.ph)*0.035*k; lz+=Math.cos(t*0.7-p.y*1.1)*0.025*k; const cl=Math.pow(Math.max(0,Math.sin(t*0.8+m.ph+p.hx)),6)*0.35*(p.cf||0); lx+=(p.hx-p.x)*cl; ly+=(p.hy-p.y)*cl; lz+=(p.hz-p.z)*cl; break; }
       case 'parm': { const k=Math.max(0,p.y-0.4); lx+=Math.sin(t*0.9-p.y*1.3+m.ph)*0.035*k; lz+=Math.cos(t*0.7-p.y*1.1)*0.025*k+Math.sin(t*1.1+m.ph)*0.08*Math.min(1,Math.abs(p.x)/1.2); ly+=Math.sin(t*1.1+m.ph)*0.04*Math.min(1,Math.abs(p.x)/1.2); break; }
       case 'serp': { const k=Math.max(0,p.y-0.4); lx+=Math.sin(t*0.9-p.y*1.3+m.ph)*0.035*k; lz+=Math.cos(t*0.7-p.y*1.1)*0.025*k; break; }
-      case 'wing2': { const k=Math.abs(p.x); ly+=Math.sin(t*0.9+k*1.5)*0.07*k; lz+=Math.sin(t*0.9+k)*0.05*k; break; }
       case 'tendril': { const q=p.piv||0; lx+=Math.sin(t*1.6+q*0.8+p.ph*0.1)*0.012*q; ly+=Math.cos(t*1.3+q*0.7)*0.01*q; break; }
       case 'armL': case 'legR': case 'armR': case 'legL': {
         const ang=(p.part==='armL'||p.part==='legR')?swing:-swing, dy=ly-p.piv, dz2=lz-p.pz;
@@ -340,7 +344,7 @@ function drawMonster0(m,t){
     if(ty.form==='eel'&&wy<0){ if(dp>14)continue; k*=0.12; }
     const cc=p.col||c; if(p.part==='flame')g=G(['^','\'','^','*'][((t*12+p.ph*3)|0)%4]); const jx=fj?(mr()-0.5)*fj:0, jy=fj?(mr()-0.5)*fj:0, jz=fj?(mr()-0.5)*fj:0; dyn(wx+jx,wy+jy,wz+jz,g,p.s*sc*sb,cc[0]*k+lit[0]*0.12,cc[1]*k+lit[1]*0.12,cc[2]*k+lit[2]*0.12,0,0);
   }
-  drawMark(m,t,dp);
+  if(!drawBodyOnly)drawMark(m,t,dp);
   if(ty.conj)for(const b of m.blades){
     const bn=clamp(Math.hypot(b.x-camera.position.x,b.y-camera.position.y,b.z-camera.position.z)/3,0.25,1);
     dyn(b.x,b.y,b.z,G('|'),0.55,1.4*bn,2.2*bn,2.6*bn,0,0);
