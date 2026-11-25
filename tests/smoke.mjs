@@ -208,22 +208,34 @@ await withBrowser(
             const c = r.camera;
             if (![c.dist, c.height, c.pitch].every(Number.isFinite) || c.height < 0.3)
               bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）のカメラの位置がおかしい：${JSON.stringify(c)}`);
+            // 天井より下、部屋の壁より内。寄った時は、体を包む球（狙う点が中心）の外
+            if (c.height > c.ceil - 0.39)
+              bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）のカメラが天井に届いている：${JSON.stringify(c)}`);
+            if (c.dist > c.roomR + 0.01)
+              bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）のカメラが部屋の壁より外にある：${JSON.stringify(c)}`);
+            if (zoom > 1 && !(c.aimed >= c.bodyR + 0.79))
+              bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）のカメラが体を包む球に近すぎる：${JSON.stringify(c)}`);
           } catch (err) {
             bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）で例外：${String(err && err.stack ? err.stack : err).slice(0, 300)}`);
           }
         }
-      // 寄ると近づき、上からだと高く・下向きになる（竜。図鑑の部屋は、竜の距離の2倍より広い）
-      {
-        const n = list.find((o) => o.name === '竜')?.n ?? 1;
-        const cam = (opt) => (__test.galleryShow(n, opt), __test.galleryDraw().camera);
-        const [c1, c2, side, top] = [cam({}), cam({ zoom: 2 }), cam({ pitch: 0 }), cam({ pitch: 0.8 })];
+      // 寄ると近づき、引くと遠ざかり、上からだと高く・下向きになる（ネズミ：体が小さいので、寄っても体を包む球で止まらない。
+      // zoom 0.5 の距離 8.2 が、部屋の壁より内にあることも前提にする）
+      const rat = list.find((o) => o.name === 'ネズミ');
+      if (!rat) bad.push('寄る・引く・見下ろす角度の確かめに使う「ネズミ」が図鑑に無い');
+      else {
+        const cam = (opt) => (__test.galleryShow(rat.n, opt), __test.galleryDraw().camera);
+        const [c1, c2, c05, side, top] = [cam({}), cam({ zoom: 2 }), cam({ zoom: 0.5 }), cam({ pitch: 0 }), cam({ pitch: 0.8 })];
+        if (!(c05.dist < c05.roomR - 0.01))
+          bad.push(`ネズミの zoom 0.5 の距離が部屋の壁で止まっていて、寄る・引くを比べられない：${JSON.stringify(c05)}`);
         if (!(c2.dist < c1.dist * 0.6)) bad.push(`zoom 2 で寄っていない：距離 ${c1.dist} → ${c2.dist}`);
+        if (!(c05.dist > c1.dist * 1.6)) bad.push(`zoom 0.5 で引いていない：距離 ${c1.dist} → ${c05.dist}`);
         if (!(top.height > side.height + 1 && top.pitch < side.pitch - 0.5))
           bad.push(`pitch 0.8 で上から見下ろしていない：横から ${JSON.stringify(side)}、上から ${JSON.stringify(top)}`);
       }
       for (const opt of [{ zoom: 0.4 }, { zoom: 3.1 }, { zoom: NaN }, { pitch: -0.31 }, { pitch: 1.31 }, { pitch: '0.3' }]) {
         const r = __test.galleryShow(1, opt);
-        if (typeof r !== 'string') bad.push(`範囲の外の値 ${JSON.stringify(opt)} を断らなかった`);
+        if (typeof r !== 'string') bad.push(`範囲の外の値 ${JSON.stringify(opt, (k, v) => (Number.isNaN(v) ? 'NaN' : v))} を断らなかった`);
       }
       // 図鑑の画面の「見つけた数 x / N」の N（図鑑の全部の数）。開発用モードでは、全部が一覧に並ぶはず
       const total = Number((document.getElementById('gal').textContent.match(/見つけた数\s*\d+\s*\/\s*(\d+)/) || [])[1]);
