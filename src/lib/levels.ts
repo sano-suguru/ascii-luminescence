@@ -1,5 +1,6 @@
-// 階のシード（もとは src/game/18-level-player.js）。状態の入れ物 adv（探索のシード）・here（今いる場所）に頼る物。
+// 階のシード（もとは src/game/18-level-player.js）と、最深部か（もとは 24-goal.js）。状態の入れ物 adv（探索のシード）・here（今いる場所）に頼る物。
 import { adv, here } from './state.ts';
+import { FINAL_DEPTH } from './world.ts';
 
 /** 今の階のシード（探索のシード・深さ・支道・異界・特別な階から決める。0 にはならない） */
 export const levelSeed = (): number =>
@@ -9,3 +10,6 @@ export const levelSeed = (): number =>
     (here.realm ? Math.imul(here.realm.key.charCodeAt(0) + 7, 0x165667b1) : 0) ^
     (here.inter ? Math.imul(here.inter.key.charCodeAt(0) + 13, 0x2c1b3c6d) : 0)) >>>
     0 || 1;
+
+/** 今いるのが最深部か（本道の一番深い階。支道・異界・特別な階は違う） */
+export const isFinal = (): boolean => here.depth === FINAL_DEPTH && !here.branch && !here.realm && !here.inter;

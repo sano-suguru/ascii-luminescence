@@ -3,6 +3,8 @@
 // 足された種類は、次に置き換えられるまで残る（前の階・前の探索の lord も残る）。読む側は、今の階の主かどうかを here.D などで見ること。
 // 状態の入れ物（src/lib/state.ts）ではなくここに置くのは、37種の表と足される種類を、古い JS が同じ MTYPES[key] で読むため（生き物の処理を移す時に分ける）。
 
+import type { Color } from './bodies/kit.ts';
+import type { BeastBody } from './bodies/lords.ts';
 import { DUMMY_KINDS } from './names.ts';
 
 /** 生き物の種類。表に初めからある37種と、探索の途中で足される種類（主・王の影・忘れられた獣・試しの間の的）が持つ欄 */
@@ -10,7 +12,9 @@ export interface MonsterType {
   /** 地図に出る文字 */
   ch: string;
   name: string;
-  col: readonly number[];
+  col: Color;
+  /** 灯りの色（体の色と違う時。火と氷の猟犬） */
+  lcol?: Color;
   /** 形（bodies の組み立てを選ぶ） */
   form: string;
   scale: number;
@@ -42,8 +46,8 @@ export interface MonsterType {
   flier?: boolean;
   peaceful?: boolean;
   invisible?: boolean;
-  /** 人型の見た目（人型の主に、元の生き物から引き継ぐ） */
-  look?: unknown;
+  /** 見た目（形の上に足す特徴。人型・四つ足・死者・主。src/lib/bodies/build.ts の addLooks が足し、人型の主は元の生き物から引き継ぐ） */
+  look?: string | null | undefined;
   /** ここから下は、探索の途中で足される種類（その階の主 lord・王の影 final・忘れられた獣 X と図鑑の見本・試しの間の的）だけが持つ欄 */
   /** 主：元の生き物の記号（王の影は 'final'） */
   sk?: string;
@@ -52,7 +56,7 @@ export interface MonsterType {
   /** 忘れられた獣（src/lib/bodies/lords.ts の makeBeastType） */
   beast?: boolean;
   /** 忘れられた獣の体の作り（翼・脚・目など） */
-  spec?: unknown;
+  spec?: BeastBody;
   /** 忘れられた獣の言い伝え */
   lore?: string;
   /** 試しの間の的 */

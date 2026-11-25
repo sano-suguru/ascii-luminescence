@@ -25,7 +25,7 @@ function newLevel(seedOverride){
   here.fixtures=here.D.fixtures;
   here.monsters=here.D.spawns.map(makeMonster);
   if(here.branch&&adv.runState.lordsDone&&adv.runState.lordsDone.has(here.branch.key))here.monsters=here.monsters.filter(m=>m.key!=='lord');
-  finalSt=null; if(isFinal())setupFinal();
+  here.finalSt=null; if(isFinal())setupFinal();
   for(const m of here.monsters)if(!m.isLead)m.leader=here.monsters.find(o=>o.g===m.g&&o.isLead)||null;
   for(const m of here.monsters)if(m.ty.beast||(m.ty.dragon&&Math.random()<0.9))m.sleep=true;
   { const asleep=new Set(); for(const m of here.monsters)if(m.isLead&&m.g>=0&&m.ty.form!=='eel'&&Math.random()<0.10)asleep.add(m.g); for(const m of here.monsters)if(asleep.has(m.g))m.sleep=true; }
