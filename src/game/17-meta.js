@@ -6,7 +6,7 @@ saved.META=loadMeta();
 try{ saved.DEVALL=localStorage.getItem('al_dev')==='1'; }catch(e){}
 // 記録 META を保存する saveMeta は src/lib/save.ts、解放の確かめ（unlocked・lockedOf・weaponPool）は src/lib/unlocks.ts（src/game/imports.mjs で読む）
 const loreLeft=()=>Math.max(0,(saved.META.lore||0)-(saved.META.spent||0));
-// trialOn は src/lib/unlocks.ts（src/game/imports.mjs で読む）
+// 試練を選んでいるか trialOn は src/lib/unlocks.ts（古い JS は読まない）
 let introMode='main';
 function buildUnlockPanel(){ const el=document.getElementById('intropanel'); if(!el)return; const f=t=>`<span class="f">${t}</span>`, KIND={weapon:'武器',rune:'ルーン',bless:'恩恵',build:'ビルド',trial:'試練'};
   const rows=[f('+-- 解放 ---'),`${f('|')} 伝承を使って、選べるものを増やす。　使える伝承 <b style="color:#ffe3a0">${loreLeft()}</b>`,f('|')];
@@ -57,7 +57,7 @@ document.getElementById('intropanel').addEventListener('click',e=>{
   adv.dead=false; { const de=document.getElementById('death'); if(de)de.classList.remove('show','won'); }
   adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(saved.META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:clock.time,maxDepth:here.depth,book0:saved.BOOK.size,beastsNew:0}; resetRunes();
   if(regen)newLevel();
-  ui.started=true; document.body.classList.add('started'); if(here.D)showStratum(here.D.stratum); setHelp(true); helpT=25; introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume();
+  ui.started=true; document.body.classList.add('started'); if(here.D)showStratum(here.D.stratum); setHelp(true); ui.helpT=25; introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume();
 });
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 // the bestiary: the wheel moves in and out, a drag with the left button turns the creature and moves the camera up and down (galleryWheel, galleryDrag)
@@ -104,8 +104,8 @@ window.addEventListener('keydown',e=>{
   if(adv.dead&&(e.code==='Enter'||e.code==='KeyR')){ newRun(); return; }
   if(ui.started&&e.code==='Space'){ startRoll(); }
   if(ui.started&&e.code==='KeyP'){ ui.perfOn=!ui.perfOn; renderStatus(); }
-  if(ui.started&&e.code==='KeyJ'){ ui.chronOn=!ui.chronOn; ui.helpOn=false; helpT=0; const el=document.getElementById('help'); if(el){ if(ui.chronOn)renderChron(); el.classList.toggle('off',!ui.chronOn); } }
-  if(ui.started&&(e.key==='?'||e.code==='Slash')){ setHelp(!ui.helpOn); helpT=0; }
+  if(ui.started&&e.code==='KeyJ'){ ui.chronOn=!ui.chronOn; ui.helpOn=false; ui.helpT=0; const el=document.getElementById('help'); if(el){ if(ui.chronOn)renderChron(); el.classList.toggle('off',!ui.chronOn); } }
+  if(ui.started&&(e.key==='?'||e.code==='Slash')){ setHelp(!ui.helpOn); ui.helpT=0; }
 });
 window.addEventListener('keyup',e=>{ keys[e.code]=false; });
 window.addEventListener('blur',()=>{ for(const k in keys)keys[k]=false; dragging=false; });

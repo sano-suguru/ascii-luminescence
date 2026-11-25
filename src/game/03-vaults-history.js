@@ -22,5 +22,4 @@ const ARTS={
  moon: ["  __   "," /  )  ","(  (   "," \\__)  ","     . "],
  lantern:["   |   ","  _|_  "," |   | "," | * | "," |___| "],
 };
-let HIST=null, HIST_SEED=-1;
 // makeHistory（歴史を作る）は src/lib/history.ts（src/game/imports.mjs で読む）

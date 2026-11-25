@@ -1,10 +1,9 @@
 // ---------------------------------------------------------------- world state
-let staticMesh=null, occMesh=null, glyphCount=0;
+let staticMesh=null, occMesh=null;
 let visitedRooms=new Set(), stairsSeen=false, fogBase=0.05;
 // player は src/lib/state.ts（src/game/imports.mjs で読む。丸ごと入れ替えないので、名前はそのまま）
 const edge={t:0,k:'',idle:0};
-let hintHTML='';
-function showHint(h){ if(h===hintHTML)return; hintHTML=h; const el=document.getElementById('hint'); if(el)el.innerHTML=h; }
+// 画面の下の一言 showHint は src/lib/status.ts（src/game/imports.mjs で読む）
 const ceilAt=(x,z)=>{ const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL); if(cx<0||cz<0||cx>=MW||cz>=MH)return BASE_H; return here.D.ceil[cz*MW+cx]; };
 
 // vnoise は src/lib/noise.ts（src/game/imports.mjs で読む）
@@ -557,14 +556,13 @@ function buildWorld(){
   }
   const og=new T.BufferGeometry(); og.setAttribute('position',new T.Float32BufferAttribute(occ,3));
   occMesh=new T.Mesh(og,occMat); occMesh.renderOrder=-10; occMesh.frustumCulled=false; scene.add(occMesh);
-  glyphCount=n;
+  hudInfo.glyphCount=n;
 }
 const _frus=new T.Frustum(), _pm=new T.Matrix4();
-let chunksDrawn=0;
 function cullChunks(){
   camera.updateMatrixWorld();
   _pm.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse); _frus.setFromProjectionMatrix(_pm);
-  const maxD=2.4/U.uFogDen.value; chunksDrawn=0;
-  for(const c of chunks){ const d=c.sphere.center.distanceTo(camera.position)-c.sphere.radius; c.mesh.visible=d<maxD&&_frus.intersectsSphere(c.sphere); if(c.mesh.visible)chunksDrawn+=c.mesh.count; }
+  const maxD=2.4/U.uFogDen.value; hudInfo.chunksDrawn=0;
+  for(const c of chunks){ const d=c.sphere.center.distanceTo(camera.position)-c.sphere.radius; c.mesh.visible=d<maxD&&_frus.intersectsSphere(c.sphere); if(c.mesh.visible)hudInfo.chunksDrawn+=c.mesh.count; }
 }
 

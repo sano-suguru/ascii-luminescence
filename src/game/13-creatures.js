@@ -114,15 +114,7 @@ function machineWork(m,dt){
   else { let bi=-1,bd=1e9; for(let dz=-10;dz<=10;dz++)for(let dx=-10;dx<=10;dx++){ const x=m.cx+dx, z=m.cz+dz; if(x<0||z<0||x>=MW||z>=MH)continue; const i=z*MW+x; if(!blaze.burnt[i]&&!(blaze.fire[i]>0.1))continue; if(here.D.tile[i]!==TF)continue; const dd=Math.abs(dx)+Math.abs(dz); if(dd<bd){bd=dd;bi=i;} } m.job=bi; }
   return false;
 }
-function sHowl(x,z){ if(!sndReady())return; const t=SND.ctx.currentTime, o=sOut(x,z,0.45), os=SND.ctx.createOscillator(), g=SND.ctx.createGain(), lfo=SND.ctx.createOscillator(), lg=SND.ctx.createGain();
-  os.type='sawtooth'; os.frequency.setValueAtTime(320,t); os.frequency.linearRampToValueAtTime(720,t+0.5); os.frequency.linearRampToValueAtTime(380,t+1.6);
-  lfo.frequency.value=6; lg.gain.value=18; lfo.connect(lg); lg.connect(os.frequency);
-  const f=SND.ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=1400;
-  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.09,t+0.2); g.gain.exponentialRampToValueAtTime(0.001,t+1.8);
-  os.connect(f); f.connect(g); g.connect(o); os.start(t); lfo.start(t); os.stop(t+1.85); lfo.stop(t+1.85); }
-function sAlarm(x,z){ if(!sndReady())return; const t=SND.ctx.currentTime, o=sOut(x,z,0.4);
-  for(let k=0;k<6;k++){ const os=SND.ctx.createOscillator(), g=SND.ctx.createGain(); os.type='square'; os.frequency.value=k%2?660:880;
-    g.gain.setValueAtTime(0,t+k*0.22); g.gain.linearRampToValueAtTime(0.06,t+k*0.22+0.02); g.gain.linearRampToValueAtTime(0,t+k*0.22+0.2); os.connect(g); g.connect(o); os.start(t+k*0.22); os.stop(t+k*0.22+0.21); } }
+// 遠吠え sHowl・警報 sAlarm の音は src/lib/audio.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- large creatures of the terrain, mighty ones of the deep, and the lords of the branches
 // kraken tentacles: columns of glyphs rising out of the water around the body, swaying
@@ -145,8 +137,8 @@ function updateMonster(m,dt,t){
   if(ty.critter){ if(dp>30&&!ty.critter.startsWith('clean')&&ty.critter!=='engineer'){ m.visible=false; return; } updateCritter(m,dt,t,dp); return; }
   // perception (after Brogue's stealth): the brighter the spot you stand in, the farther away you can be noticed
   if(ty.peaceful){ m.aware=0; m.noticed=false; m.sleep=false;
-    if(dp<2.4&&clock.time-(m.talkT||-99)>14){ m.talkT=clock.time; const ru=HIST.rulers[Math.floor(mr()*HIST.rulers.length)];
-      const L=[`昔々、この上には${HIST.civ.name}の都があったんだとさ。`,`${ru.title}${ru.name}の巨像を見たかい？ 眼だけは、まだ光ってるんだ。`,'溶岩の海の先には、何もない闇があるって話だ。','灯りを絞って歩けば、獣にも見つからないよ。','神殿の巻物は、近づくと勝手にしゃべるんだ。',`${HIST.beast}の話を聞くと、子どもたちは眠れなくなる。`,'壁の彫刻を読んでごらん。この世界の昔話が刻んであるよ。'];
+    if(dp<2.4&&clock.time-(m.talkT||-99)>14){ m.talkT=clock.time; const ru=adv.HIST.rulers[Math.floor(mr()*adv.HIST.rulers.length)];
+      const L=[`昔々、この上には${adv.HIST.civ.name}の都があったんだとさ。`,`${ru.title}${ru.name}の巨像を見たかい？ 眼だけは、まだ光ってるんだ。`,'溶岩の海の先には、何もない闇があるって話だ。','灯りを絞って歩けば、獣にも見つからないよ。','神殿の巻物は、近づくと勝手にしゃべるんだ。',`${adv.HIST.beast}の話を聞くと、子どもたちは眠れなくなる。`,'壁の彫刻を読んでごらん。この世界の昔話が刻んであるよ。'];
       msg(`<b style="color:${css(ty.col)}">G</b><span style="color:${css(ty.col)}">ノーム</span>「${L[Math.floor(mr()*L.length)]}」`); } }
   else if(ty.form!=='eel'||m.surf>0){
     const sr=ui.started?stealth.range*(m.sleep?0.5:1):0;

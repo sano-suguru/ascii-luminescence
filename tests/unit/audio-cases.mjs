@@ -41,7 +41,7 @@ function makeMap(r) {
   return { tile, liquid, roomOf, rooms };
 }
 
-/** seeds：場合のシードの数（1つのシードで、22の場合） */
+/** seeds：場合のシードの数（1つのシードで、24の場合） */
 export function audioCases(F, seeds) {
   const out = [];
   let log = [];
@@ -127,6 +127,8 @@ export function audioCases(F, seeds) {
     ['sAlert', xz],
     ['sRoar', () => []],
     ['sSqueak', xz],
+    ['sHowl', xz],
+    ['sAlarm', xz],
   ];
   try {
     for (let s = 1; s <= seeds; s++) {
