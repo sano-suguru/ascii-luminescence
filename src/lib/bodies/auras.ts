@@ -12,7 +12,7 @@ import { dyn, spawn } from '../particles.ts';
 import { clamp } from '../rng.ts';
 import { mpick, mr, sndRand } from '../random.ts';
 import { sEnv } from '../sound.ts';
-import { type Monster, SND, adv, clock, here, player, vfx } from '../state.ts';
+import { type Monster, SND, adv, clock, here, player, ui, vfx } from '../state.ts';
 import { BASE_H, CELL, MW } from '../world.ts';
 import { buildForm } from './build.ts';
 import type { Body } from './kit.ts';
@@ -335,8 +335,24 @@ export function transformShadow(b: Monster & { form: Body }): void {
   setTimeout(() => msg(`<b style="color:#a98cff">&amp;</b>${last.title}${last.name}の影が、底の闇から長い体をもたげた。`), 1500);
 }
 
+/**
+ * 縦に立つ輪の上の点（その輪の面の中の横の位置 w、前後の位置 z）を、輪の面が目（カメラ。1人称ではプレイヤー、3人称では後ろのカメラ ui.camPos）の方を
+ * 向くように回した、体の向きでの x と z。目が真上にいる時は回さない（13-creatures.js の drawMonster0 の halo と同じ回し方）
+ */
+const faceEye = (m: Mon, w: number, z: number): readonly [number, number] => {
+  const tps = ui.camMode === 'tps' && ui.camPos,
+    ex = (tps ? (ui.camPos?.[0] ?? player.x) : player.x) - m.x,
+    ez = (tps ? (ui.camPos?.[2] ?? player.z) : player.z) - m.z,
+    el = Math.hypot(ex, ez),
+    cm = Math.cos(m.yaw),
+    sm = Math.sin(m.yaw),
+    ux = el > 1e-3 ? ez / el : cm,
+    uz = el > 1e-3 ? -ex / el : -sm;
+  return [w * (ux * cm - uz * sm), z + w * (ux * sm + uz * cm)];
+};
+
 /** 姿を変える途中を描く：二つ目の姿の文字が、一つ目の姿の文字から飛んでくる。終わったら morph を消して false を返す（描いたら true） */
-export function drawMorph(m: Mon & { form: Body }, _t: number): boolean {
+export function drawMorph(m: Mon & { form: Body }, t: number): boolean {
   const M = must(m.morph, '姿を変える途中 morph'),
     f = clamp((clock.time - M.t0) / M.dur, 0, 1);
   if (f >= 1) {
@@ -353,9 +369,14 @@ export function drawMorph(m: Mon & { form: Body }, _t: number): boolean {
     const p = nth(m.form, i);
     if (p.part === 'heart') continue;
     const q = nth(F, (i * 7) % n);
-    const lx = (q.x + (p.x - q.x) * e) * sc,
-      ly = (q.y + (p.y - q.y) * e) * sc + Math.sin(f * Math.PI) * 0.3 * sc * Math.sin(i),
-      lz = (q.z + (p.z - q.z) * e) * sc,
+    // the black sun's points start from the ring as it is drawn at this moment: turned round the ring as far as drawMonster0's halo turns it, and turned to face the eye
+    const ha = t * (q.sp || 0.2) + q.ph,
+      hw = Math.cos(ha) * (q.r ?? 0),
+      qy = q.part === 'halo' ? (q.cy ?? 0) + Math.sin(ha) * (q.r ?? 0) : q.y;
+    const [qx, qz] = q.part === 'halo' ? faceEye(m, hw, q.z) : [q.x, q.z];
+    const lx = (qx + (p.x - qx) * e) * sc,
+      ly = (qy + (p.y - qy) * e) * sc + Math.sin(f * Math.PI) * 0.3 * sc * Math.sin(i),
+      lz = (qz + (p.z - qz) * e) * sc,
       col = p.col || m.ty.col,
       k = (f < 0.5 ? q.b : p.b) * 0.62 * (0.8 + 0.6 * Math.sin(f * Math.PI));
     dyn(
