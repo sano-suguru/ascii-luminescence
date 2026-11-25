@@ -313,6 +313,7 @@ function drawMonster0(m,t){
       case 'wing': { const dr=ty.form==='dragon'||(ty.beast&&ty.spec&&ty.spec.plan!=='moth'), mo=ty.beast&&ty.spec&&ty.spec.plan==='moth', fa=dr?0.8+Math.sin(t*1.3+m.ph)*(m.sleep?0.06:0.3):mo?Math.sin(t*4+m.ph)*0.55:Math.sin(t*16+m.ph)*0.9; lx=p.sd*p.r*Math.cos(fa); ly=p.y+p.r*Math.sin(fa)*0.9; break; }
       case 'tail': lx+=Math.sin(t*7+m.ph)*0.05*(p.piv+1); break;
       case 'spin': { const a=t*(p.sp||1)+p.ph; lx=p.cx+Math.cos(a)*p.r; lz=p.cz+Math.sin(a)*p.r; ly=p.y; break; }
+      case 'halo': { const a=t*(p.sp||0.2)+p.ph; lx=Math.cos(a)*p.r; ly=p.cy+Math.sin(a)*p.r; break; } // a ring standing upright (the king's shadow's black sun), turning in its own plane
       case 'orbit': { const a=t*(p.sp||0.8)+p.ph+(p.da||0); lx=Math.cos(a)*p.r; lz=Math.sin(a)*p.r; ly=p.y+Math.sin(t*2+p.ph)*0.06; break; }
       case 'robe': { const k=1.95-p.y; lx+=Math.sin(t*2.2+p.y*3+p.ph)*0.05*k; lz+=Math.cos(t*1.7+p.y*2.5+p.ph)*0.05*k; break; }
       case 'seg': { lx+=Math.sin(t*2.6*Math.max(0.4,m.moving)+m.walk*0.5-p.piv*0.65)*0.26*(0.35+p.piv/11); ly+=Math.sin(t*3+p.piv)*0.01; break; }

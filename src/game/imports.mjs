@@ -39,6 +39,7 @@ import {
   golemForm,
   repairerForm,
   shadowKingForm,
+  SHADOW_KING_H,
   watcherForm,
 } from '../lib/bodies/lords.ts';
 import { lichKingForm, nagaQueenForm, oldDragonForm, shadowSerpentForm, spiderQueenForm } from '../lib/bodies/bosses.ts';

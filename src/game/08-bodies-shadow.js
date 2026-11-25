@@ -1,5 +1,5 @@
-// ---------------------------------------------------------------- the Last King's Shadow: a king made of darkness, dark inside, only its edges thin and white like cut paper;
-// a crown of broken light floating above a hollow face with one cold light, six arms of shadow reaching out, its hem dissolving into streams that run to the pedestals
+// ---------------------------------------------------------------- the king's shadow: a king of darkness in a long cloak (its shape, shadowKingForm, is in src/lib/bodies/lords.ts);
+// its torn hem dissolves into streams that run across the floor to the pedestals
 // streams of shadow running from its hem across the floor to the pedestals; dark mist
 function shadowAura(m,t){ const sc=m.ty.scale||1, dp=Math.hypot(m.x-player.x,m.z-player.z); if(dp>40)return;
   if(!m.phase2&&m.maxHp&&m.hp/m.maxHp<0.95&&mr()<(1-m.hp/m.maxHp)*0.6){ const a=mr()*6.28, y=(0.4+mr()*1.4)*sc; spawn(m.x+Math.cos(a)*0.55*sc,y,m.z+Math.sin(a)*0.45*sc,Math.cos(a)*0.4,0.3,Math.sin(a)*0.4,1.4,G(mpick(['.','+','*'])),0.14,1.4,1.5,2.2,0); }

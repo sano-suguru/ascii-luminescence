@@ -17,8 +17,8 @@ function galleryList(){
   const out=[]; for(const k of Object.keys(MTYPES)){ if(k==='lord'||k==='final'||k==='final2'||k==='X'||k.startsWith('__')||k.startsWith('dummy'))continue; out.push({key:k,ty:MTYPES[k]}); }
   for(const rec of loadBeasts().concat(saved.DEVALL?beastSamples():[]))out.push({key:'beast:'+rec.seed+':'+rec.name,ty:{...rec,ch:'X',form:'beast',beast:true,light:9,boss:false,verb:rec.lore}});
   for(const [bk,L] of Object.entries(LORD_GAL)){ const base=MTYPES[L.base]; if(!base)continue; out.push({key:'lord:'+bk,ty:{...base,sk:L.base,name:L.name,scale:L.scale,verb:L.verb,boss:true,col:L.base==='L'?[0.75,0.9,1.0]:base.col,look:({crypt:null,lair:null,nest:null,snake:null})[bk]||base.look,...(bk==='lair'?{form:'olddragon',light:5}:bk==='sunken'?{form:'deepkraken',light:5}:bk==='crypt'?{form:'lichking',light:7}:bk==='nest'?{form:'spiderqueen',light:6}:bk==='snake'?{form:'nagaqueen',light:6}:{})}}); }
-  out.push({key:'final',ty:{...MTYPES.L,ch:'&',look:null,form:'shadowking',sk:'final',name:'最後の王の影',scale:3.6,col:[0.62,0.48,1.0],boss:true,lich:false,light:6,verb:'光の届かない底で、王冠の形をした影が揺れている'}});
-  out.push({key:'final2',ty:{...MTYPES.L,ch:'&',look:null,form:'shadowserpent',sk:'final2',name:'最後の王の影（底の闇）',scale:3.0,col:[0.62,0.48,1.0],boss:true,lich:false,light:6,verb:'冠と外套を失い、底の闇から長い体をもたげた影'}});
+  out.push({key:'final',ty:{...MTYPES.L,ch:'&',look:null,form:'shadowking',sk:'final',name:'王の影',scale:SHADOW_KING_SC,col:[0.62,0.48,1.0],boss:true,lich:false,light:6,verb:'光の届かない底で、王冠の形をした影が揺れている'}});
+  out.push({key:'final2',ty:{...MTYPES.L,ch:'&',look:null,form:'shadowserpent',sk:'final2',name:'王の影（底の闇）',scale:SHADOW_KING_SC,col:[0.62,0.48,1.0],boss:true,lich:false,light:6,verb:'冠と外套を失い、底の闇から長い体をもたげた影'}});
   return out;
 }
 // a quiet room from a fixed maze: everything else is cleared away
@@ -88,7 +88,7 @@ function updateGallery(dt){
     else if(m.ty.form==='dragon'&&!m.ty.boss){ m.sleep=Math.floor(g.t/6)%2===0; if(m.sleep){ m.moving=0; } }
     { const ty=m.ty; if(ty.flier)m.y=(1.6+Math.sin(g.t*2.2)*0.15)*Math.max(1,sc*0.7); else if(ty.fl)m.y=ty.fl+Math.sin(g.t*1.3)*0.12; }
     // how far and how high the camera sits, by form (the old dragon's long neck brings its head close when it turns this way: 1.05 sits a little farther and higher than 1)
-    const tall=m.ty.beast?1.3:m.ty.form==='lichking'?1.6:m.ty.form==='spiderqueen'?1.25:m.ty.form==='nagaqueen'?1.3:m.ty.form==='olddragon'?1.05:m.ty.form==='shadowking'?1.75:m.ty.form==='shadowserpent'?1.9:m.ty.form==='deepkraken'?2.0:1,
+    const tall=m.ty.beast?1.3:m.ty.form==='lichking'?1.6:m.ty.form==='spiderqueen'?1.25:m.ty.form==='nagaqueen'?1.3:m.ty.form==='olddragon'?1.05:m.ty.form==='shadowking'?1.6:m.ty.form==='shadowserpent'?1.9:m.ty.form==='deepkraken'?2.0:1,
       zoom=cam?cam.zoom:1, tilt=cam?cam.pitch:null;
     // the shape the camera is fitted to: a sleeping dragon or beast curls up into its own sleeping shape, which is built the first time it is drawn asleep;
     // until then (one tick) the centre waits for it, and the aim and the ball below keep the last ones (both are worked out again whenever the shape changes, as a dragon wakes and sleeps)

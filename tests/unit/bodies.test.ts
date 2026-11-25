@@ -5,6 +5,7 @@ import * as beasts from '../../src/lib/bodies/beasts.ts';
 import * as bosses from '../../src/lib/bodies/bosses.ts';
 import { type Body, type BodyType } from '../../src/lib/bodies/kit.ts';
 import { hsl2rgb } from '../../src/lib/color.ts';
+import { G } from '../../src/lib/glyphs.ts';
 import * as lords from '../../src/lib/bodies/lords.ts';
 import * as small from '../../src/lib/bodies/small.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
@@ -56,14 +57,7 @@ const TY_FORMS: ((ty: BodyType) => Body)[] = [
   lords.repairerForm,
   lords.watcherForm,
 ];
-const PLAIN_FORMS: (() => Body)[] = [
-  lords.golemForm,
-  lords.shadowKingForm,
-  small.spiderForm,
-  small.robotForm,
-  small.bogForm,
-  small.krakenForm,
-];
+const PLAIN_FORMS: (() => Body)[] = [lords.golemForm, small.spiderForm, small.robotForm, small.bogForm, small.krakenForm];
 // 引数の無い形（古いトロルと、主）
 const BOSS_FORMS: (() => Body)[] = [
   small.trollForm,
@@ -92,8 +86,8 @@ describe('生き物の形', () => {
       const b = seeded(() => lords.beastForm(spec));
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
-    expect(all.length).toBe(2926386);
-    expect(fnv(all)).toBe('1ef69733'); // 移す前の実装で出した値
+    expect(all.length).toBe(2816831);
+    expect(fnv(all)).toBe('3a9acc70'); // 移す前の実装で出した値（王の影の一つ目の姿は、作り直したので下の別のテスト）
   });
   it('主と大きな生き物の形：TypeScript に移す前と、同じ乱数で同じ形になる', () => {
     let all = '';
@@ -109,6 +103,7 @@ describe('生き物の形', () => {
     const bodies = [
       ...TY_FORMS.flatMap((f) => TYS.map((ty) => seeded(() => f(ty)))),
       ...PLAIN_FORMS.map((f) => seeded(f)),
+      seeded(lords.shadowKingForm),
       ...BOSS_FORMS.map((f) => seeded(f)),
       ...TYS.flatMap((ty) => [seeded(() => beasts.dragonForm(ty)), seeded(() => beasts.ogreForm({ ...ty, ch: 'O' }))]),
       ...SPECS.map((s) => seeded(() => lords.beastForm(s))),
@@ -133,6 +128,26 @@ describe('生き物の形', () => {
       z = lords.beastSleep(b, { spec });
     expect(z.some((p) => p.part === 'legL' || p.part === 'legR')).toBe(false);
     expect(Math.max(...z.map((p) => p.y))).toBeLessThan(Math.max(...b.map((p) => p.y)));
+  });
+  it('王の影の一つ目の姿：翼は無く、冠の棘5本・目2つ・黒い太陽（点の輪と印の輪）・剣・心臓・封印のひび7本。高さは SHADOW_KING_H', () => {
+    const b = seeded(lords.shadowKingForm);
+    const parts = (name: string) => b.filter((p) => p.part === name);
+    expect(b.some((p) => p.part.startsWith('wing'))).toBe(false);
+    expect(parts('eye').length).toBe(2);
+    expect(parts('head').filter((p) => p.g === G('^')).length).toBe(5); // 冠の棘の先
+    const halo = parts('halo');
+    expect(halo.length).toBe(36);
+    expect(new Set(halo.map((p) => p.r)).size).toBe(2);
+    const top = Math.max(...b.map((p) => (p.part === 'halo' ? (p.cy ?? 0) + (p.r ?? 0) : p.y)));
+    expect(top).toBeCloseTo(lords.SHADOW_KING_H, 2);
+    expect(Math.min(...b.map((p) => p.y))).toBeGreaterThanOrEqual(0);
+    expect(parts('heart').length).toBe(9);
+    expect(new Set(parts('crack').map((p) => p.th)).size).toBe(7);
+    // 剣：右手（向き合うと左）に、縦に長い刃
+    const blade = b.filter((p) => p.part === 'body' && Math.abs(p.x + 0.58) < 0.05 && p.y > 1.1);
+    expect(Math.max(...blade.map((p) => p.y)) - Math.min(...blade.map((p) => p.y))).toBeGreaterThan(1.3);
+    // 幅は翼が無いので、裾の広がりまで（左右に約1.3以内）
+    expect(Math.max(...b.map((p) => Math.abs(p.x)))).toBeLessThan(1.35);
   });
   it('深みの主の触手：体のそばの4本と、水面から出る10本。移す前と同じ値', () => {
     expect(lords.KRAKEN_T.length).toBe(14);

@@ -223,7 +223,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 **dbg（F2の画面と window.dbg）**：
 `dbg.help()`、`info()`、`go(深度)`、`inter(key)`（地下の町 town / 大広間 bigroom / 神託所 oracle / 砦 fortress）、
 `branch(key,階)`、`realm(key)`、
-`to("stairs"|"branch"|"portal"|"lord"|"altar"|"vault"|"hub"|"spring"|"forge")`、`god(on)`、`heal()`、`reveal()`、
+`to("stairs"|"branch"|"portal"|"lord"|"altar"|"vault"|"hub"|"spring"|"forge"|"pedestal")`（pedestal は最深部の、まだ何も置いていない台座の上）、`god(on)`、`heal()`、`reveal()`、
 `give("slot"|"body"|"runes"|"legends")`、`kill("lord"|"near")`、`open()`、`step(x,z)`、`look(x,y,z)`、`items()`、`clear()`、
 `hurt(n)`、`hit(n)`、`hp()`、`exp(n)`（経験）、`lore(n)`（伝承）
 

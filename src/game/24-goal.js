@@ -80,10 +80,13 @@ function updateFinal(dt){
         const s=makeMonster({key:'W',cx,cz,g:-1,lead:true}); s.sleep=false; s.aware=1.25; s.noticed=true; here.monsters.push(s); for(let q=0;q<16;q++){ const an=mr()*6.28; spawn(s.x,0.6,s.z,Math.cos(an),0.4+mr(),Math.sin(an),0.8,G('.'),0.14,0.6,0.4,1.2,0); } }
         msg(`<b style="color:#a98cff">W</b>影が身をよじり、闇の中から亡霊を呼び出した。`); } } }
 }
+// the king's shadow's size: about four times the player's eye height (SHADOW_KING_SC), smaller only under a ceiling too low for it
+const SHADOW_KING_SC=2.0;
+function shadowKingScale(ceilH){ return Math.max(1.2,Math.min(SHADOW_KING_SC,(ceilH-0.3)/SHADOW_KING_H)); }
 function spawnFinalBoss(){
   const R=adv.HIST.rulers, last=R[R.length-1], cx=finalSt.c0%MW, cz=(finalSt.c0/MW)|0;
   const ceilH=here.D.ceil[finalSt.c0]||6;
-  MTYPES.final={...MTYPES.L,ch:'&',look:null,form:'shadowking',sk:'final',name:`${last.name}王の影`,scale:Math.max(2.0,Math.min(3.6,(ceilH-0.3)/3.3)),col:[0.62,0.48,1.0],boss:true,lich:false,light:6,verb:'王冠の形をした影が、底の闇から立ちのぼっている'};
+  MTYPES.final={...MTYPES.L,ch:'&',look:null,form:'shadowking',sk:'final',name:`${last.name}王の影`,scale:shadowKingScale(ceilH),col:[0.62,0.48,1.0],boss:true,lich:false,light:6,verb:'王冠の形をした影が、底の闇から立ちのぼっている'};
   const b=makeMonster({key:'final',cx,cz,g:-1,lead:true}); b.sleep=false; b.aware=1.25; b.noticed=true; here.monsters.push(b); finalSt.boss=b;
   sRumble(0.9,3); vfx.shake=Math.max(vfx.shake,0.6); vfx.flash=Math.max(vfx.flash,0.3);
   for(let q=0;q<90;q++){ const a=mr()*6.28, e=mr(); spawn(b.x+Math.cos(a)*e*2,0.2,b.z+Math.sin(a)*e*2,Math.cos(a)*0.6,1+mr()*3,Math.sin(a)*0.6,1.6+mr(),G(mpick(['%','#','.','&'])),0.24,0.5,0.35,0.9,0); }
