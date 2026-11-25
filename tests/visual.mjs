@@ -23,6 +23,25 @@ const enter = async (pg) => {
   await advance(pg, 2);
 }; // 階に入った時の明るくなる演出を終わらせる
 const ev = (pg, f, a) => pg.evaluate(f, a);
+// 図鑑の生き物を、向きと姿を止めて写す（__test.galleryShow）。図鑑の枠（名前と説明の文）は隠して、生き物の形だけを見張る
+// （パネルの文字は tests/panels.mjs が見る）。寄って（zoom）、体の高さの真ん中を画面の真ん中に写す（center）。生き物の画素が多いほど、小さな違いに気づける。
+// zoom は、生き物が画面の高さの6〜7割を占め、どこも切れない値。出してから3秒進めて、灯りが落ち着いてから写す。
+// 大きさは 1280×720（体を作る文字の形まで読めるので、違いの画像を見て何が変わったか分かる。違いの割合は大きさでほぼ変わらない）
+const bestiary = (name, yaw, pose, zoom) => async (pg) => {
+  const why = await ev(
+    pg,
+    ({ name, yaw, pose, zoom }) => {
+      const e = __test.gallery().find((o) => o.name === name);
+      if (!e) return `図鑑に「${name}」が無い`;
+      const r = __test.galleryShow(e.n, { yaw, pose, zoom, center: true });
+      return typeof r === 'string' ? r : null;
+    },
+    { name, yaw, pose, zoom },
+  );
+  if (why) throw new Error(why);
+  await pg.addStyleTag({ content: '#gal{visibility:hidden!important}' });
+  await advance(pg, 3);
+};
 const SCENES = [
   // 世界：層ごとの色・シェーダー・降る粒子
   { name: 'title', q: '', size: [960, 540], go: (pg) => advance(pg, 1) },
@@ -97,6 +116,11 @@ const SCENES = [
       await advance(pg, 0.5);
     },
   },
+  // 生き物の形：図鑑の部屋で、描く処理の違う所を別々の生き物で押さえる
+  { name: 'gal-dragon', q: '', size: [1280, 720], go: bestiary('竜', 0.6, 'stand', 1.15) }, // 四つ足の大きな形・翼・頭
+  { name: 'gal-ogre', q: '', size: [1280, 720], go: bestiary('オーガ', 0.25, 'walk', 2) }, // 人型の見た目（lookHumanoid・extraLook）と歩く足
+  { name: 'gal-lichking', q: '', size: [1280, 720], go: bestiary('不死の王', 0.25, 'stand', 1.7) }, // 主の形とまわりの粒子（lichAura）・冠の光
+  { name: 'gal-beast', q: '', size: [1280, 720], go: bestiary('燃える鱗の竜（見本）', 0.6, 'stand', 1.6) }, // 忘れられた獣の組み立て（buildForm）
 ];
 
 mkdirSync(BASE, { recursive: true });
@@ -111,7 +135,14 @@ await withBrowser(async ({ browser, base }) => {
     const [W, H] = sc.size || SIZE;
     const pg = await newPage(browser, errs, { width: W, height: H, still: true });
     await openTest(pg, base, sc.q);
-    await sc.go(pg);
+    // 場面を作れなかった時（図鑑に生き物が無い、など）は、その場面だけ失敗にして、残りの場面を続ける
+    try {
+      await sc.go(pg);
+    } catch (e) {
+      await pg.close();
+      rows.push([sc.name, '✗ 作れない', String(e && e.message ? e.message : e)]);
+      continue;
+    }
     await pg.evaluate(() => document.fonts.ready);
     await frames(pg, 1);
     const shot = PNG.sync.read(await pg.screenshot({ timeout: 90000 }));
