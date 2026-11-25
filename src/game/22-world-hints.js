@@ -40,7 +40,7 @@ const omenOf=()=>here.D?(here.D.omen||(here.D.omen=computeOmen())):null;
 function omenSound(kind,x,z){ if(!sndReady())return; const d=Math.hypot(x-player.x,z-player.z), v=Math.max(0.05,1-d/10);
   if(kind==='drip')sDrip(x,z,0.4*v); else if(kind==='chime'||kind==='chant')sChime(x,z,0.22*v); else if(kind==='rumble'||kind==='growl')sRumble(0.18*v,kind==='growl'?0.9:1.6);
   else if(kind==='whisper'||kind==='wind'||kind==='hiss')sHiss(x,z,kind==='hiss'?0.7:1.4); else if(kind==='bubble')sBubble(x,z,0.3*v); else if(kind==='scuttle')sHiss(x,z,0.18); }
-function drawOmens(t,dt){ if(!here.D||gallery)return; const o=omenOf(); if(!o)return;
+function drawOmens(t,dt){ if(!here.D||ui.gallery)return; const o=omenOf(); if(!o)return;
   const near=(x,z,r)=>Math.hypot(x-player.x,z-player.z)<r, rate=(n)=>mr()<n*(dt||0.016);
   const rise=(x,z,def,n,spread)=>{ if(!rate(n))return; const a=mr()*6.28, rr=mr()*(spread||0.7), down=def.vy<0;
     spawn(x+Math.cos(a)*rr,down?2.2+mr()*0.6:0.15,z+Math.sin(a)*rr,(mr()-0.5)*0.15,def.vy*(0.7+mr()*0.6),(mr()-0.5)*0.15,2.4+mr(),G(mpick(def.gl)),0.12,def.col[0]*1.3,def.col[1]*1.3,def.col[2]*1.3,0); };
@@ -83,7 +83,7 @@ function inPlainSight(t){ if(t.d>22)return false; const [ox,oy,oz]=aimOrigin(), 
   if((dx*vx+dy*vy+dz*vz)/L<Math.cos(0.5))return false; return losClear(ox,oy,oz,t.x,0.9,t.z); }
 let arrowsDrawn=false;
 function drawArrows(){ if(!arrowCtx)return; const W=Math.round(arrowCv.clientWidth*devicePixelRatio), H=Math.round(arrowCv.clientHeight*devicePixelRatio), c=arrowCtx; if(arrowCv.width!==W||arrowCv.height!==H){ arrowCv.width=W; arrowCv.height=H; } if(arrowsDrawn){ c.clearRect(0,0,W,H); arrowsDrawn=false; }
-  if(!ui.started||adv.dead||isPaused()||gallery)return; const ts=arrowTargets().filter(t=>!inPlainSight(t)); if(!ts.length)return; arrowsDrawn=true;
+  if(!ui.started||adv.dead||isPaused()||ui.gallery)return; const ts=arrowTargets().filter(t=>!inPlainSight(t)); if(!ts.length)return; arrowsDrawn=true;
   const k=devicePixelRatio, ox=W/2, oy=H*0.66, r0=46*k, ps=player.yaw, fx=-Math.sin(ps), fz=-Math.cos(ps), rx=Math.cos(ps), rz=-Math.sin(ps), FONT='"M PLUS 1 Code","BIZ UDGothic",monospace';
   c.textAlign='center'; c.textBaseline='middle'; c.lineJoin='round';
   // the ring the arrows spread from

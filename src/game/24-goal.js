@@ -159,7 +159,7 @@ function drawBoltFx(t,dt){
 let titleArm=0;
 function returnToTitle(){
   setMenu(false); if(ui.invOpen)setInv(false); if(ui.locked&&document.exitPointerLock)document.exitPointerLock();
-  ui.started=false; adv.dead=false; adv.won=false; gallery=null; gear.castSt=null; gear.swapSt=null; vfx.zapFlash=null;
+  ui.started=false; adv.dead=false; adv.won=false; ui.gallery=null; gear.castSt=null; gear.swapSt=null; vfx.zapFlash=null;
   document.body.classList.remove('started'); const de=document.getElementById('death'); if(de)de.classList.remove('show','won');
   const gp=document.getElementById('gal'); if(gp)gp.classList.remove('show');
   adv.runSeed=(Math.random()*1e9)>>>0; here.depth=startDepth; here.branch=null; here.realm=null; here.inter=null; placeMem.clear(); here.arrive=null; here.trans=null; player.fall=false;

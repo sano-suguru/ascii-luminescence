@@ -32,8 +32,8 @@ function newLevel(seedOverride){
   noticeMsgT={}; stealth.hudKey='';
   here.explored=new Uint8Array(NCELL); here.mem=new Float32Array(NCELL*3); here.fovVis=new Uint32Array(NCELL); here.fovStamp=1;
   { const pm=placeMem.get(placeKey()); if(pm){ here.explored.set(pm.explored); here.mem.set(pm.mem); } }
-  visitedRooms=new Set(); stairsSeen=false; player.rally=0; rallyMotes=[]; if(adv.runStats&&!gallery)adv.runStats.maxDepth=Math.max(adv.runStats.maxDepth||0,here.depth); setTimeout(strataGrowth,50);
-  if(ui.started&&!gallery&&!adv.dead&&!here.arrive){ const sp=here.inter?SPECIALS[here.inter.key]:null; if(sp&&(sp.k==='town'||sp.k==='oracle')){ player.hp=adv.PLAYER_MAX; setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>静かな場所だ。張りつめていた体が、すっかりほどけた。'),1600); } else if(player.hp<adv.PLAYER_MAX){ player.hp=Math.min(adv.PLAYER_MAX,player.hp+adv.PLAYER_MAX*0.2); setTimeout(()=>msg('<span class="lab">階段を降りると、少し息が整った。</span>'),1600); } }
+  visitedRooms=new Set(); stairsSeen=false; player.rally=0; rallyMotes=[]; if(adv.runStats&&!ui.gallery)adv.runStats.maxDepth=Math.max(adv.runStats.maxDepth||0,here.depth); setTimeout(strataGrowth,50);
+  if(ui.started&&!ui.gallery&&!adv.dead&&!here.arrive){ const sp=here.inter?SPECIALS[here.inter.key]:null; if(sp&&(sp.k==='town'||sp.k==='oracle')){ player.hp=adv.PLAYER_MAX; setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>静かな場所だ。張りつめていた体が、すっかりほどけた。'),1600); } else if(player.hp<adv.PLAYER_MAX){ player.hp=Math.min(adv.PLAYER_MAX,player.hp+adv.PLAYER_MAX*0.2); setTimeout(()=>msg('<span class="lab">階段を降りると、少し息が整った。</span>'),1600); } }
   player.x=(here.D.start%MW+0.5)*CELL; player.z=(((here.D.start/MW)|0)+0.5)*CELL; player.vx=player.vz=0; player.yaw=here.D.startYaw; player.pitch=-0.04; lockCell=-1;
   { const tc=here.arrive==='portal'&&here.D.portal?here.D.portal.cell:here.arrive==='bstairs'&&here.D.bstairs?here.D.bstairs.cell:here.arrive==='stairs'?here.D.stairs:-1;
     if(tc>=0){ const nb=[1,-1,MW,-MW,MW+1,MW-1,-MW+1,-MW-1].map(o=>tc+o).find(j=>j>=0&&j<NCELL&&here.D.tile[j]===TF&&!here.D.liquid[j]&&!here.D.solid.has(j))??tc;
@@ -182,12 +182,12 @@ function chooseLevel(i){ const o=lvlOpts[i]; if(!o)return;
   if(adv.lvl.pending>0){ lvlOpenT=performance.now(); lvlOpts=levelChoices(); renderLevelUp(); return; }
   ui.lvlOpen=false; const el=document.getElementById('altarp'); if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused()); if(!plFailed&&ui.started&&!adv.dead)tryLock(); updateResume(); }
 // a new stratum strengthens the body
-function strataGrowth(){ if(!here.D||here.branch||here.realm||here.inter||!ui.started||gallery)return; const k=here.D.stratum&&here.D.stratum.k; if(!['cavern','ruins','magma','abyss'].includes(k)||adv.lvl.strata.has(k))return; adv.lvl.strata.add(k); adv.PLAYER_MAX+=4; player.hp=Math.min(adv.PLAYER_MAX,player.hp+4); renderStatus();
+function strataGrowth(){ if(!here.D||here.branch||here.realm||here.inter||!ui.started||ui.gallery)return; const k=here.D.stratum&&here.D.stratum.k; if(!['cavern','ruins','magma','abyss'].includes(k)||adv.lvl.strata.has(k))return; adv.lvl.strata.add(k); adv.PLAYER_MAX+=4; player.hp=Math.min(adv.PLAYER_MAX,player.hp+4); renderStatus();
   setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>新しい層の空気が、体を強くした。最大体力 +4。'),2200); }
 function hurtPlayer(n,cause){
   if(godMode)return; if((player.invulT||0)>clock.time)return; if(BL('reckless'))n*=BL('reckless')>=2?1.35:1.25;
   n*=Math.max(0.4,1-0.15*bodyN('ward'));
-  if(adv.dead||!ui.started||gallery||n<=0)return;
+  if(adv.dead||!ui.started||ui.gallery||n<=0)return;
   player.hp-=n; player.lastHurt=clock.time; { const mn=bodyN('mend'); player.rally=Math.min(Math.max(0,adv.PLAYER_MAX-player.hp),(player.rally||0)+n*0.6); player.rallyRate=player.rally/Math.max(1,4*(1+0.5*mn)-0.6); } vfx.hurtFlash=Math.min(1.2,vfx.hurtFlash+0.35+n*0.05); vfx.shake=Math.max(vfx.shake,Math.min(0.5,0.12+n*0.03));
   if(sndReady()){ const t=SND.ctx.currentTime; sEnv(sTone(t,'sine',140,60,0.25,sOut(undefined,undefined,0.35)),t,0.01,0.22); }
   if(clock.time-(hurtPlayer.mt||-9)>0.8||hurtPlayer.mc!==cause){ hurtPlayer.mt=clock.time; hurtPlayer.mc=cause; msg(`<b style="color:#ff5a4a">-</b>${cause}で ${n} の傷を負った。`); }
@@ -202,7 +202,7 @@ function runLore(victory){ const L=getLegend(), parts=[], add=(lab,n,v)=>{ if(v>
   const lg=Math.max(0,(adv.lvl.n||1)-1); add('上がったレベル',`${lg}つ`,lg);
   const nb=Math.max(0,saved.BOOK.size-((adv.runStats&&adv.runStats.book0)||0)); add('新しく記した反応',`${nb}つ`,nb*3); const nbe=(adv.runStats&&adv.runStats.beastsNew)||0; add('初めて出会った忘れられた獣',`${nbe}体`,nbe*4);
   const base=parts.reduce((a,p)=>a+p[2],0), mult=1+0.25*adv.runTrials.length; return {parts,base,mult,total:Math.round(base*mult)}; }
-function awardLore(victory){ if(!adv.runStats||gallery)return null; if(adv.runStats.loreRes)return adv.runStats.loreRes; const R=runLore(victory); saved.META.lore=(saved.META.lore||0)+R.total; saveMeta(); adv.runStats.loreRes=R; return R; }
+function awardLore(victory){ if(!adv.runStats||ui.gallery)return null; if(adv.runStats.loreRes)return adv.runStats.loreRes; const R=runLore(victory); saved.META.lore=(saved.META.lore||0)+R.total; saveMeta(); adv.runStats.loreRes=R; return R; }
 function loreRows(R,f){ if(!R)return []; const rows=[`${f('|')}  <b>伝承</b>`]; for(const [lab,n,v] of R.parts)rows.push(`${f('|')}    ${padTo(lab+(n?`（${n}）`:''),34)}${String(v).padStart(4)}`);
   if(R.mult>1)rows.push(`${f('|')}    ${padTo(`試練（${adv.runTrials.map(k=>({dusk:'薄明',fury:'猛り'})[k]).join('・')}）`,34)}  ×${R.mult.toFixed(2)}`);
   rows.push(`${f('|')}    ${padTo('合計',34)}<b style="color:#ffe3a0">${String('+'+R.total).padStart(4)}</b>`, `${f('|')}    <span class="lab">累計 ${saved.META.lore}　　使える伝承 ${loreLeft()}</span>`);
@@ -223,7 +223,7 @@ function die(cause){
   const el=document.getElementById('death'); if(!el)return;
   const secs=Math.floor(clock.time-adv.runStats.t0), mm=Math.floor(secs/60), ss=String(secs%60).padStart(2,'0');
   const f=t=>`<span class="f">${t}</span>`;
-  adv.runStats.cause=cause; const R=awardLore(false); graveCands=gallery?[]:graveCandidates(); graveSel=0; if(ui.locked&&document.exitPointerLock)document.exitPointerLock();
+  adv.runStats.cause=cause; const R=awardLore(false); graveCands=ui.gallery?[]:graveCandidates(); graveSel=0; if(ui.locked&&document.exitPointerLock)document.exitPointerLock();
   const draw=()=>{ el.innerHTML=boxText([f('+-- あ な た は 死 ん だ ---'),f('|'),`${f('|')}  死因      ${cause}`,`${f('|')}  場所      ${resultPlace()}`,
     `${f('|')}  Lv${adv.lvl.n}　倒した敵 ${adv.runStats.kills}　時間 ${mm}:${ss}`,f('|'),...loreRows(R,f),f('|'),...(graveCands.length?[...graveRows(f),f('|')]:[]),`${f('|')}  ${HIST?HIST.civ.name+'の地に、またひとつ灯りが消えた。':''}`,f('|'),`${f('|')}  <button class="row" id="newRunB"><b>[Enter]</b> 新しい冒険へ</button>`,f('+---')],64); };
   document.body.classList.add('over'); draw(); el.onclick=e=>{ const b=e.target.closest&&e.target.closest('button'); if(!b)return; if(b.dataset.gv!==undefined){ graveSel=+b.dataset.gv; draw(); } else if(b.id==='newRunB')newRun(); };
@@ -233,7 +233,7 @@ function newRun(){
   saveGrave(); document.body.classList.remove('over');
   const el=document.getElementById('death'); if(el)el.classList.remove('show','won');
   adv.dead=false; adv.runSeed=(Math.random()*1e9)>>>0; here.depth=1; here.branch=null; here.realm=null; here.inter=null; placeMem.clear(); here.arrive=null;
-  here.trans=null; player.fall=false; gallery=null; { const gp=document.getElementById('gal'); if(gp)gp.classList.remove('show'); }
+  here.trans=null; player.fall=false; ui.gallery=null; { const gp=document.getElementById('gal'); if(gp)gp.classList.remove('show'); }
   adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(saved.META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:clock.time,maxDepth:here.depth,book0:saved.BOOK.size,beastsNew:0}; resetRunes(); newLevel();
 }
 function hitReact(m,n){ const ty=m.ty, boss=ty.boss||m.key==='lord'||m.key==='final', now=performance.now();
