@@ -542,6 +542,43 @@ await withBrowser(
         errs.push(`12：起きている竜を見た時の伝言が、起きている時の文でない：${log.slice(-200)}`);
     }
     await dr.close();
+
+    // 13. 最深部：伝説の物を3つ持って台座に置くと（dbg.to('pedestal')）、王の影が出る。背の高さは約6.7（天井より低い）で、8離れて見ると全身が画面に収まる
+    const fin = await newPage(browser, errs);
+    await openTest(fin, base, 'seed=202&depth=13&god=1');
+    await advance(fin, 1);
+    const king = await fin.evaluate(() => {
+      dbg.give('legends');
+      for (let k = 0; k < 3; k++)
+        if (!dbg.to('pedestal')) return `台座が ${k} つしか見つからない`;
+        else __test.advance(0.2);
+      __test.advance(4);
+      const b = __test.state().monsters.find((m) => m[0] === 'final');
+      if (!b) return '王の影が出ない';
+      const { w } = __test.size(),
+        ci = (x, z) => Math.floor(z / 2) * w + Math.floor(x / 2);
+      for (let k = 0; k < 16; k++) {
+        const a = (k / 16) * Math.PI * 2,
+          x = b[1] + Math.sin(a) * 8,
+          z = b[2] + Math.cos(a) * 8;
+        if (!__test.cell(ci(x, z)).floor) continue;
+        dbg.step(x, z);
+        __test.fov();
+        if (!__test.cell(ci(b[1], b[2])).seen) continue;
+        __test.advance(1 / 30);
+        dbg.look(b[1], 3.3, b[2]);
+        __test.advance(1 / 30);
+        return __test.monsterView('final');
+      }
+      return '王の影を8離れて見通せる床が無い（テストの前提が崩れた）';
+    });
+    if (typeof king === 'string') errs.push(`13：${king}`);
+    else {
+      if (!(king.world.y1 > 6 && king.world.y1 < 7.6)) errs.push(`13：王の影の背の高さが約6.7でない：${JSON.stringify(king.world)}`);
+      if (!(king.world.y1 < king.ceil)) errs.push(`13：王の影が天井を突き抜ける：${king.world.y1} / ${king.ceil}`);
+      if (!(king.cut < 0.02)) errs.push(`13：8離れて見た王の影が、画面からはみ出す（${king.cut}）`);
+    }
+    await fin.close();
   },
   { prod: process.argv.includes('--prod') },
 );

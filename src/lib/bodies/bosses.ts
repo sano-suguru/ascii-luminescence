@@ -44,6 +44,9 @@ const pathPt = (path: readonly Vec3[], i: number): Vec3 => nth(path, i);
 // ---------------------------------------------------------------- the Undead King (rebuilt): a floating upper body joined to its mantle only by the spine, one huge spiked shoulder and armoured arm,
 // one long bone arm holding a cold flame, a crown of tall light needles, a greatsword planted in the floor with chains and rune pendants.
 // Surfaces are filled densely; each glyph is chosen by how its surface faces the light (ASCII-art shading), by material.
+/** 文字が多く密な主（蜘蛛の女王・ナーガの女王）の明るさに掛ける数 */
+const BOSS_DIM = 0.6;
+
 export function lichKingForm(): Body {
   // readable glyphs: about 0.17 body units each (0.29 m at the king's size), spaced 1.2-1.5 glyphs apart; lines are drawn as one stroke of glyphs that follow their direction
   const pts: Body = [],
@@ -440,6 +443,9 @@ export function spiderQueenForm(): Body {
     lit(x, y - 0.04, z + 0.03, '*', S * 0.8, 1.8, COL.amber, 'body');
   }
   stroke([0, 0.92, -1.1], [0, 0.02, -1.45], COL.silver, 1.0, S * 0.75, 'body', 0.12);
+  // the whole body a little darker: it has many glyphs close together, and at full brightness the bloom melts them into one bright blob
+  // (the share of bright pixels it adds, as pnpm lords counts it, about as much as the other lords)
+  for (const p of pts) p.b *= BOSS_DIM;
   return pts;
 }
 
@@ -616,6 +622,9 @@ export function nagaQueenForm(): Body {
   lit(0.38, 1.08, 0.43, '*', S * 1.3, 3.0, COL.mirror, 'body');
   arm([-0.18, 1.2, 0.06], [-0.3, 1.1, 0.3], [-0.28, 1.06, 0.55]);
   for (let f = 0; f < 4; f++) lit(-0.28 + (f - 1.5) * 0.03, 1.06, 0.62, "'", S * 0.8, 1.3, COL.skin, 'body');
+  // the whole body a little darker: it has many glyphs close together, and at full brightness the bloom melts them into one bright blob
+  // (the share of bright pixels it adds, as pnpm lords counts it, about as much as the other lords)
+  for (const p of pts) p.b *= BOSS_DIM;
   return pts;
 }
 

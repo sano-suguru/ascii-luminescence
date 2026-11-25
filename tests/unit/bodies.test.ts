@@ -96,8 +96,8 @@ describe('生き物の形', () => {
       all += JSON.stringify(seeded(() => beasts.ogreForm({ ...ty, ch: 'O' })));
     }
     for (const f of BOSS_FORMS) all += JSON.stringify(seeded(f));
-    expect(all.length).toBe(1790379);
-    expect(fnv(all)).toBe('a5fb116c'); // 移す前の実装で出した値
+    expect(all.length).toBe(1792099);
+    expect(fnv(all)).toBe('7a018410'); // 移す前の実装で出した値から、蜘蛛の女王とナーガの女王の明るさ b だけを 0.6 倍（BOSS_DIM）にした値
   });
   it('どの点も、座標が有限で、文字の番号が文字の絵の表の中にあり、体のどこかが決まっている', () => {
     const bodies = [
