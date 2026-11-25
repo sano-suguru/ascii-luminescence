@@ -150,7 +150,7 @@ function grabItem(it,k,x,z,dest){
 // a rune put where the player chose: into a hand (what was there goes to the bag), or into the bag
 function placeChosen(ru,dest,fromAltar){ if(!saved.RSEEN.has(ru.type)){ saved.RSEEN.add(ru.type); saveSet('al_runes',saved.RSEEN); } if(mergeMod(ru))return; const def=RUNE_DEF[ru.type], col=runeCol(ru);
   gear.bag.push(ru); msg(`<b class="rn" style="color:${css(col)}">${def.ch}</b>${thingLabel(ru)}を手にした。袋に収めた。Tab で付け替えられる（祭壇のそばなら詠唱はいらない）。`); renderHotbar(); if(ui.invOpen)renderInv(); }
-// the altar's comparison panel: near a lit altar, its three choices side by side; 1, 2, 3 choose (touching still works). The game does not pause.
+// 祭壇の画面：灯った祭壇の近くで、3つの選択肢を並べる。クリックで選ぶ。開いている間は、ゲームが止まる
 let altarNear=null, altarPanelKey='', altarSel=null, altarAim=-1, altarDismissed=null;
 function runeDest(ru){ const def=RUNE_DEF[ru.type], cat=def.cat;
   if(cat==='body'){ const i=[0,1].slice(0,adv.runState.bodyOpen||0).find(i=>!gear.hands.B['b'+i]); return i!==undefined?'身の護符の枠へ':'袋へ'; }
@@ -186,7 +186,8 @@ function updateAltarPanel(){ const el=document.getElementById('altarp'); if(!el)
   if(ui.altarOpen){ if(!here.D||!ui.started||adv.dead||!altarOpts().length)closeAltar(false); return; }
   altarNear=null;
   if(ui.started&&!adv.dead&&!isPaused()&&here.D){ let best=null, bd=1.5; for(const it of (here.D.items||[])){ if(it.taken||!it.altar||!it.rune||it.slot!==1)continue; if(it.guardG!==undefined&&guardedNow(it))continue; const [x,z]=cpos(it.i), d=Math.hypot(x-player.x,z-player.z); if(d<bd){ bd=d; best=it; } } if(best)altarNear=best.grp; }
-  if(!altarNear){ altarDismissed=null; if(el.classList.contains('show'))el.classList.remove('show','open'); return; }
+  // 止まっている間（装備の画面・メニューなど）は、近くの祭壇が無いことにするが、閉じた記録は消さない（離れるまで開かない）
+  if(!altarNear){ if(!(ui.started&&!adv.dead&&here.D&&isPaused()))altarDismissed=null; if(el.classList.contains('show'))el.classList.remove('show','open'); return; }
   if(altarDismissed===altarNear)return;
   openAltar(); }
 function chooseAltar(n){ if(!altarNear)return false; const k=here.D.items.findIndex(o=>o.grp===altarNear&&o.slot===n&&!o.taken); if(k<0)return false; const it=here.D.items[k];
