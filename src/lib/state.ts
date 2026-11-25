@@ -35,7 +35,11 @@ export interface Vfx {
 }
 export const vfx: Vfx = { shake: 0, flash: 0, hurtFlash: 0, hpFlash: 0, zapFlash: null };
 
-/** 画面の開け閉め（冒険が始まったか、1人称・3人称、マウスを捕まえているか、各画面が開いているか、表示の量） */
+/** 図鑑の獣を見ている間（'beast'）か、試しの間（'range'）の状態（今は mode だけ型を付ける。ほかの欄は、図鑑と試しの間の処理を移す時に足す） */
+export interface Gallery {
+  mode: 'beast' | 'range';
+}
+/** 画面の開け閉め（冒険が始まったか、1人称・3人称、マウスを捕まえているか、各画面が開いているか、表示の量、図鑑と試しの間） */
 export interface Ui {
   /** 冒険が始まったか（タイトルの画面を閉じたか） */
   started: boolean;
@@ -61,6 +65,8 @@ export interface Ui {
   uiMode: number;
   /** 速さの表示 */
   perfOn: boolean;
+  /** 図鑑の獣を見ている間・試しの間の状態（どちらでもなければ null） */
+  gallery: Gallery | null;
 }
 export const ui: Ui = {
   started: false,
@@ -75,6 +81,7 @@ export const ui: Ui = {
   chronOn: false,
   uiMode: 0,
   perfOn: false,
+  gallery: null,
 };
 
 /** レベルと経験（n：レベル、exp：経験、pending：まだ選んでいない加護の数、bless：加護ごとの段、strata：入った層）。後から足される欄は、使う処理を移す時に型を足す */
