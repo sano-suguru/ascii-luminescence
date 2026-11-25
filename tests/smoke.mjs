@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // スモークテスト：テスト用モードでない時にタイトルの画面が出るか、開発用の探索で dbg が動くか、探索の始め直しで前の場所や状態が残らないか
-// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの「もう一度押して確かめる」待ちが4秒で消えるか、図鑑を開いても探索の記録が変わらないか、開発用モードのまま読み直した時・保存が使えない時のタイトル、閉じた祭壇の画面が離れるまで開かないか、図鑑の全部の生き物を出して例外・描いた文字の数・NaN を確かめる、起きている竜を見た時の伝言。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
+// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの「もう一度押して確かめる」待ちが4秒で消えるか、図鑑を開いても探索の記録が変わらないか、開発用モードのまま読み直した時・保存が使えない時のタイトル、閉じた祭壇の画面が離れるまで開かないか、図鑑の全部の生き物を出して例外・描いた文字の数・NaN を確かめる、起きている竜を見た時の伝言、図鑑を手で動かす（ホイール・ドラッグ・R）。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
 //   node tests/smoke.mjs          テスト版（.build/test/。既定）
 //   node tests/smoke.mjs --prod   公開用の版（dist/）。JetBrains Mono を指定した所の日本語は、システムのフォントで描く
 import { join } from 'node:path';
@@ -352,6 +352,146 @@ await withBrowser(
       const now = await pg.evaluate(() => Number((document.getElementById('gal').textContent.match(/(\d+)\s*\/\s*\d+\s*（/) || [])[1]));
       if (!woke) errs.push('図鑑：竜が6秒たっても目を覚まさない（テストの前提が崩れた）');
       else if (now !== pos.n + 1) errs.push(`図鑑：竜が目を覚ました時に押していた [>] で、次の生き物へ進まない：${pos.n} → ${now}`);
+    }
+    // 図鑑を手で動かす：ホイールで寄る・引く、ドラッグで回す（横）と見下ろす角度（縦）、R で戻す。手を離して3秒たつと、また自動で回る。
+    // ← → で移ると元に戻る。ネズミ（1番目）で見る。枠の外（画面の上の方）で操作する
+    {
+      await pg.keyboard.press('ArrowLeft'); // 今が何番目でも、1番目へ移る（← → で止める印も消える）
+      const goFirst = await pg.evaluate(() => Number((document.getElementById('gal').textContent.match(/(\d+)\s*\/\s*\d+\s*（/) || [])[1]));
+      for (let i = goFirst; i > 1; i--) await pg.keyboard.press('ArrowLeft');
+      await advance(pg, 0.5);
+      const cam = () => pg.evaluate(() => __test.galleryDraw());
+      const hint = await pg.evaluate(() => document.getElementById('gal').textContent.includes('ホイールで寄る'));
+      if (!hint) errs.push('図鑑：枠に「ドラッグで回す　ホイールで寄る　R で戻す」の案内が無い');
+      const c0 = await cam();
+      await pg.mouse.move(480, 80);
+      for (let i = 0; i < 4; i++) await pg.mouse.wheel(0, -100); // 寄る（カメラは約0.5秒かけて動くので、1秒待つ）
+      await advance(pg, 1);
+      const cIn = await cam();
+      for (let i = 0; i < 10; i++) await pg.mouse.wheel(0, 100); // 引く（いちばん遠くまで）
+      await advance(pg, 1);
+      const cOut = await cam();
+      if (!(cIn.camera.dist < c0.camera.dist * 0.8)) errs.push(`図鑑：ホイールで寄っていない：${c0.camera.dist} → ${cIn.camera.dist}`);
+      if (!(cOut.camera.dist > c0.camera.dist * 1.5 && cOut.camera.dist <= c0.camera.dist * 2.01))
+        errs.push(`図鑑：ホイールで引いていないか、2倍より遠い：${c0.camera.dist} → ${cOut.camera.dist}`);
+      // ドラッグ：横で回り、縦（下へ）で上から見下ろす。離した後3秒は回らず、その後また回る
+      await pg.mouse.move(480, 80);
+      await pg.mouse.down();
+      await pg.mouse.move(580, 80, { steps: 4 });
+      await pg.mouse.move(580, 160, { steps: 4 });
+      await pg.mouse.up();
+      await advance(pg, 0.1);
+      const cDrag = await cam();
+      const turned = Math.abs(Math.atan2(Math.sin(cDrag.turn - cOut.turn), Math.cos(cDrag.turn - cOut.turn)));
+      if (!(turned > 0.7)) errs.push(`図鑑：横にドラッグしても回らない：${cOut.turn} → ${cDrag.turn}`);
+      if (!(cDrag.camera.pitch < cOut.camera.pitch - 0.2))
+        errs.push(`図鑑：下へドラッグしても、上から見下ろさない：${cOut.camera.pitch} → ${cDrag.camera.pitch}`);
+      await advance(pg, 2);
+      const cHold = await cam();
+      if (Math.abs(cHold.turn - cDrag.turn) > 0.01) errs.push(`図鑑：手を離して2秒で、もう回り始めた：${cDrag.turn} → ${cHold.turn}`);
+      await advance(pg, 2);
+      const cBack = await cam();
+      if (!(Math.abs(cBack.turn - cHold.turn) > 0.1))
+        errs.push(`図鑑：手を離して4秒たっても、また回り始めない：${cHold.turn} → ${cBack.turn}`);
+      if (Math.abs(cBack.camera.dist - cDrag.camera.dist) > 0.01 || Math.abs(cBack.camera.pitch - cDrag.camera.pitch) > 0.01)
+        errs.push(
+          `図鑑：また回り始めた時に、寄りや角度が戻ってしまった：${JSON.stringify(cDrag.camera)} → ${JSON.stringify(cBack.camera)}`,
+        );
+      // R で戻す
+      await pg.keyboard.press('KeyR');
+      await advance(pg, 0.2);
+      const cR = await cam();
+      if (Math.abs(cR.camera.dist - c0.camera.dist) > 0.01 || Math.abs(cR.camera.pitch - c0.camera.pitch) > 0.01)
+        errs.push(`図鑑：R で寄りと角度が戻らない：はじめ ${JSON.stringify(c0.camera)}、R の後 ${JSON.stringify(cR.camera)}`);
+      // 初めて縦にドラッグした時、カメラが跳ばない（見下ろす角度は今の角度から、狙う点までの距離は今の距離から始まる）
+      await pg.mouse.move(480, 80);
+      await pg.mouse.down();
+      await pg.mouse.move(480, 81);
+      await advance(pg, 0.1);
+      const cTilt = await cam();
+      await pg.mouse.up();
+      if (Math.abs(cTilt.camera.aimed - cR.camera.aimed) > 0.05 || Math.abs(cTilt.camera.height - cR.camera.height) > 0.05)
+        errs.push(`図鑑：初めて縦にドラッグした時に、カメラが跳ぶ：${JSON.stringify(cR.camera)} → ${JSON.stringify(cTilt.camera)}`);
+      await pg.keyboard.press('KeyR');
+      // 横向きのホイール（deltaY が 0）では寄りも引きもせず、トラックパッドの小さな動きは小さく寄る
+      await pg.evaluate(() =>
+        document
+          .querySelector('canvas')
+          .dispatchEvent(new WheelEvent('wheel', { deltaX: 100, deltaY: 0, bubbles: true, cancelable: true })),
+      );
+      await advance(pg, 0.1);
+      const cSide = await cam();
+      if (Math.abs(cSide.camera.dist - c0.camera.dist) > 0.01)
+        errs.push(`図鑑：横向きのホイールで寄りが変わった：${c0.camera.dist} → ${cSide.camera.dist}`);
+      await pg.mouse.wheel(0, -10);
+      await advance(pg, 0.1);
+      const cSmall = await cam();
+      if (!(cSmall.camera.dist < c0.camera.dist && cSmall.camera.dist > c0.camera.dist * 0.97))
+        errs.push(`図鑑：小さなホイールの動きで、寄らないか寄りすぎる：${c0.camera.dist} → ${cSmall.camera.dist}`);
+      await pg.keyboard.press('KeyR');
+      // ボタンを離したのに mouseup が届かなかった時（ほかのウィンドウに移った時など）：ボタンを押さずに動かしても回らない
+      await pg.mouse.move(480, 80);
+      await pg.mouse.down();
+      await advance(pg, 0.1);
+      const cLost = await cam();
+      await pg.evaluate(() => {
+        for (const x of [500, 700]) window.dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: 80, buttons: 0 }));
+      });
+      await advance(pg, 0.1);
+      const cFree = await cam();
+      await pg.mouse.up();
+      if (Math.abs(cFree.turn - cLost.turn) > 0.01)
+        errs.push(`図鑑：ボタンを押さずに動かしても、ドラッグが続く：${cLost.turn} → ${cFree.turn}`);
+      await pg.keyboard.press('KeyR');
+      // ← → で移ると戻る（寄ってから、隣へ移って、また戻る）
+      for (let i = 0; i < 4; i++) await pg.mouse.wheel(0, -100);
+      await pg.keyboard.press('ArrowRight');
+      await pg.keyboard.press('ArrowLeft');
+      await advance(pg, 0.2);
+      const cSw = await cam();
+      if (Math.abs(cSw.camera.dist - c0.camera.dist) > 0.01)
+        errs.push(`図鑑：← → で移っても、寄りが戻らない：${c0.camera.dist} → ${cSw.camera.dist}`);
+      // 背の高い生き物（不死の王）に寄ると、狙う点が体の高さの真ん中へ上がり（冠が画面の上で切れない）、カメラは体を包む球の外に止まる
+      const lich = await pg.evaluate(() => __test.gallery().find((e) => e.form === 'lichking')?.n);
+      if (!lich) errs.push('図鑑：不死の王が見つからない');
+      else {
+        for (let i = 1; i < lich; i++) await pg.keyboard.press('ArrowRight');
+        await advance(pg, 0.5);
+        const l0 = await cam();
+        for (let i = 0; i < 8; i++) await pg.mouse.wheel(0, -100); // 寄りきる
+        await advance(pg, 1);
+        const lIn = await cam();
+        if (!(lIn.camera.aimY > l0.camera.aimY + 0.5))
+          errs.push(`図鑑：不死の王に寄っても、狙う点が上がらない：${l0.camera.aimY} → ${lIn.camera.aimY}`);
+        if (!(lIn.camera.bodyR !== null && lIn.camera.aimed >= lIn.camera.bodyR + 0.79))
+          errs.push(`図鑑：不死の王に寄ると、体を包む球の中に入る：${JSON.stringify(lIn.camera)}`);
+      }
+      // 寄った竜が起きる時（図鑑に出てから6秒）、カメラは1フレームで跳ばず、なめらかに起きた体に合わせる
+      const dragonN = await pg.evaluate(() => __test.gallery().find((e) => e.name === '竜')?.n);
+      if (!dragonN) errs.push('図鑑：竜が見つからない');
+      else {
+        const at = await pg.evaluate(() => Number((document.getElementById('gal').textContent.match(/(\d+)\s*\/\s*\d+\s*（/) || [])[1]));
+        for (let i = at; i !== dragonN; i += dragonN > at ? 1 : -1) await pg.keyboard.press(dragonN > at ? 'ArrowRight' : 'ArrowLeft');
+        for (let i = 0; i < 8; i++) await pg.mouse.wheel(0, -100); // 寄りきる
+        await advance(pg, 5.8);
+        const steps = [await cam()];
+        for (let k = 0; k < 15; k++) {
+          await advance(pg, 1 / 30);
+          steps.push(await cam());
+        }
+        let maxStep = 0;
+        for (let k = 1; k < steps.length; k++)
+          maxStep = Math.max(
+            maxStep,
+            Math.abs(steps[k].camera.dist - steps[k - 1].camera.dist),
+            Math.abs(steps[k].camera.aimY - steps[k - 1].camera.aimY),
+          );
+        const first = steps[0].camera,
+          last = steps[steps.length - 1].camera;
+        if (!(Math.abs(last.dist - first.dist) > 0.3))
+          errs.push(`図鑑：寄った竜が起きても、カメラが合わせない：${first.dist} → ${last.dist}`);
+        if (maxStep > 0.25) errs.push(`図鑑：寄った竜が起きる時に、カメラが1フレームで ${maxStep.toFixed(3)} 跳ぶ`);
+      }
     }
     await pg.keyboard.press('Escape');
     await advance(pg, 0.5);

@@ -60,6 +60,13 @@ document.getElementById('intropanel').addEventListener('click',e=>{
   ui.started=true; document.body.classList.add('started'); if(here.D)showStratum(here.D.stratum); setHelp(true); helpT=25; introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume();
 });
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
+// the bestiary: the wheel moves in and out, a drag with the left button turns the creature and moves the camera up and down (galleryWheel, galleryDrag)
+canvas.addEventListener('wheel',e=>{ if(!(ui.gallery&&ui.gallery.mode==='beast'))return; e.preventDefault(); galleryWheel(e.deltaY*(e.deltaMode===1?33:e.deltaMode===2?400:1)); },{passive:false});
+canvas.addEventListener('mousedown',e=>{ if(!(ui.gallery&&ui.gallery.mode==='beast')||e.button!==0)return; ui.gallery.drag={x:e.clientX,y:e.clientY}; galleryView(); });
+// the left button let go where no mouseup reaches (another window took the focus): the drag ends
+window.addEventListener('mousemove',e=>{ const g=ui.gallery; if(!g||!g.drag)return; if(!(e.buttons&1)){ g.drag=null; galleryView(); return; } galleryDrag(e.clientX-g.drag.x,e.clientY-g.drag.y); g.drag.x=e.clientX; g.drag.y=e.clientY; });
+window.addEventListener('mouseup',e=>{ const g=ui.gallery; if(!g||!g.drag||e.button!==0)return; g.drag=null; galleryView(); });
+window.addEventListener('blur',()=>{ const g=ui.gallery; if(!g||!g.drag)return; g.drag=null; galleryView(); });
 window.addEventListener('mousedown',e=>{
   if(!ui.menuOpen&&!ui.invOpen)return;
   if(ui.dbgOpen){ if(!(e.target&&e.target.closest&&e.target.closest('#dbgp'))){ e.preventDefault(); e.stopPropagation(); setDbg(false); } return; }
@@ -81,7 +88,7 @@ window.addEventListener('mousemove',e=>{
   player.pitch=clamp(player.pitch,-1.35,1.35);
 });
 window.addEventListener('keydown',e=>{
-  if(ui.gallery&&ui.gallery.mode==='beast'){ if(e.code==='ArrowLeft')showBeast(ui.gallery.idx-1); else if(e.code==='ArrowRight')showBeast(ui.gallery.idx+1); else if(e.code==='Escape')returnToTitle(); e.preventDefault(); return; }
+  if(ui.gallery&&ui.gallery.mode==='beast'){ if(e.code==='ArrowLeft')showBeast(ui.gallery.idx-1); else if(e.code==='ArrowRight')showBeast(ui.gallery.idx+1); else if(e.code==='Escape')returnToTitle(); else if(e.code==='KeyR')galleryReset(); e.preventDefault(); return; }
   if(e.target&&e.target.tagName==='INPUT'){ if(e.code==='Enter'){ e.preventDefault(); document.getElementById('enter').click(); } return; }
   keys[e.code]=true;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
