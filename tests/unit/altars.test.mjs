@@ -33,16 +33,24 @@ describe('解放の確かめ', () => {
 describe('祭壇', () => {
   it('鍛えの祭壇の深さは、層の中で冒険のシードで決まる（層の外は -1）', () => {
     const keep = adv.runSeed;
-    adv.runSeed = 12345;
-    expect(['cavern', 'ruins', 'magma', 'abyss'].map(AL.forgeDepthOf)).toEqual([5, 8, 10, -1]);
-    adv.runSeed = keep;
+    try {
+      adv.runSeed = 12345;
+      expect(['cavern', 'ruins', 'magma', 'abyss'].map(AL.forgeDepthOf)).toEqual([5, 8, 10, -1]);
+    } finally {
+      adv.runSeed = keep;
+    }
   });
   it('癒しの1行は、今の体力と、癒した後の体力（最大の7割を足す）', () => {
     const keep = [player.hp, adv.PLAYER_MAX];
-    player.hp = 10;
-    adv.PLAYER_MAX = 40;
-    expect(AL.altarLine({ i: 0, kind: 'rune', taken: false, opt: 'heal' })).toBe('癒し        <b style="color:#ff9aa8">+</b> 体力 10 → 38');
-    [player.hp, adv.PLAYER_MAX] = keep;
+    try {
+      player.hp = 10;
+      adv.PLAYER_MAX = 40;
+      expect(AL.altarLine({ i: 0, kind: 'rune', taken: false, opt: 'heal' })).toBe(
+        '癒し        <b style="color:#ff9aa8">+</b> 体力 10 → 38',
+      );
+    } finally {
+      [player.hp, adv.PLAYER_MAX] = keep;
+    }
   });
   it('ルーンの種類は重みの割合で選び、選べなければ火', () => {
     expect([randomRuneType(() => 0.99, { elem: 0.5 }), randomRuneType(() => 0, { mod: 1 })]).toEqual(['fire', 'm_chain']);

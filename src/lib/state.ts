@@ -90,7 +90,7 @@ export interface RunStats {
   kills: number;
   t0: number;
 }
-/** 冒険の進み（最初の武器を選んだか・最初の祭壇・取った物・倒した主）。後から足される欄（bodyOpen など）は、使う処理を移す時に型を足す */
+/** 冒険の進み（最初の武器を選んだか・最初の祭壇・取った物・倒した主・開いた体の枠の数）。古い JS が後から足すほかの欄は、使う処理を移す時に型を足す */
 export interface RunState {
   startChosen: boolean;
   altar1: boolean;
@@ -404,7 +404,7 @@ export interface Here {
   fade: number;
   /** 図鑑の見本の階を作っているか */
   showroomGen: boolean;
-  /** 今の階の中身（generate.ts の generateLevel の結果）。初期化（30-loop-init.js の init）で1つ目の階を作るまでは null。後から足される欄（hub など）は、使う処理を移す時に型を足す */
+  /** 今の階の中身（generate.ts の generateLevel の結果）。初期化（30-loop-init.js の init）で1つ目の階を作るまでは null。古い JS が後から足す欄は LevelExtra（まだ型の無い hub などは、使う処理を移す時に足す） */
   D: (Level & LevelExtra) | null;
   /** 見たことのあるマス（階に入るたびに作り直す。18-level-player.js の newLevel） */
   explored: Uint8Array;
