@@ -205,18 +205,31 @@ describe('音を鳴らす所が、見た目の乱数を引かない（src/ を�
           '  if(mr()<0.3)sBubble(1,2,0.3,true);', // 2：if の条件で、中身は音だけ
           '  if(mr()<dt){ found=true; sChime(1,2,0.2); msg("罠を見つけた"); }', // 音のほかのこともするので、見逃す
           '  if(clock.time>t0){ t0=clock.time+6+mr()*5; omen(); sPing(1); } }', // 4：次に鳴らす時刻
+          'const sPop=(x,z)=>{ if(!sndReady())return; sTone(0,"sine",shuffle([1,2],mr)[0],0,1,null); };', // 矢印関数の音の関数。3：mr を値として渡す
+          'function g(){ if(roll(1,3)>2)sPop(1,2); sChime(1,2,roll(1,2)*0.1);', // 2：矢印関数の音の関数を呼ぶ。1：roll
+          '  if(go){ nextT=performance.now()+Math.random()*9; sPop(1,2); } }', // 4：performance.now の時刻
         ].join('\n'),
       },
       { name: 'lib/b.ts', text: 'export function g(): void { if (on && sndReady()) { const v = mr(); sDrip(0, 0, v); } }' }, // 3：sndReady の中
+      {
+        // 自分で roll を宣言しているファイルでは、roll は見た目の乱数として数えない
+        name: 'lib/c.ts',
+        text: 'export function h(dt: number): void { const roll = (r: number): boolean => sndRand() < r * dt; if (roll(1)) sDrip(0, 0, 1); }',
+      },
     ];
     const r = soundRandomCheck(files, ['sTone', 'sDrip', 'sBubble', 'sChime']);
-    expect(r.sound).toEqual(['sBubble', 'sChime', 'sDrip', 'sPing', 'sTone']);
+    expect(r.sound).toEqual(['sBubble', 'sChime', 'sDrip', 'sPing', 'sPop', 'sTone']);
     expect(r.bad).toEqual([
       'game/01-a.js:1 音を鳴らす関数の中',
       'game/01-a.js:1 sTone の引数',
       'game/01-a.js:2 sDrip の引数',
       'game/01-a.js:3 if の条件で、音を鳴らすか',
       'game/01-a.js:5 次に鳴らす時刻',
+      'game/01-a.js:6 音を鳴らす関数の中',
+      'game/01-a.js:6 sTone の引数',
+      'game/01-a.js:7 if の条件で、音を鳴らすか',
+      'game/01-a.js:7 sChime の引数',
+      'game/01-a.js:8 次に鳴らす時刻',
       'lib/b.ts:1 sndReady の中',
     ]);
   });
@@ -229,7 +242,16 @@ describe('音を鳴らす所が、見た目の乱数を引かない（src/ を�
     // 古い JS の音を鳴らす関数も見つけている（本体が if(!sndReady())return で始まる関数）
     expect(r.sound).toEqual(expect.arrayContaining(['castSound', 'chantStart', 'humStart', 'omenSound', 'sShriek', 'sDrip', 'sChime']));
     expect(r.bad).toEqual([]);
-    // audio.ts が random.ts から読むのは sndRand だけ
+    // audio.ts（コメントを除く）と詠唱の声は丸ごと調べる：見た目の乱数を、どんな形でも使わない（音だけの処理の外の形も、変数に入れてから渡す形も）
+    const spells = readFileSync(join(SRC, 'game/26-spells-hud.js'), 'utf8'),
+      chant = spells.slice(spells.indexOf('function chantStart'), spells.indexOf('\n}\n', spells.indexOf('function chantStart')));
+    const anyVisual = /\b(mr|mpick)\b|Math\.random/;
+    expect([anyVisual.test(audioText.replace(/^\s*(\/\/|\*).*$/gm, '')), chant.length > 1000, anyVisual.test(chant)]).toEqual([
+      false,
+      true,
+      false,
+    ]);
+    // audio.ts が random.ts から読むのは sndRand だけ（random.ts の roll も読まない）
     expect([...audioText.matchAll(/^import .* from '\.\/random\.ts';$/gm)].map((m) => m[0])).toEqual([
       "import { sndRand } from './random.ts';",
     ]);
