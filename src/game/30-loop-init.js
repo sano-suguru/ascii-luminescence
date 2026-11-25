@@ -114,14 +114,16 @@ if(TEST)window.__test={
   // show entry n held still: yaw 0 faces the camera, + turns it to the right as seen from the camera; pose 'stand' | 'walk' | 'sleep'.
   // zoom (0.5-3, default 1) divides the camera's distance: 2 is half as far, so the creature looks bigger (the room still bounds it, and a zoom in stops outside the body).
   // pitch (-0.3 to 1.3 radians) moves the camera up around the creature, under the ceiling: 0 looks from the side, + looks down from above (left out: the height the bestiary works out from the creature's size).
+  // center (true or false, default false) puts the middle of the body's height in the middle of the picture (otherwise the creature stands a little high, above the bestiary's panel).
   // It empties the sparks first (so a full pool does not swallow the sparks of a phantom, which is mostly sparks), then steps one tick so the angle
   // and pose take hold (a walk needs about 1 s more to reach its full stride). Returns what galleryDraw() returns
-  galleryShow(n,{yaw=0,pose='stand',zoom=1,pitch=null}={}){ const list=this.gallery(); if(typeof list==='string')return list;
+  galleryShow(n,{yaw=0,pose='stand',zoom=1,pitch=null,center=false}={}){ const list=this.gallery(); if(typeof list==='string')return list;
     if(!(Number.isInteger(n)&&n>=1&&n<=list.length))return 'no such entry: '+n+' (1-'+list.length+')'; if(!['stand','walk','sleep'].includes(pose))return 'no such pose: '+pose;
     if(typeof yaw!=='number'||!Number.isFinite(yaw))return 'no such yaw: '+yaw+' (a number of radians)';
     if(typeof zoom!=='number'||!(zoom>=0.5&&zoom<=3))return 'no such zoom: '+zoom+' (0.5-3)';
     if(pitch!==null&&(typeof pitch!=='number'||!(pitch>=-0.3&&pitch<=1.3)))return 'no such pitch: '+pitch+' (-0.3 to 1.3 radians)';
-    pN=0; showBeast(n-1); ui.gallery.fix={yaw,pose,zoom,pitch}; testTick(false); return this.galleryDraw(); },
+    if(typeof center!=='boolean')return 'no such center: '+center+' (true or false)';
+    pN=0; showBeast(n-1); ui.gallery.fix={yaw,pose,zoom,pitch,center}; testTick(false); return this.galleryDraw(); },
   // draw the creature on show once more and look at what it drew (then drop it again, even when the drawing throws): how many glyphs,
   // how many sparks it threw (a phantom is mostly sparks: its glyphs show only now and then), how many of those glyphs and sparks hold
   // a number that is not finite (place, colour, glyph, size, speed, life), the box the glyphs fill (width and depth across the floor, the lowest and highest point),

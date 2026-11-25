@@ -286,7 +286,15 @@ await withBrowser(
         if (!(top.height > side.height + 1 && top.pitch < side.pitch - 0.5))
           bad.push(`pitch 0.8 で上から見下ろしていない：横から ${JSON.stringify(side)}、上から ${JSON.stringify(top)}`);
       }
-      for (const opt of [{ zoom: 0.4 }, { zoom: 3.1 }, { zoom: NaN }, { pitch: -0.31 }, { pitch: 1.31 }, { pitch: '0.3' }]) {
+      for (const opt of [
+        { zoom: 0.4 },
+        { zoom: 3.1 },
+        { zoom: NaN },
+        { pitch: -0.31 },
+        { pitch: 1.31 },
+        { pitch: '0.3' },
+        { center: 'yes' },
+      ]) {
         const r = __test.galleryShow(1, opt);
         if (typeof r !== 'string') bad.push(`範囲の外の値 ${JSON.stringify(opt, (k, v) => (Number.isNaN(v) ? 'NaN' : v))} を断らなかった`);
       }
