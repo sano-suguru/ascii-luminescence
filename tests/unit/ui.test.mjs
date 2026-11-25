@@ -8,7 +8,6 @@ import * as GR from '../../src/lib/gear.ts';
 import * as HB from '../../src/lib/hotbar.ts';
 import * as LOG from '../../src/lib/log.ts';
 import * as MO from '../../src/lib/monsters.ts';
-import { redraw } from '../../src/lib/redraw.ts';
 import * as RU from '../../src/lib/runes.ts';
 import * as SV from '../../src/lib/save.ts';
 import { gear, msgs, saved, ui } from '../../src/lib/state.ts';
@@ -59,15 +58,25 @@ describe('伝言', () => {
     }));
 });
 
-describe('装備の画面の描き直し（呼び口 redraw.inv）', () => {
-  it('入れる前に呼ぶと止まる。装備の画面が開いている時だけ、拾ったルーンを入れた後に呼ぶ', () =>
+describe('装備の画面の作り直し', () => {
+  it('装備の画面が開いている時だけ、拾ったルーンを入れた後に作り直す（伝言と下の HUD を書いた後）', () =>
     withPage((page) => {
-      const keep = { inv: redraw.inv, hands: gear.hands, bag: gear.bag, invOpen: ui.invOpen, rseen: saved.RSEEN, runeUid: gear.runeUid };
+      const keep = { hands: gear.hands, bag: gear.bag, invOpen: ui.invOpen, rseen: saved.RSEEN, runeUid: gear.runeUid };
       try {
-        expect(() => redraw.inv()).toThrow('redraw.inv');
-        // 呼ばれた時に、伝言と下の HUD がもう書かれているか（描き直しは、伝言と下の HUD の後）
+        // 装備の画面の部品：中身を書いた時に、伝言と下の HUD がもう書かれているかを記録する（中を探す・クリックを受け取る所は、何もしない）
         const seen = [];
-        redraw.inv = () => seen.push([msgs.at(-1)?.html ?? '', page.els.hotbar.innerHTML !== '']);
+        page.els.pack = {
+          id: 'pack',
+          dataset: {},
+          querySelectorAll: () => [],
+          addEventListener: () => {},
+          set innerHTML(v) {
+            seen.push([msgs.at(-1)?.html ?? '', page.els.hotbar.innerHTML !== '', v.includes('装備')]);
+          },
+          get innerHTML() {
+            return '';
+          },
+        };
         gear.hands = { L: GR.newHand('blade'), R: GR.newHand('bolt'), B: { b0: null, b1: null } };
         gear.bag = [];
         saved.RSEEN = new Set();
@@ -84,14 +93,13 @@ describe('装備の画面の描き直し（呼び口 redraw.inv）', () => {
         step(() => AL.placeChosen({ uid: 3, type: 'bolt' }));
         step(() => AL.placeChosen({ uid: 4, type: 'm_chain' }));
         step(() => expect(AL.mergeMod({ uid: 5, type: 'm_chain' })).toBe(true));
-        expect(seen.map(([m, hot]) => [/を手にした|強い版/.test(m), hot])).toEqual([
-          [true, true],
-          [true, true],
-          [true, true],
-          [true, true],
+        expect(seen.map(([m, hot, inv]) => [/を手にした|強い版/.test(m), hot, inv])).toEqual([
+          [true, true, true],
+          [true, true, true],
+          [true, true, true],
+          [true, true, true],
         ]);
       } finally {
-        Object.assign(redraw, { inv: keep.inv });
         Object.assign(gear, { hands: keep.hands, bag: keep.bag, runeUid: keep.runeUid });
         ui.invOpen = keep.invOpen;
         saved.RSEEN = keep.rseen;

@@ -101,15 +101,14 @@ function drawSwing(){
 // what each kind of creature tends to drop, and how much each element hurts it (0 = no effect, 2 = badly)
 const ELEM_OF={l:'fire',Zf:'fire',D:'fire',Zi:'ice',L:'ice',K:'ice',Zl:'thunder',Rc:'thunder',Re:'thunder',Rw:'thunder',S:'poison',n:'poison',N:'poison',B:'poison'};
 // RES は src/lib/runes.ts（src/game/imports.mjs で読む）
-let packSnap=null, packSel=null;
+let packSnap=null;
 try{ saved.BOOK=new Set(JSON.parse(localStorage.getItem('al_book')||'[]')); }catch(e){}
 // ルーンの種類を選ぶ randomRuneType は src/lib/gear.ts（src/game/imports.mjs で読む）
-// cut html to a visible width (text beyond it is dropped), so a long line never widens a fixed box
-function clipHtml(html,w){ if(visW(html)<=w)return html; const box=document.createElement('span'); box.innerHTML=html; let left=w; const walk=n=>{ for(const c of [...n.childNodes]){ if(left<=0){ n.removeChild(c); continue; } if(c.nodeType===3){ let out=''; for(const ch of c.textContent){ const cw=visW(ch); if(cw>left){ left=0; break; } out+=ch; left-=cw; } c.textContent=out; } else walk(c); } }; walk(box); return box.innerHTML; }
+// 幅に合わせて HTML を切る clipHtml は src/lib/text.ts（src/game/imports.mjs で読む）
 // called only when a run starts, after the page has loaded (saved.RSEEN is filled from al_runes in 25-gallery.js; before that it is an empty placeholder)
 function resetRunes(){ fight.trigCd={L:0,R:0}; fight.hitSrcPoint=null;
   gear.hands={L:newHand('blade'), R:newHand('orb'), B:{b0:null,b1:null}};
-  gear.bag=[]; gear.builds=[null,null,null]; gear.buildIdx=-1; gear.castSt=null; gear.swapSt=null; packSel=null; fight.beamSegs=[]; fight.clouds=[];
+  gear.bag=[]; gear.builds=[null,null,null]; gear.buildIdx=-1; gear.castSt=null; gear.swapSt=null; ui.packSel=null; fight.beamSegs=[]; fight.clouds=[];
   adv.runState={startChosen:false,altar1:false,taken:new Set(),lordsDone:new Set(),bodyOpen:0}; saved.LEGEND=null; finalSt=null; adv.won=false; renderHotbar();
   try{ if(!saved.RSEEN.has('blade')||!saved.RSEEN.has('bolt')){ saved.RSEEN.add('blade'); saved.RSEEN.add('bolt'); saveSet('al_runes',saved.RSEEN); } }catch(e){}
 }

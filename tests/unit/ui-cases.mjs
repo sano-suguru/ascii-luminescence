@@ -2,7 +2,7 @@
 // 返す値と、画面に書いた HTML（偽の画面の部品）・保存した物（偽の localStorage）・手と袋と見たルーンの変わり方を、1つの文字列にまとめる。
 // F は関数をまとめた物。ui.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
 // 1つの場合では、手（武器・枠・体の枠）・袋・詠唱・付け替え・加護・体力・近くの祭壇をシードの乱数で作り、関数を3つ続けて呼ぶ。
-// 装備の画面は閉じたままにする（開いている時の描き直しは、ui.test.mjs が呼び口 redraw.inv で別に確かめる）。
+// 装備の画面は閉じたままにする（開いている時の作り直しは ui.test.mjs が、装備の画面そのものはブラウザの tests/inventory.mjs が確かめる）。
 // テストを .mjs で書くのは、偽の画面の部品と偽の localStorage を、本物の型に合わせられないため。
 // 書き換えた状態（gear・adv・saved・ui・here・player・msgs）と、document・localStorage・performance.now は、終わったら元に戻す。
 import { mulberry32 } from '../../src/lib/rng.ts';
