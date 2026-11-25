@@ -403,6 +403,46 @@ await withBrowser(
       const cR = await cam();
       if (Math.abs(cR.camera.dist - c0.camera.dist) > 0.01 || Math.abs(cR.camera.pitch - c0.camera.pitch) > 0.01)
         errs.push(`図鑑：R で寄りと角度が戻らない：はじめ ${JSON.stringify(c0.camera)}、R の後 ${JSON.stringify(cR.camera)}`);
+      // 初めて縦にドラッグした時、カメラが跳ばない（見下ろす角度は今の角度から、狙う点までの距離は今の距離から始まる）
+      await pg.mouse.move(480, 80);
+      await pg.mouse.down();
+      await pg.mouse.move(480, 81);
+      await advance(pg, 0.1);
+      const cTilt = await cam();
+      await pg.mouse.up();
+      if (Math.abs(cTilt.camera.aimed - cR.camera.aimed) > 0.05 || Math.abs(cTilt.camera.height - cR.camera.height) > 0.05)
+        errs.push(`図鑑：初めて縦にドラッグした時に、カメラが跳ぶ：${JSON.stringify(cR.camera)} → ${JSON.stringify(cTilt.camera)}`);
+      await pg.keyboard.press('KeyR');
+      // 横向きのホイール（deltaY が 0）では寄りも引きもせず、トラックパッドの小さな動きは小さく寄る
+      await pg.evaluate(() =>
+        document
+          .querySelector('canvas')
+          .dispatchEvent(new WheelEvent('wheel', { deltaX: 100, deltaY: 0, bubbles: true, cancelable: true })),
+      );
+      await advance(pg, 0.1);
+      const cSide = await cam();
+      if (Math.abs(cSide.camera.dist - c0.camera.dist) > 0.01)
+        errs.push(`図鑑：横向きのホイールで寄りが変わった：${c0.camera.dist} → ${cSide.camera.dist}`);
+      await pg.mouse.wheel(0, -10);
+      await advance(pg, 0.1);
+      const cSmall = await cam();
+      if (!(cSmall.camera.dist < c0.camera.dist && cSmall.camera.dist > c0.camera.dist * 0.97))
+        errs.push(`図鑑：小さなホイールの動きで、寄らないか寄りすぎる：${c0.camera.dist} → ${cSmall.camera.dist}`);
+      await pg.keyboard.press('KeyR');
+      // ボタンを離したのに mouseup が届かなかった時（ほかのウィンドウに移った時など）：ボタンを押さずに動かしても回らない
+      await pg.mouse.move(480, 80);
+      await pg.mouse.down();
+      await advance(pg, 0.1);
+      const cLost = await cam();
+      await pg.evaluate(() => {
+        for (const x of [500, 700]) window.dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: 80, buttons: 0 }));
+      });
+      await advance(pg, 0.1);
+      const cFree = await cam();
+      await pg.mouse.up();
+      if (Math.abs(cFree.turn - cLost.turn) > 0.01)
+        errs.push(`図鑑：ボタンを押さずに動かしても、ドラッグが続く：${cLost.turn} → ${cFree.turn}`);
+      await pg.keyboard.press('KeyR');
       // ← → で移ると戻る（寄ってから、隣へ移って、また戻る）
       for (let i = 0; i < 4; i++) await pg.mouse.wheel(0, -100);
       await pg.keyboard.press('ArrowRight');
