@@ -59,6 +59,15 @@ export interface Ui {
   altarOpen: boolean;
   /** 今いる近くの、灯った祭壇の組（祭壇の真ん中の台から1.5より近い時。無ければ null。祭壇の画面が開いている間は、開いた時の組のまま） */
   altarNear: string | null;
+  /** 装備の画面で選んでいるルーン（袋から選んだ物か、手の枠 h・s から選んだ物。無ければ null） */
+  packSel: { ru: Rune; from: 'bag' } | { ru: Rune; from: 'slot'; h: 'L' | 'R' | 'B'; s: string } | null;
+  /** 装備の画面で、マウスを乗せているルーン（下の説明の5行に出す） */
+  packHover: Rune | null;
+  /** 装備の画面で、袋のルーンを最後に押した時（ルーンの番号 u と時刻 t。続けて押すと、自動ではめる） */
+  packClick: { u: number; t: number };
+  /** 装備の画面の袋の、種類ごとの今のページと、ページの数 */
+  bagPage: Record<string, number>;
+  bagPageN: Record<string, number>;
   /** デバッグの画面（F2） */
   dbgOpen: boolean;
   /** 年代記の画面 */
@@ -80,6 +89,11 @@ export const ui: Ui = {
   lvlOpen: false,
   altarOpen: false,
   altarNear: null,
+  packSel: null,
+  packHover: null,
+  packClick: { u: 0, t: 0 },
+  bagPage: { atk: 0, elem: 0, trig: 0 },
+  bagPageN: { atk: 1, elem: 1, trig: 1 },
   dbgOpen: false,
   chronOn: false,
   uiMode: 0,

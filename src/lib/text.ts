@@ -82,3 +82,34 @@ export function wrapPlain(str: string, w: number): string[] {
   if (line) out.push(line);
   return out;
 }
+/** HTML を、見える幅 w（visW で数える）までに切る（タグは残し、はみ出した文字と、その後ろの物を消す）。画面の部品で切るので、ブラウザで使う */
+export function clipHtml(html: string, w: number): string {
+  if (visW(html) <= w) return html;
+  const box = document.createElement('span');
+  box.innerHTML = html;
+  let left = w;
+  const walk = (n: Node): void => {
+    // oxlint-disable-next-line unicorn/no-useless-spread -- 回しながら消すので、childNodes（消すと縮む）を先に配列に写す
+    for (const c of [...n.childNodes]) {
+      if (left <= 0) {
+        n.removeChild(c);
+        continue;
+      }
+      if (c.nodeType === 3) {
+        let out = '';
+        for (const ch of c.textContent ?? '') {
+          const cw = visW(ch);
+          if (cw > left) {
+            left = 0;
+            break;
+          }
+          out += ch;
+          left -= cw;
+        }
+        c.textContent = out;
+      } else walk(c);
+    }
+  };
+  walk(box);
+  return box.innerHTML;
+}

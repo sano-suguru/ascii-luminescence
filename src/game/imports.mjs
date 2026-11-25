@@ -2,7 +2,7 @@
 // 包みの関数の前（モジュールの一番上）に置かれる（tools/game-source.mjs の gameSource）。ここで読んだ名前は、どのファイルからも使える。
 // src/game/ から TypeScript に移した物は、ここに足す。
 import { clamp, mulberry32 } from '../lib/rng.ts';
-import { boxText, padTo, visW, wrapPlain } from '../lib/text.ts';
+import { boxText, clipHtml, padTo, visW, wrapPlain } from '../lib/text.ts';
 import { makeHistory } from '../lib/history.ts';
 import { G, RAMP_CH, RUNESET, RUNE_CHARS, SWAPSET, WG } from '../lib/glyphs.ts';
 import { R, RI, mpick, mr, pick, rand, roll, shuffle } from '../lib/random.ts';
@@ -50,11 +50,10 @@ import { LANTERN, topLights } from '../lib/light.ts';
 import { flowW, jagged, lerpAngle, mCenter, sstep, turnDir } from '../lib/math.ts';
 import { css, hsl2rgb } from '../lib/color.ts';
 import {
-  CAT_BR, CAT_NAME, ELEM_POW, REACT, RUNE_FONT, RUNE_TYPES, RALLY_FROM, SLEEP_MULT, SLOT_MAX, TIER_COL, TL, TRAITS, TRAIT_V, TWO_SLOTS, WEAPON, elemCount, emptyChip, handRunes, serRune, sp_elem, trList, trName, tv, weaponCol,
-  RES, RUNE_DEF, detailLines, elemCol, handName, modVal, modWorks, rollTraits, runeCol, runeName, runeShort, syncHand, thingLabel,
+  CAT_BR, CAT_NAME, ELEM_POW, REACT, RUNE_FONT, RUNE_TYPES, RALLY_FROM, SLEEP_MULT, SLOT_MAX, TIER_COL, TL, TRAITS, TRAIT_V, WEAPON, elemCount, handRunes, serRune, sp_elem, trList, trName, tv, RES, RUNE_DEF, detailLines, elemCol, modVal, modWorks, rollTraits, runeCol, runeName, syncHand, thingLabel,
 } from '../lib/runes.ts';
 import {
-  allRunes, atkType, bodyN, canPutAt, effHand, equipWeapon, freeSlotFor, handsKey, isTwo, makeRune, makeStrong, newHand, randomRuneType, restoreHands, slotSet, snapHands, syncHands, turnElem, wTL,
+  allRunes, atkType, bodyN, effHand, equipWeapon, handsKey, isTwo, makeRune, makeStrong, newHand, randomRuneType, restoreHands, snapHands, syncHands, turnElem, wTL,
 } from '../lib/gear.ts';
 import { BLESS, META_DEF, UNLOCKS, expNeed, expOf } from '../lib/progress.ts';
 import { MTYPES } from '../lib/creatures.ts';
@@ -66,7 +65,7 @@ import { VAULTS } from '../lib/vaults.ts';
 import { generateLevel } from '../lib/generate.ts';
 import { LOGO_ART, TITLE_LINES } from '../lib/title.ts';
 import { DUST_N, DYN_MAX, DYN_VS, GAS_N, GLYPH_FS, P0, PT_FS, PT_TOTAL, PT_VS, P_MAX, STATIC_VS, WATER_FS, WATER_VS } from '../lib/shaders.ts';
-import { ALTAR_W, BAG_LINES, LIGHT_COLS, LIGHT_NAMES, MARK_H, MCH, MCW, MMC, MMR, MPAD, PACK_SLOT, PACK_W, tone } from '../lib/hud.ts';
+import { ALTAR_W, LIGHT_COLS, LIGHT_NAMES, MARK_H, MCH, MCW, MMC, MMR, MPAD, tone } from '../lib/hud.ts';
 import { AVATAR_TY, BRANCH_HINT, DECO_K, DECO_NAMES, DUMMY_KINDS, FIX_NAMES, LEGEND_KINDS, LEGEND_ORDER, LORD_GAL, TRAP_INFO, lookLine, mname } from '../lib/names.ts';
 import { CHANT_STEPS, SND_LV, SND_NAME, VOWELS, sEnv } from '../lib/sound.ts';
 import {
@@ -79,7 +78,7 @@ import { lockedOf, trialOn, unlocked, weaponPool } from '../lib/unlocks.ts';
 import { levelSeed } from '../lib/levels.ts';
 import { msg, renderLog } from '../lib/log.ts';
 import { renderHotbar } from '../lib/hotbar.ts';
-import { redraw } from '../lib/redraw.ts';
+import { applyBuild, renderInv } from '../lib/inventory.ts';
 import { saveMeta, saveSet } from '../lib/save.ts';
 import { BL, statOf } from '../lib/monsters.ts';
 // three.js（r147）。npm の three から読んで、組み立てに入れる（CDN からは読まない）。
