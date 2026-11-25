@@ -108,7 +108,8 @@ if(TEST)window.__test={
   failLater(message){ later(0,()=>{ throw new Error(message); }); },
   // count the cells in sight now (the game does it every 0.1 s; a check that looks every frame should not miss a short moment)
   fov(){ computeFOV(); },
-  summon(key,i){ if(!MTYPES[key])return 'no such creature: '+key; summon(key,i); return here.monsters.length; },
+  // unseen: put it down as not seen yet, so the first sight of it gives its line (summon itself counts it as seen)
+  summon(key,i,{unseen=false}={}){ if(!MTYPES[key])return 'no such creature: '+key; const m=summon(key,i); if(unseen)m.seen=false; return here.monsters.length; },
   // the bestiary, opened from the title (as its button does) if it is not open: every entry in order, n counted from 1
   gallery(){ if(!(ui.gallery&&ui.gallery.mode==='beast')){ if(ui.started)return 'the bestiary opens from the title'; openBestiary(); }
     return ui.gallery.list.map((e,i)=>({n:i+1,key:e.key,name:e.ty.name,form:e.ty.form})); },
