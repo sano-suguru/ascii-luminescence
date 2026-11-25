@@ -1,12 +1,12 @@
 // テストの道具：階に置いてある物を描く処理（src/lib/fixtures.ts）・火と術の跡を描く処理（fx.ts）・先にある物の手がかりと階段の封（omens.ts）・
 // 伝説の物の読み方と描く処理（legend.ts）・特別な階の場所（levels.ts の interAt・interAfter）・天井の高さ（lightmap.ts の ceilAt）を、たくさんの場合で呼び、
-// 返す値と、置いた文字と粒子の配列の中身・見た目の乱数を引いた数・伝言・偽の Web Audio の記録・状態の変わり方を、1つの文字列にまとめる。
+// 返す値と、置いた文字と粒子の配列の中身・見た目の乱数と音の乱数を引いた数・伝言・偽の Web Audio の記録・状態の変わり方を、1つの文字列にまとめる。
 // F は関数をまとめた物。draw.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
 // 階は Node で本物の迷宮を生成する（gen-places.ts の全部の場所。本物の備品・扉・灯り・巣・階段が要るため）ので、迷宮の生成を変えると、この指紋も変わる。
 // 1つの場合では、本物の階に、全部の種類の備品・巣・泉・墓・伝説の物・燃えるマス・凍ったマス・稲妻・床の目印・魔法の場・生き物（扉のそば・クモ・階段の番）を
 // シードの乱数で足し、プレイヤーをどれかのそばに置いて、関数を続けて呼ぶ。
 // テストを .mjs で書くのは、偽の画面の部品・偽の Web Audio を、本物の型に合わせられないため。
-// 書き換えた状態と、document・window・Math.random は、終わったら元に戻す。
+// 書き換えた状態と、document・window・Math.random・音の乱数は、終わったら元に戻す。
 import { sndInit } from '../../src/lib/audio.ts';
 import { MTYPES } from '../../src/lib/creatures.ts';
 import { makeHistory } from '../../src/lib/history.ts';
@@ -14,6 +14,7 @@ import { getLegend } from '../../src/lib/legend.ts';
 import { jagged } from '../../src/lib/math.ts';
 import { LEGEND_ORDER } from '../../src/lib/names.ts';
 import { P, dCol, dPar, dPos } from '../../src/lib/particles.ts';
+import { setSoundRand } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 import { RUNE_TYPES } from '../../src/lib/runes.ts';
 import { SND, adv, blaze, buf, clock, fight, here, msgs, player, saved, ui, vfx } from '../../src/lib/state.ts';
@@ -115,6 +116,8 @@ export async function drawCases(F, seeds) {
     lord: MTYPES['lord'],
     X: MTYPES['X'],
     random: Math.random,
+    // 音の乱数（入れ替えて、元の物を覚える）
+    sound: setSoundRand(Math.random),
     msgs: [...msgs],
   };
   const els = { log: { innerHTML: '' } },
@@ -141,6 +144,10 @@ export async function drawCases(F, seeds) {
       let mrN = 0;
       const mrSrc = mulberry32(s * 7919 + 3);
       Math.random = () => (mrN++, mrSrc());
+      // 音の乱数も、場合ごとのシードで決め、引いた数を数える
+      let sndN = 0;
+      const sndSrc = mulberry32(s * 104729 + 5);
+      setSoundRand(() => (sndN++, sndSrc()));
       const place = chance(0.1) ? final : chance(0.5) ? pick(odd) : pick(PLACES);
       adv.runSeed = (r() * 4294967296) >>> 0;
       Object.assign(here, { depth: place.depth, branch: place.branch ?? null, realm: place.realm ?? null, inter: place.inter ?? null });
@@ -413,6 +420,7 @@ export async function drawCases(F, seeds) {
         buf.dn = 0;
         const pN0 = buf.pN,
           mr0 = mrN,
+          snd0 = sndN,
           al0 = alog.length,
           ms0 = msgs.length;
         let ret,
@@ -431,6 +439,7 @@ export async function drawCases(F, seeds) {
           pN: buf.pN - pN0,
           pts: buf.pN > pN0 ? Object.values(P).map((A) => hashArr(A, pN0, buf.pN)) : [],
           mr: mrN - mr0,
+          sndRand: sndN - snd0,
           snd: fnv(text(alog.slice(al0))),
           msg: msgs.slice(ms0).map((m) => m.html),
         });
@@ -456,6 +465,7 @@ export async function drawCases(F, seeds) {
   } finally {
     restoreGlobals();
     Math.random = keep.random;
+    setSoundRand(keep.sound);
     restore(here, keep.here);
     Object.assign(adv, keep.adv);
     restore(player, keep.player);

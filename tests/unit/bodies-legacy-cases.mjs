@@ -2,7 +2,7 @@
 // たくさんの場合で呼び、結果を1つの文字列にまとめる。bodies-legacy.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
 // F は関数をまとめた物。形の場合は、種類ごとに見た目の乱数（Math.random）をシードで決めてから作り、点の並びを数える。
 // テストを .mjs で書くのは、偽の画面の部品・偽の Web Audio・偽の localStorage を、本物の型に合わせられないため。
-// 書き換えた状態と、document・localStorage・setTimeout・Math.random は、終わったら元に戻す。
+// 書き換えた状態と、document・localStorage・setTimeout・Math.random・音の乱数は、終わったら元に戻す。
 import { MTYPES } from '../../src/lib/creatures.ts';
 import { makeHistory } from '../../src/lib/history.ts';
 import { makeBeastType } from '../../src/lib/bodies/lords.ts';
@@ -13,6 +13,7 @@ import { P_MAX } from '../../src/lib/shaders.ts';
 import { SND, adv, buf, clock, here, msgs, player, vfx } from '../../src/lib/state.ts';
 import { FINAL_DEPTH } from '../../src/lib/world.ts';
 import { adder } from '../../src/lib/bodies/kit.ts';
+import { setSoundRand } from '../../src/lib/random.ts';
 import { fakeAudio } from './fake-audio.mjs';
 import { swapGlobals } from './ui-cases.mjs';
 
@@ -32,14 +33,16 @@ const hashArr = (a, from, to) => {
   for (let i = 0; i < b.length; i++) h = Math.imul(h ^ (b[i] ?? 0), 0x01000193);
   return (h >>> 0).toString(16).padStart(8, '0');
 };
-/** Math.random をシードの乱数に入れ替えて f を呼ぶ */
+/** Math.random と音の乱数（別の並び）をシードの乱数に入れ替えて f を呼ぶ */
 function seeded(seed, f) {
-  const keep = Math.random;
+  const keep = Math.random,
+    keepSound = setSoundRand(mulberry32(seed + 0x5bd1e995));
   Math.random = mulberry32(seed);
   try {
     return f();
   } finally {
     Math.random = keep;
+    setSoundRand(keepSound);
   }
 }
 

@@ -53,7 +53,11 @@ describe('移す前と同じ', () => {
     expect([lines.length, names.size, msgs.size]).toEqual([300, 25, 4]);
     expect(calls.filter((c) => c.dn > 0).length).toBeGreaterThan(1000);
     expect(calls.filter((c) => c.pN > 0).length).toBeGreaterThan(300);
+    // 音の乱数（sndRand）を引く場合も通る（手がかりの音の間隔・階段の封のうなり声・音を鳴らす処理）
+    expect(new Set(calls.filter((c) => c.sndRand > 0).map((c) => c.name))).toEqual(
+      new Set(['drawOmens', 'omenSound', 'drawFixtures', 'drawStairSeal']),
+    );
     expect(calls.filter((c) => c.threw).length).toBeLessThan(5);
-    expect([fnv(all), all.length]).toEqual(['b97b9f25', 5466965]);
+    expect([fnv(all), all.length]).toEqual(['650c64a1', 5517227]);
   }, 60000);
 });

@@ -103,7 +103,7 @@ function updateGallery(dt){
     const ease=Math.min(1,dt*GAL_EASE);
     if(!fix&&g.view){ g.view.aimS=g.view.aimS===undefined?ty2:g.view.aimS+(ty2-g.view.aimS)*ease; ty2=g.view.aimS; }
     // a zoom in stops outside a ball round the point the camera looks at, wide enough to hold every point of the body (worked out again when the shape or that point changes)
-    if(cam&&zoom>1&&shape&&(cam.bodyFor!==shape||Math.abs(cam.bodyAt-ty2)>0.01)){ cam.bodyFor=shape; cam.bodyAt=ty2; cam.bodyR=shape.reduce((r,p)=>Math.max(r,Math.hypot((p.x||0)*sc,(p.y||0)*sc+m.y-ty2,(p.z||0)*sc)),0); }
+    if(cam&&zoom>1&&shape&&(cam.bodyFor!==shape||Math.abs(cam.bodyAt-ty2)>0.01)){ cam.bodyFor=shape; cam.bodyAt=ty2; cam.bodyR=shape.reduce((r,p)=>p.part==='train'?r:Math.max(r,Math.hypot((p.x||0)*sc,(p.y||0)*sc+m.y-ty2,(p.z||0)*sc)),0); }
     const ball=cam&&zoom>1&&cam.bodyR!==undefined?cam.bodyR+0.8:0;
     const want=(3.0+2.0*sc)*tall/zoom, a=g.room.dir+0.25; let R=Math.max(Math.min(2,2/zoom),ball,Math.min(want,g.room.far-0.8));
     if(!fix&&g.view){ g.view.rS=g.view.rS===undefined?R:g.view.rS+(R-g.view.rS)*ease; R=g.view.rS; } g.rNow=R;

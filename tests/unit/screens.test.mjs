@@ -1,6 +1,7 @@
 // 粒子と世界の中に置く文字（src/lib/particles.ts）・頭の上の印（status.ts の drawMark）・装備の画面の開け閉めと付け替えの詠唱（inventory.ts）・
 // マウスを捕まえる・視点・音量（screens.ts）の単体テスト。
-// 指紋の値は、移す前の古い JS（src/game/05・12・15・16・27・28）でも同じになる（screens-cases.mjs の場合を、古い関数で数えて確かめた）。
+// 指紋の値は、移す前の古い JS（src/game/05・12・15・16・27・28）で数えた値から、音が見た目の乱数を引かず、音の乱数（sndRand）を使う分だけ違う
+// （音の乱数を Math.random に回すと、古い JS と同じ値になる。screens-cases.mjs の場合を、古い関数で数えて確かめた）。
 // テストを .mjs で書くのは、偽の画面の部品を、本物の型に合わせられないため。
 import { describe, expect, it } from 'vitest';
 import * as INV from '../../src/lib/inventory.ts';
@@ -53,6 +54,6 @@ describe('移す前と同じ', () => {
       calls.some((c) => c.f === 'setInv' && !c.on && c.swap),
       cases.some((c) => c.calls.some((x) => x.grew === 16) && c.log.some((e) => e[1] === 'start')),
     ]).toEqual([true, true, true, true]);
-    expect([fnv(all), all.length]).toEqual(['6312d34d', 739393]);
+    expect([fnv(all), all.length]).toEqual(['df06fba5', 739383]);
   });
 });

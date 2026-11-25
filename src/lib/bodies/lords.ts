@@ -224,7 +224,7 @@ export function shadowKingForm(): Body {
   // cracks of cold light (part 'crack', each with a health threshold) open as it weakens, letting the starry dark show through
   const pts: Body = [],
     S = 0.08,
-    ZS = 0.75; // the cloak is flatter front to back
+    ZS = 0.9; // the cloak is a little flatter front to back
   const EDGE: Color = [0.88, 0.84, 1.0],
     DARK: Color = [0.26, 0.18, 0.42],
     SHARD: Color = [0.92, 0.9, 1.0],
@@ -290,6 +290,26 @@ export function shadowKingForm(): Body {
         continue;
       }
       skin(nx * r, y, nz * r * ZS, nx, nz, y < 1.0 ? 'robe' : 'body', nx > 0 ? -slope : slope);
+    }
+  }
+  // the train: the back of the cloak runs on along the floor behind, longest in the middle, its edge bright; it lies still on the floor (part 'train' has no motion)
+  const back0 = shadowCloakHalf(0) * ZS;
+  for (let ix = -9; ix <= 9; ix++) {
+    const x = (ix / 9) * 0.62; // counted by a whole number, so both edges are placed
+    const len = 0.7 * Math.sqrt(Math.max(0, 1 - (x / 0.66) ** 2));
+    for (let d = 0.08; d <= len; d += 0.09) {
+      const edge = d + 0.09 > len;
+      if (!edge && mr() < 0.35) continue;
+      lit(
+        x * (1 - d * 0.15),
+        0.03,
+        -back0 - d,
+        edge ? mpick(['~', ',', '.']) : mpick(['~', ':', '.']),
+        S,
+        edge ? 1.5 : 0.5,
+        edge ? EDGE : DARK,
+        'train',
+      );
     }
   }
   // rags hanging from the torn edge, swaying

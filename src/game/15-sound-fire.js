@@ -162,8 +162,8 @@ function updateEvents(dt,t){
         while(ev.t>=step&&ev.k<ev.order.length&&ev.k<ev.max){ ev.t-=step; const i=ev.order[ev.k++]; const [x,z]=cpos(i);
           if(lava&&(Math.hypot(x-player.x,z-player.z)<1.6||here.monsters.some(m=>!m.ty.flier&&m.cz*MW+m.cx===i))){ ev.order.push(i); continue; }
           changed=true;
-          if(lava){ here.D.liquid[i]=LQ_LAVA; blaze.cellFlag[i]=70; for(const j of [i+1,i-1,i+MW,i-MW])if(j>=0&&j<NCELL&&blaze.fuel[j]>0)ignite(j,0.6,false); if(here.D.gas[i]>0.1)boom(i); if(mr()<0.3)sBubble(x,z,0.25,true); }
-          else { here.D.liquid[i]=LQ_WATER; blaze.cellFlag[i]=50; blaze.fire[i]=0; blaze.fuel[i]=0; if(mr()<0.2)sSplash(0.12); } }
+          if(lava){ here.D.liquid[i]=LQ_LAVA; blaze.cellFlag[i]=70; for(const j of [i+1,i-1,i+MW,i-MW])if(j>=0&&j<NCELL&&blaze.fuel[j]>0)ignite(j,0.6,false); if(here.D.gas[i]>0.1)boom(i); if(sndRand()<0.3)sBubble(x,z,0.25,true); }
+          else { here.D.liquid[i]=LQ_WATER; blaze.cellFlag[i]=50; blaze.fire[i]=0; blaze.fuel[i]=0; if(sndRand()<0.2)sSplash(0.12); } }
         if(changed)uploadCells();
         if(ev.k>=ev.order.length||ev.k>=ev.max)ev.state=2;
       }
