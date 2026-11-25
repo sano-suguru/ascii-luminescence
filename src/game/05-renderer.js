@@ -84,8 +84,7 @@ function buildAtlas(){
 }
 
 // ---------------------------------------------------------------- dynamic glyph billboards
-// DYN_MAX は src/lib/shaders.ts（src/game/imports.mjs で読む）
-const dPos=new Float32Array(DYN_MAX*3), dCol=new Float32Array(DYN_MAX*3), dPar=new Float32Array(DYN_MAX*4);
+// 置く文字の配列 dPos・dCol・dPar と、文字を置く dyn は src/lib/particles.ts、置いた数 buf.dn は src/lib/state.ts（src/game/imports.mjs で読む）
 const dynGeo=new T.InstancedBufferGeometry();
 { const pg=new T.PlaneGeometry(1,1); dynGeo.index=pg.index; dynGeo.setAttribute('position',pg.attributes.position); dynGeo.setAttribute('uv',pg.attributes.uv); }
 const aPos=new T.InstancedBufferAttribute(dPos,3).setUsage(T.DynamicDrawUsage);
@@ -93,33 +92,18 @@ const aCol=new T.InstancedBufferAttribute(dCol,3).setUsage(T.DynamicDrawUsage);
 const aPar=new T.InstancedBufferAttribute(dPar,4).setUsage(T.DynamicDrawUsage);
 dynGeo.setAttribute('iPos',aPos); dynGeo.setAttribute('iCol',aCol); dynGeo.setAttribute('iP',aPar);
 dynGeo.instanceCount=0;
-let dn=0;
-function dyn(x,y,z,g,size,r,gg,b,mode,yaw){
-  if(dn>=DYN_MAX)return; const i3=dn*3, i4=dn*4;
-  dPos[i3]=x; dPos[i3+1]=y; dPos[i3+2]=z; dCol[i3]=r; dCol[i3+1]=gg; dCol[i3+2]=b;
-  dPar[i4]=g; dPar[i4+1]=size; dPar[i4+2]=mode||0; dPar[i4+3]=yaw||0; dn++;
-}
 function flushDyn(){
-  dynGeo.instanceCount=dn;
-  for(const [a,s] of [[aPos,3],[aCol,3],[aPar,4]]){ a.updateRange.offset=0; a.updateRange.count=Math.max(1,dn*s); a.needsUpdate=true; }
+  dynGeo.instanceCount=buf.dn;
+  for(const [a,s] of [[aPos,3],[aCol,3],[aPar,4]]){ a.updateRange.offset=0; a.updateRange.count=Math.max(1,buf.dn*s); a.needsUpdate=true; }
 }
 
 // ---------------------------------------------------------------- particles
-// DUST_N・GAS_N・P_MAX・PT_TOTAL・P0 は src/lib/shaders.ts（src/game/imports.mjs で読む）
+// DUST_N・GAS_N・PT_TOTAL・P0 は src/lib/shaders.ts（src/game/imports.mjs で読む）
 const ptPos=new Float32Array(PT_TOTAL*3), ptCol=new Float32Array(PT_TOTAL*3), ptSize=new Float32Array(PT_TOTAL), ptGly=new Float32Array(PT_TOTAL);
 const ptGeo=new T.BufferGeometry();
 const bpPos=new T.BufferAttribute(ptPos,3).setUsage(T.DynamicDrawUsage), bpCol=new T.BufferAttribute(ptCol,3).setUsage(T.DynamicDrawUsage),
       bpSize=new T.BufferAttribute(ptSize,1).setUsage(T.DynamicDrawUsage), bpGly=new T.BufferAttribute(ptGly,1).setUsage(T.DynamicDrawUsage);
 ptGeo.setAttribute('position',bpPos); ptGeo.setAttribute('aCol',bpCol); ptGeo.setAttribute('aSize',bpSize); ptGeo.setAttribute('aGlyph',bpGly);
 const dust={x:new Float32Array(DUST_N),y:new Float32Array(DUST_N),z:new Float32Array(DUST_N),ph:new Float32Array(DUST_N),g:new Float32Array(DUST_N),s:new Float32Array(DUST_N)};
-const P={x:new Float32Array(P_MAX),y:new Float32Array(P_MAX),z:new Float32Array(P_MAX),vx:new Float32Array(P_MAX),vy:new Float32Array(P_MAX),vz:new Float32Array(P_MAX),
-  age:new Float32Array(P_MAX),life:new Float32Array(P_MAX),r:new Float32Array(P_MAX),g:new Float32Array(P_MAX),b:new Float32Array(P_MAX),gl:new Float32Array(P_MAX),
-  sz:new Float32Array(P_MAX),ty:new Uint8Array(P_MAX),ph:new Float32Array(P_MAX)};
-const PF=Object.values(P);
-let pN=0;
-function spawn(x,y,z,vx,vy,vz,life,gl,sz,r,g,b,ty){
-  if(pN>=P_MAX)return; const i=pN++;
-  P.x[i]=x;P.y[i]=y;P.z[i]=z;P.vx[i]=vx;P.vy[i]=vy;P.vz[i]=vz;P.age[i]=0;P.life[i]=life;P.gl[i]=gl;P.sz[i]=sz;P.r[i]=r;P.g[i]=g;P.b[i]=b;P.ty[i]=ty;P.ph[i]=mr()*100;
-}
-function killP(i){ const j=--pN; if(i!==j)for(const a of PF)a[i]=a[j]; }
+// 粒子の配列 P と、粒子を出す spawn・消す killP は src/lib/particles.ts、生きている数 buf.pN は src/lib/state.ts（src/game/imports.mjs で読む）
 

@@ -126,13 +126,9 @@ function solidAt(x,z,r){
 
 // ---------------------------------------------------------------- input
 // keys は src/lib/state.ts（src/game/imports.mjs で読む。丸ごと入れ替えないので、名前はそのまま）
-let dragging=false, lmx=0, lmy=0, plFailed=false;
-const introEl=document.getElementById('intro'), resumeEl=document.getElementById('resume');
-function updateResume(){ resumeEl.style.display='none'; }
-function tryLock(){
-  if(plFailed||!canvas.requestPointerLock)return;
-  try{ const p=canvas.requestPointerLock(); if(p&&p.catch)p.catch(()=>{ plFailed=true; updateResume(); }); }catch(e){ plFailed=true; }
-}
+let dragging=false, lmx=0, lmy=0;
+const introEl=document.getElementById('intro');
+// マウスを捕まえる tryLock・「クリックで視点操作に戻る」の一言 updateResume は src/lib/screens.ts、捕まえられなかったか ui.plFailed は src/lib/state.ts（src/game/imports.mjs で読む）
 document.addEventListener('pointerlockchange',()=>{ const was=ui.locked; ui.locked=document.pointerLockElement===canvas; if(ui.locked&&ui.menuOpen)setMenu(false); if(was&&!ui.locked&&ui.started&&!adv.dead&&!ui.invOpen)setMenu(true); updateResume(); });
-document.addEventListener('pointerlockerror',()=>{ plFailed=true; updateResume(); msg('<b style="color:#8fe9ff">i</b>マウスをドラッグして視点を動かせます。'); });
+document.addEventListener('pointerlockerror',()=>{ ui.plFailed=true; updateResume(); msg('<b style="color:#8fe9ff">i</b>マウスをドラッグして視点を動かせます。'); });
 let startDepth=1;

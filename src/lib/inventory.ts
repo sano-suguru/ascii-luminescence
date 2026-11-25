@@ -1,10 +1,25 @@
 // 装備の画面（もとは src/game/27-rune-screen.js）。状態の入れ物 gear（両手・袋・ビルド）・ui（選んでいるルーンなど）・adv（体の枠）に頼り、画面の #pack に書く。
 // 大きさの決まった画面を、中身が変わるたびに作り直す。マウスを乗せる・選ぶ時は、下の説明の5行と枠の印だけを変える。
-// 画面を開け閉めする・付け替えの詠唱は、古い JS（27-rune-screen.js の setInv・startSwap）にある。
+// 画面を開け閉めする setInv と、閉じた時に両手が変わっていればする付け替えの詠唱 startSwap も、ここにある。
 import { lookup, must, nth } from './array.ts';
+import { nearStele } from './altars.ts';
 import { sChime } from './audio.ts';
 import { cssOf } from './color.ts';
-import { type Side, allRunes, canPutAt, effHand, equipWeapon, freeSlotFor, handsKey, isTwo, slotSet, syncHands } from './gear.ts';
+import {
+  type HandsSnap,
+  type Side,
+  allRunes,
+  canPutAt,
+  effHand,
+  equipWeapon,
+  freeSlotFor,
+  handsKey,
+  isTwo,
+  slotSet,
+  snapHands,
+  syncHands,
+} from './gear.ts';
+import { G } from './glyphs.ts';
 import { renderHotbar } from './hotbar.ts';
 import { BAG_LINES, PACK_SLOT, PACK_W } from './hud.ts';
 import {
@@ -27,7 +42,11 @@ import {
   syncHand,
   weaponCol,
 } from './runes.ts';
-import { type Hands, adv, gear, player, ui } from './state.ts';
+import { spawn } from './particles.ts';
+import { mr } from './random.ts';
+import { tryLock, updateResume } from './screens.ts';
+import { type Hands, adv, fight, gear, player, ui } from './state.ts';
+import { isPaused } from './status.ts';
 import { boxText, clipHtml, padTo, visW } from './text.ts';
 import { unlocked } from './unlocks.ts';
 
@@ -448,4 +467,55 @@ export function applyBuild(k: number): boolean {
   gear.buildIdx = k;
   syncHands();
   return handsKey() !== before;
+}
+
+/**
+ * 付け替えの詠唱を始める（1.5秒。その間は詠唱できない。prev は付け替える前の両手で、詠唱が途切れたら戻す）。溜めている術と光線は止める。
+ * 石碑のそばでは、詠唱せずにすぐ替わる（鈴の音と、まわりに16の光の粒）
+ */
+export function startSwap(prev: HandsSnap): void {
+  if (nearStele()) {
+    sChime(player.x, player.z, 0.3);
+    for (let q = 0; q < 16; q++) {
+      const a = mr() * 6.28;
+      spawn(player.x + Math.cos(a) * 0.7, 0.4 + mr() * 1.2, player.z + Math.sin(a) * 0.7, 0, 0.6, 0, 0.7, G('.'), 0.1, 0.8, 1.1, 1.6, 0);
+    }
+    return;
+  }
+  gear.swapSt = { t: 0, dur: 1.5, snap: prev, last: -1 };
+  gear.castSt = null;
+  fight.beamSegs = [];
+}
+
+/**
+ * 装備の画面（#pack）を開ける・閉じる。開けている間はゲームを止める（body の paused）。
+ * 開ける時：両手を写し、選んでいるルーンを消し、溜めている術を止めて、画面を作る。マウスを放す。
+ * 閉じる時：両手が開けた時と変わっていれば、付け替えの詠唱をする。探索の途中なら、マウスを捕まえ直す
+ */
+export function setInv(on: boolean): void {
+  if (on === ui.invOpen) return;
+  ui.invOpen = on;
+  document.body.classList.toggle('paused', isPaused());
+  const el = document.getElementById('pack');
+  if (!el) return;
+  el.classList.toggle('show', on);
+  if (on) {
+    ui.packSnap = { key: handsKey(), snap: snapHands() };
+    ui.packSel = null;
+    ui.packHover = null;
+    if (gear.castSt) {
+      gear.castSt = null;
+      fight.beamSegs = [];
+    }
+    renderInv();
+    // 古いブラウザには exitPointerLock が無い（型には必ずある）
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
+    if (ui.locked && document.exitPointerLock) document.exitPointerLock();
+  } else {
+    if (ui.packSnap && ui.packSnap.key !== handsKey()) startSwap(ui.packSnap.snap);
+    ui.packSnap = null;
+    if (!ui.plFailed && ui.started && !adv.dead) tryLock();
+  }
+  updateResume();
+  renderHotbar();
 }
