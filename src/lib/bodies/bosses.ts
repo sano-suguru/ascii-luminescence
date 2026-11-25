@@ -1,4 +1,4 @@
-// 主の形（もとは src/game/07-bodies-lords.js・08-bodies-shadow.js）：不死の王・蜘蛛の女王・ナーガの女王・古竜・王の影の二つ目の姿。
+// 主の形（もとは src/game/07-bodies-lords.js・08-bodies-shadow.js）：不死の王・蜘蛛の女王・ナーガの女王・古竜・深みの主・王の影の二つ目の姿。
 // どれも、面の向きと材質で文字と明るさを決める点（put）と、文字をそのまま置く点（lit）で作る。形を作る時に mr()（見た目の乱数）を引く順番を変えないこと。
 import { nth } from '../array.ts';
 import { G, RUNE_CHARS } from '../glyphs.ts';
@@ -1218,8 +1218,8 @@ export function shadowSerpentForm(): Body {
 
 // ---- 深みの主（作り直した物。もとは src/game/08-bodies-shadow.js）：水から立ち上がる高い丸い頭、顔の真ん中の稜線、
 // 対になった小さな赤い目と額の菱形の目、口から水へ垂れる短い触手の房、
-// 8本の触手（2本は頭の上で鉤のように曲がり、2本は横へ弧を描き、2本はこちらへ巻き上がり、2本は後ろ）。巻いた内側に吸盤。背中に折れた神殿の柱が2本
-/** 深みの主の形（水面から出る10本の触手は KRAKEN_T・KRAKEN_W） */
+// 体のそばの4本と水面から出る10本の触手（巻いた内側に吸盤）、背中に折れた神殿の柱が2本
+/** 深みの主の形（触手の通り道と太さは src/lib/bodies/lords.ts の KRAKEN_T・KRAKEN_W） */
 export function deepKrakenForm(): Body {
   const pts: Body = [],
     S = 0.08,
@@ -1345,7 +1345,7 @@ export function deepKrakenForm(): Body {
     lit(x + lean * h * 0.4, 1.4 + h, z - h * 0.25, mpick(['%', '#']), S * 1.2, 1.1, COL.stone, 'head');
     lit(x, 1.5, z + 0.02, mpick([',', '"']), S, 1.2, COL.moss, 'head');
   }
-  // 3. 8本の触手。巻いた内側に吸盤
+  // 3. 触手（体のそばの4本と、水面から出る10本）。巻いた内側に吸盤
   KRAKEN_T.forEach((ctrl, ti) => {
     const P = spline(ctrl, ti < 4 ? 0.12 : 0.15),
       N = P.length,

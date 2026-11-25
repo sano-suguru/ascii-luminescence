@@ -1,14 +1,14 @@
 // 生き物の形（src/lib/bodies/build.ts）・まわりの飾りと王の影の変身（auras.ts）・図鑑の見本の獣（lords.ts の beastSamples）・
 // 忘れられた獣の記録（save.ts）の単体テスト。
-// 指紋の値は、移す前の古い JS（src/game/07・08・09・10）でも同じになる（bodies-cases.mjs の場合を、古い関数で数えて確かめた）。
+// 指紋の値は、移す前の古い JS（src/game/07・08・09・10）でも同じになる（bodies-legacy-cases.mjs の場合を、古い関数で数えて確かめた）。
 // テストを .mjs で書くのは、偽の画面の部品・偽の Web Audio・偽の localStorage を、本物の型に合わせられないため。
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as AURAS from '../../src/lib/bodies/auras.ts';
 import * as BUILD from '../../src/lib/bodies/build.ts';
 import { beastSamples } from '../../src/lib/bodies/lords.ts';
 import { MTYPES } from '../../src/lib/creatures.ts';
 import * as SAVE from '../../src/lib/save.ts';
-import { auraCases, beastRecordCases, formCases, formTypes } from './bodies-cases.mjs';
+import { auraCases, beastRecordCases, formCases, formTypes, lookCases } from './bodies-legacy-cases.mjs';
 
 const fnv = (s) => {
   let h = 0x811c9dc5;
@@ -17,8 +17,22 @@ const fnv = (s) => {
 };
 const fp = (s) => [fnv(s), s.length];
 
-// ゲームと同じく、形を作る前に表へ見た目を書き足す（このファイルの中だけの表。ほかのテストのファイルは別に読む）
-beforeAll(() => BUILD.addLooks());
+// ゲームと同じく、形を作る前に表へ見た目を書き足す。書き足す欄は、終わったら元に戻す（addLooks は2回呼ぶと灯りの色が変わる）
+const FIELDS = ['look', 'form', 'trail', 'col', 'lcol'];
+let kept = [];
+beforeAll(() => {
+  kept = Object.entries(MTYPES).map(([k, t]) => [k, FIELDS.map((f) => [f, Object.getOwnPropertyDescriptor(t, f)])]);
+  BUILD.addLooks();
+});
+afterAll(() => {
+  for (const [k, fields] of kept)
+    for (const [f, d] of fields) {
+      const t = MTYPES[k];
+      if (!t) continue;
+      if (d) Object.defineProperty(t, f, d);
+      else Reflect.deleteProperty(t, f);
+    }
+});
 
 describe('移す前と同じ', () => {
   it('表に書き足した見た目（全部の種類の look と、機械の形・猟犬の尾と色）', () => {
@@ -27,6 +41,19 @@ describe('移す前と同じ', () => {
       hounds = ['Zf', 'Zi', 'Zl'].map((k) => [MTYPES[k]?.trail, MTYPES[k]?.col, MTYPES[k]?.lcol]);
     expect(robots).toEqual(['cleaner', 'repairer', 'watcher']);
     expect(fp(JSON.stringify([touched, robots, hounds]))).toEqual(['1df0d2b2', 612]);
+  });
+  it('見た目の特徴を直接足す（人型の7つの見た目の枝は、buildForm からは通らない）', () => {
+    const all = lookCases(BUILD);
+    // 場合が中身を通っているか：人型の見た目ごとに、点の数が違う
+    expect(
+      new Set(
+        all
+          .split('\n')
+          .slice(0, 7)
+          .map((l) => l.split(' ')[1]?.split(':')[1]),
+      ).size,
+    ).toBe(7);
+    expect(fp(all)).toEqual(['31ae6d80', 529]);
   });
   it('図鑑の見本の獣', () => {
     expect(fp(JSON.stringify(beastSamples()))).toEqual(['1039558f', 1402]);

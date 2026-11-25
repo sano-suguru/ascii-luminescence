@@ -1,5 +1,5 @@
 // テストの道具：生き物の形（src/lib/bodies/build.ts の buildForm）・まわりの飾りと王の影の変身（auras.ts）・忘れられた獣の記録（save.ts）を、
-// たくさんの場合で呼び、結果を1つの文字列にまとめる。bodies.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
+// たくさんの場合で呼び、結果を1つの文字列にまとめる。bodies-legacy.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
 // F は関数をまとめた物。形の場合は、種類ごとに見た目の乱数（Math.random）をシードで決めてから作り、点の並びを数える。
 // テストを .mjs で書くのは、偽の画面の部品・偽の Web Audio・偽の localStorage を、本物の型に合わせられないため。
 // 書き換えた状態と、document・localStorage・setTimeout・Math.random は、終わったら元に戻す。
@@ -12,6 +12,7 @@ import { mulberry32 } from '../../src/lib/rng.ts';
 import { P_MAX } from '../../src/lib/shaders.ts';
 import { SND, adv, buf, clock, here, msgs, player, vfx } from '../../src/lib/state.ts';
 import { FINAL_DEPTH } from '../../src/lib/world.ts';
+import { adder } from '../../src/lib/bodies/kit.ts';
 import { fakeAudio } from './fake-audio.mjs';
 import { swapGlobals } from './ui-cases.mjs';
 
@@ -109,6 +110,42 @@ export function formCases(F, types, reps) {
     .join('\n');
 }
 
+/**
+ * 見た目の特徴を直接足す：古い人型（見た目なし）の形に lookHumanoid と shapeHumanoid を、古い四つ足の形に lookQuad を、見た目ごとに呼ぶ
+ * （人型の7つの見た目は、buildForm からは humanoid2 か ogreForm へ行くので、ここで直接確かめる）
+ */
+export function lookCases(F) {
+  const LOOKS = [
+    'kobold',
+    'goblin',
+    'snapjaw',
+    'monkey',
+    'conjurer',
+    'ogre',
+    'gnome',
+    'rat',
+    'jackal',
+    'grazer',
+    'houndF',
+    'houndI',
+    'houndL',
+    'salamander',
+    'nope',
+    undefined,
+    null,
+  ];
+  return LOOKS.map((look, n) => {
+    const hum = seeded(n + 1, () => F.buildForm0({ ch: 'k', form: 'humanoid' })),
+      quad = seeded(n + 101, () => F.buildForm0({ ch: 'r', form: 'quad' }));
+    seeded(n + 201, () => {
+      F.lookHumanoid(look, hum, adder(hum), 'k');
+      F.shapeHumanoid(hum, look);
+      F.lookQuad(look, quad, adder(quad), 'r');
+    });
+    return `${look} ${fnv(text(hum))}:${hum.length} ${fnv(text(quad))}:${quad.length}`;
+  }).join('\n');
+}
+
 /** 偽の画面（伝言の欄）と、待たせた物を覚える setTimeout */
 function fakeWorld() {
   const log = { innerHTML: '' },
@@ -138,6 +175,7 @@ export function auraCases(F, seeds) {
     hist: adv.HIST,
     vfx: { ...vfx },
     final2: MTYPES['final2'],
+    msgs: msgs.slice(),
   };
   const W = fakeWorld(),
     restoreGlobals = swapGlobals(W.globals),
@@ -273,7 +311,7 @@ export function auraCases(F, seeds) {
     Object.assign(vfx, keep.vfx);
     if (keep.final2) MTYPES['final2'] = keep.final2;
     else delete MTYPES['final2'];
-    msgs.length = 0;
+    msgs.splice(0, msgs.length, ...keep.msgs);
     restoreGlobals();
   }
   return out.join('\n');

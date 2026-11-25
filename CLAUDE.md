@@ -78,8 +78,10 @@ tests/unit/status.test.mjs  状態の表示・気配・年代記・操作の案�
                      たくさんの場合を作る status-cases.mjs（Node で本物の迷宮を生成し、偽の画面の部品に書く。迷宮の生成を変えると、この指紋も変わる）を使う
 tests/unit/screens.test.mjs  粒子と置く文字・頭の上の印・装備の画面の開け閉めと付け替えの詠唱・マウスを捕まえる・視点・音量の単体テスト。たくさんの場合を作る screens-cases.mjs
                      （偽の画面の部品が、したことを記録する。マウスを捕まえる時の返し方も変える）を使う
-tests/unit/bodies.test.mjs  生き物の形・まわりの飾りと王の影の変身・図鑑の見本の獣・忘れられた獣の記録の単体テスト。たくさんの場合を作る bodies-cases.mjs
-                     （全部の種類と主・古い形・年代記の獣の形、まわりの飾りを何フレームか続けて呼ぶ、偽の Web Audio と偽の localStorage）を使う
+tests/unit/bodies.test.ts  生き物の形の性質（点の座標が有限か・文字の番号が表の中か・眠った獣の形・深みの主の触手）と、src/lib/bodies/ の各生き物の形が移す前と同じ乱数で同じ形になるか
+tests/unit/bodies-legacy.test.mjs  形を選んで作る処理（buildForm と見た目の特徴）・まわりの飾りと王の影の変身・図鑑の見本の獣・忘れられた獣の記録が、移す前と同じか（指紋）。
+                     たくさんの場合を作る bodies-legacy-cases.mjs（全部の種類と主・古い形・年代記の獣の形、見た目の特徴を直接足す、まわりの飾りを何フレームか続けて呼ぶ、
+                     偽の Web Audio と偽の localStorage）を使う
 tests/unit/modules.test.mjs  src/lib のどのモジュールも、単独で読めるか（読み込みが輪になって、まだ作っていない値を使っていないか。ファイルごとに別の Node で読む）
 tests/unit/audio.test.mjs  音を鳴らす処理の単体テスト。偽の Web Audio（fake-audio.mjs。作った部品・値・つなぎ方・鳴らす時刻を全部記録する。Node には Web Audio が無い）と、
                      たくさんの場合を作る audio-cases.mjs を使う
