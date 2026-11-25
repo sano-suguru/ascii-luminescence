@@ -54,43 +54,68 @@ function openBestiary(){
   showBeast(0); renderGallery(); document.getElementById('gal').classList.add('show');
 }
 function showBeast(i){
-  const g=ui.gallery; here.monsters=[]; g.m=null; g.fix=null; if(!g.list.length){ renderGallery(); return; }
+  const g=ui.gallery; here.monsters=[]; g.m=null; g.fix=null; g.view=null; g.drag=null; g.aimY=undefined; g.rNow=undefined; if(!g.list.length){ renderGallery(); return; }
   g.idx=(i+g.list.length)%g.list.length; const e=g.list[g.idx];
   MTYPES.__gal=e.ty; const m=makeMonster({key:'__gal',cx:g.room.cx,cz:g.room.cz,g:-1,lead:true});
   m.x=g.room.x; m.z=g.room.z; m.sleep=false; m.hidden=false; m.wait=1e9; m.galShow=true; m.heartOn=true; m.rise=1; m.surf=1; m.yaw=0; if(e.ty.form==='eel')m.y=0;
   g.water=e.ty.form==='kraken'||e.ty.form==='deepkraken'||e.ty.form==='eel'||e.ty.form==='fish'||e.ty.habitat==='deep'; if(g.water&&e.ty.form==='kraken')m.y=-0.25*(e.ty.scale||1); if(e.ty.form==='deepkraken')m.y=0; if(e.ty.habitat==='bog')m.y=0;
   here.monsters.push(m); g.m=m; g.t=0; renderGallery();
 }
+// the player's hands on the bestiary: the wheel moves in and out (the distance from 0.6 to 2 times the usual one), a drag with the left button turns the creature
+// (across) and moves the camera up and down round it (up and down), R puts it back. After GAL_IDLE s with no hands on it, the creature turns by itself again;
+// the distance and the angle stay. Moving to another creature puts everything back (showBeast)
+// GAL_EASE: in the player's view, the aim and the distance move toward new ones at this rate (per second; most of the way in about half a second),
+// so the camera does not jump when the wheel turns or a dragon wakes or falls asleep (its body changes over about a second)
+const GAL_IDLE=3, GAL_ZOOM=[0.5,1/0.6], GAL_EASE=8;
+// a new view starts its eased aim and distance from where the camera is now (g.aimY, g.rNow), so the first turn of the wheel does not jump either
+function galleryView(){ const g=ui.gallery; if(!g.view)g.view={zoom:1,pitch:null,t:g.t,aimS:g.aimY,rS:g.rNow}; g.view.t=g.t; return g.view; }
+// dy: the wheel's movement in pixels (one notch of a mouse wheel is about 100, a 10% step; a trackpad sends many small ones, each a small step)
+function galleryWheel(dy){ const g=ui.gallery; if(!g||g.mode!=='beast'||!g.m||g.fix||!dy)return; const v=galleryView(); v.zoom=clamp(v.zoom*Math.pow(1.1,-clamp(dy,-100,100)/100),GAL_ZOOM[0],GAL_ZOOM[1]); }
+function galleryDrag(dx,dy){ const g=ui.gallery; if(!g||g.mode!=='beast'||!g.m||g.fix)return; const v=galleryView();
+  // the first move up or down starts from where the camera is now: its angle (tiltNow), and its distance from the point it looks at as a part of R (stretchNow)
+  g.m.yaw+=dx*0.01; if(dy){ if(v.pitch===null)v.stretch=g.stretchNow??1; v.pitch=clamp((v.pitch??g.tiltNow??0)+dy*0.006,-0.3,1.3); } }
+function galleryReset(){ const g=ui.gallery; if(!g||g.mode!=='beast')return; g.view=null; g.drag=null; }
 function updateGallery(dt){
   if(!ui.gallery)return; const g=ui.gallery;
   // g.fix (set only by __test.galleryShow): hold the creature at one angle (yaw from facing the camera) and one pose, and move the camera:
   // zoom divides the distance (still kept inside the room, and a zoom in stops outside the creature's body), pitch puts the camera that many radians above
-  // the creature's middle, kept under the ceiling (null: the height the bestiary works out from the creature's size)
-  if(g.mode==='beast'&&g.m){ const m=g.m, sc=m.ty.scale||1, fix=g.fix; g.t+=dt; const walking=fix?fix.pose==='walk':Math.floor(g.t/4)%2===1;
-    m.moving+=((walking?1:0)-m.moving)*Math.min(1,dt*4); m.walk+=dt*2.2*m.moving; if(!fix)m.yaw+=dt*0.45; m.x=g.room.x; m.z=g.room.z;
+  // the creature's middle, kept under the ceiling (null: the height the bestiary works out from the creature's size).
+  // g.view (set by the player's wheel and drag, see galleryWheel): the same zoom and pitch; while the player handles it, and for GAL_IDLE s after, the creature stops turning
+  if(g.mode==='beast'&&g.m){ const m=g.m, sc=m.ty.scale||1, fix=g.fix, cam=fix||g.view; g.t+=dt; const walking=fix?fix.pose==='walk':Math.floor(g.t/4)%2===1;
+    const handled=!!(g.drag||(g.view&&g.t-g.view.t<GAL_IDLE));
+    m.moving+=((walking?1:0)-m.moving)*Math.min(1,dt*4); m.walk+=dt*2.2*m.moving; if(!fix&&!handled)m.yaw+=dt*0.45; m.x=g.room.x; m.z=g.room.z;
     if(fix){ m.sleep=fix.pose==='sleep'; if(m.sleep)m.moving=0; }
     else if(m.ty.form==='dragon'&&!m.ty.boss){ m.sleep=Math.floor(g.t/6)%2===0; if(m.sleep){ m.moving=0; } }
     { const ty=m.ty; if(ty.flier)m.y=(1.6+Math.sin(g.t*2.2)*0.15)*Math.max(1,sc*0.7); else if(ty.fl)m.y=ty.fl+Math.sin(g.t*1.3)*0.12; }
     // how far and how high the camera sits, by form (the old dragon's long neck brings its head close when it turns this way: 1.05 sits a little farther and higher than 1)
     const tall=m.ty.beast?1.3:m.ty.form==='lichking'?1.6:m.ty.form==='spiderqueen'?1.25:m.ty.form==='nagaqueen'?1.3:m.ty.form==='olddragon'?1.05:m.ty.form==='shadowking'?1.75:m.ty.form==='shadowserpent'?1.9:m.ty.form==='deepkraken'?2.0:1,
-      zoom=fix?fix.zoom:1, tilt=fix?fix.pitch:null;
+      zoom=cam?cam.zoom:1, tilt=cam?cam.pitch:null;
     // the shape the camera is fitted to: a sleeping dragon or beast curls up into its own sleeping shape, which is built the first time it is drawn asleep;
-    // until then (one tick) the centre and the ball below wait for it
-    const shape=fix?(fix.pose==='sleep'&&((m.ty.form==='dragon'&&!m.ty.boss)||m.ty.beast)?m.formSleep:m.form):null;
+    // until then (one tick) the centre waits for it, and the aim and the ball below keep the last ones (both are worked out again whenever the shape changes, as a dragon wakes and sleeps)
+    const shape=cam?(m.sleep&&((m.ty.form==='dragon'&&!m.ty.boss)||m.ty.beast)?m.formSleep:m.form):null;
     // center (set only by __test.galleryShow): look at the middle of the body's height (halfway between its lowest and highest point, worked out once per creature)
     // and put it in the middle of the picture; otherwise turn the camera a little below the point it aims at, so the creature stands high, above the bestiary's panel
     if(fix&&fix.center&&fix.midOff===undefined&&shape){ let lo=Infinity, hi=-Infinity; for(const p of shape){ const y=(p.y||0)*sc; if(y<lo)lo=y; if(y>hi)hi=y; } fix.midOff=lo<=hi?(lo+hi)/2:0; }
-    const centered=!!(fix&&fix.center&&fix.midOff!==undefined), ty2=centered?Math.max(0.3,m.y+fix.midOff):Math.max(0.3,m.y+(m.ty.flier?0:0.6*sc*tall));
-    // a zoom in stops outside a ball round the point the camera looks at, wide enough to hold every point of the body (worked out once per creature)
-    if(fix&&zoom>1&&fix.bodyR===undefined&&shape)fix.bodyR=shape.reduce((r,p)=>Math.max(r,Math.hypot((p.x||0)*sc,(p.y||0)*sc+m.y-ty2,(p.z||0)*sc)),0);
-    const want=(3.0+2.0*sc)*tall/zoom, R=Math.max(Math.min(2,2/zoom),fix&&zoom>1&&fix.bodyR!==undefined?fix.bodyR+0.8:0,Math.min(want,g.room.far-0.8)), a=g.room.dir+0.25;
-    let Rh=tilt===null?R:R*Math.cos(tilt), ch;
+    // the player's zoom in (g.view): the closer the camera, the more the aim rises from the usual point to the middle of the body's height, so a tall creature's head stays in the picture
+    if(!fix&&g.view&&shape&&g.view.midFor!==shape){ let lo=Infinity, hi=-Infinity; for(const p of shape){ const y=(p.y||0)*sc; if(y<lo)lo=y; if(y>hi)hi=y; } g.view.midFor=shape; g.view.midOff=lo<=hi?(lo+hi)/2:0; }
+    const lift=!fix&&g.view&&g.view.midOff!==undefined?clamp((zoom-1)/(GAL_ZOOM[1]-1),0,1):0, usual=m.y+(m.ty.flier?0:0.6*sc*tall);
+    const centered=!!(fix&&fix.center&&fix.midOff!==undefined); let ty2=centered?Math.max(0.3,m.y+fix.midOff):Math.max(0.3,lift?usual+lift*Math.max(0,m.y+g.view.midOff-usual):usual);
+    const ease=Math.min(1,dt*GAL_EASE);
+    if(!fix&&g.view){ g.view.aimS=g.view.aimS===undefined?ty2:g.view.aimS+(ty2-g.view.aimS)*ease; ty2=g.view.aimS; }
+    // a zoom in stops outside a ball round the point the camera looks at, wide enough to hold every point of the body (worked out again when the shape or that point changes)
+    if(cam&&zoom>1&&shape&&(cam.bodyFor!==shape||Math.abs(cam.bodyAt-ty2)>0.01)){ cam.bodyFor=shape; cam.bodyAt=ty2; cam.bodyR=shape.reduce((r,p)=>Math.max(r,Math.hypot((p.x||0)*sc,(p.y||0)*sc+m.y-ty2,(p.z||0)*sc)),0); }
+    const ball=cam&&zoom>1&&cam.bodyR!==undefined?cam.bodyR+0.8:0;
+    const want=(3.0+2.0*sc)*tall/zoom, a=g.room.dir+0.25; let R=Math.max(Math.min(2,2/zoom),ball,Math.min(want,g.room.far-0.8));
+    if(!fix&&g.view){ g.view.rS=g.view.rS===undefined?R:g.view.rS+(R-g.view.rS)*ease; R=g.view.rS; } g.rNow=R;
+    // Rt: how far the camera sits from the point it looks at when it has a pitch (the player's view keeps the distance it had before the first move up or down, see galleryDrag)
+    const Rt=R*(cam&&cam.stretch||1);
+    let Rh=tilt===null?R:Rt*Math.cos(tilt), ch;
     if(tilt===null)ch=(1.0+0.75*sc)*tall+(m.ty.flier||m.ty.fl>0.5?m.y*0.5:0);
-    else { ch=Math.max(0.3,Math.min(ty2+R*Math.sin(tilt),ceilAt(g.room.x+Math.cos(a)*Rh,g.room.z+Math.sin(a)*Rh)-0.4));
+    else { ch=Math.max(0.3,Math.min(ty2+Rt*Math.sin(tilt),ceilAt(g.room.x+Math.cos(a)*Rh,g.room.z+Math.sin(a)*Rh)-0.4));
       // held by the floor or the ceiling: step back across the floor so the camera stays R from the point it looks at (but not out of the room)
-      Rh=Math.min(Math.max(Rh,Math.sqrt(Math.max(0,R*R-(ch-ty2)*(ch-ty2)))),Math.max(Rh,g.room.far-0.8)); }
+      Rh=Math.min(Math.max(Rh,Math.sqrt(Math.max(0,Rt*Rt-(ch-ty2)*(ch-ty2)))),Math.max(Rh,g.room.far-0.8)); }
     const cx=g.room.x+Math.cos(a)*Rh, cz=g.room.z+Math.sin(a)*Rh;
-    player.x=cx; player.z=cz; player.yaw=Math.atan2(-(g.room.x-cx),-(g.room.z-cz)); player.pitch=Math.atan2(ty2-ch,Rh)-(centered?0:0.16); g.aimY=ty2;
+    player.x=cx; player.z=cz; player.yaw=Math.atan2(-(g.room.x-cx),-(g.room.z-cz)); player.pitch=Math.atan2(ty2-ch,Rh)-(centered?0:0.16); g.aimY=ty2; g.tiltNow=Math.atan2(ch-ty2,Rh); g.stretchNow=Math.hypot(Rh,ch-ty2)/R;
     if(fix)m.yaw=player.yaw+fix.yaw;
     if(!!m.sleep!==!!g.shownSleep)galleryLine(); // a dragon fell asleep or woke: show the line that fits
     camera.position.set(cx,ch,cz); camera.rotation.set(player.pitch,player.yaw,0);
@@ -113,7 +138,7 @@ function renderGallery(){
     const desc=galleryDesc(g);
     el.innerHTML=boxText([f('+-- 図鑑 ---'),`${f('|')} ${head}`,`${f('|')} <span class="lab" data-gd="0">${desc[0]}</span>`,`${f('|')} <span class="lab" data-gd="1">${desc[1]}</span>`,f('|'),
       `${f('|')} <button class="row" data-g="prev">[&lt;]</button> ${String(g.list.length?g.idx+1:0).padStart(2,' ')} / ${String(g.list.length).padStart(2,' ')}  <span class="lab">（見つけた数 ${String([...saved.SEEN].filter(k=>k).length).padStart(2,' ')} / ${g.all}）</span> <button class="row" data-g="next">[&gt;]</button>`,
-      `${f('|')} <button class="row" data-g="back">[タイトルへ戻る]</button>   <span class="lab">← → で切り替え　Esc で戻る</span>`,f('+---')],GW);
+      `${f('|')} <button class="row" data-g="back">[タイトルへ戻る]</button>   <span class="lab">← → で切り替え　Esc で戻る</span>`,`${f('|')} <span class="lab">ドラッグで回す　ホイールで寄る　R で戻す</span>`,f('+---')],GW);
     for(const b of el.querySelectorAll('button[data-g]'))b.onclick=()=>{ const k=b.dataset.g; if(k==='prev')showBeast(g.idx-1); else if(k==='next')showBeast(g.idx+1); else returnToTitle(); }; }
 }
 // ---------------------------------------------------------------- the testing chamber: every rune found so far, and dummies that get back up

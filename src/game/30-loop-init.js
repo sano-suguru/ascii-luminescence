@@ -140,10 +140,12 @@ if(TEST)window.__test={
     for(let k=p0;k<p1;k++)if(['x','y','z','vx','vy','vz','life','gl','sz','r','g','b'].some(a=>!Number.isFinite(P[a][k])))bad++;
     const f=v=>+v.toFixed(2), n=d1-d0;
     const cp=camera.position;
-    return {name:m.ty.name,glyphs:n,sparks,bad,box:n?{w:f(hi[0]-lo[0]),d:f(hi[2]-lo[2]),y0:f(lo[1]),y1:f(hi[1])}:null,
+    // turn: the creature's angle from facing the camera (radians, -pi to pi), so a check can see it turn or hold still
+    const turn=Math.atan2(Math.sin(m.yaw-player.yaw),Math.cos(m.yaw-player.yaw));
+    return {name:m.ty.name,turn:+turn.toFixed(4),glyphs:n,sparks,bad,box:n?{w:f(hi[0]-lo[0]),d:f(hi[2]-lo[2]),y0:f(lo[1]),y1:f(hi[1])}:null,
       camera:{dist:+Math.hypot(cp.x-m.x,cp.z-m.z).toFixed(3),height:+cp.y.toFixed(3),pitch:+camera.rotation.x.toFixed(3),
         aimY:+(ui.gallery.aimY??0).toFixed(3),aimed:+Math.hypot(cp.x-m.x,cp.y-(ui.gallery.aimY??0),cp.z-m.z).toFixed(3),ceil:+ceilAt(cp.x,cp.z).toFixed(3),roomR:+(ui.gallery.room.far-0.8).toFixed(3),
-        bodyR:ui.gallery.fix&&ui.gallery.fix.bodyR!==undefined?+ui.gallery.fix.bodyR.toFixed(3):null}}; },
+        bodyR:(ui.gallery.fix||ui.gallery.view)?.bodyR!==undefined?+(ui.gallery.fix||ui.gallery.view).bodyR.toFixed(3):null}}; },
   // remove every creature (lords too), so a check is not upset by one that happens to be near
   clearAll(){ const n=here.monsters.length; here.monsters=[]; return n; },
   // every place a run can visit, for generation checks
