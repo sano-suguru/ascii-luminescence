@@ -4,7 +4,7 @@
 // F は関数をまとめた物。粒子の場合（particleCases）は、F の配列（P・dPos・dCol・dPar）を読む。ほかの場合（screenCases）は、粒子と文字を
 // 本物の src/lib/particles.ts に置く物として、その配列を読む。
 // テストを .mjs で書くのは、偽の画面の部品・偽の Web Audio の音量・偽の localStorage を、本物の型に合わせられないため。
-// 書き換えた状態と、document・localStorage・setTimeout・Math.random・performance.now は、終わったら元に戻す。
+// 書き換えた状態と、document・localStorage・setTimeout・Math.random・音の乱数・performance.now は、終わったら元に戻す。
 import { MTYPES } from '../../src/lib/creatures.ts';
 import { dCol, dPar, dPos, P as PP } from '../../src/lib/particles.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
@@ -12,6 +12,7 @@ import { RUNE_TYPES, TRAITS } from '../../src/lib/runes.ts';
 import { DYN_MAX, P_MAX } from '../../src/lib/shaders.ts';
 import { SND, adv, buf, fight, gear, here, player, ui } from '../../src/lib/state.ts';
 import { cpos } from '../../src/lib/world.ts';
+import { setSoundRand } from '../../src/lib/random.ts';
 import { fakeAudio } from './fake-audio.mjs';
 import { swapGlobals } from './ui-cases.mjs';
 
@@ -27,12 +28,14 @@ const hashArr = (a, from = 0, to = a.length) => {
 /** 0 から n までの、置いた文字の配列の中身 */
 const dynSlice = (A, n) => [hashArr(A.dPos, 0, n * 3), hashArr(A.dCol, 0, n * 3), hashArr(A.dPar, 0, n * 4)];
 
-/** Math.random をシードの乱数に入れ替える（見た目の乱数 mr は、呼んだ時に Math.random を読む）。元に戻す関数を返す */
+/** Math.random（見た目の乱数 mr は、呼んだ時に Math.random を読む）と音の乱数（別の並び）を、シードの乱数に入れ替える。元に戻す関数を返す */
 function seedRandom(seed) {
-  const keep = Math.random;
+  const keep = Math.random,
+    keepSound = setSoundRand(mulberry32(seed + 0x5bd1e995));
   Math.random = mulberry32(seed);
   return () => {
     Math.random = keep;
+    setSoundRand(keepSound);
   };
 }
 

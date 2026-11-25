@@ -25,7 +25,7 @@ src/main.js          ページの入口のモジュール（フォント（@font
 src/game/*.js        ゲーム本体の古い JS（27ファイル。下の「ゲーム本体の地図」）
 src/game/imports.mjs ゲーム本体が使う TypeScript のモジュールを読む import の文（包みの関数の前に置かれる）
 src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整形もする
-                     array：配列と表を読む nth・lookup・must（無ければその場で止まる。as の代わり）、rng：シードの乱数を作る mulberry32 と clamp、random：見た目の乱数 mr・mpick と迷宮の乱数 rand・R・RI・pick（入れ替えは setRand）と混ぜる shuffle、glyphs：文字の絵の表（アトラス）の番号 G と飾りの文字の並び、color：css・表の色を css にする cssOf・hsl2rgb、math：角度・稲妻の線など、
+                     array：配列と表を読む nth・lookup・must（無ければその場で止まる。as の代わり）、rng：シードの乱数を作る mulberry32 と clamp、random：見た目の乱数 mr・mpick と迷宮の乱数 rand・R・RI・pick（入れ替えは setRand）と音の乱数 sndRand（入れ替えは setSoundRand）と混ぜる shuffle、glyphs：文字の絵の表（アトラス）の番号 G と飾りの文字の並び、color：css・表の色を css にする cssOf・hsl2rgb、math：角度・稲妻の線など、
                      text：パネルの文字の幅と枠・幅に合わせて HTML を切る clipHtml、history：年代記、world：迷宮の大きさ・タイル・液体と地面・支道と異界・深さごとの係数（depthProfile）と深さごとに順に使う霧の色（FOGS）・岩、
                      light：灯りの計算、runes：ルーンの定義 RUNE_DEF・性質の効き目 RES・特性・反応・手の枠・ルーンの名前と色と付けられるか（表だけに頼る物）、
                      gear：手と持ち物の処理（makeRune・randomRuneType・effHand・isTwo・canPutAt・武器を持つ equipWeapon・空いた枠 freeSlotFor・墓のルーン graveRune など。状態 gear に頼る物）、progress：経験・伝承・解放・加護 BLESS（表。状態の入れ物は読まない）、
@@ -91,7 +91,7 @@ tests/unit/bodies-legacy.test.mjs  形を選んで作る処理（buildForm と�
                      たくさんの場合を作る bodies-legacy-cases.mjs（全部の種類と主・古い形・年代記の獣の形、見た目の特徴を直接足す、まわりの飾りを何フレームか続けて呼ぶ、
                      偽の Web Audio と偽の localStorage）を使う
 tests/unit/modules.test.mjs  src/lib のどのモジュールも、単独で読めるか（読み込みが輪になって、まだ作っていない値を使っていないか。ファイルごとに別の Node で読む）
-tests/unit/audio.test.mjs  音を鳴らす処理の単体テスト。偽の Web Audio（fake-audio.mjs。作った部品・値・つなぎ方・鳴らす時刻を全部記録する。Node には Web Audio が無い）と、
+tests/unit/audio.test.mjs  音を鳴らす処理と詠唱の声（chantStart）の単体テスト（音を鳴らす所が見た目の乱数を引かないかを、src/ を構文の木で調べる sound-random-check.mjs も）。偽の Web Audio（fake-audio.mjs。作った部品・値・つなぎ方・鳴らす時刻を全部記録する。Node には Web Audio が無い）と、
                      たくさんの場合を作る audio-cases.mjs を使う
 tests/glyphs.mjs     使う文字が、パネルのフォント（M PLUS 1 Code ＋ BIZ UDGothic の補い）に字形があるか（ブラウザ不要）
 .oxlintrc.json       lint（Oxlint）の設定（エラー＝不具合、警告＝整理の候補）
@@ -212,8 +212,12 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 同じ手順なら、いつも同じ結果になるモード。開発用モードも含む（`seed=`・`depth=`・`god=1` などがそのまま使える）。
 テスト用モードでない時（`?test=1` なし）の動きには影響しない（`src/game/00-test-mode.js` の `TEST` で分けている）。
 - `Math.random` はシードで決まる。時計（`performance.now`・`setTimeout`・`setInterval`・音の時計 `AudioContext.currentTime`）は、ゲームが進む時だけ進む。
-  音の部品はいつも動いている扱い（`state` が `'running'`）で、音の速さ（`sampleRate`）は 44100。音の時計や部品の状態が実時間で、音の速さがマシンで変わると、
-  詠唱の声・効果音・始めに作る響きと雑音が乱数を引く数が変わり、混んだマシンや別のマシンで結果がずれるため。
+  音の部品はいつも動いている扱い（`state` が `'running'`）。詠唱の円の文字は、詠唱の声の音節の時刻（音の時計）で光り、声は部品が動いている時だけ鳴るので、
+  どちらかが実時間で変わると、絵がずれるため。音の速さ（`sampleRate`）は 44100。始めに作る響きと雑音は音の速さの数だけ音の乱数を引くので、
+  マシンで変わると、その後の音がマシンごとに違うため。
+- 音は、見た目の乱数（`mr`・`Math.random`）を引かず、音の乱数 `sndRand`（src/lib/random.ts。テスト用モードではシードで決まる）を使う。ゲームの側で
+  「この音を鳴らすか」「次にいつ鳴らすか」を決める所も `sndRand` で決める。なので、音を足したり鳴らす頻度を変えたりしても、見た目の乱数の並びは変わらない
+  （単体テスト audio.test.mjs が、src/ を構文の木で調べて止める。調べる形は tests/unit/sound-random-check.mjs の頭）。
 - ゲームは自分では進まない。`__test.advance(秒)`（描かずに進める。速い）か `__test.frames(n)`（描いて進める）で進める。1フレーム＝ゲームの1/30秒。
 - `window.__test`：`ready()`、`error()`、`advance(秒)`、`frames(n)`、`state()`（時刻 time・シード seed・場所 place・深さ depth・始まったか started・死んだか dead・体力 hp・位置 pos・向き yaw・レベル lvl・生き物 monsters・飛ぶ物の数 projs・階を移る途中 trans・届いた深さ maxDepth・溜め cast・立ち直り recover・止まっているか paused）、
   `equip(手, 武器)`（例：`equip('L','bolt')`）・`open(枠)`（手のルーンの枠 `'slotL'`・`'slotR'` か体の枠 `'body'` を1つ開ける）、`bless(n)`（全部の加護を n 段目にする）、`width(文字列)`（visW）、`press(手)`・`release(手)`（ボタンを押す・離す）、`doors()`（扉の一覧）・`cell(i)`（マスの真ん中・床か・今見えているか・灰の印・硫黄か氷の床か・水か・火の強さ・燃える物）・`size()`（マップの横と縦のマスの数）・`ignite(i, gas)`（火をつける。gas は燃えるガスのように燃える物を少し残す）・`chill(i, r)`（マスの周りに冷気）・`burning(i)`（燃えているマスの一覧に何回入っているか）・`clearAll()`（生き物を全部消す）・`hideMonster(鍵, true|false)`（その鍵の生き物を1体、一時的に描かない・また描く。階には残るので灯りは消えない）・`monsterView(鍵)`（その鍵の生き物の体（まわりの飾りの粒子や頭の上の印は含めない）が描かれた所：形 form・大きさ scale・世界の中の高さの範囲・真上の天井の高さ・画面の範囲・画面の外に出た文字の割合 cut）・`summon(種類, マス, {unseen})`（生き物を置く。例：`summon('Re', i)`。unseen を true にすると、まだ見ていない物として置き、初めて見た時の伝言が出る）・`fov()`（見えるマスを今すぐ数え直す。ゲームは0.1秒ごと）・`addTraces()`・`traces()`（階に残る物：魔法の場・遅れて当たる攻撃・雨・床の目印・撃っている途中の光線・稲妻・稲妻の光を置く、数える。発動のルーンの待ち時間も置く）・`failLater(文)`（遅れて起きることの中で例外を起こす。テスト用モードではページのエラーになる。テスト用モードでない時は、コンソールに出して続ける）、`gallery()`（タイトルから図鑑を開き、一覧 `[{n,key,name,form}]` を返す）・`galleryShow(n, {yaw, pose, zoom, pitch, center})`（n 番目を、向きと姿を止めて出す。yaw は0でこちらを向き、＋でこちらから見て右へ回る。pose は `'stand'`・`'walk'`・`'sleep'`。zoom は寄る・引く（距離を 1/zoom 倍。0.5〜3。書かなければ 1。部屋の壁より外には引かず、寄っても体の外で止まる）。pitch は見下ろす角度（ラジアン。0 で真横から、＋で上から。-0.3〜1.3。天井より上には出ない。書かなければ、図鑑が生き物の大きさから決める高さ）。center は true で体の高さの真ん中を画面の真ん中に写す（書かなければ、図鑑の枠の上に立つように少し上に写す））・`galleryDraw()`（出している生き物の、カメラから見た向き turn と、描く物：文字の数 glyphs・火花の数 sparks・数でない値の混じった文字と火花の数 bad・描いた範囲 box・カメラの床の上の距離・高さ・角度・狙う点までの距離と、天井の高さ・部屋の壁までの距離・寄った時に体を包む球の半径 camera）、`places()`、`gen(シード, 場所)`（生成だけ。描画の状態を壊すので専用のページで）
