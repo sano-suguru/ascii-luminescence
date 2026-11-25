@@ -52,7 +52,7 @@ const VM_PART={fill:[0.46,0.48,0.56],edge:[0.86,0.89,0.96],metal:[0.7,0.72,0.8],
 const VM_BRIGHT={fill:0.8,edge:1.1,metal:0.95,wood:0.78,woodedge:1.0,hand:0.75,knuckle:0.9,arm:0.45,head:1.25,glow:1.3,string:0.6};
 // at rest the weapons in hand are dimmed, so they do not outshine the creatures in front: the bright parts (a staff's head and glow, a blade's edge) to VM_REST_HOT,
 // the rest to VM_REST. Chanting, holding a full chant, a swing and the kick of a shot bring them back up to full
-const VM_REST=0.75, VM_REST_HOT=0.5;
+const VM_REST=0.75, VM_REST_HOT=0.65;
 const VM_TINT={edge:0.7,head:0.85,glow:0.85,fill:0.25};
 const vmKick={L:-9,R:-9};
 function drawViewWeapons(t){ if(ui.camMode==='tps'||!ui.started||adv.dead||!gear.hands||!here.D)return; if(ui.gallery&&ui.gallery.mode==='beast')return;
