@@ -12,15 +12,17 @@
 //   x ?? NaN → x：算術（- * / % **、もう片方が数と分かる +）・大小の比べ方・単項の - +・Math.* の引数の中だけ（undefined も NaN も同じ結果になる所）
 //   Number(x) → x：算術（- * / %）の中だけ（算術は、もともと数に直してから計算する）
 //   a op= b → a = a op b（両方に当てる。a は名前と欄の読み取りだけ）
-//   使わない引数の頭の _ は外す（本体がどちらの名前も読まない時だけ）。ファイルの一番外の別名（const specials = SPECIALS など、型を広げるためだけの物）は
+//   使わない catch の引数は外す（両方に当てる）。使わない引数の頭の _ は外す（本体がどちらの名前も読まない時だけ）。ファイルの一番外の別名（const specials = SPECIALS など、型を広げるためだけの物）は
 //   元の名前に戻す（関数の中で、どちらかの名前を宣言し直していない時だけ）
+//   ファイルの小さな道具（古い JS に無い名前の、const 名前 = (引数) => 式 の形の物）は、使う所で開く。渡す値が名前と欄の読み取りか定数で、
+//   使う所で、道具の中の名前を宣言し直していない時だけ（toPlayer(m) → Math.hypot(m.x - player.x, m.z - player.z) など）
 //   先に読む：const X = 式（式は名前と欄の読み取りだけか、数・名前とその計算だけでできた、1回だけ使うオブジェクト）、const [a, b] = 式 の後ろで、
 //   X を式に戻す（両方に当てる。X を書き換えている時と、同じ名前を宣言し直している時は戻さない）
 // 「先に読む」と「一番外の別名」は、間で式の中身が変わらないことを機械では言えないので、新しく足した物と、古い方にあって新しい方でやめた物を「人が確かめる一覧」に出す。
 //
 // 古い JS は、--rev の git の版（既定 HEAD）か、--old のフォルダから読む。状態を入れ物に移した名前は、--state で古い側にも同じ書き換え
 // （tools/state-move.mjs の stateMove）をしてから比べる。--auto-state は、それを自分で見つける（古い JS から消えた変数の名前 X で、
-// 今の文に「入れ物.X」があり、入れ物が1つに決まる物。CI はこれを使う）。古い JS から消えた名前で、渡した .ts のどれにも無い物は「比べていない」として出す（これも 1 で終わる）。
+// src/lib/state.ts の入れ物の欄として初めの値を書いてある物。CI はこれを使う。詳しくは detectStates）。古い JS から消えた名前で、渡した .ts のどれにも無い物は「比べていない」として出す（これも 1 で終わる）。
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -98,6 +100,9 @@ const unType = (n) =>
 const OPS = { '+=': '+', '-=': '-', '*=': '*', '/=': '/', '%=': '%' };
 function norm(n, ctx) {
   return walk(n, (x) => {
+    // 使わない catch の引数は書かなくても同じ（catch (e) {…} と catch {…}）
+    if (x.type === 'CatchClause' && x.param?.type === 'Identifier' && !uses(x.body, x.param.name).n)
+      return { ...x, param: null, body: norm(x.body, ctx) };
     if (x.type !== 'AssignmentExpression' || !OPS[x.operator] || !isPath(x.left)) return undefined;
     ctx.hit('a op= b');
     const left = norm(x.left, ctx);
@@ -174,7 +179,7 @@ function uses(n, name, acc = { n: 0, write: false, shadow: false }) {
     if (target?.type === 'Identifier' && target.name === name) acc.write = true;
     if (
       (n.type === 'VariableDeclarator' && n.id.type === 'Identifier' && n.id.name === name) ||
-      ((n.type === 'FunctionDeclaration' || n.type.includes('Function')) &&
+      ((n.type === 'FunctionDeclaration' || n.type?.includes('Function')) &&
         n.params?.some((p) => p.type === 'Identifier' && p.name === name))
     )
       acc.shadow = true;
@@ -251,6 +256,35 @@ function unalias(n, where, found, show) {
       }
     }
     return undefined;
+  });
+}
+
+/** ファイルの小さな道具を、使う所で開く（渡す値が名前と欄の読み取りか定数で、使う所が道具の中の名前を宣言し直していない時だけ） */
+function inlineHelpers(fnNode, helpers, opened) {
+  const free = (f) => {
+    const names = new Set();
+    walk(f.body, (x, parent, k) => {
+      if (
+        x.type === 'Identifier' &&
+        !(k === 'property' && parent?.type === 'MemberExpression' && !parent.computed) &&
+        !(k === 'key' && parent && !parent.computed)
+      )
+        names.add(x.name);
+      return undefined;
+    });
+    for (const p of f.params) names.delete(p.name);
+    return names;
+  };
+  const okArg = (a) => a?.type === 'Literal' || isPath(a);
+  return walk(fnNode, (x) => {
+    if (x.type !== 'CallExpression' || x.callee.type !== 'Identifier') return undefined;
+    const f = helpers.get(x.callee.name);
+    if (!f || f.params.length !== x.arguments.length || !x.arguments.every(okArg)) return undefined;
+    if ([...free(f)].some((nm) => uses(fnNode, nm).shadow)) return undefined;
+    let body = f.body;
+    f.params.forEach((p, i) => (body = subst(body, p.name, x.arguments[i])));
+    opened(x.callee.name);
+    return body;
   });
 }
 
@@ -343,7 +377,7 @@ function show(n) {
     case 'LogicalExpression':
       return `(${show(n.left)} ${n.operator} ${show(n.right)})`;
     case 'UnaryExpression':
-      return `${n.operator}${show(n.argument)}`;
+      return `${n.operator}${/^[a-z]/.test(n.operator) ? ' ' : ''}${show(n.argument)}`;
     case 'ConditionalExpression':
       return `(${show(n.test)} ? ${show(n.consequent)} : ${show(n.alternate)})`;
     case 'VariableDeclarator':
@@ -415,6 +449,19 @@ export function compareSources(old, files, only = null) {
     const tops = [...NEW].filter(
       ([k, v]) => !old.has(k) && v.node.type === 'VariableDeclaration' && v.node.declarations[0].init?.type === 'Identifier',
     );
+    // ファイルの小さな道具（本体が式1つの矢印関数。level は上の規則で戻す）
+    const helpers = new Map(
+      [...NEW].flatMap(([k, v]) => {
+        const f = v.node.type === 'VariableDeclaration' && v.node.kind === 'const' ? v.node.declarations[0].init : null;
+        return !old.has(k) &&
+          k !== 'level' &&
+          f?.type === 'ArrowFunctionExpression' &&
+          f.body.type !== 'BlockStatement' &&
+          f.params.every((p) => p.type === 'Identifier')
+          ? [[k, unType(f)]]
+          : [];
+      }),
+    );
     const ctx = { hit, levelIsHereD };
     for (const [name, nd] of NEW) {
       const od = old.get(name);
@@ -424,7 +471,16 @@ export function compareSources(old, files, only = null) {
       const oldFound = [],
         newFound = [];
       const o = unalias(norm(od.node, ctx), name, oldFound, show);
-      let n = unNumber(norm(undo(unType(nd.node), ctx), ctx), ctx);
+      let n = unType(nd.node);
+      for (let round = 0; round < 5; round++) {
+        const before = key(n);
+        n = inlineHelpers(n, helpers, (k) => {
+          const line = `${basename(file)} の道具を開いた：${k}`;
+          if (!review.includes(line)) review.push(line);
+        });
+        if (key(n) === before) break;
+      }
+      n = unNumber(norm(undo(n, ctx), ctx), ctx);
       // 関数の中で、別名か元の名前を宣言し直していれば戻さない（違いとして出る）
       for (const [k, v] of tops) {
         const orig = v.node.declarations[0].init;
@@ -488,16 +544,35 @@ function withStates(game, states) {
     rmSync(dir, { recursive: true, force: true });
   }
 }
+/** src/lib/state.ts の入れ物（export const 名前 = { … }）ごとの、初めの値を書いた欄の名前 */
+export function boxFields(stateText) {
+  const out = new Map();
+  for (const st of parseAst(stateText, { lang: 'ts' }).body) {
+    const d = st.type === 'ExportNamedDeclaration' && st.declaration?.type === 'VariableDeclaration' ? st.declaration.declarations : [];
+    for (const dc of d)
+      if (dc.id.type === 'Identifier' && dc.init?.type === 'ObjectExpression')
+        out.set(
+          dc.id.name,
+          new Set(
+            dc.init.properties.flatMap((p) => (p.type === 'Property' && !p.computed && p.key.type === 'Identifier' ? [p.key.name] : [])),
+          ),
+        );
+  }
+  return out;
+}
 /**
- * 状態を入れ物に移した名前を見つける：古い JS から消えた変数の名前 X で、今の文（古い JS と src/lib）に「入れ物.X」があり、その入れ物が1つだけの物。
- * boxes は入れ物の名前（src/lib/state.ts の export のうち、オブジェクトの物）。返り値は stateMove に渡す形 [{ box, names }]
+ * 状態を入れ物に移した名前を見つける：古い JS から消えた変数の名前 X で、src/lib/state.ts の入れ物の欄として初めの値を書いてある物
+ * （状態を移す時は、必ず入れ物に初めの値を書く。tools/state-move.mjs）。同じ名前の欄が2つ以上の入れ物にある時は、今の文（古い JS と src/lib）に
+ * 「入れ物.X」がある入れ物に絞る。それでも1つに決まらない物は見つけない（「比べていない」として止まる）。
+ * fields は boxFields の返り値。返り値は stateMove に渡す形 [{ box, names }]
  */
-export function detectStates(old, gone, text, boxes) {
+export function detectStates(old, gone, text, fields) {
   const by = new Map();
   for (const x of gone) {
     if (old.get(x)?.node.type !== 'VariableDeclaration') continue;
-    const hit = [...boxes].filter((b) => new RegExp(`(?<![\\w$.])${b}\\.${x.replace(/\$/g, '\\$')}(?![\\w$])`).test(text));
-    if (hit.length === 1) (by.get(hit[0]) ?? by.set(hit[0], []).get(hit[0])).push(x);
+    let cand = [...fields].filter(([, keys]) => keys.has(x)).map(([b]) => b);
+    if (cand.length > 1) cand = cand.filter((b) => new RegExp(`(?<![\\w$.])${b}\\.${x.replace(/\$/g, '\\$')}(?![\\w$])`).test(text));
+    if (cand.length === 1) (by.get(cand[0]) ?? by.set(cand[0], []).get(cand[0])).push(x);
   }
   return [...by].map(([box, names]) => ({ box, names }));
 }
@@ -539,9 +614,8 @@ if (process.argv[1] && import.meta.filename === process.argv[1]) {
     now = legacyDecls(nowGame),
     sources = files.map((f) => ({ file: relative(root, f), text: readFileSync(f, 'utf8') }));
   if (auto) {
-    // 状態の入れ物の名前と、今の文（古い JS と src/lib の全部）
-    const state = await import(join(root, 'src/lib/state.ts')),
-      boxes = new Set(Object.keys(state).filter((k) => state[k] && typeof state[k] === 'object' && !Array.isArray(state[k]))),
+    // 状態の入れ物の欄と、今の文（古い JS と src/lib の全部）
+    const fields = boxFields(readFileSync(join(root, 'src/lib/state.ts'), 'utf8')),
       lib = execFileSync('git', ['ls-files', 'src/lib'], { cwd: root, encoding: 'utf8' })
         .split('\n')
         .filter((f) => f.endsWith('.ts')),
@@ -554,7 +628,7 @@ if (process.argv[1] && import.meta.filename === process.argv[1]) {
       old0,
       gone0.filter((k) => !tsNames.has(k)),
       text,
-      boxes,
+      fields,
     );
     for (const s of found) console.log(`状態を入れ物に移したと見た：${s.names.map((n) => `${s.box}.${n}`).join('、')}`);
     states.push(...found);

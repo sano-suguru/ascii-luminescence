@@ -1,7 +1,7 @@
 // 構文の木で、移した関数と移す前の古い関数を比べる道具（tools/same-code.mjs）の単体テスト。
 // 規則ごとに「同じと言う物」と「違うと言う物」を小さな見本で確かめ、写し漏れ・係数・比べ方・乱数を引く順番の違いを見つけることも確かめる。
 import { describe, expect, it } from 'vitest';
-import { compareSources, detectStates, legacyDecls } from '../../tools/same-code.mjs';
+import { boxFields, compareSources, detectStates, legacyDecls } from '../../tools/same-code.mjs';
 
 /** 古い JS の文 oldJs と新しい .ts の文 newTs を比べ、関数ごとの違いの数・人が確かめる一覧・比べた名前を返す */
 function cmp(oldJs, newTs) {
@@ -60,6 +60,17 @@ describe('同じと言う物', () => {
     expect(r.n).toEqual({ f: 0 });
     expect(r.review).toEqual(['a.ts の一番外：specials = SPECIALS']);
   });
+  it('使わない catch の引数', () => {
+    expect(cmp(`function f(){ try{ g(); }catch(e){} }`, `export function f() { try { g(); } catch {} }`).n).toEqual({ f: 0 });
+  });
+  it('ファイルの小さな道具（const 名前 = (引数) => 式）は、使う所で開く', () => {
+    const r = cmp(
+      `function f(m){ return Math.hypot(m.x-player.x,m.z-player.z)+SND.ctx.currentTime; }`,
+      `const toPlayer = (m: M): number => Math.hypot(m.x - player.x, m.z - player.z);\nconst now = (): number => must(SND.ctx, '音').currentTime;\nexport function f(m) { return toPlayer(m) + now(); }`,
+    );
+    expect(r.n).toEqual({ f: 0 });
+    expect(r.review).toEqual(['a.ts の道具を開いた：toPlayer', 'a.ts の道具を開いた：now']);
+  });
   it('型だけの書き方（as const・後ろの !）と、名前の ?', () => {
     expect(
       cmp(
@@ -88,6 +99,19 @@ describe('違うと言う物', () => {
   it('Number(x) を算術の外で使った時・a?.b と a.b', () => {
     expect(cmp(`function f(a){ g(a||0); }`, `export function f(a) { g(Number(a || 0)); }`).n).toEqual({ f: 1 });
     expect(cmp(`function f(a){ return a?.b; }`, `export function f(a) { return a.b; }`).n).toEqual({ f: 1 });
+  });
+  it('小さな道具に、呼び出しを渡している時と、使う所で道具の中の名前を宣言し直している時は開かない', () => {
+    const helper = `const toPlayer = (m) => Math.hypot(m.x - player.x, m.z - player.z);\n`;
+    expect(
+      cmp(`function f(){ return Math.hypot(g().x-player.x,g().z-player.z); }`, `${helper}export function f() { return toPlayer(g()); }`).n
+        .f,
+    ).toBeGreaterThan(0);
+    expect(
+      cmp(
+        `function f(m,player){ return Math.hypot(m.x-player.x,m.z-player.z); }`,
+        `${helper}export function f(m, player) { return toPlayer(m); }`,
+      ).n.f,
+    ).toBeGreaterThan(0);
   });
   it('先に読んだ名前を、後で書き換えている時は戻さない', () => {
     const r = cmp(`function f(){ g(here.D.x); }`, `export function f() { const D = here.D; D = 1; g(D.x); }`);
@@ -129,16 +153,24 @@ describe('違うと言う物', () => {
 });
 
 describe('状態を入れ物に移した名前を見つける（--auto-state）', () => {
-  const old = legacyDecls(new Map([['01-a.js', 'let webMsg=false, both=0, gone=1, longer=2; function draw(){}']]));
-  const boxes = new Set(['here', 'ui']);
-  it('今の文に「入れ物.名前」があり、入れ物が1つに決まる変数だけ', () => {
-    const text = 'if(!here.webMsg) here.webMsg=true; here.both=1; ui.both=2; xhere.gone=1; here.longerX=1; here.draw();';
-    expect(detectStates(old, ['webMsg', 'both', 'gone', 'longer', 'draw'], text, boxes)).toEqual([{ box: 'here', names: ['webMsg'] }]);
-  });
-  it('入れ物ごとにまとめる', () => {
-    expect(detectStates(old, ['webMsg', 'gone'], 'here.webMsg; ui.gone', boxes)).toEqual([
-      { box: 'here', names: ['webMsg'] },
-      { box: 'ui', names: ['gone'] },
+  const old = legacyDecls(new Map([['01-a.js', 'let webMsg=false, both=0, unread=1, nobox=2; function draw(){}']]));
+  const fields = boxFields(
+    `import type { X } from './x.ts';\nexport interface Here { webMsg: boolean }\nexport const here: Here = { webMsg: false, both: 0, unread: 1, draw: 0 };\nexport const ui = { both: 1 };\nexport const msgs: string[] = [];`,
+  );
+  it('state.ts の入れ物ごとの、初めの値を書いた欄', () => {
+    expect([...fields].map(([b, k]) => [b, [...k]])).toEqual([
+      ['here', ['webMsg', 'both', 'unread', 'draw']],
+      ['ui', ['both']],
     ]);
+  });
+  it('欄として宣言した変数を見つける（どこからも読まれない状態も）。関数と、どの入れ物の欄でもない名前は見つけない', () => {
+    expect(detectStates(old, ['webMsg', 'unread', 'nobox', 'draw'], 'here.webMsg=true;', fields)).toEqual([
+      { box: 'here', names: ['webMsg', 'unread'] },
+    ]);
+  });
+  it('同じ名前の欄が2つの入れ物にある時は、今の文で読んでいる入れ物に絞る。決まらなければ見つけない', () => {
+    expect(detectStates(old, ['both'], 'ui.both=2; xhere.both=1;', fields)).toEqual([{ box: 'ui', names: ['both'] }]);
+    expect(detectStates(old, ['both'], 'here.both=1; ui.both=2;', fields)).toEqual([]);
+    expect(detectStates(old, ['both'], '', fields)).toEqual([]);
   });
 });
