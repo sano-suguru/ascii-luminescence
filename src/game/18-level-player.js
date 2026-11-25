@@ -192,7 +192,7 @@ function hurtPlayer(n,cause){
 function resultPlace(){ const pl=placeLabel(); return /^[0-9]+$/.test(String(pl).trim())?`深度${here.depth}（${(here.D&&here.D.stratum&&here.D.stratum.name)||''}）`:`${pl}（深度${here.depth}）`; }
 function runLore(victory){ const L=getLegend(), parts=[], add=(lab,n,v)=>{ if(v>0)parts.push([lab,n,v]); }, md=(adv.runStats&&adv.runStats.maxDepth)||here.depth;
   add('到達した深さ',`深度${md}`,md*2); const lords=adv.runState.lordsDone?adv.runState.lordsDone.size:0; add('倒した支道の主',`${lords}体`,lords*8);
-  const pl=L?L.placed.size:0; add('捧げた伝説の物',`${pl}つ`,pl*6); if(victory)add('王の影に勝った','',30);
+  const pl=L&&md>=FINAL_DEPTH?L.have.size:0; add('最深部へ持ち帰った伝説の物',`${pl}つ`,pl*6); // only those brought to the bottom if(victory)add('王の影に勝った','',30);
   const lg=Math.max(0,(adv.lvl.n||1)-1); add('上がったレベル',`${lg}つ`,lg);
   const nb=Math.max(0,saved.BOOK.size-((adv.runStats&&adv.runStats.book0)||0)); add('新しく記した反応',`${nb}つ`,nb*3); const nbe=(adv.runStats&&adv.runStats.beastsNew)||0; add('初めて出会った忘れられた獣',`${nbe}体`,nbe*4);
   const base=parts.reduce((a,p)=>a+p[2],0), mult=1+0.25*adv.runTrials.length; return {parts,base,mult,total:Math.round(base*mult)}; }
@@ -239,7 +239,7 @@ function hitReact(m,n){ const ty=m.ty, boss=ty.boss||m.key==='lord'||m.key==='fi
   const strong=m.hp<=0||n>=8||n>=(m.maxHp||99)*0.25; if(strong&&now>fight.hitStopUntil+90)fight.hitStopUntil=now+(m.hp<=0?65:45); }
 function damageMonster(m,n,how){
   if(m.dead||n<=0)return;
-  if(m.key==='final'&&(!finalExposed(m)||m.invulnT>0)){ if(how!=='env')hitFeedback(m,0,null,false); return; }
+  if(m.key==='final'&&m.invulnT>0){ if(how!=='env')hitFeedback(m,0,null,false); return; }
   if(m.sleep&&how!=='env'){ n*=SLEEP_MULT;
     // a hit on a sleeper: a bright gold burst and a deep strike sound instead of words
     for(let q=0;q<22;q++){ const a=mr()*6.28, e=mr()*1.2; spawn(m.x,m.y+0.6*m.ty.scale,m.z,Math.cos(a)*2.4,0.8+e*1.6,Math.sin(a)*2.4,0.6+mr()*0.5,G(mpick(['*','+','\''])),0.2,3.4,2.6,1.0,0); }

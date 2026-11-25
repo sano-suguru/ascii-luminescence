@@ -437,7 +437,7 @@ export interface Trans {
 }
 /** 今の階に、古い JS が後から足す欄（型は、使う処理を移す時に足す） */
 export interface LevelExtra {
-  /** 最深部の階（伝説の物の台座がある。18-level-player.js の newLevel が入れる） */
+  /** 最深部の階（王の影が現れる。18-level-player.js の newLevel が入れる） */
   finalVault?: boolean;
   /**
    * ここから stairGuard までは、深さ2から下（と支道・異界）の祭壇などを置く時（src/lib/altars.ts の mainPathAltars）に入れる。深さ1・特別な階・最深部には無い。
@@ -550,10 +550,9 @@ export interface Here {
   /** 最深部の状態（最深部の階に入った時に作る。ほかの階では null。24-goal.js の setupFinal） */
   finalSt: FinalState | null;
 }
-/** 最深部の状態：一番高い天井のマス c0、伝説の物を置く3つの台座 peds、王の影 boss と、現れるまで・呼び出すまでの秒、着いた時の伝言を出したか */
+/** 最深部の状態：一番高い天井のマス c0（王の影が現れる所）、王の影 boss と、現れるまで・呼び出すまでの秒、着いた時の伝言を出したか */
 export interface FinalState {
   c0: number;
-  peds: { kind: string; i: number }[];
   boss: Monster | null;
   bossT: number;
   summonT: number;
@@ -589,13 +588,12 @@ export interface LegendItem {
   branch: string | undefined;
   kind: string;
 }
-/** 今の探索の伝説の物（シード・物の種類 → 物・手にした物・置いた物）。src/lib/legend.ts の getLegend が、はじめて読んだ時に作る */
+/** 今の探索の伝説の物（シード・物の種類 → 物・手にした物）。src/lib/legend.ts の getLegend が、はじめて読んだ時に作る */
 export interface Legend {
   seed: number;
   /** 物の種類（LEGEND_ORDER の candle・bell・mirror）→ 物 */
   items: Record<string, LegendItem>;
   have: Set<string>;
-  placed: Set<string>;
 }
 /** 保存する記録（localStorage）：伝承・解放・墓・試練 META、魔導書に記した反応 BOOK、見たルーン RSEEN、見た生き物 SEEN、開発用モード DEVALL、
  * それと今の探索の伝説の物 LEGEND（これは保存しない）。

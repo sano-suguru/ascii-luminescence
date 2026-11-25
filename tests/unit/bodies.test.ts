@@ -129,15 +129,15 @@ describe('生き物の形', () => {
     expect(z.some((p) => p.part === 'legL' || p.part === 'legR')).toBe(false);
     expect(Math.max(...z.map((p) => p.y))).toBeLessThan(Math.max(...b.map((p) => p.y)));
   });
-  it('王の影の一つ目の姿：翼は無く、冠の棘5本・目2つ・黒い太陽（点の輪と印の輪）・剣・心臓・封印のひび7本。高さは SHADOW_KING_H', () => {
+  it('王の影の一つ目の姿：翼は無く、冠の棘5本・目2つ・黒い太陽（縁・点・印の3つの輪）・体より長い剣・心臓・封印のひび7本。高さは SHADOW_KING_H', () => {
     const b = seeded(lords.shadowKingForm);
     const parts = (name: string) => b.filter((p) => p.part === name);
     expect(b.some((p) => p.part.startsWith('wing'))).toBe(false);
     expect(parts('eye').length).toBe(2);
     expect(parts('head').filter((p) => p.g === G('^')).length).toBe(5); // 冠の棘の先
     const halo = parts('halo');
-    expect(halo.length).toBe(36);
-    expect(new Set(halo.map((p) => p.r)).size).toBe(2);
+    expect(halo.length).toBe(64);
+    expect(new Set(halo.map((p) => p.r)).size).toBe(3);
     // 黒い太陽の点は、輪の上の初めの位置に置いてある（動きを付けずに形を読む所でも、輪に見える）
     for (const p of halo) {
       expect(p.x).toBeCloseTo(Math.cos(p.ph) * (p.r ?? 0), 6);
@@ -148,25 +148,31 @@ describe('生き物の形', () => {
     expect(Math.min(...b.map((p) => p.y))).toBeGreaterThanOrEqual(0);
     expect(parts('heart').length).toBe(9);
     expect(new Set(parts('crack').map((p) => p.th)).size).toBe(7);
-    // 剣：右手（向き合うと左）に、縦に長い刃
-    const blade = b.filter((p) => p.part === 'body' && Math.abs(p.x + 0.58) < 0.05 && p.y > 1.1);
-    expect(Math.max(...blade.map((p) => p.y)) - Math.min(...blade.map((p) => p.y))).toBeGreaterThan(1.3);
-    // 幅は翼が無いので、裾の広がりまで（左右に約1.3以内）
-    expect(Math.max(...b.map((p) => Math.abs(p.x)))).toBeLessThan(1.35);
+    // 形（シルエット）：肩は狭く（幅の半分 0.35 以下）、裾は広い（0.9 以上）。黒い太陽は冠から離れて上にある
+    expect(lords.shadowCloakHalf(1.96)).toBeLessThanOrEqual(0.35);
+    expect(lords.shadowCloakHalf(0)).toBeGreaterThanOrEqual(0.9);
+    const crownTop = Math.max(...parts('head').map((p) => p.y));
+    expect(Math.min(...halo.map((p) => p.y))).toBeGreaterThan(crownTop);
+    // 剣：右手（向き合うと左）に。体より長く、刃の先は冠の先より上、柄の下の棒は床まで
+    const sword = b.filter((p) => p.part === 'body' && Math.abs(p.x + 0.55) < 0.05);
+    expect(Math.max(...sword.map((p) => p.y))).toBeGreaterThan(crownTop);
+    expect(Math.min(...sword.map((p) => p.y))).toBeLessThan(0.1);
+    // 幅は翼が無いので、裾の広がりまで（左右に約1.4以内）
+    expect(Math.max(...b.map((p) => Math.abs(p.x)))).toBeLessThan(1.45);
   });
   it('王の影の大きさ：ふだんは SHADOW_KING_SC。天井が低い所だけ、二つの姿とも天井の下に収まるように縮める', () => {
     expect(lords.shadowKingScale(16)).toBe(lords.SHADOW_KING_SC);
     expect(bosses.shadowSerpentScale(lords.SHADOW_KING_SC, 16)).toBe(lords.SHADOW_KING_SC);
-    for (const ceil of [5, 6, 7, 7.3]) {
+    for (const ceil of [5, 6, 7, 7.4]) {
       const k = lords.shadowKingScale(ceil),
         s = bosses.shadowSerpentScale(k, ceil);
       expect(k * lords.SHADOW_KING_H).toBeLessThanOrEqual(ceil - 0.3 + 1e-9);
       expect(s * bosses.SHADOW_SERPENT_H).toBeLessThanOrEqual(ceil - 0.3 + 1e-9);
       expect(s).toBeLessThanOrEqual(k);
     }
-    // 7.3 の天井：一つ目は 2.0 倍のまま（6.74）だが、背の高い二つ目は縮める
-    expect(lords.shadowKingScale(7.3)).toBe(lords.SHADOW_KING_SC);
-    expect(bosses.shadowSerpentScale(lords.SHADOW_KING_SC, 7.3)).toBeLessThan(lords.SHADOW_KING_SC);
+    // 7.4 の天井：一つ目は 2.0 倍のまま（7.02）だが、背の高い二つ目は縮める
+    expect(lords.shadowKingScale(7.4)).toBe(lords.SHADOW_KING_SC);
+    expect(bosses.shadowSerpentScale(lords.SHADOW_KING_SC, 7.4)).toBeLessThan(lords.SHADOW_KING_SC);
   });
   it('王の影の二つ目の姿の高さは SHADOW_SERPENT_H 以内（天井が低い所で、これで大きさを縮める）', () => {
     const b = seeded(bosses.shadowSerpentForm);
