@@ -1,16 +1,18 @@
 // 状態の表示と、まわりへの気配（もとは src/game/12-hud-text.js、02-constants.js の placeLabel、06-world.js の showHint、26-spells-hud.js の isPaused、
 // 27-rune-screen.js の renderBook・updateSearch）。状態の入れ物 here・player・adv・ui・stealth・lantern・hudInfo・vfx・clock・keys・blaze（投げた火花）・saved（魔導書）に頼り、画面の #status・#help・#hint に書く。
 // 状態の表示（体力・経験・場所・明るさ・伝説の物・見つかっているか・速さ）、明るさと気配の範囲、年代記・操作の案内・魔導書、表示の量、
-// 生き物に見つかった時と物音、立ち止まって辺りを調べる
+// 生き物に見つかった時と物音、立ち止まって辺りを調べる、生き物の頭の上の印（世界の中に文字を置く）
 import { lookup, must, nth } from './array.ts';
 import { sAlarm, sAlert, sChime, sHowl, sRoar } from './audio.ts';
 import { cssOf } from './color.ts';
+import { G } from './glyphs.ts';
 import { bodyN } from './gear.ts';
-import { LIGHT_COLS, LIGHT_NAMES } from './hud.ts';
+import { LIGHT_COLS, LIGHT_NAMES, MARK_H } from './hud.ts';
 import { legendLine } from './legend.ts';
 import { cellLight } from './lightmap.ts';
 import { msg } from './log.ts';
 import { mname } from './names.ts';
+import { dyn } from './particles.ts';
 import { expNeed } from './progress.ts';
 import { clamp } from './rng.ts';
 import { REACT } from './runes.ts';
@@ -296,5 +298,38 @@ export function updateSearch(dt: number): void {
     msg(
       `<b style="color:#bfe4ff">?</b>立ち止まって辺りを見回した。${found ? `隠された罠を${found}つ見つけた。` : ''}${mim ? '浮かんでいた巻物が、ぴくりと動いた。' : ''}`,
     );
+  }
+}
+
+/** 頭の上の印の高さ（形ごと。表に無い形は 1.5） */
+const markH: Readonly<Record<string, number>> = MARK_H;
+/**
+ * 生き物の頭の上の印（もとは src/game/12-hud-text.js）：眠っている z（上へ流れる2つ）・気づいた !（出た時に大きく）・怪しんでいる ?。
+ * 争わない生き物・見えていない生き物・見えない生き物と、22より遠い（dp はカメラからの距離）時は出さない。近いほど暗くする
+ */
+export function drawMark(m: Monster, t: number, dp: number): void {
+  if (m.ty.peaceful || !m.visible || m.ty.invisible || dp > 22) return;
+  m.mark = (m.mark ?? NaN) + 1 / 60;
+  const y = (m.y ?? NaN) + (markH[m.ty.form] || 1.5) * m.ty.scale + 0.25,
+    near = clamp(dp / 4, 0.5, 1);
+  if (m.sleep) {
+    for (let k = 0; k < 2; k++) {
+      const q = (t * 0.45 + k * 0.5) % 1;
+      dyn(
+        m.x + q * 0.25,
+        y + q * 0.45,
+        m.z,
+        G('z'),
+        (0.16 + 0.1 * (1 - q)) * (k ? 0.8 : 1),
+        0.55 * (1 - q) * near,
+        0.6 * (1 - q) * near,
+        1.0 * (1 - q) * near,
+      );
+    }
+  } else if (m.noticed) {
+    const pop = 1 + Math.max(0, 1 - m.mark * 3) * 0.6;
+    dyn(m.x, y + Math.sin(t * 6) * 0.03, m.z, G('!'), 0.36 * pop, 2.4 * near, 0.55 * near, 0.3 * near);
+  } else if ((m.aware ?? NaN) > 0.35) {
+    dyn(m.x, y + Math.sin(t * 3) * 0.04, m.z, G('?'), 0.32, 2.0 * near, 1.7 * near, 0.5 * near);
   }
 }

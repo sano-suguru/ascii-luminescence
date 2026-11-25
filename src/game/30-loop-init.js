@@ -38,7 +38,7 @@ function tick(raw,draw){
   regrow(); brimRecover(dt); if(!adv.dead){ updateTraps(dt); updateSearch(dt); } updateLife(dt);
   updateLights(t);
   updateAtmosphere(dt);
-  dn=0; drawFixtures(t,dt); drawDoors(t,dt); drawFire(t,dt); drawWebs(t); drawTraps(t); drawSwing(); drawViewWeapons(t); drawOmens(t,dt); drawRunesWorld(t); updateAltarPanel(); drawArrows(); drawLegendWorld(t); drawBoltFx(t,dt); drawGallery(t); drawFrozen(t); drawCastFx(t); if(ui.camMode==='tps'&&here.D&&!ui.gallery){ updateAvatar(dt); drawMonster0(avatar,t); drawSection(); } for(const m of here.monsters)drawMonster(m,t); flushDyn();
+  buf.dn=0; drawFixtures(t,dt); drawDoors(t,dt); drawFire(t,dt); drawWebs(t); drawTraps(t); drawSwing(); drawViewWeapons(t); drawOmens(t,dt); drawRunesWorld(t); updateAltarPanel(); drawArrows(); drawLegendWorld(t); drawBoltFx(t,dt); drawGallery(t); drawFrozen(t); drawCastFx(t); if(ui.camMode==='tps'&&here.D&&!ui.gallery){ updateAvatar(dt); drawMonster0(avatar,t); drawSection(); } for(const m of here.monsters)drawMonster(m,t); flushDyn();
   updateParticles(dt,t);
   fovT+=dt; if(fovT>0.1){ fovT=0; computeFOV(); checkEvents(false); look(); stepGas(); stepFire(); }
   mapT+=dt; if(mapT>0.11){ mapT=0; if(ui.uiMode===0)drawMap(); }
@@ -126,7 +126,7 @@ if(TEST)window.__test={
     if(typeof zoom!=='number'||!(zoom>=0.5&&zoom<=3))return 'no such zoom: '+zoom+' (0.5-3)';
     if(pitch!==null&&(typeof pitch!=='number'||!(pitch>=-0.3&&pitch<=1.3)))return 'no such pitch: '+pitch+' (-0.3 to 1.3 radians)';
     if(typeof center!=='boolean')return 'no such center: '+center+' (true or false)';
-    pN=0; showBeast(n-1); ui.gallery.fix={yaw,pose,zoom,pitch,center}; testTick(false); return this.galleryDraw(); },
+    buf.pN=0; showBeast(n-1); ui.gallery.fix={yaw,pose,zoom,pitch,center}; testTick(false); return this.galleryDraw(); },
   // draw the creature on show once more and look at what it drew (then drop it again, even when the drawing throws): how many glyphs,
   // how many sparks it threw (a phantom is mostly sparks: its glyphs show only now and then), how many of those glyphs and sparks hold
   // a number that is not finite (place, colour, glyph, size, speed, life), the box the glyphs fill (width and depth across the floor, the lowest and highest point),
@@ -134,7 +134,7 @@ if(TEST)window.__test={
   // the height of the point it looks at (aimY) and the straight distance to it (aimed), and what bounds it: the ceiling over the camera, the farthest the room lets it go,
   // and the ball round the aimed point that holds the body (only worked out for a zoom in; otherwise null)
   galleryDraw(){ const m=ui.gallery&&ui.gallery.mode==='beast'&&ui.gallery.m; if(!m)return null;
-    const d0=dn, p0=pN; let d1=d0, p1=p0; try{ drawMonster(m,clock.time); d1=dn; p1=pN; } finally{ dn=d0; pN=p0; }
+    const d0=buf.dn, p0=buf.pN; let d1=d0, p1=p0; try{ drawMonster(m,clock.time); d1=buf.dn; p1=buf.pN; } finally{ buf.dn=d0; buf.pN=p0; }
     const sparks=p1-p0; let bad=0; const lo=[1e9,1e9,1e9], hi=[-1e9,-1e9,-1e9];
     for(let k=d0;k<d1;k++){ let ok=true; for(let j=0;j<3;j++){ const v=dPos[k*3+j]; if(!Number.isFinite(v)||!Number.isFinite(dCol[k*3+j]))ok=false; else { lo[j]=Math.min(lo[j],v); hi[j]=Math.max(hi[j],v); } }
       for(let j=0;j<4;j++)if(!Number.isFinite(dPar[k*4+j]))ok=false; if(!ok)bad++; }

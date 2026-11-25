@@ -1,18 +1,6 @@
-// ---------------------------------------------------------------- 装備の画面を開け閉めする・付け替えの詠唱・魔導書・メニュー
-// 装備の画面を作る renderInv と、その中のボタンの処理（選ぶ・はめる・袋のページ・ビルドの保存と呼び出し applyBuild）は src/lib/inventory.ts、
-// 手を写す・戻す snapHands・handsKey は src/lib/gear.ts、枠 boxText は src/lib/text.ts（src/game/imports.mjs で読む）。
-// 装備の画面の状態（選んでいるルーン packSel など）は src/lib/state.ts の ui
-function startSwap(prev){
-  if(nearStele()){ sChime(player.x,player.z,0.3); for(let q=0;q<16;q++){ const a=mr()*6.28; spawn(player.x+Math.cos(a)*0.7,0.4+mr()*1.2,player.z+Math.sin(a)*0.7,0,0.6,0,0.7,G('.'),0.1,0.8,1.1,1.6,0); } return; }
-  gear.swapSt={t:0,dur:1.5,snap:prev,last:-1}; gear.castSt=null; fight.beamSegs=[];
-}
-function setInv(on){
-  if(on===ui.invOpen)return;
-  ui.invOpen=on; document.body.classList.toggle('paused',isPaused()); const el=document.getElementById('pack'); if(!el)return; el.classList.toggle('show',on);
-  if(on){ packSnap={key:handsKey(),snap:snapHands()}; ui.packSel=null; ui.packHover=null; if(gear.castSt){ gear.castSt=null; fight.beamSegs=[]; } renderInv(); if(ui.locked&&document.exitPointerLock)document.exitPointerLock(); }
-  else { if(packSnap&&packSnap.key!==handsKey())startSwap(packSnap.snap); packSnap=null; if(!plFailed&&ui.started&&!adv.dead)tryLock(); }
-  updateResume(); renderHotbar();
-}
+// ---------------------------------------------------------------- メニュー
+// 装備の画面を開け閉めする setInv・付け替えの詠唱 startSwap・装備の画面を作る renderInv は src/lib/inventory.ts、
+// 枠 boxText は src/lib/text.ts（src/game/imports.mjs で読む）。装備の画面の状態（選んでいるルーン packSel・開けた時の両手 packSnap など）は src/lib/state.ts の ui
 // 魔導書 renderBook と、立ち止まって調べる updateSearch は src/lib/status.ts（src/game/imports.mjs で読む）
 
 function renderMenu(){
@@ -23,7 +11,7 @@ function renderMenu(){
 }
 function setMenu(on){ ui.menuOpen=on; document.body.classList.toggle('paused',isPaused()); const el=document.getElementById('menu'); if(!el)return; el.classList.toggle('show',on); if(on)renderMenu(); }
 function menuAct(k){
-  if(k==='resume'){ setMenu(false); if(!plFailed)tryLock(); }
+  if(k==='resume'){ setMenu(false); if(!ui.plFailed)tryLock(); }
   else if(k==='pack'){ setMenu(false); setInv(true); }
   else if(k==='help'){ setHelp(!ui.helpOn); ui.helpT=0; renderMenu(); }
   else if(k==='chron'){ ui.chronOn=!ui.chronOn; ui.helpOn=false; ui.helpT=0; const el=document.getElementById('help'); if(el){ if(ui.chronOn)renderChron(); el.classList.toggle('off',!ui.chronOn); } renderMenu(); }
@@ -33,7 +21,7 @@ function menuAct(k){
   else if(k==='snd'){ sndToggle(); renderMenu(); }
   else if(k==='perf'){ ui.perfOn=!ui.perfOn; renderStatus(); renderMenu(); }
   else if(k==='title'){ if(ui.gallery||ui.titleArm>performance.now()){ ui.titleArm=0; returnToTitle(); } else { ui.titleArm=performance.now()+4000; ui.newRunArm=0; renderMenu(); menuArmReset(); } }
-  else if(k==='new'){ if(ui.newRunArm>performance.now()){ ui.newRunArm=0; setMenu(false); newRun(); if(!plFailed)tryLock(); } else { ui.newRunArm=performance.now()+4000; ui.titleArm=0; renderMenu(); menuArmReset(); } }
+  else if(k==='new'){ if(ui.newRunArm>performance.now()){ ui.newRunArm=0; setMenu(false); newRun(); if(!ui.plFailed)tryLock(); } else { ui.newRunArm=performance.now()+4000; ui.titleArm=0; renderMenu(); menuArmReset(); } }
 }
 // the "press again to make sure" of the menu lasts 4 real seconds (game time stands still while the menu is open), then the label goes back.
 // Only one of the two is armed at a time. Draw the menu again only when one has run out (so a click in the middle is not lost)

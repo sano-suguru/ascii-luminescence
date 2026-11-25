@@ -42,7 +42,7 @@ function newLevel(seedOverride){
   here.riverCells=[]; for(let i=0;i<NCELL;i++)if(here.D.flow[i]&&(here.D.liquid[i]===LQ_WATER||here.D.liquid[i]===LQ_DEEP))here.riverCells.push(i);
   trampled=[]; tallMsg=false; brimMsg=false; player.lastCell=-1; player.netT=0;
   blaze.scent=new Float32Array(NCELL); webMsg=false; webBurnMsg=false; repairMsg=false;
-  pN=0; blaze.gasAny=false; initFire(); initEvents(); blaze.spark=null; fight.projs=[]; showHint(''); edge.t=0; setFog(); initDust();
+  buf.pN=0; blaze.gasAny=false; initFire(); initEvents(); blaze.spark=null; fight.projs=[]; showHint(''); edge.t=0; setFog(); initDust();
   renderStatus(); if(ui.helpOn)renderHelp();
   computeFOV(); checkEvents(true);
   if(player.fall){ player.fall=false; setTimeout(()=>{ hurtPlayer(roll(2,4),'落下の衝撃'); },300); }
@@ -174,7 +174,7 @@ function chooseLevel(i){ const o=lvlOpts[i]; if(!o)return;
   else takeRune(o.ru);
   adv.lvl.pending=Math.max(0,adv.lvl.pending-1); renderStatus(); renderHotbar();
   if(adv.lvl.pending>0){ lvlOpenT=performance.now(); lvlOpts=levelChoices(); renderLevelUp(); return; }
-  ui.lvlOpen=false; const el=document.getElementById('altarp'); if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused()); if(!plFailed&&ui.started&&!adv.dead)tryLock(); updateResume(); }
+  ui.lvlOpen=false; const el=document.getElementById('altarp'); if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused()); if(!ui.plFailed&&ui.started&&!adv.dead)tryLock(); updateResume(); }
 // a new stratum strengthens the body
 function strataGrowth(){ if(!here.D||here.branch||here.realm||here.inter||!ui.started||ui.gallery)return; const k=here.D.stratum&&here.D.stratum.k; if(!['cavern','ruins','magma','abyss'].includes(k)||adv.lvl.strata.has(k))return; adv.lvl.strata.add(k); adv.PLAYER_MAX+=4; player.hp=Math.min(adv.PLAYER_MAX,player.hp+4); renderStatus();
   setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>新しい層の空気が、体を強くした。最大体力 +4。'),2200); }

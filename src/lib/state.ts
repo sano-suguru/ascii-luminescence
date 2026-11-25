@@ -6,6 +6,7 @@ import { type MonsterType } from './creatures.ts';
 import { type BranchPlace, type Fixture, type InterPlace, type Level, type RealmPlace } from './generate.ts';
 import { META_DEF, type Meta } from './progress.ts';
 import { type History } from './history.ts';
+import type { HandsSnap } from './gear.ts';
 import { type Rune } from './runes.ts';
 import { NCELL } from './world.ts';
 
@@ -88,6 +89,12 @@ export interface Ui {
   perfOn: boolean;
   /** 図鑑の獣を見ている間・試しの間の状態（どちらでもなければ null） */
   gallery: Gallery | null;
+  /** マウスを捕まえられなかったか（捕まえられない時は、ドラッグで視点を動かし、Esc でメニューを開く） */
+  plFailed: boolean;
+  /** 3人称のカメラの位置（x・y・z。少しずつ狙う位置へ寄せる。視点を変えた時と始めは null で、狙う位置から始める） */
+  camPos: number[] | null;
+  /** 装備の画面を開けた時の両手（handsKey の key と、写し snap）。閉じた時に変わっていれば、付け替えの詠唱をする。閉じている間は null */
+  packSnap: { key: string; snap: HandsSnap } | null;
 }
 export const ui: Ui = {
   started: false,
@@ -114,6 +121,9 @@ export const ui: Ui = {
   uiMode: 0,
   perfOn: false,
   gallery: null,
+  plFailed: false,
+  camPos: null,
+  packSnap: null,
 };
 
 /** レベルと経験（n：レベル、exp：経験、pending：まだ選んでいない加護の数、bless：加護ごとの段、strata：入った層）。後から足される欄は、使う処理を移す時に型を足す */
@@ -227,7 +237,7 @@ export interface CastState {
 export interface SwapState {
   t: number;
   dur: number;
-  snap: unknown;
+  snap: HandsSnap;
   last: number;
 }
 /** ビルド（両手の武器と枠、名前）。atk・slots はルーンそのものではなく、ルーンの uid（空は 0）。使う時に uid から持ち物を探す */
@@ -455,7 +465,11 @@ export const msgs: LogMsg[] = [];
 export interface Monster {
   x: number;
   z: number;
+  /** 足もとの高さ */
+  y?: number;
   ty: MonsterType;
+  /** 今見えているか（見えるマスにいて、隠れていない） */
+  visible?: boolean;
   dead?: boolean;
   /** 群れの番号 */
   g?: number;
@@ -646,5 +660,11 @@ export const lantern = { r: 8.2, k: 1 };
  * 1秒あたりのフレームの数 pfFps と、それを数える途中のフレームの数 pfFrames と秒 pfT）。丸ごと入れ替えない
  */
 export const hudInfo = { explored: 0, glyphCount: 0, chunksDrawn: 0, pfFrames: 0, pfT: 0, pfFps: 0 };
+/** 描く物の数：このフレームに置いた文字の数 dn（src/lib/particles.ts の dyn）と、生きている粒子の数 pN（spawn・killP） */
+export interface Buf {
+  dn: number;
+  pN: number;
+}
+export const buf: Buf = { dn: 0, pN: 0 };
 /** 押しているキー（キーの code → 押しているか）。丸ごと入れ替えない */
 export const keys: Record<string, boolean> = {};
