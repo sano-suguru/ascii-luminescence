@@ -118,7 +118,7 @@ await withBrowser(
     await menu('title');
     await advance(pg, 1);
     const depth0 = await pg.evaluate(() => __test.state().maxDepth);
-    if (!(depth0 < 4)) errs.push(`図鑑のテストの前提が崩れた（届いた深さが ${depth0}。4 より浅いはず）`);
+    if (typeof depth0 !== 'number' || !(depth0 < 4)) errs.push(`図鑑のテストの前提が崩れた（届いた深さが ${depth0}。4 より浅い数のはず）`);
     await pg.evaluate(() => document.getElementById('galB').click());
     await advance(pg, 1);
     const depth1 = await pg.evaluate(() => __test.state().maxDepth);
