@@ -4,7 +4,7 @@
 //   testPage(outDir) テスト版：JetBrains Mono を指定した所の日本語も、決まったフォント（M PLUS 1 Code）で描く面を足す（cjkFallback。
 //                    どのマシンでも同じ文字の形になる）。three.js とフォントは、公開用もテスト版も npm から組み立てに入れる
 //   privateMaps(dir) ソースマップを出力の外（.build/maps/）へ移す。公開物には入れない（tools/where.mjs とテストだけが読む）
-//   noCssStub()      ページの中の <style> から Vite が作る、空の JS の部品を消す
+//   noCssStub()      ページの中の <style> から Vite が作る、空の JS モジュールを消す
 //   fontCss()        @fontsource の CSS を絞る：古い形式（woff）の候補を外し、BIZ UDGothic は補いの文字（BIZ_CHARS）を含む面だけ残す
 import { mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -55,8 +55,8 @@ export function legacyGame() {
   };
 }
 
-// ページの中の <style> を、Vite は一度 CSS の部品（index.html?html-proxy&inline-css…）として扱い、中身を HTML に戻す。
-// 残った部品は空の文字列を返すだけの JS になる（var index_html_html_proxy_… = ""）。使っていないコードを消さない設定
+// ページの中の <style> を、Vite は一度 CSS のモジュール（index.html?html-proxy&inline-css…）として扱い、中身を HTML に戻す。
+// 残ったモジュールは空の文字列を返すだけの JS になる（var index_html_html_proxy_… = ""）。使っていないコードを消さない設定
 // （vite.config.mjs の rolldownOptions）なので、そのまま出力に残ってしまう。中身を HTML に戻した後なので、空にしてよい
 export function noCssStub() {
   return {

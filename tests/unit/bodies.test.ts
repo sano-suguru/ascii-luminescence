@@ -64,7 +64,7 @@ const PLAIN_FORMS: (() => Body)[] = [
   small.bogForm,
   small.krakenForm,
 ];
-// 段階7a で移した、引数の無い形（古いトロルと、主）
+// 引数の無い形（古いトロルと、主）
 const BOSS_FORMS: (() => Body)[] = [
   small.trollForm,
   bosses.lichKingForm,
@@ -95,7 +95,7 @@ describe('生き物の形', () => {
     expect(all.length).toBe(2926386);
     expect(fnv(all)).toBe('1ef69733'); // 移す前の実装で出した値
   });
-  it('主と大きな生き物の形（段階7a で移した物）：TypeScript に移す前と、同じ乱数で同じ形になる', () => {
+  it('主と大きな生き物の形：TypeScript に移す前と、同じ乱数で同じ形になる', () => {
     let all = '';
     for (const ty of TYS) {
       all += JSON.stringify(seeded(() => beasts.dragonForm(ty)));

@@ -3,7 +3,7 @@ import { lookup, nth } from './array.ts';
 import { clamp } from './rng.ts';
 import { css } from './color.ts';
 
-/** 特性の段（0 から 5）。古い JS は数のまま渡すので、範囲の外の段が来ると、移す前と同じく undefined や NaN の文字になる */
+/** 特性の段（0 から 5）。古い JS は数のまま渡すので、範囲の外の段が来ると、移す前と同じく undefined や NaN の文字列になる */
 export type TraitLv = 0 | 1 | 2 | 3 | 4 | 5;
 /** 段の一覧（0 から 5） */
 export const TRAIT_LVS: readonly TraitLv[] = [0, 1, 2, 3, 4, 5];
@@ -442,7 +442,7 @@ export const RUNE_DEF: Record<string, RuneDef> = {
     col: [1.0, 0.86, 0.62],
     name: '癒しの護符',
     aff: [],
-    desc: '取り戻せる傷が長く残り、攻めて取り戻す量も増える',
+    desc: '取り戻せる体力が長く残り、攻めて取り戻す量も増える',
   },
   linger: { cat: 'body', ch: '"', col: [1.0, 0.86, 0.62], name: '余韻の護符', aff: [], desc: '燃焼・凍え・痺れ・毒が 50% 長く続く' },
   hush: {
@@ -533,7 +533,7 @@ export const RUNE_DEF: Record<string, RuneDef> = {
     aff: [],
     desc: '性質の効果が長く続く。燃焼や凍えなど',
   },
-  ward: { cat: 'body', ch: '"', col: [1.0, 0.86, 0.62], name: '守りの護符', aff: [], desc: '受ける傷が 15% 軽くなる' },
+  ward: { cat: 'body', ch: '"', col: [1.0, 0.86, 0.62], name: '守りの護符', aff: [], desc: '受けるダメージが 15% 減る' },
 };
 /** 生き物ごとの、性質の効き目の倍率（種類 → 性質 → 倍率。試しの間の的は 25-gallery.js が足す） */
 export const RES: Record<string, Record<string, number>> = {

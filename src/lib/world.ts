@@ -1,4 +1,4 @@
-// 迷宮の大きさとタイル・液体と地面・支道と異界・層ごとの変化・岩の色（もとは src/game/02-constants.js と、03・06 の一部）。
+// 迷宮の大きさとタイル・液体と地面・支道と異界・深さごとの割合（depthProfile）と層ごとの霧の色（FOGS）・岩の色（もとは src/game/02-constants.js と、03・06 の一部）。
 import { clamp } from './rng.ts';
 
 /** 1マスの大きさ（m）・天井の高さ・目の高さ・迷宮の横と奥のマスの数・マスの数 */
@@ -72,7 +72,7 @@ export const PROPHECIES: string[] = [
   '灯りを絞れ。闇は、見つからぬ者の味方だ。',
   '火は草を走り、沼の息はそれを待っている。',
 ];
-/** 特別な階（今は無い） */
+/** 特別な階（どこからも呼ばれていない。いつも null を返す） */
 export const specialAt = (_d: number): null => null;
 
 // branches (after DCSS): short side-dungeons that leave the main path and rejoin it one level further down

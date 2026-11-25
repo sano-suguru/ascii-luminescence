@@ -78,7 +78,7 @@ describe('音の土台', () => {
       expect(log.filter((l) => l[1] === 'start').length).toBe(5); // 鳴り続ける雑音4つと、低い音の1つ目の波は鳴り始めていた
       expect([SND.ctx, SND.master, SND.inp, SND.wet, SND.noise, Object.keys(SND.L)]).toEqual([null, null, null, null, null, []]);
       expect(log).toContainEqual(['close']);
-      await Promise.resolve(); // 閉じる失敗の知らせを受けていなければ、ここで「受け取られない失敗」になる
+      await Promise.resolve(); // 閉じる失敗の知らせを受けていなければ、ここで、処理されない Promise の失敗（unhandled rejection）になる
       // 閉じる関数が無い古いブラウザでも、止まらずに空に戻す
       globalThis.window = {
         AudioContext: function NoCloseAudioContext() {

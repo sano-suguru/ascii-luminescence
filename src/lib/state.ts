@@ -1,4 +1,4 @@
-// ゲームの状態の入れ物（段階7b）。古い JS（src/game/）の一番外の状態（let など）を、分野ごとに型の付いた入れ物にまとめる。
+// ゲームの状態の入れ物。古い JS（src/game/）の一番外の状態（let など）を、分野ごとに型の付いた入れ物にまとめる。
 // 古い JS は src/game/imports.mjs で入れ物を読み、vfx.shake のように欄で読み書きする（入れ物そのものは差し替えない）。
 // 移す時は tools/state-move.mjs を使う（同じ名前の局所の変数は書き換えない）。初めの値は、古い JS の宣言のまま。
 // 入れ物の名前は、古い JS の局所の名前とぶつからない物にする（道具が確かめる。fx は座標の fx とぶつかるので vfx にした）。
@@ -25,7 +25,7 @@ export interface Clock {
 }
 export const clock: Clock = { time: 0 };
 
-/** 揺れと光り（画面の揺れ、画面の光り、傷・回復の光り、稲妻の光り） */
+/** 揺れと光り（画面の揺れ、画面の光り、ダメージを受けた時と回復した時の光り、稲妻の光り） */
 export interface Vfx {
   shake: number;
   flash: number;
@@ -149,7 +149,7 @@ export interface Player {
 }
 export const player: Player = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, pitch: -0.04, bob: 0, eye: 1.62, hp: 40 };
 
-/** 片手（L・R）の状態：武器のルーン atk と、付けたルーンの枠 slots（枠の数 slotN）。elem・trig は、その手の性質と引き金のルーン。後から足される欄は、使う処理を移す時に型を足す。
+/** 片手（L・R）の状態：武器のルーン atk と、付けたルーンの枠 slots（枠の数 slotN）。elem・trig は、その手の性質と発動のルーン。後から足される欄は、使う処理を移す時に型を足す。
  * runes.ts の Hand（handRunes などが読む、枠だけの形）とは別の物 */
 export interface HandState {
   atk: Rune | null;
@@ -188,13 +188,13 @@ export interface SwapState {
   snap: unknown;
   last: number;
 }
-/** 覚えておいた組み合わせ（両手の武器と枠、名前）。atk・slots はルーンそのものではなく、ルーンの uid（空は 0）。使う時に uid から持ち物を探す */
+/** ビルド（両手の武器と枠、名前）。atk・slots はルーンそのものではなく、ルーンの uid（空は 0）。使う時に uid から持ち物を探す */
 export interface Build {
   L: { atk: number; slots: number[] };
   R: { atk: number; slots: number[] };
   label: string;
 }
-/** 手と詠唱（両手・持ち物・詠唱の途中・持ち替えの途中・覚えておいた組み合わせと、今どれか） */
+/** 手と詠唱（両手・持ち物・詠唱の途中・持ち替えの途中・ビルドと、今どれか） */
 export interface Gear {
   /** 両手。探索が始まるまでは null */
   hands: Hands | null;
@@ -220,15 +220,15 @@ export interface Spark {
   vz: number;
   t: number;
 }
-/** 火と地面のマス（マスごとの火・燃える物・灰・印・火の明かり・匂い）と、燃えているマスの一覧・ガス・投げた火花。階に入るたびに作り直す（火・燃える物・灰・印・明かりと燃えているマスは 15-sound-fire.js の initFire、匂い・ガス・火花は 18-level-player.js の newLevel） */
+/** 火と地面のマス（マスごとの火・燃える物・灰・出来事の番号・火の明かり・匂い）と、燃えているマスの一覧・ガス・投げた火花。階に入るたびに作り直す（火・燃える物・灰・印・明かりと燃えているマスは 15-sound-fire.js の initFire、匂い・ガス・火花は 18-level-player.js の newLevel） */
 export interface Blaze {
   /** マスごとの火の強さ */
   fire: Float32Array;
   /** マスごとの燃える物の量 */
   fuel: Float32Array;
-  /** 燃え尽きた灰の印 */
+  /** 燃え尽きて灰になったか */
   burnt: Uint8Array;
-  /** マスごとの印（苔を食べた跡など） */
+  /** マスごとの出来事の番号（0：何も無い、20：踏まれた背の高い草や茸、30：食べられた光る苔、50：水になった、70：溶岩が流れ出した、100：動き出した像、200：崩れて崖になった床） */
   cellFlag: Uint8Array;
   /** マスごとの火の明かり */
   fireLight: Float32Array;
@@ -304,7 +304,7 @@ export interface Rain {
   again: boolean;
   done?: boolean;
 }
-/** 床の印（雨や落ちてくる物の、落ちる場所の目印） */
+/** 床の目印（雨や落ちてくる物の、落ちる場所） */
 export interface Mark {
   x: number;
   z: number;
@@ -333,7 +333,7 @@ export interface Bolt {
   re: number;
   pts: unknown[];
 }
-/** 戦い：飛ぶ物・光線・毒の霧・魔法の場・遅れて起きること・雨・床の印・ヒットストップ・引き金の待ち・稲妻 */
+/** 戦い：飛ぶ物・光線・毒の霧・魔法の場・遅れて起きること・雨・床の目印・ヒットストップ・発動の待ち・稲妻 */
 export interface Fight {
   /** 飛ぶ物（矢・術の弾など）。種類が多いので、型は飛ぶ物の処理を移す時に作る */
   projs: unknown[];
@@ -348,7 +348,7 @@ export interface Fight {
   hitStopUntil: number;
   /** 今の当たりの元の位置（押し返しの向きを決める） */
   hitSrcPoint: [number, number] | null;
-  /** 手ごとの、引き金のルーンが次に効くまでの秒 */
+  /** 手ごとの、発動のルーンが次に効くまでの秒 */
   trigCd: { L: number; R: number };
   /** 光線が最後に火をつけた時刻（ゲームの時刻 clock.time） */
   beamIgT: number;
@@ -417,9 +417,9 @@ export interface Here {
   explored: Uint8Array;
   /** マスごとの覚えた色（マスの数×3） */
   mem: Float32Array;
-  /** 今見えているマスの印（fovStamp と同じなら見えている） */
+  /** マスごとの、最後に見えた時の数え直しの番号（fovStamp と同じなら今見えている） */
   fovVis: Uint32Array;
-  /** 見えるマスを数え直すたびに増える印 */
+  /** 見えるマスを数え直すたびに1増える番号 */
   fovStamp: number;
   /** 部屋の出来事（神託・転移・噴き出し・像・崩れ・水攻め・霊など）。型は、出来事の処理を移す時に作る */
   events: unknown[];
@@ -538,7 +538,7 @@ export const SND: SoundState = {
   envT: 0,
   env: { water: 0, lava: 0, chasm: 0, bog: 0, xtal: 0, burn: 0, fire: 0, fx: 0, fz: 0, cave: false },
 };
-/** 忍び足と灯り（明るさ lum・見つかりやすさの段 level・物音の届く距離 range・忍び足か・表示を描き直すかの印 hudKey・見られているか seen）。丸ごと入れ替えない */
+/** 忍び足と灯り（明るさ lum・見つかりやすさの段 level・物音の届く距離 range・忍び足か・表示を描き直すかを見分ける文字列 hudKey・見られているか seen）。丸ごと入れ替えない */
 export interface Stealth {
   lum: number;
   level: number;

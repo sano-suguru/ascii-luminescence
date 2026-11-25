@@ -190,7 +190,7 @@ function hurtPlayer(n,cause){
   if(adv.dead||!ui.started||ui.gallery||n<=0)return;
   player.hp-=n; player.lastHurt=clock.time; { const mn=bodyN('mend'); player.rally=Math.min(Math.max(0,adv.PLAYER_MAX-player.hp),(player.rally||0)+n*0.6); player.rallyRate=player.rally/Math.max(1,4*(1+0.5*mn)-0.6); } vfx.hurtFlash=Math.min(1.2,vfx.hurtFlash+0.35+n*0.05); vfx.shake=Math.max(vfx.shake,Math.min(0.5,0.12+n*0.03));
   if(sndReady()){ const t=SND.ctx.currentTime; sEnv(sTone(t,'sine',140,60,0.25,sOut(undefined,undefined,0.35)),t,0.01,0.22); }
-  if(clock.time-(hurtPlayer.mt||-9)>0.8||hurtPlayer.mc!==cause){ hurtPlayer.mt=clock.time; hurtPlayer.mc=cause; msg(`<b style="color:#ff5a4a">-</b>${cause}で ${n} の傷を負った。`); }
+  if(clock.time-(hurtPlayer.mt||-9)>0.8||hurtPlayer.mc!==cause){ hurtPlayer.mt=clock.time; hurtPlayer.mc=cause; msg(`<b style="color:#ff5a4a">-</b>${cause}で ${n} のダメージを受けた。`); }
   if(player.hp<=0)player.hp=0;
   renderStatus();
   if(player.hp<=0)die(cause);

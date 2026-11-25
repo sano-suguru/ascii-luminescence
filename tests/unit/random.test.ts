@@ -56,7 +56,7 @@ describe('mr・mpick', () => {
   });
 });
 
-describe('G（文字の図鑑の番号）', () => {
+describe('G（文字の絵の表の番号）', () => {
   it('ASCII は 32 を引いた番号、ルーン文字は 96 から、無い文字は 31', () => {
     expect(G(' ')).toBe(0);
     expect(G('A')).toBe(33);

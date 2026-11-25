@@ -3,7 +3,7 @@
 //   node tests/visual.mjs              比べる（違いが大きければ失敗。違いの画像を tests/out/visual/ に出す）
 //   node tests/visual.mjs --update     基準の画像を作り直す（見た目を意図して変えた時だけ）
 //   node tests/visual.mjs --only bow   その場面だけ
-//   node tests/visual.mjs --soft       違っても失敗にしない（CI で様子を見る間）
+//   node tests/visual.mjs --soft       画面が違っても、終わりの値を失敗にしない（違いの画像は作る。ページのエラーは失敗のまま）
 // テスト版はフォントを npm から同梱しているので、マシンが違っても文字の形は同じになる。
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';

@@ -14,7 +14,7 @@ const errs = [];
 const results = await withBrowser(async ({ browser, base }) => {
   const pg = await newPage(browser, errs, { width: 320, height: 180 });
   await openTest(pg, base);
-  // 生成はブラウザで（ゲームの包み・特別な階の深さ・階のシードも本物のまま）、歩いて行けるかは Node で調べる（tests/reach.mjs）
+  // 生成はブラウザで（ゲームの生成の呼び出し口 generate・特別な階の深さ・階のシードも本物のまま）、歩いて行けるかは Node で調べる（tests/reach.mjs）
   await pg.addScriptTag({ content: `window.__reachPart = ${reachPart.toString()};` });
   const out = { levels: 0, fails: [] };
   for (const seed of seeds) {
