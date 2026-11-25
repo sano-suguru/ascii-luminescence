@@ -67,7 +67,7 @@ describe('移す前と同じ', () => {
     expect(lines.length).toBe(476);
     expect(new Set(lines.map((l) => l.split(' ')[1]?.split(':')[0])).size).toBeGreaterThan(460);
     expect(lines.some((l) => l.includes(':1 '))).toBe(true);
-    expect(fp(all)).toEqual(['5c0ab061', 26964]);
+    expect(fp(all)).toEqual(['e9796080', 26964]);
   }, 60000);
   it('まわりの飾り・姿を変える途中・王の影の変身（880の場合）の指紋', () => {
     const all = auraCases({ ...AURAS, buildForm: BUILD.buildForm }, 880),
@@ -100,7 +100,7 @@ describe('移す前と同じ', () => {
       true,
       true,
     ]);
-    expect(fp(all)).toEqual(['a39de468', 999086]);
+    expect(fp(all)).toEqual(['7b4ce4c3', 999086]);
   }, 60000);
   it('忘れられた獣の記録（保存の中身10通り×今の探索の記録3通り×保存が使えるか）の指紋', () => {
     const all = beastRecordCases(SAVE),

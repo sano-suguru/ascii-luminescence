@@ -13,7 +13,7 @@ export const MARK_H = {
   wraith: 2.35,
   jelly: 0.85,
   eel: 1.2,
-  shadowking: 3.45,
+  shadowking: 3.58,
   shadowserpent: 3.7,
 };
 /** ミニマップの大きさ：マスの数（横 MMC・縦 MMR）、1マスの幅 MCW・高さ MCH、余白 MPAD */

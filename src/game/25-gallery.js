@@ -88,7 +88,7 @@ function updateGallery(dt){
     else if(m.ty.form==='dragon'&&!m.ty.boss){ m.sleep=Math.floor(g.t/6)%2===0; if(m.sleep){ m.moving=0; } }
     { const ty=m.ty; if(ty.flier)m.y=(1.6+Math.sin(g.t*2.2)*0.15)*Math.max(1,sc*0.7); else if(ty.fl)m.y=ty.fl+Math.sin(g.t*1.3)*0.12; }
     // how far and how high the camera sits, by form (the old dragon's long neck brings its head close when it turns this way: 1.05 sits a little farther and higher than 1)
-    const tall=m.ty.beast?1.3:m.ty.form==='lichking'?1.6:m.ty.form==='spiderqueen'?1.25:m.ty.form==='nagaqueen'?1.3:m.ty.form==='olddragon'?1.05:m.ty.form==='shadowking'?1.6:m.ty.form==='shadowserpent'?1.9:m.ty.form==='deepkraken'?2.0:1,
+    const tall=m.ty.beast?1.3:m.ty.form==='lichking'?1.6:m.ty.form==='spiderqueen'?1.25:m.ty.form==='nagaqueen'?1.3:m.ty.form==='olddragon'?1.05:m.ty.form==='shadowking'?1.75:m.ty.form==='shadowserpent'?1.9:m.ty.form==='deepkraken'?2.0:1,
       zoom=cam?cam.zoom:1, tilt=cam?cam.pitch:null;
     // the shape the camera is fitted to: a sleeping dragon or beast curls up into its own sleeping shape, which is built the first time it is drawn asleep;
     // until then (one tick) the centre waits for it, and the aim and the ball below keep the last ones (both are worked out again whenever the shape changes, as a dragon wakes and sleeps)
