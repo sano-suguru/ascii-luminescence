@@ -48,8 +48,9 @@ function showroom(){
 }
 function openBestiary(){
   const all=galleryList(), list=saved.DEVALL?all:all.filter(e=>saved.SEEN.has(e.key));
-  introEl.classList.add('gone'); const room=showroom();
-  ui.gallery={mode:'beast',list,all:all.length,idx:0,room,m:null,t:0};
+  introEl.classList.add('gone');
+  // 部屋を作る前に入れる（階を作る処理が、図鑑の中だと分かるように。冒険の届いた深さや墓に触れない）
+  ui.gallery={mode:'beast',list,all:all.length,idx:0,room:null,m:null,t:0}; ui.gallery.room=showroom();
   showBeast(0); renderGallery(); document.getElementById('gal').classList.add('show');
 }
 function showBeast(i){
@@ -90,8 +91,8 @@ RES.dummyF={fire:0.2,ice:2}; RES.dummyP={poison:0.2,fire:2}; RES.dummyT={thunder
 function spawnDummy(d){ const m=makeMonster({key:d.k,cx:Math.floor(d.x/CELL),cz:Math.floor(d.z/CELL),g:-1,lead:true}); m.x=d.x; m.z=d.z; m.yaw=0; m.sleep=false; m.wait=1e9; m.noticed=false; m.dsum=0;
   here.monsters.push(m); d.m=m; d.respawn=1.5; for(let q=0;q<14;q++){ const a=mr()*6.28; spawn(d.x,0.4,d.z,Math.cos(a),0.6+mr(),Math.sin(a),0.6,G('.'),0.12,1.2,1.1,0.9,0); } }
 function openRange(){
-  introEl.classList.add('gone'); sndInit(); resetRunes(); const room=galleryRoom(52571);
-  ui.gallery={mode:'range',room,dummies:[]};
+  introEl.classList.add('gone'); sndInit(); resetRunes();
+  ui.gallery={mode:'range',room:null,dummies:[]}; const room=ui.gallery.room=galleryRoom(52571); // 部屋を作る前に入れる（図鑑と同じ）
   const types=Object.keys(RUNE_DEF).filter(t=>RUNE_DEF[t].cat!=='open'&&RUNE_DEF[t].cat!=='sub'&&(RUNE_DEF[t].cat!=='mod'||RUNE_TYPES.mod.includes(t))&&(saved.DEVALL||saved.RSEEN.has(t)||t==='blade'||t==='bolt'||RUNE_DEF[t].cat==='mod'));
   gear.bag=[]; for(const t of types)gear.bag.push(makeRune(t));
   for(const h of ['L','R']){ gear.hands[h].slotN=SLOT_MAX; while(gear.hands[h].slots.length<SLOT_MAX)gear.hands[h].slots.push(null); } for(const t of RUNE_TYPES.mod)gear.bag.push(makeStrong(t)); for(const w of RUNE_TYPES.atk)for(const k of Object.keys(TRAITS[w]))for(const lv of [3,5]){ const ru=makeRune(w); ru.traits=[{k,lv}]; gear.bag.push(ru); } gear.hands.B=gear.hands.B||{b0:null,b1:null}; adv.runState.bodyOpen=2;
