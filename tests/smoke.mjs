@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // スモークテスト：テスト用モードでない時にタイトルの画面が出るか、開発用の探索で dbg が動くか、探索の始め直しで前の場所や状態が残らないか
-// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの「もう一度押して確かめる」待ちが4秒で消えるか、図鑑を開いても探索の記録が変わらないか、開発用モードのまま読み直した時・保存が使えない時のタイトル、閉じた祭壇の画面が離れるまで開かないか。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
+// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの「もう一度押して確かめる」待ちが4秒で消えるか、図鑑を開いても探索の記録が変わらないか、開発用モードのまま読み直した時・保存が使えない時のタイトル、閉じた祭壇の画面が離れるまで開かないか、図鑑の全部の生き物を出して例外・描いた文字の数・NaN を確かめる。扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
 //   node tests/smoke.mjs          テスト版（.build/test/。既定）
 //   node tests/smoke.mjs --prod   公開用の版（dist/）。JetBrains Mono を指定した所の日本語は、システムのフォントで描く
 import { join } from 'node:path';
-import { withBrowser, newPage, openTest, frames, advance, nearAltar, OUT } from './lib.mjs';
+import { withBrowser, newPage, openTest, frames, advance, nearAltar, annotate, OUT } from './lib.mjs';
 
 const errs = [];
 await withBrowser(
@@ -209,6 +209,99 @@ await withBrowser(
     // 祭壇の画面とレベルアップの画面は同じ部品なので、途中でレベルが上がると、開いたかどうかを読み違える
     if ((await al.evaluate(() => __test.state().lvl)) !== lvl0) errs.push('10：途中でレベルが上がった（テストの前提が崩れた）');
     await al.close();
+
+    // 11. 図鑑：全部の生き物（テスト用モードは開発用モードなので、全部並ぶ）を、立つ・歩く・眠るの姿で出して、少し進める。
+    //    例外が出ないか、文字を描いているか（ファントムは、ほとんど火花で描く）、描いた文字と火花に NaN や Infinity が混じらないか。最後に Esc でタイトルへ戻る
+    await openTest(pg, base);
+    await advance(pg, 1);
+    const gal = await pg.evaluate(() => {
+      const list = __test.gallery(),
+        bad = [],
+        names = new Set();
+      if (typeof list === 'string') return { bad: [list] };
+      for (const e of list) {
+        if (!e.name) bad.push(`${e.n} 番目（${e.key}）に名前が無い`);
+        if (names.has(e.name)) bad.push(`名前が重なっている：${e.name}`);
+        names.add(e.name);
+        for (const pose of ['stand', 'walk', 'sleep']) {
+          try {
+            const r0 = __test.galleryShow(e.n, { yaw: 0.6, pose });
+            if (typeof r0 === 'string') throw new Error(r0);
+            __test.advance(pose === 'walk' ? 1.5 : 0.5); // 歩く姿は、歩幅がいっぱいになるまで（約1秒）
+            const r = __test.galleryDraw();
+            if (r.glyphs + r.sparks < 15) bad.push(`${e.name}（${pose}）が、ほとんど描かれていない：文字 ${r.glyphs}・火花 ${r.sparks}`);
+            if (r.bad) bad.push(`${e.name}（${pose}）の文字と火花のうち ${r.bad} 個に、数でない値（NaN か Infinity）がある`);
+          } catch (err) {
+            bad.push(`${e.name}（${pose}）で例外：${String(err && err.stack ? err.stack : err).slice(0, 300)}`);
+          }
+        }
+      }
+      // 寄る・引く・見下ろす角度の端の値でも、例外や NaN が出ないか（大きい物・小さい物・飛ぶ物・ほとんど火花で描く物）。範囲の外の値は断るか
+      for (const name of ['年老いた竜', 'ネズミ', '吸血コウモリ', 'ファントム', '最後の王の影'])
+        for (const [zoom, pitch] of [
+          [0.5, -0.3],
+          [3, 1.3],
+          [3, -0.3],
+          [0.5, 1.3],
+        ]) {
+          const e = list.find((o) => o.name === name);
+          if (!e) {
+            bad.push(`寄る・引くの確かめに使う「${name}」が図鑑に無い`);
+            break;
+          }
+          try {
+            const r0 = __test.galleryShow(e.n, { zoom, pitch });
+            if (typeof r0 === 'string') throw new Error(r0);
+            __test.advance(0.5);
+            const r = __test.galleryDraw();
+            if (r.glyphs + r.sparks < 15)
+              bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）が、ほとんど描かれていない：文字 ${r.glyphs}・火花 ${r.sparks}`);
+            if (r.bad)
+              bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）の文字と火花のうち ${r.bad} 個に、数でない値（NaN か Infinity）がある`);
+            const c = r.camera;
+            if (![c.dist, c.height, c.pitch].every(Number.isFinite) || c.height < 0.3)
+              bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）のカメラの位置がおかしい：${JSON.stringify(c)}`);
+            // 天井より下、部屋の壁より内。寄った時は、体を包む球（狙う点が中心）の外
+            if (c.height > c.ceil - 0.39)
+              bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）のカメラが天井に届いている：${JSON.stringify(c)}`);
+            if (c.dist > c.roomR + 0.01)
+              bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）のカメラが部屋の壁より外にある：${JSON.stringify(c)}`);
+            if (zoom > 1 && !(c.aimed >= c.bodyR + 0.79))
+              bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）のカメラが体を包む球に近すぎる：${JSON.stringify(c)}`);
+          } catch (err) {
+            bad.push(`${name}（zoom ${zoom}・pitch ${pitch}）で例外：${String(err && err.stack ? err.stack : err).slice(0, 300)}`);
+          }
+        }
+      // 寄ると近づき、引くと遠ざかり、上からだと高く・下向きになる（ネズミ：体が小さいので、寄っても体を包む球で止まらない。
+      // zoom 0.5 の距離 8.2 が、部屋の壁より内にあることも前提にする）
+      const rat = list.find((o) => o.name === 'ネズミ');
+      if (!rat) bad.push('寄る・引く・見下ろす角度の確かめに使う「ネズミ」が図鑑に無い');
+      else {
+        const cam = (opt) => (__test.galleryShow(rat.n, opt), __test.galleryDraw().camera);
+        const [c1, c2, c05, side, top] = [cam({}), cam({ zoom: 2 }), cam({ zoom: 0.5 }), cam({ pitch: 0 }), cam({ pitch: 0.8 })];
+        if (!(c05.dist < c05.roomR - 0.01))
+          bad.push(`ネズミの zoom 0.5 の距離が部屋の壁で止まっていて、寄る・引くを比べられない：${JSON.stringify(c05)}`);
+        if (!(c2.dist < c1.dist * 0.6)) bad.push(`zoom 2 で寄っていない：距離 ${c1.dist} → ${c2.dist}`);
+        if (!(c05.dist > c1.dist * 1.6)) bad.push(`zoom 0.5 で引いていない：距離 ${c1.dist} → ${c05.dist}`);
+        if (!(top.height > side.height + 1 && top.pitch < side.pitch - 0.5))
+          bad.push(`pitch 0.8 で上から見下ろしていない：横から ${JSON.stringify(side)}、上から ${JSON.stringify(top)}`);
+      }
+      for (const opt of [{ zoom: 0.4 }, { zoom: 3.1 }, { zoom: NaN }, { pitch: -0.31 }, { pitch: 1.31 }, { pitch: '0.3' }]) {
+        const r = __test.galleryShow(1, opt);
+        if (typeof r !== 'string') bad.push(`範囲の外の値 ${JSON.stringify(opt, (k, v) => (Number.isNaN(v) ? 'NaN' : v))} を断らなかった`);
+      }
+      // 図鑑の画面の「見つけた数 x / N」の N（図鑑の全部の数）。開発用モードでは、全部が一覧に並ぶはず
+      const total = Number((document.getElementById('gal').textContent.match(/見つけた数\s*\d+\s*\/\s*(\d+)/) || [])[1]);
+      return { n: list.length, total, bad };
+    });
+    console.log('bestiary:', gal.n, 'creatures');
+    for (const b of gal.bad) errs.push(annotate(`図鑑：${b}`)); // 例外の場所に src/game/ のファイルと行を書き足す
+    if (gal.n !== undefined && (gal.n < 40 || gal.n !== gal.total))
+      errs.push(`図鑑の一覧に全部が並んでいない：一覧 ${gal.n}、図鑑の全部 ${gal.total}`);
+    await pg.keyboard.press('Escape');
+    await advance(pg, 0.5);
+    if (await pg.evaluate(() => document.getElementById('gal').classList.contains('show')))
+      errs.push('図鑑で Esc を押しても、タイトルへ戻らない');
   },
   { prod: process.argv.includes('--prod') },
 );

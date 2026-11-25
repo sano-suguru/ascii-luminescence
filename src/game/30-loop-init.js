@@ -108,6 +108,38 @@ if(TEST)window.__test={
   // count the cells in sight now (the game does it every 0.1 s; a check that looks every frame should not miss a short moment)
   fov(){ computeFOV(); },
   summon(key,i){ if(!MTYPES[key])return 'no such creature: '+key; summon(key,i); return here.monsters.length; },
+  // the bestiary, opened from the title (as its button does) if it is not open: every entry in order, n counted from 1
+  gallery(){ if(!(ui.gallery&&ui.gallery.mode==='beast')){ if(ui.started)return 'the bestiary opens from the title'; openBestiary(); }
+    return ui.gallery.list.map((e,i)=>({n:i+1,key:e.key,name:e.ty.name,form:e.ty.form})); },
+  // show entry n held still: yaw 0 faces the camera, + turns it to the right as seen from the camera; pose 'stand' | 'walk' | 'sleep'.
+  // zoom (0.5-3, default 1) divides the camera's distance: 2 is half as far, so the creature looks bigger (the room still bounds it, and a zoom in stops outside the body).
+  // pitch (-0.3 to 1.3 radians) moves the camera up around the creature, under the ceiling: 0 looks from the side, + looks down from above (left out: the height the bestiary works out from the creature's size).
+  // It empties the sparks first (so a full pool does not swallow the sparks of a phantom, which is mostly sparks), then steps one tick so the angle
+  // and pose take hold (a walk needs about 1 s more to reach its full stride). Returns what galleryDraw() returns
+  galleryShow(n,{yaw=0,pose='stand',zoom=1,pitch=null}={}){ const list=this.gallery(); if(typeof list==='string')return list;
+    if(!(Number.isInteger(n)&&n>=1&&n<=list.length))return 'no such entry: '+n+' (1-'+list.length+')'; if(!['stand','walk','sleep'].includes(pose))return 'no such pose: '+pose;
+    if(typeof yaw!=='number'||!Number.isFinite(yaw))return 'no such yaw: '+yaw+' (a number of radians)';
+    if(typeof zoom!=='number'||!(zoom>=0.5&&zoom<=3))return 'no such zoom: '+zoom+' (0.5-3)';
+    if(pitch!==null&&(typeof pitch!=='number'||!(pitch>=-0.3&&pitch<=1.3)))return 'no such pitch: '+pitch+' (-0.3 to 1.3 radians)';
+    pN=0; showBeast(n-1); ui.gallery.fix={yaw,pose,zoom,pitch}; testTick(false); return this.galleryDraw(); },
+  // draw the creature on show once more and look at what it drew (then drop it again, even when the drawing throws): how many glyphs,
+  // how many sparks it threw (a phantom is mostly sparks: its glyphs show only now and then), how many of those glyphs and sparks hold
+  // a number that is not finite (place, colour, glyph, size, speed, life), the box the glyphs fill (width and depth across the floor, the lowest and highest point),
+  // and where the camera is (distance across the floor to the creature, height, and how far it looks down: pitch is the camera's, so negative is down),
+  // the straight distance to the point it looks at (aimed), and what bounds it: the ceiling over the camera, the farthest the room lets it go,
+  // and the ball round the aimed point that holds the body (only worked out for a zoom in; otherwise null)
+  galleryDraw(){ const m=ui.gallery&&ui.gallery.mode==='beast'&&ui.gallery.m; if(!m)return null;
+    const d0=dn, p0=pN; let d1=d0, p1=p0; try{ drawMonster(m,clock.time); d1=dn; p1=pN; } finally{ dn=d0; pN=p0; }
+    const sparks=p1-p0; let bad=0; const lo=[1e9,1e9,1e9], hi=[-1e9,-1e9,-1e9];
+    for(let k=d0;k<d1;k++){ let ok=true; for(let j=0;j<3;j++){ const v=dPos[k*3+j]; if(!Number.isFinite(v)||!Number.isFinite(dCol[k*3+j]))ok=false; else { lo[j]=Math.min(lo[j],v); hi[j]=Math.max(hi[j],v); } }
+      for(let j=0;j<4;j++)if(!Number.isFinite(dPar[k*4+j]))ok=false; if(!ok)bad++; }
+    for(let k=p0;k<p1;k++)if(['x','y','z','vx','vy','vz','life','gl','sz','r','g','b'].some(a=>!Number.isFinite(P[a][k])))bad++;
+    const f=v=>+v.toFixed(2), n=d1-d0;
+    const cp=camera.position;
+    return {name:m.ty.name,glyphs:n,sparks,bad,box:n?{w:f(hi[0]-lo[0]),d:f(hi[2]-lo[2]),y0:f(lo[1]),y1:f(hi[1])}:null,
+      camera:{dist:+Math.hypot(cp.x-m.x,cp.z-m.z).toFixed(3),height:+cp.y.toFixed(3),pitch:+camera.rotation.x.toFixed(3),
+        aimed:+Math.hypot(cp.x-m.x,cp.y-(ui.gallery.aimY??0),cp.z-m.z).toFixed(3),ceil:+ceilAt(cp.x,cp.z).toFixed(3),roomR:+(ui.gallery.room.far-0.8).toFixed(3),
+        bodyR:ui.gallery.fix&&ui.gallery.fix.bodyR!==undefined?+ui.gallery.fix.bodyR.toFixed(3):null}}; },
   // remove every creature (lords too), so a check is not upset by one that happens to be near
   clearAll(){ const n=here.monsters.length; here.monsters=[]; return n; },
   // every place a run can visit, for generation checks
