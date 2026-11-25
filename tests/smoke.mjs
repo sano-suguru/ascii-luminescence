@@ -162,6 +162,7 @@ await withBrowser(
     await openTest(al, base, 'seed=202&depth=3&god=1');
     await advance(al, 2);
     if (!(await nearAltar(al))) errs.push('10：祭壇が見つからない（テストの前提が崩れた）');
+    const lvl0 = await al.evaluate(() => __test.state().lvl);
     const altarShown = async () => {
       await advance(al, 0.5);
       return al.evaluate(() => document.getElementById('altarp').classList.contains('open'));
@@ -184,15 +185,29 @@ await withBrowser(
     await advance(al, 0.2);
     await al.keyboard.press('Escape');
     await stayClosed('メニューを開いて閉じたら');
-    // 離れて、また近づくと開く
+    // 離れて、また近づくと開く。離れる先は、どの祭壇からも4以上離れた床のマスのうち、いちばん近い物（そこで祭壇の画面が開かないことも確かめる）
     const back = await al.evaluate(() => {
-      const [x, z] = __test.state().pos;
-      dbg.step(x + 6, z);
-      return [x, z];
+      const [x, z] = __test.state().pos,
+        { w, h } = __test.size(),
+        altars = dbg.items().filter((o) => o.altar);
+      let best = null;
+      for (let i = 0; i < w * h; i++) {
+        const c = __test.cell(i),
+          d = Math.hypot(c.x - x, c.z - z);
+        if (c.floor && altars.every((o) => Math.hypot(o.pos[0] - c.x, o.pos[1] - c.z) >= 4) && (!best || d < best.d))
+          best = { x: c.x, z: c.z, d };
+      }
+      if (best) dbg.step(best.x, best.z);
+      return best && [x, z];
     });
-    await advance(al, 0.5);
-    await al.evaluate(([x, z]) => dbg.step(x, z), back);
-    if (!(await altarShown())) errs.push('10：祭壇から離れて、また近づいたのに、祭壇の画面が開かない');
+    if (!back) errs.push('10：祭壇から離れた床のマスが見つからない（テストの前提が崩れた）');
+    else if (await altarShown()) errs.push('10：祭壇から離れた所で、祭壇の画面が開いている（テストの前提が崩れた）');
+    else {
+      await al.evaluate(([x, z]) => dbg.step(x, z), back);
+      if (!(await altarShown())) errs.push('10：祭壇から離れて、また近づいたのに、祭壇の画面が開かない');
+    }
+    // 祭壇の画面とレベルアップの画面は同じ部品なので、途中でレベルが上がると、開いたかどうかを読み違える
+    if ((await al.evaluate(() => __test.state().lvl)) !== lvl0) errs.push('10：途中でレベルが上がった（テストの前提が崩れた）');
     await al.close();
   },
   { prod: process.argv.includes('--prod') },

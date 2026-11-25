@@ -150,7 +150,7 @@ function grabItem(it,k,x,z,dest){
 // a rune put where the player chose: into a hand (what was there goes to the bag), or into the bag
 function placeChosen(ru,dest,fromAltar){ if(!saved.RSEEN.has(ru.type)){ saved.RSEEN.add(ru.type); saveSet('al_runes',saved.RSEEN); } if(mergeMod(ru))return; const def=RUNE_DEF[ru.type], col=runeCol(ru);
   gear.bag.push(ru); msg(`<b class="rn" style="color:${css(col)}">${def.ch}</b>${thingLabel(ru)}を手にした。袋に収めた。Tab で付け替えられる（祭壇のそばなら詠唱はいらない）。`); renderHotbar(); if(ui.invOpen)renderInv(); }
-// the altar's comparison panel: near a lit altar, its three choices side by side; 1, 2, 3 choose (touching still works). The game does not pause.
+// 祭壇の画面：灯った祭壇の近くで、3つの選択肢を並べる。クリックで選ぶ。開いている間は、ゲームが止まる
 let altarNear=null, altarPanelKey='', altarSel=null, altarAim=-1, altarDismissed=null;
 function runeDest(ru){ const def=RUNE_DEF[ru.type], cat=def.cat;
   if(cat==='body'){ const i=[0,1].slice(0,adv.runState.bodyOpen||0).find(i=>!gear.hands.B['b'+i]); return i!==undefined?'身の護符の枠へ':'袋へ'; }
