@@ -30,12 +30,14 @@ export const PLACES: Place[] = [
 ];
 /** 最深部か（階段が無くてよい） */
 export const isFinal = (pl: Place): boolean => pl.depth === FINAL_DEPTH && !pl.branch && !pl.realm && !pl.inter;
-/** 探索のシードごとの年代記（自分のシードの乱数だけで決まり、生成は読むだけなので、作った物を使い回す） */
-const histories = new Map<number, ReturnType<typeof makeHistory>>();
+/**
+ * 探索のシードの年代記（自分のシードの乱数だけで決まり、生成は読むだけなので、作った物を使い回す）。覚えるのは直前の1つだけ
+ * （決まったシードで作るテストには十分当たり、場合ごとにシードを変えるテストでは溜まらない）
+ */
+let lastHistory: { runSeed: number; h: ReturnType<typeof makeHistory> } | null = null;
 const historyOf = (runSeed: number): ReturnType<typeof makeHistory> => {
-  let h = histories.get(runSeed);
-  if (!h) histories.set(runSeed, (h = makeHistory(runSeed)));
-  return h;
+  if (lastHistory?.runSeed !== runSeed) lastHistory = { runSeed, h: makeHistory(runSeed) };
+  return lastHistory.h;
 };
 /** 場所 place を、階のシード seed・探索のシード runSeed で生成する */
 export const gen = (env: GenEnv, seed: number, place: Place, runSeed = 42): GenResult =>

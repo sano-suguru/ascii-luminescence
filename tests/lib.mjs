@@ -45,6 +45,7 @@ export async function withBrowser(fn, { prod = false } = {}) {
   const mode = prod ? 'production' : 'test',
     dir = join(ROOT, prod ? 'dist' : '.build/test');
   if (prod || process.env.AL_PREBUILT !== '1') await build({ configFile: join(ROOT, 'vite.config.mjs'), mode, logLevel: 'warn' });
+  else console.log('組み立ては済んでいるので、組み立てない（AL_PREBUILT=1。1つだけ走らせる時は、この環境変数を消すこと）');
   mapDir = join(ROOT, '.build/maps', mode);
   const srv = await serve(dir);
   // システムのフォントを見せない（tests/fonts.conf）。テスト版は日本語も同梱のフォントで描くので、どのマシンでも同じ文字になる。
