@@ -35,11 +35,11 @@ export interface Vfx {
 }
 export const vfx: Vfx = { shake: 0, flash: 0, hurtFlash: 0, hpFlash: 0, zapFlash: null };
 
-/** 画面の開け閉め（冒険が始まったか、1人称・3人称、マウスを捕まえているか、各画面が開いているか、表示の量） */
-/** 図鑑の獣を見ている間（'beast'）か、試しの間（'range'）の状態（型は、TypeScript が読む欄だけ。ほかの欄は、図鑑と試しの間の処理を移す時に足す） */
+/** 図鑑の獣を見ている間（'beast'）か、試しの間（'range'）の状態（今は mode だけ型を付ける。ほかの欄は、図鑑と試しの間の処理を移す時に足す） */
 export interface Gallery {
   mode: 'beast' | 'range';
 }
+/** 画面の開け閉め（冒険が始まったか、1人称・3人称、マウスを捕まえているか、各画面が開いているか、表示の量、図鑑と試しの間） */
 export interface Ui {
   /** 冒険が始まったか（タイトルの画面を閉じたか） */
   started: boolean;
