@@ -108,7 +108,7 @@ try{ saved.BOOK=new Set(JSON.parse(localStorage.getItem('al_book')||'[]')); }cat
 function resetRunes(){ fight.trigCd={L:0,R:0}; fight.hitSrcPoint=null;
   gear.hands={L:newHand('blade'), R:newHand('orb'), B:{b0:null,b1:null}};
   gear.bag=[]; gear.builds=[null,null,null]; gear.buildIdx=-1; gear.castSt=null; gear.swapSt=null; ui.packSel=null; fight.beamSegs=[]; fight.clouds=[];
-  adv.runState={startChosen:false,altar1:false,taken:new Set(),lordsDone:new Set(),bodyOpen:0}; saved.LEGEND=null; finalSt=null; adv.won=false; renderHotbar();
+  adv.runState={startChosen:false,altar1:false,taken:new Set(),lordsDone:new Set(),bodyOpen:0}; saved.LEGEND=null; here.finalSt=null; adv.won=false; renderHotbar();
   try{ if(!saved.RSEEN.has('blade')||!saved.RSEEN.has('bolt')){ saved.RSEEN.add('blade'); saved.RSEEN.add('bolt'); saveSet('al_runes',saved.RSEEN); } }catch(e){}
 }
 function specOf(h){ const H=effHand(h); syncHand(H); if(H.two){ gear.hands.L.elem=gear.hands.R.elem=H.elem; gear.hands.L.trig=gear.hands.R.trig=H.trig; } const aff={};

@@ -1174,3 +1174,66 @@ export function dragonForm(ty: BodyType): Body {
   }
   return pts;
 }
+
+// ---- 死者の体（もとは src/game/09-bodies-creatures.js）
+/** リッチ（浮かぶ骸骨の術師）：裾が霧にほどける衣、開いた胸の肋骨、冷たい目と色あせた冠、骨の杖、回る本 */
+export function lichForm(ty: BodyType): Body {
+  const { S, pts, lit, stroke, ell } = q3(ty);
+  pts.noExtra = true;
+  const BONE: Color = [0.9, 0.88, 0.8],
+    ROBE: Color = [0.45, 0.35, 0.6],
+    GOLD: Color = [0.85, 0.7, 0.38],
+    ICE: Color = [0.6, 0.88, 1.0],
+    MIST: Color = [0.55, 0.55, 0.75],
+    BOOK: Color = [0.6, 0.45, 0.85];
+  // 衣。裾は床の上で霧にほどける
+  for (let y = 0.28; y <= 1.3; y += S * 0.85) {
+    const f = (y - 0.28) / 1.02,
+      r = 0.32 - 0.1 * f,
+      n = Math.max(6, Math.round((2 * Math.PI * r) / (S * 0.9)));
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2;
+      if (f < 0.25 && mr() < 0.35 * (1 - f / 0.25)) continue;
+      lit(
+        Math.cos(a) * r,
+        y,
+        Math.sin(a) * r * 0.85,
+        mpick(['%', ':', '|', '#']),
+        1,
+        0.75 + 0.35 * Math.max(0, Math.cos(a - 0.8)),
+        ROBE,
+        'robe',
+      );
+    }
+  }
+  for (let k = 0; k < 16; k++) {
+    const a = mr() * 6.28,
+      r = 0.25 + mr() * 0.15;
+    lit(Math.cos(a) * r, 0.08 + mr() * 0.2, Math.sin(a) * r, mpick(['~', '.']), 0.9, 0.8, MIST, 'robe');
+  }
+  // 開いた胸から見える肋骨
+  for (let r = 0; r < 4; r++) for (const sd of [-1, 1]) lit(sd * 0.08, 1.12 - r * 0.08, 0.2, sd < 0 ? '(' : ')', 0.9, 1.4, BONE);
+  // 頭蓋骨、冷たい目、色あせた冠
+  ell([0, 1.5, 0.02], 0.13, 0.14, 0.13, SKINR, () => BONE, 'head');
+  for (const sd of [-1, 1]) lit(sd * 0.05, 1.52, 0.14, '*', 0.9, 3.8, ICE, 'head');
+  lit(0, 1.4, 0.14, '=', 0.85, 1.4, BONE, 'head');
+  for (let k = 0; k < 9; k++) {
+    const a = (k / 9) * Math.PI * 2;
+    lit(Math.cos(a) * 0.12, 1.65, Math.sin(a) * 0.11, k % 2 ? '^' : '=', 0.9, 1.8, GOLD, 'head');
+  }
+  // 骨の腕と骨の杖（頭が冷たく光る）。もう一方の手は開いている
+  stroke([0.26, 1.25, 0.06], [0.34, 0.95, 0.14], BONE, 1.3, 0.9, 'body');
+  stroke([0.38, 0.15, 0.14], [0.38, 1.85, 0.14], [0.7, 0.66, 0.6], 1.1, 0.9, 'body');
+  lit(0.38, 1.92, 0.14, '@', 1.3, 3.6, ICE, 'body');
+  stroke([-0.26, 1.25, 0.06], [-0.36, 1.05, 0.3], BONE, 1.3, 0.9, 'body');
+  for (let f2 = 0; f2 < 4; f2++) lit(-0.36 + (f2 - 1.5) * 0.03, 1.02, 0.38, "'", 0.8, 1.4, BONE, 'body');
+  // まわりを回る本。ページがめくれる
+  for (const [ch, dy] of [
+    ['#', 0],
+    ['=', 0.08],
+    ['=', -0.08],
+  ] as const)
+    lit(0, 1.0 + dy, 0, ch, 1.05, 2.2, BOOK, 'orbit', { r: 0.6, sp: 0.7, ph: 0 });
+  lit(0, 1.12, 0, '~', 0.9, 2.8, ICE, 'orbit', { r: 0.6, sp: 0.7, ph: 0.12 });
+  return pts;
+}

@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------- small creatures (the living layer of the world; they never hunt you)
-// critterForm・spiderForm・robotForm など 5 個は src/lib/bodies/small.ts（古い JS が読むのは、そのうち src/game/imports.mjs にある物）
+// 小さな生き物の形（critterForm など）は src/lib/bodies/small.ts（形は src/lib/bodies/build.ts の buildForm が選んで作る。古い JS は読まない）
 function critterStep(m,away){
   const opts=[]; for(const d of D4){ const i=(m.cz+d[1])*MW+m.cx+d[0]; if(canStep(m,i))opts.push(d); }
   if(!opts.length)return;

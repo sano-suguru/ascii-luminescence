@@ -6,49 +6,15 @@ import { boxText, clipHtml, padTo, visW, wrapPlain } from '../lib/text.ts';
 import { makeHistory } from '../lib/history.ts';
 import { G, RAMP_CH, RUNESET, RUNE_CHARS, SWAPSET, WG } from '../lib/glyphs.ts';
 import { R, RI, mpick, mr, pick, rand, roll, shuffle } from '../lib/random.ts';
-import { BONE, FUR, GOLD, HRAMP, PALE, SKINR, q3 } from '../lib/bodies/kit.ts';
-import { bloatForm, bogForm, crabForm, critterForm, eelForm, fishForm, jellyForm, krakenForm, robotForm, shroomForm, snakeForm, spiderForm, trollForm, wispForm } from '../lib/bodies/small.ts';
-import {
-  batForm,
-  bogForm2,
-  caveSpiderForm,
-  dragonForm,
-  dragonSleepForm,
-  golemForm2,
-  grazerForm,
-  jackalForm,
-  krakenForm2,
-  nagaForm,
-  ogreForm,
-  phantomForm,
-  ratForm,
-  salamanderForm,
-  trollForm2,
-  wraithForm2,
-} from '../lib/bodies/beasts.ts';
-import {
-  BEAST_S,
-  HUM_PROP,
-  KRAKEN_T,
-  KRAKEN_W,
-  LOOK_PROP,
-  beastAcc,
-  beastForm,
-  beastSleep,
-  cleanerForm,
-  golemForm,
-  repairerForm,
-  shadowKingForm,
-  watcherForm,
-} from '../lib/bodies/lords.ts';
-import { lichKingForm, nagaQueenForm, oldDragonForm, shadowSerpentForm, spiderQueenForm } from '../lib/bodies/bosses.ts';
+import { dragonSleepForm } from '../lib/bodies/beasts.ts';
+import { beastSamples, beastSleep } from '../lib/bodies/lords.ts';
 import {
   BASE_H, BRANCHES, CELL, CH_D, CHUNK, CXN, CZN, D4, EYE, FOGS, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MH, MW, NCELL, NDL, NSL, PR, PROPHECIES,
   REALMS, SF_BRIM, SF_DEAD, SF_FOLIAGE, SF_FUNGFOR, SF_GRASS, SF_HAY, SF_ICE, SF_LUMEN, SF_MUD, SF_OBSIDIAN, SF_RUBBLE, TC, TF, TP,
   TW, TX, VAULT_WALL_H, FINAL_DEPTH, VEIN_COL, VEIN_NAME, blocksWalk, cpos, FIRE_TYPES, } from '../lib/world.ts';
 import { LANTERN, topLights } from '../lib/light.ts';
 import { flowW, jagged, lerpAngle, mCenter, sstep, turnDir } from '../lib/math.ts';
-import { css, hsl2rgb } from '../lib/color.ts';
+import { css } from '../lib/color.ts';
 import {
   CAT_BR, CAT_NAME, ELEM_POW, RUNE_FONT, RUNE_TYPES, RALLY_FROM, SLEEP_MULT, SLOT_MAX, TIER_COL, TL, TRAITS, TRAIT_V, WEAPON, elemCount, handRunes, serRune, sp_elem, trList, trName, tv, RES, RUNE_DEF, detailLines, elemCol, modVal, modWorks, rollTraits, runeCol, runeName, syncHand, thingLabel,
 } from '../lib/runes.ts';
@@ -75,7 +41,7 @@ import {
   altarDetail, altarFill, altarLine, altarOpts, guardedNow, placeAltar, placeChosen, placeRunesForLevel, takeRune, vaultArea,
 } from '../lib/altars.ts';
 import { lockedOf, unlocked, weaponPool } from '../lib/unlocks.ts';
-import { levelSeed } from '../lib/levels.ts';
+import { isFinal, levelSeed } from '../lib/levels.ts';
 import { msg, renderLog } from '../lib/log.ts';
 import { renderHotbar } from '../lib/hotbar.ts';
 import { applyBuild, renderInv, setInv, startSwap } from '../lib/inventory.ts';
@@ -84,9 +50,11 @@ import {
 } from '../lib/status.ts';
 import { getLegend } from '../lib/legend.ts';
 import { cellLight } from '../lib/lightmap.ts';
-import { saveMeta, saveSet } from '../lib/save.ts';
+import { loadBeasts, recordBeast, saveMeta, saveSet } from '../lib/save.ts';
 import { BL, statOf } from '../lib/monsters.ts';
 import { setCamMode, sndToggle, tryLock, updateResume } from '../lib/screens.ts';
+import { addLooks, buildForm } from '../lib/bodies/build.ts';
+import { bogAura, dragonAura, drawMorph, houndAura, krakenAura, lichAura, nagaAura, salamanderAura, shadowAura, spiderAura, transformShadow } from '../lib/bodies/auras.ts';
 import { P, dCol, dPar, dPos, dyn, killP, spawn } from '../lib/particles.ts';
 // three.js（r147）。npm の three から読んで、組み立てに入れる（CDN からは読まない）。
 // 光のにじみの4つの部品（examples/jsm の EffectComposer・RenderPass・ShaderPass・UnrealBloomPass）は、古い JS が T.EffectComposer などで使うので、00-test-mode.js で T に一緒に入れる
