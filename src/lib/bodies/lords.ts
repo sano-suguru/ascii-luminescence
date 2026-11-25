@@ -294,7 +294,8 @@ export function shadowKingForm(): Body {
   }
   // the train: the back of the cloak runs on along the floor behind, longest in the middle, its edge bright; it lies still on the floor (part 'train' has no motion)
   const back0 = shadowCloakHalf(0) * ZS;
-  for (let x = -0.62; x <= 0.62; x += 0.07) {
+  for (let ix = -9; ix <= 9; ix++) {
+    const x = (ix / 9) * 0.62; // counted by a whole number, so both edges are placed
     const len = 0.7 * Math.sqrt(Math.max(0, 1 - (x / 0.66) ** 2));
     for (let d = 0.08; d <= len; d += 0.09) {
       const edge = d + 0.09 > len;

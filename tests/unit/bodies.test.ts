@@ -158,10 +158,15 @@ describe('生き物の形', () => {
     expect(Math.max(...sword.map((p) => p.y))).toBeGreaterThan(crownTop);
     expect(Math.min(...sword.map((p) => p.y))).toBeLessThan(0.1);
     // 横から見た厚み：前後は左右の8割以上あり、後ろには床を引きずる裾が伸びる（前より後ろへ長い）
-    const zs = b.map((p) => p.z),
-      xs = b.filter((p) => p.part !== 'halo').map((p) => p.x);
+    // 厚みは外套そのもので測る（床の裾と黒い太陽は除く）。裾は後ろへ、前の端より 0.3 以上長く伸びる
+    const cloak = b.filter((p) => p.part !== 'halo' && p.part !== 'train'),
+      zs = cloak.map((p) => p.z),
+      xs = cloak.map((p) => p.x),
+      train = b.filter((p) => p.part === 'train');
     expect(Math.max(...zs) - Math.min(...zs)).toBeGreaterThan(0.8 * (Math.max(...xs) - Math.min(...xs)));
-    expect(-Math.min(...zs)).toBeGreaterThan(Math.max(...zs) + 0.3);
+    expect(-Math.min(...train.map((p) => p.z))).toBeGreaterThan(Math.max(...zs) + 0.3);
+    // 裾は左右に釣り合っている
+    expect(Math.abs(Math.min(...train.map((p) => p.x)) + Math.max(...train.map((p) => p.x)))).toBeLessThan(0.02);
     // 幅は翼が無いので、裾の広がりまで（左右に約1.4以内）
     expect(Math.max(...b.map((p) => Math.abs(p.x)))).toBeLessThan(1.45);
   });
