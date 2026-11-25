@@ -76,7 +76,7 @@ if(TEST)window.__test={
   state(){ const f=v=>+(+v||0).toFixed(3);
     return {time:f(clock.time),seed:adv.runSeed,place:placeLabel(),depth:here.depth,started:ui.started,dead:adv.dead,hp:f(player.hp),pos:[f(player.x),f(player.z)],yaw:f(player.yaw),lvl:adv.lvl.n,
       monsters:here.monsters.map(m=>[m.key,f(m.x),f(m.z),f(m.hp),m.sleep?1:0]),projs:fight.projs.length,
-      trans:here.trans?here.trans.phase:null,cast:gear.castSt?{h:gear.castSt.h,t:f(gear.castSt.t),need:f(gear.castSt.need),full:gear.castSt.full}:null,recover:f(player.recover),paused:isPaused()}; },
+      trans:here.trans?here.trans.phase:null,maxDepth:adv.runStats&&adv.runStats.maxDepth!==undefined?adv.runStats.maxDepth:null,cast:gear.castSt?{h:gear.castSt.h,t:f(gear.castSt.t),need:f(gear.castSt.need),full:gear.castSt.full}:null,recover:f(player.recover),paused:isPaused()}; },
   // hold a weapon (a RUNE_DEF key such as 'blade', 'bolt', 'orb'), and press / release a hand's button ('L' or 'R')
   equip(h,type){ if(!RUNE_DEF[type]||RUNE_DEF[type].cat!=='atk')return 'no such weapon: '+type; equipWeapon(h,makeRune(type)); renderHotbar(); return type; },
   // true when the hand started charging, or attacked at once (a weapon with no charge, such as the short sword)
