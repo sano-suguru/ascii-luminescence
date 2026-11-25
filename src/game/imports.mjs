@@ -54,7 +54,7 @@ import {
   RES, RUNE_DEF, elemCol, handName, modTargets, modVal, modWorks, rollTraits, runeCol, runeName, runeShort, syncHand, thingLabel,
 } from '../lib/runes.ts';
 import {
-  allRunes, atkType, canPutAt, effHand, graveRune, handsKey, isTwo, makeRune, makeStrong, newHand, randomRuneType, restoreHands, snapHands, syncHands, turnElem, wTL,
+  allRunes, atkType, canPutAt, effHand, handsKey, isTwo, makeRune, makeStrong, newHand, randomRuneType, restoreHands, snapHands, syncHands, turnElem, wTL,
 } from '../lib/gear.ts';
 import { BLESS, META_DEF, UNLOCKS, expNeed, expOf } from '../lib/progress.ts';
 import { MTYPES } from '../lib/creatures.ts';

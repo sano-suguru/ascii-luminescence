@@ -262,9 +262,9 @@ export function altarLine(o: Item): string {
 }
 
 // ---------------------------------------------------------------- 階ごとに、祭壇とルーンを置く
-/** 数の配列 a の i 番目（範囲の外は NaN。古い JS で undefined を数として比べた時と同じ結果になる） */
+/** 数の配列 a の i 番目（範囲の外は NaN。undefined を数として比べた時と同じ結果になる） */
 const numAt = (a: ArrayLike<number>, i: number): number => a[i] ?? NaN;
-/** 強敵の部屋に置く種類：この階で戦う生き物のうち、体力が一番多い物（忘れられた獣・竜・機械・王の影の手前の主 D は除く） */
+/** 強敵の部屋に置く種類：この階で戦う生き物のうち、体力が一番多い物（忘れられた獣（X）と竜（D）は除く） */
 export function strongestKey(): string | null {
   const kinds = Object.keys(hostileKeys()).filter((k) => {
     const ty = lookup(MTYPES, k);

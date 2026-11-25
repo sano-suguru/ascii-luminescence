@@ -130,7 +130,7 @@ function drawTraps(t){
 }
 
 // ---------------------------------------------------------------- life and death, and plain real-time melee
-// 生き物の強さの表 MSTAT は src/lib/creatures.ts、statOf は src/lib/monsters.ts（src/game/imports.mjs で読む）
+// 生き物の強さ statOf は src/lib/monsters.ts（src/game/imports.mjs で読む）。強さの表 MSTAT は src/lib/creatures.ts（statOf だけが読む）
 // WEAPON・SLEEP_MULT は src/lib/runes.ts（src/game/imports.mjs で読む）
 // roll は src/lib/random.ts（src/game/imports.mjs で読む）
 const hostile=m=>!m.ty.critter&&!m.ty.peaceful&&!m.ty.watcher&&m.ty.form!=='bloat'&&!m.dead;
@@ -205,7 +205,7 @@ function loreRows(R,f){ if(!R)return []; const rows=[`${f('|')}  <b>伝承</b>`]
   else { const nx=UNLOCKS.filter(u=>!unlocked(u.id)).sort((a,b)=>a.cost-b.cost)[0]; if(nx)rows.push(`${f('|')}    <span class="lab">次の解放まで あと ${nx.cost-loreLeft()}（${nx.name} ${nx.cost}）</span>`); } return rows; }
 // the grave: what the fallen player leaves (one thing, chosen on the results screen)
 let graveSel=0, graveCands=[];
-// graveRune は src/lib/gear.ts（src/game/imports.mjs で読む）
+// 墓のルーンを作る graveRune は src/lib/gear.ts（祭壇などを置く src/lib/altars.ts が使う）
 function graveCandidates(){ const out=[], seen=new Set(), add=ru=>{ if(ru&&!seen.has(ru)){ seen.add(ru); out.push(ru); } };
   add(gear.hands.L.atk); add(gear.hands.R.atk); for(const h of ['L','R'])for(const r of gear.hands[h].slots)add(r); if(gear.hands.B){ add(gear.hands.B.b0); add(gear.hands.B.b1); } for(const r of gear.bag)add(r); return out.slice(0,10); }
 function saveGrave(){ if(adv.won||!graveCands)return; const ru=graveSel>0?graveCands[graveSel-1]:null; saved.META.grave=ru?{k:(STRATA.find(st=>here.depth>=st.from&&here.depth<=st.to)||{}).k||'',depth:here.depth,cause:adv.runStats.cause||'',item:serRune(ru)}:null; saveMeta(); graveCands=[]; }

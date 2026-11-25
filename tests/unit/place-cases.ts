@@ -2,7 +2,7 @@
 // 返す値と、階の床の物・湧く所・十字路などの変わり方を、1つの文字列にまとめる。F は関数をまとめた物。
 // place.test.ts が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
 // 階は、Node で本物の迷宮を生成する（gen-places.ts の全部の場所）。なので、迷宮の生成を変えると、この指紋も変わる。
-// 場合ごとに、探索のシード・深さ1の台と最初の祭壇を取ったか・取った物・墓の記録・試しの間の中か・試練・解放を、シードの乱数で変える。
+// 場合ごとに、探索のシード・深さ1の台と最初の祭壇を取ったか・取った物・墓の記録・試しの間の中か・試練・解放と、階の形（ときどき少し変える）を、シードの乱数で変える。
 // 書き換えた状態（here・adv・saved・ui・gear・player・生き物の表の主と忘れられた獣）と Math.random は、終わったら元に戻す。
 import { lookup } from '../../src/lib/array.ts';
 import { type MonsterType, MTYPES } from '../../src/lib/creatures.ts';
@@ -86,7 +86,7 @@ export function smallCases(F: PlaceFns, seeds: number): string {
       out.push(text({ seed: F.levelSeed(), fury: F.trialOn('fury'), dusk: F.trialOn('dusk'), g, grave: F.graveRune(g) }));
     }
     // 生き物の強さ：表の全部の種類と、表に無い種類・元にした種類 sk のある種類（主）を、試練のあり・なしで
-    const keys = [...Object.keys(MTYPES), 'final', 'final2', 'nope'];
+    const keys = [...Object.keys(MTYPES), 'final', 'final2', 'dummy', 'dummyF', 'dummyP', 'dummyT', 'nope'];
     for (const trials of [[], ['fury']]) {
       adv.runTrials = trials;
       for (const key of keys) {
@@ -136,6 +136,18 @@ export async function placeCases(F: PlaceFns, seeds: number): Promise<string> {
         if (res.beastType) MTYPES['X'] = res.beastType;
         here.D = res.level;
         if (place.depth === 16 && !place.branch && !place.realm) here.D.finalVault = true;
+        // 生成ではまれにしか出ない形も通るように、ときどき階を少し変える：階段が無い・階段が支道の出口だけ・部屋（始まりの部屋のほか）の床が全部ふさがっている・異界が深さ1
+        const shape = r(),
+          D0 = here.D;
+        if (shape < 0.08) {
+          D0.stairs = -1;
+          D0.bstairs = null;
+        } else if (shape < 0.16) {
+          const far = D0.rooms[D0.rooms.length - 1]?.cells ?? [];
+          D0.bstairs = { cell: far[Math.floor(far.length / 2)] ?? D0.start, key: 'crypt' };
+          D0.stairs = -1;
+        } else if (shape < 0.24) for (const ro of D0.rooms.slice(1)) for (const c of ro.cells) D0.solid.set(c, 0.5);
+        if (place.realm && r() < 0.5) here.depth = 1;
         // 探索の状態
         const taken = new Set<string>();
         for (let k = 0; k < 3; k++) if (r() < 0.3) taken.add(seed + ':' + Math.floor(r() * 12) + ':' + (r() < 0.7 ? 'rune' : 'spring'));

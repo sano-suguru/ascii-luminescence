@@ -1,4 +1,4 @@
-// ---------------------------------------------------------------- finding runes: drops, the starting pedestals, the first altar, floor runes, steles by the stairs
+// ---------------------------------------------------------------- 主を倒すと、その場に主の祭壇が立つ（深さ1の台・最初の祭壇・階ごとの祭壇・石碑を置くのは src/lib/altars.ts の placeRunesForLevel）
 function dropRune(m){
   if(m.ty.critter||m.ty.peaceful||m.ty.dummy)return;
   const strong=(m.maxHp||0)>=40||(m.isLead&&m.g>=0), lord=m.key==='lord'||m.ty.lord;
@@ -8,11 +8,10 @@ function dropRune(m){
   placeAltar(at,'lordaltar'+clock.time,{lord:true,born:clock.time});
   for(let q=0;q<14;q++){ const a=mr()*6.28; spawn(m.x,0.6,m.z,Math.cos(a)*1.2,0.6+mr(),Math.sin(a)*1.2,0.8,G('.'),0.12,1.6,1.4,2.2,0); }
 }
-// ---------------------------------------------------------------- rune altars (predictable rewards): one on the main path of each level, sometimes another off it; three choices made when you come near (decided by altarFill).
-// 祭壇の中身（altarFill）・番人（hostileKeys・nextGroup・addGuards・guardedNow）・鍛え方（forgeOptions）・祭壇を置く（placeAltar）・鍛えの祭壇の深さ（forgeDepthOf）・
-// 宝物庫のまわり（vaultArea）・泉を置く（placeSpring）・祭壇の画面の1行（altarLine）、階ごとに祭壇とルーンを置く（strongestKey・mainPathAltars・placeRunesForLevel）、
-// 石碑のそばか（nearStele）は src/lib/altars.ts（src/game/imports.mjs で読む）
-
+// ---------------------------------------------------------------- 祭壇
+// 祭壇の中身 altarFill・番人が生きているか guardedNow・祭壇を置く placeAltar・宝物庫のまわり vaultArea・祭壇の画面の1行 altarLine・
+// 階ごとに祭壇とルーンを置く placeRunesForLevel・石碑のそばか nearStele は src/lib/altars.ts（src/game/imports.mjs で読む）。
+// 番人を置く・鍛え方・泉を置くなど、ほかの祭壇の処理も src/lib/altars.ts にある（古い JS は読まない）
 // the treasury's prize: taking it wakes guardians, or brings the ceiling down
 let rockfall=null;
 function vaultSprung(it){ const ri=here.D.roomOf[it.i], room=ri>=0&&here.D.rooms[ri]&&here.D.rooms[ri].cells.length>6?here.D.rooms[ri]:{cells:vaultArea(it,4)};

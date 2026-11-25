@@ -56,7 +56,7 @@ describe('階のシード・生き物の強さ・墓のルーン', () => {
 describe('移す前と同じ', () => {
   it('階のシード・試練・墓のルーン（400の場合）と、生き物の強さ（全部の種類、試練のあり・なし）の指紋', () => {
     const all = smallCases(F, 400);
-    expect([fnv(all), all.length]).toEqual(['568672c8', 79116]);
+    expect([fnv(all), all.length]).toEqual(['e45d554b', 79502]);
   });
   it('階ごとに祭壇とルーンを置く（10シード×全部の場所、300の場合）の指紋', async () => {
     const all = await placeCases(F, 10),
@@ -76,7 +76,7 @@ describe('移す前と同じ', () => {
       count(/"hub":\{/),
       count(/"stairGuard":\d/),
       count(/"taken":true/),
-    ]).toEqual([300, 250, 20, 32, 174, 49, 56, 6, 7, 149, 47, 67]);
-    expect([fnv(all), all.length]).toEqual(['fd7c273d', 806790]);
+    ]).toEqual([300, 232, 18, 27, 154, 45, 52, 6, 4, 135, 40, 60]);
+    expect([fnv(all), all.length]).toEqual(['6ab8037c', 790161]);
   }, 60000);
 });
