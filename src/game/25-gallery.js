@@ -71,6 +71,7 @@ function updateGallery(dt){
     if(fix){ m.sleep=fix.pose==='sleep'; if(m.sleep)m.moving=0; }
     else if(m.ty.form==='dragon'&&!m.ty.boss){ m.sleep=Math.floor(g.t/6)%2===0; if(m.sleep){ m.moving=0; } }
     { const ty=m.ty; if(ty.flier)m.y=(1.6+Math.sin(g.t*2.2)*0.15)*Math.max(1,sc*0.7); else if(ty.fl)m.y=ty.fl+Math.sin(g.t*1.3)*0.12; }
+    // how far and how high the camera sits, by form (the old dragon's long neck brings its head close when it turns this way: 1.05 sits a little farther and higher than 1)
     const tall=m.ty.beast?1.3:m.ty.form==='lichking'?1.6:m.ty.form==='spiderqueen'?1.25:m.ty.form==='nagaqueen'?1.3:m.ty.form==='olddragon'?1.05:m.ty.form==='shadowking'?1.75:m.ty.form==='shadowserpent'?1.9:m.ty.form==='deepkraken'?2.0:1,
       zoom=fix?fix.zoom:1, tilt=fix?fix.pitch:null;
     // the shape the camera is fitted to: a sleeping dragon or beast curls up into its own sleeping shape, which is built the first time it is drawn asleep;
@@ -91,20 +92,26 @@ function updateGallery(dt){
     const cx=g.room.x+Math.cos(a)*Rh, cz=g.room.z+Math.sin(a)*Rh;
     player.x=cx; player.z=cz; player.yaw=Math.atan2(-(g.room.x-cx),-(g.room.z-cz)); player.pitch=Math.atan2(ty2-ch,Rh)-(centered?0:0.16); g.aimY=ty2;
     if(fix)m.yaw=player.yaw+fix.yaw;
-    if(!!m.sleep!==!!g.shownSleep)renderGallery(); // a dragon fell asleep or woke: show the line that fits
+    if(!!m.sleep!==!!g.shownSleep)galleryLine(); // a dragon fell asleep or woke: show the line that fits
     camera.position.set(cx,ch,cz); camera.rotation.set(player.pitch,player.yaw,0);
     if(R<want-0.2){ U.uCamP.value.set(cx,ch,cz); U.uCutP.value.set(g.room.x,ty2,g.room.z); U.uCut.value=1; } else U.uCut.value=0;
     vfx.zapFlash={x:g.room.x+Math.cos(a)*Rh*0.6,y:2.2+1.2*sc,z:g.room.z+Math.sin(a)*Rh*0.6,col:[0.5,0.48,0.45],t:999,r:7+3*sc}; }
   if(g.mode==='range'){ for(const d of g.dummies){ if(d.m.dead){ d.respawn-=dt; if(d.respawn<=0)spawnDummy(d); } else { d.respawn=1.5; d.m.dT=Math.max(0,(d.m.dT||0)-dt); if(d.m.dT<=0)d.m.dsum=0; } } }
 }
+// the two lines under the name follow the creature: while it sleeps, its sleeping line (GALLERY_SLEEP: only the dragon has one), otherwise what it does awake.
+// Each line is padded to the same width, so the frame around them never moves when the words change
+function galleryDesc(g){ const e=g.list[g.idx], ty=e&&e.ty, GW=64; g.shownSleep=!!(g.m&&g.m.sleep);
+  const desc=wrapPlain(ty?(g.shownSleep&&GALLERY_SLEEP[e.key])||ty.verb||'':'探索で出会ったものが、ここに並ぶ',GW-4); while(desc.length<2)desc.push('');
+  return desc.slice(0,2).map(l=>padTo(l,GW-4)); }
+// change only those two lines (rebuilding the whole panel would swap the buttons under a press in progress)
+function galleryLine(){ const g=ui.gallery, el=document.getElementById('gal'); if(!g||!el)return; const spans=el.querySelectorAll('span[data-gd]');
+  if(spans.length!==2){ renderGallery(); return; } const desc=galleryDesc(g); spans.forEach((s,i)=>{ s.textContent=desc[i]; }); }
 function renderGallery(){
   const el=document.getElementById('gal'); if(!el||!ui.gallery)return; const g=ui.gallery, f=t=>`<span class="f">${t}</span>`;
   if(g.mode==='beast'){ const e=g.list[g.idx], ty=e&&e.ty, GW=64;
     const head=ty?`<b style="color:${css(ty.col||[1,1,1])}">${ty.ch==='&'?'&amp;':ty.ch}</b> <b>${ty.name}</b>`:'<span class="lab">まだ、何にも出会っていない</span>';
-    // the line follows the creature: while it sleeps, its sleeping line (GALLERY_SLEEP: only the dragon has one), otherwise what it does awake
-    g.shownSleep=!!(g.m&&g.m.sleep);
-    const desc=wrapPlain(ty?(g.shownSleep&&GALLERY_SLEEP[e.key])||ty.verb||'':'探索で出会ったものが、ここに並ぶ',GW-4); while(desc.length<2)desc.push('');
-    el.innerHTML=boxText([f('+-- 図鑑 ---'),`${f('|')} ${head}`,`${f('|')} <span class="lab">${desc[0]}</span>`,`${f('|')} <span class="lab">${desc[1]}</span>`,f('|'),
+    const desc=galleryDesc(g);
+    el.innerHTML=boxText([f('+-- 図鑑 ---'),`${f('|')} ${head}`,`${f('|')} <span class="lab" data-gd="0">${desc[0]}</span>`,`${f('|')} <span class="lab" data-gd="1">${desc[1]}</span>`,f('|'),
       `${f('|')} <button class="row" data-g="prev">[&lt;]</button> ${String(g.list.length?g.idx+1:0).padStart(2,' ')} / ${String(g.list.length).padStart(2,' ')}  <span class="lab">（見つけた数 ${String([...saved.SEEN].filter(k=>k).length).padStart(2,' ')} / ${g.all}）</span> <button class="row" data-g="next">[&gt;]</button>`,
       `${f('|')} <button class="row" data-g="back">[タイトルへ戻る]</button>   <span class="lab">← → で切り替え　Esc で戻る</span>`,f('+---')],GW);
     for(const b of el.querySelectorAll('button[data-g]'))b.onclick=()=>{ const k=b.dataset.g; if(k==='prev')showBeast(g.idx-1); else if(k==='next')showBeast(g.idx+1); else returnToTitle(); }; }
