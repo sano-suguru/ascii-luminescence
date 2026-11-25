@@ -21,7 +21,7 @@ export interface MonsterType {
   light: number;
   /** 光の尾の長さ */
   trail: number;
-  /** 見た時の様子 */
+  /** 見た時の様子（起きている時。探索の中で初めて見た時の伝言と、図鑑の説明） */
   verb: string;
   /** 小さな生き物の役目（fish・grazer・shrieker・mimic・cleaner・engineer） */
   critter?: string;
@@ -358,7 +358,7 @@ export const MTYPES: Record<string, MonsterType> = {
     trail: 3,
     heavy: true,
     dragon: true,
-    verb: '翼を畳んで眠っている。寝息のたびに、周りの灯りが揺れる',
+    verb: '大きな翼を広げ、熱い息を吐きながら辺りを見回している',
   },
   L: {
     ch: 'L',
