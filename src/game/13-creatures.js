@@ -318,7 +318,7 @@ function drawMonster0(m,t){
       case 'tail': lx+=Math.sin(t*7+m.ph)*0.05*(p.piv+1); break;
       case 'spin': { const a=t*(p.sp||1)+p.ph; lx=p.cx+Math.cos(a)*p.r; lz=p.cz+Math.sin(a)*p.r; ly=p.y; break; }
       // a ring standing upright (the king's shadow's black sun), turning in its own plane and always turned to face the camera, so it reads as a round sun from any side
-      case 'halo': { const a=t*(p.sp||0.2)+p.ph, ex=camera.position.x-m.x, ez=camera.position.z-m.z, el=Math.hypot(ex,ez)||1, ux=ez/el, uz=-ex/el, cm=Math.cos(m.yaw), sm=Math.sin(m.yaw), w=Math.cos(a)*p.r;
+      case 'halo': { const a=t*(p.sp||0.2)+p.ph, ex=camera.position.x-m.x, ez=camera.position.z-m.z, el=Math.hypot(ex,ez), cm=Math.cos(m.yaw), sm=Math.sin(m.yaw), ux=el>1e-3?ez/el:cm, uz=el>1e-3?-ex/el:-sm, w=Math.cos(a)*p.r; // straight overhead: keep it in the body's front plane
         lx=w*(ux*cm-uz*sm); lz=p.z+w*(ux*sm+uz*cm); ly=p.cy+Math.sin(a)*p.r; break; }
       case 'orbit': { const a=t*(p.sp||0.8)+p.ph+(p.da||0); lx=Math.cos(a)*p.r; lz=Math.sin(a)*p.r; ly=p.y+Math.sin(t*2+p.ph)*0.06; break; }
       case 'robe': { const k=1.95-p.y; lx+=Math.sin(t*2.2+p.y*3+p.ph)*0.05*k; lz+=Math.cos(t*1.7+p.y*2.5+p.ph)*0.05*k; break; }

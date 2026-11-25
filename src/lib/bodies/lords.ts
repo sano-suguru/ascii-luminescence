@@ -292,7 +292,7 @@ export function shadowKingForm(): Body {
       skin(nx * r, y, nz * r * ZS, nx, nz, y < 1.0 ? 'robe' : 'body', nx > 0 ? -slope : slope);
     }
   }
-  // the train: the back of the cloak runs on along the floor behind, longest in the middle, its edge bright
+  // the train: the back of the cloak runs on along the floor behind, longest in the middle, its edge bright; it lies still on the floor (part 'train' has no motion)
   const back0 = shadowCloakHalf(0) * ZS;
   for (let x = -0.62; x <= 0.62; x += 0.07) {
     const len = 0.7 * Math.sqrt(Math.max(0, 1 - (x / 0.66) ** 2));
@@ -307,7 +307,7 @@ export function shadowKingForm(): Body {
         S,
         edge ? 1.5 : 0.5,
         edge ? EDGE : DARK,
-        'robe',
+        'train',
       );
     }
   }

@@ -335,6 +335,21 @@ export function transformShadow(b: Monster & { form: Body }): void {
   setTimeout(() => msg(`<b style="color:#a98cff">&amp;</b>${last.title}${last.name}の影が、底の闇から長い体をもたげた。`), 1500);
 }
 
+/**
+ * 縦に立つ輪の上の点（その輪の面の中の横の位置 w、前後の位置 z）を、輪の面が目（プレイヤー）の方を向くように回した、体の向きでの x と z。
+ * 目が真上にいる時は回さない（13-creatures.js の drawMonster0 の halo と同じ回し方）
+ */
+const faceEye = (m: Mon, w: number, z: number): readonly [number, number] => {
+  const ex = player.x - m.x,
+    ez = player.z - m.z,
+    el = Math.hypot(ex, ez),
+    cm = Math.cos(m.yaw),
+    sm = Math.sin(m.yaw),
+    ux = el > 1e-3 ? ez / el : cm,
+    uz = el > 1e-3 ? -ex / el : -sm;
+  return [w * (ux * cm - uz * sm), z + w * (ux * sm + uz * cm)];
+};
+
 /** 姿を変える途中を描く：二つ目の姿の文字が、一つ目の姿の文字から飛んでくる。終わったら morph を消して false を返す（描いたら true） */
 export function drawMorph(m: Mon & { form: Body }, _t: number): boolean {
   const M = must(m.morph, '姿を変える途中 morph'),
@@ -353,9 +368,11 @@ export function drawMorph(m: Mon & { form: Body }, _t: number): boolean {
     const p = nth(m.form, i);
     if (p.part === 'heart') continue;
     const q = nth(F, (i * 7) % n);
-    const lx = (q.x + (p.x - q.x) * e) * sc,
+    // the black sun's points start from the ring as it is drawn, turned to face the eye
+    const [qx, qz] = q.part === 'halo' ? faceEye(m, q.x, q.z) : [q.x, q.z];
+    const lx = (qx + (p.x - qx) * e) * sc,
       ly = (q.y + (p.y - q.y) * e) * sc + Math.sin(f * Math.PI) * 0.3 * sc * Math.sin(i),
-      lz = (q.z + (p.z - q.z) * e) * sc,
+      lz = (qz + (p.z - qz) * e) * sc,
       col = p.col || m.ty.col,
       k = (f < 0.5 ? q.b : p.b) * 0.62 * (0.8 + 0.6 * Math.sin(f * Math.PI));
     dyn(
