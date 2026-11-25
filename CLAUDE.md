@@ -57,8 +57,9 @@ tests/determinism.mjs  同じシードで同じ結果になるか
 tests/levels.mjs     全部の階（20シード×30か所）をブラウザで生成し、例外と、歩いて行けるかを確かめる
 tests/reach.mjs      歩いて行けるかの調べ方（levels.mjs と tests/unit/reach.test.ts が使う。型は reach.d.mts）
 tests/visual.mjs     画面写真の比較（16場面：層ごとの世界・手元の武器・パネル、図鑑の生き物4体（1280×720。枠を隠し、__test.galleryShow で向きと姿を止め、寄って真ん中に写す）。基準は tests/baseline/）
-tests/inventory.mjs  装備の画面のテスト：同じシードで装備の画面を開き、ボタンをシードの乱数で1000回押して（選ぶ・はめる・ページ送り・ビルド・ダブルクリック・
-                     マウスを乗せる・右クリック）、押すたびの装備の画面と下の HUD の HTML の指紋を確かめる（記録は tests/out/inventory.log。--print で指紋を出すだけ）
+tests/inventory.mjs  装備の画面のテスト：持ち物の用意を3通り（全部開ける・何も開けない・一部だけ）にして、ボタンをシードの乱数で押し（選ぶ・はめる・外す・ページ送り・
+                     ビルド・ダブルクリックとゆっくり2回・マウスを乗せる・右クリック）、押すたびの装備の画面と下の HUD の HTML の指紋を、基準 tests/baseline/inventory.json と比べる
+                     （違えば何回目からかを出す。記録は tests/out/inventory-<用意>.log。--update で基準を作り直す）
 tests/panels.mjs     枠のテスト（全部の文字の幅が visW どおりか、操作・装備・メニュー・レベルアップ・祭壇・結果の縦線と、一覧の名前の列が揃うか）
 tests/unit/generate.test.ts  迷宮の生成の単体テスト（同じ入力なら同じ迷宮・生き物の表に書き込まない・全部の場所の指紋。Node で数秒）。
                      歩いて行けるか（5シード）は reach.test.ts（ファイルを分けて、並べて走らせる）。共通部分（全部の場所・gen）は gen-places.ts
@@ -104,7 +105,7 @@ pnpm typecheck        # 型を確かめる（TypeScript 7 の tsc。src/lib/ と
 pnpm test:unit        # 単体テスト（Vitest。tests/unit/）
 pnpm map [語]         # ゲーム本体の地図。語を付けると、見出しにその語を含むファイルだけ（例：pnpm map fire）
 pnpm where index-D0mETEmY.js:4321:12   # 組み立てた JS のその場所が、src/game/ のどこか（行だけも可。--test でテスト版）
-pnpm test             # スモーク・世界とのやり取り・同じ結果・全部の階・枠・装備の画面（オフラインで動く。40秒ほど）
+pnpm test             # スモーク・世界とのやり取り・同じ結果・全部の階・枠・装備の画面（オフラインで動く。1分半ほど）
 pnpm test:visual      # 画面写真の比較（40秒ほど）。違えば tests/out/visual/ に違いの画像
 pnpm shots [名前…]    # 図鑑の生き物を見やすい角度で写す（既定は竜・主たちの12枚（tools/shots.mjs の PICK）。--all で全部、--bare で図鑑の枠を隠す、--out で置き場所）
 node tests/visual.mjs --update [--only 場面]   # 基準の画像を作り直す（見た目を意図して変えた時だけ）
@@ -260,7 +261,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 | 24-goal | 目的（伝説の物、最深部、王の影）、勝利、稲妻、タイトルへ戻る。伝説の物の表は src/lib/names.ts、jagged は src/lib/math.ts |
 | 25-gallery | 見た物の記録、図鑑、試しの間。図鑑の主・試しの間の的の表は src/lib/names.ts、保存する saveSet は src/lib/save.ts |
 | 26-spells-hud | 術と世界（扉・氷・雷）、詠唱の声、止まっているか（isPaused）。下の HUD renderHotbar は src/lib/hotbar.ts、詠唱の声の表は src/lib/sound.ts |
-| 27-rune-screen | 装備の画面を開け閉めする（setInv）・付け替えの詠唱（startSwap）、魔導書、メニュー。装備の画面を作る renderInv と中のボタンの処理（選ぶ・はめる・袋のページ・ビルドの保存と呼び出し applyBuild）は src/lib/inventory.ts、装備の画面の状態（選んでいるルーン packSel など）は src/lib/state.ts の ui。武器を持つ equipWeapon・手の枠に入れる slotSet・空いた枠 freeSlotFor・着けた護符の数 bodyN は src/lib/gear.ts、ルーンの説明の5行 detailLines は src/lib/runes.ts。padTo・wrapPlain・clipHtml は src/lib/text.ts、CAT_BR・CAT_NAME・emptyChip・reactionOf は src/lib/runes.ts、PACK_W・PACK_SLOT・BAG_LINES は src/lib/hud.ts |
+| 27-rune-screen | 装備の画面を開け閉めする（setInv）・付け替えの詠唱（startSwap）、魔導書、メニュー。装備の画面を作る renderInv と中のボタンの処理（選ぶ・はめる・袋のページ・ビルドの保存と呼び出し applyBuild）は src/lib/inventory.ts、装備の画面の状態（選んでいるルーン packSel など）は src/lib/state.ts の ui。手を写す・戻す snapHands・handsKey は src/lib/gear.ts、反応の表 REACT は src/lib/runes.ts、枠 boxText は src/lib/text.ts |
 | 28-camera-player | 1人称・3人称、プレイヤーの動き（updatePlayer）、霧と目の慣れ（updateAtmosphere：霧の濃さ・露出・溶岩の近くの熱のゆらぎ・水中の見え方）。AVATAR_TY は src/lib/names.ts |
 | 29-look | 見た時の説明（look）。説明の表と lookLine は src/lib/names.ts |
 | 30-loop-init | 大きさ、メインループ（frame・tick）、テスト用の `__test`、初期化（init）。ゲームの時刻 time は src/lib/state.ts の clock |
