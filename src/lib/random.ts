@@ -1,7 +1,7 @@
 // 乱数（もとは src/game/02-constants.js の mr・mpick・rand・R・RI・pick）。
 //   見た目の乱数（mr・mpick）：Math.random。テスト用モードでは、シードで決まる物に入れ替わる
 //   迷宮の乱数（rand・R・RI・pick）：迷宮の生成が、階ごとのシードで setRand して使う。同じシードなら同じ迷宮になる
-//   音の乱数（sr）：音だけが使う、見た目の乱数とは別の並び。音を足したり変えたりしても、見た目の乱数の並びは変わらない
+//   音の乱数（sndRand）：音だけが使う、見た目の乱数とは別の並び。音を足したり変えたりしても、見た目の乱数の並びは変わらない
 import { nth } from './array.ts';
 import { mulberry32 } from './rng.ts';
 
@@ -44,12 +44,16 @@ export const shuffle = <T>(a: T[], r: () => number = rand): T[] => {
   return a;
 };
 
-// 今の音の乱数。初めのシードは crypto で決める（Math.random は使わない。テスト用モードが Math.random を入れ替える前か後かによらず、
-// 見た目の乱数の並びを進めないため）。テスト用モードは、ゲームの最初に setSoundRand でシードで決まる物に入れ替える
-let sound: () => number = mulberry32(globalThis.crypto.getRandomValues(new Uint32Array(1))[0] ?? 0);
+// 今の音の乱数。初めのシードは crypto で決める（crypto が無い環境では時刻）。Math.random は使わない：テスト用モードが
+// Math.random を入れ替える前か後かによらず、見た目の乱数の並びを進めないため。テスト用モードは、ゲームの最初に setSoundRand でシードで決まる物に入れ替える
+const firstSeed = (): number => {
+  const c: Crypto | undefined = globalThis.crypto;
+  return c ? (c.getRandomValues(new Uint32Array(1))[0] ?? 0) : Date.now() >>> 0;
+};
+let sound: () => number = mulberry32(firstSeed());
 
 /** 音の乱数（0 以上 1 未満）。音の高さ・長さ・左右のゆらぎや、まわりの音を鳴らすかなど、音だけに使う */
-export const sr = (): number => sound();
+export const sndRand = (): number => sound();
 /** 音の乱数を入れ替え、前の物を返す（例：setSoundRand(mulberry32(seed))。テストは、返った物で元に戻す） */
 export const setSoundRand = (f: () => number): (() => number) => {
   const old = sound;

@@ -1,9 +1,12 @@
 // 音を鳴らす処理（src/lib/audio.ts）と詠唱の声（src/game/26-spells-hud.js の chantStart）の単体テスト。Node には Web Audio が無いので、偽の Web Audio（fake-audio.mjs）で確かめる。
-// 指紋の値は、移す前の古い JS（src/game/15-sound-fire.js と、遠吠え・警報は 13-creatures.js）でも同じになる（audio-cases.mjs の場合を、古い関数で数えて確かめた）。
+// 指紋の値は、移す前の古い JS（src/game/15-sound-fire.js と、遠吠え・警報は 13-creatures.js。詠唱の声は Math.random を直に引いていた版）に、
+// 音の乱数（sndRand）と同じ並びを Math.random として入れた時と同じになる（audio-cases.mjs の場合を、古い関数で数えて確かめた）。
 // 迷宮の生成は使わないので、生成を変えてもこの指紋は変わらない。
-// 音の乱数を見た目の乱数から分けた時も、同じ並びを音の乱数（sr）に入れて、指紋が変わらないことを確かめた。
+// 音を鳴らす所が見た目の乱数を引いていないかは、src/ を構文の木で調べて確かめる（sound-random-check.mjs）。
 // テストを .mjs で書くのは、偽の Web Audio を AudioContext の型に合わせられないため（型の言い切り as を使わない）
 import { describe, expect, it } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { legacyValues } from '../../tools/legacy-eval.mjs';
 import * as A from '../../src/lib/audio.ts';
 import { setSoundRand } from '../../src/lib/random.ts';
@@ -11,6 +14,7 @@ import { mulberry32 } from '../../src/lib/rng.ts';
 import { SND, clock, gear, player } from '../../src/lib/state.ts';
 import { audioCases } from './audio-cases.mjs';
 import { fakeAudio, fakeAudioClass } from './fake-audio.mjs';
+import { soundRandomCheck } from './sound-random-check.mjs';
 
 const fnv = (s) => {
   let h = 0x811c9dc5;
@@ -183,6 +187,51 @@ describe('詠唱の声（src/game/26-spells-hud.js の chantStart）', () => {
     }
     const all = out.join('\n');
     expect(calls).toBe(0);
-    expect([fnv(all), all.length]).toEqual(['ba541717', 115649]); // 書き換える前（Math.random を直に引いていた版）と同じ
+    expect([fnv(all), all.length]).toEqual(['ba541717', 115649]);
   });
+});
+
+describe('音を鳴らす所が、見た目の乱数を引かない（src/ を調べる）', () => {
+  const SRC = join(import.meta.dirname, '../../src');
+  const audioText = readFileSync(join(SRC, 'lib/audio.ts'), 'utf8');
+  const audioNames = [...audioText.matchAll(/^export (?:function|const) (s[A-Z]\w*)/gm)].map((m) => m[1]);
+  it('見本：4つの形を見つけ、音のほかのこともする判定は見逃す', () => {
+    const files = [
+      {
+        name: 'game/01-a.js',
+        text: [
+          'function sPing(x){ if(!sndReady())return; sTone(0,"sine",440+mr()*9,0,1,null); }', // 3：音を鳴らす関数の中
+          'function f(dt,i){ sDrip(1,2,0.2+mr()*0.1);', // 1：引数
+          '  if(mr()<0.3)sBubble(1,2,0.3,true);', // 2：if の条件で、中身は音だけ
+          '  if(mr()<dt){ found=true; sChime(1,2,0.2); msg("罠を見つけた"); }', // 音のほかのこともするので、見逃す
+          '  if(clock.time>t0){ t0=clock.time+6+mr()*5; omen(); sPing(1); } }', // 4：次に鳴らす時刻
+        ].join('\n'),
+      },
+      { name: 'lib/b.ts', text: 'export function g(): void { if (on && sndReady()) { const v = mr(); sDrip(0, 0, v); } }' }, // 3：sndReady の中
+    ];
+    const r = soundRandomCheck(files, ['sTone', 'sDrip', 'sBubble', 'sChime']);
+    expect(r.sound).toEqual(['sBubble', 'sChime', 'sDrip', 'sPing', 'sTone']);
+    expect(r.bad).toEqual([
+      'game/01-a.js:1 音を鳴らす関数の中',
+      'game/01-a.js:1 sTone の引数',
+      'game/01-a.js:2 sDrip の引数',
+      'game/01-a.js:3 if の条件で、音を鳴らすか',
+      'game/01-a.js:5 次に鳴らす時刻',
+      'lib/b.ts:1 sndReady の中',
+    ]);
+  });
+  it('src/ のどこにも無い（音を鳴らす所は、音の乱数 sndRand を使う）', () => {
+    const files = readdirSync(SRC, { recursive: true })
+      .map(String)
+      .filter((f) => (f.startsWith('game/') && f.endsWith('.js')) || (f.startsWith('lib/') && f.endsWith('.ts')))
+      .map((name) => ({ name, text: readFileSync(join(SRC, name), 'utf8') }));
+    const r = soundRandomCheck(files, audioNames);
+    // 古い JS の音を鳴らす関数も見つけている（本体が if(!sndReady())return で始まる関数）
+    expect(r.sound).toEqual(expect.arrayContaining(['castSound', 'chantStart', 'humStart', 'omenSound', 'sShriek', 'sDrip', 'sChime']));
+    expect(r.bad).toEqual([]);
+    // audio.ts が random.ts から読むのは sndRand だけ
+    expect([...audioText.matchAll(/^import .* from '\.\/random\.ts';$/gm)].map((m) => m[0])).toEqual([
+      "import { sndRand } from './random.ts';",
+    ]);
+  }, 30000);
 });

@@ -225,7 +225,7 @@ function updateMonster(m,dt,t){
   if(ty.hound&&m.moving>0.5){ const ci=m.cz*MW+m.cx; if(ty.hound==='fire'&&blaze.fuel[ci]>0&&blaze.fire[ci]<=0&&mr()<dt*0.4)ignite(ci,0.4,false); if(ty.hound==='ice'&&blaze.fire[ci]>0)blaze.fire[ci]=0; }
   if(ty.beast&&!m.sleep){
     if(ty.spec.fire){ const ci=m.cz*MW+m.cx; if(blaze.fuel[ci]>0&&blaze.fire[ci]<=0)ignite(ci,0.5,false); }
-    if(ty.spec.sing&&dp<22&&sr()<dt*0.5)sChime(m.x,m.z,0.35);
+    if(ty.spec.sing&&dp<22&&sndRand()<dt*0.5)sChime(m.x,m.z,0.35);
   }
   if(dp<30&&ty.trail){
     m.acc+=dt*ty.trail*(m.sleep?0.25:1);

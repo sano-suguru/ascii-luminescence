@@ -1,7 +1,7 @@
 // src/lib/random.ts と src/lib/glyphs.ts の単体テスト
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { G, RUNE_CHARS } from '../../src/lib/glyphs.ts';
-import { R, RI, mpick, mr, pick, rand, setRand, setSoundRand, shuffle, sr } from '../../src/lib/random.ts';
+import { R, RI, mpick, mr, pick, rand, setRand, setSoundRand, shuffle, sndRand } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 
 const random = Math.random;
@@ -67,7 +67,7 @@ describe('G（文字の絵の表の番号）', () => {
   });
 });
 
-describe('sr（音の乱数）', () => {
+describe('sndRand（音の乱数）', () => {
   it('初めから、見た目の乱数（Math.random）とは別の並びで、Math.random を呼ばない（読み直した新しいモジュールで確かめる）', async () => {
     let calls = 0;
     Math.random = () => {
@@ -76,10 +76,27 @@ describe('sr（音の乱数）', () => {
     };
     vi.resetModules();
     const fresh = await import('../../src/lib/random.ts');
-    const xs = Array.from({ length: 1000 }, () => fresh.sr());
+    const xs = Array.from({ length: 1000 }, () => fresh.sndRand());
     expect(calls).toBe(0);
     expect(xs.every((x) => x >= 0 && x < 1)).toBe(true);
     expect(new Set(xs).size).toBeGreaterThan(990);
+  });
+  it('crypto が無い環境でも読めて、Math.random を呼ばない（初めのシードは時刻）', async () => {
+    let calls = 0;
+    Math.random = () => {
+      calls++;
+      return 0.5;
+    };
+    vi.stubGlobal('crypto', undefined);
+    try {
+      vi.resetModules();
+      const fresh = await import('../../src/lib/random.ts');
+      const xs = Array.from({ length: 100 }, () => fresh.sndRand());
+      expect(calls).toBe(0);
+      expect(new Set(xs).size).toBeGreaterThan(95);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
   it('setSoundRand で入れ替え、前の物を返す。見た目の乱数と迷宮の乱数は進めない', () => {
     setRand(mulberry32(7));
@@ -87,7 +104,7 @@ describe('sr（音の乱数）', () => {
     const old = setSoundRand(mulberry32(202));
     try {
       const want = mulberry32(202);
-      expect(Array.from({ length: 50 }, () => sr())).toEqual(Array.from({ length: 50 }, () => want()));
+      expect(Array.from({ length: 50 }, () => sndRand())).toEqual(Array.from({ length: 50 }, () => want()));
       expect([rand(), mr()]).toEqual([mulberry32(7)(), mulberry32(9)()]);
     } finally {
       setSoundRand(old);
