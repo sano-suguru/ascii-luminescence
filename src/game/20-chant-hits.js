@@ -320,9 +320,7 @@ function updateZones(dt){ updateRains(dt); for(const L of fight.laters)if(clock.
   for(const zn of fight.zones){ zn.t-=dt; zn.tick-=dt; if(zn.grow)zn.r=Math.min(zn.r0*1.7,zn.r+dt*0.18);
     if(zn.tick<=0&&zn.el){ zn.tick=0.5; for(const m of here.monsters){ if(!hittable(m)||m.ty.critter)continue; if(Math.hypot(m.x-zn.x,m.z-zn.z)<zn.r+0.3*m.ty.scale){ m.playerT=clock.time; applyElem(m,zn.el,zn.sp,1); } } } }
   fight.zones=fight.zones.filter(zn=>zn.t>0); }
-function drawZones(t){ for(const mk of fight.marks){ const n=mk.star?14:18, b=0.6+0.4*Math.sin(t*10); for(let k=0;k<n;k++){ const a=k/n*Math.PI*2+t*(mk.star?1.5:0.6); dyn(mk.x+Math.cos(a)*mk.r,0.06,mk.z+Math.sin(a)*mk.r,G(mk.star?'+':'.'),0.15,mk.c[0]*b*2,mk.c[1]*b*2,mk.c[2]*b*2,0,0); } if(mk.star)dyn(mk.x,0.08,mk.z,G('*'),0.3,mk.c[0]*2.5*b,mk.c[1]*2.5*b,mk.c[2]*2.5*b,0,0); }
-  for(const zn of fight.zones){ if(Math.hypot(zn.x-player.x,zn.z-player.z)>30)continue; const c=elemCol(zn.el), f=Math.min(1,zn.t/1.5), n=Math.round(10+zn.r*8);
-  for(let k=0;k<n;k++){ const a=k/n*Math.PI*2+t*0.3, rr=zn.r*(0.92+0.08*Math.sin(t*3+k)), b=(zn.el?0.9:0.35)*f*(0.7+0.3*Math.sin(t*4+k*1.3)); dyn(zn.x+Math.cos(a)*rr,0.05,zn.z+Math.sin(a)*rr,G(zn.el==='fire'?'^':zn.el==='ice'?'*':zn.el==='thunder'?'/':zn.el==='poison'?'%':'.'),0.15,c[0]*b*1.8,c[1]*b*1.8,c[2]*b*1.8,0,0); } } }
+// 床の目印を描く drawZones は src/lib/fx.ts（src/game/imports.mjs で読む）
 // a hit somewhere in the world from other code
 function burstFire(i,r,str){
   const cx=i%MW, cz=(i/MW)|0, rr=Math.ceil(r);

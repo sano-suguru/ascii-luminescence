@@ -25,7 +25,7 @@ import { BLESS, META_DEF, UNLOCKS, expNeed, expOf } from '../lib/progress.ts';
 import { MTYPES } from '../lib/creatures.ts';
 import { VM_K, VM_MIRROR, VM_ST, vmGlyph, vmGlyphS } from '../lib/hands.ts';
 import {
-  SPECIALS, STRATA, stratumAtDepth, } from '../lib/strata.ts';
+  SPECIALS, STRATA, } from '../lib/strata.ts';
 import { setNoiseSeed, vnoise } from '../lib/noise.ts';
 import { VAULTS } from '../lib/vaults.ts';
 import { generateLevel } from '../lib/generate.ts';
@@ -35,21 +35,24 @@ import { ALTAR_W, MARK_H, MCH, MCW, MMC, MMR, MPAD, tone } from '../lib/hud.ts';
 import { AVATAR_TY, BRANCH_HINT, DECO_K, DECO_NAMES, DUMMY_KINDS, FIX_NAMES, GALLERY_SLEEP, LEGEND_KINDS, LEGEND_ORDER, LORD_GAL, TRAP_INFO, lookLine, mname } from '../lib/names.ts';
 import { CHANT_STEPS, SND_NAME, VOWELS, sEnv } from '../lib/sound.ts';
 import {
-  sAlarm, sBoom, sBubble, sChime, sCrackleBurst, sCreak, sDist, sDrip, sHiss, sHowl, sndInit, sndReady, sndUpdate, sNoise, sOut, sRumble, sSplash, sSqueak, sTone, sWhoosh,
+  sAlarm, sBoom, sBubble, sChime, sCrackleBurst, sCreak, sDist, sHiss, sHowl, sndInit, sndReady, sndUpdate, sNoise, sOut, sRumble, sSplash, sSqueak, sTone, sWhoosh,
 } from '../lib/audio.ts';
 import {
   altarDetail, altarFill, altarLine, altarOpts, guardedNow, placeAltar, placeChosen, placeRunesForLevel, takeRune, vaultArea,
 } from '../lib/altars.ts';
 import { lockedOf, unlocked, weaponPool } from '../lib/unlocks.ts';
-import { isFinal, levelSeed } from '../lib/levels.ts';
+import { interAfter, interAt, isFinal, levelSeed } from '../lib/levels.ts';
 import { msg, renderLog } from '../lib/log.ts';
 import { renderHotbar } from '../lib/hotbar.ts';
 import { applyBuild, renderInv, setInv, startSwap } from '../lib/inventory.ts';
 import {
   cycleUi, drawMark, flyOpen, isPaused, makeNoise, onNoticed, placeLabel, renderBook, renderChron, renderHelp, renderStatus, setHelp, showHint, updateSearch, updateStealth,
 } from '../lib/status.ts';
-import { getLegend } from '../lib/legend.ts';
-import { cellLight } from '../lib/lightmap.ts';
+import { descentSealed, drawLegendWorld, finalExposed, getLegend, legendAll, legendOfBranch, pedLit } from '../lib/legend.ts';
+import { ceilAt, cellLight } from '../lib/lightmap.ts';
+import { drawDoors, drawFixtures, drawGraves, drawSprings, drawWebs, webTouch } from '../lib/fixtures.ts';
+import { addBolt, drawBoltFx, drawFire, drawFrozen, drawZones, sparkCrown } from '../lib/fx.ts';
+import { BRANCH_OMEN, REALM_OMEN, SPECIAL_OMEN, STRATUM_OMEN, drawOmens, drawStairSeal, omenOf, stairsGuarded } from '../lib/omens.ts';
 import { loadBeasts, recordBeast, saveMeta, saveSet } from '../lib/save.ts';
 import { BL, statOf } from '../lib/monsters.ts';
 import { setCamMode, sndToggle, tryLock, updateResume } from '../lib/screens.ts';

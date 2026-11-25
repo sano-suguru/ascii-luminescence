@@ -1,65 +1,5 @@
 // ---------------------------------------------------------------- drawing: runes on the floor, pedestals, altars, steles, beams, a ring while swapping, the chant at your hands
-// ---------------------------------------------------------------- what lies ahead: not told in words but felt - what leaks up the stairs, traces at branch doors, the light of other realms;
-// quiet enough to notice only up close
-const STRATUM_OMEN={
- cavern:{col:[0.55,0.85,0.5],gl:[',','.',"'"],vy:0.5,look:'下から、湿った土と苔の匂いが上がってくる。遠くで、水の滴る音がする',snd:'drip'},
- ruins:{col:[0.78,0.64,1.0],gl:['.','ᛁ','ᚱ','ᛊ',':'],vy:0.35,look:'下から、古い石の冷たい空気が流れてくる。遠くで、鐘のような響きがする',snd:'chime'},
- magma:{col:[1.0,0.42,0.12],gl:['*',"'",'.'],vy:0.9,look:'下から、熱い風が吹き上がってくる。床が赤く照らされている',snd:'rumble',glow:[1.0,0.35,0.1]},
- abyss:{col:[0.55,0.42,0.95],gl:['.',':','`'],vy:0.25,look:'下から、冷たい闇が這い上がってくる。かすかな囁きが聞こえる',snd:'whisper',glow:[0.35,0.2,0.7]},
-};
-const SPECIAL_OMEN={
- town:{col:[1.0,0.78,0.45],gl:['.','*'],vy:0.4,look:'下から、焚き火の匂いと、かすかな人の声がする',snd:'drip'},
- bigroom:{col:[0.82,0.84,0.95],gl:['.'],vy:0.6,look:'下から、広い空間を渡る風の音がする',snd:'wind'},
- oracle:{col:[1.0,0.9,0.55],gl:['*','.'],vy:0.3,look:'下から、澄んだ鈴の音と、静かな水音が聞こえる',snd:'chime'},
- fortress:{col:[1.0,0.58,0.25],gl:['*','.',"'"],vy:0.7,look:'下から、熱気と、鉄を打つような響きが上がってくる',snd:'rumble'},
-};
-const BRANCH_OMEN={
- crypt:{col:[0.62,0.82,1.0],look:'周りに骨が散らばり、冷たい霧が這い出している',snd:'chant'},
- lair:{col:[1.0,0.62,0.32],look:'床に深い爪痕が刻まれている。奥から、温かい獣の息が漂ってくる',snd:'growl'},
- sunken:{col:[0.45,0.8,0.98],look:'床が濡れて光っている。奥から、水の音と泡の弾ける音がする',snd:'bubble'},
- nest:{col:[0.88,0.88,0.95],look:'蜘蛛の糸が絡みついている。奥で、何かがかさかさと動く',snd:'scuttle'},
- snake:{col:[0.62,0.86,0.45],look:'脱ぎ捨てられた蛇の皮が落ちている。奥から、低いシューという音がする',snd:'hiss'},
-};
-const REALM_OMEN={
- ice:{col:[0.75,0.92,1.0],gl:['*','.'],vy:-0.25,look:'門の周りの床に霜が降り、凍てついた冷気が流れ出している',frost:true,snd:'wind'},
- lab:{col:[1.0,0.45,0.88],gl:['ᛁ','ᚱ','ᛊ','*'],vy:0.2,look:'門の周りに、宙に浮かぶ文字の欠片と、魔法陣の光が漂っている',snd:'chime'},
- volcano:{col:[1.0,0.5,0.15],gl:["'",'.','*'],vy:0.6,look:'門の向こうから、灰と熱気が吹きつけてくる',snd:'rumble'},
-};
-// stratumAtDepth は src/lib/strata.ts（src/game/imports.mjs で読む）
-function computeOmen(){ const o={stairs:null,branch:null,portal:null,traces:[],sndT:{}};
-  if(here.branch){ if(here.branch.lvl<here.branch.len)o.stairs={kind:'branch',key:here.branch.key,strong:here.branch.lvl+1===here.branch.len}; }
-  else if(!here.realm&&here.D.stairs>=0&&!here.D.finalVault&&here.depth<FINAL_DEPTH){ const ik=!here.inter?interAfter(here.depth):null; if(ik)o.stairs={kind:'special',key:ik}; else { const nd=here.depth+1, a=here.inter?SPECIALS[here.inter.key]:stratumAtDepth(here.depth), b=stratumAtDepth(nd); if(a&&b&&a.k!==b.k)o.stairs={kind:'stratum',key:b.k}; } }
-  if(here.D.bstairs)o.branch={key:here.D.bstairs.key,cell:here.D.bstairs.cell};
-  if(here.D.portal)o.portal={key:here.D.portal.key,cell:here.D.portal.cell};
-  const lay=(cell,key,strong)=>{ const [cx,cz]=cpos(cell), n=strong?44:24, R=strong?6:4.2, rr=mulberry32((cell*7919+adv.runSeed)>>>0);
-    for(let k=0;k<n;k++){ const a=rr()*6.28, d=0.9+rr()*(R-0.9), x=cx+Math.cos(a)*d, z=cz+Math.sin(a)*d, ci=((z/CELL)|0)*MW+((x/CELL)|0); if(ci<0||ci>=here.D.tile.length||here.D.tile[ci]!==TF)continue; o.traces.push({x,z,key,r:rr(),a:rr()*6.28}); } };
-  if(o.branch)lay(o.branch.cell,o.branch.key,false);
-  if(o.stairs&&o.stairs.kind==='branch')lay(here.D.stairs,o.stairs.key,o.stairs.strong);
-  return o; }
-const omenOf=()=>here.D?(here.D.omen||(here.D.omen=computeOmen())):null;
-function omenSound(kind,x,z){ if(!sndReady())return; const d=Math.hypot(x-player.x,z-player.z), v=Math.max(0.05,1-d/10);
-  if(kind==='drip')sDrip(x,z,0.4*v); else if(kind==='chime'||kind==='chant')sChime(x,z,0.22*v); else if(kind==='rumble'||kind==='growl')sRumble(0.18*v,kind==='growl'?0.9:1.6);
-  else if(kind==='whisper'||kind==='wind'||kind==='hiss')sHiss(x,z,kind==='hiss'?0.7:1.4); else if(kind==='bubble')sBubble(x,z,0.3*v); else if(kind==='scuttle')sHiss(x,z,0.18); }
-function drawOmens(t,dt){ if(!here.D||ui.gallery)return; const o=omenOf(); if(!o)return;
-  const near=(x,z,r)=>Math.hypot(x-player.x,z-player.z)<r, rate=(n)=>mr()<n*(dt||0.016);
-  const rise=(x,z,def,n,spread)=>{ if(!rate(n))return; const a=mr()*6.28, rr=mr()*(spread||0.7), down=def.vy<0;
-    spawn(x+Math.cos(a)*rr,down?2.2+mr()*0.6:0.15,z+Math.sin(a)*rr,(mr()-0.5)*0.15,def.vy*(0.7+mr()*0.6),(mr()-0.5)*0.15,2.4+mr(),G(mpick(def.gl)),0.12,def.col[0]*1.3,def.col[1]*1.3,def.col[2]*1.3,0); };
-  const sound=(key,kind,x,z)=>{ if(!kind||!near(x,z,10))return; if(clock.time<(o.sndT[key]||0))return; o.sndT[key]=clock.time+6+mr()*5; omenSound(kind,x,z); };
-  // the stairs: what lies below leaks up
-  if(o.stairs&&o.stairs.kind!=='branch'){ const def=o.stairs.kind==='special'?SPECIAL_OMEN[o.stairs.key]:STRATUM_OMEN[o.stairs.key]; const [x,z]=cpos(here.D.stairs);
-    if(def&&near(x,z,20)){ rise(x,z,def,3.2); if(def.glow)for(let k=0;k<16;k++){ const a=k/16*Math.PI*2+t*0.1, b=0.5+0.25*Math.sin(t*1.7+k); dyn(x+Math.cos(a)*1.3,0.04,z+Math.sin(a)*1.3,G('.'),0.15,def.glow[0]*b,def.glow[1]*b,def.glow[2]*b,0,0); } sound('st',def.snd,x,z); } }
-  // the otherworld gate: its realm's light
-  if(o.portal){ const def=REALM_OMEN[o.portal.key], [x,z]=cpos(o.portal.cell); if(def&&near(x,z,20)){ rise(x,z,def,3,1.0); if(def.frost)for(let k=0;k<20;k++){ const a=k*2.399, r=0.8+(k%5)*0.3; dyn(x+Math.cos(a)*r,0.03,z+Math.sin(a)*r,G(k%3?'.':'*'),0.13,0.55,0.7,0.85,0,0); } sound('po',def.snd,x,z); } }
-  // traces at branch doors and on the stairs deeper into a branch
-  for(const tr of o.traces){ if(!near(tr.x,tr.z,18))continue; const k=tr.key, r=tr.r;
-    if(k==='crypt'){ dyn(tr.x,0.03,tr.z,G(r<0.15?'O':r<0.5?mpick(['(',')']):r<0.8?'=':'o'),0.15,0.62,0.6,0.55,0,0); }
-    else if(k==='lair'){ if(r<0.45){ for(let q=0;q<3;q++)dyn(tr.x+Math.cos(tr.a)*q*0.1,0.03,tr.z+Math.sin(tr.a)*q*0.1,G('/'),0.15,0.55,0.4,0.3,0,0); } else if(r<0.8)dyn(tr.x,0.04,tr.z,G('"'),0.14,0.5,0.36,0.22,0,0); else dyn(tr.x,0.03,tr.z,G('%'),0.16,0.18,0.12,0.09,0,0); }
-    else if(k==='sunken'){ const b=0.45+0.15*Math.sin(t*1.5+tr.a); dyn(tr.x,0.03,tr.z,G('~'),0.16,0.25*b*2,0.5*b*2,0.7*b*2,0,0); if(rate(0.25))spawn(tr.x,0.05,tr.z,0,0.35,0,1.0,G('o'),0.08,0.5,0.8,1.0,0); }
-    else if(k==='nest'){ if(r<0.55)dyn(tr.x,0.03,tr.z,G(mpick(['-','/','\\'])),0.15,0.5,0.5,0.55,0,0); else if(r<0.85){ for(let q=0;q<3;q++)dyn(tr.x,1.4+q*0.35,tr.z,G('|'),0.13,0.45,0.45,0.5,0,0); } else { const a=t*1.5+tr.a; dyn(tr.x+Math.cos(a)*0.3,0.05,tr.z+Math.sin(a)*0.3,G('x'),0.11,0.5,0.45,0.4,0,0); } }
-    else if(k==='snake'){ if(r<0.6){ for(let q=0;q<4;q++)dyn(tr.x+Math.cos(tr.a)*q*0.13,0.03,tr.z+Math.sin(tr.a)*q*0.13+Math.sin(q*1.6)*0.05,G(q%2?'s':'~'),0.14,0.62,0.6,0.42,0,0); } else dyn(tr.x,0.03,tr.z,G(','),0.14,0.3,0.5,0.24,0,0); } }
-  if(o.branch){ const [x,z]=cpos(o.branch.cell), k=o.branch.key; if(near(x,z,18)){ if(k==='crypt')rise(x,z,{col:[0.45,0.6,0.8],gl:['~','.'],vy:0.08},1.5,1.2); if(k==='lair')rise(x,z,{col:[0.6,0.45,0.32],gl:['~'],vy:0.15},0.8,0.6); sound('br',BRANCH_OMEN[k].snd,x,z); } }
-  if(o.stairs&&o.stairs.kind==='branch'){ const [x,z]=cpos(here.D.stairs), k=o.stairs.key; if(near(x,z,18)){ if(k==='crypt')rise(x,z,{col:[0.45,0.6,0.8],gl:['~','.'],vy:0.08},o.stairs.strong?3:1.5,1.4); sound('st',BRANCH_OMEN[k].snd,x,z); } }
-}
+// 先にある物の手がかり（表 STRATUM_OMEN など・computeOmen・omenOf・omenSound・drawOmens）と階段の封（stairsGuarded・drawStairSeal）は src/lib/omens.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- direction arrows: from a point just above the hands, arrows spread out toward places - straight-line direction only, never the way;
 // near ones short and thick, far ones long and thin. The stairs are always known; branch stairs and gates once seen; altars, springs, treasuries, guarded prizes and graves from 20 m (1.5x at the crossroads), the last four as '?' until seen. A place in plain sight needs no arrow.
@@ -99,18 +39,12 @@ function drawArrows(){ if(!arrowCtx)return; const W=Math.round(arrowCv.clientWid
     const mx=ox+sx*(r0+n*step+size*0.85), my=oy+sy*(r0+n*step+size*0.85), ms=(17+5*near)*k;
     c.beginPath(); c.arc(mx,my,ms*0.7,0,Math.PI*2); c.fillStyle='rgba(6,4,14,0.55)'; c.fill(); c.lineWidth=1.2*k; c.strokeStyle=`rgba(${rgb},${(alpha*0.6).toFixed(2)})`; c.stroke();
     glyph(t.ch,mx,my+ms*0.02,0,ms,rgb,Math.min(1,alpha+0.1),true); } }
-const stairsGuarded=()=>here.D&&here.D.stairGuard!==undefined&&here.monsters.some(m=>!m.dead&&m.g===here.D.stairGuard);
-function drawStairSeal(t){ if(!here.D||here.D.stairGuard===undefined)return; const [x,z]=cpos(here.D.stairs); const d=Math.hypot(x-player.x,z-player.z); if(d>26)return; const on=stairsGuarded();
-  if(on){ for(let k=0;k<18;k++){ const a=k/18*Math.PI*2+t*0.4, b=0.7+0.3*Math.sin(t*2+k); dyn(x+Math.cos(a)*0.9,0.3+0.12*Math.sin(t*1.5+k),z+Math.sin(a)*0.9,G(k%3?'=':'#'),0.18,1.4*b,0.4*b,0.55*b,0,0); } if(d<12&&clock.time>(here.D.sealSnd||0)){ here.D.sealSnd=clock.time+7+mr()*4; omenSound('growl',x,z); } }
-  else if(!here.D.sealOpenMsg){ here.D.sealOpenMsg=true; msg('<b style="color:#ffd27a">=</b>階段を閉ざしていた封が、静かに解けた。'); sChime(x,z,0.4); } }
 // the air of each part of a level: the crossroads a little brighter, the way to the stairs a little darker and quieter
 let ambK=1;
 function updateSectionAir(dt){ if(!here.D||!here.D.prof)return; const pc=((player.z/CELL)|0)*MW+((player.x/CELL)|0); let k=1;
   if(here.D.hub&&here.D.roomOf[pc]===here.D.hub.ri)k=1.25; else if(here.D.dS&&here.D.pathL>0&&here.D.dS[pc]>here.D.pathL*0.7)k=0.85;
   ambK+=(k-ambK)*Math.min(1,dt*1.2); U.uAmb.value=here.D.prof.ambient*ambK; }
-function drawGraves(t){ for(const it of (here.D.items||[])){ if(it.kind!=='grave'||it.taken)continue; const [x,z]=cpos(it.i); if(Math.hypot(x-player.x,z-player.z)>26)continue;
-    for(let y=0;y<3;y++)dyn(x,0.2+y*0.3,z,G(y===2?'+':'|'),0.34,0.55,0.55,0.62,0,0); dyn(x-0.18,0.62,z,G('-'),0.3,0.5,0.5,0.58,0,0); dyn(x+0.18,0.62,z,G('-'),0.3,0.5,0.5,0.58,0,0);
-    const c=runeCol(it.rune), b=0.9+0.4*Math.sin(t*1.8+it.i); dyn(x,1.35+0.06*Math.sin(t*1.3),z,G(RUNE_DEF[it.rune.type].ch),0.26,c[0]*b,c[1]*b,c[2]*b,0,0); } }
+// 墓を描く drawGraves は src/lib/fixtures.ts（src/game/imports.mjs で読む）
 function drawRunesWorld(t){
   drawZones(t);
   drawStairSeal(t); updateSectionAir(0.016);

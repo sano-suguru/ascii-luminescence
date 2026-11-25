@@ -65,19 +65,7 @@ function uploadCells(){
   for(let i=0;i<NCELL;i++){ const o=i*4; cellData[o]=Math.min(255,blaze.fireLight[i]*150); cellData[o+1]=Math.min(255,blaze.fire[i]*255); cellData[o+2]=blaze.burnt[i]?255:0; cellData[o+3]=blaze.cellFlag[i]; }
   cellTex.needsUpdate=true;
 }
-function drawFire(t,dt){
-  for(const i of blaze.burning){
-    const f=blaze.fire[i]; if(f<=0)continue;
-    const x0=(i%MW+0.5)*CELL, z0=(((i/MW)|0)+0.5)*CELL; if(Math.hypot(x0-player.x,z0-player.z)>34)continue;
-    let h=Math.sin(i*12.9898)*43758.5453; h-=Math.floor(h);
-    for(let k=0;k<5;k++){
-      const q=(t*(1.8+h)+k/5+h)%1, ox=Math.sin(k*2.3+h*9)*0.6, oz=Math.cos(k*1.7+h*7)*0.6, b=2.8*(1-q)*f;
-      dyn(x0+ox,0.12+q*1.3*f,z0+oz,G(k%3===0?'^':k%3===1?'*':'\''),0.5*(1-q*0.6)*(0.5+f*0.5),b*1.0,b*0.45*(1-q),b*0.12*(1-q)*(1-q));
-    }
-    if(mr()<dt*6*f)spawn(x0+(mr()-0.5)*1.4,0.3,z0+(mr()-0.5)*1.4,(mr()-0.5)*0.4,0.9+mr()*1.2,(mr()-0.5)*0.4,1.2+mr()*1.6,G(mpick(['.','\'','*'])),0.1,2.8,1.4,0.5,0);
-  }
-  if(blaze.spark)dyn(blaze.spark.x,blaze.spark.y,blaze.spark.z,G('*'),0.32,3.4,2.2,0.9);
-}
+// 火を描く drawFire は src/lib/fx.ts（src/game/imports.mjs で読む）
 let sparks=3, sparkRegen=0; const SPARK_MAX=3;
 function updateSparkHud(){ renderStatus(); }
 function throwSpark(){

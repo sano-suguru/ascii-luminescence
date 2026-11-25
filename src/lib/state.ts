@@ -3,7 +3,7 @@
 // 移す時は tools/state-move.mjs を使う（同じ名前の局所の変数は書き換えない）。初めの値は、古い JS の宣言のまま。
 // 入れ物の名前は、古い JS の局所の名前とぶつからない物にする（道具が確かめる。fx は座標の fx とぶつかるので vfx にした）。
 import { type MonsterType } from './creatures.ts';
-import { type BranchPlace, type Fixture, type InterPlace, type Level, type RealmPlace } from './generate.ts';
+import { type BranchPlace, type Fixture, type InterPlace, type Level, type RealmPlace, type Web } from './generate.ts';
 import { META_DEF, type Meta } from './progress.ts';
 import { type History } from './history.ts';
 import type { HandsSnap } from './gear.ts';
@@ -378,15 +378,17 @@ export interface BeamRun {
 }
 /** 稲妻の見た目（a から b へ、ぎざぎざの線 pts） */
 export interface Bolt {
-  a: readonly number[];
-  b: readonly number[];
+  a: readonly [number, number, number];
+  b: readonly [number, number, number];
   col: readonly number[];
+  /** 描き方（'thunder'・'fire'・'ice' と、ほか） */
   style: string;
   amp: number;
   t: number;
   life: number;
+  /** ぎざぎざの線を引き直すまでの秒 */
   re: number;
-  pts: unknown[];
+  pts: (readonly [number, number, number])[];
 }
 /** 戦い：飛ぶ物・光線・毒の霧・魔法の場・遅れて起きること・雨・床の目印・ヒットストップ・発動の待ち・稲妻 */
 export interface Fight {
@@ -456,6 +458,24 @@ export interface LevelExtra {
   stairGuard?: number;
   /** 階段と門のそばの石碑（マス i と、刻まれた文字 g。どの階でも、src/lib/altars.ts の placeRunesForLevel が入れる） */
   steles?: { i: number; g: string }[];
+  /** 床が崩れたか（部屋の出来事。15-sound-fire.js の initEvents が false にする） */
+  collapsed?: boolean;
+  /** マス → クモの巣（15-sound-fire.js の initFire が作る） */
+  webAt?: Map<number, Web>;
+  /** 先にある物の手がかり（はじめて読んだ時に作る。src/lib/omens.ts の omenOf） */
+  omen?: Omen;
+  /** 封じられた階段のうなり声を、次に鳴らせるゲームの時刻と、封が解けた伝言を出したか（src/lib/omens.ts の drawStairSeal） */
+  sealSnd?: number;
+  sealOpenMsg?: boolean;
+}
+/** 先にある物の手がかり（src/lib/omens.ts の computeOmen）：下り階段から漏れる物（特別な階・層の変わり目・支道の奥）、支道の入口、異界の門、
+ * 支道の入口と奥の階段のまわりの跡、場所ごとに次に音を鳴らせるゲームの時刻 */
+export interface Omen {
+  stairs: { kind: 'special' | 'stratum'; key: string } | { kind: 'branch'; key: string; strong: boolean } | null;
+  branch: { key: string; cell: number } | null;
+  portal: { key: string; cell: number } | null;
+  traces: { x: number; z: number; key: string; r: number; a: number }[];
+  sndT: Record<string, number>;
 }
 /** 伝言（html と、出した時刻 t） */
 export interface LogMsg {
@@ -515,6 +535,14 @@ export interface Monster {
   /** 次に低い音・息の音を鳴らせるゲームの時刻（不死の王・ナーガの女王） */
   droneT?: number;
   hissT?: number;
+  /** 向かう所（x・z）と、そこを目指すのをやめるゲームの時刻（クモの巣に触れた時など） */
+  goal?: [number, number];
+  goalT?: number;
+  /** 当たって光る残りの秒 */
+  hitT?: number;
+  /** 体の明るさと、心臓を見せるか（王の影が無防備な間。src/lib/legend.ts の drawLegendWorld） */
+  glow?: number;
+  heartOn?: boolean;
 }
 /** 今いる場所と、階の中身。深さ・支道・異界・特別な階、生き物、灯りの備品、階を移る途中、着いた所 */
 export interface Here {
@@ -549,6 +577,10 @@ export interface Here {
   riverCells: number[];
   /** 最深部の状態（最深部の階に入った時に作る。ほかの階では null。24-goal.js の setupFinal） */
   finalSt: FinalState | null;
+  /** その階で一度だけ出す伝言を出したか：巣に絡まった・巣が燃え落ちた・修復機が扉を直した（18-level-player.js の newLevel が階ごとに戻す） */
+  webMsg: boolean;
+  webBurnMsg: boolean;
+  repairMsg: boolean;
 }
 /** 最深部の状態：一番高い天井のマス c0、伝説の物を置く3つの台座 peds、王の影 boss と、現れるまで・呼び出すまでの秒、着いた時の伝言を出したか */
 export interface FinalState {
@@ -578,6 +610,9 @@ export const here: Here = {
   events: [],
   riverCells: [],
   finalSt: null,
+  webMsg: false,
+  webBurnMsg: false,
+  repairMsg: false,
 };
 /** 行った階の覚え（場所の名前 → 見えた所と覚えた色の写し）。丸ごと入れ替えないので、古い JS は今までどおり placeMem で読む */
 export const placeMem = new Map<string, { explored: Uint8Array; mem: Float32Array }>();
