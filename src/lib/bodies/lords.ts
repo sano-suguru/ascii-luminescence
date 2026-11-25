@@ -442,7 +442,7 @@ export function shadowKingForm(): Body {
   lit(SX - 0.13, 1.88, SZ, '(', S, 2.0, SHARD, 'body');
   lit(SX + 0.13, 1.88, SZ, ')', S, 2.0, SHARD, 'body');
   for (const y of [2.0, 2.06, 2.12]) lit(SX, y, SZ + 0.01, 'o', S * 0.6, 1.6, BLADE, 'body');
-  // the heart (seen in the light)
+  // the heart, always shown
   const hz = shadowCloakHalf(1.6) * ZS + 0.02;
   lit(0, 1.6, hz, '*', S * 2.6, 4.0, HEART, 'heart');
   for (let k = 0; k < 8; k++) {

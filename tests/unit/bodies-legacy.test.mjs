@@ -1,7 +1,7 @@
 // 生き物の形（src/lib/bodies/build.ts）・まわりの飾りと王の影の変身（auras.ts）・図鑑の見本の獣（lords.ts の beastSamples）・
 // 忘れられた獣の記録（save.ts）の単体テスト。
 // 指紋の値は、移す前の古い JS（src/game/07・08・09・10）で数えた値から、移した後に作り直した所（王の影の一つ目の姿・蜘蛛の女王とナーガの女王の明るさ・
-// 二つ目の姿の大きさ・王の影の裾の影の流れ（最深部の台座を無くし、いつもまわりの3方向へ））の分だけ違う（作り直す前の src/lib/bodies の lords.ts・bosses.ts・auras.ts に戻すと、古い JS と同じ値になることを確かめた）。
+// 二つ目の姿の大きさ・王の影の裾の影の流れ（いつもまわりの3方向へ））の分だけ違う（作り直す前の src/lib/bodies の lords.ts・bosses.ts・auras.ts に戻すと、古い JS と同じ値になることを確かめた）。
 // テストを .mjs で書くのは、偽の画面の部品・偽の Web Audio・偽の localStorage を、本物の型に合わせられないため。
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as AURAS from '../../src/lib/bodies/auras.ts';

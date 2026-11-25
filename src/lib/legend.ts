@@ -56,7 +56,7 @@ export function getLegend(): Legend | null {
   saved.LEGEND = { seed: adv.runSeed, items, have: new Set() };
   return saved.LEGEND;
 }
-/** 状態の表示の1行：伝説の物の印（手にしたか置いた物は光る）と名前 */
+/** 状態の表示の1行：伝説の物の印（手にした物は光る）と名前 */
 export function legendLine(): string {
   const L = getLegend();
   if (!L) return '';

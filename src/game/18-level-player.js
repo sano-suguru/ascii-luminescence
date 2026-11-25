@@ -192,7 +192,7 @@ function hurtPlayer(n,cause){
 function resultPlace(){ const pl=placeLabel(); return /^[0-9]+$/.test(String(pl).trim())?`深度${here.depth}（${(here.D&&here.D.stratum&&here.D.stratum.name)||''}）`:`${pl}（深度${here.depth}）`; }
 function runLore(victory){ const L=getLegend(), parts=[], add=(lab,n,v)=>{ if(v>0)parts.push([lab,n,v]); }, md=(adv.runStats&&adv.runStats.maxDepth)||here.depth;
   add('到達した深さ',`深度${md}`,md*2); const lords=adv.runState.lordsDone?adv.runState.lordsDone.size:0; add('倒した支道の主',`${lords}体`,lords*8);
-  const pl=L?L.have.size:0; add('手にした伝説の物',`${pl}つ`,pl*6); if(victory)add('王の影に勝った','',30);
+  const pl=L&&md>=FINAL_DEPTH?L.have.size:0; add('最深部へ持ち帰った伝説の物',`${pl}つ`,pl*6); // only those brought to the bottom if(victory)add('王の影に勝った','',30);
   const lg=Math.max(0,(adv.lvl.n||1)-1); add('上がったレベル',`${lg}つ`,lg);
   const nb=Math.max(0,saved.BOOK.size-((adv.runStats&&adv.runStats.book0)||0)); add('新しく記した反応',`${nb}つ`,nb*3); const nbe=(adv.runStats&&adv.runStats.beastsNew)||0; add('初めて出会った忘れられた獣',`${nbe}体`,nbe*4);
   const base=parts.reduce((a,p)=>a+p[2],0), mult=1+0.25*adv.runTrials.length; return {parts,base,mult,total:Math.round(base*mult)}; }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // スモークテスト：テスト用モードでない時にタイトルの画面が出るか、開発用の探索で dbg が動くか、探索の始め直しで前の場所や状態が残らないか
-// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの「もう一度押して確かめる」待ちが4秒で消えるか、図鑑を開いても探索の記録が変わらないか、開発用モードのまま読み直した時・保存が使えない時のタイトル、閉じた祭壇の画面が離れるまで開かないか、起きている竜を見た時の伝言、最深部で王の影が出て二つ目の姿になるか（背の高さ・画面への収まり・天井）。図鑑の生き物と図鑑を手で動かすのは tests/gallery.mjs、扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
+// （特別な階・階段を下りる途中で死んだ時、試しの間から始めた時）と、メニューの「もう一度押して確かめる」待ちが4秒で消えるか、図鑑を開いても探索の記録が変わらないか、開発用モードのまま読み直した時・保存が使えない時のタイトル、閉じた祭壇の画面が離れるまで開かないか、起きている竜を見た時の伝言、最深部で王の影が出て二つ目の姿になるか（背の高さ・画面への収まり・天井）、伝説の物が揃っていない時に12階の異界から最深部へ出ないか。図鑑の生き物と図鑑を手で動かすのは tests/gallery.mjs、扉や火など、世界とのやり取りは tests/world.mjs。ページのエラーを確かめ、画面写真を tests/out/ に保存。
 //   node tests/smoke.mjs          テスト版（.build/test/。既定）
 //   node tests/smoke.mjs --prod   公開用の版（dist/）。JetBrains Mono を指定した所の日本語は、システムのフォントで描く
 import { join } from 'node:path';
@@ -317,6 +317,39 @@ await withBrowser(
       }
     }
     await fin.close();
+
+    // 13. 最深部の1つ上の階（12）の異界の門から入り、異界を抜けて下りる：伝説の物が3つ揃っていなければ12階の門に戻され（最深部には出ない）、揃っていれば最深部（13）に出る
+    const rl = await newPage(browser, errs);
+    await openTest(rl, base, 'seed=202&depth=12&god=1');
+    await advance(rl, 1);
+    const realmExit = await rl.evaluate(() => {
+      const out = [];
+      for (const legends of [false, true]) {
+        dbg.go(12);
+        __test.advance(2);
+        if (legends) dbg.give('legends');
+        const r = dbg.realm('ice');
+        if (typeof r === 'string') return `異界に入れない：${r}`;
+        __test.advance(2);
+        const from = __test.state().place;
+        const sp = dbg.info().stairsPos;
+        if (!sp) return '異界に下り階段が無い（テストの前提が崩れた）';
+        dbg.step(sp[0], sp[1]);
+        for (let k = 0; k < 40 && __test.state().place === from; k++) __test.advance(0.2);
+        __test.advance(1);
+        out.push({ legends, depth: __test.state().depth, place: __test.state().place });
+      }
+      return out;
+    });
+    if (typeof realmExit === 'string') errs.push(`13：${realmExit}`);
+    else {
+      const [without, withAll] = realmExit;
+      if (!(without && without.depth === 12 && without.place === '12'))
+        errs.push(`13：伝説の物が揃っていないのに、12階の異界から最深部へ出た：${JSON.stringify(without)}`);
+      if (!(withAll && withAll.depth === 13))
+        errs.push(`13：伝説の物が揃っているのに、12階の異界から最深部へ出ない：${JSON.stringify(withAll)}`);
+    }
+    await rl.close();
   },
   { prod: process.argv.includes('--prod') },
 );
