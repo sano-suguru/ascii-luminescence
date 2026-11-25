@@ -12,6 +12,7 @@ import { RUNE_TYPES, TRAITS } from '../../src/lib/runes.ts';
 import { DYN_MAX, P_MAX } from '../../src/lib/shaders.ts';
 import { SND, adv, buf, fight, gear, here, player, ui } from '../../src/lib/state.ts';
 import { cpos } from '../../src/lib/world.ts';
+import { fakeAudio } from './fake-audio.mjs';
 import { swapGlobals } from './ui-cases.mjs';
 
 const text = (v) =>
@@ -99,7 +100,10 @@ export function particleCases(F, seeds) {
 const KINDS = Object.keys(MTYPES);
 const ALL = Object.values(RUNE_TYPES).flat();
 
-/** 偽の画面の部品：したことを log に記録する。描く画面 #gl の requestPointerLock の返し方は mode で変える（古い JS は #gl を取り出した時に覚えるので、同じ物を使い続ける） */
+/**
+ * 偽の画面の部品：したことを log に記録する。描く画面 #gl の requestPointerLock の返し方は st.lock で変える。
+ * #gl と #resume は、場合が変わっても同じ部品を使い続ける（古い関数と比べる時に、取り出した時の部品を覚える書き方とも同じ結果になるように）
+ */
 export function fakeScreen() {
   const log = [],
     els = {},
@@ -181,7 +185,7 @@ export async function screenCases(F, seeds, page) {
     px: player.x,
     pz: player.z,
     ui: { ...ui },
-    snd: { lv: SND.lv, on: SND.on, master: SND.master, ctx: SND.ctx },
+    snd: { lv: SND.lv, on: SND.on, master: SND.master, ctx: SND.ctx, inp: SND.inp },
     buf: { ...buf },
     now: Object.getOwnPropertyDescriptor(performance, 'now'),
   };
@@ -239,7 +243,7 @@ export async function screenCases(F, seeds, page) {
           return 0;
         };
         here.D = {
-          steles: r() < 0.3 ? [{ i: cellNear(r() < 0.5) }] : undefined,
+          steles: r() < 0.5 ? [{ i: cellNear(r() < 0.5) }] : undefined,
           items: r() < 0.3 ? [{ i: cellNear(r() < 0.5), altar: true, slot: pick([0, 1]) }] : [],
         };
         Object.assign(ui, {
@@ -256,9 +260,16 @@ export async function screenCases(F, seeds, page) {
           packSnap: null,
         });
         SND.lv = Math.floor(r() * 4);
-        SND.on = r() < 0.5;
-        SND.ctx = r() < 0.7 ? { currentTime: Math.floor(r() * 100) } : null;
-        SND.master = SND.ctx && r() < 0.8 ? { gain: { setTargetAtTime: (...a) => page.log.push(['gain', ...a]) } } : null;
+        // 音：鳴らせる偽の Web Audio（鈴の音の部品も記録する）か、時刻だけの物か、無い
+        if (r() < 0.35) {
+          const ctx = fakeAudio(page.log, 'running');
+          Object.assign(SND, { on: true, ctx, inp: ctx.createGain(), master: r() < 0.8 ? ctx.createGain() : null });
+        } else {
+          SND.on = r() < 0.5;
+          SND.ctx = r() < 0.7 ? { currentTime: Math.floor(r() * 100) } : null;
+          SND.master = SND.ctx && r() < 0.8 ? { gain: { setTargetAtTime: (...a) => page.log.push(['gain', ...a]) } } : null;
+          SND.inp = null;
+        }
         page.st.lock = pick(['reject', 'reject', 'ok', 'plain', 'throw', 'none']);
         page.st.store = r() < 0.8;
         buf.pN = r() < 0.1 ? P_MAX - 5 : Math.floor(r() * 20);
@@ -287,16 +298,19 @@ export async function screenCases(F, seeds, page) {
               dp = pick([0, 1, 3.9, 8, 22, 22.01, 30]) * (r() < 0.5 ? 1 : r());
             buf.dn = 0;
             F.drawMark(m, t, dp);
-            calls.push({ f: 'drawMark', key: m.key, t, dp, dn: buf.dn, dyn: dynSlice({ dPos, dCol, dPar }, buf.dn), mark: m.mark });
+            const gs = Array.from({ length: buf.dn }, (_, i) => dPar[i * 4]);
+            calls.push({ f: 'drawMark', key: m.key, t, dp, dn: buf.dn, gs, dyn: dynSlice({ dPos, dCol, dPar }, buf.dn), mark: m.mark });
           } else if (k < 0.5) {
             const on = r() < 0.5;
             // 開けている間に両手を変える（閉じた時に付け替えの詠唱になる）
             if (!on && ui.packSnap && r() < 0.6) gear.hands.L.atk = rune('atk');
+            const p0 = buf.pN;
             F.setInv(on);
-            calls.push({ f: 'setInv', on });
+            calls.push({ f: 'setInv', on, swap: !!gear.swapSt, grew: buf.pN - p0 });
           } else if (k < 0.6) {
+            const p0 = buf.pN;
             F.startSwap({ snapOf: s });
-            calls.push({ f: 'startSwap' });
+            calls.push({ f: 'startSwap', swap: !!gear.swapSt, grew: buf.pN - p0 });
           } else if (k < 0.72) {
             F.tryLock();
             calls.push({ f: 'tryLock' });

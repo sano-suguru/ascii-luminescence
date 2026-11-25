@@ -471,7 +471,7 @@ export function applyBuild(k: number): boolean {
 
 /**
  * 付け替えの詠唱を始める（1.5秒。その間は詠唱できない。prev は付け替える前の両手で、詠唱が途切れたら戻す）。溜めている術と光線は止める。
- * 石碑のそばでは、詠唱せずにすぐ替わる（鈴の音と、まわりに16の光の粒）
+ * 石碑か祭壇の真ん中の台のそば、試しの間では、詠唱せずにすぐ替わる（鈴の音と、まわりに16の光の粒）
  */
 export function startSwap(prev: HandsSnap): void {
   if (nearStele()) {

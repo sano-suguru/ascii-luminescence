@@ -6,7 +6,7 @@ import { type MonsterType } from './creatures.ts';
 import { type BranchPlace, type Fixture, type InterPlace, type Level, type RealmPlace } from './generate.ts';
 import { META_DEF, type Meta } from './progress.ts';
 import { type History } from './history.ts';
-import { type HandsSnap } from './gear.ts';
+import type { HandsSnap } from './gear.ts';
 import { type Rune } from './runes.ts';
 import { NCELL } from './world.ts';
 

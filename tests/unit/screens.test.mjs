@@ -7,6 +7,7 @@ import * as INV from '../../src/lib/inventory.ts';
 import * as PT from '../../src/lib/particles.ts';
 import * as SC from '../../src/lib/screens.ts';
 import * as ST from '../../src/lib/status.ts';
+import { G } from '../../src/lib/glyphs.ts';
 import { fakeScreen, particleCases, screenCases } from './screens-cases.mjs';
 
 const fnv = (s) => {
@@ -24,24 +25,34 @@ describe('移す前と同じ', () => {
   });
   it('頭の上の印・装備の画面の開け閉め・付け替えの詠唱・マウスを捕まえる・視点・音量（300の場合）の指紋', async () => {
     const all = await screenCases({ ...INV, ...ST, ...SC }, 300, fakeScreen()),
-      has = (k) => all.includes(k);
-    // 場合が中身を通っているか：7つの関数が全部呼ばれ、印は z（2つ）と ! か ?（1つ）、付け替えの詠唱、マウスを捕まえる時の返し方の全部、
-    // 音量を変える、マウスを放す、視点を保存する場合も通る
-    expect(new Set([...all.matchAll(/"f":"(\w+)"/g)].map((m) => m[1])).size).toBe(7);
+      has = (k) => all.includes(k),
+      cases = all.split('\n').map((l) => JSON.parse(l)),
+      calls = cases.flatMap((c) => c.calls),
+      gs = new Set(calls.flatMap((c) => c.gs ?? []));
+    // 場合が中身を通っているか：7つの関数が全部呼ばれ、マウスを捕まえる時の返し方の全部、音量を変える、マウスを放す、視点を保存する場合も通る
+    expect(new Set(calls.map((c) => c.f)).size).toBe(7);
     expect(
       [
-        '"dn":2',
-        '"dn":1',
-        '"dur":1.5',
         '["rpl","throw"]',
         '["rpl","plain"]',
         '["rpl?","none"]',
         '["rpl","ok"]',
-        '"gain"',
+        '"setTargetAtTime"',
         '"exitPointerLock"',
         '"al_cam"',
       ].filter((k) => !has(k)),
     ).toEqual([]);
-    expect([fnv(all), all.length]).toEqual(['9b136d7d', 671230]);
+    // 頭の上の印は z・!・? の3つとも出る
+    expect(['z', '!', '?'].filter((c) => !gs.has(G(c)))).toEqual([]);
+    // 付け替え：詠唱を始める場合と、石碑のそばですぐ替わる場合（粒子が16増える）。両手を変えて閉じると詠唱になる場合。
+    // 石碑のそばで、鈴の音を鳴らす場合（鳴らせる偽の Web Audio に、音の部品を作った記録が残る）
+    const swaps = calls.filter((c) => c.f === 'startSwap' || (c.f === 'setInv' && !c.on));
+    expect([
+      calls.some((c) => c.f === 'startSwap' && c.swap),
+      swaps.some((c) => c.grew === 16 && !c.swap),
+      calls.some((c) => c.f === 'setInv' && !c.on && c.swap),
+      cases.some((c) => c.calls.some((x) => x.grew === 16) && c.log.some((e) => e[1] === 'start')),
+    ]).toEqual([true, true, true, true]);
+    expect([fnv(all), all.length]).toEqual(['6312d34d', 739393]);
   });
 });
