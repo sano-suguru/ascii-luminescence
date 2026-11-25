@@ -61,9 +61,10 @@ tools/shots.mjs      図鑑の生き物を、見やすい角度で写す（pnpm 
 tools/lords.mjs      主たちを本当にいる場所（支道の奥の階・最深部）に置き、プレイヤーの目の高さから写す（pnpm lords。主の体が描かれた画面の範囲・はみ出し・
                      主の体が足した眩しい画素の割合を出す。写真・眩しい所を赤く塗った写真・summary.json は tests/out/lords/）
 tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ・テスト用モードのページ。環境変数 AL_PREBUILT が 1 なら、組み立て済みとして組み立てない）
-tests/run.mjs        ブラウザのテストをまとめて走らせる（pnpm test）：テスト版を1回だけ組み立て、7つのテストを同時に3つずつ走らせる（--jobs で数、名前を挙げるとそれだけ）。
+tests/run.mjs        ブラウザのテストをまとめて走らせる（pnpm test）：テスト版を1回だけ組み立て、9つのテスト（画面写真の比較 visual も）を同時に3つずつ走らせる（--jobs で数、名前を挙げるとそれだけ）。
                      どのテストも自分のブラウザと空いているポートを使うので、ぶつからない。出力はテストごとにまとめて出す。1つが10分を越えたら止めて、それまでの出力を出す
-tests/smoke.mjs      テスト用モードでない時に、タイトルの画面が出るか ＋ 開発用の探索で dbg が動くか ＋ 探索の始め直しで前の場所や状態が残らないか ＋ メニューの「もう一度押して確かめる」待ちが4秒で消えるか ＋ 図鑑を開いても探索の記録が変わらないか ＋ 開発用モードのまま読み直した時・保存が使えない時のタイトル ＋ 閉じた祭壇の画面が、装備の画面やメニューを開いて閉じても、離れるまで開かないか ＋ 起きている竜を見た時の伝言 ＋ 最深部で台座に伝説の物を置くと王の影が出て、背の高さと画面への収まりが決めたとおりか、体力を減らすと二つ目の姿になり、大きさが天井に合うか（画面写真は tests/out/）
+tests/smoke.mjs      開発用の探索で dbg が動くか ＋ 探索の始め直しで前の場所や状態が残らないか ＋ メニューの「もう一度押して確かめる」待ちが4秒で消えるか ＋ 図鑑を開いても探索の記録が変わらないか ＋ 閉じた祭壇の画面が、装備の画面やメニューを開いて閉じても、離れるまで開かないか ＋ 起きている竜を見た時の伝言 ＋ 最深部で台座に伝説の物を置くと王の影が出て、背の高さと画面への収まりが決めたとおりか、体力を減らすと二つ目の姿になり、大きさが天井に合うか（画面写真は tests/out/）
+tests/title.mjs      タイトルの画面（どれもテスト用モードでない時のページ）：タイトルの画面が出るか ＋ 開発用モードのまま読み直した時・保存が使えない時のタイトル（画面写真は tests/out/）
 tests/gallery.mjs    図鑑：全部の生き物を立つ・歩く・眠るの姿で出して、例外・描いた文字の数・NaN を確かめる ＋ 図鑑を手で動かす（ホイールで寄る・引く、ドラッグで回す・見下ろす、離すとしばらく止まってまた回る、R と ← → で戻る、ドラッグが外れる、背の高い生き物に寄ると狙う点が上がる）
 tests/world.mjs      世界とのやり取り：扉・火・氷と冷気・小さな生き物（修復機・清掃機・猟犬）がマスや扉を変える処理（扉が視界を遮る・燃え尽きる・修復機が作り直す、階に残る物が階を移ると消える、猟犬が匂いの無いマスを追わない、硫黄・氷・冷気と火）。生き物は全部消してから、要る物だけ置く
 tests/determinism.mjs  同じシードで同じ結果になるか
@@ -101,7 +102,8 @@ pnpm-workspace.yaml  pnpm のサプライチェーン対策（公開24時間未�
 .node-version        Node の版（26.13.1）。CI・SessionStart hook・Cloudflare が読む
 wrangler.jsonc       Cloudflare Workers（静的アセット）の設定。公開は dist/
 .claude/settings.json  権限と hooks
-.github/workflows/ci.yml  確かめるだけの CI（check・test・画面写真の比較。どれも違えば失敗）
+.github/workflows/ci.yml  確かめるだけの CI。pnpm check（ジョブ static）と、ブラウザのテストと画面写真の比較（ジョブ browser。Chromium は headless shell だけ入れる）を別のランナーで同時に走らせ、
+                     ジョブ check が2つの結果をまとめる（ブランチの保護で必須にするのは check だけでよい）。どれも違えば失敗
 .github/workflows/dependency-review.yml  PR で増える依存の脆弱性とライセンス
 .github/workflows/codeql.yml  CodeQL（JavaScript の静的解析。PR と毎週）
 .github/dependabot.yml  依存の更新の PR（Dependabot。毎週。公開から1日たった版だけ。three.js と Playwright は minor 以上を手で上げる）
@@ -126,14 +128,14 @@ pnpm typecheck        # 型を確かめる（TypeScript 7 の tsc。src/lib/ と
 pnpm test:unit        # 単体テスト（Vitest。tests/unit/）
 pnpm map [語]         # ゲーム本体の地図。語を付けると、見出しにその語を含むファイルだけ（例：pnpm map fire）
 pnpm where index-D0mETEmY.js:4321:12   # 組み立てた JS のその場所が、src/game/ のどこか（行だけも可。--test でテスト版）
-pnpm test             # スモーク・世界とのやり取り・図鑑・同じ結果・全部の階・枠・装備の画面（tests/run.mjs が同時に3つずつ走らせる。オフラインで動く。1分ほど。1つだけは node tests/smoke.mjs など）
-pnpm test:visual      # 画面写真の比較（40秒ほど）。違えば tests/out/visual/ に違いの画像
+pnpm test             # スモーク・タイトル・画面写真の比較・図鑑・世界とのやり取り・装備の画面・全部の階・同じ結果・枠（tests/run.mjs が同時に3つずつ走らせる。オフラインで動く。2分ほど。1つだけは node tests/smoke.mjs など）
+pnpm test:visual      # 画面写真の比較だけ（1分ほど）。違えば tests/out/visual/ に違いの画像
 pnpm shots [名前…]    # 図鑑の生き物を見やすい角度で写す（既定は竜・主たちの12枚（tools/shots.mjs の PICK）。--all で全部、--bare で図鑑の枠を隠す、--out で置き場所）
 pnpm lords [場所…]    # 主たちを本当にいる場所で、目の高さから写し、大きさと眩しさを数で出す（crypt・lair・sunken・nest・snake・final。--dist で距離（既定 8））
 node tests/visual.mjs --update [--only 場面]   # 基準の画像を作り直す（見た目を意図して変えた時だけ）
 node tests/levels.mjs --seed 202               # 1つのシードだけ（--seeds 100 で数を変える）
 node tests/smoke.mjs --prod                    # 公開用の版（dist/）で起動（JetBrains Mono の所の日本語はシステムのフォント）
-pnpm verify           # check + test + test:visual
+pnpm verify           # check + test
 pnpm dev              # Vite の開発用サーバー（http://localhost:5173/。src/game/ を変えると読み直す）
 pnpm build            # 公開用を dist/ に組み立てる（pnpm build:test でテスト用を .build/test/ に）
 pnpm serve            # dist/ を組み立てて http://127.0.0.1:8000/ で配信
@@ -153,8 +155,8 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
   - ワークフローのアクションは、コミットのハッシュで固定する（`uses: owner/name@<40文字> # vX.Y.Z`）。`pnpm check` の単体テストが確かめる。
 - ヘッドレスのChromiumは、`--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader --ignore-gpu-blocklist` で動く。
   とても遅い（960x540で1秒に1フレームくらい）。**テストはテスト用モードで書き、実時間では待たない**。
-  例外は、スモークテストの「テスト用モードでない時に、タイトルの画面が出るか」の確認だけ（テスト用モードではないので、ゲームを止めて進められない。背景の迷宮を描いたフレームが2つ進むのを待つ）。
-  スモークテストの 8・9（開発用モードのまま読み直した時・保存が使えない時のタイトル）も、`?test=1` を付けずにページを開く（テスト用モードは開発用モードを必ずオンにするので、
+  例外は tests/title.mjs だけ。1つ目の「テスト用モードでない時に、タイトルの画面が出るか」は、ゲームを止めて進められないので、背景の迷宮を描いたフレームが2つ進むのを待つ。
+  2つ目・3つ目（開発用モードのまま読み直した時・保存が使えない時のタイトル）も、`?test=1` を付けずにページを開く（テスト用モードは開発用モードを必ずオンにするので、
   その場面を作れない）。待つのはタイトルが出るまでだけで、時間がたつのは待たない。
   画面写真には `timeout: 90000` を付ける。
 - three.js（r147）は、npm の `three` を組み立てに入れる（`src/game/imports.mjs` で読み、`00-test-mode.js` で画面の後処理の4つの部品（EffectComposer・RenderPass・ShaderPass・光のにじみの UnrealBloomPass）と一緒に `T` にする）。CDN からは読まない。
@@ -187,7 +189,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
    迷宮の生成は Node とブラウザで同じ迷宮になる（混ぜるのは shuffle）。生成に関わる変更は、Node の単体テストの指紋（generate.test.ts。欄の並びによらない）で、
    前の版と作り比べる。意図して迷宮を変えた時は、ブラウザの `__test.gen` でも Node と同じ指紋になることを確かめてから、指紋を作り直す
    （生成した迷宮を使う place.test.ts と status.test.mjs の指紋も変わるので、一緒に作り直す）。
-4. `pnpm fmt`・`pnpm check`・`pnpm test`・`pnpm test:visual`（画素まで同じはず）。
+4. `pnpm fmt`・`pnpm check`・`pnpm test`（画面写真の比較も含む。画素まで同じはず）。
 - 型を外すだけで組み立てる（Vite）。enum・namespace など、型を外すだけでは動かない書き方は使わない（`erasableSyntaxOnly`）。
 - import は `.ts` まで書く（`./rng.ts`）。`noUncheckedIndexedAccess` なので、配列の要素は `undefined` かもしれない物として扱う。
 - 型の言い切り（`as`。`as const` は除く）と後ろの `!` は使わない（lint がエラーにする。間違っていても tsc が黙って通すため）。
@@ -231,7 +233,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
   依存の追加と更新（`pnpm add`・`pnpm update`・`pnpm approve-builds`・`pnpm dlx`）・公開（`pnpm run deploy`・wrangler）・`rm -rf`・`git reset --hard`・`git clean`・変更を捨てる `git checkout` は確認あり。
   force push（`+ブランチ` の形も）・リモートのブランチの削除、npm での依存のインストール、`dist/` と `pnpm-lock.yaml` の直接編集、`.env`・`.dev.vars` を読むことは禁止。
   ただし権限は文字列の一致で見るだけなので、完全な安全柵ではない（別の書き方ならすり抜けうる）。
-- テストは遅めなので hooks では走らせない。動きに関わる変更の後は `pnpm test`、見た目に関わる変更の後は `pnpm test:visual` を自分で走らせる。
+- テストは遅めなので hooks では走らせない。動きや見た目に関わる変更の後は `pnpm test`（画面写真の比較も含む）を自分で走らせる。見た目だけを直している間は `pnpm test:visual` だけでもよい。
   画面写真の比較が違ったら、違いの画像を元の大きさで見てから、意図した変更なら `--update` で作り直す（作り直しはコミットを分ける）。
 
 ## 開発用の道具
