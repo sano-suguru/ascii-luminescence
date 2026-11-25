@@ -1,6 +1,6 @@
 // 迷宮の生成（もとは src/game/04-generate.js の generate）。「入力 → 結果」の形：
 //   generateLevel(seed, depth, input, env) → { level, lordType, beastType }
-//   input：冒険のシード runSeed、場所（branch・realm・inter）、図鑑の見本か（showroom）、年代記（hist）、試練（trials）、使える武器（weapons）
+//   input：探索のシード runSeed、場所（branch・realm・inter）、図鑑の見本か（showroom）、年代記（hist）、試練（trials）、使える武器（weapons）
 //   env：生き物の表 MTYPES（src/lib/creatures.ts。読むだけ）と、ルーンを作る makeRune（src/lib/gear.ts）・特性を決める rollTraits（src/lib/runes.ts）
 //   結果：階（level）と、その階の主の種類（lordType）・忘れられた獣（beastType）。生き物の表への書き込みは、古い JS の包み（generate）が行う
 // 迷宮の乱数（setRand）とノイズの種（setNoiseSeed）は、ここで階のシードから入れ替える。

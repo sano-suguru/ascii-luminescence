@@ -5,7 +5,7 @@
 //   3. 修復機（Re）が焼け落ちた扉を作り直すと、灰の印も消える
 //   4. 焼け落ちた扉のマスに立っていて、そこで扉が作り直されても、足元で視界が止まらない
 //   5. 階に残る物（魔法の場・遅れて当たる攻撃・雨・床の印・撃っている途中の光線・稲妻・遅れて落ちる稲妻・稲妻の光）は、階を移ると消える。
-//      引き金の待ちは、新しい冒険を始めると0に戻る。遅れて起きることの中の例外は、テスト用モードではページのエラーになる
+//      引き金の待ちは、新しい探索を始めると0に戻る。遅れて起きることの中の例外は、テスト用モードではページのエラーになる
 //   6. 猟犬は、匂いの無いマスを追わない（ページを開いてすぐの、ゲームの時刻が40秒より前も）
 //   7. 硫黄の床は、燃え尽きても硫黄のまま残り、しばらくすると灰の印が消えて、また燃えるようになる
 //   8. 火で氷が溶けて水に戻ると、そのマスの火は消える（水の上で燃えず、灰の印も付かない）
@@ -113,13 +113,13 @@ async function traceChecks(pg, base) {
   const left = await pg.evaluate(() => __test.traces());
   if (left.zones || left.laters || left.rains || left.marks || left.beam || left.bolts || left.zaps || left.flash)
     errs.push(`5：階を移っても、前の階の物が残っている：${JSON.stringify(left)}`);
-  // 引き金の待ちは冒険のもの：階を移っても残り（60秒から少し減るだけ）、死んで新しい冒険を始めると0に戻る
+  // 引き金の待ちは探索のもの：階を移っても残り（60秒から少し減るだけ）、死んで新しい探索を始めると0に戻る
   if (!(left.trig[0] > 50)) errs.push(`5：引き金の待ちを置けていない（テストの前提が崩れた）：${JSON.stringify(left.trig)}`);
   await pg.evaluate(() => dbg.hurt(9999));
   await advance(pg, 1);
-  await pg.keyboard.press('Enter'); // 新しい冒険（newRun）。すぐ確かめる（待ちはゲームの時間で減っていくので）
+  await pg.keyboard.press('Enter'); // 新しい探索（newRun）。すぐ確かめる（待ちはゲームの時間で減っていくので）
   const run = await pg.evaluate(() => __test.traces());
-  if (run.trig[0] || run.trig[1]) errs.push(`5：新しい冒険を始めても、前の冒険の引き金の待ちが残っている：${JSON.stringify(run.trig)}`);
+  if (run.trig[0] || run.trig[1]) errs.push(`5：新しい探索を始めても、前の探索の引き金の待ちが残っている：${JSON.stringify(run.trig)}`);
   // 遅れて起きることの中の例外は、黙って消えずに、ページのエラーとして出る（テスト用モードだけ）
   const before = errs.length;
   await pg.evaluate(() => __test.failLater('遅れて起きることの中の、わざとの例外'));

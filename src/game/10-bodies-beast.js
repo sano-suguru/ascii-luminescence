@@ -48,7 +48,7 @@ function recordBeast(ty){ try{ const all=loadBeasts(); if(all.some(b=>b.seed===a
 function beastSamples(){ const K=[['獣','六本脚の','quad'],['竜','燃える鱗の','quad'],['大蛇','千の眼を持つ','serpent'],['蛾','歌う','moth'],['百足','影を喰らう','centipede']];
   return K.map(([kind,feat,plan],i)=>({seed:-1-i,name:`${feat}${kind}（見本）`,col:feat==='燃える鱗の'?[1.0,0.42,0.14]:feat==='影を喰らう'?[0.5,0.32,0.8]:hsl2rgb(i*0.21+0.05,0.75,0.6),
     spec:{plan,kind,legs:feat==='六本脚の'?6:4,wings:kind==='竜'||kind==='蛾',eyes:feat==='千の眼を持つ'?26:0,fire:feat==='燃える鱗の',shadow:feat==='影を喰らう',sing:feat==='歌う',glyphs:[['#','%','&'],['=','~','x'],['%','*','#'],['&','8','%'],['#','=','%']][i]},
-    lore:'開発用の見本。冒険で出会った獣は、名前と年代記の一節とともにここへ記される。',scale:plan==='moth'?3.0:3.6,fl:plan==='moth'?2.4:0,flier:plan==='moth'})); }
+    lore:'開発用の見本。探索で出会った獣は、名前と年代記の一節とともにここへ記される。',scale:plan==='moth'?3.0:3.6,fl:plan==='moth'?2.4:0,flier:plan==='moth'})); }
 
 function buildForm(ty){ const pts=buildForm0(ty); extraLook(ty,pts); return pts; }
 function buildForm0(ty){

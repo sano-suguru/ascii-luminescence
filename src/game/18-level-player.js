@@ -214,7 +214,7 @@ function graveRune(g){ const ru=makeRune(g.type); ru.strong=false; if(g.traits&&
 function graveCandidates(){ const out=[], seen=new Set(), add=ru=>{ if(ru&&!seen.has(ru)){ seen.add(ru); out.push(ru); } };
   add(gear.hands.L.atk); add(gear.hands.R.atk); for(const h of ['L','R'])for(const r of gear.hands[h].slots)add(r); if(gear.hands.B){ add(gear.hands.B.b0); add(gear.hands.B.b1); } for(const r of gear.bag)add(r); return out.slice(0,10); }
 function saveGrave(){ if(adv.won||!graveCands)return; const ru=graveSel>0?graveCands[graveSel-1]:null; saved.META.grave=ru?{k:(STRATA.find(st=>here.depth>=st.from&&here.depth<=st.to)||{}).k||'',depth:here.depth,cause:adv.runStats.cause||'',item:serRune(ru)}:null; saveMeta(); graveCands=[]; }
-function graveRows(f){ const rows=[`${f('|')}  <b>墓に遺すもの</b>　<span class="lab">（ひとつ選ぶ。次の冒険で、同じ深さに墓が現れる）</span>`];
+function graveRows(f){ const rows=[`${f('|')}  <b>墓に遺すもの</b>　<span class="lab">（ひとつ選ぶ。次の探索で、同じ深さに墓が現れる）</span>`];
   const opt=(i,label)=>`${f('|')}    <button class="row gv" data-gv="${i}"><span class="mk">${graveSel===i?'&gt;':' '}</span> ${label}</button>`;
   rows.push(opt(0,'<span class="lab">遺さない</span>')); graveCands.forEach((ru,i)=>rows.push(opt(i+1,clipHtml(thingLabel(ru),48)))); return rows; }
 function die(cause){
@@ -225,7 +225,7 @@ function die(cause){
   const f=t=>`<span class="f">${t}</span>`;
   adv.runStats.cause=cause; const R=awardLore(false); graveCands=ui.gallery?[]:graveCandidates(); graveSel=0; if(ui.locked&&document.exitPointerLock)document.exitPointerLock();
   const draw=()=>{ el.innerHTML=boxText([f('+-- あ な た は 死 ん だ ---'),f('|'),`${f('|')}  死因      ${cause}`,`${f('|')}  場所      ${resultPlace()}`,
-    `${f('|')}  Lv${adv.lvl.n}　倒した敵 ${adv.runStats.kills}　時間 ${mm}:${ss}`,f('|'),...loreRows(R,f),f('|'),...(graveCands.length?[...graveRows(f),f('|')]:[]),`${f('|')}  ${HIST?HIST.civ.name+'の地に、またひとつ灯りが消えた。':''}`,f('|'),`${f('|')}  <button class="row" id="newRunB"><b>[Enter]</b> 新しい冒険へ</button>`,f('+---')],64); };
+    `${f('|')}  Lv${adv.lvl.n}　倒した敵 ${adv.runStats.kills}　時間 ${mm}:${ss}`,f('|'),...loreRows(R,f),f('|'),...(graveCands.length?[...graveRows(f),f('|')]:[]),`${f('|')}  ${HIST?HIST.civ.name+'の地に、またひとつ灯りが消えた。':''}`,f('|'),`${f('|')}  <button class="row" id="newRunB"><b>[Enter]</b> 新しい探索へ</button>`,f('+---')],64); };
   document.body.classList.add('over'); draw(); el.onclick=e=>{ const b=e.target.closest&&e.target.closest('button'); if(!b)return; if(b.dataset.gv!==undefined){ graveSel=+b.dataset.gv; draw(); } else if(b.id==='newRunB')newRun(); };
   el.classList.add('show'); sRumble(0.6,2.5);
 }

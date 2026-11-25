@@ -7,8 +7,8 @@ import { encodeMappings } from './sourcemap.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-// ゲームは JetBrains Mono を指定した所でも日本語を書く。JetBrains Mono に日本語は無いので、ふだんはシステムの日本語フォントで
-// 描かれる（マシンごとに違う）。テスト版では、M PLUS 1 Code の面を「JetBrains Mono」の名前でも登録して、日本語をそれで描く。
+// ゲームは JetBrains Mono を指定した所でも日本語を書く。JetBrains Mono に日本語は無いので、公開用の版ではシステムの日本語フォントで
+// 描画される（マシンごとに違う）。テスト版では、M PLUS 1 Code の面を「JetBrains Mono」の名前でも登録して、日本語をそれで描く。
 // 同じ名前の面は後に書いた方が先に使われるので、本物の JetBrains Mono（後に置かれる、組み立てたフォントの CSS）が英数字では勝つ。
 // フォントそのものは、公開用もテスト版も src/main.js で @fontsource から読む。
 export function cjkFallback() {

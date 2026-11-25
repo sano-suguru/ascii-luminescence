@@ -131,13 +131,13 @@ function setInv(on){
 function renderBook(){
   const el=document.getElementById('help'); if(!el)return; const f=t=>`<span class="f">${t}</span>`;
   const lines=[f('+-- 魔導書 ── 見つけた反応'),...Object.entries(REACT).map(([k,r])=>saved.BOOK.has(k)?`${f('|')} <b>${r.name}</b>  <span class="lab">${r.pair}</span>\n${f('|')}   ${r.desc}`:`${f('|')} <span class="dim">？？？　まだ見ていない</span>`),
-    f('|'),`${f('|')} <span class="lab">両手に違う性質を宿し、同じ敵に重ねると何かが起きる</span>`,`${f('|')} <span class="lab">記録は冒険をまたいで残る</span>`,f('+------------------------------')];
+    f('|'),`${f('|')} <span class="lab">両手に違う性質を宿し、同じ敵に重ねると何かが起きる</span>`,`${f('|')} <span class="lab">記録は探索をまたいで残る</span>`,f('+------------------------------')];
   el.innerHTML=boxText(lines);
 }
 
 function renderMenu(){
   const el=document.getElementById('menu'); if(!el)return; const f=t=>`<span class="f">${t}</span>`;
-  const items=[['resume','冒険を続ける'],['pack','持ち物を見る'],['help',`操作の案内`],['chron','年代記'],['book','魔導書'],['cam',`視点：${ui.camMode==='tps'?'三人称':'一人称'}`],['ui',`表示：${['通常','最小','なし'][ui.uiMode]}`],['snd',`音量：${SND_NAME[SND.lv]}`],['perf',`速度の表示：${ui.perfOn?'オン':'オフ'}`],['new',newRunArm>performance.now()?'本当に最初からやり直す？（もう一度押す）':'新しい冒険を始める'],['title',ui.gallery?'タイトルに戻る':(titleArm>performance.now()?'本当にタイトルに戻る？（冒険は終わる）':'タイトルに戻る')]];
+  const items=[['resume','探索を続ける'],['pack','持ち物を見る'],['help',`操作の案内`],['chron','年代記'],['book','魔導書'],['cam',`視点：${ui.camMode==='tps'?'三人称':'一人称'}`],['ui',`表示：${['通常','最小','なし'][ui.uiMode]}`],['snd',`音量：${SND_NAME[SND.lv]}`],['perf',`速度の表示：${ui.perfOn?'オン':'オフ'}`],['new',newRunArm>performance.now()?'本当に最初からやり直す？（もう一度押す）':'新しい探索を始める'],['title',ui.gallery?'タイトルに戻る':(titleArm>performance.now()?'本当にタイトルに戻る？（探索は終わる）':'タイトルに戻る')]];
   el.innerHTML=boxText([f('+-- メニュー --------------------'),...items.map(([k,l])=>`${f('|')} <button class="row" data-k="${k}"><span class="mk"> </span>${l}</button>`),f('+--------------------------------')]);
   for(const b of el.querySelectorAll('button.row'))b.onclick=()=>menuAct(b.dataset.k);
 }

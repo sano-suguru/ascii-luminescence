@@ -111,7 +111,7 @@ export interface RuneTrait {
 }
 /** ルーン（武器も、性質・発動・効き方・護符も） */
 export interface Rune {
-  /** 冒険の中で通しの番号（src/lib/gear.ts の makeRune が付ける） */
+  /** 探索の中で通しの番号（src/lib/gear.ts の makeRune が付ける） */
   uid: number;
   type: string;
   strong?: boolean;
