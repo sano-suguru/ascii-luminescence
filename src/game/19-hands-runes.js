@@ -96,8 +96,7 @@ function drawSwing(){
 // ---------------------------------------------------------------- runes: attacks and elements held in each hand, chanting, reactions
 // RUNE_DEF は src/lib/runes.ts（src/game/imports.mjs で読む）
 // ルーンの名前・色・付けられるか（runeName・canPut など）は src/lib/runes.ts、手と持ち物の処理（makeRune・effHand・isTwo など）は src/lib/gear.ts
-// what a trait does at its level: its first or third step, and the fifth when reached
-const trDesc=(w,t)=>{ const T=TRAITS[w]&&TRAITS[w][t.k]; return T?T.d(t.lv):''; };
+// 特性の説明 trDesc は src/lib/runes.ts（祭壇の画面の説明とルーンの説明の5行が使う）
 // RUNE_TYPES は src/lib/runes.ts（src/game/imports.mjs で読む）
 // what each kind of creature tends to drop, and how much each element hurts it (0 = no effect, 2 = badly)
 const ELEM_OF={l:'fire',Zf:'fire',D:'fire',Zi:'ice',L:'ice',K:'ice',Zl:'thunder',Rc:'thunder',Re:'thunder',Rw:'thunder',S:'poison',n:'poison',N:'poison',B:'poison'};

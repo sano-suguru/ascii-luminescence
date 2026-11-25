@@ -1,8 +1,8 @@
 // 手と持ち物の処理（もとは src/game/19-hands-runes.js）。状態の入れ物 gear（両手・持ち物）に頼る物。
 // 表だけに頼る物（ルーンの名前・色・付けられるか）は src/lib/runes.ts。
 import { lookup, must } from './array.ts';
-import { RUNE_DEF, RUNE_TYPES, type Rune, type SavedRune, TWO_SLOTS, slotsAllow, syncHand, trList, canPut } from './runes.ts';
-import { type HandState, type Hands, gear } from './state.ts';
+import { RUNE_DEF, RUNE_TYPES, type Rune, type SavedRune, TWO_SLOTS, slotsAllow, syncHand, trList, canPut, modWorks } from './runes.ts';
+import { type HandState, type Hands, adv, gear } from './state.ts';
 import { lockedOf, weaponPool } from './unlocks.ts';
 
 /** 左手・右手 */
@@ -175,4 +175,59 @@ export function graveRune(g: SavedRune): Rune {
   ru.strong = false;
   if (g.traits && g.traits.length) ru.traits = g.traits.map((t) => ({ k: t.k, lv: t.lv - 1 })).filter((t) => t.lv > 0);
   return ru;
+}
+/** 体の枠 i のルーン（枠は b0・b1 の2つ。ほかは無い） */
+const bodyAt = (B: Hands['B'], i: number): Rune | null | undefined => (i === 0 ? B.b0 : i === 1 ? B.b1 : undefined);
+/** 武器 ru を手 h に持つ（両手持ちの武器は両手に。両手持ちを持っていたら、両手とも外す）。外れた武器を返す */
+export function equipWeapon(h: Side, ru: Rune | null | undefined): Rune[] {
+  const hs = hands(),
+    out: (Rune | null)[] = [];
+  if (isTwo()) {
+    out.push(hs.R.atk);
+    hs.L.atk = null;
+    hs.R.atk = null;
+  }
+  if (ru && lookup(RUNE_DEF, ru.type).two) {
+    for (const k of ['L', 'R'] as const) {
+      const a = hs[k].atk;
+      if (a && !out.includes(a)) out.push(a);
+    }
+    hs.L.atk = ru;
+    hs.R.atk = ru;
+  } else {
+    const a = hs[h].atk;
+    if (a && !out.includes(a)) out.push(a);
+    hs[h].atk = ru || null;
+  }
+  syncHands();
+  return out.filter((r): r is Rune => Boolean(r));
+}
+/** 手 h の枠 s（'atk' は武器、's0' から 's3' はルーンの枠、手 'B' の 'b0'・'b1' は体の枠）に、ルーン v を入れる */
+export function slotSet(h: Side | 'B', s: string, v: Rune | null): void {
+  const hs = hands();
+  if (h === 'B') Object.assign(hs.B, { [s]: v });
+  else if (s === 'atk') hs[h].atk = v;
+  else hs[h].slots[+s.slice(1)] = v;
+}
+/** ルーン ru を付けられる、空いた手のルーンの枠（手の順 order。効き方のルーンは、効く手を先に）。無ければ null */
+export function freeSlotFor(ru: Rune, order?: Side[]): [Side, string] | null {
+  const hs = hands(),
+    ord = (order || ['R', 'L']).slice(),
+    d = lookup(RUNE_DEF, ru.type);
+  if (d.cat === 'mod') ord.sort((a, b) => (modWorks(d.mk ?? '', hs[b]) ? 1 : 0) - (modWorks(d.mk ?? '', hs[a]) ? 1 : 0));
+  for (const h of ord) {
+    const H = hs[h];
+    for (let i = 0; i < (H.slotN || 2); i++) if (!H.slots[i] && canPutAt(h, i, ru)) return [h, 's' + i];
+  }
+  return null;
+}
+/** 開いている体の枠に、種類 type の護符がいくつ着いているか */
+export function bodyN(type: string): number {
+  if (!gear.hands || !gear.hands.B) return 0;
+  let n = 0;
+  for (let i = 0; i < (adv.runState.bodyOpen || 0); i++) {
+    const ru = bodyAt(gear.hands.B, i);
+    if (ru && ru.type === type) n++;
+  }
+  return n;
 }

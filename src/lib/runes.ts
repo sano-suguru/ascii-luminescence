@@ -1,9 +1,11 @@
 // ルーンと武器の特性・反応・手の枠（もとは src/game/19-hands-runes.js と、18・27 の一部）。
 import { lookup, nth } from './array.ts';
 import { clamp } from './rng.ts';
-import { css } from './color.ts';
+import { css, cssOf } from './color.ts';
+import { PACK_W } from './hud.ts';
+import { wrapPlain } from './text.ts';
 
-/** 特性の段（0 から 5）。古い JS は数のまま渡すので、範囲の外の段が来ると、移す前と同じく undefined や NaN の文字列になる */
+/** 特性の段（0 から 5）。特性の説明 trDesc は、範囲の外の段では空を返す */
 export type TraitLv = 0 | 1 | 2 | 3 | 4 | 5;
 /** 段の一覧（0 から 5） */
 export const TRAIT_LVS: readonly TraitLv[] = [0, 1, 2, 3, 4, 5];
@@ -582,7 +584,7 @@ export const runeCol = (ru: Rune): readonly number[] | undefined => {
   if (ru.strong) return TIER_COL[3]; // 表を引く前に見る（移す前と同じ順）
   return lookup(RUNE_DEF, ru.type).col || TIER_COL[0];
 };
-/** 効き方のルーンの値（強い物は2倍。効き方でないルーンは、移す前と同じく NaN） */
+/** 効き方のルーンの値（強い物は2倍。効き方でないルーンは、値 val が無いので NaN） */
 export const modVal = (ru: Rune): number => (lookup(RUNE_DEF, ru.type).val ?? NaN) * (ru.strong ? 2 : 1);
 /** ルーンの名前（効き方のルーンは「連鎖 +1」のように値も） */
 export const runeName = (ru: Rune): string => {
@@ -602,7 +604,7 @@ export const runeShort = (ru: Rune): string => {
 /** ルーンの定義の名前 */
 export const runeLabel = (ru: Rune): string => lookup(RUNE_DEF, ru.type).name;
 /** 手の名前（性質の前置きと武器の名前。武器が無ければ素手） */
-export function handName(H: { atk: Rune | null; elem: Rune | null }): string {
+export function handName(H: { atk: Rune | null; elem?: Rune | null | undefined }): string {
   if (!H.atk) return H.elem ? `${lookup(RUNE_DEF, H.elem.type).pre}素手` : '素手';
   return `${H.elem ? lookup(RUNE_DEF, H.elem.type).pre : ''}${lookup(RUNE_DEF, H.atk.type).name}`;
 }
@@ -644,4 +646,57 @@ export function syncHand(H: Hand & { turn?: number; elem?: Rune | null; trig?: R
   const et = els.length ? els[(H.turn || 0) % els.length] : null;
   H.elem = et ? (rs.find((r) => r.type === et) ?? null) : null;
   H.trig = rs.find((r) => lookup(RUNE_DEF, r.type).cat === 'trig') || null;
+}
+/** 武器 w の特性 t の説明（その段の。無い特性と、段が 0 から 5 でない時は空） */
+export const trDesc = (w: string, t: { k: string | undefined; lv: number | undefined }): string => {
+  const tw: Partial<Record<string, Trait>> | undefined = TRAITS[w],
+    T = tw && t.k !== undefined ? tw[t.k] : undefined,
+    lv = TRAIT_LVS.find((x) => x === t.lv);
+  return T && lv !== undefined ? T.d(lv) : '';
+};
+/** ルーン ru の説明の5行（装備の画面と祭壇の画面の下に出す。HTML の文字列。ru が無ければ、案内の1行） */
+export function detailLines(ru: Rune | null | undefined): string[] {
+  const W = PACK_W - 4;
+  if (!ru) return ['<span class="lab">武器・ルーン・護符にマウスを乗せると、ここに説明が出る</span>', '', '', '', ''];
+  const d = lookup(RUNE_DEF, ru.type),
+    desc = wrapPlain(String(d.desc), W - 4),
+    g = `<b class="rn" style="color:${cssOf(runeCol(ru))}">${String(d.ch)}</b>`;
+  if (d.cat === 'atk') {
+    const tr = trList(ru);
+    return [
+      `${d.name}　<span class="lab">（${d.wk || '武器'}・${(d.chant ?? 0) > 0 ? `詠唱 ${String(d.chant)}秒` : '詠唱なし'}）</span>`,
+      `    <span class="lab">攻撃　${String(d.desc)}</span>`,
+      ...[0, 1, 2].map((i) => {
+        const t = tr[i];
+        return t
+          ? `    <span style="color:${cssOf(TIER_COL[1])}">特性　${trName(ru.type, t)} Lv${t.lv}</span><span class="lab">：${trDesc(ru.type, t)}</span>`
+          : i === 0
+            ? '    <span class="dim">特性なし</span>'
+            : '';
+      }),
+    ];
+  }
+  if (d.cat === 'body')
+    return [
+      `${g} ${d.name}`,
+      `    <span class="lab">${desc[0] || ''}</span>`,
+      `    <span class="lab">${desc[1] || ''}</span>`,
+      `    <span class="dim">同じ護符を二つ着けると、効果が重なる</span>`,
+      `    <span class="lab">着ける所：身の護符の枠（開いている枠だけ。どのビルドでも共通）</span>`,
+    ];
+  if (d.cat === 'mod')
+    return [
+      `${g} ${runeName(ru)}　<span class="lab">（効き方のルーン${ru.strong ? '・強い版' : ''}）</span>`,
+      `    <span class="lab">${desc[0] || ''}</span>`,
+      `    <span class="lab">${desc[1] || ''}</span>`,
+      `    <span class="dim">効くもの：${modTargets(d.mk ?? '')}</span>`,
+      `    <span class="lab">はめる所：手のルーンの枠（同じ変化は1つの手に2つまで）</span>`,
+    ];
+  return [
+    `${g} ${d.name}のルーン　<span class="lab">（${String(CAT_NAME[d.cat])}）</span>`,
+    `    <span class="lab">${desc[0] || ''}</span>`,
+    `    <span class="lab">${desc[1] || ''}</span>`,
+    d.cat === 'trig' ? '' : `    <span class="dim">2種類なら交互に撃つ。同じ性質を重ねると強まる</span>`,
+    `    <span class="lab">はめる所：手のルーンの枠（${d.cat === 'trig' ? '発動は1つの手に1つまで' : '性質は1つの手に2種類まで'}）</span>`,
+  ];
 }
