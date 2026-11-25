@@ -239,7 +239,7 @@ export interface RuneDef {
   dmg?: readonly number[];
   /** 立ち直りの秒 */
   rec?: number;
-  /** 効く効き方（連鎖・範囲など。効き方のルーンの mk。modWorks が見る。名前は、前にあった飾りの仕組みの名残） */
+  /** 効く効き方（連鎖・範囲など。効き方のルーンの mk。modWorks が見る） */
   aff: readonly string[];
   desc?: string;
   /** 両手で持つ（左右で別の撃ち方 L・R） */

@@ -1,5 +1,5 @@
 // 描画のシェーダーのソース（GLSL の文字列）と、描画用の配列の大きさ（もとは src/game/05-renderer.js）。
-// シェーダーのソースは、three.js の ShaderMaterial に渡す GLSL。迷宮の大きさ（MW・MH・CELL）と灯りの数（NSL・NDL）を文に埋め込む。
+// シェーダーのソースは、three.js の ShaderMaterial に渡す GLSL。迷宮の大きさ（MW・MH・CELL）と灯りの数（NSL・NDL）をソースに埋め込む。
 import { CELL, MH, MW, NDL, NSL } from './world.ts';
 
 /** どのシェーダーも使う関数（hash と、文字の絵の表の中の座標 glyphUV） */

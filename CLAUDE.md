@@ -24,7 +24,7 @@ src/game/*.js        ゲーム本体の古い JS（31ファイル。下の「ゲ
 src/game/imports.mjs ゲーム本体が使う TypeScript のモジュールを読む import の文（包みの関数の前に置かれる）
 src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整形もする
                      array：配列と表を読む nth・lookup・must（無ければその場で止まる。as の代わり）、rng：シードの乱数を作る mulberry32 と clamp、random：見た目の乱数 mr・mpick と迷宮の乱数 rand・R・RI・pick（入れ替えは setRand）と混ぜる shuffle、glyphs：文字の絵の表（アトラス）の番号 G と飾りの文字の並び、color：css・hsl2rgb、math：角度・稲妻の線など、
-                     text：パネルの文字の幅と枠、history：年代記、world：迷宮の大きさ・タイル・液体と地面・支道と異界・深さごとの割合（depthProfile）と層ごとの霧の色（FOGS）・岩、
+                     text：パネルの文字の幅と枠、history：年代記、world：迷宮の大きさ・タイル・液体と地面・支道と異界・深さごとの係数（depthProfile）と深さごとに順に使う霧の色（FOGS）・岩、
                      light：灯りの計算、runes：ルーンの定義 RUNE_DEF・性質の効き目 RES・特性・反応・手の枠・ルーンの名前と色と付けられるか（表だけに頼る物）、
                      gear：手と持ち物の処理（makeRune・randomRuneType・effHand・isTwo・canPutAt など。状態 gear に頼る物）、progress：経験・伝承・解放・加護 BLESS（表）、
                      unlocks：解放の確かめ（unlocked・lockedOf・weaponPool。状態 saved に頼る物）、altars：祭壇とルーンを置く（祭壇の中身 altarFill・番人・鍛え方・泉・祭壇の画面の1行）、hands：手元の武器の文字、
@@ -123,9 +123,9 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
   スモークテストの 8・9（開発用モードのまま読み直した時・保存が使えない時のタイトル）も、`?test=1` を付けずにページを開く（テスト用モードは開発用モードを必ずオンにするので、
   その場面を作れない）。待つのはタイトルが出るまでだけで、時間がたつのは待たない。
   画面写真には `timeout: 90000` を付ける。
-- three.js（r147）は、npm の `three` を組み立てに入れる（`src/game/imports.mjs` で読み、`00-test-mode.js` で光のにじみの4つの部品（EffectComposer・RenderPass・ShaderPass・UnrealBloomPass）と一緒に `T` にする）。CDN からは読まない。
+- three.js（r147）は、npm の `three` を組み立てに入れる（`src/game/imports.mjs` で読み、`00-test-mode.js` で画面の後処理の4つの部品（EffectComposer・RenderPass・ShaderPass・光のにじみの UnrealBloomPass）と一緒に `T` にする）。CDN からは読まない。
 - フォントも、npm の @fontsource を組み立てに入れる（`src/main.js` で読む。Google Fonts は読まない）。テスト版（`vite build --mode test`。テストが自分で組み立てる）も同じ。
-  テストのブラウザには、システムのフォントを見せない（`tests/fonts.conf`、どのフォントにも無い文字の代わり（fallback）は、npm パッケージの DejaVu だけ）。
+  テストのブラウザには、システムのフォントを見せない（`tests/fonts.conf`、指定したフォントに無い文字の代わり（fallback）は、npm パッケージの DejaVu だけ）。
   JetBrains Mono を指定した所の日本語は、テスト版のほか（公開用の版・開発用サーバー）ではシステムの日本語フォントで描画されるが、テスト版では M PLUS 1 Code
   （全角の ！？ などは BIZ UDGothic）を組み合わせて描く（`tools/game-source.mjs` の `cjkFallback`）。マシンが違っても同じ画素になる。
 - ポインタロックは、テストでは `HTMLCanvasElement.prototype.requestPointerLock` を差し替えて止める（tests/lib.mjs）。
@@ -227,7 +227,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 | 03-vaults-history | 歴史の飾り（壁の絵 ARTS）と、探索ごとの歴史（HIST。年代記の中身）。洞窟の形と宝物庫の絵は src/lib/vaults.ts、makeHistory は src/lib/history.ts、岩・鉱脈・宝物庫の壁の高さは src/lib/world.ts |
 | 04-generate | 迷宮の生成の呼び出し口（generate）：今のゲームの状態から入力を作り、src/lib/generate.ts の generateLevel を呼び、結果（階・主の種類・忘れられた獣）をゲームの状態に入れる |
 | 05-renderer | 描画（シェーダー、水面、文字の絵の表、dyn、粒子の配列）。シェーダーのソースと描画用の配列の大きさは src/lib/shaders.ts |
-| 06-world | 世界の組み立て（buildWorld）と、組み立てた物の状態（壁と床の形 staticMesh・見えるかの形 occMesh・入った部屋 visitedRooms など）。今の階の中身 D・depth・monsters・player などは src/lib/state.ts。sstep は src/lib/math.ts、CHUNK は src/lib/world.ts、flowW は src/lib/math.ts |
+| 06-world | 世界の組み立て（buildWorld）と、組み立てた物の状態（区切りごとの壁と床の形・壁の向こうを隠す板 occMesh・入った部屋 visitedRooms など）。今の階の中身 D・depth・monsters・player などは src/lib/state.ts。sstep は src/lib/math.ts、CHUNK は src/lib/world.ts、flowW は src/lib/math.ts |
 | 07-bodies-lords | 生き物の形：人型の見た目（lookHumanoid・extraLook）、主のまわりの飾りの粒子と音（lichAura・spiderAura・nagaAura・dragonAura：周りに立つ剣・霜の輪・霧・低い音など）。主の形は src/lib/bodies/bosses.ts、古いトロル・古い獣・ゴーレムの形は src/lib/bodies/ |
 | 08-bodies-shadow | 生き物の形：王の影（変身 transformShadow、裾から台座へ流れる影と暗い霧 shadowAura）、深みの主（形 deepKrakenForm、まわりの粒子 krakenAura）、猟犬のまわりの粒子（houndAura）。一つ目の姿と機械の形は src/lib/bodies/lords.ts、二つ目の姿は src/lib/bodies/bosses.ts |
 | 09-bodies-creatures | 生き物の形：人型、リッチ、サラマンダーと沼の生き物のまわりの粒子（salamanderAura・bogAura）。小さな生き物・四つ足・大きな生き物（オーガ・竜も）・亡霊・幻影の形は src/lib/bodies/ |
@@ -237,9 +237,9 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 | 13-creatures | 小さな生き物、群れ、大きな生き物の動き（updateMonster）、描く（drawMonster）。古い形は src/lib/bodies/small.ts |
 | 14-lights-fixtures | 灯り、備品、扉。LANTERN は src/lib/light.ts |
 | 15-sound-fire | 音量の切り替え（sndToggle）、ガス、火、火花、部屋の出来事、粒子。音を鳴らす処理（sndInit・効果音・まわりの音 sndUpdate など）は src/lib/audio.ts、SND_LV・sEnv は src/lib/sound.ts、cpos・FIRE_TYPES は src/lib/world.ts。火と地面のマスの状態は src/lib/state.ts の blaze、音 SND も src/lib/state.ts |
-| 16-view-input | 視界とミニマップ、伝言（msg）、壁との当たり判定（solidAt）、入力の状態。ミニマップの大きさは src/lib/hud.ts、押しているキー keys は src/lib/state.ts |
+| 16-view-input | 視界とミニマップ、伝言（msg）、通れない所の当たり判定（solidAt：壁・崖・溶岩・柱など）、入力の状態。ミニマップの大きさは src/lib/hud.ts、押しているキー keys は src/lib/state.ts |
 | 17-meta | 伝承・解放・墓・試練（trialOn）、タイトルの画面（buildIntroPanel）。UNLOCKS・META_DEF は src/lib/progress.ts、解放の確かめ（unlocked・lockedOf・weaponPool）は src/lib/unlocks.ts、保存する記録 META などは src/lib/state.ts の saved |
-| 18-level-player | 階の切り替え（newLevel）、罠、生き物の強さ（MSTAT）、プレイヤーと生き物のダメージ（hurtPlayer・damageMonster・hitReact）、近接の攻撃（playerAttack・monsterStrike）、死と始め直し（die・newRun）、レベルアップ（levelChoices、lvlLine。加護の表 BLESS は src/lib/progress.ts）。expNeed・expOf は src/lib/progress.ts、serRune は src/lib/runes.ts。TRAP_INFO は src/lib/names.ts、WEAPON・SLEEP_MULT は src/lib/runes.ts、roll は src/lib/random.ts |
+| 18-level-player | 階の切り替え（newLevel）、罠、生き物の強さ（MSTAT）、プレイヤーと生き物のダメージ（hurtPlayer・damageMonster）、当たった生き物のひるみと吹き飛び（hitReact）、生き物の近接の攻撃（monsterStrike）、死と始め直し（die・newRun）、レベルアップ（levelChoices、lvlLine。加護の表 BLESS は src/lib/progress.ts）。expNeed・expOf は src/lib/progress.ts、serRune は src/lib/runes.ts。TRAP_INFO は src/lib/names.ts、WEAPON・SLEEP_MULT は src/lib/runes.ts、roll は src/lib/random.ts |
 | 19-hands-runes | 手元の武器（VM_MODELS、drawViewWeapons）、性質と反応、術の中身（specOf）。ルーンを作る・ルーンの種類を選ぶ・手と持ち物の処理は src/lib/gear.ts、ルーンの名前と色と付けられるかは src/lib/runes.ts。ルーンの定義 RUNE_DEF・性質の効き目 RES・TRAITS・REACT・手の枠は src/lib/runes.ts |
 | 20-chant-hits | 詠唱（beginCast、castNow…）、攻撃の当たり（applyHit）、反応、飛ぶ物。turnDir は src/lib/math.ts、sp_elem は src/lib/runes.ts。戦いの状態は src/lib/state.ts の fight |
 | 21-altars-heal | ルーンの手に入れ方、階ごとの祭壇の配置（mainPathAltars）、祭壇の画面、回復、拾う。祭壇の中身・番人・鍛え方・泉を置く・祭壇の画面の1行（altarFill・addGuards・forgeOptions・placeSpring・altarLine など）は src/lib/altars.ts、RALLY_FROM は src/lib/runes.ts、ALTAR_W は src/lib/hud.ts |

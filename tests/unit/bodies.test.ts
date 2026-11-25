@@ -105,7 +105,7 @@ describe('生き物の形', () => {
     expect(all.length).toBe(1790379);
     expect(fnv(all)).toBe('a5fb116c'); // 移す前の実装で出した値
   });
-  it('どの点も、座標が有限で、文字の番号が図鑑の中にあり、体のどこかが決まっている', () => {
+  it('どの点も、座標が有限で、文字の番号が文字の絵の表の中にあり、体のどこかが決まっている', () => {
     const bodies = [
       ...TY_FORMS.flatMap((f) => TYS.map((ty) => seeded(() => f(ty)))),
       ...PLAIN_FORMS.map((f) => seeded(f)),
