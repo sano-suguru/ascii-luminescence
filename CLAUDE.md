@@ -54,7 +54,7 @@ tests/world.mjs      世界とのやり取り：扉・火・氷と冷気・小�
 tests/determinism.mjs  同じシードで同じ結果になるか
 tests/levels.mjs     全部の階（20シード×30か所）をブラウザで生成し、例外と、歩いて行けるかを確かめる
 tests/reach.mjs      歩いて行けるかの調べ方（levels.mjs と tests/unit/reach.test.ts が使う。型は reach.d.mts）
-tests/visual.mjs     画面写真の比較（12場面。基準は tests/baseline/）
+tests/visual.mjs     画面写真の比較（16場面：層ごとの世界・手元の武器・パネル、図鑑の生き物4体（枠を隠し、__test.galleryShow で向きと姿を止める）。基準は tests/baseline/）
 tests/panels.mjs     枠のテスト（全部の文字の幅が visW どおりか、操作・装備・メニュー・レベルアップ・祭壇・結果の縦線と、一覧の名前の列が揃うか）
 tests/unit/generate.test.ts  迷宮の生成の単体テスト（同じ入力なら同じ迷宮・生き物の表に書き込まない・全部の場所の指紋。Node で数秒）。
                      歩いて行けるか（5シード）は reach.test.ts（ファイルを分けて、並べて走らせる）。共通部分（全部の場所・gen）は gen-places.ts
@@ -96,7 +96,7 @@ pnpm test:unit        # 単体テスト（Vitest。tests/unit/）
 pnpm map [語]         # ゲーム本体の地図。語を付けると、見出しにその語を含むファイルだけ（例：pnpm map fire）
 pnpm where index-D0mETEmY.js:4321:12   # 組み立てた JS のその場所が、src/game/ のどこか（行だけも可。--test でテスト版）
 pnpm test             # スモーク・世界とのやり取り・同じ結果・全部の階・枠（オフラインで動く。40秒ほど）
-pnpm test:visual      # 画面写真の比較（30秒ほど）。違えば tests/out/visual/ に違いの画像
+pnpm test:visual      # 画面写真の比較（40秒ほど）。違えば tests/out/visual/ に違いの画像
 pnpm shots [名前…]    # 図鑑の生き物を見やすい角度で写す（既定は竜・主たちの12枚（tools/shots.mjs の PICK）。--all で全部、--bare で図鑑の枠を隠す、--out で置き場所）
 node tests/visual.mjs --update [--only 場面]   # 基準の画像を作り直す（見た目を意図して変えた時だけ）
 node tests/levels.mjs --seed 202               # 1つのシードだけ（--seeds 100 で数を変える）

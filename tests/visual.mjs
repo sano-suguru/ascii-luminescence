@@ -23,6 +23,23 @@ const enter = async (pg) => {
   await advance(pg, 2);
 }; // 階に入った時の明るくなる演出を終わらせる
 const ev = (pg, f, a) => pg.evaluate(f, a);
+// 図鑑の生き物を、向きと姿を止めて写す（__test.galleryShow）。図鑑の枠（名前と説明の文）は隠して、生き物の形だけを見張る
+// （パネルの文字は tests/panels.mjs が見る）。出してから3秒進めて、灯りが落ち着いてから写す
+const bestiary = (name, yaw, pose) => async (pg) => {
+  const why = await ev(
+    pg,
+    ({ name, yaw, pose }) => {
+      const e = __test.gallery().find((o) => o.name === name);
+      if (!e) return `図鑑に「${name}」が無い`;
+      const r = __test.galleryShow(e.n, { yaw, pose });
+      return typeof r === 'string' ? r : null;
+    },
+    { name, yaw, pose },
+  );
+  if (why) throw new Error(why);
+  await pg.addStyleTag({ content: '#gal{visibility:hidden!important}' });
+  await advance(pg, 3);
+};
 const SCENES = [
   // 世界：層ごとの色・シェーダー・降る粒子
   { name: 'title', q: '', size: [960, 540], go: (pg) => advance(pg, 1) },
@@ -97,6 +114,11 @@ const SCENES = [
       await advance(pg, 0.5);
     },
   },
+  // 生き物の形：図鑑の部屋で、描く処理の違う所を別々の生き物で押さえる
+  { name: 'gal-dragon', q: '', go: bestiary('竜', 0.6, 'stand') }, // 四つ足の大きな形・翼・頭
+  { name: 'gal-ogre', q: '', go: bestiary('オーガ', 0.25, 'walk') }, // 人型の見た目（lookHumanoid・extraLook）と歩く足
+  { name: 'gal-lichking', q: '', go: bestiary('不死の王', 0.25, 'stand') }, // 主の形とまわりの粒子（lichAura）・冠の光
+  { name: 'gal-beast', q: '', go: bestiary('燃える鱗の竜（見本）', 0.6, 'stand') }, // 忘れられた獣の組み立て（buildForm）
 ];
 
 mkdirSync(BASE, { recursive: true });
