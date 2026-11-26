@@ -28,6 +28,6 @@ function cullChunks(){
   gfx.camera.updateMatrixWorld();
   _pm.multiplyMatrices(gfx.camera.projectionMatrix,gfx.camera.matrixWorldInverse); _frus.setFromProjectionMatrix(_pm);
   const maxD=2.4/gfx.U.uFogDen.value; hudInfo.chunksDrawn=0;
-  for(const c of gfx.chunks){ const d=c.sphere.center.distanceTo(gfx.camera.position)-c.sphere.radius; c.mesh.visible=d<maxD&&_frus.intersectsSphere(c.sphere); if(c.mesh.visible)hudInfo.chunksDrawn+=c.mesh.count; }
+  for(const c of gfx.chunks){ const d=c.sphere.center.distanceTo(gfx.camera.position)-c.sphere.radius; c.mesh.visible=d<maxD&&_frus.intersectsSphere(c.sphere); if(c.mesh.visible)hudInfo.chunksDrawn+=c.count; }
 }
 
