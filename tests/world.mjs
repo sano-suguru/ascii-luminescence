@@ -17,7 +17,7 @@
 //  14. 火口の溶岩は、生き物のいるマスにも、生き物が歩いて向かっているマスにも流れない（溶岩の上に立つ生き物がいない）。
 //      生き物が塞いだマスは、後でまた試す（流し終えた後も、引き始めるまで）ので、引き始める前に、生き物のいないマスの穴が残らない
 //  15. 吹き飛ばされた生き物は、溶岩の手前で止まる（溶岩は、歩けない生き物には壁と同じ。体の大きな生き物は、体が溶岩にかかる手前）。止まると、行き先は今いるマスになる
-//  16. 宝物庫の落石は、ゲームの時刻で進む（溜めている間は半分の速さ、止まっている間は進まない）。階を移ると消える
+//  16. 宝物庫の落石は、ゲームの時刻で進む（溜めている間は半分の速さ、止まっている間は進まない）。階段を下りて暗くなり始めたら進まず、階を移ると消える
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { withBrowser, newPage, openTest, advance } from './lib.mjs';
 
@@ -549,6 +549,31 @@ async function rockfallChecks(pg, base) {
   await advance(pg, 0.5);
   const r4 = await pg.evaluate(() => __test.rockfall());
   if (r4) errs.push(`16：階を移っても、前の階の落石が続いている（${JSON.stringify(r4)}）`);
+  // 階段を下りて暗くなり始めたら、落石は進まない（石が落ちず、当たらない）
+  await advance(pg, 1);
+  await pg.evaluate(() => {
+    dbg.to('stairs');
+    dbg.clear(); // 階段の番人がいると、封じられて下りられない
+  });
+  await pg.keyboard.down('KeyW');
+  let tr = null;
+  for (let i = 0; i < 40 && tr !== 'out'; i++) {
+    await advance(pg, 0.1);
+    tr = await pg.evaluate(() => __test.state().trans);
+  }
+  await pg.keyboard.up('KeyW');
+  if (tr !== 'out') {
+    errs.push('16：階段を下り始められない（テストの前提が崩れた）');
+    return;
+  }
+  await pg.evaluate(() => __test.rockfall(true));
+  await advance(pg, 0.3);
+  const r5 = await pg.evaluate(() => [__test.state().trans, __test.rockfall()]);
+  if (r5[0] !== 'out') errs.push(`16：0.3秒で暗くなり終わった（テストの前提が崩れた。${r5[0]}）`);
+  else if (!r5[1] || r5[1].t !== 0) errs.push(`16：階段を下りて暗くなる間も、落石が進む（${JSON.stringify(r5[1])}）`);
+  await advance(pg, 1.5);
+  const r6 = await pg.evaluate(() => __test.rockfall());
+  if (r6) errs.push(`16：階段を下りた後も、前の階の落石が続いている（${JSON.stringify(r6)}）`);
 }
 
 await withBrowser(async ({ browser, base }) => {
