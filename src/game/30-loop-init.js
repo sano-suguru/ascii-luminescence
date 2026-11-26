@@ -116,7 +116,7 @@ if(TEST)window.__test={
   chill(i,r){ chillArea((i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL,r); },
   burning(i){ return blaze.burning.filter(j=>j===i).length; },
   // 落石：on なら、プレイヤーのまわり（3マス）の床で、宝物庫の天井が崩れた時と同じ落石を始める。今の落石（経った秒・落ちている石の数。無ければ null）を返す
-  rockfall(on){ if(on){ const cx=Math.floor(player.x/CELL), cz=Math.floor(player.z/CELL), cells=[]; for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){ const c=(cz+dz)*MW+cx+dx; if(here.D.tile[c]===TF)cells.push(c); } fight.rockfall={t:0,dur:9,cells,rocks:[],next:0.2}; }
+  rockfall(on){ if(on){ const cx=Math.floor(player.x/CELL), cz=Math.floor(player.z/CELL), cells=[]; for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){ const x=cx+dx, z=cz+dz; if(x<0||x>=MW||z<0||z>=MH)continue; const c=z*MW+x; if(here.D.tile[c]===TF)cells.push(c); } fight.rockfall={t:0,dur:9,cells,rocks:[],next:0.2}; }
     const R=fight.rockfall; return R?{t:+R.t.toFixed(4),rocks:R.rocks.length}:null; },
   // lingering things of this level (fields, delayed hits, rains, marks on the floor, a beam being fired, lightning, lightning still to fall and its flash):
   // put one of each where the player stands, made to do nothing for 60 s (a field and a rain with no element, a beam whose first shot is 60 s away),
