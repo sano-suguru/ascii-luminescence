@@ -470,8 +470,9 @@ async function lavaMobChecks(pg, base) {
 
 // 15：吹き飛ばされた生き物は、溶岩の手前で止まり、行き先は今いるマスになる（溶岩の西隣の床に置き、東へ吹き飛ばす）
 async function knockLavaChecks(pg, base) {
-  // 小さな生き物（コボルト）と体の大きな生き物（トロル）。トロルは、体（半径 0.35×大きさ）が溶岩にかかる手前で止まる
-  for (const key of ['k', 'T']) {
+  // 小さな生き物（コボルト）と体の大きな生き物（トロル・竜）。トロルは、体（半径 0.35×大きさ）が溶岩にかかる手前で止まる。
+  // 竜は、マスの真ん中でも体が隣の溶岩にかかっているので、それより深くは入らない
+  for (const key of ['k', 'T', 'D']) {
     await openTest(pg, base, 'seed=42&realm=volcano&god=1');
     await advance(pg, 2);
     const r = await pg.evaluate((key) => {
@@ -481,13 +482,22 @@ async function knockLavaChecks(pg, base) {
       for (let i = w; i < w * h - w; i++) {
         if (!__test.cell(i).floor || !__test.cell(i + 1).lava || !__test.cell(i - 1).floor) continue;
         __test.summon(key, i);
+        const m0 = __test.mob(0),
+          gap0 = ((i % w) + 1) * C - (m0.x + 0.35 * m0.scale);
         __test.knock(0, 14, 0);
         // 吹き飛びが止まるまで（止まった時の行き先を見る。その後は、また歩き出す）
         for (let q = 0; q < 60 && (__test.mob(0).kx || __test.mob(0).kz); q++) __test.advance(1 / 30);
         const m = __test.mob(0),
           // 体の東の端と、東隣の溶岩のマスの西の縁との間（0 以上なら、体は溶岩にかかっていない）
           gap = ((i % w) + 1) * C - (m.x + 0.35 * m.scale);
-        return { i, at: m.cz * w + m.cx, to: m.tz * w + m.tx, lava: __test.cell(m.cz * w + m.cx).lava, gap: +gap.toFixed(3) };
+        return {
+          i,
+          at: m.cz * w + m.cx,
+          to: m.tz * w + m.tx,
+          lava: __test.cell(m.cz * w + m.cx).lava,
+          gap: +gap.toFixed(3),
+          gap0: +gap0.toFixed(3),
+        };
       }
       return null;
     }, key);
@@ -495,9 +505,9 @@ async function knockLavaChecks(pg, base) {
       errs.push('15：溶岩の西隣に床が無い（テストの前提が崩れた。シードを変える）');
       return;
     }
-    if (r.lava || r.at !== r.i || r.to !== r.at || !(r.gap >= 0))
+    if (r.lava || r.at !== r.i || r.to !== r.at || !(r.gap >= Math.min(0, r.gap0)))
       errs.push(
-        `15：吹き飛ばされた生き物（${key}）が、溶岩の手前で止まらない（置いたマス ${r.i}・今いるマス ${r.at}・行き先 ${r.to}・溶岩か ${r.lava}・体と溶岩の間 ${r.gap}）`,
+        `15：吹き飛ばされた生き物（${key}）が、溶岩の手前で止まらない（置いたマス ${r.i}・今いるマス ${r.at}・行き先 ${r.to}・溶岩か ${r.lava}・体と溶岩の間 ${r.gap}・初めの間 ${r.gap0}）`,
       );
   }
 }

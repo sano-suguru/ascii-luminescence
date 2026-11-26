@@ -13,7 +13,7 @@ import { addLooks } from '../../src/lib/bodies/build.ts';
 import { castNow, fireWave, later, addZone, orbBurst, startRain } from '../../src/lib/combat.ts';
 import { MTYPES } from '../../src/lib/creatures.ts';
 import { makeRune, snapHands, specOf } from '../../src/lib/gear.ts';
-import { ignite, initFire } from '../../src/lib/ground.ts';
+import { ignite, initFire, regrow } from '../../src/lib/ground.ts';
 import { makeHistory } from '../../src/lib/history.ts';
 import { initEvents } from '../../src/lib/levels.ts';
 import { makeMonster } from '../../src/lib/monsters.ts';
@@ -22,7 +22,7 @@ import { setSoundRand } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 import { RUNE_TYPES, TRAITS } from '../../src/lib/runes.ts';
 import { SND, adv, blaze, buf, clock, fight, gear, gfx, here, keys, msgs, player, saved, stealth, ui, vfx } from '../../src/lib/state.ts';
-import { CELL, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MW, NCELL, SF_BRIM, SF_DEAD, TF, TW, cpos } from '../../src/lib/world.ts';
+import { CELL, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MW, NCELL, SF_BRIM, SF_DEAD, SF_ICE, TF, TW, cpos } from '../../src/lib/world.ts';
 import { fakeAudioClass } from './fake-audio.mjs';
 import { fakeCamera, fakeDom, fakeTimers, fakeUniforms, fnv, hashArr, text } from './fight-cases.mjs';
 import { PLACES, gen, loadEnv } from './gen-places.ts';
@@ -327,7 +327,9 @@ export async function stepCases(F, seeds, page) {
         bigLava = false,
         lavaflow = null,
         orderKept = null,
-        water = null;
+        water = null,
+        thawed = null,
+        lavaLeft = null;
       const state = () =>
         text({
           player: { ...player },
@@ -868,8 +870,18 @@ export async function stepCases(F, seeds, page) {
           seen = new Map(erupts.map((e) => [e, new Set([e.state])]));
         // 流れる順の写し（噴き上がりの後も、並びが変わらないか）と、水のマスを1つ（引いた後に水へ戻るか）
         const order0 = erupts.map((e) => e.order.slice()),
-          wet = erupts[0].order[4];
+          wet = erupts[0].order[4],
+          ice = erupts[0].order[5],
+          grass = erupts[0].order[3];
         D.liquid[wet] = LQ_WATER;
+        // 凍らせた水（液体は仮の 0、本当の中身は blaze.frozen）と、踏み分けた草（印 20 と、生え戻りの一覧）
+        blaze.frozen.set(ice, { t: 999, liq: LQ_WATER, surf: D.surface[ice] });
+        D.liquid[ice] = 0;
+        D.surface[ice] = SF_ICE;
+        blaze.cellFlag[grass] = 20;
+        blaze.trampled.push([grass, clock.time]);
+        // 流れる道のマスで、初めから溶岩でない物（引き終えたら、どれも溶岩でなくなる）
+        const dry = [...new Set(erupts.flatMap((e) => e.order))].filter((i) => D.liquid[i] !== LQ_LAVA);
         let wetLava = false;
         // 体の大きな生き物（トロル）を、流れる道の隣のマスの、道との境の近くに止めておく（体が道のマスにかかる。溶岩はそこへ流れない）
         const way = erupts[0].order[2];
@@ -896,6 +908,7 @@ export async function stepCases(F, seeds, page) {
           for (const e of erupts) seen.get(e).add(e.state);
           if (bigCell >= 0 && D.liquid[bigCell] === LQ_LAVA) bigLava = true;
           if (D.liquid[wet] === LQ_LAVA) wetLava = true;
+          regrow();
         }
         // 噴き上がりを最後まで（流れ出す 1 → 待つ 2 → 引く 3 → 次まで待つ 0）。足もとには流れないので、離れて立つ
         goto(cells0[5]);
@@ -905,9 +918,17 @@ export async function stepCases(F, seeds, page) {
           for (const e of erupts) seen.get(e).add(e.state);
           if (bigCell >= 0 && D.liquid[bigCell] === LQ_LAVA) bigLava = true;
           if (D.liquid[wet] === LQ_LAVA) wetLava = true;
+          regrow();
         }
         orderKept = erupts.every((e, n) => JSON.stringify(e.order) === JSON.stringify(order0[n]));
         water = [wetLava, D.liquid[wet] === LQ_WATER];
+        // 引いた後：凍らせた水は水に（氷の一覧から外れる）、踏み分けた草は印 20 で生え戻りの一覧にある。全部の火口が引き終えたら、流れる道に溶岩は残らない
+        thawed = [
+          D.liquid[ice] === LQ_WATER,
+          !blaze.frozen.has(ice),
+          blaze.cellFlag[grass] !== 20 || blaze.trampled.some(([i]) => i === grass),
+        ];
+        lavaLeft = erupts.every((e) => e.state === 0) ? dry.filter((i) => D.liquid[i] === LQ_LAVA).length : null;
         eruptSeen = erupts.map((e) => [...seen.get(e)].sort((a, b) => a - b).join(''));
         // 部屋の出来事の溶岩の流れ：状態と、流れる順のマスで、溶岩でなく、塞がれてもいない物の数
         // （塞がれている：プレイヤーの近くか、溶岩を歩けない生き物がいる・向かっている・体がかかる。src/lib/events.ts の lavaBlocked と同じ決まり）
@@ -980,6 +1001,8 @@ export async function stepCases(F, seeds, page) {
         lavaflow,
         orderKept,
         water,
+        thawed,
+        lavaLeft,
       });
     }
   } finally {

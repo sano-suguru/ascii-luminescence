@@ -89,20 +89,26 @@ export function updateRains(dt: number): void {
   for (const mk of fight.marks) mk.t -= dt;
   fight.marks = fight.marks.filter((mk) => mk.t > 0);
 }
-/** 溶岩を歩けない生き物 m（飛ぶ物と溶岩に住む物のほか）の体（半径 0.35×大きさ）が、溶岩のマスにかかっているか */
-function onLava(m: Mob): boolean {
-  if (m.ty.flier || m.ty.habitat === 'lava') return false;
+/**
+ * 溶岩を歩けない生き物 m（飛ぶ物と溶岩に住む物のほか）の体（半径 0.35×大きさ）が、溶岩のマスにどれだけ入っているか
+ * （溶岩のマスの縁から体の真ん中までの近さで、一番深い物。かかっていなければ -Infinity）
+ */
+function lavaDepth(m: Mob): number {
+  if (m.ty.flier || m.ty.habitat === 'lava') return -Infinity;
   const r = 0.35 * m.ty.scale,
     cx = Math.floor(m.x / CELL),
-    cz = Math.floor(m.z / CELL);
-  for (let dz = -1; dz <= 1; dz++)
-    for (let dx = -1; dx <= 1; dx++) {
+    cz = Math.floor(m.z / CELL),
+    reach = Math.ceil(r / CELL);
+  let deep = -Infinity;
+  for (let dz = -reach; dz <= reach; dz++)
+    for (let dx = -reach; dx <= reach; dx++) {
       const x = cx + dx,
         z = cz + dz;
       if (x < 0 || z < 0 || x >= MW || z >= MH || level().liquid[z * MW + x] !== LQ_LAVA) continue;
-      if (Math.hypot(m.x - clamp(m.x, x * CELL, (x + 1) * CELL), m.z - clamp(m.z, z * CELL, (z + 1) * CELL)) < r) return true;
+      const d = r - Math.hypot(m.x - clamp(m.x, x * CELL, (x + 1) * CELL), m.z - clamp(m.z, z * CELL, (z + 1) * CELL));
+      if (d > 0) deep = Math.max(deep, d);
     }
-  return false;
+  return deep;
 }
 /**
  * 状態異常を進める（生き物の速さを数え直し、吹き飛びを進める。吹き飛びは、壁・通れない物と、溶岩を歩けない生き物には溶岩の手前で止まる。燃える・毒は傷を与え、冷える・動けない・痺れるは時間が減る。
@@ -127,7 +133,7 @@ export function updateStatuses(dt: number): void {
     if (m.kx || m.kz) {
       const mx = (m.kx ?? NaN) * dt,
         mz = (m.kz ?? NaN) * dt,
-        wasOnLava = onLava(m);
+        deep0 = lavaDepth(m);
       m.x += mx;
       m.z += mz;
       m.kx = (m.kx ?? NaN) * Math.exp(-dt * 6);
@@ -136,10 +142,10 @@ export function updateStatuses(dt: number): void {
         m.kx = 0;
         m.kz = 0;
       }
-      // 壁・通れない物に入ったか、溶岩を歩けない生き物（飛ぶ物と溶岩に住む物のほか）の体（半径 0.35×大きさ）が、このフレームに動いて溶岩にかかったら、
-      // 動いた分を戻して止まる（初めから体がかかっていた大きな生き物は、溶岩では止めない）
+      // 壁・通れない物に入ったか、溶岩を歩けない生き物（飛ぶ物と溶岩に住む物のほか）の体（半径 0.35×大きさ）が、このフレームに動いて溶岩にかかった・
+      // 深く入ったら、動いた分を戻して止まる（初めから体がかかっている大きな生き物も、溶岩から離れる向きには動ける）
       const ci = Math.floor(m.z / CELL) * MW + Math.floor(m.x / CELL);
-      if (level().tile[ci] === TW || level().tile[ci] === TX || level().solid.has(ci) || (!wasOnLava && onLava(m))) {
+      if (level().tile[ci] === TW || level().tile[ci] === TX || level().solid.has(ci) || lavaDepth(m) > deep0) {
         m.x -= mx;
         m.z -= mz;
         m.kx = 0;

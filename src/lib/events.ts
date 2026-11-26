@@ -364,7 +364,15 @@ export function updateEvents(dt: number, t: number): void {
       const f = here.fixtures.find((f) => f.type === 'crater' && Math.floor(f.z / CELL) * MW + Math.floor(f.x / CELL) === ev.src);
       /** マス i に溶岩を流す（まわりの燃える物に火をつける） */
       const pour = (i: number) => {
-        (ev.poured ??= new Map()).set(i, [nth(level().liquid, i), nth(blaze.cellFlag, i)]);
+        // もう溶岩のマス（ほかの火口が流した物など）には流さない。引く時も、その火口に任せる
+        if (level().liquid[i] === LQ_LAVA) return;
+        // 凍らせた水は、本当の中身（液体と床）を覚えて、氷を溶かす
+        const ice = blaze.frozen.get(i);
+        if (ice) {
+          level().surface[i] = ice.surf;
+          blaze.frozen.delete(i);
+        }
+        (ev.poured ??= new Map()).set(i, [ice ? ice.liq : nth(level().liquid, i), nth(blaze.cellFlag, i)]);
         level().liquid[i] = LQ_LAVA;
         blaze.cellFlag[i] = 70;
         for (const j of [i + 1, i - 1, i + MW, i - MW]) if (j >= 0 && j < NCELL && nth(blaze.fuel, j) > 0) ignite(j, 0.6, false);
@@ -450,6 +458,8 @@ export function updateEvents(dt: number, t: number): void {
           if (was && blaze.cellFlag[i] === 70) {
             level().liquid[i] = was[0];
             blaze.cellFlag[i] = was[1];
+            // 踏み分けた草は、また生え戻るように一覧へ入れ直す（溶岩の間に、一覧から外れている）
+            if (was[1] === 20) blaze.trampled.push([i, clock.time]);
             ch = true;
             const [x, z] = cpos(i);
             if (mr() < 0.4) spawn(x, 0.2, z, 0, 0.5, 0, 2, G('.'), 0.4, 0.15, 0.13, 0.13, 1);

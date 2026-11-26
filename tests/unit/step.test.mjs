@@ -20,7 +20,7 @@ describe('移す前と同じ', () => {
       all = await stepCases(F, 8, fakeDom()),
       body = stepText(all),
       calls = all.flatMap((c) => c.calls);
-    expect([fnv(body), body.length]).toEqual(['df0e0b31', 2584702]);
+    expect([fnv(body), body.length]).toEqual(['df533d05', 2584766]);
     // 場合が中身を通っているか：23の関数が全部呼ばれ、どれも止まらない。見た目の乱数・音の乱数・伝言・setTimeout・音の部品を使う呼び出しもある
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);
@@ -39,6 +39,12 @@ describe('移す前と同じ', () => {
     expect(ran.length).toBeGreaterThan(0);
     expect(ran.every((c) => c.orderKept)).toBe(true);
     expect(ran.every((c) => c.water[0] && c.water[1])).toBe(true);
+    // 凍らせた水のマスは、引いた後に水へ戻り、氷の一覧から外れる。踏み分けた草は、引いた後も生え戻りの一覧にある
+    expect(ran.every((c) => c.thawed.every(Boolean))).toBe(true);
+    // 2つの火口の流れる道が重なっていても、全部の火口が引き終えたら、初めは溶岩でなかったマスに溶岩は残らない
+    const done = ran.filter((c) => c.lavaLeft !== null);
+    expect(done.length).toBeGreaterThan(0);
+    expect(done.every((c) => c.lavaLeft === 0)).toBe(true);
     expect(all.every((c) => c.timers.threw === 0)).toBe(true);
     const by = (name, f) => calls.filter((c) => c.name === name && f(c)).length;
     for (const name of ['updateProjs', 'updateStatuses', 'stepFire', 'updateEvents', 'startRoll'])
