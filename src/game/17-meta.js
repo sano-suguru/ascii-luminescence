@@ -97,7 +97,7 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Escape'&&ui.dbgOpen){ setDbg(false); return; }
   if(ui.altarOpen&&(e.code==='Escape'||e.code==='Tab')){ e.preventDefault(); closeAltar(true); if(e.code==='Tab'&&ui.started&&!adv.dead)setInv(true); return; }
   if(e.code==='Tab'){ e.preventDefault(); if(ui.started&&!adv.dead){ if(ui.menuOpen)setMenu(false); setInv(!ui.invOpen); } return; }
-  if(e.code==='Escape'){ if(ui.invOpen){ setInv(false); return; } if(ui.started&&!adv.dead&&ui.plFailed){ setMenu(!ui.menuOpen); return; } }
+  if(e.code==='Escape'){ if(ui.invOpen){ setInv(false); return; } if(ui.started&&!adv.dead&&!ui.locked){ setMenu(!ui.menuOpen); return; } }
   if(isPaused())return;
   if(ui.started&&e.code==='KeyM'){ sndToggle(); }
   if(ui.started&&e.code==='KeyH'){ cycleUi(); }

@@ -1,6 +1,7 @@
 // マウスを捕まえる（ポインタロック）・視点・音量（もとは src/game/16-view-input.js・28-camera-player.js・15-sound-fire.js）。状態の入れ物 ui・SND に頼る。
 // ポインタロックの変わり目（pointerlockchange・pointerlockerror）を受け取る登録は、古い JS（16-view-input.js）にある。
 import { must, nth } from './array.ts';
+import { msg } from './log.ts';
 import { SND_LV, SND_NAME } from './sound.ts';
 import { SND, ui } from './state.ts';
 import { showHint } from './status.ts';
@@ -10,22 +11,33 @@ export function updateResume(): void {
   must(document.getElementById('resume'), '#resume').style.display = 'none';
 }
 
-/** マウスを捕まえる（描く画面 #gl で）。捕まえられなかったら ui.plFailed にし、それからは捕まえようとしない */
+/**
+ * マウスを捕まえられないと決める（ui.plFailed）。それからは、ドラッグで視点を動かし、Esc でメニューを開く。
+ * 失敗の知らせ（pointerlockerror・Promise の reject・例外・requestPointerLock が無い）のどれから来ても、案内の伝言は1回だけ出す
+ */
+export function lockFailed(): void {
+  if (ui.plFailed) return;
+  ui.plFailed = true;
+  updateResume();
+  msg('<b style="color:#8fe9ff">i</b>マウスをドラッグして視点を動かせます。');
+}
+
+/** マウスを捕まえる（描く画面 #gl で）。捕まえられなかったら lockFailed にし、それからは捕まえようとしない */
 export function tryLock(): void {
   const canvas = must(document.getElementById('gl'), '#gl');
-  // 古いブラウザには requestPointerLock が無い（型には必ずある）
+  if (ui.plFailed) return;
+  // requestPointerLock が無いブラウザ（iPhone の Safari など。型には必ずある）
   // oxlint-disable-next-line typescript/no-unnecessary-condition
-  if (ui.plFailed || !canvas.requestPointerLock) return;
+  if (!canvas.requestPointerLock) {
+    lockFailed();
+    return;
+  }
   try {
     const p: unknown = canvas.requestPointerLock();
     // 古いブラウザの requestPointerLock は Promise を返さない（catch が無い）
-    if (typeof p === 'object' && p !== null && 'catch' in p && typeof p.catch === 'function')
-      p.catch(() => {
-        ui.plFailed = true;
-        updateResume();
-      });
+    if (typeof p === 'object' && p !== null && 'catch' in p && typeof p.catch === 'function') p.catch(lockFailed);
   } catch {
-    ui.plFailed = true;
+    lockFailed();
   }
 }
 
