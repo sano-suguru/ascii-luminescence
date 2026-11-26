@@ -19,9 +19,9 @@ export function cellLight(x: number, z: number): [number, number, number] {
     if (id < 0) break;
     const L = nth(D.lights, id),
       w = (D.cellLW[o + k] ?? NaN) * L.int * L.f;
-    out[0] += nth(L.col, 0) * w;
-    out[1] += nth(L.col, 1) * w;
-    out[2] += nth(L.col, 2) * w;
+    out[0] += L.col[0] * w;
+    out[1] += L.col[1] * w;
+    out[2] += L.col[2] * w;
   }
   const fl = blaze.fireLight[cz * MW + cx] ?? NaN;
   if (fl > 0) {
