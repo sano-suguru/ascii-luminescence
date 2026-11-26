@@ -17,6 +17,11 @@
   変更の履歴は Git（コミットと PR）に書く。経緯や、やめたこと（とその理由）が今後の判断に要る時だけ、今の決まりとして書く。
 - PR の CI を待つ時は、GitHub からの知らせ（終わった・落ちた）を待つのに加えて、終わりそうな頃（今の CI は約3分）に自分で一度見に行く予定を入れる
   （send_later など）。知らせは届かないことがある（push し直した版の「終わった」が届かず、CI が通ったのに気付かなかったことがあった）。
+- 手間と得る物を比べる時は、手間を分けて数える。「手間が大きい」と書く時は、どの手間かを書く。
+  - Claude が手を動かす量：ほぼ数えない。
+  - ユーザーが差分を読んで確かめる量：数える。差分を小さく・読みやすくする。
+  - 動きを壊す危うさ：数える。ただし、確かめる道具（型・指紋・same-code・テスト）で下げられるなら小さく見てよい。
+  - 仕組み・規則・依存が増えて、後から触る時に覚えることや壊れる所が増えること：一番重く数える（作った後もずっと続くため）。
 
 ## ファイル
 ```
@@ -25,7 +30,7 @@ src/main.js          ページの入口のモジュール（フォント（@font
 src/game/*.js        ゲーム本体の古い JS（27ファイル。下の「ゲーム本体の地図」）
 src/game/imports.mjs ゲーム本体が使う TypeScript のモジュールを読む import の文（包みの関数の前に置かれる）
 src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整形もする
-                     array：配列と表を読む nth・lookup・must（無ければその場で止まる。as の代わり）、rng：シードの乱数を作る mulberry32 と clamp、random：見た目の乱数 mr・mpick と迷宮の乱数 rand・R・RI・pick（入れ替えは setRand）と音の乱数 sndRand（入れ替えは setSoundRand）と混ぜる shuffle、glyphs：文字の絵の表（アトラス）の番号 G と飾りの文字の並び、color：css・表の色を css にする cssOf・hsl2rgb、math：角度・稲妻の線など、
+                     array：配列と表を読む nth・lookup・must（無ければその場で止まる。as の代わり）、rng：シードの乱数を作る mulberry32 と clamp、random：見た目の乱数 mr・mpick と迷宮の乱数 rand・R・RI・pick（入れ替えは setRand）と音の乱数 sndRand（入れ替えは setSoundRand）と混ぜる shuffle、glyphs：文字の絵の表（アトラス）の番号 G と飾りの文字の並び、color：3つの数の組の色の型 Color・css・表の色を css にする cssOf・hsl2rgb、math：角度・稲妻の線など、
                      text：パネルの文字の幅と枠・幅に合わせて HTML を切る clipHtml、history：年代記、world：迷宮の大きさ・タイル・液体と地面・支道と異界・深さごとの係数（depthProfile）と深さごとに順に使う霧の色（FOGS）・岩、
                      light：灯りの計算、runes：ルーンの定義 RUNE_DEF・性質の効き目 RES・特性・反応・手の枠・ルーンの名前と色と付けられるか（表だけに頼る物）、
                      gear：手と持ち物の処理（makeRune・randomRuneType・effHand・isTwo・canPutAt・武器を持つ equipWeapon・空いた枠 freeSlotFor・墓のルーン graveRune など。状態 gear に頼る物）、progress：経験・伝承・解放・加護 BLESS（表。状態の入れ物は読まない）、

@@ -2,12 +2,12 @@
 // 形は「文字の点（Glyph）」の配列。描画（src/game/13-creatures.js の drawMonster）が、part ごとに動かして描く。
 // 形を作る時に mr()（見た目の乱数）を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
 import { nth } from '../array.ts';
+import type { Color } from '../color.ts';
 import { G } from '../glyphs.ts';
 import { clamp } from '../rng.ts';
 import { mr } from '../random.ts';
 
 export type Vec3 = readonly [number, number, number];
-export type Color = readonly [number, number, number];
 /** 明るさの順に並べた文字（暗い → 明るい） */
 export type Ramp = readonly string[];
 

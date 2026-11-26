@@ -5,6 +5,7 @@
 //   結果：階（level）と、その階の主の種類（lordType）・忘れられた獣（beastType）。生き物の表への書き込みは、古い JS の生成の呼び出し口（04-generate.js の generate）が行う
 // 迷宮の乱数（setRand）とノイズの種（setNoiseSeed）は、ここで階のシードから入れ替える。
 import { lookup, must, nth } from './array.ts';
+import type { Color } from './color.ts';
 import { type Light, computeVis, topLights } from './light.ts';
 import { R, RI, pick, rand, setRand, shuffle } from './random.ts';
 import { clamp, mulberry32 } from './rng.ts';
@@ -162,7 +163,7 @@ export interface Room {
   deep: number[];
   bog: number[];
   xtal: number[];
-  clusters: { c: number; col: number[] }[];
+  clusters: { c: number; col: Color }[];
   cells0?: number[];
   ruin?: boolean;
   fort?: boolean;
@@ -204,7 +205,7 @@ export interface Spawn {
 }
 /** 灯り（light.ts の Light に、色・強さ・種類・揺らぎを足した物。vis は後で古い JS が入れる） */
 export interface LevelLight extends Omit<Light, 'vis'> {
-  col: number[];
+  col: Color;
   int: number;
   type: string;
   ph: number;
@@ -222,7 +223,7 @@ export interface Fixture {
   type: string;
   x: number;
   z: number;
-  col: number[];
+  col: Color;
   li: number;
   acc: number;
   ph: number;
@@ -247,7 +248,7 @@ export interface Fixture {
 /** マスに描く飾りの文字 */
 export interface CellMark {
   ch: string;
-  col: number[];
+  col: Color;
   k?: string;
 }
 /** 扉（i の通路のマスと、j の部屋のマスの間） */
@@ -373,7 +374,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
   const walk = (j: number): boolean => tile[j] === TF && !blocksWalk(liquid[j] ?? 0);
   const bridge = new Uint8Array(N),
     bridgeDir = new Uint8Array(N),
-    xtalCol = new Map<number, number[]>();
+    xtalCol = new Map<number, readonly number[]>();
   const ns = (rand() * 1e9) | 0;
   setNoiseSeed(ns);
   const ceil = new Float32Array(N).fill(BASE_H),
@@ -1578,7 +1579,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       }
     }
     if (must(r.theme).k === 'crystal') {
-      const pal = [
+      const pal: Color[] = [
         [0.55, 0.85, 1.0],
         [0.75, 0.6, 1.0],
         [0.85, 0.95, 1.0],
@@ -1814,7 +1815,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     fixtures: Fixture[] = [],
     fixCell = new Map<number, CellMark>(),
     used = new Set<number>();
-  const addFix = (type: string, ci: number, col: number[], y: number, int: number, rad: number, chr: string): void => {
+  const addFix = (type: string, ci: number, col: Color, y: number, int: number, rad: number, chr: string): void => {
     if (lights.length >= NSL) return;
     const x = ((ci % W) + 0.5) * CELL,
       z = (((ci / W) | 0) + 0.5) * CELL;
@@ -2406,7 +2407,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       nz = -d[1],
       x = wx + nx * 0.45,
       z = wz + nz * 0.45,
-      col = [1.0, 0.6, 0.22];
+      col: Color = [1.0, 0.6, 0.22];
     lights.push({ x, y: 2.05, z, col, int: 1.9, rad: 8.5, type: 'torch', ph: rand() * 100, f: 1, vis: null });
     fixtures.push({ type: 'torch', x, z, wx, wz, nx, nz, col, li: lights.length - 1, acc: 0, ph: rand() * 6.28 });
     fixCell.set((cz + d[1]) * W + cx + d[0], { ch: '#', col: [1.0, 0.72, 0.32] });
@@ -2472,7 +2473,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     });
   if (stratum.k === 'bigroom') {
     const big = nth(rooms, 1),
-      cols2 = [
+      cols2: Color[] = [
         [1.0, 0.55, 0.17],
         [0.25, 0.82, 1.0],
         [0.62, 0.4, 1.0],
@@ -2655,7 +2656,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       const a = pick2(nth(rs, k)),
         b = pick2(nth(rs, k + 1));
       if (a < 0 || b < 0) continue;
-      const col = pick([
+      const col: Color = pick([
         [1.0, 0.35, 0.85],
         [0.35, 0.9, 1.0],
         [0.7, 0.5, 1.0],
@@ -2864,7 +2865,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
       } else engr.set(k, ev);
     }
   }
-  const lampCols = [
+  const lampCols: Color[] = [
     [0.5, 0.68, 1.0],
     [0.62, 0.45, 1.0],
     [0.45, 0.9, 0.95],

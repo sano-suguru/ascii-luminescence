@@ -3,7 +3,7 @@
 // 足された種類は、次に置き換えられるまで残る（前の階・前の探索の lord も残る）。読む側は、今の階の主かどうかを here.D などで見ること。
 // 状態の入れ物（src/lib/state.ts）ではなくここに置くのは、37種の表と足される種類を、古い JS が同じ MTYPES[key] で読むため（生き物の処理を移す時に分ける）。
 
-import type { Color } from './bodies/kit.ts';
+import type { Color } from './color.ts';
 import type { BeastBody } from './bodies/lords.ts';
 import { DUMMY_KINDS } from './names.ts';
 

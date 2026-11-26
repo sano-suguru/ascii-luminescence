@@ -35,10 +35,10 @@ export function drawFixtures(t: number, dt: number): void {
       x = f.x,
       z = f.z,
       ly = L ? L.y : 1.5;
-    // 色（どの備品にも3つある）
-    const c0 = nth(c, 0),
-      c1 = nth(c, 1),
-      c2 = nth(c, 2);
+    // 色（型で3つあると決まっている）
+    const c0 = c[0],
+      c1 = c[1],
+      c2 = c[2];
     switch (f.type) {
       case 'brazier': {
         for (let k = 0; k < 3; k++) {
