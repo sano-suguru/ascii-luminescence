@@ -191,8 +191,10 @@ export function salamanderForm(ty: BodyType): Body {
 
 export function trollForm2(ty: BodyType): Body {
   const { S, pts, lit, stroke, ell, tube } = q3(ty),
-    SK: Color = [0.5, 0.6, 0.46],
-    MOSS: Color = [0.42, 0.72, 0.36],
+    SK: Color = [0.4, 0.48, 0.36],
+    BELLY: Color = [0.6, 0.62, 0.5],
+    ARM: Color = [0.32, 0.4, 0.3],
+    MOSS: Color = [0.45, 0.88, 0.32],
     ST: Color = [0.62, 0.62, 0.6],
     EYE: Color = [1, 0.85, 0.3];
   for (const sd of [-1, 1]) {
@@ -206,26 +208,29 @@ export function trollForm2(ty: BodyType): Body {
       lean = 0.3 * f,
       n = Math.max(6, Math.round((2 * Math.PI * rx) / (S * 0.85)));
     for (let k = 0; k < n; k++) {
-      const a = (k / n) * Math.PI * 2;
+      const a = (k / n) * Math.PI * 2,
+        // 苔は背中と、肩の上（前の側を除く）。腹と胸は明るい肌
+        moss = (Math.sin(a) < -0.4 && f > 0.4) || (f > 0.85 && Math.sin(a) < 0.5),
+        belly = !moss && Math.sin(a) > 0.45;
       lit(
         Math.cos(a) * rx,
         y,
         Math.sin(a) * rz + lean,
-        Math.sin(a) < -0.4 && f > 0.4 ? mpick([',', '"']) : mpick(['o', '%', ':']),
+        moss ? mpick([',', '"']) : mpick(['o', '%', ':']),
         1,
-        Math.sin(a) < -0.4 && f > 0.4 ? 1.2 : 1.0,
-        Math.sin(a) < -0.4 && f > 0.4 ? MOSS : SK,
+        moss ? 1.2 : 1.0,
+        moss ? MOSS : belly ? BELLY : SK,
       );
     }
   }
   for (const sd of [-1, 1]) {
     const part = sd < 0 ? 'armL' : 'armR',
       ex = { piv: 1.4, pz: 0 };
-    tube([sd * 0.4, 1.38, 0.3], [sd * 0.5, 0.8, 0.45], 0.09, 0.08, SKINR, SK, part, ex, 0.2);
-    tube([sd * 0.5, 0.8, 0.45], [sd * 0.48, 0.2, 0.55], 0.08, 0.07, SKINR, SK, part, ex, 0.1);
-    for (let c = 0; c < 4; c++) lit(sd * 0.48 + (c - 1.5) * 0.04, 0.1, 0.6, 'v', 1, 1.3, SK, part, ex);
+    tube([sd * 0.4, 1.38, 0.3], [sd * 0.5, 0.8, 0.45], 0.09, 0.08, SKINR, ARM, part, ex, 0.2);
+    tube([sd * 0.5, 0.8, 0.45], [sd * 0.48, 0.2, 0.55], 0.08, 0.07, SKINR, ARM, part, ex, 0.1);
+    for (let c = 0; c < 4; c++) lit(sd * 0.48 + (c - 1.5) * 0.04, 0.1, 0.6, 'v', 1, 1.3, ARM, part, ex);
   }
-  ell([0, 1.38, 0.55], 0.15, 0.14, 0.15, SKINR, () => SK, 'head');
+  ell([0, 1.38, 0.55], 0.15, 0.14, 0.15, SKINR, (_x, ny) => (ny > 0.45 ? MOSS : SK), 'head');
   lit(0, 1.33, 0.73, '(', 1.3, 1.5, SK, 'head');
   lit(0.02, 1.33, 0.73, ')', 1.3, 1.5, SK, 'head');
   for (const sd of [-1, 1]) {
