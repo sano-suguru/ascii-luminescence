@@ -41,7 +41,7 @@ function newLevel(seedOverride){
       player.x=(nb%MW+0.5)*CELL; player.z=(((nb/MW)|0)+0.5)*CELL; player.yaw=Math.atan2(-((tc%MW)-(nb%MW)),-(((tc/MW)|0)-((nb/MW)|0)))+Math.PI; lockCell=tc; } here.arrive=null; }
   stealth.sneak=false; lantern.r=8.2; lantern.k=1;
   here.riverCells=[]; for(let i=0;i<NCELL;i++)if(here.D.flow[i]&&(here.D.liquid[i]===LQ_WATER||here.D.liquid[i]===LQ_DEEP))here.riverCells.push(i);
-  blaze.trampled=[]; tallMsg=false; here.brimMsg=false; player.lastCell=-1; player.netT=0;
+  blaze.trampled=[]; iceT.clear(); tallMsg=false; here.brimMsg=false; player.lastCell=-1; player.netT=0;
   blaze.scent=new Float32Array(NCELL); here.webMsg=false; here.webBurnMsg=false; here.repairMsg=false;
   buf.pN=0; blaze.gasAny=false; initFire(); initEvents(); blaze.spark=null; fight.projs=[]; showHint(''); edge.t=0; setFog(); initDust();
   renderStatus(); if(ui.helpOn)renderHelp();

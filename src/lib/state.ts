@@ -880,7 +880,7 @@ export interface Gfx {
 export const gfx: Gfx = { camera: { position: { x: 0, y: 0, z: 0 } }, cellTex: { needsUpdate: false }, drawBodyOnly: false };
 /** マスの絵 gfx.cellTex の中身（マス1つに4つ：火の明かり・火の強さ・灰か・変わり方の種類。src/lib/ground.ts の uploadCells が書く）。丸ごと入れ替えない */
 export const cellData = new Uint8Array(NCELL * 4);
-/** 薄い氷のマスに乗っていた秒（マス → 秒。src/lib/ground.ts の crackIce）。丸ごと入れ替えない */
+/** 薄い氷のマスに乗っていた秒（マス → 秒。src/lib/ground.ts の crackIce。18-level-player.js の newLevel が階ごとに空にする）。丸ごと入れ替えない */
 export const iceT = new Map<number, number>();
 /** 灯りを描画に渡す配列（src/lib/lightmap.ts の updateLights が毎フレーム書き、05-renderer.js の U が描画に渡す）。丸ごと入れ替えない。
  * SL：階の灯りの色と強さ（灯り1つに3つ）、DLP：動く灯りの位置と届く距離（1つに4つ。0番は手元の灯り、最後は稲妻か火花）、DLC：動く灯りの色（1つに3つ） */
