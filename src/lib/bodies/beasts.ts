@@ -1,9 +1,10 @@
 // 四つ足・大きな生き物（オーガ・竜も）・死者の形（もとは src/game/09-bodies-creatures.js）。q2・q3 の道具で、面の向きに合わせて文字と明るさを決める。
 import { nth } from '../array.ts';
+import type { Color } from '../color.ts';
 import { G } from '../glyphs.ts';
 import { clamp } from '../rng.ts';
 import { mpick, mr } from '../random.ts';
-import { type Body, type BodyType, type Color, type Extra, type Vec3, FUR, MUD, SCALE, SKINR, STONE, q2, q3 } from './kit.ts';
+import { type Body, type BodyType, type Extra, type Vec3, FUR, MUD, SCALE, SKINR, STONE, q2, q3 } from './kit.ts';
 
 type Leg = readonly [number, number, string];
 

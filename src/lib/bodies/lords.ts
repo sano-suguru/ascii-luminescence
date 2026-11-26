@@ -1,6 +1,6 @@
 // 主・機械・忘れられた獣の形（もとは src/game/07-bodies-lords.js・08-bodies-shadow.js・10-bodies-beast.js）。
 import { must, nth } from '../array.ts';
-import { hsl2rgb } from '../color.ts';
+import { type Color, hsl2rgb } from '../color.ts';
 import { G } from '../glyphs.ts';
 import type { History } from '../history.ts';
 import { mulberry32 } from '../rng.ts';
@@ -8,7 +8,6 @@ import { mpick, mr } from '../random.ts';
 import {
   type Body,
   type BodyType,
-  type Color,
   type Extra,
   type Glyph,
   type Vec3,

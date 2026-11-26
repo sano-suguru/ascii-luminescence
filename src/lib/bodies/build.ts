@@ -4,6 +4,7 @@
 // addLooks は、表 MTYPES に見た目（look など）を書き足す（古い JS の 07-bodies-lords.js が、読み込む時に呼ぶ）。
 // 形を作る時に mr()（見た目の乱数）を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
 import { lookup } from '../array.ts';
+import type { Color } from '../color.ts';
 import { MTYPES } from '../creatures.ts';
 import { G } from '../glyphs.ts';
 import { clamp } from '../rng.ts';
@@ -27,7 +28,7 @@ import {
   wraithForm2,
 } from './beasts.ts';
 import { deepKrakenForm, lichKingForm, nagaQueenForm, oldDragonForm, shadowSerpentForm, spiderQueenForm } from './bosses.ts';
-import { type Add, type Body, type BodyType, type Color, type Extra, BONE, GOLD, HRAMP, PALE, adder, mLit } from './kit.ts';
+import { type Add, type Body, type BodyType, type Extra, BONE, GOLD, HRAMP, PALE, adder, mLit } from './kit.ts';
 import {
   type BeastBody,
   type HumProp,

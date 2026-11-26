@@ -1,10 +1,11 @@
 // 主の形（もとは src/game/07-bodies-lords.js・08-bodies-shadow.js）：不死の王・蜘蛛の女王・ナーガの女王・古竜・深みの主・王の影の二つ目の姿。
 // どれも、面の向きと材質で文字と明るさを決める点（put）と、文字をそのまま置く点（lit）で作る。形を作る時に mr()（見た目の乱数）を引く順番を変えないこと。
 import { nth } from '../array.ts';
+import type { Color } from '../color.ts';
 import { G, RUNE_CHARS } from '../glyphs.ts';
 import { clamp } from '../rng.ts';
 import { mpick, mr } from '../random.ts';
-import { type Body, type Color, type Extra, type Ramp, type Vec3, strokeCh } from './kit.ts';
+import { type Body, type Extra, type Ramp, type Vec3, strokeCh } from './kit.ts';
 import { KRAKEN_T, KRAKEN_W, SHADOW_MIN_SC } from './lords.ts';
 
 const LD = [0.42, 0.72, 0.55] as const;
