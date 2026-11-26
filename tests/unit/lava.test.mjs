@@ -1,5 +1,6 @@
 // 溶岩の流れ（src/lib/events.ts の火口の噴き上がり erupt と、部屋の出来事の流れ lavaflow）と、吹き飛ばし（src/lib/projs.ts の updateStatuses）の単体テスト。
-// 火山の異界の本物の階に、壁で囲んだ床の区画を書き込み（区画の中は全部書き直し、生き物・備品・出来事も消すので、迷宮の生成が変わっても結果は変わらない）、
+// 火山の異界の本物の階に、壁で囲んだ床の区画を書き込み（区画の中のマスの床・壁・液体・ガス・燃える物は書き直し、生き物・備品・出来事も消すので、
+// 区画の中の溶岩の流れと吹き飛ばしは、生成した階の中身によらない）、
 // 生き物と出来事を置いて、updateEvents・updateStatuses を直に呼ぶ。updateMonster は呼ばないので、生き物は置いた所から歩かない。
 // プレイヤーは区画の外（溶岩を流さない近さ 1.6 より遠く）に置く。
 // テストを .mjs で書くのは、偽の画面の部品を本物の型に合わせられないため。
@@ -26,11 +27,9 @@ let restore = null,
   keepRandom = null;
 
 beforeEach(async () => {
-  const D = gen(
-    await loadEnv(),
-    7,
-    PLACES.find((p) => p.realm?.key === 'volcano'),
-  ).level;
+  const volcano = PLACES.find((p) => p.realm?.key === 'volcano');
+  if (!volcano) throw new Error('火山の異界（realm の volcano）が場所の一覧 PLACES に無い');
+  const D = gen(await loadEnv(), 7, volcano).level;
   Object.assign(here, { D, fixtures: [], events: [], monsters: [], fovVis: new Uint32Array(NCELL), fovStamp: 1 });
   for (let z = Z0; z <= Z1; z++)
     for (let x = X0; x <= X1; x++) {
@@ -72,11 +71,14 @@ function runEvents(sec, each = () => false) {
     if (each()) return;
   }
 }
-/** 部屋の出来事を sec 秒進め、噴き上がり evs のそれぞれが引き始めた（状態 2 → 3）その時の、流れる順のマスのうち溶岩でない物を返す（after は1歩ごとに呼ぶ） */
-function holesAtRecede(evs, sec, after = () => {}) {
+/**
+ * 噴き上がり evs のどれもが引き始め（状態 2 → 3）、引き終えて状態 0 に戻るまで（長くても 90 秒）部屋の出来事を進め、
+ * それぞれが引き始めたその時の、流れる順のマスのうち溶岩でない物を返す（after は1歩ごとに呼ぶ。引き始めなかった物は undefined）
+ */
+function holesAtRecede(evs, after = () => {}) {
   const prev = new Map(evs.map((e) => [e, e.state])),
     holes = new Map();
-  runEvents(sec, () => {
+  runEvents(90, () => {
     for (const e of evs) {
       if (prev.get(e) === 2 && e.state === 3)
         holes.set(
@@ -86,7 +88,7 @@ function holesAtRecede(evs, sec, after = () => {}) {
       prev.set(e, e.state);
     }
     after();
-    return false;
+    return evs.every((e) => holes.has(e) && e.state === 0);
   });
   return evs.map((e) => holes.get(e));
 }
@@ -122,7 +124,7 @@ describe('溶岩の流れ', () => {
     const A = { type: 'erupt', src: at(8, 10), order: row(10, 8, 17), state: 0, t: 0.01, k: 0 },
       B = { type: 'erupt', src: at(23, 10), order: row(10, 23, 14), state: 0, t: 3, k: 0 };
     here.events.push(A, B);
-    const holes = holesAtRecede([A, B], 20);
+    const holes = holesAtRecede([A, B]);
     expect(holes).toEqual([[], []]);
     expect([A.state, B.state]).toEqual([0, 0]);
     expect(lavaCount()).toBe(0);
@@ -134,7 +136,7 @@ describe('溶岩の流れ', () => {
     here.events.push(A, B);
     // B が流し終えたら（状態 2）、A の待つ時計を 20 秒のばして、B より後に引かせる
     let moved = false;
-    const holes = holesAtRecede([A, B], 37, () => {
+    const holes = holesAtRecede([A, B], () => {
       if (!moved && B.state === 2) {
         A.t += 20;
         moved = true;
@@ -151,11 +153,13 @@ describe('溶岩の流れ', () => {
       const E = { type: 'erupt', src: at(8, 10), order: row(10, 8, 17), state: 0, t: first === 'erupt' ? 0.01 : 3, k: 0 },
         F = { type: 'lavaflow', ri: -1, src: at(20, 10), order: row(10, 20, 14), state: first === 'lavaflow' ? 1 : 0, t: 0, k: 0 };
       here.events.push(E, F);
-      // 噴き上がりが先なら、流し終えた後（3 秒）に、部屋の出来事の流れを始める（状態 0 のままでは、プレイヤーが部屋に入るまで流れない）
-      runEvents(3);
-      if (F.state === 0) F.state = 1;
-      // 噴き上がりが引き終えるまで
-      runEvents(30, () => E.state === 0 && clock.time > 120);
+      // 噴き上がりが先なら、流し終えた後（3 秒）に、部屋の出来事の流れを始める（状態 0 のままでは、プレイヤーが部屋に入るまで流れない）。
+      // 噴き上がりが引き始めた時、その流れる順のマスは全部溶岩（出来事の流れの溶岩のマスも、噴き上がりの溶岩のマスも）
+      const t0 = clock.time,
+        holes = holesAtRecede([E], () => {
+          if (F.state === 0 && clock.time >= t0 + 3) F.state = 1;
+        });
+      expect(holes).toEqual([[]]);
       expect(E.state).toBe(0);
       expect(F.state).toBe(2);
       expect(F.order.filter((i) => !lava(i))).toEqual([]);
@@ -176,6 +180,12 @@ describe('吹き飛ばし', () => {
     expect([m.kx, m.kz]).toEqual([0, 0]);
     expect(Math.floor(m.x / CELL)).toBe(12);
     expect(m.x).toBeCloseTo(13 * CELL - 0.001, 9);
+    // 比べる場面：壁が無ければ、同じ吹き飛ばしで 0.002 動く
+    here.D.tile[at(13, 10)] = TF;
+    here.monsters.length = 0;
+    const free = put('k', 12, 10, { dx: CELL / 2 - 0.001, kx: 0.06 });
+    updateStatuses(1 / 30);
+    expect(free.x).toBeCloseTo(13 * CELL + 0.001, 9);
   });
 
   it('速さが 0 になるフレームに溶岩へ入っても、動いた分を戻して溶岩の手前に残る', () => {
@@ -189,6 +199,13 @@ describe('吹き飛ばし', () => {
     expect([k.kx, k.kz]).toEqual([0, 0]);
     expect(k.x).toBe(x0);
     expect(gapEast(k, 12)).toBeGreaterThan(0);
+    // 比べる場面：溶岩が無ければ、同じ吹き飛ばしで 0.002 動く
+    here.D.liquid[at(13, 10)] = 0;
+    here.monsters.length = 0;
+    const free = put('k', 12, 10, { kx: 0.06 });
+    free.x = x0;
+    updateStatuses(1 / 30);
+    expect(free.x).toBeCloseTo(x0 + 0.002, 9);
   });
 
   it('北と西の両側に溶岩がある時、竜を浅くかかる西の溶岩へ吹き飛ばしても、それより深くは入らない', () => {
@@ -202,6 +219,12 @@ describe('吹き飛ばし', () => {
     // 西へ動くと、北の溶岩にかかる深さは変わらず、西の溶岩に深く入るので、動かない
     expect([d.kx, d.kz]).toEqual([0, 0]);
     expect(d.x).toBe(x0);
+    // 比べる場面：西の溶岩が無ければ、同じ吹き飛ばしで西へ動く（北の溶岩にかかる深さは変わらない）
+    here.D.liquid[at(14, 12)] = 0;
+    here.monsters.length = 0;
+    const free = put('D', 15, 12, { dx: -0.3, dz: -0.8, kx: -6 });
+    for (let q = 0; q < 60; q++) updateStatuses(1 / 30);
+    expect(free.x).toBeLessThan(x0 - 0.5);
   });
 
   it('体の真ん中が溶岩のマスに入っている生き物は、もっと深くへは吹き飛ばない（溶岩から出る向きには動く）', () => {
@@ -211,6 +234,7 @@ describe('吹き飛ばし', () => {
       x0 = deeper.x;
     for (let q = 0; q < 60; q++) updateStatuses(1 / 30);
     expect(deeper.x).toBe(x0);
+    // 比べる場面：同じ所から西へ（溶岩から出る向き）なら動く
     here.monsters.length = 0;
     const out = put('T', 15, 12, { dx: -CELL / 2 + 0.3, kx: -8 });
     for (let q = 0; q < 60; q++) updateStatuses(1 / 30);
