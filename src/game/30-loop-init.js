@@ -92,8 +92,11 @@ if(TEST)window.__test={
   // a plain copy of what matters, to compare runs
   state(){ const f=v=>+(+v||0).toFixed(3);
     return {time:f(clock.time),seed:adv.runSeed,place:placeLabel(),depth:here.depth,started:ui.started,dead:adv.dead,hp:f(player.hp),pos:[f(player.x),f(player.z)],yaw:f(player.yaw),lvl:adv.lvl.n,
-      monsters:here.monsters.map(m=>[m.key,f(m.x),f(m.z),f(m.hp),m.sleep?1:0]),projs:fight.projs.length,
-      trans:here.trans?here.trans.phase:null,maxDepth:adv.runStats&&adv.runStats.maxDepth!==undefined?adv.runStats.maxDepth:null,cast:gear.castSt?{h:gear.castSt.h,t:f(gear.castSt.t),need:f(gear.castSt.need),full:gear.castSt.full}:null,recover:f(player.recover),paused:isPaused()}; },
+      monsters:here.monsters.map(m=>[m.key,f(m.x),f(m.z),f(m.hp),m.sleep?1:0,f(m.wind)]),projs:fight.projs.length,
+      trans:here.trans?here.trans.phase:null,maxDepth:adv.runStats&&adv.runStats.maxDepth!==undefined?adv.runStats.maxDepth:null,cast:gear.castSt?{h:gear.castSt.h,t:f(gear.castSt.t),need:f(gear.castSt.need),full:gear.castSt.full}:null,recover:f(player.recover),paused:isPaused(),
+      roll:!!player.roll,quick:f(player.qcUntil),counter:f(player.ctrUntil)}; },
+  // the room events of this level (type, crater cell, state, timer, step, the cells in the order they flood, done) and how many cells lava has flowed into (an eruption or a lava flow)
+  events(){ return {list:here.events.map(e=>({type:e.type,src:e.src===undefined?null:e.src,state:e.state===undefined?null:e.state,t:e.t===undefined?null:+e.t.toFixed(3),k:e.k===undefined?null:e.k,order:e.order?e.order.slice():null,done:!!e.done})),lava:blaze.cellFlag.reduce((n,v)=>n+(v===70?1:0),0)}; },
   // hold a weapon (a RUNE_DEF key such as 'blade', 'bolt', 'orb'), and press / release a hand's button ('L' or 'R')
   open(t){ if(!['slotL','slotR','body'].includes(t))return 'no such slot: '+t; applyOpen(t); return t; },
   equip(h,type){ if(!RUNE_DEF[type]||RUNE_DEF[type].cat!=='atk')return 'no such weapon: '+type; equipWeapon(h,makeRune(type)); renderHotbar(); return type; },
@@ -101,11 +104,11 @@ if(TEST)window.__test={
   press(h){ const r0=player.recover||0; beginCast(h); return !!gear.castSt||(player.recover||0)>r0; },
   release(h){ releaseCast(h); },
   // the doors of this level (cell i, the room cell j next to it, how open o, burnt away), a cell (its middle x z, floor to stand on, seen now, explored, ash,
-  // sulphur or ice floor, thin ice and the seconds stood on it, water, fire, fuel), the size of the map, setting a cell on fire (gas: as burning gas does, leaving a little fuel),
+  // sulphur or ice floor, thin ice and the seconds stood on it, water, lava, fire, fuel), the size of the map, setting a cell on fire (gas: as burning gas does, leaving a little fuel),
   // and putting a creature (an MTYPES key such as 'Re') on a cell
   doors(){ return here.D.doors.map(d=>({i:d.i,j:d.j,o:+d.o.toFixed(3),gone:!!d.gone})); },
   cell(i){ return {x:(i%MW+0.5)*CELL,z:(((i/MW)|0)+0.5)*CELL,floor:here.D.tile[i]===TF&&!here.D.solid.has(i)&&!blocksWalk(here.D.liquid[i]),seen:here.fovVis[i]===here.fovStamp,explored:!!here.explored[i],burnt:!!blaze.burnt[i],
-    brim:here.D.surface[i]===SF_BRIM,ice:here.D.surface[i]===SF_ICE,thin:!!here.D.thin[i],iceT:iceT.get(i)||0,water:here.D.liquid[i]===LQ_WATER||here.D.liquid[i]===LQ_DEEP,fire:+(blaze.fire[i]||0).toFixed(3),fuel:+(blaze.fuel[i]||0).toFixed(3)}; },
+    brim:here.D.surface[i]===SF_BRIM,ice:here.D.surface[i]===SF_ICE,thin:!!here.D.thin[i],iceT:iceT.get(i)||0,water:here.D.liquid[i]===LQ_WATER||here.D.liquid[i]===LQ_DEEP,lava:here.D.liquid[i]===LQ_LAVA,fire:+(blaze.fire[i]||0).toFixed(3),fuel:+(blaze.fuel[i]||0).toFixed(3)}; },
   // the size of the map in cells (a cell number is row times w plus column)
   size(){ return {w:MW,h:MH}; },
   ignite(i,gas=false){ ignite(i,1,gas); },
@@ -203,6 +206,10 @@ if(TEST)window.__test={
     return {draws:n,statues}; },
   // remove every creature (lords too), so a check is not upset by one that happens to be near
   clearAll(){ const n=here.monsters.length; here.monsters=[]; return n; },
+  // knock creature n (counted from 0, as in state().monsters) back with speed kx kz, as a hit's knockback does
+  knock(n,kx,kz){ const m=here.monsters[n]; if(!m)return false; m.st=m.st||{}; m.kx=kx; m.kz=kz; return true; },
+  // creature n's cell, the cell it walks to, its body scale, position and knockback speed
+  mob(n){ const m=here.monsters[n]; return m?{cx:m.cx,cz:m.cz,tx:m.tx,tz:m.tz,scale:m.ty.scale,x:m.x,z:m.z,kx:m.kx||0,kz:m.kz||0}:null; },
   // every place a run can visit, for generation checks
   places(){ return [...Array.from({length:FINAL_DEPTH},(_,i)=>({depth:i+1})), ...Object.keys(SPECIALS).map(k=>({inter:k})),
     ...Object.values(BRANCHES).flatMap(B=>Array.from({length:B.len},(_,i)=>({branch:B.key,lvl:i+1}))), ...Object.values(REALMS).map(R=>({realm:R.key,depth:R.minD+2}))]; },

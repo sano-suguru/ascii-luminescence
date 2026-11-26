@@ -12,6 +12,11 @@
 //   9. 冷気は、マップの端で反対側の端に届かない
 //  10. 消してすぐまた火がついたマスは、燃えているマスの一覧に1回だけ入る
 //  11. 薄い氷に乗っていた秒は、階を移ると0に戻る（前の階の同じ番号のマスの秒が残らない）
+//  12. 火山の異界の火口は、噴き上がると溶岩が流れ出し（状態 1）、しばらく待って（2）引き（3）、また待って（0）噴き上がる
+//  13. 加護の身軽な詠唱と返しの一撃は、敵の攻撃を転がってかわすと効き始める（ただ転がっただけでは効かない）
+//  14. 火口の溶岩は、生き物のいるマスにも、生き物が歩いて向かっているマスにも流れない（溶岩の上に立つ生き物がいない）。
+//      生き物が塞いだマスは、後でまた試す（流し終えた後も、引き始めるまで）ので、引き始める前に、生き物のいないマスの穴が残らない
+//  15. 吹き飛ばされた生き物は、溶岩の手前で止まる（溶岩は、歩けない生き物には壁と同じ。体の大きな生き物は、体が溶岩にかかる手前）。止まると、行き先は今いるマスになる
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { withBrowser, newPage, openTest, advance } from './lib.mjs';
 
@@ -325,6 +330,188 @@ async function thinIceChecks(pg, base) {
   if (after !== 0) errs.push(`11：階を移っても、前の階で薄い氷に乗っていた秒が残っている（${after}）`);
 }
 
+// 12：火口の噴き上がり（火山の異界の、3つの火口）
+async function eruptChecks(pg, base) {
+  await openTest(pg, base, 'seed=7&realm=volcano&god=1');
+  await advance(pg, 2);
+  // 火口ごとに、変わった状態の並び（初めの 0 から）。溶岩のマスの数の、いちばん多い時と、その後の少ない時
+  const seq = new Map(),
+    lava = [];
+  for (let t = 0; t < 100; t += 2) {
+    const e = await pg.evaluate(() => __test.events());
+    for (const ev of e.list.filter((x) => x.type === 'erupt')) {
+      const a = seq.get(ev.src) ?? [];
+      if (a.at(-1) !== ev.state) a.push(ev.state);
+      seq.set(ev.src, a);
+    }
+    lava.push(e.lava);
+    await advance(pg, 2);
+  }
+  if (seq.size === 0) {
+    errs.push('12：火口の噴き上がりが無い（テストの前提が崩れた。シードを変える）');
+    return;
+  }
+  // 100 秒あれば、どの火口も 1 回は最後まで進み（0 → 1 → 2 → 3 → 0）、また噴き上がる（20〜40 秒待つ）
+  const full = [...seq].filter(([, a]) => a.join('').startsWith('012301'));
+  if (full.length !== seq.size) errs.push(`12：火口の噴き上がりが、状態 0 → 1 → 2 → 3 → 0 → 1 と進まない（${JSON.stringify([...seq])}）`);
+  const top = Math.max(...lava),
+    back = lava.indexOf(0, lava.indexOf(top));
+  if (!(top > 10) || back < 0 || !lava.slice(back).some((n) => n > 0))
+    errs.push(`12：溶岩のマスが、増えてから 0 に戻り、また増える、にならない（2 秒ごと：${lava.join(',')}）`);
+}
+
+// 13：かわした時の加護（身軽な詠唱・返しの一撃）
+async function dodgeChecks(pg, base) {
+  await openTest(pg, base, 'seed=7&depth=2&god=1');
+  await advance(pg, 2);
+  await pg.mouse.click(480, 270); // キーを届かせる（押すと撃つので、生き物を置く前に）
+  await advance(pg, 1);
+  await pg.evaluate(() => {
+    __test.bless(2);
+    __test.clearAll();
+  });
+  // ただ転がっただけでは、効かない
+  await pg.keyboard.press('Space');
+  await advance(pg, 0.1);
+  const plain = await pg.evaluate(() => __test.state());
+  if (!plain.roll) errs.push('13：Space で転がらない（テストの前提が崩れた）');
+  if (plain.quick || plain.counter) errs.push(`13：ただ転がっただけで、かわした時の加護が効いた（${plain.quick}・${plain.counter}）`);
+  await advance(pg, 1.5); // 転がりの待ち（1 秒）が明けるまで
+  // 隣のマスに生き物を置き、攻撃の溜めが終わる直前に転がってかわす
+  const put = await pg.evaluate(() => {
+    const s = __test.state(),
+      { w } = __test.size(),
+      C = __test.cell(0).x * 2,
+      pi = Math.floor(s.pos[1] / C) * w + Math.floor(s.pos[0] / C);
+    for (const d of [1, -1, w, -w]) if (__test.cell(pi + d).floor) return __test.summon('k', pi + d);
+    return null;
+  });
+  if (!put) {
+    errs.push('13：隣に床が無く、生き物を置けない（テストの前提が崩れた。シードを変える）');
+    return;
+  }
+  let st = null;
+  for (let q = 0; q < 300; q++) {
+    const s = await pg.evaluate(() => __test.state()),
+      wind = s.monsters[0]?.[5] ?? 0;
+    if (wind > 0 && wind < 0.07) {
+      await pg.keyboard.press('Space');
+      await advance(pg, 0.1);
+      st = await pg.evaluate(() => __test.state());
+      break;
+    }
+    await advance(pg, 1 / 30);
+  }
+  if (!st) {
+    errs.push('13：生き物が攻撃の溜めに入らない（テストの前提が崩れた）');
+    return;
+  }
+  // 加護 2 段目：身軽な詠唱は 2.5 秒、返しの一撃は 1.5 秒（かわした時刻から）
+  const left = (until) => +(until - st.time).toFixed(2);
+  if (!st.roll || !(left(st.quick) > 2.3 && left(st.quick) <= 2.5) || !(left(st.counter) > 1.3 && left(st.counter) <= 1.5))
+    errs.push(
+      `13：攻撃を転がってかわしても、加護が効かない（転がり ${st.roll}・身軽な詠唱の残り ${left(st.quick)}・返しの一撃の残り ${left(st.counter)}）`,
+    );
+}
+
+// 14：溶岩の上に立つ生き物がいない・引き始める前に穴が無い（火口の流れる道の横に生き物を置き、プレイヤーは遠くへ。0.1 秒ごとに 70 秒見る）
+async function lavaMobChecks(pg, base) {
+  await openTest(pg, base, 'seed=42&realm=volcano&god=1');
+  await advance(pg, 2);
+  const r = await pg.evaluate(() => {
+    __test.clearAll();
+    const { w } = __test.size(),
+      cellOf = (x, z) => Math.floor(z / (__test.cell(0).x * 2)) * w + Math.floor(x / (__test.cell(0).x * 2));
+    for (const e of __test.events().list.filter((x) => x.type === 'erupt'))
+      for (const [n, i] of e.order.entries())
+        if (n % 2 === 0)
+          for (const d of [1, -1, w, -w])
+            if (__test.cell(i + d).floor) {
+              __test.summon(['k', 'r', 'j'][n % 3], i + d);
+              break;
+            }
+    dbg.to('stairs'); // 追いかけてこないように、遠くへ
+    const n = __test.state().monsters.length,
+      prev = new Map(),
+      holes = [];
+    let on = 0,
+      first = null,
+      lavaTop = 0;
+    for (let q = 0; q < 700; q++) {
+      __test.advance(0.1);
+      const s = __test.state(),
+        ev = __test.events(),
+        hit = s.monsters.filter((m) => __test.cell(cellOf(m[1], m[2])).lava);
+      lavaTop = Math.max(lavaTop, ev.lava);
+      if (hit.length) {
+        on++;
+        first ??= [s.time, hit[0].slice(0, 3)];
+      }
+      // 引き始める直前（状態 2 の最後）に、流れる順のマスで溶岩でない物（生き物がいる・向かっているマスは除く。溶岩に囲まれて動けない生き物もいる）
+      const taken = new Set();
+      for (let k = 0; k < s.monsters.length; k++) {
+        const m = __test.mob(k);
+        taken.add(m.cz * w + m.cx).add(m.tz * w + m.tx);
+      }
+      for (const e of ev.list.filter((x) => x.type === 'erupt')) {
+        const p = prev.get(e.src);
+        if (p && p[0] === 2 && e.state === 3) holes.push([e.src, p[1]]);
+        prev.set(e.src, [e.state, e.order.filter((i) => !__test.cell(i).lava && !taken.has(i)).length]);
+      }
+    }
+    return { n, on, first, lavaTop, holes };
+  });
+  if (!(r.n > 10) || !(r.lavaTop > 20))
+    errs.push(`14：生き物か溶岩の流れが足りない（生き物 ${r.n}・溶岩のマス ${r.lavaTop}。テストの前提が崩れた）`);
+  if (r.on) errs.push(`14：溶岩の上に立つ生き物がいる（0.1 秒ごとに見て ${r.on} 回。初めは ${JSON.stringify(r.first)}）`);
+  if (!r.holes.length || r.holes.some(([, k]) => k > 0))
+    errs.push(`14：引き始める前に、流れの中に溶岩でないマスが残っている（火口ごとの [マス, 数]：${JSON.stringify(r.holes)}）`);
+}
+
+// 15：吹き飛ばされた生き物は、溶岩の手前で止まり、行き先は今いるマスになる（溶岩の西隣の床に置き、東へ吹き飛ばす）
+async function knockLavaChecks(pg, base) {
+  // 小さな生き物（コボルト）と体の大きな生き物（トロル・竜）。トロルは、体（半径 0.35×大きさ）が溶岩にかかる手前で止まる。
+  // 竜は、マスの真ん中でも体が隣の溶岩にかかっているので、それより深くは入らない
+  for (const key of ['k', 'T', 'D']) {
+    await openTest(pg, base, 'seed=42&realm=volcano&god=1');
+    await advance(pg, 2);
+    const r = await pg.evaluate((key) => {
+      __test.clearAll();
+      const { w, h } = __test.size(),
+        C = __test.cell(0).x * 2;
+      for (let i = w; i < w * h - w; i++) {
+        if (!__test.cell(i).floor || !__test.cell(i + 1).lava || !__test.cell(i - 1).floor) continue;
+        __test.summon(key, i);
+        const m0 = __test.mob(0),
+          gap0 = ((i % w) + 1) * C - (m0.x + 0.35 * m0.scale);
+        __test.knock(0, 14, 0);
+        // 吹き飛びが止まるまで（止まった時の行き先を見る。その後は、また歩き出す）
+        for (let q = 0; q < 60 && (__test.mob(0).kx || __test.mob(0).kz); q++) __test.advance(1 / 30);
+        const m = __test.mob(0),
+          // 体の東の端と、東隣の溶岩のマスの西の縁との間（0 以上なら、体は溶岩にかかっていない）
+          gap = ((i % w) + 1) * C - (m.x + 0.35 * m.scale);
+        return {
+          i,
+          at: m.cz * w + m.cx,
+          to: m.tz * w + m.tx,
+          lava: __test.cell(m.cz * w + m.cx).lava,
+          gap: +gap.toFixed(3),
+          gap0: +gap0.toFixed(3),
+        };
+      }
+      return null;
+    }, key);
+    if (!r) {
+      errs.push('15：溶岩の西隣に床が無い（テストの前提が崩れた。シードを変える）');
+      return;
+    }
+    if (r.lava || r.at !== r.i || r.to !== r.at || !(r.gap >= Math.min(0, r.gap0)))
+      errs.push(
+        `15：吹き飛ばされた生き物（${key}）が、溶岩の手前で止まらない（置いたマス ${r.i}・今いるマス ${r.at}・行き先 ${r.to}・溶岩か ${r.lava}・体と溶岩の間 ${r.gap}・初めの間 ${r.gap0}）`,
+      );
+  }
+}
+
 await withBrowser(async ({ browser, base }) => {
   const pg = await newPage(browser, errs);
   await doorChecks(pg, base);
@@ -333,6 +520,10 @@ await withBrowser(async ({ browser, base }) => {
   await brimChecks(pg, base);
   await chillChecks(pg, base);
   await thinIceChecks(pg, base);
+  await eruptChecks(pg, base);
+  await dodgeChecks(pg, base);
+  await lavaMobChecks(pg, base);
+  await knockLavaChecks(pg, base);
 });
 console.log('page errors:', errs.length ? errs : 'none');
 process.exit(errs.length ? 1 : 0);

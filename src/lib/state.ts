@@ -602,24 +602,11 @@ export interface Proj {
   keep?: boolean;
   wallPass?: number;
   passing?: boolean;
-  /** 連射の特性：重さ・続けて当てる・最後の矢が弾ける */
-  heavy?: number;
-  steady?: number;
-  boom?: boolean;
-  /** 光の弾の星屑・跡に場を残す */
-  dust?: number;
-  trail?: boolean;
-  /** 光の月：大きさ・引き寄せ・満ち欠けの段・焼く間の溜め・引き寄せた生き物、重さが効かない */
+  /** 光の月：大きさ・引き寄せ・引き寄せた生き物、重さが効かない */
   moon?: number;
   tide?: number;
-  phases?: number;
-  burnT?: number;
   pulled?: Set<Mob>;
   noGrav?: boolean;
-  /** 分かれた小さな物・何代目か・弾ける強さ */
-  mini?: boolean;
-  gen?: number;
-  burstK?: number;
   /** 消える印 */
   dead?: boolean;
 }
@@ -831,14 +818,9 @@ export interface Monster {
   vlz?: number;
   plx?: number;
   plz?: number;
-  /** 続けて当てた矢の数と、最後に当たったゲームの時刻（連射の特性 steady） */
-  rapidN?: number;
-  rapidT?: number;
   /** 最後に受けた攻撃の種類と、その吹き飛ばしの強さ（src/lib/combat.ts の hitReact が読む） */
   lastAtk?: string | undefined;
   lastKnock?: number | undefined;
-  /** 叩きつけ（ぶつかった時の傷 d と、終わるゲームの時刻 until） */
-  slam?: { d: number; until: number } | null;
   /** 性質の跡を最後に残したゲームの時刻（火・冷気・稲妻・連鎖。0.5 秒あける） */
   fireT2?: number;
   iceT?: number;
@@ -1000,9 +982,33 @@ export type RoomEvent =
   | { type: 'statue'; cell: number; done: boolean; active: boolean; t: number; chimed?: boolean }
   | { type: 'collapse'; cells: number[] | undefined; ri: number; state: number; t: number }
   | { type: 'oracle'; cell: number; done: boolean }
-  | { type: 'flood' | 'lavaflow'; ri: number; order: number[]; src: number | undefined; state: number; t: number; k: number; max: number }
+  | {
+      type: 'flood' | 'lavaflow';
+      ri: number;
+      order: number[];
+      src: number | undefined;
+      state: number;
+      t: number;
+      k: number;
+      /** 溶岩の流れ：同じマスを試し直した回数・試し直すマス・流せずに待っているマス（src/lib/events.ts の nextFlow） */
+      tries?: Map<number, number>;
+      retry?: number[];
+      wait?: number[];
+    }
   | { type: 'tele'; a: number; b: number; lock: number }
-  | { type: 'erupt'; src: number; order: number[]; state: number; t: number; k: number }
+  | {
+      type: 'erupt';
+      src: number;
+      order: number[];
+      state: number;
+      t: number;
+      k: number;
+      /** 溶岩の流れ：同じマスを試し直した回数・試し直すマス・流せずに待っているマス（src/lib/events.ts の nextFlow）と、この噴き上がりで流したマスの、流す前の液体と印 */
+      tries?: Map<number, number>;
+      retry?: number[];
+      wait?: number[];
+      poured?: Map<number, [number, number]>;
+    }
   | { type: 'haunt'; ri: number; tombs: number[]; done: boolean; t: number; chimed?: boolean };
 /** 最深部の状態：一番高い天井のマス c0（王の影が現れる所）、王の影 boss と、現れるまで・呼び出すまでの秒、着いた時の伝言を出したか */
 export interface FinalState {
@@ -1247,8 +1253,8 @@ export const SL = new Float32Array(NSL * 3),
 export const keys: { KeyW?: boolean; KeyA?: boolean; KeyS?: boolean; KeyD?: boolean; [code: string]: boolean | undefined } = {};
 /** 手元の武器が跳ねたゲームの時刻（術を放った時。19-hands-runes.js の drawViewWeapons が読む）。丸ごと入れ替えない */
 export const vmKick = { L: -9, R: -9 };
-/** 光線を撃ち続けている間の、手ごとの記録（続けた秒 hold・最後に撃った時刻 last・焼いた時刻 sear・弾けた時刻 burst）。丸ごと入れ替えない */
-export const beamHold = { L: { hold: 0, last: -9, sear: -9, burst: -9 }, R: { hold: 0, last: -9, sear: -9, burst: -9 } };
+/** 光線を撃ち続けている間の、手ごとの記録（続けた秒 hold・最後に撃った時刻 last・弾けた時刻 burst）。丸ごと入れ替えない */
+export const beamHold = { L: { hold: 0, last: -9, burst: -9 }, R: { hold: 0, last: -9, burst: -9 } };
 /** 漂う塵の粒（位置 x・y・z、揺れの位相 ph、文字 g、大きさ s。src/lib/particles.ts の initDust・respawnDust が置き、15-sound-fire.js が動かす）。丸ごと入れ替えない */
 export const dust = {
   x: new Float32Array(DUST_N),

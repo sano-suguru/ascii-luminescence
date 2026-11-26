@@ -16,10 +16,62 @@ import { canStep, summon } from './monsters.ts';
 import { TRAP_INFO, mname } from './names.ts';
 import { spawn } from './particles.ts';
 import { mpick, mr, sndRand } from './random.ts';
-import { adv, blaze, clock, gfx, here, keys, player, stealth, vfx } from './state.ts';
+import { type Mob, adv, blaze, clock, gfx, here, keys, player, stealth, vfx } from './state.ts';
+import { clamp } from './rng.ts';
 import { makeNoise } from './status.ts';
 import { CELL, LQ_LAVA, LQ_WATER, MW, NCELL, PROPHECIES, TC, TW, cpos } from './world.ts';
 
+/**
+ * 溶岩を歩けない生き物 m（飛ぶ物と溶岩に住む物は除く）が、マス i にいるか、i へ歩いている途中か、体（半径 0.35×大きさ）が i にかかっているか
+ * （溶岩はそこへ流さない。行き先へ流すと、そのまま溶岩の上に立ってしまう）
+ */
+const onWay = (m: Mob, i: number): boolean => {
+  if (m.ty.flier || m.ty.habitat === 'lava') return false;
+  if (m.cz * MW + m.cx === i || m.tz * MW + m.tx === i) return true;
+  const x0 = (i % MW) * CELL,
+    z0 = Math.floor(i / MW) * CELL;
+  return Math.hypot(m.x - clamp(m.x, x0, x0 + CELL), m.z - clamp(m.z, z0, z0 + CELL)) < 0.35 * m.ty.scale;
+};
+/** 溶岩をマス i に流せないか（プレイヤーの近くか、生き物がいる・向かっている・体がかかっている） */
+const lavaBlocked = (i: number): boolean => {
+  const [x, z] = cpos(i);
+  return Math.hypot(x - player.x, z - player.z) < 1.6 || here.monsters.some((m) => onWay(m, i));
+};
+/** 流れる途中で、同じマスを試し直す回数 */
+const FLOW_TRIES = 10;
+/** 溶岩の流れ（噴き上がりと、部屋の出来事の流れ）の、流す順と進み具合 */
+interface Flow {
+  order: number[];
+  k: number;
+  tries?: Map<number, number>;
+  retry?: number[];
+  wait?: number[];
+}
+/** まだ流すマスがあるか（流す順の残りか、試し直すマス） */
+const flowLeft = (ev: Flow): boolean => ev.k < ev.order.length || (ev.retry?.length ?? 0) > 0;
+/**
+ * 次に流すマスを返す。流す順（ev.order。並べ替えない）を先に、それが尽きたら試し直すマス ev.retry を順に見る。流せなければ null を返し、
+ * そのマスを ev.retry の終わりに入れる（同じマスは FLOW_TRIES 回まで。越えたら、待つマス ev.wait に入れる。待つマスは、流し終えた後も retryWaiting で試し続ける）
+ */
+function nextFlow(ev: Flow): number | null {
+  const fromOrder = ev.k < ev.order.length,
+    i = fromOrder ? nth(ev.order, ev.k) : nth(ev.retry ?? [], 0);
+  if (fromOrder) ev.k++;
+  else ev.retry?.shift();
+  if (!lavaBlocked(i)) return i;
+  const tries = (ev.tries ??= new Map()),
+    n = (tries.get(i) ?? 0) + 1;
+  tries.set(i, n);
+  if (n < FLOW_TRIES) (ev.retry ??= []).push(i);
+  else (ev.wait ??= []).push(i);
+  return null;
+}
+/** 待つマスのうち、今は流せるマスを、待つマスから外して返す */
+function retryWaiting(ev: Flow): number[] {
+  const free = (ev.wait ?? []).filter((i) => !lavaBlocked(i));
+  if (free.length) ev.wait = (ev.wait ?? []).filter((i) => !free.includes(i));
+  return free;
+}
 /** 今の階 */
 const level = () => must(here.D, '今の階 here.D');
 
@@ -204,6 +256,17 @@ export function updateEvents(dt: number, t: number): void {
       }
     } else if (ev.type === 'flood' || ev.type === 'lavaflow') {
       const lava = ev.type === 'lavaflow';
+      /** マス i に溶岩を流す（まわりの燃える物に火をつけ、燃えるガスは爆ぜる） */
+      const pourLava = (i: number) => {
+        const [x, z] = cpos(i);
+        // この溶岩は引かないので、火口の噴き上がりが引く時に戻すマスから外す
+        for (const o of here.events) if (o.type === 'erupt') o.poured?.delete(i);
+        level().liquid[i] = LQ_LAVA;
+        blaze.cellFlag[i] = 70;
+        for (const j of [i + 1, i - 1, i + MW, i - MW]) if (j >= 0 && j < NCELL && nth(blaze.fuel, j) > 0) ignite(j, 0.6, false);
+        if (nth(level().gas, i) > 0.1) boom(i);
+        if (sndRand() < 0.3) sBubble(x, z, 0.25, true);
+      };
       if (ev.state === 0) {
         if (level().roomOf[pc] === ev.ri) {
           ev.state = 1;
@@ -229,22 +292,13 @@ export function updateEvents(dt: number, t: number): void {
         ev.t += dt;
         const step = lava ? 0.38 : 0.11;
         let changed = false;
-        while (ev.t >= step && ev.k < ev.order.length && ev.k < ev.max) {
+        while (ev.t >= step && (lava ? flowLeft(ev) : ev.k < ev.order.length)) {
           ev.t -= step;
-          const i = nth(ev.order, ev.k++);
-          const [x, z] = cpos(i);
-          if (lava && (Math.hypot(x - player.x, z - player.z) < 1.6 || here.monsters.some((m) => !m.ty.flier && m.cz * MW + m.cx === i))) {
-            ev.order.push(i);
-            continue;
-          }
+          const i = lava ? nextFlow(ev) : nth(ev.order, ev.k++);
+          if (i === null) continue;
           changed = true;
-          if (lava) {
-            level().liquid[i] = LQ_LAVA;
-            blaze.cellFlag[i] = 70;
-            for (const j of [i + 1, i - 1, i + MW, i - MW]) if (j >= 0 && j < NCELL && nth(blaze.fuel, j) > 0) ignite(j, 0.6, false);
-            if (nth(level().gas, i) > 0.1) boom(i);
-            if (sndRand() < 0.3) sBubble(x, z, 0.25, true);
-          } else {
+          if (lava) pourLava(i);
+          else {
             level().liquid[i] = LQ_WATER;
             blaze.cellFlag[i] = 50;
             blaze.fire[i] = 0;
@@ -253,7 +307,12 @@ export function updateEvents(dt: number, t: number): void {
           }
         }
         if (changed) uploadCells();
-        if (ev.k >= ev.order.length || ev.k >= ev.max) ev.state = 2;
+        if (!(lava ? flowLeft(ev) : ev.k < ev.order.length)) ev.state = 2;
+      } else if (ev.state === 2 && lava) {
+        // 流せなかったマスは、空いたら流す
+        const free = retryWaiting(ev);
+        for (const i of free) pourLava(i);
+        if (free.length) uploadCells();
       }
     } else if (ev.type === 'tele') {
       const [ax, az] = cpos(ev.a),
@@ -302,12 +361,37 @@ export function updateEvents(dt: number, t: number): void {
         }
       }
     } else if (ev.type === 'erupt') {
-      ev.t -= dt;
+      // 待つ間（0：次に噴き上がるまで、2：引き始めるまで）だけ時計を減らす。流れ出す（1）・引く（3）間は、下で時計を足して1マスずつ進める
+      if (ev.state === 0 || ev.state === 2) ev.t -= dt;
       const f = here.fixtures.find((f) => f.type === 'crater' && Math.floor(f.z / CELL) * MW + Math.floor(f.x / CELL) === ev.src);
+      /** マス i に溶岩を流す（まわりの燃える物に火をつける） */
+      const pour = (i: number) => {
+        // もう溶岩のマスには流さない。ほかの火口が流した溶岩なら、待つマスに入れ、その溶岩が引いた後に流す（引く時も、その火口に任せる）
+        if (level().liquid[i] === LQ_LAVA) {
+          if (here.events.some((o) => o !== ev && o.type === 'erupt' && o.poured?.has(i))) (ev.wait ??= []).push(i);
+          return;
+        }
+        // 凍らせた水は、本当の中身（液体と床）を覚えて、氷を溶かす（氷が溶ける時と同じく、火と燃える物も消す）
+        const ice = blaze.frozen.get(i);
+        if (ice) {
+          level().surface[i] = ice.surf;
+          blaze.fire[i] = 0;
+          blaze.fuel[i] = 0;
+          blaze.frozen.delete(i);
+        }
+        (ev.poured ??= new Map()).set(i, [ice ? ice.liq : nth(level().liquid, i), nth(blaze.cellFlag, i)]);
+        level().liquid[i] = LQ_LAVA;
+        blaze.cellFlag[i] = 70;
+        for (const j of [i + 1, i - 1, i + MW, i - MW]) if (j >= 0 && j < NCELL && nth(blaze.fuel, j) > 0) ignite(j, 0.6, false);
+      };
       if (ev.state === 0 && ev.t <= 0) {
         ev.state = 1;
         ev.k = 0;
         ev.t = 0;
+        ev.tries = new Map();
+        ev.retry = [];
+        ev.wait = [];
+        ev.poured = new Map();
         if (f) {
           f.active = true;
           const L = level().lights[f.li];
@@ -343,22 +427,25 @@ export function updateEvents(dt: number, t: number): void {
       } else if (ev.state === 1) {
         ev.t += dt;
         let ch = false;
-        while (ev.t >= 0.3 && ev.k < ev.order.length) {
+        while (ev.t >= 0.3 && flowLeft(ev)) {
           ev.t -= 0.3;
-          const i = nth(ev.order, ev.k++),
-            [x, z] = cpos(i);
-          if (Math.hypot(x - player.x, z - player.z) < 1.6 || here.monsters.some((m) => !m.ty.flier && m.cz * MW + m.cx === i)) continue;
-          level().liquid[i] = LQ_LAVA;
-          blaze.cellFlag[i] = 70;
+          const i = nextFlow(ev);
+          if (i === null) continue;
+          pour(i);
           ch = true;
-          for (const j of [i + 1, i - 1, i + MW, i - MW]) if (j >= 0 && j < NCELL && nth(blaze.fuel, j) > 0) ignite(j, 0.6, false);
         }
         if (ch) uploadCells();
-        if (ev.k >= ev.order.length) {
+        if (!flowLeft(ev)) {
           ev.state = 2;
           ev.t = 12;
         }
-      } else if (ev.state === 2 && ev.t <= 0) {
+      } else if (ev.state === 2 && ev.t > 0) {
+        // 流せなかったマスは、空いたら流す（引き始めるまで）
+        const free = retryWaiting(ev);
+        for (const i of free) pour(i);
+        if (free.length) uploadCells();
+      } else if (ev.state === 2) {
+        ev.wait = [];
         ev.state = 3;
         ev.k = ev.order.length - 1;
         ev.t = 0;
@@ -372,10 +459,14 @@ export function updateEvents(dt: number, t: number): void {
         let ch = false;
         while (ev.t >= 0.15 && ev.k >= 0) {
           ev.t -= 0.15;
-          const i = nth(ev.order, ev.k--);
-          if (blaze.cellFlag[i] === 70) {
-            level().liquid[i] = 0;
-            blaze.cellFlag[i] = 0;
+          const i = nth(ev.order, ev.k--),
+            was = ev.poured?.get(i);
+          // この噴き上がりで流したマスだけを、流す前の中身（液体と印）に戻す
+          if (was && blaze.cellFlag[i] === 70) {
+            level().liquid[i] = was[0];
+            blaze.cellFlag[i] = was[1];
+            // 踏み分けた草は、また生え戻るように一覧へ入れ直す（溶岩の間に、一覧から外れている）
+            if (was[1] === 20) blaze.trampled.push([i, clock.time]);
             ch = true;
             const [x, z] = cpos(i);
             if (mr() < 0.4) spawn(x, 0.2, z, 0, 0.5, 0, 2, G('.'), 0.4, 0.15, 0.13, 0.13, 1);
@@ -476,7 +567,6 @@ export function triggerTrap(tr: Trap): void {
         state: 1,
         t: 0,
         k: 0,
-        max: must(tr.order).length * 3,
       });
       break;
     case 'methane':
