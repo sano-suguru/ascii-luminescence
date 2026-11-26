@@ -14,19 +14,24 @@ export function updateResume(): void {
 /**
  * マウスを捕まえるのに失敗した時（pointerlockerror・Promise の reject・例外・requestPointerLock が無い）。どれから来ても同じ扱い。
  * このページで一度も捕まえられていなければ、捕まえられないと決め（ui.plFailed）、それからは捕まえようとしない。案内の伝言は1回だけ出す。
- * 一度でも捕まえられていれば、そのたびの失敗とみなし、何もしない（Esc で外した直後に掛け直すと断られるため。次のクリックで、また捕まえる）
+ * 一度でも捕まえられていれば、最後に捕まえてから3回続けて失敗するまでは、そのたびの失敗とみなし、何もしない
+ * （Esc で外した直後に掛け直すと断られるため。次のクリックで、また捕まえる）
  */
 export function lockFailed(): void {
-  if (ui.plFailed || ui.lockedOnce) return;
+  if (ui.plFailed || (ui.lockedOnce && ui.lockTries < 3)) return;
   ui.plFailed = true;
   updateResume();
   msg('<b style="color:#8fe9ff">i</b>マウスをドラッグして視点を動かせます。');
 }
 
-/** マウスを捕まえる（描く画面 #gl で）。失敗したら lockFailed。捕まえられないと決めた後（ui.plFailed）は、捕まえようとしない */
+/**
+ * マウスを捕まえる（描く画面 #gl で）。失敗したら lockFailed。捕まえられないと決めた後（ui.plFailed）は、捕まえようとしない。
+ * Esc のキーを処理している間（ui.escKey）も捕まえにいかない（Esc のキーで掛けたロックは、ブラウザがすぐ外すため。次のクリックで捕まえる）
+ */
 export function tryLock(): void {
   const canvas = must(document.getElementById('gl'), '#gl');
-  if (ui.plFailed) return;
+  if (ui.plFailed || ui.escKey) return;
+  ui.lockTries++;
   // requestPointerLock が無いブラウザ（iPhone の Safari など。型には必ずある）
   // oxlint-disable-next-line typescript/no-unnecessary-condition
   if (!canvas.requestPointerLock) {

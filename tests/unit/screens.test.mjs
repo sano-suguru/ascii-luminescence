@@ -61,32 +61,34 @@ describe('移す前と同じ', () => {
 });
 
 describe('マウスを捕まえるのに失敗した時（lockFailed）', () => {
-  // 失敗の返し方ごとに tryLock を2回呼び、捕まえられないと決めたかと、案内の伝言の数を見る。lockedOnce は、このページで一度でも捕まえたか
-  const run = async (lock, lockedOnce) => {
+  // 失敗の返し方ごとに tryLock を n 回呼び、捕まえられないと決めたかと、案内の伝言の数を見る。lockedOnce は、このページで一度でも捕まえたか。
+  // 伝言の一覧・ui・document は、終わったら元に戻す（document は Node には元々無い）
+  const run = async (lock, lockedOnce, n = 2, escKey = false) => {
     const page = fakeScreen(),
+      hadDoc = 'document' in globalThis,
       doc = globalThis.document,
-      keep = { plFailed: ui.plFailed, lockedOnce: ui.lockedOnce },
-      n0 = msgs.length;
+      keep = { plFailed: ui.plFailed, lockedOnce: ui.lockedOnce, lockTries: ui.lockTries, escKey: ui.escKey },
+      msgs0 = msgs.splice(0);
     globalThis.document = page.document;
     try {
-      msgs.length = 0;
-      Object.assign(ui, { plFailed: false, lockedOnce });
+      Object.assign(ui, { plFailed: false, lockedOnce, lockTries: 0, escKey });
       page.st.lock = lock;
-      for (let i = 0; i < 2; i++) {
+      for (let i = 0; i < n; i++) {
         SC.tryLock();
         await new Promise((res) => setImmediate(res));
+        // Promise の reject と pointerlockerror の両方が来るブラウザ（Chromium）の分
+        SC.lockFailed();
       }
-      // Promise の reject と pointerlockerror の両方が来るブラウザ（Chromium）の分
-      SC.lockFailed();
       return {
         plFailed: ui.plFailed,
         hints: msgs.filter((m) => m.html.includes('ドラッグして視点')).length,
         calls: page.log.filter((e) => e[0] === 'rpl').length,
       };
     } finally {
-      globalThis.document = doc;
+      if (hadDoc) globalThis.document = doc;
+      else delete globalThis.document;
       Object.assign(ui, keep);
-      msgs.length = Math.min(msgs.length, n0);
+      msgs.splice(0, msgs.length, ...msgs0);
     }
   };
   it('一度も捕まえていなければ、捕まえられないと決め、案内は1回だけ。それからは捕まえようとしない', async () => {
@@ -94,8 +96,20 @@ describe('マウスを捕まえるのに失敗した時（lockFailed）', () => 
     expect(await run('throw', false)).toEqual({ plFailed: true, hints: 1, calls: 1 });
     expect(await run('none', false)).toEqual({ plFailed: true, hints: 1, calls: 0 });
   });
-  it('一度でも捕まえていれば、失敗しても決めず、次もまた捕まえようとする（Esc で外した直後に断られる時）', async () => {
+  it('一度でも捕まえていれば、2回続けて失敗しても決めず、次もまた捕まえようとする（Esc で外した直後に断られる時）', async () => {
     expect(await run('reject', true)).toEqual({ plFailed: false, hints: 0, calls: 2 });
     expect(await run('throw', true)).toEqual({ plFailed: false, hints: 0, calls: 2 });
+  });
+  it('一度でも捕まえていても、3回続けて失敗したら、捕まえられないと決め、案内を1回出す', async () => {
+    expect(await run('reject', true, 4)).toEqual({ plFailed: true, hints: 1, calls: 3 });
+    expect(await run('none', true, 4)).toEqual({ plFailed: true, hints: 1, calls: 0 });
+  });
+  it('Esc のキーを処理している間は、捕まえにいかない', async () => {
+    expect(await run('ok', true, 2, true)).toEqual({ plFailed: false, hints: 0, calls: 0 });
+  });
+  it('終わったら、伝言の一覧と document を元に戻す', async () => {
+    const before = [...msgs];
+    await run('reject', false);
+    expect([msgs, 'document' in globalThis]).toEqual([before, false]);
   });
 });

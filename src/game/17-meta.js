@@ -87,7 +87,9 @@ window.addEventListener('mousemove',e=>{
   else if(dragging){ player.yaw-=(e.clientX-lmx)*0.0045; player.pitch-=(e.clientY-lmy)*0.0045; lmx=e.clientX; lmy=e.clientY; }
   player.pitch=clamp(player.pitch,-1.35,1.35);
 });
-window.addEventListener('keydown',e=>{
+// Esc：捕まえていない時はメニューを開く。閉じるのは、捕まえない遊び方（捕まえられないと決めたか、一度も捕まえていない）の時だけ。
+// 捕まえる遊び方では、「探索を続ける」かメニューの外のクリックで閉じて、その時に捕まえる（Esc では捕まえられないため。下の ui.escKey）。レベルアップの画面では何もしない
+function onKeyDown(e){
   if(ui.gallery&&ui.gallery.mode==='beast'){ if(e.code==='ArrowLeft')showBeast(ui.gallery.idx-1); else if(e.code==='ArrowRight')showBeast(ui.gallery.idx+1); else if(e.code==='Escape')returnToTitle(); else if(e.code==='KeyR')galleryReset(); e.preventDefault(); return; }
   if(e.target&&e.target.tagName==='INPUT'){ if(e.code==='Enter'){ e.preventDefault(); document.getElementById('enter').click(); } return; }
   keys[e.code]=true;
@@ -97,7 +99,7 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Escape'&&ui.dbgOpen){ setDbg(false); return; }
   if(ui.altarOpen&&(e.code==='Escape'||e.code==='Tab')){ e.preventDefault(); closeAltar(true); if(e.code==='Tab'&&ui.started&&!adv.dead)setInv(true); return; }
   if(e.code==='Tab'){ e.preventDefault(); if(ui.started&&!adv.dead){ if(ui.menuOpen)setMenu(false); setInv(!ui.invOpen); } return; }
-  if(e.code==='Escape'){ if(ui.invOpen){ setInv(false); return; } if(ui.started&&!adv.dead&&!ui.locked){ setMenu(!ui.menuOpen); return; } }
+  if(e.code==='Escape'){ if(ui.invOpen){ setInv(false); return; } if(ui.lvlOpen)return; if(ui.started&&!adv.dead&&!ui.locked){ if(ui.menuOpen&&ui.lockedOnce&&!ui.plFailed)return; setMenu(!ui.menuOpen); return; } }
   if(isPaused())return;
   if(ui.started&&e.code==='KeyM'){ sndToggle(); }
   if(ui.started&&e.code==='KeyH'){ cycleUi(); }
@@ -106,7 +108,9 @@ window.addEventListener('keydown',e=>{
   if(ui.started&&e.code==='KeyP'){ ui.perfOn=!ui.perfOn; renderStatus(); }
   if(ui.started&&e.code==='KeyJ'){ ui.chronOn=!ui.chronOn; ui.helpOn=false; ui.helpT=0; const el=document.getElementById('help'); if(el){ if(ui.chronOn)renderChron(); el.classList.toggle('off',!ui.chronOn); } }
   if(ui.started&&(e.key==='?'||e.code==='Slash')){ setHelp(!ui.helpOn); ui.helpT=0; }
-});
+}
+// Esc のキーを処理している間は、マウスを捕まえにいかない（ui.escKey。Esc のキーで掛けたロックは、ブラウザがすぐ外し、外れた事件でメニューが開いてしまうため）
+window.addEventListener('keydown',e=>{ ui.escKey=e.code==='Escape'; try{ onKeyDown(e); } finally{ ui.escKey=false; } });
 window.addEventListener('keyup',e=>{ keys[e.code]=false; });
 window.addEventListener('blur',()=>{ for(const k in keys)keys[k]=false; dragging=false; });
 

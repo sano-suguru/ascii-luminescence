@@ -2,7 +2,7 @@
 // サンドボックス付きの iframe の中（allow-scripts だけ。allow-pointer-lock も allow-same-origin も無い。claude.ai の Artifact など）で、止まらずに最後まで遊べるか。
 // 外のページ（about:blank）に iframe を置き、テスト用モードのページを開く。起源が null になるので、localStorage にさわると SecurityError になり、
 // ポインタロックは断られる（Chromium は Promise の reject と pointerlockerror の両方）。ポインタロックは差し替えない（newPage の realLock）。
-//   1. 本物のサンドボックス：タイトル → 探索（ドラッグの案内が1回）→ ドラッグで見回す → Esc でメニュー → 続ける → レベルアップ → 祭壇を Esc で閉じる
+//   1. 本物のサンドボックス：タイトル → 探索（ドラッグの案内が1回）→ ドラッグで見回す → Esc でメニュー → 続ける → レベルアップ（Esc では何もしない）→ 祭壇を Esc で閉じる
 //      → Esc でメニュー → 死 → 始め直し → タイトル → 図鑑 → もう一度探索
 //   2. ほかのブラウザ（初めに動く台本で作る）：requestPointerLock が無い（iPhone の Safari など）・呼んでも何も起きない・音の部品を作れない。
 //      どれも Esc でメニューが開き、ドラッグで見回せる
@@ -99,6 +99,12 @@ await withBrowser(async ({ browser, base }) => {
     await E(() => dbg.exp(400));
     await E(() => __test.advance(0.5));
     if (!(await view(E)).panel) errs.push(`${label}：レベルアップの画面が開かない（テストの前提が崩れた）`);
+    // レベルアップの画面では、Esc を押しても何もしない（メニューが上に重なると、選択肢のクリックがメニューに取られる）
+    await pg.keyboard.press('Escape');
+    await E(() => __test.advance(0.1));
+    v = await view(E);
+    if (v.menu || !v.panel)
+      errs.push(`${label}：レベルアップの画面で Esc を押すと、メニューが開くか画面が閉じる（menu ${v.menu}、panel ${v.panel}）`);
     for (let i = 0; i < 10 && (await view(E)).panel; i++) {
       await E(() => __test.advance(0.8));
       await fr.click('#altarp button[data-lk]');

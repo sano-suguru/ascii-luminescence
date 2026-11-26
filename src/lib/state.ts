@@ -54,8 +54,12 @@ export interface Ui {
   helpOn: boolean;
   /** マウスを捕まえているか（ポインタロック） */
   locked: boolean;
-  /** このページで一度でもマウスを捕まえられたか（それからは、失敗しても捕まえられないとは決めない） */
+  /** このページで一度でもマウスを捕まえられたか（それからは、続けて3回失敗するまで、捕まえられないとは決めない） */
   lockedOnce: boolean;
+  /** 最後に捕まえてから、捕まえようとした回数（捕まえると0に戻る） */
+  lockTries: number;
+  /** Esc のキーを処理している間か（その間は tryLock が捕まえにいかない） */
+  escKey: boolean;
   /** 1人称（'fps'）か3人称 */
   camMode: string;
   /** レベルアップの画面 */
@@ -118,6 +122,8 @@ export const ui: Ui = {
   helpOn: false,
   locked: false,
   lockedOnce: false,
+  lockTries: 0,
+  escKey: false,
   camMode: 'fps',
   lvlOpen: false,
   altarOpen: false,
