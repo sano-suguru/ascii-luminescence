@@ -352,6 +352,31 @@ await withBrowser(
       await p2.close();
       return out;
     };
+    // 目の慣れ（露出）は、生き物を出したらすぐ新しい画面に合う（暗く出てから明るくなったりしない）：出して2フレーム後と3秒後で、ほぼ同じか。
+    //    前に年老いた竜を一番引いて見下ろした所から出しておく（前の画面の明るさが違う）
+    const eye = await pg.evaluate(() => {
+      const list = __test.gallery(),
+        other = list.find((o) => o.name === '年老いた竜'),
+        out = [];
+      if (!other) return '前に出す「年老いた竜」が図鑑に無い';
+      for (const name of ['竜', '不死の王', 'ネズミ']) {
+        const e = list.find((o) => o.name === name);
+        if (!e) return `図鑑に「${name}」が無い`;
+        __test.galleryShow(other.n, { zoom: 0.5, pitch: 1.3 });
+        __test.advance(1);
+        __test.galleryShow(e.n);
+        __test.advance(1 / 30);
+        const now = __test.galleryDraw().exposure;
+        __test.advance(3);
+        out.push({ name, now, later: __test.galleryDraw().exposure });
+      }
+      return out;
+    });
+    if (typeof eye === 'string') errs.push(`図鑑の目の慣れ：${eye}`);
+    else
+      for (const o of eye)
+        if (!(Math.abs(o.now - o.later) <= 0.03 * o.later))
+          errs.push(`図鑑の目の慣れ：${o.name}を出した直後の露出 ${o.now} が、3秒後の ${o.later} と違う（すぐ合っていない）`);
     rmSync(RAND_OUT, { recursive: true, force: true }); // 前に落ちた時の画像を残さない
     const rat = { name: 'ネズミ', opt: {} },
       plain = await specimens({ burn: 0, before: rat }),

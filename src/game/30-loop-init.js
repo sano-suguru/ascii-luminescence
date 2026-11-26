@@ -149,7 +149,8 @@ if(TEST)window.__test={
     const cp=gfx.camera.position;
     // turn: the creature's angle from facing the camera (radians, -pi to pi), so a check can see it turn or hold still
     const turn=Math.atan2(Math.sin(m.yaw-player.yaw),Math.cos(m.yaw-player.yaw));
-    return {name:m.ty.name,turn:+turn.toFixed(4),glyphs:n,sparks,bad,hash:h.toString(16),box:n?{w:f(hi[0]-lo[0]),d:f(hi[2]-lo[2]),y0:f(lo[1]),y1:f(hi[1])}:null,
+    // exposure: the eye's exposure now (the screen's brightness factor), so a check can see that it settles at once when a creature is shown
+    return {name:m.ty.name,turn:+turn.toFixed(4),glyphs:n,sparks,bad,hash:h.toString(16),exposure:+finalPass.uniforms.uExposure.value.toFixed(4),box:n?{w:f(hi[0]-lo[0]),d:f(hi[2]-lo[2]),y0:f(lo[1]),y1:f(hi[1])}:null,
       camera:{dist:+Math.hypot(cp.x-m.x,cp.z-m.z).toFixed(3),height:+cp.y.toFixed(3),pitch:+gfx.camera.rotation.x.toFixed(3),
         aimY:+(ui.gallery.aimY??0).toFixed(3),aimed:+Math.hypot(cp.x-m.x,cp.y-(ui.gallery.aimY??0),cp.z-m.z).toFixed(3),ceil:+ceilAt(cp.x,cp.z).toFixed(3),roomR:+(ui.gallery.room.far-0.8).toFixed(3),
         bodyR:(ui.gallery.fix||ui.gallery.view)?.bodyR!==undefined?+(ui.gallery.fix||ui.gallery.view).bodyR.toFixed(3):null}}; },
