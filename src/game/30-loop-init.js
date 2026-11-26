@@ -16,10 +16,11 @@ function frame(nowMs){
   requestAnimationFrame(frame);
   if(TEST){ if(TESTQ.n>0){ TESTQ.n--; try{ testTick(true); } finally{ if(!TESTQ.n&&TESTQ.done){ const d=TESTQ.done; TESTQ.done=null; d(); } } } return; }
   const now=nowMs/1000; let raw=last?now-last:0.016; last=now;
-  tick(raw,true);
+  stepTick(raw,true);
 }
 const TESTQ={n:0,done:null};
-function testTick(draw){ TESTCLK.advance(TEST_STEP*1000); tick(TEST_STEP,draw); }
+function testTick(draw){ TESTCLK.advance(TEST_STEP*1000); stepTick(TEST_STEP,draw); }
+function stepTick(raw,draw){ const r=ui.gallery&&ui.gallery.mode==='beast'&&ui.gallery.rnd; if(r)withVisualRand(r,()=>tick(raw,draw)); else tick(raw,draw); }
 function tick(raw,draw){
   if(isPaused()&&ui.started){ if(frame.stillDrawn)return; frame.stillDrawn=true; } else frame.stillDrawn=false; const dt=isPaused()?0:clamp(raw,0,0.05)*timeScale();
   clock.time+=dt; const t=clock.time;
@@ -139,10 +140,14 @@ if(TEST)window.__test={
       for(let j=0;j<4;j++)if(!Number.isFinite(dPar[k*4+j]))ok=false; if(!ok)bad++; }
     for(let k=p0;k<p1;k++)if(['x','y','z','vx','vy','vz','life','gl','sz','r','g','b'].some(a=>!Number.isFinite(P[a][k])))bad++;
     const f=v=>+v.toFixed(2), n=d1-d0;
+    // hash: a fingerprint of what it drew (the glyphs' place, colour, glyph and size, the sparks' place and colour, to 1/1000), so a check can see that two draws are the same
+    let h=0x811c9dc5; const mix=v=>{ h=Math.imul(h^(Math.round(v*1000)|0),0x01000193)>>>0; };
+    for(let k=d0;k<d1;k++){ for(let j=0;j<3;j++){ mix(dPos[k*3+j]); mix(dCol[k*3+j]); } for(let j=0;j<4;j++)mix(dPar[k*4+j]); }
+    for(let k=p0;k<p1;k++)for(const a of ['x','y','z','r','g','b'])mix(P[a][k]);
     const cp=gfx.camera.position;
     // turn: the creature's angle from facing the camera (radians, -pi to pi), so a check can see it turn or hold still
     const turn=Math.atan2(Math.sin(m.yaw-player.yaw),Math.cos(m.yaw-player.yaw));
-    return {name:m.ty.name,turn:+turn.toFixed(4),glyphs:n,sparks,bad,box:n?{w:f(hi[0]-lo[0]),d:f(hi[2]-lo[2]),y0:f(lo[1]),y1:f(hi[1])}:null,
+    return {name:m.ty.name,turn:+turn.toFixed(4),glyphs:n,sparks,bad,hash:h.toString(16),box:n?{w:f(hi[0]-lo[0]),d:f(hi[2]-lo[2]),y0:f(lo[1]),y1:f(hi[1])}:null,
       camera:{dist:+Math.hypot(cp.x-m.x,cp.z-m.z).toFixed(3),height:+cp.y.toFixed(3),pitch:+gfx.camera.rotation.x.toFixed(3),
         aimY:+(ui.gallery.aimY??0).toFixed(3),aimed:+Math.hypot(cp.x-m.x,cp.y-(ui.gallery.aimY??0),cp.z-m.z).toFixed(3),ceil:+ceilAt(cp.x,cp.z).toFixed(3),roomR:+(ui.gallery.room.far-0.8).toFixed(3),
         bodyR:(ui.gallery.fix||ui.gallery.view)?.bodyR!==undefined?+(ui.gallery.fix||ui.gallery.view).bodyR.toFixed(3):null}}; },

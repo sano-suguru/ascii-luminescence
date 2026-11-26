@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { nth } from '../../src/lib/array.ts';
 import { G, RUNE_CHARS } from '../../src/lib/glyphs.ts';
-import { R, RI, keyedRand, mpick, mr, pick, rand, setRand, setSoundRand, shuffle, sndRand } from '../../src/lib/random.ts';
+import { R, RI, keyedRand, mpick, mr, pick, rand, setRand, setSoundRand, shuffle, sndRand, withVisualRand } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 
 const random = Math.random;
@@ -54,6 +54,40 @@ describe('mr・mpick', () => {
     expect(mpick(['a', 'b', 'c', 'd'])).toBe('b');
     Math.random = () => 0.99;
     expect(mpick(['a', 'b', 'c', 'd'])).toBe('d');
+  });
+});
+
+describe('withVisualRand（図鑑の生き物だけの見た目の乱数）', () => {
+  it('包んだ間だけ、mr・mpick・迷宮の乱数の初めの形が渡した並びを読み、Math.random は引かない。終わると戻り、返した値を返す', () => {
+    let calls = 0;
+    Math.random = () => (calls++, 0.25);
+    const f = mulberry32(5),
+      g = mulberry32(5);
+    const got = withVisualRand(f, () => [mr(), mpick(['a', 'b', 'c', 'd']), rand()]);
+    expect(got).toEqual([g(), nth(['a', 'b', 'c', 'd'], Math.floor(g() * 4)), g()]);
+    expect(calls).toBe(0);
+    expect(mr()).toBe(0.25);
+    expect(calls).toBe(1);
+  });
+  it('入れ子にでき、例外の時も元に戻す', () => {
+    Math.random = () => 0.5;
+    withVisualRand(
+      () => 0.1,
+      () => {
+        expect(mr()).toBe(0.1);
+        expect(() =>
+          withVisualRand(
+            () => 0.2,
+            () => {
+              expect(mr()).toBe(0.2);
+              throw new Error('途中で止まる');
+            },
+          ),
+        ).toThrow('途中で止まる');
+        expect(mr()).toBe(0.1);
+      },
+    );
+    expect(mr()).toBe(0.5);
   });
 });
 

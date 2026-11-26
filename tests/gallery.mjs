@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 // 図鑑のテスト：全部の生き物を、立つ・歩く・眠るの姿で出して、例外・描いた文字の数・NaN を確かめる。寄る・引く・見下ろす角度、図鑑を手で動かす
 // （ホイールで寄る・引く、ドラッグで回す・見下ろす、離すとしばらく止まってまた回る、R と ← → で戻る、ドラッグが外れる、背の高い生き物に寄ると狙う点が上がる）。
-// 最後に Esc でタイトルへ戻る。ページのエラーを確かめる。
+// 最後に Esc でタイトルへ戻る。図鑑の生き物が、ほかの所で見た目の乱数を余分に引いても変わらないか（別の2つのページで比べる）。ページのエラーを確かめる。
 //   node tests/gallery.mjs          テスト版（.build/test/。既定）
 //   node tests/gallery.mjs --prod   公開用の版（dist/）
-import { withBrowser, newPage, openTest, advance, annotate } from './lib.mjs';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { withBrowser, newPage, openTest, advance, annotate, OUT } from './lib.mjs';
+
+const RAND_OUT = join(OUT, 'gallery-rand');
 
 const errs = [];
 await withBrowser(
@@ -297,6 +301,64 @@ await withBrowser(
     await advance(pg, 0.5);
     if (await pg.evaluate(() => document.getElementById('gal').classList.contains('show')))
       errs.push('図鑑で Esc を押しても、タイトルへ戻らない');
+
+    // 図鑑の生き物は、見た目の乱数から切り離されているか：その種類から作った自分の乱数で作り、描く（withVisualRand）。
+    //    2つのページで、画面写真の比較（tests/visual.mjs）と同じ4体を同じように出す。片方は、図鑑を開く前に Math.random を1000回、
+    //    出した後も1フレームごとに1回、余分に引く（ほかの所で見た目の乱数を引く回数が変わった時の代わり）。描いた物の指紋（形・初めの値・揺れ・
+    //    まわりの粒子）と、画面写真が同じか
+    const SPECIMENS = [
+      ['竜', 0.6, 'stand', 1.15],
+      ['オーガ', 0.25, 'walk', 2],
+      ['不死の王', 0.25, 'stand', 1.7],
+      ['燃える鱗の竜（見本）', 0.6, 'stand', 1.6],
+    ];
+    const specimens = async (burn) => {
+      const p2 = await newPage(browser, errs);
+      await openTest(p2, base);
+      const out = [];
+      for (const [i, [name, yaw, pose, zoom]] of SPECIMENS.entries()) {
+        const r = await p2.evaluate(
+          ({ name, yaw, pose, zoom, burn, first }) => {
+            if (first) for (let k = 0; k < burn * 1000; k++) Math.random();
+            const e = __test.gallery().find((o) => o.name === name);
+            if (!e) return `図鑑に「${name}」が無い`;
+            const r0 = __test.galleryShow(e.n, { yaw, pose, zoom, center: true });
+            if (typeof r0 === 'string') return r0;
+            for (let k = 0; k < 90; k++) {
+              for (let j = 0; j < burn; j++) Math.random();
+              __test.advance(1 / 30);
+            }
+            __test.frames(1);
+            return __test.galleryDraw();
+          },
+          { name, yaw, pose, zoom, burn, first: i === 0 },
+        );
+        if (typeof r === 'string') {
+          errs.push(`図鑑の乱数：${r}`);
+          continue;
+        }
+        out.push({ name, hash: r.hash, png: await p2.screenshot({ timeout: 90000 }) });
+      }
+      await p2.close();
+      return out;
+    };
+    const plain = await specimens(0),
+      burnt = await specimens(1);
+    for (const a of plain) {
+      const b = burnt.find((o) => o.name === a.name);
+      if (!b) continue;
+      if (a.hash === b.hash && a.png.equals(b.png)) continue;
+      // 違った時は、2枚の画面写真を残す（tests/out/gallery-rand/。-a がふつう、-b が余分に引いた方）
+      mkdirSync(RAND_OUT, { recursive: true });
+      writeFileSync(join(RAND_OUT, `${a.name}-a.png`), a.png);
+      writeFileSync(join(RAND_OUT, `${a.name}-b.png`), b.png);
+      errs.push(
+        a.hash !== b.hash
+          ? `図鑑の乱数：ほかの所で見た目の乱数を余分に引くと、${a.name}の描いた物が変わる（指紋 ${a.hash} → ${b.hash}）`
+          : `図鑑の乱数：ほかの所で見た目の乱数を余分に引くと、${a.name}の画面写真が変わる（描いた物の指紋は同じ）`,
+      );
+    }
+    console.log(`図鑑の乱数：${plain.length} 体を比べた`);
   },
   { prod: process.argv.includes('--prod') },
 );

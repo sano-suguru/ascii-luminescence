@@ -10,7 +10,7 @@ import { MARK_H } from '../hud.ts';
 import { cellLight } from '../lightmap.ts';
 import { dyn, spawn } from '../particles.ts';
 import { clamp } from '../rng.ts';
-import { mr } from '../random.ts';
+import { mr, withVisualRand } from '../random.ts';
 import { type Monster, clock, gfx, player, ui } from '../state.ts';
 import { drawMark } from '../status.ts';
 import {
@@ -63,8 +63,14 @@ export function drawTentacles(m: Mon, t: number): void {
   }
 }
 
-/** 生き物を描く：近接の攻撃を溜めている間は頭の上に !、当たって光っている間は3倍の明るさで描く（__test.hideMonster で隠した物は描かない） */
+/** 生き物を描く。その生き物だけの見た目の乱数 rnd を持つ物（図鑑の生き物）は、描く間 mr() がそれを読む */
 export function drawMonster(m: Mon, t: number): void {
+  const own = m.rnd;
+  if (own) withVisualRand(own, () => drawMonsterNow(m, t));
+  else drawMonsterNow(m, t);
+}
+/** 生き物を描く（続き）：近接の攻撃を溜めている間は頭の上に !、当たって光っている間は3倍の明るさで描く（__test.hideMonster で隠した物は描かない） */
+function drawMonsterNow(m: Mon, t: number): void {
   if (m.drawHide) return; // __test.hideMonster: not drawn for a moment (its light stays)
   if ((m.wind ?? NaN) > 0) {
     const sc = m.ty.scale,
