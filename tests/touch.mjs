@@ -8,7 +8,8 @@
 //      止める時に mousedown を取り消さないか（タイトルのシードの入力欄に入れなくなるおそれ）も見る
 //   4. タッチのボタン [装備] [メニュー] で、装備の画面とメニューを開け閉めできる。[全画面] は、全画面にできる時だけ出る
 //   5. マウスを動かすと、指の遊び方が終わり、タッチのボタンが消える
-//   6. 探索中のタッチのボタンが、左上の状態の表示とも、右上のミニマップとも重ならない（狭い横向きの端末でも）
+//   6. 探索中のタッチのボタンと指の操作のボタンが、左上の状態の表示・右上のミニマップ・下の HUD・互いと重ならない
+//      （狭い横向きの端末と、claude.ai のアプリの中で測った本物の大きさ 750×312）
 //   8. 指の操作（src/lib/touchpad.ts。CDP の Input.dispatchTouchEvent で、2本の指を同時に動かす）：左半分のスティックで進む（離すと止まる）・右半分のドラッグで見回す・
 //      両方を同時に・[右手] を押して溜め、指をずらすと見回し、離すと溜めが終わる・指を取り逃した時（touchCancel）も溜めが終わる・[回避]・
 //      メニューを開いている間は、スティックで動かない・レベルアップと祭壇の画面は、1回目のタップで選んで説明を出し、2回目で決める
@@ -46,19 +47,27 @@ await withBrowser(async ({ browser, base }) => {
   }
 
   // ---------------------------------------------------------------- 6. 探索中のタッチのボタンの場所
-  for (const device of ['iPhone SE landscape', 'iPhone 13 landscape', 'Pixel 7 landscape']) {
-    const pg = await newPage(browser, errs, { device });
+  for (const device of ['iPhone SE landscape', 'iPhone 13 landscape', 'Pixel 7 landscape', '750x312']) {
+    const pg =
+      device === '750x312'
+        ? await (await browser.newContext({ viewport: { width: 750, height: 312 }, hasTouch: true, isMobile: true })).newPage()
+        : await newPage(browser, errs, { device });
     await openTest(pg, base, 'seed=202');
     await tapEnter(pg);
     await advance(pg, 3);
     const r = await pg.evaluate(() => {
       const q = (s) => document.querySelector(s).getBoundingClientRect();
-      const bar = q('#touchbar'),
-        hit = (o) => bar.left < o.right && o.left < bar.right && bar.top < o.bottom && o.top < bar.bottom;
-      return { status: hit(q('#status')), map: hit(q('#mapwrap')), w: bar.width };
+      const hit = (a, o) => a.left < o.right && o.left < a.right && a.top < o.bottom && o.top < a.bottom;
+      const btn = ['#touchbar', '#rollB', '#castR', '#castL'],
+        hud = ['#status', '#mapwrap', '#hotbar'],
+        out = [];
+      btn.forEach((b, i) => {
+        if (!(q(b).width > 0)) out.push(`${b} が出ていない`);
+        for (const h of [...hud, ...btn.slice(i + 1)]) if (hit(q(b), q(h))) out.push(`${b} と ${h}`);
+      });
+      return out;
     });
-    if (r.status || r.map) errs.push(`${device}：探索中のタッチのボタンが重なる（状態の表示 ${r.status}、ミニマップ ${r.map}）`);
-    if (!(r.w > 0)) errs.push(`${device}：探索中のタッチのボタンが出ていない`);
+    if (r.length) errs.push(`${device}：探索中のボタンが重なる（${r.join('、')}）`);
     await pg.context().close();
   }
 

@@ -29,14 +29,15 @@ body.started #touchbar{right:auto;left:50%;transform:translateX(-50%);}
 #touchbar .play{display:none;}
 body.started:not(.over) #touchbar .play{display:block;}
 body.started #fsB{display:none;}
-/* 指の操作（src/lib/touchpad.ts）：探索中で、止まっていない時だけ。右下に [右手] [左手]、左下に [回避]。スティックは左半分に触れた所に出る */
+/* 指の操作（src/lib/touchpad.ts）：探索中で、止まっていない時だけ。右下に [右手] [左手]、左上の状態の表示の下に [回避]。スティックは左半分に触れた所に出る */
 #tctl{display:none;}
 body.touch.started:not(.over):not(.paused) #tctl{display:block;}
 #tctl button{position:fixed;z-index:12;font:inherit;font-family:"M PLUS 1 Code","BIZ UDGothic",ui-monospace,monospace;font-size:14px;color:var(--ink);background:rgba(4,3,12,.5);border:1px solid rgba(140,134,189,.45);border-radius:10px;padding:14px 10px;text-shadow:0 0 6px #000;}
 #tctl button:active{background:rgba(60,50,110,.6);}
 #castR{right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(84px + env(safe-area-inset-bottom,0px));}
 #castL{right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));}
-#rollB{left:calc(14px + env(safe-area-inset-left,0px));bottom:calc(150px + env(safe-area-inset-bottom,0px));padding:10px 8px;font-size:13px;}
+/* [回避] は、左上の状態の表示（高さが決まっている）のすぐ下に、上から置く */
+#rollB{left:calc(14px + env(safe-area-inset-left,0px));top:calc(138px + env(safe-area-inset-top,0px));padding:10px 8px;font-size:13px;}
 #stick{position:fixed;z-index:11;width:96px;height:96px;margin:-48px 0 0 -48px;border:1px solid rgba(140,134,189,.5);border-radius:50%;pointer-events:none;}
 #knob{position:absolute;left:30px;top:30px;width:36px;height:36px;border-radius:50%;background:rgba(200,190,255,.35);}
 #altarp button.row.armed{color:#ffe9c8;text-shadow:0 0 8px rgba(255,170,80,.7);}
