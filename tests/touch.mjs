@@ -6,6 +6,7 @@
 //   4. タッチのボタン [装備] [メニュー] で、装備の画面とメニューを開け閉めできる。[全画面] は、全画面にできる時だけ出る
 //   5. マウスを動かすと、指の遊び方が終わり、タッチのボタンが消える
 //   6. 探索中のタッチのボタンが、左上の状態の表示とも、右上のミニマップとも重ならない（狭い横向きの端末でも）
+//   7. 診断の記録（src/lib/diag.ts）：偽の window.claude（Artifact の中の真似）で、持ち主なら端末・できごと・速さを db に書き、持ち主でなければ書かない
 import { FIT_MIN } from '../src/lib/layout.ts';
 import { withBrowser, newPage, openTest, advance } from './lib.mjs';
 
@@ -133,6 +134,59 @@ await withBrowser(async ({ browser, base }) => {
   if (v.touch) errs.push('マウスを動かしても、指の遊び方が終わらない');
   if (await shown('#touchbar')) errs.push('マウスを動かしても、タッチのボタンが消えない');
   await pg.context().close();
+
+  // ---------------------------------------------------------------- 7. 診断の記録
+  // 偽の window.claude：user は持ち主か（owner）を答え、db は書き込まれた物を window.__sets に貯める
+  const fakeClaude = (owner) => {
+    window.__sets = [];
+    window.claude = {
+      use: async (n) =>
+        n === 'user'
+          ? { isOwner: async () => owner }
+          : n === 'db'
+            ? {
+                collection: (p) => ({
+                  doc: (id) => ({ set: async (d) => void window.__sets.push({ p, id, d: JSON.parse(JSON.stringify(d)) }) }),
+                }),
+              }
+            : null,
+    };
+  };
+  const nextFrames = (p) => p.evaluate(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
+  for (const owner of [true, false]) {
+    const p = await newPage(browser, errs, { device: 'iPhone 13 landscape' });
+    await p.addInitScript(fakeClaude, owner);
+    await openTest(p, base, 'seed=202');
+    await tapEnter(p);
+    await advance(p, 2);
+    // [装備] を2回（開いて閉じる）
+    for (let k = 0; k < 2; k++) {
+      const b = await p.locator('#packB').boundingBox();
+      await p.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+      await advance(p, 1.5);
+    }
+    await nextFrames(p);
+    await advance(p, 11);
+    await nextFrames(p);
+    const sets = await p.evaluate(() => window.__sets);
+    if (!owner) {
+      if (sets.length) errs.push(`診断の記録：持ち主でないのに書いた（${sets.length} 回）`);
+    } else {
+      const d = sets.at(-1)?.d,
+        ev = (k, v) => d?.events.some((e) => e.k === k && (v === undefined || e.v === v));
+      if (!d || sets.at(-1).p !== 'diag') errs.push(`診断の記録：持ち主なのに、diag に書いていない（${sets.length} 回）`);
+      else {
+        if (d.device.coarse !== true || !Array.isArray(d.device.view))
+          errs.push(`診断の記録：端末のことが無い（${JSON.stringify(d.device).slice(0, 200)}）`);
+        for (const [k, v] of [['open'], ['touch', true], ['started', true], ['pack', true], ['pack', false]])
+          if (!ev(k, v)) errs.push(`診断の記録：できごと ${k}=${v} が無い（${JSON.stringify(d.events).slice(0, 300)}）`);
+        if (!d.events.some((e) => e.k === 'press' && String(e.v).startsWith('packB'))) errs.push('診断の記録：[装備] を押したことが無い');
+        if (!(d.fps.length >= 1 && d.fps[0].avg > 0)) errs.push(`診断の記録：速さが無い（${JSON.stringify(d.fps)}）`);
+        console.log(`診断の記録：${sets.length} 回書いた。できごと ${d.events.length}、速さ ${JSON.stringify(d.fps[0])}`);
+      }
+    }
+    await p.context().close();
+  }
 });
 console.log('page errors:', errs.length ? errs : 'none');
 process.exit(errs.length ? 1 : 0);
