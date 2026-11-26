@@ -381,7 +381,7 @@ export const tallAt = (i: number): boolean =>
   blaze.cellFlag[i] !== 20 &&
   !blaze.burnt[i] &&
   !level().liquid[i];
-/** マス i の茂みを踏み分ける（踏んだ時刻を blaze.trampled に覚える。18-level-player.js の regrow が、しばらくして元に戻す） */
+/** マス i の茂みを踏み分ける（踏んだ時刻を blaze.trampled に覚える。regrow が、しばらくして元に戻す） */
 export function trample(i: number): void {
   if (!tallAt(i)) return;
   blaze.cellFlag[i] = 20;

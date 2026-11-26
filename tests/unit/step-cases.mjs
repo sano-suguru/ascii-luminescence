@@ -705,7 +705,10 @@ export async function stepCases(F, seeds, page) {
         fight.rains.push({ x: player.x + 2, z: player.z, r: 2, iv: 0.1, tick: 0, left: 5, sp: sp('rain', 'fire'), elemK: 1, follow: true });
         fight.marks.push({ x: player.x, z: player.z, t: 0.3 });
         later(0.1, () => (player.hp += 0));
-        if (k === 1) later(0.05, () => F.__fail());
+        if (k === 1)
+          later(0.05, () => {
+            throw new Error('遅れて起きることの中の例外');
+          });
         // 燃えが尽きる時に、焦がしの加護が効いていた（体力が戻る）。毒の霧の中に、状態の無い生き物
         const fs2 = foes();
         if (k === 1) fresh(player.x + 3, player.z).st = { burn: 0.05, scorched: true };

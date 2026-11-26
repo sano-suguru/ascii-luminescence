@@ -269,13 +269,13 @@ export interface Player {
   /** 立ち止まっている秒と、最後に辺りを調べたマス（立ち止まると、隠された罠や化けた生き物が見つかる） */
   stillT: number;
   searchedAt: number;
-  /** 転がり（経った秒 t と向き dx・dz。26-spells-hud.js の startRoll が作り、終わると null） */
+  /** 転がり（経った秒 t と向き dx・dz。src/lib/chant.ts の startRoll が作り、終わると null） */
   roll?: { t: number; dx: number; dz: number } | null;
   /** 武器を振った残りの秒（0.22 から減る）と、振りの線の色（無ければ決まった色）、波を撃つ途中か（その間は振りの線を描かない） */
   swing?: number;
   swingCol?: readonly number[] | undefined;
   swingWave?: boolean;
-  /** 網に掛かった残りの秒（18-level-player.js の罠） */
+  /** 網に掛かった残りの秒（src/lib/events.ts の罠） */
   netT?: number;
   /** 最後に通れなかった物（'wall'・'chasm'・'lava'・'gate'・'xtal'。src/lib/player.ts の solidAt が入れる） */
   blockType: string;
@@ -360,7 +360,7 @@ export interface CastState {
   firing: boolean;
   tick: number;
   beamT: number;
-  /** 今の音節の番号（詠唱の声が鳴るたびに入る。26-spells-hud.js の chantStart） */
+  /** 今の音節の番号（詠唱の声が鳴るたびに入る。src/lib/audio.ts の chantStart） */
   syl?: number;
   /** 今の音節が鳴った時刻（詠唱の見た目が、鳴った直後だけ文字を光らせる） */
   sylT?: number;
@@ -441,7 +441,7 @@ export interface Blaze {
   spark: Spark | null;
   /** 凍らせた水のマス（マス → 溶けるまでの秒・元の液体・元の床）。src/lib/ground.ts の chillArea・updateFrozen */
   frozen: Map<number, { t: number; liq: number; surf: number }>;
-  /** 踏み分けた背の高い草や茸のマスと、踏んだゲームの時刻（src/lib/ground.ts の trample が足し、18-level-player.js の regrow が元に戻す。newLevel が空にする） */
+  /** 踏み分けた背の高い草や茸のマスと、踏んだゲームの時刻（src/lib/ground.ts の trample が足し、src/lib/ground.ts の regrow が元に戻す。newLevel が空にする） */
   trampled: [number, number][];
   /** 火の備品（松明・焚き火など）のマス（燃えるガスがここに触れると燃え上がる。src/lib/ground.ts の initFire が作る） */
   fireSrc: number[];
@@ -949,7 +949,7 @@ export interface Here {
   fovVis: Uint32Array;
   /** 見えるマスを数え直すたびに1増える番号 */
   fovStamp: number;
-  /** 部屋の出来事（神託・転移・噴き出し・像・崩れ・水攻め・霊など。src/lib/levels.ts の initEvents が作り、15-sound-fire.js が進める） */
+  /** 部屋の出来事（神託・転移・噴き出し・像・崩れ・水攻め・霊など。src/lib/levels.ts の initEvents が作り、src/lib/events.ts の updateEvents が進める） */
   events: RoomEvent[];
   /** 川のマスの一覧 */
   riverCells: number[];
