@@ -16,10 +16,12 @@ import { canStep, summon } from './monsters.ts';
 import { TRAP_INFO, mname } from './names.ts';
 import { spawn } from './particles.ts';
 import { mpick, mr, sndRand } from './random.ts';
-import { adv, blaze, clock, gfx, here, keys, player, stealth, vfx } from './state.ts';
+import { type Mob, adv, blaze, clock, gfx, here, keys, player, stealth, vfx } from './state.ts';
 import { makeNoise } from './status.ts';
 import { CELL, LQ_LAVA, LQ_WATER, MW, NCELL, PROPHECIES, TC, TW, cpos } from './world.ts';
 
+/** 飛ばない生き物 m が、マス i にいるか、i へ歩いている途中か（溶岩はそこへ流さない。行き先へ流すと、そのまま溶岩の上に立ってしまう） */
+const onWay = (m: Mob, i: number): boolean => !m.ty.flier && (m.cz * MW + m.cx === i || m.tz * MW + m.tx === i);
 /** 今の階 */
 const level = () => must(here.D, '今の階 here.D');
 
@@ -233,7 +235,7 @@ export function updateEvents(dt: number, t: number): void {
           ev.t -= step;
           const i = nth(ev.order, ev.k++);
           const [x, z] = cpos(i);
-          if (lava && (Math.hypot(x - player.x, z - player.z) < 1.6 || here.monsters.some((m) => !m.ty.flier && m.cz * MW + m.cx === i))) {
+          if (lava && (Math.hypot(x - player.x, z - player.z) < 1.6 || here.monsters.some((m) => onWay(m, i)))) {
             ev.order.push(i);
             continue;
           }
@@ -348,7 +350,7 @@ export function updateEvents(dt: number, t: number): void {
           ev.t -= 0.3;
           const i = nth(ev.order, ev.k++),
             [x, z] = cpos(i);
-          if (Math.hypot(x - player.x, z - player.z) < 1.6 || here.monsters.some((m) => !m.ty.flier && m.cz * MW + m.cx === i)) continue;
+          if (Math.hypot(x - player.x, z - player.z) < 1.6 || here.monsters.some((m) => onWay(m, i))) continue;
           level().liquid[i] = LQ_LAVA;
           blaze.cellFlag[i] = 70;
           ch = true;

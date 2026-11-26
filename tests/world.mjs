@@ -14,6 +14,7 @@
 //  11. 薄い氷に乗っていた秒は、階を移ると0に戻る（前の階の同じ番号のマスの秒が残らない）
 //  12. 火山の異界の火口は、噴き上がると溶岩が流れ出し（状態 1）、しばらく待って（2）引き（3）、また待って（0）噴き上がる
 //  13. 加護の身軽な詠唱と返しの一撃は、敵の攻撃を転がってかわすと効き始める（ただ転がっただけでは効かない）
+//  14. 火口の溶岩は、生き物のいるマスにも、生き物が歩いて向かっているマスにも流れない（溶岩の上に立つ生き物がいない）
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { withBrowser, newPage, openTest, advance } from './lib.mjs';
 
@@ -411,6 +412,44 @@ async function dodgeChecks(pg, base) {
     );
 }
 
+// 14：溶岩の上に立つ生き物がいない（火口の流れる道の横に生き物を置き、プレイヤーは遠くへ。0.1 秒ごとに 70 秒見る）
+async function lavaMobChecks(pg, base) {
+  await openTest(pg, base, 'seed=42&realm=volcano&god=1');
+  await advance(pg, 2);
+  const r = await pg.evaluate(() => {
+    __test.clearAll();
+    const { w } = __test.size(),
+      cellOf = (x, z) => Math.floor(z / (__test.cell(0).x * 2)) * w + Math.floor(x / (__test.cell(0).x * 2));
+    for (const e of __test.events().list.filter((x) => x.type === 'erupt'))
+      for (const [n, i] of e.order.entries())
+        if (n % 2 === 0)
+          for (const d of [1, -1, w, -w])
+            if (__test.cell(i + d).floor) {
+              __test.summon(['k', 'r', 'j'][n % 3], i + d);
+              break;
+            }
+    dbg.to('stairs'); // 追いかけてこないように、遠くへ
+    const n = __test.state().monsters.length;
+    let on = 0,
+      first = null,
+      lavaTop = 0;
+    for (let q = 0; q < 700; q++) {
+      __test.advance(0.1);
+      const s = __test.state(),
+        hit = s.monsters.filter((m) => __test.cell(cellOf(m[1], m[2])).lava);
+      lavaTop = Math.max(lavaTop, __test.events().lava);
+      if (hit.length) {
+        on++;
+        first ??= [s.time, hit[0].slice(0, 3)];
+      }
+    }
+    return { n, on, first, lavaTop };
+  });
+  if (!(r.n > 10) || !(r.lavaTop > 20))
+    errs.push(`14：生き物か溶岩の流れが足りない（生き物 ${r.n}・溶岩のマス ${r.lavaTop}。テストの前提が崩れた）`);
+  if (r.on) errs.push(`14：溶岩の上に立つ生き物がいる（0.1 秒ごとに見て ${r.on} 回。初めは ${JSON.stringify(r.first)}）`);
+}
+
 await withBrowser(async ({ browser, base }) => {
   const pg = await newPage(browser, errs);
   await doorChecks(pg, base);
@@ -421,6 +460,7 @@ await withBrowser(async ({ browser, base }) => {
   await thinIceChecks(pg, base);
   await eruptChecks(pg, base);
   await dodgeChecks(pg, base);
+  await lavaMobChecks(pg, base);
 });
 console.log('page errors:', errs.length ? errs : 'none');
 process.exit(errs.length ? 1 : 0);
