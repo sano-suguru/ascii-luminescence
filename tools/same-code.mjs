@@ -17,7 +17,8 @@
 //   元の名前に戻す（const で、ファイルのどこでも書き換えず、関数の中でどちらかの名前を宣言し直していない時だけ）
 //   ファイルの小さな道具（古い JS に無い名前の、const 名前 = (引数) => 式 の形の物）は、使う所で開く。渡す値が名前と欄の読み取りか定数で、
 //   使う所で道具の中の名前を宣言し直さず、道具の中で渡す値の名前を宣言し直さない時だけ（toPlayer(m) → Math.hypot(m.x - player.x, m.z - player.z) など）。
-//   古い方の関数も同じ名前で読んでいる道具（古い JS が import で読む sndReady など）は開かない
+//   ただし、古い方の関数も同じ名前で読んでいて、その名前を古い JS が src/game/imports.mjs でこのファイルから読んでいる道具（そのファイルが export する物。sndReady など）は、
+//   古い方と同じ物を呼んでいるので開かない（export しない道具や、別のファイルから読んでいる名前と同じ名前の道具は開く）
 //   先に読む：const X = 式（式は名前と欄の読み取りだけか、数・名前とその計算だけでできた、ループや関数の内側でない所で1回だけ使うオブジェクト）、
 //   const [a, b] = 式 の後ろで、X を式に戻す（両方に当てる。X を書き換えている・宣言し直している時と、式が読む名前をその先で宣言し直している時は戻さない。
 //   古い方と新しい方の両方にある先読みは、消した所に印を残し、位置も比べる）
@@ -29,7 +30,7 @@
 // 古い JS から消えた名前で、古い JS でも使われていなかった物と、今はどこからも使われていない物（呼ぶ所も一緒に消した物）は、
 // 消しただけなので「消した」として出し、止めない（なので、移す時は名前を変えない。変えると「消した」に見えて比べない）。古い JS から消えた名前で、渡した .ts のどれにも無い物は「比べていない」として出す（これも 1 で終わる）。
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, relative } from 'node:path';
 import { parseAst } from 'vite';
@@ -56,6 +57,14 @@ function topDecls(body, file, text, base) {
             base,
           });
   }
+  return out;
+}
+/** src/game/imports.mjs の文から、古い JS が読む名前 → 読むファイル（'src/lib/audio.ts' のように、リポジトリの根からの道） */
+export function importedFrom(text) {
+  const out = new Map();
+  for (const st of parseAst(text, { lang: 'js' }).body)
+    if (st.type === 'ImportDeclaration')
+      for (const sp of st.specifiers) out.set(sp.local.name, join('src/game', st.source.value).replace(/\\/g, '/'));
   return out;
 }
 /** 古い JS（ファイル名 → 文）の一番外の宣言 */
@@ -509,9 +518,10 @@ const lineAt = (text, pos) => (pos === undefined ? '?' : text.slice(0, pos).spli
 
 /**
  * 新しい .ts の文（{ file, text } の並び）を、古い JS の宣言 old（legacyDecls）と比べる（only を渡したら、その名前だけ）。
+ * imported は、古い JS が imports.mjs で読む名前 → 読むファイル（importedFrom。file と同じ書き方の道）。古い方と同じ物を呼んでいる道具を開かないために使う
  * 返り値：関数ごとの結果 results（違い diffs は { old: 古い所, new: 新しい所, oldLine, newLine }）、人が確かめる一覧 review、当てた規則の数 used、比べた名前 compared
  */
-export function compareSources(old, files, only = null) {
+export function compareSources(old, files, only = null, imported = new Map()) {
   const used = {},
     review = [],
     results = [],
@@ -519,7 +529,12 @@ export function compareSources(old, files, only = null) {
   const hit = (k) => (used[k] = (used[k] ?? 0) + 1);
   for (const { file, text } of files) {
     const ast = parseAst(text, { lang: 'ts' }),
-      NEW = topDecls(ast.body, file, text, 0);
+      NEW = topDecls(ast.body, file, text, 0),
+      exported = new Set(
+        ast.body.flatMap((st) =>
+          st.type === 'ExportNamedDeclaration' && st.declaration ? [...topDecls([st.declaration], file, text, 0).keys()] : [],
+        ),
+      );
     // level が () => must(here.D, …) か
     const lv = NEW.get('level')?.node.declarations?.[0]?.init;
     const levelIsHereD =
@@ -557,8 +572,9 @@ export function compareSources(old, files, only = null) {
       compared.add(name);
       const o0 = norm(od.node, ctx);
       let n = unType(nd.node);
-      // 古い方も同じ名前で読んでいる道具は開かない（src/lib の物を古い JS が import で読む時。sndReady など）
-      const open = new Map([...helpers].filter(([k]) => !uses(od.node, k).n));
+      // 古い方も同じ名前で読んでいて、古い JS がその名前をこのファイルから import している道具（このファイルが export する物）は、
+      // 古い方と同じ物を呼んでいるので開かない（sndReady など）
+      const open = new Map([...helpers].filter(([k]) => !(uses(od.node, k).n && exported.has(k) && imported.get(k) === file)));
       for (let round = 0; round < 5; round++) {
         const before = key(n);
         n = inlineHelpers(n, open, (k) => {
@@ -764,7 +780,13 @@ if (process.argv[1] && import.meta.filename === process.argv[1]) {
   const old = legacyDecls(withStates(rawOld, states));
   // 比べるのは、古い JS から消えた名前だけ（src/lib の名前が、今も古い JS にある別の物と同じ名前のこともある）
   const goneAll = new Set([...old.keys()].filter((k) => !now.has(k)));
-  const { results, review, used, compared } = compareSources(old, sources, goneAll);
+  // 古い JS が imports.mjs で読む名前（--rev は、その版の imports.mjs。--old は、そのフォルダの imports.mjs）
+  const importsText = oldDir
+    ? existsSync(join(oldDir, 'imports.mjs'))
+      ? readFileSync(join(oldDir, 'imports.mjs'), 'utf8')
+      : ''
+    : (rawOld.get('imports.mjs') ?? '');
+  const { results, review, used, compared } = compareSources(old, sources, goneAll, importedFrom(importsText));
   let bad = 0;
   for (const r of results) {
     console.log(`${r.diffs.length ? '✗' : '✓'} ${r.file} ${r.name}${r.diffs.length ? `：違い ${r.diffs.length}` : ''}`);

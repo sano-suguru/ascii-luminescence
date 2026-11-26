@@ -312,7 +312,10 @@ export function houndScent(m: Mob): readonly [number, number] | null {
   } // 0 is a cell with no scent (in the first 40 s, bs is below 0)
   return best;
 }
-/** 猟犬が匂いを嗅ぎつけた伝言を最後に出したゲームの時刻（関数の欄。20秒あける。chooseNext が読み書きする） */
+/**
+ * 猟犬が匂いを嗅ぎつけた伝言を最後に出したゲームの時刻（関数の欄。20秒あける。chooseNext が読み書きする）。
+ * 型だけの declare namespace で欄の型を付ける（組み立てで消える。古い JS の houndScent.msgT の文をそのまま残すため）
+ */
 export declare namespace houndScent {
   let msgT: number | undefined;
 }
