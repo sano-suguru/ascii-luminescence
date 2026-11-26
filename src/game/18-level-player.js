@@ -10,36 +10,10 @@ adv.runSeed=(Math.random()*1e9)>>>0;
 
 // ---------------------------------------------------------------- player
 // 薄い氷に乗っていた秒 iceT は src/lib/state.ts、氷が割れる crackIce・背の高い茂みか tallAt・踏み分ける trample・硫黄が燃え上がる brimFlare は src/lib/ground.ts（src/game/imports.mjs で読む）
-function regrow(){ if(!blaze.trampled.length)return; const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL); let ch=false;
-  blaze.trampled=blaze.trampled.filter(([i,t0])=>{ if(clock.time-t0>45&&i!==pc&&blaze.cellFlag[i]===20){ blaze.cellFlag[i]=0; ch=true; return false; } return blaze.cellFlag[i]===20; }); if(ch)uploadCells(); }
-// 硫黄が戻るまでの秒 brimT は src/lib/state.ts の blaze（src/game/imports.mjs で読む）
-function brimRecover(dt){ blaze.brimT+=dt; if(blaze.brimT<2)return; blaze.brimT=0; let ch=false; for(let i=0;i<NCELL;i++){ if(here.D.surface[i]===SF_BRIM&&(blaze.burnt[i]||blaze.fuel[i]<=0)&&blaze.fire[i]<=0&&mr()<0.08){ /* burnt, or swept by a cleaner (no ash, no fuel) */ blaze.burnt[i]=0; blaze.fuel[i]=0.8; ch=true; } } if(ch)uploadCells(); }
+// 踏み分けた草が戻る regrow と、燃えた硫黄が戻る brimRecover は src/lib/ground.ts（src/game/imports.mjs で読む）
 // ---------------------------------------------------------------- hidden traps, a lever-and-portcullis vault, sanctuaries (mechanisms after Brogue's machines; written independently)
 // TRAP_INFO は src/lib/names.ts（src/game/imports.mjs で読む）
-function triggerTrap(tr){
-  tr.used=true; tr.hidden=false; const [x,z]=cpos(tr.i), info=TRAP_INFO[tr.type], tag=`<b style="color:${info[1]}">^</b>`;
-  switch(tr.type){
-    case 'alarm': sAlarm(x,z); vfx.shake=Math.max(vfx.shake,0.2); msg(tag+'カチリ……鐘の音が響き渡った！ 辺りの獣が集まってくる。');
-      for(const m of here.monsters){ if(m.ty.critter||m.dead)continue; if(Math.hypot(m.x-x,m.z-z)<32){ m.sleep=false; m.aware=Math.max(m.aware,0.8); m.goal=[x,z]; m.goalT=clock.time+15; } } break;
-    case 'trapdoor': sRumble(0.5,1.2); vfx.shake=Math.max(vfx.shake,0.4); msg(tag+'床が抜けた！ 闇の中を、下の階へと落ちていく……'); here.trans={phase:'out',t:0,regen:false}; player.fall=true; break;
-    case 'net': player.netT=3.2; sHiss(x,z,0.5); msg(tag+'網が降ってきた！ もがいて抜け出そうとする……'); break;
-    case 'flood': sSplash(0.5); msg(tag+'床の穴から、水が勢いよく噴き出した！'); here.events.push({type:'flood',ri:-2,order:tr.order.slice(),src:tr.i,state:1,t:0,k:0,max:tr.order.length*3}); break;
-    case 'methane': sHiss(x,z,1.2); msg(tag+'床の穴から、沼のガスが噴き出した。火気に注意！');
-      for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){ const j=tr.i+dx+dy*MW; if(j>=0&&j<NCELL&&here.D.tile[j]!==TW&&Math.hypot(dx,dy)<=2.3)here.D.gas[j]=Math.max(here.D.gas[j],0.9); } blaze.gasAny=true; break;
-  }
-}
-function updateTraps(dt){
-  for(const tr of (here.D.traps||[])){
-    const [x,z]=cpos(tr.i), d=Math.hypot(x-player.x,z-player.z);
-    if(tr.hidden&&d<CELL*1.3){ const mv=Math.hypot(player.vx,player.vz)>0.3, rate=(stealth.sneak?1.1:0.3)*(mv?0.6:1.6);
-      if(mr()<dt*rate){ tr.hidden=false; sChime(x,z,0.15); msg(`<b style="color:${TRAP_INFO[tr.type][1]}">^</b>隠された${TRAP_INFO[tr.type][0]}罠を見つけた。踏まないように気をつけよう。`); } }
-    if(!tr.used&&d<0.6&&!here.trans)triggerTrap(tr);
-  }
-  if(player.netT>0){ const mv=keys.KeyW||keys.KeyA||keys.KeyS||keys.KeyD; player.netT-=dt*(mv?1.6:1); if(player.netT<=0)msg('網から抜け出した。'); }
-  const G2=here.D.gate;
-  if(G2&&!G2.open){ const [lx,lz]=cpos(G2.lever); if(Math.hypot(player.x-lx-G2.ld[0]*0.6,player.z-lz-G2.ld[1]*0.6)<1.1){ G2.open=true; G2.pulled=clock.time; sCreak(lx,lz); const [gx,gz]=cpos(G2.cell); setTimeout(()=>sRumble(0.25,1.6),500); msg('<b style="color:#ffd48a">/</b>壁のレバーを引いた。どこか遠くで、鉄格子が軋みながら上がっていく音がした。'); } }
-  if(G2)G2.o+=((G2.open?1:0)-G2.o)*Math.min(1,dt*0.8);
-}
+// 罠を踏んだ時 triggerTrap と、罠を進める updateTraps は src/lib/events.ts（src/game/imports.mjs で読む）
 // 罠と鉄格子を描く drawTraps は src/lib/fixtures.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- life and death, and plain real-time melee

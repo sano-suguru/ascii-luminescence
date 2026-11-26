@@ -11,33 +11,7 @@ let sparkCD=0;
 // initFire は src/lib/ground.ts（src/game/imports.mjs で読む）
 // 火をつける ignite は src/lib/ground.ts（src/game/imports.mjs で読む）
 // boom は src/lib/combat.ts（src/game/imports.mjs で読む）
-function stepFire(){
-  const g=here.D.gas;
-  // open flames (braziers, torches, lava) ignite gas that drifts into them
-  for(const s0 of blaze.fireSrc){ for(const j of [s0,s0+1,s0-1,s0+MW,s0-MW]){ if(j>=0&&j<NCELL&&g[j]>0.15){ ignite(j,1,true); boom(j); } } }
-  const next=[];
-  for(const i of blaze.burning){
-    if(blaze.fire[i]<=0)continue;
-    if(blaze.fuel[i]>0){ blaze.fuel[i]-=0.05*blaze.fire[i]; blaze.fire[i]=Math.min(1,blaze.fire[i]+0.15); }
-    else blaze.fire[i]*=0.6;
-    const x=i%MW;
-    for(const j of [i+1,i-1,i+MW,i-MW]){
-      if(j<0||j>=NCELL||(j===i+1&&x===MW-1)||(j===i-1&&x===0))continue;
-      if(g[j]>0.1){ ignite(j,1,true); boom(j); continue; }
-      if(blaze.fire[j]<=0&&blaze.fuel[j]>0&&mr()<0.22*blaze.fire[i]*(here.D.surface[j]===SF_DEAD?1.4:1))ignite(j,0.25,false);
-      const lq=here.D.liquid[j]; if((lq===LQ_WATER||lq===LQ_DEEP)&&blaze.fire[i]>0.5&&mr()<0.15){ const sx=(j%MW+0.5)*CELL, sz=(((j/MW)|0)+0.5)*CELL; for(let q=0;q<3;q++)spawn(sx+(mr()-0.5),0.2,sz+(mr()-0.5),(mr()-0.5)*0.3,0.6+mr()*0.6,(mr()-0.5)*0.3,2.5,G(mpick(['~','.','\''])),0.35,0.35,0.36,0.4,1); }
-    }
-    if(blaze.fire[i]<0.04){ blaze.fire[i]=0; blaze.burnt[i]=1; blaze.fuel[i]=0; if(here.D.surface[i]!==SF_OBSIDIAN&&here.D.surface[i]!==SF_BRIM)here.D.surface[i]=0; const di=here.D.doorAt[i]; if(di>=0)here.D.doors[di].gone=true; }
-    else next.push(i);
-  }
-  for(const i of blaze.burning)if(blaze.fire[i]>0&&!next.includes(i))next.push(i);
-  blaze.burning=next;
-  // blurred firelight for the shader and for CPU-side lighting
-  blaze.fireLight.fill(0);
-  for(const i of blaze.burning){ const f=blaze.fire[i], x=i%MW;
-    for(let dz=-2;dz<=2;dz++)for(let dx=-2;dx<=2;dx++){ if(x+dx<0||x+dx>=MW)continue; const j=i+dx+dz*MW; if(j<0||j>=NCELL)continue; const w=f*Math.max(0,1-Math.hypot(dx,dz)/2.6); blaze.fireLight[j]+=w; } }
-  uploadCells();
-}
+// 火を1歩進める stepFire は src/lib/ground.ts（src/game/imports.mjs で読む）
 // マスの火・灰・変わり方を描画に渡す uploadCells は src/lib/ground.ts（src/game/imports.mjs で読む）
 // 火を描く drawFire は src/lib/fx.ts（src/game/imports.mjs で読む）
 let sparks=3, sparkRegen=0; const SPARK_MAX=3;
@@ -72,122 +46,9 @@ function updateSpark(dt){
 // initEvents は src/lib/levels.ts（src/game/imports.mjs で読む）
 // cpos は src/lib/world.ts（src/game/imports.mjs で読む）
 // 生き物を呼び出す summon は src/lib/monsters.ts（src/game/imports.mjs で読む）
-function updateEvents(dt,t){
-  const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL);
-  for(const ev of here.events){
-    if(ev.type==='statue'){
-      const [sx,sz]=cpos(ev.cell);
-      if(!ev.done&&Math.hypot(sx-player.x,sz-player.z)<3.6){
-        ev.done=true; ev.active=true; ev.t=0; sRumble(0.35,1.2); blaze.cellFlag[ev.cell]=100; here.D.solid.delete(ev.cell); here.D.decoCell.delete(ev.cell); uploadCells();
-        for(let q=0;q<70;q++){ const a=mr()*6.28, h=mr()*2.4; spawn(sx+Math.cos(a)*0.3,0.4+h,sz+Math.sin(a)*0.3,Math.cos(a)*1.6,0.4+mr(),Math.sin(a)*1.6,1.1+mr()*0.4,G(mpick(['&','#','%','&'])),0.2,0.8,0.78,1.0,1); }
-        vfx.shake=Math.max(vfx.shake,0.25);
-      }
-      if(ev.active){
-        ev.t+=dt;
-        if(mr()<dt*40){ const a=mr()*6.28, r=1.6*(1-ev.t/1.3); spawn(sx+Math.cos(a)*r,0.3+mr()*2,sz+Math.sin(a)*r,-Math.cos(a)*1.4,0,-Math.sin(a)*1.4,0.4,G(mpick(['&','#','%'])),0.18,1,0.95,1.2,1); }
-        if(ev.t>1.3&&!ev.chimed){ ev.chimed=true; sChime(sx,sz,0.3); }
-        if(ev.t>1.3){ ev.active=false; const key=here.depth>=5?'O':here.depth>=3?'g':'k'; const m=summon(key,ev.cell);
-          msg(`<b style="color:${css(m.ty.col)}">&</b>彫像が崩れ、${mname(m)}の姿へと組み直された！`); }
-      }
-    } else if(ev.type==='collapse'){
-      if(ev.state===0){
-        if(here.D.roomOf[pc]===ev.ri&&ev.cells.some(c=>{ const [x,z]=cpos(c); return Math.hypot(x-player.x,z-player.z)<4.4; })){ ev.state=1; ev.t=0; sRumble(0.45,1.6); msg('<b style="color:#ffa060">:</b>足元で低い地鳴りが響く。床のひび割れが広がっていく……'); }
-      } else if(ev.state===1){
-        ev.t+=dt; vfx.shake=Math.max(vfx.shake,0.18+ev.t*0.15);
-        if(mr()<dt*30){ const c=ev.cells[Math.floor(mr()*ev.cells.length)], [x,z]=cpos(c); spawn(x+(mr()-0.5)*1.8,here.D.ceil[c]-0.1,z+(mr()-0.5)*1.8,0,-1.5,0,1.5,G(mpick(['.',',','\''])),0.12,0.4,0.38,0.45,1); }
-        if(ev.t>1.4){
-          ev.state=2; here.D.collapsed=true; sBoom(0.7); makeNoise(player.x,player.z,22,1.2); gfx.U.uCollT.value=t;
-          for(const c of ev.cells){ blaze.cellFlag[c]=200; here.D.tile[c]=TC; here.D.pit[c]=1; const [x,z]=cpos(c);
-            for(let q=0;q<10;q++)spawn(x+(mr()-0.5)*1.8,0.1,z+(mr()-0.5)*1.8,(mr()-0.5)*0.6,-0.5-mr()*2,(mr()-0.5)*0.6,1.6,G(mpick(['.','#',':','%'])),0.2,0.6,0.55,0.6,1); }
-          for(const m of here.monsters){ if(here.D.pit[m.cz*MW+m.cx]&&!m.ty.flier){ m.dead=true; } }
-          uploadCells(); vfx.shake=0.8;
-          msg('<b style="color:#ffa060">:</b>轟音とともに床が崩れ落ちた！ 穴の底に、下の階層の光が見える。');
-        }
-      }
-    } else if(ev.type==='oracle'){
-      if(ev.done)continue; const [ox2,oz2]=cpos(ev.cell);
-      if(Math.hypot(ox2-player.x,oz2-player.z)<3.4){ ev.done=true; const ru=adv.HIST.rulers[Math.floor(mr()*adv.HIST.rulers.length)];
-        const hp=[`${ru.title}${ru.name}の名を口にする者は、もういない。`,`${adv.HIST.civ.name}の民が最後に見たものを、お前もやがて見るだろう。`,`${adv.HIST.beast}は、まだどこかで眠っている。`];
-        const a=[hp[Math.floor(mr()*hp.length)],PROPHECIES[Math.floor(mr()*PROPHECIES.length)]];
-        sChime(ox2,oz2,0.4); setTimeout(()=>sChime(ox2,oz2,0.3),500);
-        msg('<b style="color:#bfe4ff">?</b>巻物の文字がひとりでに光り、声なき声が告げる──'); msg(`<b style="color:#bfe4ff">「</b>${a[0]}」`); msg(`<b style="color:#bfe4ff">「</b>${a[1]}」`); oracleLegendHints();
-        for(let q=0;q<50;q++){ const an=mr()*6.28; spawn(ox2+Math.cos(an)*0.3,1.2+mr(),oz2+Math.sin(an)*0.3,Math.cos(an)*0.7,0.4+mr()*0.8,Math.sin(an)*0.7,2.5+mr()*2,G(mpick(['?','*','.','+'])),0.14,1.0,1.6,2.2,2); } }
-    } else if(ev.type==='flood'||ev.type==='lavaflow'){
-      const lava=ev.type==='lavaflow';
-      if(ev.state===0){
-        if(here.D.roomOf[pc]===ev.ri){ ev.state=1; ev.t=0;
-          const f=here.fixtures.find(f=>f.type===(lava?'crater':'spring')&&Math.floor(f.z/CELL)*MW+Math.floor(f.x/CELL)===ev.src); if(f){ f.active=true; const L=here.D.lights[f.li]; if(L)L.active=true; }
-          if(lava){ sRumble(0.5,2); vfx.shake=Math.max(vfx.shake,0.3); msg('<b style="color:#ff7a3a">^</b>床の裂け目が割れ、溶岩がゆっくりとあふれ出した！'); }
-          else { sSplash(0.4); msg('<b style="color:#6ab4ff">~</b>壁の亀裂が崩れ、水が勢いよく噴き出した！'); } }
-      } else if(ev.state===1){
-        ev.t+=dt; const step=lava?0.38:0.11; let changed=false;
-        while(ev.t>=step&&ev.k<ev.order.length&&ev.k<ev.max){ ev.t-=step; const i=ev.order[ev.k++]; const [x,z]=cpos(i);
-          if(lava&&(Math.hypot(x-player.x,z-player.z)<1.6||here.monsters.some(m=>!m.ty.flier&&m.cz*MW+m.cx===i))){ ev.order.push(i); continue; }
-          changed=true;
-          if(lava){ here.D.liquid[i]=LQ_LAVA; blaze.cellFlag[i]=70; for(const j of [i+1,i-1,i+MW,i-MW])if(j>=0&&j<NCELL&&blaze.fuel[j]>0)ignite(j,0.6,false); if(here.D.gas[i]>0.1)boom(i); if(sndRand()<0.3)sBubble(x,z,0.25,true); }
-          else { here.D.liquid[i]=LQ_WATER; blaze.cellFlag[i]=50; blaze.fire[i]=0; blaze.fuel[i]=0; if(sndRand()<0.2)sSplash(0.12); } }
-        if(changed)uploadCells();
-        if(ev.k>=ev.order.length||ev.k>=ev.max)ev.state=2;
-      }
-    } else if(ev.type==='tele'){
-      const [ax,az]=cpos(ev.a), [bx,bz]=cpos(ev.b), da=Math.hypot(player.x-ax,player.z-az), db=Math.hypot(player.x-bx,player.z-bz);
-      if(ev.lock>=0){ const [lx,lz]=cpos(ev.lock); if(Math.hypot(player.x-lx,player.z-lz)>1.3)ev.lock=-1; }
-      const from=da<0.7&&ev.lock!==ev.a?ev.a:db<0.7&&ev.lock!==ev.b?ev.b:-1;
-      if(from>=0&&!here.trans){ const to=from===ev.a?ev.b:ev.a, [tx2,tz2]=cpos(to), [fx2,fz2]=cpos(from);
-        for(const [px3,pz3] of [[fx2,fz2],[tx2,tz2]])for(let q=0;q<40;q++){ const an=mr()*6.28; spawn(px3+Math.cos(an)*0.5,0.2+mr()*2,pz3+Math.sin(an)*0.5,Math.cos(an)*0.8,mr()*1.2,Math.sin(an)*0.8,1.2+mr(),G(mpick(['*','+','.','o'])),0.16,1.0,0.6,1.6,2); }
-        player.x=tx2; player.z=tz2; player.vx=player.vz=0; ev.lock=to; sChime(tx2,tz2,0.5);
-        if(!here.D.teleMsg){ here.D.teleMsg=true; msg('<b style="color:#ff7ae0">*</b>魔法陣が閃き、体が別の場所へと運ばれた。対になった陣が、どこかにもうひとつある。'); } }
-    } else if(ev.type==='erupt'){
-      ev.t-=dt; const f=here.fixtures.find(f=>f.type==='crater'&&Math.floor(f.z/CELL)*MW+Math.floor(f.x/CELL)===ev.src);
-      if(ev.state===0&&ev.t<=0){ ev.state=1; ev.k=0; ev.t=0; if(f){ f.active=true; const L=here.D.lights[f.li]; if(L)L.active=true; }
-        const [sx,sz]=cpos(ev.src), dd=Math.hypot(sx-player.x,sz-player.z); if(dd<30){ sRumble(0.6*(1-dd/30)+0.15,2.2); vfx.shake=Math.max(vfx.shake,0.5*(1-dd/30)); }
-        if(dd<24&&here.fovVis[ev.src]===here.fovStamp)msg('<b style="color:#ff7a3a">^</b>火口が轟音とともに噴き上がり、溶岩があふれ出した！');
-        for(let q=0;q<70;q++){ const an=mr()*6.28, sp2=1+mr()*2.4; spawn(sx,0.4,sz,Math.cos(an)*sp2*0.5,3+mr()*4,Math.sin(an)*sp2*0.5,1.4+mr(),G(mpick(['*','o','\'','.'])),0.18,2.4,1.1,0.3,0); } }
-      else if(ev.state===1){ ev.t+=dt; let ch=false;
-        while(ev.t>=0.3&&ev.k<ev.order.length){ ev.t-=0.3; const i=ev.order[ev.k++], [x,z]=cpos(i);
-          if(Math.hypot(x-player.x,z-player.z)<1.6||here.monsters.some(m=>!m.ty.flier&&m.cz*MW+m.cx===i))continue;
-          here.D.liquid[i]=LQ_LAVA; blaze.cellFlag[i]=70; ch=true; for(const j of [i+1,i-1,i+MW,i-MW])if(j>=0&&j<NCELL&&blaze.fuel[j]>0)ignite(j,0.6,false); }
-        if(ch)uploadCells(); if(ev.k>=ev.order.length){ ev.state=2; ev.t=12; } }
-      else if(ev.state===2&&ev.t<=0){ ev.state=3; ev.k=ev.order.length-1; ev.t=0; if(f){ f.active=false; const L=here.D.lights[f.li]; if(L)L.active=false; } }
-      else if(ev.state===3){ ev.t+=dt; let ch=false;
-        while(ev.t>=0.15&&ev.k>=0){ ev.t-=0.15; const i=ev.order[ev.k--]; if(blaze.cellFlag[i]===70){ here.D.liquid[i]=0; blaze.cellFlag[i]=0; ch=true; const [x,z]=cpos(i); if(mr()<0.4)spawn(x,0.2,z,0,0.5,0,2,G('.'),0.4,0.15,0.13,0.13,1); } }
-        if(ch)uploadCells(); if(ev.k<0){ ev.state=0; ev.t=20+mr()*20; } }
-    } else if(ev.type==='haunt'){
-      if(ev.done)continue;
-      if(ev.t<0&&here.D.roomOf[pc]===ev.ri)ev.t=0;
-      if(ev.t>=0){
-        ev.t+=dt;
-        for(const c of ev.tombs.slice(0,2)){ const [x,z]=cpos(c); if(mr()<dt*25){ const a=mr()*6.28, r=1.4*(1-Math.min(1,ev.t/2)); spawn(x+Math.cos(a)*r,0.2+mr()*1.8,z+Math.sin(a)*r,-Math.cos(a)*0.6,0.1,-Math.sin(a)*0.6,0.6,G(mpick(['~','W','\''])),0.2,0.5,0.4,0.9,1); } }
-        if(ev.t>2&&!ev.chimed){ ev.chimed=true; sChime(...cpos(ev.tombs[0]),0.3); }
-        if(ev.t>2){ ev.done=true; const ms=ev.tombs.slice(0,2).map(c=>{ const nb=[c+1,c-1,c+MW,c-MW].find(j=>canStep({ty:{form:''}},j)); return summon('W',nb!==undefined?nb:c); });
-          msg(`<b style="color:${css(ms[0].ty.col)}">W</b>墓石の間から、${mname(ms[0])}がゆらりと立ち上がった……`); }
-      }
-    }
-  }
-}
+// 部屋の出来事を進める updateEvents は src/lib/events.ts（src/game/imports.mjs で読む）
 
-function stepGas(){
-  const g=here.D.gas, nb=blaze.gasTmp, tile=here.D.tile; let any=false;
-  for(let i=0;i<NCELL;i++){
-    if(tile[i]===TW){ nb[i]=0; continue; }
-    const v=g[i], x=i%MW; let s=0,c=0;
-    if(x>0&&tile[i-1]!==TW){s+=g[i-1];c++;} if(x<MW-1&&tile[i+1]!==TW){s+=g[i+1];c++;}
-    if(i>=MW&&tile[i-MW]!==TW){s+=g[i-MW];c++;} if(i<NCELL-MW&&tile[i+MW]!==TW){s+=g[i+MW];c++;}
-    let nv=(c?v*0.6+(s/c)*0.4:v)*0.993; if(nv<0.005)nv=0; nb[i]=nv; if(nv>0)any=true;
-  }
-  g.set(nb);
-  for(const i of here.D.bogList){
-    if(mr()>0.012)continue;
-    g[i]=Math.min(1,g[i]+0.8); any=true;
-    const x=(i%MW+0.3+mr()*0.4)*CELL, z=(((i/MW)|0)+0.3+mr()*0.4)*CELL;
-    if(Math.hypot(x-player.x,z-player.z)<26){
-      for(let k=0;k<7;k++){ const a=k/7*Math.PI*2; spawn(x+Math.cos(a)*0.08,0.08,z+Math.sin(a)*0.08,Math.cos(a)*0.4,0.02,Math.sin(a)*0.4,0.9,G('o'),0.13,0.4,0.48,0.16,1); }
-      spawn(x,0.15,z,0,0.35,0,2.2,G('~'),0.3,0.35,0.6,0.12,1);
-      sBubble(x,z,0.3,false);
-    }
-  }
-  blaze.gasAny=any;
-}
+// 沼のガスを1歩進める stepGas は src/lib/ground.ts（src/game/imports.mjs で読む）
 function updateGasPoints(t){
   let gi=0;
   if(blaze.gasAny){

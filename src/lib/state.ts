@@ -649,6 +649,8 @@ export interface LevelExtra {
   engrSeen?: boolean;
   swimMsg?: boolean;
   iceMsg?: boolean;
+  /** 転移の陣の伝言を出したか（その階で一度だけ。src/lib/events.ts の updateEvents） */
+  teleMsg?: boolean;
 }
 /** 先にある物の手がかり（src/lib/omens.ts の computeOmen）：下り階段から漏れる物（特別な階・層の変わり目・支道の奥）、支道の入口、異界の門、
  * 支道の入口と奥の階段のまわりの跡、場所ごとに次に音を鳴らせるゲームの時刻 */
@@ -904,11 +906,24 @@ export interface Here {
   /** 前の階の層（層が変わった時に、層の名前を出す） */
   lastStratum: Level['stratum'] | null;
 }
-/** 部屋の出来事（種類 type と、種類ごとの欄。中身を読むのは古い JS の出来事の処理） */
-export interface RoomEvent {
-  type: string;
-  [k: string]: unknown;
-}
+/**
+ * 部屋の出来事（src/lib/levels.ts の initEvents が作り、src/lib/events.ts の updateEvents が進める）。種類 type ごとの欄：
+ * 目覚める像（statue）：像のマス cell・済んだか done・組み直している途中か active・経った秒 t・鐘を鳴らしたか chimed。
+ * 崩れる床（collapse）：穴になるマス cells・部屋 ri・段階 state（0：待つ、1：揺れる、2：崩れた）・経った秒 t。
+ * 神託（oracle）：巻物のマス cell・済んだか done。
+ * 水攻めと溶岩（flood・lavaflow）：部屋 ri（罠から噴き出した水は -2）・広がる順 order・噴き出す所 src・段階 state・秒 t・広げた数 k・広げる数の上限 max。
+ * 転移（tele）：対の陣 a・b と、着いたばかりで踏んでも飛ばない陣 lock（-1 は無し）。
+ * 噴き出し（erupt）：火口 src・広がる順 order・段階 state（0：待つ、1：あふれる、2：とどまる、3：引く）・秒 t・広げた数 k。
+ * 霊（haunt）：部屋 ri・墓のマス tombs・済んだか done・経った秒 t（入る前は -1）・鐘を鳴らしたか chimed
+ */
+export type RoomEvent =
+  | { type: 'statue'; cell: number; done: boolean; active: boolean; t: number; chimed?: boolean }
+  | { type: 'collapse'; cells: number[] | undefined; ri: number; state: number; t: number }
+  | { type: 'oracle'; cell: number; done: boolean }
+  | { type: 'flood' | 'lavaflow'; ri: number; order: number[]; src: number | undefined; state: number; t: number; k: number; max: number }
+  | { type: 'tele'; a: number; b: number; lock: number }
+  | { type: 'erupt'; src: number; order: number[]; state: number; t: number; k: number }
+  | { type: 'haunt'; ri: number; tombs: number[]; done: boolean; t: number; chimed?: boolean };
 /** 最深部の状態：一番高い天井のマス c0（王の影が現れる所）、王の影 boss と、現れるまで・呼び出すまでの秒、着いた時の伝言を出したか */
 export interface FinalState {
   c0: number;
