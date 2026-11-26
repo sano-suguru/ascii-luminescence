@@ -865,7 +865,8 @@ export async function fightCases(F, seeds, page) {
         if (chance(0.3)) call('hitFeedback', m, pick([0, 0.2, 1, 2]), pick(ELEMS), chance(0.5));
         if (chance(0.3)) call('rallyOnHit', m, 5, pick(['blade', 'fire', 'env']));
         if (chance(0.3)) call('dropRune', m);
-        if (chance(0.3)) call('lordFell', m);
+        // 主にした時はいつも呼ぶ（伝説の物がこぼれ落ちる道を、乱数の並びによらず通すため）
+        if (m.key === 'lord' || chance(0.3)) call('lordFell', m);
         tick(0.2);
       }
       // 発動のルーン：倒した時・かわした時（両手の発動を入れ替えて）
