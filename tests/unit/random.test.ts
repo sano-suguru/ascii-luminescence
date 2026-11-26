@@ -1,7 +1,8 @@
 // src/lib/random.ts と src/lib/glyphs.ts の単体テスト
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { nth } from '../../src/lib/array.ts';
 import { G, RUNE_CHARS } from '../../src/lib/glyphs.ts';
-import { R, RI, mpick, mr, pick, rand, setRand, setSoundRand, shuffle, sndRand } from '../../src/lib/random.ts';
+import { R, RI, keyedRand, mpick, mr, pick, rand, setRand, setSoundRand, shuffle, sndRand } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 
 const random = Math.random;
@@ -137,5 +138,39 @@ describe('shuffle（混ぜる）', () => {
     }
     expect(count.size).toBe(24);
     for (const c of count.values()) expect(Math.abs(c - 1000)).toBeLessThan(150);
+  });
+});
+
+describe('keyedRand（出来事ごとの乱数）', () => {
+  it('鍵が同じなら同じ並び、Math.random は呼ばない', () => {
+    Math.random = () => {
+      throw new Error('使わないはず');
+    };
+    const a = keyedRand('altar', 12345, 678),
+      b = keyedRand('altar', 12345, 678);
+    for (let i = 0; i < 100; i++) expect(a()).toBe(b());
+  });
+  it('鍵が1つでも違えば、初めの値から違う（文字列の区切りも見る）', () => {
+    const first = (...k: (string | number)[]): number => keyedRand(...k)();
+    const vals = [
+      first('altar', 1, 2),
+      first('altar', 1, 3),
+      first('altar', 2, 2),
+      first('levelup', 1, 2),
+      first('ab', 'c'),
+      first('a', 'bc'),
+      first('abc'),
+      first(1, 2),
+      first(2, 1),
+    ];
+    expect(new Set(vals).size).toBe(vals.length);
+  });
+  it('並んだ鍵（隣のマス・次のレベル）でも、初めの値はほぼ同じ割合で散らばる', () => {
+    const buckets = Array.from({ length: 10 }, () => 0);
+    for (let i = 0; i < 20000; i++) {
+      const k = Math.floor(keyedRand('levelup', 777, i)() * 10);
+      buckets[k] = nth(buckets, k) + 1;
+    }
+    for (const c of buckets) expect(Math.abs(c - 2000)).toBeLessThan(150);
   });
 });

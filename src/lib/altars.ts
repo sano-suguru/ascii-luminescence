@@ -13,7 +13,7 @@ import { saveSet } from './save.ts';
 import { RUNE_CHARS } from './glyphs.ts';
 import { levelSeed } from './levels.ts';
 import { statOf } from './monsters.ts';
-import { mpick, mr, shuffle } from './random.ts';
+import { keyedRand, shuffle } from './random.ts';
 import { mulberry32 } from './rng.ts';
 import {
   CAT_BR,
@@ -60,16 +60,19 @@ const HEAL = (): AltarOpt => ({ opt: 'heal', rune: { uid: -1, type: 'mend' } });
 // ---------------------------------------------------------------- 祭壇の中身（近づいた時に決める）
 /**
  * 祭壇の組 grp の3つの選択肢を決める（まだ決めていなければ）。ルーンの祭壇は、新しいルーン（空いた枠の種類に寄せる）・
- * まれに武器・体力が最大の85%より少なければ癒し。主の祭壇は強い選択肢（武器・鍛える）と、体力が最大の85%より少なければ癒し。鍛えの祭壇は、持っている武器の鍛え方を3つ
+ * まれに武器・体力が最大の85%より少なければ癒し。主の祭壇は強い選択肢（武器・鍛える）と、体力が最大の85%より少なければ癒し。鍛えの祭壇は、持っている武器の鍛え方を3つ。
+ * 乱数は、階のシードと祭壇のマスから作る（keyedRand）。見た目の乱数は引かないので、同じ階の同じ祭壇は、手と体力が同じなら、いつ近づいても同じ中身になる。
+ * r はテストが渡す（選び方が、見た目の乱数で選んでいた時と同じかを確かめるため）
  */
-export function altarFill(grp: string): void {
+export function altarFill(grp: string, r?: () => number): void {
   const D = level(),
     its = D.items.filter((o) => o.grp === grp && o.altar),
     first = its[0];
   if (!first || first.rune) return;
+  const rr = r ?? keyedRand('altar', levelSeed(), first.i);
   const lord = first.lord;
   if (first.forge) {
-    const fo = forgeOptions(3);
+    const fo = forgeOptions(3, rr);
     its.forEach((it, k) => {
       const f = fo[k];
       Object.assign(it, f ? { opt: 'forge', forgeW: f.w, forgeK: f.k, forgeTo: f.to, rune: { uid: -1, type: 'forgeopt' } } : HEAL());
@@ -85,41 +88,42 @@ export function altarFill(grp: string): void {
     const empty: ('elem' | 'mod' | 'trig' | 'body')[] = [];
     for (const h of ['L', 'R'] as const) {
       const H = hs[h];
-      for (let i = 0; i < (H.slotN || 2); i++) if (!H.slots[i]) empty.push(mpick(['elem', 'mod', 'mod', 'trig'] as const));
+      for (let i = 0; i < (H.slotN || 2); i++)
+        if (!H.slots[i]) empty.push(nth(['elem', 'mod', 'mod', 'trig'] as const, Math.floor(rr() * 4)));
     }
     for (let i = 0; i < (adv.runState.bodyOpen || 0); i++) if (!bodySlot(hs.B, i)) empty.push('body');
     for (let tries = 0; tries < 16; tries++) {
       let t: string;
-      if (empty.length && mr() < 0.5) {
-        const c = nth(empty, Math.floor(mr() * empty.length)),
+      if (empty.length && rr() < 0.5) {
+        const c = nth(empty, Math.floor(rr() * empty.length)),
           a = RUNE_TYPES[c].filter((u) => !lockedOf('rune', u));
-        t = must(a[Math.floor(mr() * a.length)], '選べるルーン');
+        t = must(a[Math.floor(rr() * a.length)], '選べるルーン');
       } else
-        t = randomRuneType(mr, lord ? { elem: 0.3, trig: 0.15, mod: 0.35, body: 0.2 } : { elem: 0.4, trig: 0.12, mod: 0.38, body: 0.1 });
+        t = randomRuneType(rr, lord ? { elem: 0.3, trig: 0.15, mod: 0.35, body: 0.2 } : { elem: 0.4, trig: 0.12, mod: 0.38, body: 0.1 });
       if (usedT.has(t) || (tries < 10 && usedC.has(lookup(RUNE_DEF, t).cat))) continue;
       usedT.add(t);
       usedC.add(lookup(RUNE_DEF, t).cat);
-      return { opt: 'rune', rune: lookup(RUNE_DEF, t).cat === 'mod' && mr() < (lord ? 0.5 : 0.05) ? makeStrong(t) : makeRune(t) };
+      return { opt: 'rune', rune: lookup(RUNE_DEF, t).cat === 'mod' && rr() < (lord ? 0.5 : 0.05) ? makeStrong(t) : makeRune(t) };
     }
     return null;
   };
   const weapon = (): AltarOpt | null => {
     const pool = weaponPool().filter((t) => !usedT.has(t));
     if (!pool.length) return null;
-    const t = nth(pool, Math.floor(mr() * pool.length));
+    const t = nth(pool, Math.floor(rr() * pool.length));
     usedT.add(t);
     return { opt: 'rune', rune: rollTraits(makeRune(t), here.depth, lord ? 2 : 0) };
   };
   const heal = (): AltarOpt | null => (player.hp < adv.PLAYER_MAX * 0.85 ? HEAL() : null);
   const forge = (): AltarOpt | null => {
-    const f = forgeOptions(1)[0];
+    const f = forgeOptions(1, rr)[0];
     return f ? { opt: 'forge', forgeW: f.w, forgeK: f.k, forgeTo: f.to, rune: { uid: -1, type: 'forgeopt' } } : null;
   };
-  opts.push(lord || mr() < 0.08 ? weapon() || newRune() : newRune());
+  opts.push(lord || rr() < 0.08 ? weapon() || newRune() : newRune());
   opts.push(lord ? forge() || newRune() : newRune());
   opts.push(heal() || newRune());
   for (let k = 0; k < 3; k++) if (!opts[k]) opts[k] = HEAL();
-  shuffle(opts, mr);
+  shuffle(opts, rr);
   its.forEach((it, k) => Object.assign(it, opts[k]));
 }
 
@@ -167,8 +171,8 @@ export const guardedNow = (it: { guardG?: number }): boolean =>
   it.guardG !== undefined && here.monsters.some((m) => !m.dead && m.g === it.guardG);
 
 // ---------------------------------------------------------------- 祭壇を置く・鍛える
-/** 持っている武器の鍛え方を、でたらめに n 個（特性の段を1つ上げる、まだ無い特性を足す） */
-export function forgeOptions(n: number): ForgeOption[] {
+/** 持っている武器の鍛え方を、乱数 r で n 個選ぶ（特性の段を1つ上げる、まだ無い特性を足す） */
+export function forgeOptions(n: number, r: () => number): ForgeOption[] {
   const hs = hands(),
     ws = [...new Set([hs.L.atk, hs.R.atk].filter((w): w is Rune => Boolean(w)))],
     cands: ForgeOption[] = [];
@@ -179,7 +183,7 @@ export function forgeOptions(n: number): ForgeOption[] {
     for (const k of pool) if (!tr.some((t) => t.k === k)) cands.push({ w, k, from: 0, to: 1 });
   }
   const out: ForgeOption[] = [];
-  while (out.length < n && cands.length) out.push(must(cands.splice(Math.floor(mr() * cands.length), 1)[0], '鍛え方'));
+  while (out.length < n && cands.length) out.push(must(cands.splice(Math.floor(r() * cands.length), 1)[0], '鍛え方'));
   return out;
 }
 /** マス at に、祭壇の組 grp の3つの選択肢の台を置く（中身は近づいた時に altarFill が決める。extra は主の祭壇などの印） */

@@ -3,6 +3,7 @@
 // 階は、迷宮の生成を使わずに、ここで小さな階（部屋・床・水・湧く所）を作る（迷宮の生成を変えても、この指紋は変わらない）。
 // 場合ごとに、手（武器・特性・枠・体の枠）・解放・開発用モード・深さ・体力・探索のシード・番人の群れを、シードの乱数で変える。
 // 書き換えた状態（here・gear・adv・player・saved）と Math.random は、終わったら元に戻す。
+// 祭壇の中身と鍛え方は、本当は出来事ごとの乱数（keyedRand）で選ぶが、ここでは Math.random を読む乱数を渡す。乱数を分ける前と同じ指紋になるので、選び方は変わっていない。
 import { UNLOCKS } from '../../src/lib/progress.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 import { RUNE_TYPES, TRAITS } from '../../src/lib/runes.ts';
@@ -123,14 +124,14 @@ export function altarCases(F, seeds) {
           );
         res.push(F.hostileKeys(), F.nextGroup());
         for (let k = 0; k < 3; k++) res.push(F.addGuards(cell(), rr));
-        res.push(F.forgeOptions(Math.floor(r() * 4)).map((f) => [f.w.uid, f.k, f.from, f.to]));
+        res.push(F.forgeOptions(Math.floor(r() * 4), () => Math.random()).map((f) => [f.w.uid, f.k, f.from, f.to]));
         for (const k of ['cavern', 'ruins', 'magma', 'deep']) res.push(F.forgeDepthOf(k));
         res.push(F.vaultArea({ i: cell() }, 1 + Math.floor(r() * 4)));
         // 祭壇：ルーンの祭壇・主の祭壇（番人つき）・鍛えの祭壇。2回目の altarFill は何もしない
         F.placeAltar(cell(), 'a0');
         F.placeAltar(cell(), 'a1', { lord: true, guardG: Math.floor(r() * 6) });
         F.placeAltar(cell(), 'a2', { forge: true });
-        for (const g of ['a0', 'a1', 'a2', 'nope', 'a0']) F.altarFill(g);
+        for (const g of ['a0', 'a1', 'a2', 'nope', 'a0']) F.altarFill(g, () => Math.random());
         for (const it of D.items) if (it.altar && it.opt) res.push(F.altarLine(it), F.guardedNow(it));
         res.push(F.altarLine({ opt: 'open', label: r() < 0.8 ? '左手の枠' : undefined }));
         res.push(F.guardedNow({ guardG: Math.floor(r() * 6) }), F.guardedNow({}));

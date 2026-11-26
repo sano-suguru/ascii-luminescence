@@ -23,7 +23,7 @@ function openSlot(cell){ const opts=[];
   if((adv.runState.bodyOpen||0)<2)opts.push({target:'body',label:'身の護符の枠'});
   sChime(player.x,player.z,0.5); setTimeout(()=>sChime(player.x,player.z,0.4),220);
   for(let q=0;q<30;q++){ const a=mr()*6.28; spawn(player.x,0.6+mr(),player.z,Math.cos(a)*1.2,0.4+mr()*1.4,Math.sin(a)*1.2,0.9,G(mpick(['{','}','*','.'])),0.16,2.4,2.1,1.4,0); }
-  if(!opts.length){ const ru=makeRune(randomRuneType(mr)); msg('<b style="color:#ffe3a0">{ }</b>空の枠を手にした。開ける枠はもうない。枠は、ひとつのルーンに姿を変えた。'); takeRune(ru); return; }
+  if(!opts.length){ const ru=makeRune(randomRuneType(keyedRand('slot',levelSeed(),cell))); msg('<b style="color:#ffe3a0">{ }</b>空の枠を手にした。開ける枠はもうない。枠は、ひとつのルーンに姿を変えた。'); takeRune(ru); return; }
   if(opts.length===1){ applyOpen(opts[0].target); msg(`<b style="color:#ffe3a0">{ }</b>空の枠を手にした。${opts[0].label}が開いた。`); return; }
   const grp='slotpick'+(++slotPickN);
   opts.forEach((o,k)=>here.D.items.push({i:cell,kind:'rune',altar:true,grp,slot:k,opt:'open',target:o.target,label:o.label,rune:{uid:-1,type:'slotopt'},taken:false}));
