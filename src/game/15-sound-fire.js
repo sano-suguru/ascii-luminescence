@@ -4,7 +4,7 @@
 // 音量を次の段にする sndToggle は src/lib/screens.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- swamp gas
-let gasTmp=new Float32Array(NCELL);
+// ガスが広がる時の作業の配列 gasTmp は src/lib/state.ts の blaze（src/game/imports.mjs で読む）
 // ---------------------------------------------------------------- fire (after Brogue: spreads through flammable terrain, ignites gas)
 let sparkCD=0;
 // FIRE_TYPES は src/lib/world.ts（src/game/imports.mjs で読む）
@@ -167,7 +167,7 @@ function updateEvents(dt,t){
 }
 
 function stepGas(){
-  const g=here.D.gas, nb=gasTmp, tile=here.D.tile; let any=false;
+  const g=here.D.gas, nb=blaze.gasTmp, tile=here.D.tile; let any=false;
   for(let i=0;i<NCELL;i++){
     if(tile[i]===TW){ nb[i]=0; continue; }
     const v=g[i], x=i%MW; let s=0,c=0;

@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------- test mode (?test=1): the same result every time, for automated checks
 // Math.random and the sound random (sndRand, its own sequence) are seeded, and the clock (performance.now / setTimeout / setInterval / the audio clock AudioContext.currentTime) only moves when the game steps.
 // The game does not step by itself: window.__test.frames(n) draws n frames, __test.advance(sec) steps without drawing.
-const TEST=(()=>{ try{ return new URLSearchParams(location.search).get('test')==='1'; }catch(e){ return false; } })();
+// テスト用モードか TEST は src/lib/state.ts（src/game/imports.mjs で読む）
 const TEST_STEP=1/30;
 const TESTCLK=TEST?(()=>{
   const q=new URLSearchParams(location.search), sd=Number(q.get('seed'))>>>0||1;

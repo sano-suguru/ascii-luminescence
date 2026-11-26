@@ -12,7 +12,8 @@ adv.runSeed=(Math.random()*1e9)>>>0;
 // 薄い氷に乗っていた秒 iceT は src/lib/state.ts、氷が割れる crackIce・背の高い茂みか tallAt・踏み分ける trample・硫黄が燃え上がる brimFlare は src/lib/ground.ts（src/game/imports.mjs で読む）
 function regrow(){ if(!blaze.trampled.length)return; const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL); let ch=false;
   blaze.trampled=blaze.trampled.filter(([i,t0])=>{ if(clock.time-t0>45&&i!==pc&&blaze.cellFlag[i]===20){ blaze.cellFlag[i]=0; ch=true; return false; } return blaze.cellFlag[i]===20; }); if(ch)uploadCells(); }
-let brimT=0; function brimRecover(dt){ brimT+=dt; if(brimT<2)return; brimT=0; let ch=false; for(let i=0;i<NCELL;i++){ if(here.D.surface[i]===SF_BRIM&&(blaze.burnt[i]||blaze.fuel[i]<=0)&&blaze.fire[i]<=0&&mr()<0.08){ /* burnt, or swept by a cleaner (no ash, no fuel) */ blaze.burnt[i]=0; blaze.fuel[i]=0.8; ch=true; } } if(ch)uploadCells(); }
+// 硫黄が戻るまでの秒 brimT は src/lib/state.ts の blaze（src/game/imports.mjs で読む）
+function brimRecover(dt){ blaze.brimT+=dt; if(blaze.brimT<2)return; blaze.brimT=0; let ch=false; for(let i=0;i<NCELL;i++){ if(here.D.surface[i]===SF_BRIM&&(blaze.burnt[i]||blaze.fuel[i]<=0)&&blaze.fire[i]<=0&&mr()<0.08){ /* burnt, or swept by a cleaner (no ash, no fuel) */ blaze.burnt[i]=0; blaze.fuel[i]=0.8; ch=true; } } if(ch)uploadCells(); }
 // ---------------------------------------------------------------- hidden traps, a lever-and-portcullis vault, sanctuaries (mechanisms after Brogue's machines; written independently)
 // TRAP_INFO は src/lib/names.ts（src/game/imports.mjs で読む）
 function triggerTrap(tr){

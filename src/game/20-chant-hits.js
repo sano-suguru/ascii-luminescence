@@ -7,7 +7,7 @@ function beginCast(h){
   const at=atkType(h), def=RUNE_DEF[at]; if(def.chant<=0){ castNow(h); return; }
   let needK=1; if(clock.time<(player.qcUntil||0)){ needK*=0.5; player.qcUntil=0; } if(BL('desperate')&&player.hp<adv.PLAYER_MAX*0.5)needK*=BL('desperate')>=2?0.55:0.7;
   gear.castSt={h,t:0,need:def.chant*Math.max(0.4,1-0.3*bodyN('quick'))*TRAIT_V.charge[wTL(h,'charge')]*needK,full:false,hold:0,beam:at==='beam',firing:false,tick:0,beamT:0};
-  if(humNode)humNode.stop(); humNode=chantStart(H.elem?H.elem.type:null);
+  if(gear.humNode)gear.humNode.stop(); gear.humNode=chantStart(H.elem?H.elem.type:null);
 }
 function fizzle(){ const [ox,oy,oz]=aimOrigin(), [dx,dy,dz]=viewDir(); for(let q=0;q<8;q++){ const a=mr()*6.28; spawn(ox+dx*0.7,oy-0.3+dy*0.7,oz+dz*0.7,Math.cos(a)*0.6,0.2+mr()*0.4,Math.sin(a)*0.6,0.5,G(mpick(['.','\''])),0.1,0.6,0.55,0.75,0); } }
 function releaseCast(h){
@@ -16,7 +16,7 @@ function releaseCast(h){
   if(c.full)castNow(h,{chanted:true,hold:c.hold}); else fizzle();
 }
 function updateCast(dt){
-  if(!gear.castSt&&humNode){ humNode.stop(); humNode=null; }
+  if(!gear.castSt&&gear.humNode){ gear.humNode.stop(); gear.humNode=null; }
   if(fight.beamRun){ fight.beamRun.t-=dt; fight.beamRun.tick-=dt; if(fight.beamRun.tick<=0){ fight.beamRun.tick=0.15; fireBeam(fight.beamRun.h,fight.beamRun.dir,fight.beamRun.dir?handPoint(fight.beamRun.h):null,fight.beamRun.auto); } if(fight.beamRun.t<=0){ turnElem(fight.beamRun.h); fight.beamRun=null; fight.beamSegs=[]; } }
   fight.trigCd.L=Math.max(0,fight.trigCd.L-dt); fight.trigCd.R=Math.max(0,fight.trigCd.R-dt); player.recover=Math.max(0,(player.recover||0)-dt);
   if(gear.swapSt){ gear.swapSt.t+=dt; if(gear.swapSt.t>=gear.swapSt.dur){ gear.swapSt=null; if(BL('swapedge'))player.swapEdgeUntil=clock.time+3; sChime(player.x,player.z,0.25); renderHotbar(); } else if(((gear.swapSt.t*10)|0)!==gear.swapSt.last){ gear.swapSt.last=(gear.swapSt.t*10)|0; renderHotbar(); } }
@@ -25,7 +25,7 @@ function updateCast(dt){
   gear.castSt.t+=dt;
   if(!gear.castSt.full&&gear.castSt.t>=gear.castSt.need){ gear.castSt.full=true;
     const P=castPoint(gear.castSt.h,1), c=elemCol(gear.hands[gear.castSt.h].elem?gear.hands[gear.castSt.h].elem.type:null); for(let q=0;q<14;q++){ const a=mr()*6.28; spawn(P[0],P[1],P[2],Math.cos(a)*1.2,(mr()-0.4)*1.2,Math.sin(a)*1.2,0.35,G('*'),0.05,c[0]*3,c[1]*3,c[2]*3,0); } }
-  if(humNode&&humNode.tick)humNode.tick(Math.min(1,gear.castSt.t/Math.max(0.01,gear.castSt.need)),gear.castSt.full);
+  if(gear.humNode&&gear.humNode.tick)gear.humNode.tick(Math.min(1,gear.castSt.t/Math.max(0.01,gear.castSt.need)),gear.castSt.full);
   if(gear.castSt.full){ gear.castSt.hold+=dt; if(gear.castSt.hold>2){ const hh=gear.castSt.h; gear.castSt=null; castNow(hh,{chanted:true,hold:2}); } }
   if(((clock.time*10)|0)!==updateCast.last){ updateCast.last=(clock.time*10)|0; renderHotbar(); }
 }

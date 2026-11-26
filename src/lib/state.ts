@@ -25,6 +25,15 @@ export interface ZapFlash {
   r: number;
 }
 
+/** テスト用モード（?test=1）か（src/game/00-test-mode.js が時計と乱数を入れ替える。読めない時は違う） */
+export const TEST = (() => {
+  try {
+    return new URLSearchParams(location.search).get('test') === '1';
+  } catch {
+    return false;
+  }
+})();
+
 /** 時計（ゲームの時刻。止めている間・テスト用モードで進めない間は進まない。溜めている間・ヒットストップ中はゆっくり進む） */
 export interface Clock {
   /** ゲームが始まってからの秒（30-loop-init.js の tick が進める） */
@@ -382,8 +391,24 @@ export interface Gear {
   buildIdx: number;
   /** 次に作るルーンの番号（探索の中で通し。src/lib/gear.ts の makeRune が数える） */
   runeUid: number;
+  /** 鳴っている詠唱の声（src/lib/audio.ts の chantStart が作る。音を鳴らせない時と、詠唱していない時は null） */
+  humNode: ChantVoice | null;
 }
-export const gear: Gear = { hands: null, bag: [], castSt: null, swapSt: null, builds: [null, null], buildIdx: -1, runeUid: 1 };
+/** 詠唱の声（tick：溜まった割合と、溜め終わったかを伝える。stop：止める） */
+export interface ChantVoice {
+  tick(k: number, isFull: boolean): void;
+  stop(): void;
+}
+export const gear: Gear = {
+  hands: null,
+  bag: [],
+  castSt: null,
+  swapSt: null,
+  builds: [null, null],
+  buildIdx: -1,
+  runeUid: 1,
+  humNode: null,
+};
 
 /** 投げた火花（火打ち石。当たった所に火がつく） */
 export interface Spark {
@@ -422,6 +447,10 @@ export interface Blaze {
   fireSrc: number[];
   /** 沼のガスが爆ぜた伝言を最後に出したゲームの時刻（3秒あける） */
   lastBoom: number;
+  /** ガスが広がる時の作業の配列（src/lib/ground.ts の stepGas） */
+  gasTmp: Float32Array;
+  /** 燃えた硫黄を戻すまでに経った秒（2秒ごとに戻す。src/lib/ground.ts の brimRecover） */
+  brimT: number;
 }
 export const blaze: Blaze = {
   fire: new Float32Array(NCELL),
@@ -437,6 +466,8 @@ export const blaze: Blaze = {
   trampled: [],
   fireSrc: [],
   lastBoom: -10,
+  gasTmp: new Float32Array(NCELL),
+  brimT: 0,
 };
 
 /** 光線の一切れ（点の並び・色・残りの秒） */
