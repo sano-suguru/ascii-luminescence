@@ -260,8 +260,7 @@ export const adv: Adv = {
   HIST_SEED: -1,
 };
 
-/** プレイヤー（位置・速さ・向き・揺れ・目の高さ・体力）。丸ごと入れ替えることは無いので、古い JS は今までどおり player.x のように読む。
- * 後から足される欄（roll・lunge・netT など）は、使う処理を移す時に型を足す */
+/** プレイヤー（位置・速さ・向き・揺れ・目の高さ・体力）。丸ごと入れ替えることは無いので、古い JS は今までどおり player.x のように読む */
 export interface Player {
   x: number;
   z: number;

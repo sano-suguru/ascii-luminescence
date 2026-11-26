@@ -746,6 +746,13 @@ export async function fightCases(F, seeds, page) {
         call('dashCast', sp0('dash', el), dir(), chance(0.5));
         tick(0.25);
         if (player.lunge) call('dashCuts');
+        if (k === 0) {
+          // 突進が無い時は何もしない（突進は戻す）
+          const L = player.lunge;
+          player.lunge = null;
+          call('dashCuts');
+          player.lunge = L;
+        }
         tick(0.4);
         call('castStar', sp0('star', el), player.x + (r() - 0.5) * 6, player.z + (r() - 0.5) * 6);
         call('startRain', sp0('rain', el), player.x, player.z, chance(0.3));
