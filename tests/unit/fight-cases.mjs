@@ -13,6 +13,7 @@ import { addLooks } from '../../src/lib/bodies/build.ts';
 import { MTYPES } from '../../src/lib/creatures.ts';
 import { makeRune } from '../../src/lib/gear.ts';
 import { makeHistory } from '../../src/lib/history.ts';
+import { makeBeastType } from '../../src/lib/bodies/lords.ts';
 import { makeMonster } from '../../src/lib/monsters.ts';
 import { P } from '../../src/lib/particles.ts';
 import { setSoundRand } from '../../src/lib/random.ts';
@@ -39,7 +40,24 @@ import {
   vfx,
   vmKick,
 } from '../../src/lib/state.ts';
-import { CELL, D4, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MW, NCELL, SF_BRIM, SF_ICE, SF_MUD, TC, TF, TX, cpos } from '../../src/lib/world.ts';
+import {
+  CELL,
+  D4,
+  LQ_BOG,
+  LQ_DEEP,
+  LQ_LAVA,
+  LQ_WATER,
+  MW,
+  NCELL,
+  SF_BRIM,
+  SF_ICE,
+  SF_MUD,
+  TC,
+  TF,
+  TP,
+  TX,
+  cpos,
+} from '../../src/lib/world.ts';
 import { fakeAudioClass } from './fake-audio.mjs';
 import { PLACES, gen, loadEnv } from './gen-places.ts';
 import { swapGlobals } from './ui-cases.mjs';
@@ -192,17 +210,21 @@ export function fakeDom() {
       },
       onclick: null,
       querySelectorAll: () => [],
+      addEventListener: (t) => log.push(['listen', id, t]),
     };
   };
+  const hide = new Set();
   return {
     log,
     els,
+    hide,
     reset() {
       log.length = 0;
+      hide.clear();
       for (const k of Object.keys(els)) delete els[k];
     },
     document: {
-      getElementById: (id) => (id === 'none' ? null : (els[id] ??= el(id))),
+      getElementById: (id) => (hide.has(id) ? null : (els[id] ??= el(id))),
       body: { classList: classList('body') },
       exitPointerLock: () => log.push(['exitPointerLock']),
       createElement: () => ({ innerHTML: '', childNodes: [] }),
@@ -288,12 +310,19 @@ export async function fightCases(F, seeds, page) {
   const alog = [],
     stored = [],
     timers = fakeTimers();
-  let msgN = 0;
+  let msgN = 0,
+    noStore = false;
   msgs.push = (...a) => (msgN++, Array.prototype.push.apply(msgs, a));
   const restoreGlobals = swapGlobals({
     document: page.document,
     window: { AudioContext: fakeAudioClass(alog, 'running') },
-    localStorage: { setItem: (k, v) => stored.push([k, v]), getItem: () => null },
+    localStorage: {
+      setItem: (k, v) => {
+        if (noStore) throw new Error('no storage');
+        stored.push([k, v]);
+      },
+      getItem: () => null,
+    },
     performance: { now: () => clock.time * 1000 },
     setTimeout: timers.setTimeout,
     clearTimeout: timers.clearTimeout,
@@ -461,7 +490,8 @@ export async function fightCases(F, seeds, page) {
         withTraits = (w) => {
           const ru = makeRune(w),
             ks = Object.keys(TRAITS[w] || {});
-          ru.traits = ks.filter(() => chance(0.6)).map((k) => ({ k, lv: 1 + Math.floor(r() * 5) }));
+          const all = chance(0.3);
+          ru.traits = ks.filter(() => all || chance(0.6)).map((k) => ({ k, lv: all ? pick([3, 4, 5]) : 1 + Math.floor(r() * 5) }));
           return ru;
         };
       const hand = (w) => {
@@ -584,10 +614,6 @@ export async function fightCases(F, seeds, page) {
           ret = F[name](...args);
         } catch (e) {
           threw = String(e && e.message).slice(0, 40);
-          if (process.env.STACK && !globalThis.__st && String(e.message).includes(process.env.STACK)) {
-            globalThis.__st = 1;
-            console.error(name, e.stack);
-          }
         }
         calls.push({
           name,
@@ -636,6 +662,8 @@ export async function fightCases(F, seeds, page) {
           c = Math.cos(y);
         return [Math.cos(a) * c, Math.sin(y), Math.sin(a) * c];
       };
+      // 術の中身の特性は、その武器の特性の表にある物だけ（ゲームの術の中身は、武器のルーンの特性から作る）
+      const W_OF = { gsweep: 'gsword', gwave: 'gsword', mshot: 'mstaff', mmoon: 'mstaff', bpower: 'bolt', rshot: 'bolt', bare: '' };
       const sp0 = (atk, elem) => ({
         h: pick(['L', 'R']),
         atk,
@@ -649,35 +677,8 @@ export async function fightCases(F, seeds, page) {
           dur: chance(0.4) ? 50 : 0,
         },
         tr: Object.fromEntries(
-          [
-            'width',
-            'range',
-            'knock',
-            'stride',
-            'after',
-            'link',
-            'echo',
-            'pierce',
-            'stardust',
-            'charge',
-            'size',
-            'pull',
-            'fall',
-            'speed',
-            'accuracy',
-            'weight',
-            'spin',
-            'quake',
-            'focus',
-            'refract',
-            'sear',
-            'length',
-            'split',
-            'trace',
-            'impact',
-            'stagger',
-          ]
-            .filter(() => chance(0.4))
+          Object.keys(TRAITS[W_OF[atk] ?? atk] || {})
+            .filter(() => chance(0.6))
             .map((k) => [k, 1 + Math.floor(r() * 5)]),
         ),
         pow: pick([1, 1.4, 2]),
@@ -859,8 +860,16 @@ export async function fightCases(F, seeds, page) {
         call('assistPoint', [player.x, 1.5, player.z], pick(['bolt', 'beam', 'orb', undefined]));
         call('shotFrame', pick(['L', 'R']), chance(0.5), pick(['bolt', 'beam', undefined]));
         call('beamFrame', pick(['L', 'R']));
+        const fl = foes().filter((o) => o.ty.flier);
+        if (fl.length) {
+          ui.crossMon = pick(fl);
+          ui.aimT = clock.time;
+          call('assistPoint', [player.x, 1.5, player.z], 'bolt');
+        }
+        call('landElem', sp0('orb', 'fire'), player.x, 0.3, player.z, Math.floor(player.z / CELL) * MW + Math.floor(player.x / CELL));
         if (foes().length && chance(0.5)) {
-          const m = pick(foes());
+          const fl = foes().filter((o) => o.ty.flier);
+          const m = fl.length && chance(0.5) ? pick(fl) : pick(foes());
           player.yaw = Math.atan2(-(m.x - player.x), -(m.z - player.z));
           player.pitch = 0;
           m.visible = true;
@@ -898,6 +907,21 @@ export async function fightCases(F, seeds, page) {
           call('applyOpen', t);
         }
       // ---- 場面：結果の画面
+      {
+        const md = adv.runStats.maxDepth,
+          meta = saved.META,
+          dev = saved.DEVALL;
+        adv.runStats.maxDepth = 12;
+        call('runLore', true);
+        adv.runStats.maxDepth = 1;
+        call('runLore', false);
+        adv.runStats.maxDepth = md;
+        saved.META = { ...meta, lore: 0, spent: 0 };
+        saved.DEVALL = false;
+        call('loreRows', { parts: [['a', '', 1]], base: 1, mult: 1, total: 1 }, (t) => t);
+        saved.META = meta;
+        saved.DEVALL = dev;
+      }
       call('resultPlace');
       call('runLore', chance(0.5));
       if (chance(0.5)) adv.runStats.loreRes = undefined;
@@ -916,6 +940,152 @@ export async function fightCases(F, seeds, page) {
       adv.won = false;
       adv.dead = false;
       call('resetRunes');
+      // ---- 場面：分かれ道ごと（加護の効く間・効かない当たり・吹き飛び・立ち直り・発動のルーンの届く所・魔法の場の数・音が鳴らない・保存できない・画面の部品が無い）
+      {
+        const fs = foes();
+        if (fs.length) {
+          const m = pick(fs);
+          Object.assign(player, { ctrUntil: clock.time + 1, swapEdgeUntil: clock.time + 1, momUntil: clock.time + 1 });
+          call('applyHit', m, 3, sp0('bolt', 'fire'));
+          Object.assign(player, { ctrUntil: 0, swapEdgeUntil: 0, momUntil: 0 });
+          const m2 = pick(fs);
+          Object.assign(m2, { noticed: false, dead: false });
+          call('applyHit', m2, 0, sp0('bolt', null));
+          m2.dead = true;
+          call('applyHit', m2, 3, sp0('bolt', 'fire'));
+          m2.dead = false;
+          for (const la of ['blade', 'bolt', 'orb', 'beam', 'bare', 'rapid', undefined]) {
+            const m3 = pick(fs);
+            Object.assign(m3, {
+              lastAtk: la,
+              lastKnock: chance(0.5) ? 2 : undefined,
+              hp: chance(0.3) ? 0 : 10,
+              wind: chance(0.5) ? 0.3 : 0,
+            });
+            fight.hitSrcPoint = chance(0.5) ? [player.x, player.z] : null;
+            call('hitReact', m3, pick([2, 9, 30]));
+          }
+          fight.hitSrcPoint = null;
+          player.rally = 0.01;
+          call('rallyOnHit', Object.assign(pick(fs), { playerT: clock.time }), 0.05, 'blade');
+          player.rally = 20;
+          call('rallyOnHit', Object.assign(pick(fs), { playerT: clock.time, hp: 0 }), 4, 'fire');
+          for (const atkW of ['blade', 'dash', 'gsword']) {
+            for (const h of ['L', 'R']) {
+              gear.hands[h].atk = withTraits(atkW);
+              gear.hands[h].trig = makeRune(pick(['kill', 'dodge']));
+            }
+            fight.trigCd = { L: 0, R: 0 };
+            const far = pick(fs);
+            Object.assign(far, { x: player.x + 4, z: player.z + 0.1, dead: false });
+            call('onKilledBy', pick(fs));
+            call('onDodged', far);
+          }
+          const hs = gear.hands;
+          gear.hands = null;
+          call('onDodged', pick(fs));
+          gear.hands = hs;
+        }
+        for (let k = 0; k < 16; k++) call('addZone', player.x + k * 2, player.z, 1, sp0('orb', 'fire'), 2, false);
+        SND.on = false;
+        call('castSound', { elem: 'fire' }, player.x, player.z);
+        SND.on = true;
+        noStore = true;
+        saved.RSEEN = new Set();
+        call('resetRunes');
+        saved.BOOK = new Set();
+        if (foes().length) {
+          const m = pick(foes());
+          m.st = { burn: 1 };
+          call('react', 'steam', m, sp0('orb', 'ice'), 3);
+        }
+        noStore = false;
+        ui.invOpen = true;
+        call('applyOpen', 'slotL');
+        ui.invOpen = false;
+        page.hide.add('death');
+        adv.won = false;
+        call('victory');
+        page.hide.delete('death');
+        adv.won = true;
+        call('victory');
+        adv.won = false;
+        adv.dead = false;
+        saved.LEGEND = null;
+        // 水の中の敵（7体より多い・雷の効き目のある物）に雷が伝わる・水に雷を落とす
+        {
+          if (MTYPES['Y'])
+            here.monsters.push(makeMonster({ key: 'Y', cx: Math.floor(player.x / CELL), cz: Math.floor(player.z / CELL), g: -1 }));
+          for (let q = 0; q < 8; q++)
+            here.monsters.push(makeMonster({ key: 'k', cx: Math.floor(player.x / CELL), cz: Math.floor(player.z / CELL), g: -1 }));
+          const fs2 = [...foes().filter((o) => o.key === 'Y'), ...foes()].slice(0, 9);
+          for (const o of fs2) {
+            Object.assign(o, { x: player.x + (r() - 0.5) * 3, z: player.z + (r() - 0.5) * 3, dead: false });
+            o.cx = Math.floor(o.x / CELL);
+            o.cz = Math.floor(o.z / CELL);
+            D.liquid[o.cz * MW + o.cx] = LQ_WATER;
+          }
+          const y = fs2[fs2.length - 1];
+          if (y) {
+            call('conductWater', fs2[1] ?? y, 6);
+            call('conductWater', y, 6);
+            call('landElem', sp0('orb', 'thunder'), y.x, 0.2, y.z, y.cz * MW + y.cx);
+          }
+        }
+        // 閉じた扉へ光線を撃つ
+        if (D.doors.length) {
+          const d = pick(D.doors);
+          d.o = 0;
+          d.gone = false;
+          const [dx2, dz2] = cpos(d.i),
+            w = gear.hands.R.atk;
+          gear.hands.R.atk = makeRune('beam');
+          for (const [ax, az] of D4) {
+            const ci = d.i - ax - az * MW;
+            if (D.tile[ci] !== TF) continue;
+            Object.assign(player, { x: dx2 - ax * CELL, z: dz2 - az * CELL });
+            fight.beamIgT = -9;
+            call('fireBeam', 'R', [ax, 0, az], [player.x, 1.2, player.z], false);
+            break;
+          }
+          gear.hands.R.atk = w;
+          Object.assign(player, { x: px, z: pz });
+        }
+        // 深い水の中で歩く（水しぶき・目が低い）
+        {
+          const ci = Math.floor(player.z / CELL) * MW + Math.floor(player.x / CELL);
+          D.liquid[ci] = LQ_DEEP;
+          D.bridge[ci] = 0;
+          ui.camMode = 'fps';
+          keys.KeyW = true;
+          for (let q = 0; q < 8; q++) call('updatePlayer', 0.25);
+          keys.KeyW = false;
+          D.liquid[ci] = 0;
+        }
+        // 当たり判定：マップの外・崩れた穴・柱・置物
+        call('solidAt', -1, -1, 0.3);
+        const i = nearFloor(6),
+          [ix, iz] = cpos(i);
+        D.pit = new Uint8Array(NCELL);
+        D.tile[i + 1] = TC;
+        D.pit[i + 1] = chance(0.5) ? 1 : 0;
+        call('solidAt', ix + CELL * 0.9, iz, 0.3);
+        D.tile[i - 1] = TP;
+        call('solidAt', ix - CELL * 0.6, iz, 0.3);
+        call('solidAt', ix - CELL * 0.1, iz, 0.1);
+        D.solid.set(i + MW, 0.5);
+        call('solidAt', ix, iz + CELL * 0.8, 0.3);
+        call('solidAt', ix, iz + CELL * 0.1, 0.1);
+        // 死んでいる時は動かない・クモの巣
+        adv.dead = true;
+        call('updatePlayer', 0.1);
+        adv.dead = false;
+        D.webAt = new Map([[Math.floor(player.z / CELL) * MW + Math.floor(player.x / CELL), { i: 0, gone: false }]]);
+        keys.KeyW = true;
+        call('updatePlayer', 0.1);
+        keys.KeyW = false;
+        D.webAt = new Map();
+      }
       // ---- 場面：プレイヤーの動き（キー・水・氷・泥・網・突進・転がり・通れない所・生き物に押される・3人称）
       ui.camMode = chance(0.4) ? 'tps' : 'fps';
       for (let st = 0; st < 30; st++) {
@@ -987,6 +1157,86 @@ export async function fightCases(F, seeds, page) {
           rise: chance(0.5) ? r() : undefined,
         });
         here.monsters.push(m);
+      }
+      // 場面：遠くの小さな生き物・群れの頭から離れた物・水面に出るうなぎ・溶岩の生き物と火の猟犬と氷の猟犬（燃える床の上）・忘れられた獣
+      for (const m of here.monsters) {
+        if (!m || m.dead) continue;
+        if (m.ty.critter && chance(0.3)) Object.assign(m, { x: player.x + 70, z: player.z });
+        if (m.ty.habitat === 'bog' || m.ty.habitat === 'deep')
+          Object.assign(m, { noticed: false, rise: 0.5, x: player.x + 25, z: player.z });
+        if (m.ty.form === 'eel') Object.assign(m, { surf: chance(0.5) ? 0 : 0.97, surfT: -1, x: player.x + 2, z: player.z });
+        if ((m.ty.habitat === 'lava' || m.ty.hound || m.ty.beast) && !m.ty.flier) {
+          Object.assign(m, { sleep: false, moving: 1, wait: 0 });
+          const ci = m.cz * MW + m.cx;
+          if (ci >= 0 && ci < NCELL) {
+            blaze.fuel[ci] = 1;
+            blaze.fire[ci] = m.ty.hound === 'ice' ? 0.5 : 0;
+            D.liquid[ci] = 0;
+          }
+        }
+        if (!m.ty.flier && chance(0.3)) m.leader = Object.assign(pick(here.monsters.filter(Boolean)), {});
+      }
+      // 燃える鱗の獣・歌う獣（探索のシードの年代記から作る、本物の忘れられた獣）・遠くの水の中のうなぎ・雷の効き目のある物
+      {
+        const want = chance(0.5) ? 'fire' : 'sing';
+        for (let k = 1; k < 400; k++) {
+          const sd = (s * 1000 + k) >>> 0,
+            ty = makeBeastType(makeHistory(sd), sd);
+          if (!ty.spec[want]) continue;
+          MTYPES['X'] = ty;
+          const i = nearFloor(4),
+            m = makeMonster({ key: 'X', cx: i % MW, cz: (i / MW) | 0, g: -1 });
+          Object.assign(m, { sleep: false, noticed: true, moving: 1, wait: 0 });
+          blaze.fuel[i] = 1;
+          blaze.fire[i] = 0;
+          here.monsters.push(m);
+          break;
+        }
+        for (const key of ['e', 'Y'].filter((k) => MTYPES[k])) {
+          const i = nearFloor(14),
+            m = makeMonster({ key, cx: i % MW, cz: (i / MW) | 0, g: -1 });
+          if (MTYPES[key].form === 'eel') Object.assign(m, { x: player.x + 30, z: player.z, surf: 0, surfT: 99, acc: 0.9 });
+          here.monsters.push(m);
+        }
+      }
+      // 場面（決まった形）：うなぎ（水面に出終わる・遠くで波紋を出さない・近くで波紋）・火の猟犬が火をつける・転がって攻撃をかわす・潜った物は攻撃しない
+      {
+        const eelK = Object.keys(MTYPES).find((k) => MTYPES[k].form === 'eel'),
+          houndK = Object.keys(MTYPES).find((k) => MTYPES[k].hound === 'fire'),
+          i = nearFloor(4);
+        const mk = (key, o) => {
+          const m = makeMonster({ key, cx: i % MW, cz: (i / MW) | 0, g: -1 });
+          Object.assign(m, o);
+          here.monsters.push(m);
+          return m;
+        };
+        if (eelK) {
+          call('updateMonster', mk(eelK, { surf: 0.99, surfT: 5 }), 0.1, clock.time);
+          call('updateMonster', mk(eelK, { x: player.x + 30, z: player.z, surf: 0, surfT: 99, acc: 0.9 }), 0.1, clock.time);
+          call('updateMonster', mk(eelK, { x: player.x + 3, z: player.z, surf: 0, surfT: 99, acc: 0.9 }), 0.1, clock.time);
+          call('monsterStrike', mk(eelK, { noticed: true, surf: 0 }), 0.1, 0.5);
+        }
+        if (houndK) {
+          const h = mk(houndK, { sleep: false, moving: 1, wait: 9, noticed: false, aware: 0 });
+          for (let q = 0; q < 12; q++) {
+            const ci = h.cz * MW + h.cx;
+            blaze.fuel[ci] = 1;
+            blaze.fire[ci] = 0;
+            D.liquid[ci] = 0;
+            h.moving = 1;
+            h.wait = 9;
+            call('updateMonster', h, 1, clock.time);
+          }
+        }
+        const fs = foes().filter((o) => !o.ty.habitat && o.ty.form !== 'eel');
+        if (fs.length) {
+          const m = pick(fs);
+          Object.assign(m, { noticed: true, sleep: false, wind: 0.05, atkCd: 1 });
+          player.roll = { t: 0, dx: 1, dz: 0 };
+          delete F.monsterStrike.mt;
+          call('monsterStrike', m, 0.1, 0.5);
+          player.roll = null;
+        }
       }
       here.fovStamp = 7;
       for (let i = 0; i < NCELL; i++) if (chance(0.3)) here.fovVis[i] = 7;

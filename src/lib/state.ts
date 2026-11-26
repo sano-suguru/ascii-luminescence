@@ -383,7 +383,7 @@ export interface Spark {
   vz: number;
   t: number;
 }
-/** 火と地面のマス（マスごとの火・燃える物・灰になったか・マスの変わり方の種類・火の明かり・匂い）と、燃えているマスの一覧・ガス・投げた火花。階に入るたびに作り直す（火・燃える物・灰・マスの変わり方・明かりと燃えているマスは 15-sound-fire.js の initFire、匂い・ガス・火花は 18-level-player.js の newLevel） */
+/** 火と地面のマス（マスごとの火・燃える物・灰になったか・マスの変わり方の種類・火の明かり・匂い）と、燃えているマスの一覧・ガス・投げた火花。階に入るたびに作り直す（火・燃える物・灰・マスの変わり方・明かりと燃えているマスは src/lib/ground.ts の initFire、匂い・ガス・火花は src/lib/levels.ts の newLevel） */
 export interface Blaze {
   /** マスごとの火の強さ */
   fire: Float32Array;
@@ -570,7 +570,7 @@ export interface Trans {
 }
 /** 今の階に、古い JS が後から足す欄（型は、使う処理を移す時に足す） */
 export interface LevelExtra {
-  /** 最深部の階（王の影が現れる。18-level-player.js の newLevel が入れる） */
+  /** 最深部の階（王の影が現れる。src/lib/levels.ts の newLevel が入れる） */
   finalVault?: boolean;
   /**
    * ここから stairGuard までは、深さ2から下（と支道・異界）の祭壇などを置く時（src/lib/altars.ts の mainPathAltars）に入れる。深さ1・特別な階・最深部には無い。
@@ -591,11 +591,11 @@ export interface LevelExtra {
   steles?: { i: number; g: string }[];
   /** 薄い氷のきしむ伝言を出したか（その階で一度だけ。src/lib/ground.ts の crackIce） */
   crackMsg?: boolean;
-  /** 床が崩れたか（部屋の出来事。15-sound-fire.js の initEvents が false にする） */
+  /** 床が崩れたか（部屋の出来事。src/lib/levels.ts の initEvents が false にする） */
   collapsed?: boolean;
-  /** 床が崩れて開いた穴のマス（1 が穴。15-sound-fire.js の initEvents が作り、床が崩れる出来事が入れる） */
+  /** 床が崩れて開いた穴のマス（1 が穴。src/lib/levels.ts の initEvents が作り、床が崩れる出来事が入れる） */
   pit?: Uint8Array;
-  /** マス → クモの巣（15-sound-fire.js の initFire が作る） */
+  /** マス → クモの巣（src/lib/ground.ts の initFire が作る） */
   webAt?: Map<number, Web>;
   /** 先にある物の手がかり（はじめて読んだ時に作る。src/lib/omens.ts の omenOf） */
   omen?: Omen;
@@ -829,7 +829,7 @@ export interface Here {
   showroomGen: boolean;
   /** 今の階の中身（generate.ts の generateLevel の結果）。初期化（30-loop-init.js の init）で1つ目の階を作るまでは null。古い JS が後から足す欄は LevelExtra（まだ型の無い hub などは、使う処理を移す時に足す） */
   D: (Level & LevelExtra) | null;
-  /** 見たことのあるマス（階に入るたびに作り直す。18-level-player.js の newLevel） */
+  /** 見たことのあるマス（階に入るたびに作り直す。src/lib/levels.ts の newLevel） */
   explored: Uint8Array;
   /** マスごとの覚えた色（マスの数×3） */
   mem: Float32Array;
@@ -841,9 +841,9 @@ export interface Here {
   events: RoomEvent[];
   /** 川のマスの一覧 */
   riverCells: number[];
-  /** 最深部の状態（最深部の階に入った時に作る。ほかの階では null。24-goal.js の setupFinal） */
+  /** 最深部の状態（最深部の階に入った時に作る。ほかの階では null。src/lib/levels.ts の setupFinal） */
   finalSt: FinalState | null;
-  /** その階で一度だけ出す伝言を出したか：巣に絡まった・巣が燃え落ちた・修復機が扉を直した・足元の硫黄が燃え上がった（18-level-player.js の newLevel が階ごとに戻す） */
+  /** その階で一度だけ出す伝言を出したか：巣に絡まった・巣が燃え落ちた・修復機が扉を直した・足元の硫黄が燃え上がった（src/lib/levels.ts の newLevel が階ごとに戻す） */
   webMsg: boolean;
   webBurnMsg: boolean;
   repairMsg: boolean;
@@ -1092,7 +1092,7 @@ export const gfx: Gfx = {
 };
 /** マスの絵 gfx.cellTex の中身（マス1つに4つ：火の明かり・火の強さ・灰か・変わり方の種類。src/lib/ground.ts の uploadCells が書く）。丸ごと入れ替えない */
 export const cellData = new Uint8Array(NCELL * 4);
-/** 薄い氷のマスに乗っていた秒（マス → 秒。src/lib/ground.ts の crackIce。18-level-player.js の newLevel が階ごとに空にする）。丸ごと入れ替えない */
+/** 薄い氷のマスに乗っていた秒（マス → 秒。src/lib/ground.ts の crackIce。src/lib/levels.ts の newLevel が階ごとに空にする）。丸ごと入れ替えない */
 export const iceT = new Map<number, number>();
 /** 灯りを描画に渡す配列（src/lib/lightmap.ts の updateLights が毎フレーム書き、05-renderer.js の U が描画に渡す）。丸ごと入れ替えない。
  * SL：階の灯りの色と強さ（灯り1つに3つ）、DLP：動く灯りの位置と届く距離（1つに4つ。0番は手元の灯り、最後は稲妻か火花）、DLC：動く灯りの色（1つに3つ） */
