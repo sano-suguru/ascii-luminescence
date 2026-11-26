@@ -475,6 +475,9 @@ await withBrowser(async ({ browser, base }) => {
     if (await E(() => !document.getElementById('swapB').hidden)) errs.push('狭い画面：ビルドを保存する前から [持ち替え] が出ている');
     const save = (k) => tap(`#pack button[data-save="${k}"]`);
     await save(0);
+    // 中身を書き直しても（ビルドを保存すると、装備の画面を作り直す）、送った所は一番上へ戻らない
+    const sc = await E(() => document.getElementById('pack').scrollTop);
+    if (!(sc > 0)) errs.push(`狭い画面：装備の画面でボタンを押すと、送った所が一番上へ戻る（${sc}）`);
     if (can) {
       // 2回続けて押すと、自動ではめる（手が変わる）
       await pg.locator(`#pack button[data-b="${can}"]`).scrollIntoViewIfNeeded();
@@ -501,6 +504,30 @@ await withBrowser(async ({ browser, base }) => {
         return ['#castR', '#castL', '#rollB', '#hotbar', '#mapwrap', '#status', '#touchbar'].filter((s) => hit(q('#swapB'), q(s)));
       });
       if (ov.length) errs.push(`狭い画面：[持ち替え] が ${ov.join('・')} と重なる`);
+      // [右手] を押して溜めている間に、別の指で [持ち替え] を押しても、持ち替えない（溜めが散って、押している指だけが残るため）
+      await advance(pg, 2);
+      const cdp = await pg.context().newCDPSession(pg);
+      const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y, id]) => ({ x, y, id })) });
+      const mid = async (sel) => {
+        const b = await pg.locator(sel).boundingBox();
+        return [b.x + b.width / 2, b.y + b.height / 2];
+      };
+      const [rx, ry] = await mid('#castR'),
+        [sx, sy] = await mid('#swapB');
+      await touch('touchStart', [[rx, ry, 1]]);
+      await advance(pg, 0.2);
+      // 2本目の指で [持ち替え] を押す（押した時に持ち替える。離すのは、両方まとめて後で）
+      await touch('touchStart', [
+        [rx, ry, 1],
+        [sx, sy, 2],
+      ]);
+      await advance(pg, 0.1);
+      const held = await E(() => __test.state().cast?.h);
+      t = await text('#hotbar');
+      if (held !== 'R' || t.includes('付け替え'))
+        errs.push(`狭い画面：溜めている間に [持ち替え] を押すと、持ち替える（溜め ${held}、下の HUD「${t}」）`);
+      await touch('touchEnd', []);
+      await advance(pg, 0.5);
     }
 
     // レベルアップの画面：収まり、[装備] [メニュー] は隠れ、案内は指の言い方

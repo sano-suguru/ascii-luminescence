@@ -126,7 +126,8 @@ export function initTouchpad(act: PadActions): void {
     if (e.pointerType === 'touch' && canPlay()) startRoll();
   });
   must(document.getElementById('swapB'), '#swapB').addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'touch' && canPlay()) act.build();
+    // 詠唱のボタンを押している間は持ち替えない（持ち替えると溜めが散るが、押している指は見回しと離した時の放つ処理を続けてしまう）
+    if (e.pointerType === 'touch' && canPlay() && !holds.size) act.build();
   });
   window.addEventListener('pointermove', (e) => {
     if (e.pointerType !== 'touch') return;

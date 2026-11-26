@@ -42,8 +42,8 @@ body.touch.started:not(.over):not(.paused) #tctl{display:block;}
 #rollB{left:calc(14px + env(safe-area-inset-left,0px));top:calc(138px + env(safe-area-inset-top,0px));padding:10px 8px;font-size:13px;}
 /* [持ち替え] は [右手] の左に並べる（右手の親指で届き、右上のミニマップと下の HUD に重ならない） */
 #swapB{right:calc(104px + env(safe-area-inset-right,0px));bottom:calc(84px + env(safe-area-inset-bottom,0px));padding:10px 8px;font-size:13px;}
-/* 指で遊ぶ時は、左下の伝言を下の HUD の左端の手前までにし、新しい物から2つだけ出す（狭い画面で重なるため） */
-body.touch #log{max-width:calc(50vw - 170px)!important;}
+/* 指で遊ぶ時は、左下の伝言を新しい物から2つだけ出し、横向きなら下の HUD の左端の手前までにする（狭い画面で重なるため。縦向きは幅が足りないので、幅は変えない） */
+@media (orientation:landscape){ body.touch #log{max-width:calc(50vw - 170px)!important;} }
 body.touch #log .m:nth-last-child(n+3){display:none;}
 /* 指で遊ぶ時のパネル（装備・メニュー・祭壇とレベルアップ・結果）：画面に入るまで縮め、入らない分は中を送る（src/lib/layout.ts の fitPanels） */
 body.touch #pack,body.touch #menu,body.touch #altarp.open,body.touch #death{overflow-y:auto;overscroll-behavior:contain;}

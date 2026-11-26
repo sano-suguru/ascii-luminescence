@@ -47,35 +47,44 @@ const PANELS: [string, (el: HTMLElement) => boolean][] = [
 const PANEL_GAP = 8;
 
 /**
- * 指で遊ぶ時、出ているパネルを画面に収まる倍率（1 以下、FIT_MIN 以上）に縮め、それでも入らない分は、パネルの中を送れるように高さを決める
- * （送れるのは CSS の overflow-y:auto。src/index.html）。マウスの時と、出ていないパネルは元に戻す
+ * 指で遊ぶ時、出ているパネル el を画面に収まる倍率（1 以下、FIT_MIN 以上）に縮め、それでも入らない分は、パネルの中を送れるように高さを決める
+ * （送れるのは CSS の overflow-y:auto。src/index.html）。マウスの時と、出ていないパネルは元に戻す。
+ * 測る間は高さの決まりを外すので、送った所（scrollTop）を覚えて戻す（中身を書き直すたびに呼ばれるので、戻さないと一番上へ跳ぶ）
  */
+function fitPanel(el: HTMLElement, shown: (el: HTMLElement) => boolean): void {
+  const scroll = el.scrollTop;
+  el.style.zoom = '';
+  el.style.maxHeight = '';
+  el.style.top = '';
+  if (!ui.touch || !shown(el)) return;
+  const r = el.getBoundingClientRect();
+  if (!(r.width > 0 && r.height > 0)) return;
+  // 上の [装備] [メニュー]（#touchbar）が出ていれば、その下から画面の下の端までに収める
+  const bar = document.getElementById('touchbar')?.getBoundingClientRect(),
+    top = bar && bar.height > 0 ? bar.bottom + PANEL_GAP / 2 : PANEL_GAP,
+    w = innerWidth - PANEL_GAP * 2,
+    h = innerHeight - PANEL_GAP - top,
+    z = Math.max(FIT_MIN, Math.min(1, w / r.width, h / r.height));
+  el.style.zoom = String(z);
+  // zoom を付けた物の長さ（max-height と、真ん中からずらす量）は、縮める前の大きさで書く（画面では z 倍になる）
+  if (r.height * z > h) el.style.maxHeight = `${h / z}px`;
+  el.style.top = `calc(50% + ${(top - PANEL_GAP) / 2 / z}px)`;
+  el.scrollTop = scroll;
+}
+/** 全部のパネルを fitPanel する（遊び方が変わった時・画面の大きさが変わった時など） */
 export function fitPanels(): void {
   for (const [id, shown] of PANELS) {
     const el = document.getElementById(id);
-    if (!el) continue;
-    el.style.zoom = '';
-    el.style.maxHeight = '';
-    el.style.top = '';
-    if (!ui.touch || !shown(el)) continue;
-    const r = el.getBoundingClientRect();
-    if (!(r.width > 0 && r.height > 0)) continue;
-    // 上の [装備] [メニュー]（#touchbar）が出ていれば、その下から画面の下の端までに収める
-    const bar = document.getElementById('touchbar')?.getBoundingClientRect(),
-      top = bar && bar.height > 0 ? bar.bottom + PANEL_GAP / 2 : PANEL_GAP,
-      w = innerWidth - PANEL_GAP * 2,
-      h = innerHeight - PANEL_GAP - top,
-      z = Math.max(FIT_MIN, Math.min(1, w / r.width, h / r.height));
-    el.style.zoom = String(z);
-    // zoom を付けた物の長さ（max-height と、真ん中からずらす量）は、縮める前の大きさで書く（画面では z 倍になる）
-    if (r.height * z > h) el.style.maxHeight = `${h / z}px`;
-    el.style.top = `calc(50% + ${(top - PANEL_GAP) / 2 / z}px)`;
+    if (el) fitPanel(el, shown);
   }
 }
 
-/** パネルの中身が書き直された時・出し入れされた時・画面の大きさが変わった時・フォントを読み終えた時に、fitPanels する */
+/** パネルの中身が書き直された時・出し入れされた時（そのパネルだけ）と、画面の大きさが変わった時・フォントを読み終えた時（全部）に、収め直す */
 export function initFitPanels(): void {
-  const mo = new MutationObserver(fitPanels);
+  const mo = new MutationObserver((list) => {
+    for (const el of new Set(list.map((m) => m.target)))
+      for (const [id, shown] of PANELS) if (el instanceof HTMLElement && el.id === id) fitPanel(el, shown);
+  });
   for (const [id] of PANELS) {
     const el = document.getElementById(id);
     // 自分で書き換える style は見ない（見ると、書き換えるたびにまた呼ばれる）

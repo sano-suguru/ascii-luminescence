@@ -63,8 +63,8 @@ document.getElementById('intropanel').addEventListener('click',e=>{
   ui.started=true; document.body.classList.add('started'); if(here.D)showStratum(here.D.stratum); if(ui.touch)touchTip(); else { setHelp(true); ui.helpT=25; } introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume();
 });
 // 指で遊ぶ時は、始めに操作の案内（キーボードの説明）を出さず、初めて指で迷宮に入った時だけ、左下の伝言に一言を出す（記録 META の touchTip で1回だけ。
-// 十字の下の一言 showHint は、行く手を塞がれていない間は毎フレーム消える（src/lib/player.ts）ので使わない）
-function touchTip(){ if(saved.META.touchTip)return; saved.META.touchTip=true; saveMeta(); msg('<b style="color:#bfe4ff">?</b>左半分で動く・右半分で見回す。くわしくはメニューの「操作の案内」'); }
+// 十字の下の一言 showHint は、行く手を塞がれていない間は毎フレーム消える（src/lib/player.ts）ので使わない。階に入った時の伝言の後に出るよう、1.5秒待つ）
+function touchTip(){ if(saved.META.touchTip)return; saved.META.touchTip=true; saveMeta(); setTimeout(()=>msg('<b style="color:#bfe4ff">?</b>左半分で動く・右半分で見回す。くわしくはメニューの「操作の案内」'),1500); }
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 // the bestiary: the wheel moves in and out, a drag with the left button turns the creature and moves the camera up and down (galleryWheel, galleryDrag)
 canvas.addEventListener('wheel',e=>{ if(!(ui.gallery&&ui.gallery.mode==='beast'))return; e.preventDefault(); galleryWheel(e.deltaY*(e.deltaMode===1?33:e.deltaMode===2?400:1)); },{passive:false});
