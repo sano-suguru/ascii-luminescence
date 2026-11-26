@@ -377,6 +377,45 @@ await withBrowser(
       for (const o of eye)
         if (!(Math.abs(o.now - o.later) <= 0.03 * o.later))
           errs.push(`図鑑の目の慣れ：${o.name}を出した直後の露出 ${o.now} が、3秒後の ${o.later} と違う（すぐ合っていない）`);
+    // __test.galleryDraw() は、生き物を出してから最初の一歩より前に呼んでも、跡を残さない：初めて描く時に作って覚える物（不死の王の剣、竜の眠った姿）を
+    //    覗いた時に作っても、終わると外すので、次の一歩で、呼ばなかった時と同じに作る。← で生き物を出し（一歩も進めない）、すぐ覗くページと覗かないページで、
+    //    2秒進めた後の描いた物の指紋が同じか
+    const early = async (probe) => {
+      const p3 = await newPage(browser, errs);
+      await openTest(p3, base);
+      const out = [];
+      for (const name of ['不死の王', '竜']) {
+        const n = await p3.evaluate((name) => {
+          const list = __test.gallery(),
+            e = list.find((o) => o.name === name);
+          if (!e || e.n >= list.length) return `図鑑に「${name}」が無いか、一番後ろにある`;
+          __test.galleryShow(e.n + 1);
+          return e.n;
+        }, name);
+        if (typeof n === 'string') {
+          errs.push(`図鑑の覗き：${n}`);
+          continue;
+        }
+        await p3.keyboard.press('ArrowLeft'); // 一つ前（name）を出す。一歩も進めない
+        out.push(
+          await p3.evaluate((probe) => {
+            if (probe) __test.galleryDraw();
+            __test.advance(2);
+            const d = __test.galleryDraw();
+            return `${d.name} ${d.hash}`;
+          }, probe),
+        );
+      }
+      await p3.close();
+      return out;
+    };
+    {
+      const [a, b] = [await early(false), await early(true)];
+      if (a.length !== 2) errs.push(`図鑑の覗き：2体を出せなかった（${a.join(' / ')}）`);
+      for (const [k, x] of a.entries())
+        if (!x.startsWith(['不死の王', '竜'][k] + ' ')) errs.push(`図鑑の覗き：← で出した生き物が違う（${x}）`);
+        else if (x !== b[k]) errs.push(`図鑑の覗き：出してすぐ覗くと、後の描いた物が変わる（${x} → ${b[k]}）`);
+    }
     rmSync(RAND_OUT, { recursive: true, force: true }); // 前に落ちた時の画像を残さない
     const rat = { name: 'ネズミ', opt: {} },
       plain = await specimens({ burn: 0, before: rat }),

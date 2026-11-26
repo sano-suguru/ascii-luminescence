@@ -134,8 +134,12 @@ if(TEST)window.__test={
   // and where the camera is (distance across the floor to the creature, height, and how far it looks down: pitch is the camera's, so negative is down),
   // the height of the point it looks at (aimY) and the straight distance to it (aimed), and what bounds it: the ceiling over the camera, the farthest the room lets it go,
   // and the ball round the aimed point that holds the body (only worked out for a zoom in; otherwise null)
+  // (what the creature makes and keeps when first drawn, such as the sleeping shape or the aura's things, reads its own sequence m.rnd, which is the creature's g.rnd:
+  // while probing it reads a probe sequence instead, and what the probe added to the creature is taken off again, so the next step makes it as if galleryDraw was never called)
   galleryDraw(){ const m=ui.gallery&&ui.gallery.mode==='beast'&&ui.gallery.m; if(!m)return null;
-    const d0=buf.dn, p0=buf.pN; let d1=d0, p1=p0; try{ withVisualRand(keyedRand('gallery probe'),()=>drawMonster(m,clock.time)); d1=buf.dn; p1=buf.pN; } finally{ buf.dn=d0; buf.pN=p0; }
+    const d0=buf.dn, p0=buf.pN, r0=m.rnd, k0=new Set(Object.keys(m)); let d1=d0, p1=p0;
+    try{ m.rnd=keyedRand('gallery probe looks'); withVisualRand(keyedRand('gallery probe'),()=>drawMonster(m,clock.time)); d1=buf.dn; p1=buf.pN; }
+    finally{ buf.dn=d0; buf.pN=p0; m.rnd=r0; for(const k of Object.keys(m))if(!k0.has(k))delete m[k]; }
     const sparks=p1-p0; let bad=0; const lo=[1e9,1e9,1e9], hi=[-1e9,-1e9,-1e9];
     for(let k=d0;k<d1;k++){ let ok=true; for(let j=0;j<3;j++){ const v=dPos[k*3+j]; if(!Number.isFinite(v)||!Number.isFinite(dCol[k*3+j]))ok=false; else { lo[j]=Math.min(lo[j],v); hi[j]=Math.max(hi[j],v); } }
       for(let j=0;j<4;j++)if(!Number.isFinite(dPar[k*4+j]))ok=false; if(!ok)bad++; }
@@ -175,6 +179,13 @@ if(TEST)window.__test={
   mobLooks(from=0){ const f=v=>v===undefined?'-':(+v).toFixed(4);
     return here.monsters.slice(from).map(m=>{ let h=0x811c9dc5; for(const ch of JSON.stringify(m.form.map(p=>[+p.x.toFixed(3),+p.y.toFixed(3),+p.z.toFixed(3),+(p.s||0).toFixed(3),+(p.b||0).toFixed(3),p.g,p.part||'']))){ h=Math.imul(h^ch.charCodeAt(0),16777619); }
       return `${m.key}:${(h>>>0).toString(16)}:${[m.yaw,m.dirYaw,m.wait,m.walk,m.ph,m.surfT,m.atkCd].map(f).join(',')}`; }); },
+  // build the world again (buildWorld) and count its draws from the shared visual random mr(): there are none (statueForm in 06-world.js). Draws straight from
+  // Math.random are not counted (three.js names each geometry and mesh it makes with one, 4 draws each: so many for each level, and nothing to do with statues).
+  // Also how many statue sites the level has (a room of statues or a remnant's inert ones, a vault's statues, a colossus), so a check knows statues were built.
+  // It uses up the maze random, so the world it builds is not quite the level's own: for checks at the end of a page
+  worldDraws(){ let n=0; withVisualRand(()=>(n++,Math.random()),()=>buildWorld());
+    const statues=here.D.rooms.reduce((s,r)=>s+(r.mdata&&(r.mdata.type==='statues'||(r.mdata.type==='remnant'&&r.mdata.inert&&r.mdata.inert.length))?1:0)+(r.vstat||[]).length+(r.colossus!==undefined?1:0),0);
+    return {draws:n,statues}; },
   // remove every creature (lords too), so a check is not upset by one that happens to be near
   clearAll(){ const n=here.monsters.length; here.monsters=[]; return n; },
   // every place a run can visit, for generation checks

@@ -14,11 +14,12 @@ let visual: () => number = viaMath;
 /** 見た目の乱数（0 以上 1 未満）。ふだんは Math.random、withVisualRand の間は渡した並び */
 export const mr = (): number => visual();
 /**
- * fn を呼ぶ間だけ、見た目の乱数 mr() が f を読む（終わると、例外の時も元に戻す。入れ子にできる）。図鑑で生き物を出している間、出す時とゲームの一歩ごとを、
- * その生き物の種類から作った並びで包む（src/game/25-gallery.js の showBeast・30-loop-init.js の stepTick）。そうすると、図鑑を出す前や、ゲームの一歩の外で
- * 見た目の乱数を引く回数が変わっても、図鑑の写真は変わらない。Math.random を直に呼ぶ所は変わらない
+ * fn を呼ぶ間だけ、見た目の乱数 mr() が f を読む（終わると、例外の時も元に戻す。入れ子にできる。f が mr なら、今の並びのまま呼ぶ）。
+ * 生き物の形と初めの値を作る間（src/lib/monsters.ts の makeMonster）と、図鑑で生き物を出している間（src/game/25-gallery.js の showBeast・30-loop-init.js の stepTick）に包む。
+ * そうすると、ほかの所で見た目の乱数を引く回数が変わっても、生き物の形と初めの値・図鑑の写真は変わらない。Math.random を直に呼ぶ所は変わらない
  */
 export const withVisualRand = <T>(f: () => number, fn: () => T): T => {
+  if (f === mr) return fn(); // visual を mr にすると、mr が自分を呼び続けて止まらない
   const old = visual;
   visual = f;
   try {

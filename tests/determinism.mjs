@@ -4,6 +4,7 @@
 // もう1つ：見た目の乱数（Math.random）を余分に進めても、遊びの中身（階に入った時に眠っている生き物・祭壇の中身・レベルアップの選択肢・
 // 開ける枠が無い時の代わりのルーン・宝物庫の番人の場所）と、生き物の形と初めの値（階の生き物・途中で呼び出した生き物・宝物庫の番人）は変わらないか。
 // これらは出来事ごとの乱数（keyedRand）や、生き物ごとの見た目の乱数の並び（makeMonster）で決めるので、粒子を1つ足すような見た目だけの変更では変わらないはず。
+// それと、世界を組み立てる間（buildWorld。像の形を作る所も）は、見た目の乱数 mr() を引かないか（__test.worldDraws）。
 import { withBrowser, newPage, openTest, advance, nearAltar } from './lib.mjs';
 
 const steps = async (pg) => {
@@ -74,7 +75,13 @@ const contents = async (pg, extra) => {
     __test.summon('g', i);
     return __test.mobLooks(n0).join(' ');
   });
-  return { sleep, mobs, summoned, altar, levelup, slot };
+  await burn(pg, extra);
+  // 世界を組み立てる間に、見た目の乱数 mr() を引く回数（0回のはず。シード 202 の深さ7は、像が5か所ある）。組み立て直すので、このページの最後に
+  const world = await pg.evaluate(() => {
+    dbg.go(7);
+    return __test.worldDraws();
+  });
+  return { sleep, mobs, summoned, altar, levelup, slot, world: `${world.draws}回 像${world.statues}` };
 };
 // 宝物庫の褒美を取って、目を覚ました番人のマスを集める（シード 208 の深さ3の宝物庫は、番人が目を覚ます）。番人は生き物の一覧の後ろに足される
 const vaultGuards = async (pg, extra) => {
@@ -149,12 +156,18 @@ if (!runs[0].monsters.length) {
         (k === 'altar' && !A[k].includes(':rune:')) ||
         (k === 'levelup' && A[k].split(' / ').length !== 3) ||
         (k === 'summoned' && A[k].split(' ').length !== 2) ||
-        (k === 'vault' && !A[k].includes(' / ')),
+        (k === 'vault' && !A[k].includes(' / ')) ||
+        (k === 'world' && A[k].endsWith(' 像0')),
     );
   if (empty.length) {
     fail = true;
     console.log(`✗ 遊びの中身が集まっていない：${empty.join('・')}`, A);
   }
+  // 世界を組み立てる間は、見た目の乱数 mr() を引かない（像の形は、像ごとの並びで作る）
+  if (looks.some((L) => !L.world.startsWith('0回'))) {
+    fail = true;
+    console.log(`✗ 世界を組み立てる間に、見た目の乱数 mr() を引いた：${looks.map((L) => L.world).join(' / ')}`);
+  } else console.log(`✓ 世界を組み立てる間に、見た目の乱数 mr() を引かない（${A.world.split(' ')[1]}）`);
   const diff = Object.keys(A).filter((k) => A[k] !== B[k]);
   if (diff.length) {
     fail = true;

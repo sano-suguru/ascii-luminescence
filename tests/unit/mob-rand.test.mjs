@@ -1,12 +1,12 @@
 // 生き物ごとの見た目の乱数（m.rnd）の単体テスト：初めて描く時に作って覚える物（眠った姿・不死の王の剣・古竜の宝・深みの主の灯り）と、
 // 王の影の二つ目の姿が、それまでに見た目の乱数（Math.random）を何回引いたかで変わらないか。m.rnd が無い時は変わること（テストが違いを見つけられること）も確かめる。
 // 生き物を作る makeMonster の形と初めの値は、tests/determinism.mjs がブラウザで確かめる
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { lichAura, dragonAura, krakenAura, transformShadow } from '../../src/lib/bodies/auras.ts';
 import { buildForm } from '../../src/lib/bodies/build.ts';
 import { drawMonster0 } from '../../src/lib/bodies/draw.ts';
 import { MTYPES } from '../../src/lib/creatures.ts';
-import { keyedRand } from '../../src/lib/random.ts';
+import { keyedRand, mr, withMobRand, withVisualRand } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 import { SND, adv, buf, here, player } from '../../src/lib/state.ts';
 import { swapGlobals } from './ui-cases.mjs';
@@ -47,8 +47,23 @@ const CASES = [
 ];
 
 describe('生き物ごとの見た目の乱数', () => {
-  player.x = 21;
-  player.z = 20;
+  // プレイヤーを生き物のそば（まわりの飾りは、遠いと描かない）に置き、終わったら戻す
+  const keep = { x: player.x, z: player.z };
+  beforeAll(() => {
+    player.x = 21;
+    player.z = 20;
+  });
+  afterAll(() => {
+    player.x = keep.x;
+    player.z = keep.z;
+  });
+  it('並びに mr を渡すと、今の並びのまま呼ぶ（mr が自分を呼び続けて止まらない、にならない）', () => {
+    Math.random = mulberry32(5);
+    const want = mulberry32(5)();
+    expect(withVisualRand(mr, () => mr())).toBe(want);
+    Math.random = mulberry32(5);
+    expect(withMobRand({ rnd: mr }, () => mr())).toBe(want);
+  });
   for (const [name, make, f] of CASES) {
     it(String(name) + 'は、見た目の乱数をほかで引いた回数によらない', () => {
       const a = look(make, f, { seed: 1, burn: 0, own: true }),
