@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 // 図鑑のテスト：全部の生き物を、立つ・歩く・眠るの姿で出して、例外・描いた文字の数・NaN を確かめる。寄る・引く・見下ろす角度、図鑑を手で動かす
 // （ホイールで寄る・引く、ドラッグで回す・見下ろす、離すとしばらく止まってまた回る、R と ← → で戻る、ドラッグが外れる、背の高い生き物に寄ると狙う点が上がる）。
-// 最後に Esc でタイトルへ戻る。ページのエラーを確かめる。
+// 最後に Esc でタイトルへ戻る。図鑑の写真が、ほかの所で見た目の乱数を余分に引いても、前に別の生き物を出しても変わらないか（別の2つのページで比べる）。ページのエラーを確かめる。
 //   node tests/gallery.mjs          テスト版（.build/test/。既定）
 //   node tests/gallery.mjs --prod   公開用の版（dist/）
-import { withBrowser, newPage, openTest, advance, annotate } from './lib.mjs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { GALLERY_SPECIMENS } from './gallery-specimens.mjs';
+import { withBrowser, newPage, openTest, advance, annotate, OUT } from './lib.mjs';
+
+const RAND_OUT = join(OUT, 'gallery-rand');
 
 const errs = [];
 await withBrowser(
@@ -297,6 +302,103 @@ await withBrowser(
     await advance(pg, 0.5);
     if (await pg.evaluate(() => document.getElementById('gal').classList.contains('show')))
       errs.push('図鑑で Esc を押しても、タイトルへ戻らない');
+
+    // 図鑑の写真は、ほかの所で引く見た目の乱数と、前に出した生き物から切り離されているか：生き物を出している間、見た目の乱数は、
+    //    その種類から作った並びを読む（出す時に作る形・初めの値・降る粒子と、ゲームの一歩ごとの揺れ・まわりの粒子・ランプの揺らぎなど。withVisualRand）。
+    //    3つのページで、画面写真の比較（tests/visual.mjs）と同じ4体を同じように出す。どの生き物の前にも、別の生き物を出して同じだけ進めておく
+    //    （ゲームの時刻を揃えるため。動きの多くはゲームの時刻で決まる）。
+    //    - ふつう：前にネズミをそのまま出す
+    //    - 余分に引く：ふつうと同じ。ただ、図鑑を開く前に Math.random を1000回、その後も1フレームごとに1回、余分に引く（ほかの所で見た目の乱数を
+    //      引く回数が変わった時の代わり）。1フレームごとに __test.galleryDraw() でも覗く。描いた物の指紋（形・初めの値・揺れ・まわりの粒子）と画面写真が、ふつうと同じか
+    //    - 前が違う：前に年老いた竜を、一番引いて見下ろした所から出す（カメラが前の生き物の所、部屋の壁の近くにある）。描いた物の指紋と画面写真が、
+    //      ふつうと同じか（降る粒子・目の慣れ（露出）・霧も、前の生き物の見え方を引きずらないか）
+    const specimens = async ({ burn, before }) => {
+      const p2 = await newPage(browser, errs, { still: true }); // タイトルが消える CSS のアニメーションは実時間で進むので、止める
+      await openTest(p2, base);
+      const out = [];
+      for (const [i, sp] of GALLERY_SPECIMENS.entries()) {
+        const r = await p2.evaluate(
+          async ({ sp, burn, before, first }) => {
+            if (first) for (let k = 0; k < burn * 1000; k++) Math.random();
+            const list = __test.gallery(),
+              e = list.find((o) => o.name === sp.name),
+              other = list.find((o) => o.name === before.name);
+            if (!e) return `図鑑に「${sp.name}」が無い`;
+            if (!other) return `前に出す「${before.name}」が図鑑に無い`;
+            const step = (n) => {
+              for (let k = 0; k < n; k++) {
+                for (let j = 0; j < burn; j++) Math.random();
+                if (burn) __test.galleryDraw(); // 覗いても、生き物の並びは進まない
+                __test.advance(1 / 30);
+              }
+            };
+            const r1 = __test.galleryShow(other.n, before.opt);
+            if (typeof r1 === 'string') return r1;
+            step(15);
+            const r0 = __test.galleryShow(e.n, { yaw: sp.yaw, pose: sp.pose, zoom: sp.zoom, center: true });
+            if (typeof r0 === 'string') return r0;
+            step(90);
+            await __test.frames(1);
+            return __test.galleryDraw();
+          },
+          { sp, burn, before, first: i === 0 },
+        );
+        if (typeof r === 'string') {
+          errs.push(`図鑑の乱数：${r}`);
+          continue;
+        }
+        out.push({ name: sp.name, hash: r.hash, png: await p2.screenshot({ timeout: 90000 }) });
+      }
+      await p2.close();
+      return out;
+    };
+    // 目の慣れ（露出）は、生き物を出したらすぐ新しい画面に合う（暗く出てから明るくなったりしない）：出して2フレーム後と3秒後で、ほぼ同じか。
+    //    前に年老いた竜を一番引いて見下ろした所から出しておく（前の画面の明るさが違う）
+    const eye = await pg.evaluate(() => {
+      const list = __test.gallery(),
+        other = list.find((o) => o.name === '年老いた竜'),
+        out = [];
+      if (!other) return '前に出す「年老いた竜」が図鑑に無い';
+      for (const name of ['竜', '不死の王', 'ネズミ']) {
+        const e = list.find((o) => o.name === name);
+        if (!e) return `図鑑に「${name}」が無い`;
+        __test.galleryShow(other.n, { zoom: 0.5, pitch: 1.3 });
+        __test.advance(1);
+        __test.galleryShow(e.n);
+        __test.advance(1 / 30);
+        const now = __test.galleryDraw().exposure;
+        __test.advance(3);
+        out.push({ name, now, later: __test.galleryDraw().exposure });
+      }
+      return out;
+    });
+    if (typeof eye === 'string') errs.push(`図鑑の目の慣れ：${eye}`);
+    else
+      for (const o of eye)
+        if (!(Math.abs(o.now - o.later) <= 0.03 * o.later))
+          errs.push(`図鑑の目の慣れ：${o.name}を出した直後の露出 ${o.now} が、3秒後の ${o.later} と違う（すぐ合っていない）`);
+    rmSync(RAND_OUT, { recursive: true, force: true }); // 前に落ちた時の画像を残さない
+    const rat = { name: 'ネズミ', opt: {} },
+      plain = await specimens({ burn: 0, before: rat }),
+      burnt = await specimens({ burn: 1, before: rat }),
+      other = await specimens({ burn: 0, before: { name: '年老いた竜', opt: { zoom: 0.5, pitch: 1.3 } } });
+    for (const a of plain) {
+      const b = burnt.find((o) => o.name === a.name),
+        c = other.find((o) => o.name === a.name);
+      const why = [];
+      if (b && a.hash !== b.hash)
+        why.push(`ほかの所で見た目の乱数を余分に引くと、${a.name}の描いた物が変わる（指紋 ${a.hash} → ${b.hash}）`);
+      else if (b && !a.png.equals(b.png))
+        why.push(`ほかの所で見た目の乱数を余分に引くと、${a.name}の画面写真が変わる（描いた物の指紋は同じ）`);
+      if (c && a.hash !== c.hash) why.push(`前に別の生き物を出すと、${a.name}の描いた物が変わる（指紋 ${a.hash} → ${c.hash}）`);
+      else if (c && !a.png.equals(c.png)) why.push(`前に別の生き物を出すと、${a.name}の画面写真が変わる（描いた物の指紋は同じ）`);
+      if (!why.length) continue;
+      // 違った時は、画面写真を残す（tests/out/gallery-rand/。-a がふつう、-b が余分に引いた方、-c が前が違う方）
+      mkdirSync(RAND_OUT, { recursive: true });
+      for (const [k, o] of Object.entries({ a, b, c })) if (o) writeFileSync(join(RAND_OUT, `${a.name}-${k}.png`), o.png);
+      for (const w of why) errs.push(`図鑑の乱数：${w}`);
+    }
+    console.log(`図鑑の乱数：${plain.length} 体を比べた`);
   },
   { prod: process.argv.includes('--prod') },
 );

@@ -47,6 +47,9 @@ function updateAtmosphere(dt){
   for(const m of here.monsters){ const d=Math.hypot(m.x-player.x,m.z-player.z); if(d<5)B+=(1-d/5)**2*0.7; }
   for(const f of here.fixtures){ const d=Math.hypot(f.x-player.x,f.z-player.z); if(d<3)B+=(1-d/3)**2*0.8; }
   const target=clamp(1.25/(1+B*0.6),0.55,1.25);
+  // a creature just shown in the bestiary (showBeast), once the camera is placed (updateGallery): the eye and the fog settle at once, so the picture
+  // does not hang on the last creature's view
+  if(ui.gallery&&ui.gallery.settle===2){ ui.gallery.settle=0; expo=target; gfx.U.uFogDen.value=fogT; }
   expo+=(target-expo)*(1-Math.exp(-dt*(target<expo?2.5:1.0)));
   vfx.flash=Math.max(0,vfx.flash-dt*2.5);
   gfx.finalPass.uniforms.uExposure.value=expo*(1+vfx.flash*1.6);
