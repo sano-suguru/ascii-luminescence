@@ -260,6 +260,12 @@ export const adv: Adv = {
   HIST_SEED: -1,
 };
 
+/** 指の操作の入力（src/lib/touchpad.ts が書き、src/lib/player.ts が読む） */
+export const thumb: {
+  /** スティックの倒し具合（アナログの時だけ。左右 x・前後 y、どちらも -1 から 1。前が -y。無ければ null で、キー WASD を使う） */
+  stick: [number, number] | null;
+} = { stick: null };
+
 /** プレイヤー（位置・速さ・向き・揺れ・目の高さ・体力）。丸ごと入れ替えることは無いので、古い JS は今までどおり player.x のように読む */
 export interface Player {
   x: number;
