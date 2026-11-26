@@ -8,8 +8,8 @@ let pixelRatio=Math.min(window.devicePixelRatio||1,1.5);
 renderer.setPixelRatio(pixelRatio);
 renderer.setSize(window.innerWidth,window.innerHeight,false);
 const scene=new T.Scene();
-const camera=new T.PerspectiveCamera(74,window.innerWidth/window.innerHeight,0.05,110);
-camera.rotation.order='YXZ';
+gfx.camera=new T.PerspectiveCamera(74,window.innerWidth/window.innerHeight,0.05,110);
+gfx.camera.rotation.order='YXZ';
 const fogCol=new T.Vector3(...FOGS[0]);
 renderer.setClearColor(new T.Color(fogCol.x,fogCol.y,fogCol.z),1);
 
@@ -17,7 +17,7 @@ const rt=new T.WebGLRenderTarget(window.innerWidth*pixelRatio,window.innerHeight
 const composer=new T.EffectComposer(renderer,rt);
 composer.setPixelRatio(pixelRatio);
 composer.setSize(window.innerWidth,window.innerHeight);
-composer.addPass(new T.RenderPass(scene,camera));
+composer.addPass(new T.RenderPass(scene,gfx.camera));
 const bloom=new T.UnrealBloomPass(new T.Vector2(window.innerWidth,window.innerHeight),0.8,0.55,0.76);
 [bloom.renderTargetBright,...bloom.renderTargetsHorizontal,...bloom.renderTargetsVertical].forEach(t=>{ if(t)t.texture.type=T.HalfFloatType; });
 composer.addPass(bloom);
@@ -55,7 +55,7 @@ composer.addPass(finalPass);
 // GLSL_COMMON（古い JS は使わない）・STATIC_VS・WATER_VS・WATER_FS・GLYPH_FS・DYN_VS・PT_VS・PT_FS は src/lib/shaders.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- shared uniforms
-const SL=new Float32Array(NSL*3), DLP=new Float32Array(NDL*4), DLC=new Float32Array(NDL*3);
+// 灯りを描画に渡す配列 SL・DLP・DLC は src/lib/state.ts（src/game/imports.mjs で読む）
 const cellData=new Uint8Array(NCELL*4);
 const cellTex=new T.DataTexture(cellData,MW,MH,T.RGBAFormat,T.UnsignedByteType);
 cellTex.magFilter=T.LinearFilter; cellTex.minFilter=T.LinearFilter; cellTex.needsUpdate=true;

@@ -163,7 +163,7 @@ export function addGuards(at: number, r: () => number): number | undefined {
   return g;
 }
 /** 番人の群れが、まだ生きているか（生きている間、その祭壇や褒美は暗く、取れない） */
-export const guardedNow = (it: { guardG?: number }): boolean =>
+export const guardedNow = (it: { guardG?: number | undefined }): boolean =>
   it.guardG !== undefined && here.monsters.some((m) => !m.dead && m.g === it.guardG);
 
 // ---------------------------------------------------------------- 祭壇を置く・鍛える

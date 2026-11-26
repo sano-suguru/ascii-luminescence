@@ -59,7 +59,7 @@ function drawViewWeapons(t){ if(ui.camMode==='tps'||!ui.started||adv.dead||!gear
   const [f,r,u]=handUp(), [ex,ey,ez]=aimOrigin(); let dw=0.62;
   for(const side of [-0.3,0,0.3])for(let st=0.05;st<=0.62;st+=0.04){ const x=ex+f[0]*st+r[0]*side, z=ez+f[2]*st+r[2]*side, ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL); if(ci<0||ci>=NCELL||here.D.tile[ci]===TW||here.D.tile[ci]===TX||doorBlock(ci)){ dw=Math.min(dw,st-0.07); break; } }
   const q=clamp(dw/0.62,0.3,1), spd=Math.hypot(player.vx||0,player.vz||0), bob=Math.sin(clock.time*9)*0.007*Math.min(1,spd/4), sway=Math.cos(clock.time*4.5)*0.004*Math.min(1,spd/4), two=isTwo();
-  const kx=Math.min(1,(camera.aspect||1.78)/(16/9)), W=(x,y,z)=>{ x*=kx; return [ex+(f[0]*z+r[0]*x+u[0]*y)*q,ey+(f[1]*z+u[1]*y)*q,ez+(f[2]*z+r[2]*x+u[2]*y)*q]; };
+  const kx=Math.min(1,(gfx.camera.aspect||1.78)/(16/9)), W=(x,y,z)=>{ x*=kx; return [ex+(f[0]*z+r[0]*x+u[0]*y)*q,ey+(f[1]*z+u[1]*y)*q,ez+(f[2]*z+r[2]*x+u[2]*y)*q]; };
   const one=(h,type,mirror)=>{ const M=VM_MODELS[type]||VM_MODELS.bare; const H=gear.hands[h], el=H.elem?H.elem.type:null, ec=elemCol(el);
     const chant=gear.castSt&&(gear.castSt.h===h||two)?Math.min(1,gear.castSt.t/Math.max(0.01,gear.castSt.need)):0, hold=gear.castSt&&(gear.castSt.h===h||two)&&gear.castSt.full?Math.min(1,gear.castSt.hold/2):0;
     const swingP=player.swing>0&&(player.swingH===h||two)?1-player.swing/0.22:-1, kick=Math.max(0,1-(clock.time-(vmKick[h]||-9))/0.16);
@@ -88,14 +88,7 @@ function drawViewWeapons(t){ if(ui.camMode==='tps'||!ui.started||adv.dead||!gear
 // a fist built on demand (the hand that draws the bowstring)
 function VM_FIST(o,c){ const K=VM_K, P=[[-0.05,0.024,'@'],[0,0.032,'@'],[0.05,0.024,'@'],[-0.04,-0.027,'%'],[0.01,-0.03,'%'],[0.057,-0.02,'%']]; for(const [x,y,g] of P)o.push([c[0]+x,c[1]+y,c[2],g,g==='@'?'knuckle':'hand',0.038*K]);
   for(let i=1;i<=4;i++)o.push([c[0]+0.03+i*0.02,c[1]-0.06-i*0.09,c[2]-0.01-i*0.025,'%','arm',0.05*K]); }
-function drawSwing(){
-  if(!(player.swing>0)||player.swingWave)return; const k=1-player.swing/0.22, [fx,fy,fz]=viewDir(), rx=Math.cos(player.yaw), rz=-Math.sin(player.yaw);
-  // up vector of the view = right x forward (flipped to point upward)
-  let ux=-rz*fy, uy=rz*fx-rx*fz, uz=rx*fy; if(uy<0){ ux=-ux; uy=-uy; uz=-uz; } const ul=Math.hypot(ux,uy,uz)||1; ux/=ul; uy/=ul; uz/=ul;
-  const [cx0,cy0,cz0]=aimOrigin();
-  for(let q=0;q<7;q++){ const a=(q/6-0.5)*1.6+(k-0.5)*1.2, u=Math.sin(a)*0.75, v=Math.cos(a)*0.35-0.2;
-    dyn(cx0+fx*0.9+rx*u+ux*v,cy0+fy*0.9+uy*v,cz0+fz*0.9+rz*u+uz*v,G(q%2?'/':'-'),0.16,(player.swingCol||[0.8,0.75,0.65])[0]*2*(1-k*0.6),(player.swingCol||[0.8,0.75,0.65])[1]*2*(1-k*0.6),(player.swingCol||[0.8,0.75,0.65])[2]*2*(1-k*0.6)); }
-}
+// 武器を振った線 drawSwing は src/lib/aim.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- runes: attacks and elements held in each hand, chanting, reactions
 // RUNE_DEF は src/lib/runes.ts（src/game/imports.mjs で読む）
