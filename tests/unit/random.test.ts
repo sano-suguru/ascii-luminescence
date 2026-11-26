@@ -57,7 +57,7 @@ describe('mr・mpick', () => {
   });
 });
 
-describe('withVisualRand（図鑑の生き物だけの見た目の乱数）', () => {
+describe('withVisualRand（包んだ間だけ、見た目の乱数を入れ替える）', () => {
   it('包んだ間だけ、mr・mpick・迷宮の乱数の初めの形が渡した並びを読み、Math.random は引かない。終わると戻り、返した値を返す', () => {
     let calls = 0;
     Math.random = () => (calls++, 0.25);

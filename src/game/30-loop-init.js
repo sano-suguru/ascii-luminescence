@@ -21,8 +21,7 @@ function frame(nowMs){
 const TESTQ={n:0,done:null};
 function testTick(draw){ TESTCLK.advance(TEST_STEP*1000); stepTick(TEST_STEP,draw); }
 // one step of the game. While the bestiary shows a creature, the visual random (mr) reads the creature's own sequence (showBeast in 25-gallery.js)
-function stepTick(raw,draw){ const r=galleryRand(); if(r)withVisualRand(r,()=>tick(raw,draw)); else tick(raw,draw); }
-function galleryRand(){ return ui.gallery&&ui.gallery.mode==='beast'&&ui.gallery.m?ui.gallery.rnd:null; }
+function stepTick(raw,draw){ const g=ui.gallery, r=g&&g.mode==='beast'&&g.m?g.rnd:null; if(r)withVisualRand(r,()=>tick(raw,draw)); else tick(raw,draw); }
 function tick(raw,draw){
   if(isPaused()&&ui.started){ if(frame.stillDrawn)return; frame.stillDrawn=true; } else frame.stillDrawn=false; const dt=isPaused()?0:clamp(raw,0,0.05)*timeScale();
   clock.time+=dt; const t=clock.time;
@@ -136,12 +135,13 @@ if(TEST)window.__test={
   // the height of the point it looks at (aimY) and the straight distance to it (aimed), and what bounds it: the ceiling over the camera, the farthest the room lets it go,
   // and the ball round the aimed point that holds the body (only worked out for a zoom in; otherwise null)
   galleryDraw(){ const m=ui.gallery&&ui.gallery.mode==='beast'&&ui.gallery.m; if(!m)return null;
-    const d0=buf.dn, p0=buf.pN; let d1=d0, p1=p0; try{ withVisualRand(galleryRand(),()=>drawMonster(m,clock.time)); d1=buf.dn; p1=buf.pN; } finally{ buf.dn=d0; buf.pN=p0; }
+    const d0=buf.dn, p0=buf.pN; let d1=d0, p1=p0; try{ withVisualRand(keyedRand('gallery probe'),()=>drawMonster(m,clock.time)); d1=buf.dn; p1=buf.pN; } finally{ buf.dn=d0; buf.pN=p0; }
     const sparks=p1-p0; let bad=0; const lo=[1e9,1e9,1e9], hi=[-1e9,-1e9,-1e9];
     for(let k=d0;k<d1;k++){ let ok=true; for(let j=0;j<3;j++){ const v=dPos[k*3+j]; if(!Number.isFinite(v)||!Number.isFinite(dCol[k*3+j]))ok=false; else { lo[j]=Math.min(lo[j],v); hi[j]=Math.max(hi[j],v); } }
       for(let j=0;j<4;j++)if(!Number.isFinite(dPar[k*4+j]))ok=false; if(!ok)bad++; }
     for(let k=p0;k<p1;k++)if(['x','y','z','vx','vy','vz','life','gl','sz','r','g','b'].some(a=>!Number.isFinite(P[a][k])))bad++;
     const f=v=>+v.toFixed(2), n=d1-d0;
+    // it draws with a sequence of its own (the same each time), so looking does not move on the creature's sequence (showBeast) that the next steps read
     // hash: a fingerprint of what it drew (the glyphs' place, colour, glyph and size, the sparks' place and colour, to 1/1000), so a check can see that two draws are the same
     let h=0x811c9dc5; const mix=v=>{ h=Math.imul(h^(Math.round(v*1000)|0),0x01000193)>>>0; };
     for(let k=d0;k<d1;k++){ for(let j=0;j<3;j++){ mix(dPos[k*3+j]); mix(dCol[k*3+j]); } for(let j=0;j<4;j++)mix(dPar[k*4+j]); }
