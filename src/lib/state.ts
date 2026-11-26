@@ -29,7 +29,7 @@ export interface ZapFlash {
 export interface Clock {
   /** ゲームが始まってからの秒（30-loop-init.js の tick が進める） */
   time: number;
-  /** tick が進んだ回数（止めている間に描き直さない時は数えない）。tick の段ごとの見た目の乱数の鍵にする（30-loop-init.js の stepRand） */
+  /** tick が進んだ回数（止めている間に描き直さない時は数えない）。tick の段ごとの見た目の乱数の鍵にする（30-loop-init.js の inPhase・inMobPhase） */
   frame: number;
 }
 export const clock: Clock = { time: 0, frame: 0 };
