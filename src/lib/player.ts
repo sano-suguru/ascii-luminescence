@@ -13,7 +13,7 @@ import { spawn } from './particles.ts';
 import { mr } from './random.ts';
 import { clamp } from './rng.ts';
 import { adv, blaze, clock, edge, gfx, here, keys, thumb, player, stealth, ui, vfx } from './state.ts';
-import { showHint } from './status.ts';
+import { clearHint, showHint } from './status.ts';
 import { CELL, EYE, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MH, MW, PR, SF_ICE, SF_MUD, TC, TP, TW, TX } from './world.ts';
 
 /** 今の階 */
@@ -202,7 +202,7 @@ export function updatePlayer(dt: number): void {
       edge.k = blocked;
       edge.idle = 0;
       if (blocked === 'chasm') {
-        showHint(
+        edge.hint = showHint(
           `裂け目の縁だ。このまま進み続けると飛び降りる <b>[${'#'.repeat(Math.min(5, Math.floor(edge.t / 0.24)))}${'-'.repeat(5 - Math.min(5, Math.floor(edge.t / 0.24)))}]</b>`,
         );
         if (edge.t > 1.2 && !here.trans) {
@@ -212,14 +212,15 @@ export function updatePlayer(dt: number): void {
           msg('<b style="color:#9a7cff">:</b>裂け目へ身を投じ、闇の中を下の階層へと落ちていく……');
         }
       } else if (blocked === 'lava') {
-        showHint('溶岩の熱が行く手を阻んでいる。これ以上は近づけない');
+        edge.hint = showHint('溶岩の熱が行く手を阻んでいる。これ以上は近づけない');
         must(must(gfx.finalPass).uniforms['uHeat']).value = Math.min(1.4, must(must(gfx.finalPass).uniforms['uHeat']).value + dt * 2);
-      } else if (blocked === 'gate') showHint('鉄格子が行く手を塞いでいる。どこかに開ける仕掛けがあるはずだ');
-      else if (blocked === 'xtal') showHint('結晶に行く手を塞がれている。光は通るが、体は通れない');
+      } else if (blocked === 'gate') edge.hint = showHint('鉄格子が行く手を塞いでいる。どこかに開ける仕掛けがあるはずだ');
+      else if (blocked === 'xtal') edge.hint = showHint('結晶に行く手を塞がれている。光は通るが、体は通れない');
     } else {
       edge.idle += dt;
       if (edge.idle > 0.15) edge.t = 0;
-      if (edge.idle > 0.9) showHint('');
+      // 塞がれた時の一言は、塞がれなくなって0.9秒たったら消す（その後にほかの所が出した一言は消さない）
+      if (edge.idle > 0.9) clearHint(edge.hint);
     }
     for (const m of here.monsters) {
       if (m.ty.flier || m.ty.form === 'eel') continue;

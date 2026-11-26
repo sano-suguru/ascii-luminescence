@@ -47,6 +47,6 @@ describe('移す前と同じ', () => {
       names = new Set(lines.flatMap((l) => [...l.matchAll(/"name":"(\w+)"/g)].map((m) => m[1])));
     // 場合が中身を通っているか：17の関数が全部呼ばれ、忘れられた獣が目を覚ます場合も通る
     expect([lines.length, names.size, all.includes('目を覚まし')]).toEqual([300, 17, true]);
-    expect([fnv(all), all.length]).toEqual(['407aa11b', 844281]);
+    expect([fnv(all), all.length]).toEqual(['52ab2c8e', 843575]);
   }, 60000);
 });

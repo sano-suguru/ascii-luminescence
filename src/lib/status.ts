@@ -34,12 +34,23 @@ export function placeLabel(): string {
   if (here.branch) return `${lookup(BRANCHES, here.branch.key).name} ${here.branch.lvl}/${here.branch.len}`;
   return String(here.depth);
 }
-/** 画面の下の一言（同じなら書き直さない） */
-export function showHint(h: string): void {
-  if (h === ui.hintHTML) return;
+/** 画面の下の一言（同じなら書き直さない）。出した番号を返す（呼ぶたびに増える。clearHint に渡す） */
+export function showHint(h: string): number {
+  const n = ++ui.hintSeq;
+  if (h === ui.hintHTML) return n;
   ui.hintHTML = h;
   const el = document.getElementById('hint');
   if (el) el.innerHTML = h;
+  return n;
+}
+/** 番号 n の一言を消す。その後に別の一言が出ていれば（showHint が呼ばれていれば）、消さない */
+export function clearHint(n: number): void {
+  if (ui.hintSeq === n) showHint('');
+}
+/** 画面の下に一言を出し、ms ミリ秒後に消す（その間に別の一言が出ていれば、消さない） */
+export function flashHint(h: string, ms: number): void {
+  const n = showHint(h);
+  setTimeout(() => clearHint(n), ms);
 }
 
 /**
@@ -207,8 +218,7 @@ export function cycleUi(): void {
   document.body.classList.toggle('ui-min', ui.uiMode === 1);
   document.body.classList.toggle('ui-none', ui.uiMode === 2);
   if (ui.uiMode < 2) {
-    showHint(ui.uiMode === 0 ? '表示：通常' : '表示：最小');
-    setTimeout(() => showHint(''), 1200);
+    flashHint(ui.uiMode === 0 ? '表示：通常' : '表示：最小', 1200);
   }
 }
 /**
