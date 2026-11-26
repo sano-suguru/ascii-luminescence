@@ -114,14 +114,38 @@ const QUAD_POS = [-0.5, 0.5, 0, 0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, -0.5, 0],
   QUAD_IDX = [0, 2, 1, 2, 3, 1];
 /** 文字ごとの値 src の from から size 個を、dst の a 番目の文字の4つの頂点に写す */
 function toQuad(dst: Float32Array, a: number, size: number, src: Float32Array, from: number): void {
+  // 範囲はここで1回だけ確かめ、中では nth を使わない（文字1つに9回呼ぶので、nth だと区切りに分ける時間が2割から3割長い）
+  if (from + size > src.length) throw new RangeError(`文字ごとの値の ${from + size - 1} 番目が無い（長さ ${src.length}）`);
   const o = a * 4 * size;
   for (let i = 0; i < size; i++) {
-    const v = nth(src, from + i);
+    const v = src[from + i] ?? 0;
     dst[o + i] = v;
     dst[o + size + i] = v;
     dst[o + 2 * size + i] = v;
     dst[o + 3 * size + i] = v;
   }
+}
+/**
+ * cnt 個の文字の四角を三角形にする、頂点の番号。16ビットの 65535 は、WebGL2 では線を切る印として読まれ、頂点の番号にならないので、
+ * 一番大きい番号（頂点の数 - 1）が 65535 以上なら32ビットにする
+ */
+export function quadIndex(cnt: number): Uint16Array | Uint32Array {
+  const idx = cnt * 4 > 65535 ? new Uint32Array(cnt * 6) : new Uint16Array(cnt * 6);
+  for (let a = 0; a < cnt; a++) for (let v = 0; v < 6; v++) idx[a * 6 + v] = a * 4 + nth(QUAD_IDX, v);
+  return idx;
+}
+/** GPU に送った後の、区切りの頂点の値の代わり（中身の無い配列） */
+const SENT = new Float32Array(0);
+/**
+ * 区切りの頂点の値。GPU に送った後は、JS の側の配列を捨てる（頂点4つ分の値は大きいので、JS と GPU の両方に持つとメモリが倍になる。
+ * three.js は、送った後は配列を読まない（型と数は送る前に覚える）。ゲームは描画が止まった時に作り直さないので、また送ることもない）
+ */
+function sentAttr(a: Float32Array | Uint16Array | Uint32Array, size: number) {
+  const b = new T.BufferAttribute(a, size);
+  b.onUpload(() => {
+    b.array = SENT;
+  });
+  return b;
 }
 /**
  * 階の文字を組み立てる（壁の面・洞窟の岩肌と天井・床と液体・橋・茂み・結晶・大きな茸・部屋の仕掛け・宝物庫・柱）。文字は区切りごとに1つの
@@ -2538,14 +2562,13 @@ export function buildWorld(): void {
       m1 = new Float32Array(nv * 3),
       m2 = new Float32Array(nv * 3),
       m3 = new Float32Array(nv * 3),
-      idx = nv > 65536 ? new Uint32Array(cnt * 6) : new Uint16Array(cnt * 6);
+      idx = quadIndex(cnt);
     let ymin = 1e9,
       ymax = -1e9;
     for (let a = 0; a < cnt; a++) {
       const k = nth(order, nth(start, c) + a);
       pos.set(QUAD_POS, a * 12);
       uv.set(QUAD_UV, a * 8);
-      for (let v = 0; v < 6; v++) idx[a * 6 + v] = a * 4 + nth(QUAD_IDX, v);
       toQuad(gl, a, 1, GL, k);
       toQuad(co, a, 3, CO, k * 3);
       toQuad(em, a, 4, EM, k * 4);
@@ -2559,18 +2582,18 @@ export function buildWorld(): void {
       if (nth(PY, k) > ymax) ymax = nth(PY, k);
     }
     const geo = new T.BufferGeometry();
-    geo.setAttribute('position', new T.BufferAttribute(pos, 3));
-    geo.setAttribute('uv', new T.BufferAttribute(uv, 2));
-    geo.setAttribute('iGlyph', new T.BufferAttribute(gl, 1));
-    geo.setAttribute('iColor', new T.BufferAttribute(co, 3));
-    geo.setAttribute('iEmit', new T.BufferAttribute(em, 4));
-    geo.setAttribute('iLI', new T.BufferAttribute(li, 3));
-    geo.setAttribute('iLW', new T.BufferAttribute(lw, 3));
-    geo.setAttribute('iM0', new T.BufferAttribute(m0, 3));
-    geo.setAttribute('iM1', new T.BufferAttribute(m1, 3));
-    geo.setAttribute('iM2', new T.BufferAttribute(m2, 3));
-    geo.setAttribute('iM3', new T.BufferAttribute(m3, 3));
-    geo.setIndex(new T.BufferAttribute(idx, 1));
+    geo.setAttribute('position', sentAttr(pos, 3));
+    geo.setAttribute('uv', sentAttr(uv, 2));
+    geo.setAttribute('iGlyph', sentAttr(gl, 1));
+    geo.setAttribute('iColor', sentAttr(co, 3));
+    geo.setAttribute('iEmit', sentAttr(em, 4));
+    geo.setAttribute('iLI', sentAttr(li, 3));
+    geo.setAttribute('iLW', sentAttr(lw, 3));
+    geo.setAttribute('iM0', sentAttr(m0, 3));
+    geo.setAttribute('iM1', sentAttr(m1, 3));
+    geo.setAttribute('iM2', sentAttr(m2, 3));
+    geo.setAttribute('iM3', sentAttr(m3, 3));
+    geo.setIndex(sentAttr(idx, 1));
     const mesh = new T.Mesh(geo, gfx.staticMat);
     mesh.frustumCulled = false;
     must(gfx.scene).add(mesh);

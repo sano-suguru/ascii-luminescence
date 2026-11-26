@@ -145,7 +145,7 @@ export async function initDiag(): Promise<void> {
   );
   window.addEventListener('unhandledrejection', (e) => push(rec.errors, KEEP.errors, { k: 'rejection', v: String(e.reason) }));
 
-  // 速さ：描くたびの間を数え、SPAN ごとに平均と、一番遅かった1回を記録する。その時にいる場所（placeKey）も書く（前の行と違えば、その間に場所を移った。
+  // 速さ：描くたびの間を数え、SPAN ごとに平均と、一番遅かった1回を記録する。その時にいる場所（placeKey）も書く（探索中だけ。タイトル・図鑑・試しの間では null。前の行と違えば、その間に場所を移った。
   // できごとの一覧は数が限られ、ボタンを押すとすぐ流れるので、場所はこちらに書く）
   let frames = 0,
     worst = 0,
@@ -160,7 +160,7 @@ export async function initDiag(): Promise<void> {
     if (now - from >= SPAN) {
       push(rec.fps, KEEP.fps, {
         phase: phase(),
-        place: placeKey(),
+        place: ui.started && !ui.gallery ? placeKey() : null,
         avg: Math.round((frames * 10_000) / (now - from)) / 10,
         min: worst > 0 ? Math.round(10_000 / worst) / 10 : null,
       });
