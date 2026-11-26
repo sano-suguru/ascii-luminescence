@@ -2,13 +2,14 @@
 // 迷宮の生成が読む表と、層・支道・階の大きさを決める小さな関数（stratumOf・branchAtDepth・levelDims）。
 // 生き物の表 MTYPES は src/lib/creatures.ts。
 import { lookup, nth } from './array.ts';
+import type { Color } from './color.ts';
 import { clamp } from './rng.ts';
 import { BRANCHES, MH, MW } from './world.ts';
 
 /** 部屋や洞窟のテーマ（灯りの色・備品・入った時の言葉。洞窟は地形 BIOMES） */
 export interface Theme {
   k: string;
-  col: number[];
+  col: Color;
   msg: string;
   fix?: string;
   ruin?: boolean;
@@ -72,19 +73,19 @@ export const THEMES = [
   { k: 'violet', col: [0.55, 0.33, 1.0], fix: 'crystal', msg: '菫色の燐光が満ちる静かな広間。天井で無数の小さな光が瞬いている。' },
   { k: 'emerald', col: [0.2, 1.0, 0.5], fix: 'fungus', msg: '発光する苔が、床一面に芽吹いている。' },
   { k: 'magenta', col: [1.0, 0.25, 0.8], fix: 'rune', msg: '床に描かれた魔法陣が、妖しく回転している。' },
-];
+] satisfies Theme[];
 // districts of the ancient ruins (palette after Caves of Qud)
 export const RUIN_THEMES = [
   { k: 'r_teal', col: [0.3, 0.95, 0.85], fix: 'orb', ruin: true, msg: '青緑に灯る古の球体が、崩れかけた大広間をいまも照らしている。' },
   { k: 'r_ochre', col: [1.0, 0.66, 0.28], fix: 'brazier', ruin: true, msg: '黄土色の炎が、巨大な柱の影を長く伸ばしている。' },
   { k: 'r_rose', col: [1.0, 0.42, 0.62], fix: 'orb', ruin: true, msg: '薔薇色に灯る古代の球体が、壁一面の碑文を照らしている。' },
   { k: 'r_violet', col: [0.62, 0.45, 1.0], fix: 'crystal', ruin: true, msg: '菫色の光の中で、誰のものとも知れぬ文明の名残が眠っている。' },
-];
+] satisfies Theme[];
 export const FORT_THEMES = [
   { k: 'f_forge', col: [1.0, 0.55, 0.2], fix: 'brazier', ruin: true, msg: '鍛冶の炎の名残が、煤けた壁を赤く照らしている。' },
   { k: 'f_hall', col: [1.0, 0.75, 0.4], fix: 'brazier', ruin: true, msg: 'ドワーフの大広間。石に刻まれた紋様が、炎の光に浮かぶ。' },
   { k: 'f_deep', col: [0.45, 0.75, 1.0], fix: 'orb', ruin: true, msg: '冷たい青い灯が、砦の奥の静けさを照らしている。' },
-];
+] satisfies Theme[];
 /** 特別な階（地下の町・大広間・神託所・砦） */
 export const SPECIALS = {
   town: { k: 'town', special: true, name: '地下の町', msg: '岩盤をくり抜いて築かれた町に出た。家々の窓には、まだ灯りがともっている。' },
@@ -101,12 +102,12 @@ export const CRYPT_THEMES = [
   { k: 'c_cold', col: [0.45, 0.6, 1.0], fix: 'crystal', msg: '冷たい青い光の中に、石の棺が並んでいる。' },
   { k: 'c_violet', col: [0.62, 0.4, 1.0], fix: 'rune', msg: '菫色の魔法陣が、死者の眠りを見守っている。' },
   { k: 'c_pale', col: [0.8, 0.85, 1.0], fix: 'orb', msg: '青白い灯が、埃をかぶった回廊を照らしている。' },
-];
+] satisfies Theme[];
 export const LAB_THEMES = [
   { k: 'l_magenta', col: [1.0, 0.3, 0.85], fix: 'rune', msg: '床一面に魔法陣が描かれている。まだ微かに力が残っているようだ。' },
   { k: 'l_cyan', col: [0.3, 0.9, 1.0], fix: 'crystal', msg: '宙に浮かぶ水晶が、実験の続きを待っている。' },
   { k: 'l_violet', col: [0.65, 0.45, 1.0], fix: 'orb', msg: '灯の下に、書きかけの羊皮紙が散らばっている。' },
-];
+] satisfies Theme[];
 export const SUNKEN_THEMES = [nth(RUIN_THEMES, 0), nth(RUIN_THEMES, 3)];
 /** 支道の中身（層の形・テーマ・部屋の仕掛け・宝物庫・群れ） */
 export const BRANCH_STRATA = {

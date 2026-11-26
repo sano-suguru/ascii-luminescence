@@ -1,8 +1,11 @@
 // 色の道具（もとは src/game/02-constants.js の css と、07-bodies-lords.js の hsl2rgb）。
 import { must, nth } from './array.ts';
 
+/** 色（0 から 1 の RGB の、3つの数の組） */
+export type Color = readonly [number, number, number];
+
 /** 色（0 から 1 の RGB）を、少し明るくした CSS の rgb() にする（暗い色もパネルで読めるように） */
-export const css = (c: readonly [number, number, number]): string =>
+export const css = (c: Color): string =>
   `rgb(${Math.round(255 * Math.min(1, c[0] * 0.85 + 0.15))},${Math.round(255 * Math.min(1, c[1] * 0.85 + 0.15))},${Math.round(255 * Math.min(1, c[2] * 0.85 + 0.15))})`;
 
 /** 表から読んだ色（3つの数の配列）を css の色に（色が無い・足りなければ、その場で止まる） */
