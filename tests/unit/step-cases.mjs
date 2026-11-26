@@ -38,9 +38,7 @@ export const NAMES = [
   'startRoll',
   'onRolled',
   'updateProjs',
-  'arrowTraits',
   'moonBurst',
-  'm_rapidCrit',
   'updateStatuses',
   'monTimeK',
   'updateZones',
@@ -640,28 +638,17 @@ export async function stepCases(F, seeds, page) {
         Object.assign(player, { x: px, z: pz, pitch: 0 });
         gfx.camera.position.set(player.x, player.eye, player.z);
       }
-      // 直に：矢の特性（散る・縫い止める・壁に縫い止める）・月が弾ける・続けて当てた時
+      // 直に：月が弾ける（状態異常の残り・引き寄せた生き物）
       for (let k = 0; k < 4; k++) {
         const fs = foes();
         if (!fs.length) break;
-        const m = pick(fs),
-          s2 = sp('bolt', pick(ELEMS), pick([1, 2, 3, 4, 5]));
-        // 壁の手前に立たせて、壁に縫い止める
-        if (k % 2 === 0)
-          for (let i = 0; i < NCELL; i++)
-            if (D.tile[i] === TF && D.tile[i + 1] === TW) {
-              const [x, z] = cpos(i);
-              Object.assign(m, { x: x + 0.2, z, dead: false });
-              break;
-            }
+        const m = pick(fs);
         if (k === 3) delete m.st;
         if (chance(0.5)) m.st = { burn: 1, chill: 1, shock: 1, poison: 1, pinCd: chance(0.5) ? clock.time + 1 : 0 };
-        call('arrowTraits', { sp: s2, gen: pick([0, 1, 2]), vx: 10, vy: 0, vz: 0 }, m, m.x, 1, m.z);
         const s3 = sp('mstaff', pick(ELEMS)),
           pulled = new Set(fs.slice(0, 2));
         if (k === 1) for (const o of pulled) delete o.st;
-        call('moonBurst', { moon: 1 + r() * 2, sp: s3, phases: 0, tide: pick([0, 5]), pulled }, m.x, 1, m.z);
-        call('m_rapidCrit', m, s2);
+        call('moonBurst', { moon: 1 + r() * 2, sp: s3, tide: pick([0, 5]), pulled }, m.x, 1, m.z);
       }
       // ---- 場面：状態異常・吹き飛び（壁に叩きつける）・毒の霧・魔法の場・雨・遅れて起きること
       for (let k = 0; k < 3; k++) {

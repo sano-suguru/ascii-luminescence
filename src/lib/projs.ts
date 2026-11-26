@@ -1,18 +1,17 @@
 // 飛ぶ物と、毎フレーム続く戦いの跡を進める（もとは src/game/20-chant-hits.js・26-spells-hud.js）：矢と玉（まっすぐ飛ぶ矢・弧を描いて弾ける玉。
-// 跳ね返る・追う・貫く・壁を抜ける。矢の特性）、状態異常（燃える・毒・冷える・動けない・痺れる）と吹き飛び、毒の霧、遅れて起きること、魔法の場、雨、
+// 跳ね返る・追う・貫く・壁を抜ける）、状態異常（燃える・毒・冷える・動けない・痺れる）と吹き飛び、毒の霧、遅れて起きること、魔法の場、雨、
 // 毒の霧に火がつく、生き物の時間の速さ。状態の入れ物 fight・here・player・clock・vfx・blaze・saved に頼る。呼ぶのは古い JS のメインループ（30-loop-init.js の tick）。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う結果になるので、順番を変えないこと。
 import { lookup, must, nth } from './array.ts';
 import { doorBlock, hittable, losClear, reflectDir } from './aim.ts';
 import { sBoom } from './audio.ts';
-import { addZone, applyElem, applyHit, burstFire, damageMonster, hurtPlayer, landElem, later, orbBurst } from './combat.ts';
-import { type Spec } from './gear.ts';
+import { applyElem, applyHit, burstFire, damageMonster, hurtPlayer, landElem, later, orbBurst } from './combat.ts';
 import { G } from './glyphs.ts';
 import { mCenter } from './math.ts';
 import { foe, BL } from './monsters.ts';
 import { spawn } from './particles.ts';
 import { mpick, mr, roll } from './random.ts';
-import { RES, RUNE_DEF, TL, TRAIT_V, elemCol, sp_elem } from './runes.ts';
+import { RES, RUNE_DEF, TL, TRAIT_V, elemCol } from './runes.ts';
 import { type Mob, type Proj, TEST, blaze, clock, fight, here, player, saved, vfx } from './state.ts';
 import { CELL, MH, MW, NCELL, TC, TW, TX } from './world.ts';
 
@@ -120,31 +119,6 @@ export function updateStatuses(dt: number): void {
       }
       const ci = Math.floor(m.z / CELL) * MW + Math.floor(m.x / CELL);
       if (level().tile[ci] === TW || level().tile[ci] === TX || level().solid.has(ci)) {
-        if (m.slam && clock.time < m.slam.until) {
-          const dd = m.slam.d;
-          m.slam = null;
-          m.playerT = clock.time;
-          damageMonster(m, dd, 'blade');
-          for (let q = 0; q < 10; q++) {
-            const a = mr() * 6.28;
-            spawn(
-              m.x,
-              m.y + 0.6,
-              m.z,
-              Math.cos(a) * 1.5,
-              mr() * 1.2,
-              Math.sin(a) * 1.5,
-              0.5,
-              G(mpick(['#', '.', ','])),
-              0.14,
-              0.9,
-              0.85,
-              0.8,
-              0,
-            );
-          }
-          vfx.shake = Math.max(vfx.shake, 0.12);
-        }
         m.x -= m.kx * dt * 1.5;
         m.z -= m.kz * dt * 1.5;
         m.kx = 0;
@@ -298,7 +272,7 @@ export const monTimeK = (m: Mob): number => {
 
 /**
  * 飛ぶ物を進める（矢はまっすぐ、玉は弧を描いて弾ける。どちらも跳ね返り、追うことがある）。光の月は引き寄せて焼く。
- * 生き物に当たれば当たり（矢は貫く・特性、玉は弾ける）、壁・床・天井に当たれば、跳ね返るか、壁を抜けるか、消えて性質を地面に落とす
+ * 生き物に当たれば当たり（矢は貫く、玉は弾ける）、壁・床・天井に当たれば、跳ね返るか、壁を抜けるか、消えて性質を地面に落とす
  */
 export function updateProjs(dt: number): void {
   for (const b of fight.beamSegs) b.t -= dt;
@@ -328,19 +302,6 @@ export function updateProjs(dt: number): void {
           m.st = m.st || {};
           (p.pulled = p.pulled || new Set()).add(m);
         }
-      if ((p.phases ?? NaN) >= 5) {
-        p.burnT = (p.burnT ?? NaN) - dt;
-        if (p.burnT <= 0) {
-          p.burnT = 0.25;
-          for (const m of here.monsters) {
-            if (!hittable(m)) continue;
-            if (Math.hypot(m.x - p.x, m.z - p.z) < 0.6 + 0.25 * p.moon) {
-              m.playerT = clock.time;
-              applyHit(m, 2, p.sp, true);
-            }
-          }
-        }
-      }
       const c2 = elemCol(p.sp.elem);
       for (let q = 0; q < Math.round(p.moon * 2); q++) {
         const a = mr() * 6.28,
@@ -404,7 +365,7 @@ export function updateProjs(dt: number): void {
         (mr() - 0.5) * 0.3,
         0.35 + mr() * 0.25,
         G(mpick(p.wind ? ['~', ')', '('] : bolt ? ['*', '.', "'"] : ['o', '.', '*'])),
-        p.big ? 0.24 : p.mini ? 0.08 : bolt ? 0.11 : 0.13,
+        p.big ? 0.24 : bolt ? 0.11 : 0.13,
         nth(must(c), 0) * 2.2,
         nth(must(c), 1) * 2.2,
         nth(must(c), 2) * 2.2,
@@ -429,68 +390,12 @@ export function updateProjs(dt: number): void {
       if (bolt) {
         const dmg = p.dmg || lookup(RUNE_DEF, 'bolt').dmg;
         applyHit(hm, Math.max(1, Math.round(roll(nth(must(dmg), 0), nth(must(dmg), 1)) * (p.dmgK || 1))), p.sp);
-        if (!p.wind && (!p.mini || TL(p.sp, 'scatter') >= 5)) arrowTraits(p, hm, nx, ny, nz);
-        if (p.pierce === undefined && !p.wind && !p.mini) {
+        if (p.pierce === undefined && !p.wind) {
           const pl = TL(p.sp, 'pierce');
           p.pierce = nth([0, 1, 1, 2, 3, 3], pl);
           p.keep = pl >= 2;
           if (pl >= 5) p.wallPass = 1;
         }
-        if (p.heavy && !hm.dead) {
-          const v = Math.hypot(p.vx, p.vz) || 1,
-            k = (p.heavy >= 1 ? 3 : 0) / Math.max(0.6, hm.ty.scale || 1);
-          if (!hm.ty.boss && hm.key !== 'lord' && hm.key !== 'final') {
-            hm.kx = (hm.kx || 0) + (p.vx / v) * k;
-            hm.kz = (hm.kz || 0) + (p.vz / v) * k;
-            hm.st = hm.st || {};
-            if (p.heavy >= 3) hm.wind = 0;
-            if (p.heavy >= 5 && clock.time >= (hm.st.pinCd || 0)) {
-              hm.st.pin = Math.max(hm.st.pin || 0, 0.2);
-              hm.st.pinCd = clock.time + 1.2;
-            }
-          }
-        }
-        if ((p.steady ?? NaN) >= 5) {
-          hm.rapidN = (clock.time - (hm.rapidT || -9) < 0.8 ? hm.rapidN || 0 : 0) + 1;
-          hm.rapidT = clock.time;
-          if (hm.rapidN === 3 && !hm.dead) {
-            m_rapidCrit(hm, p.sp);
-          }
-        }
-        if (p.boom) {
-          orbBurst(nx, ny, nz, p.sp, { dmg: 0.4, rad: 0.6, cloud: false });
-          p.boom = false;
-        }
-        if (p.dust) {
-          const n = p.dust >= 3 ? 3 : 2,
-            k = p.dust >= 4 ? 0.8 : p.dust >= 2 ? 0.6 : 0.45,
-            md = lookup(RUNE_DEF, 'mshot').dmg,
-            sp = p.sp,
-            dl = p.dust;
-          for (let i = 0; i < n; i++) {
-            const a = mr() * 6.28;
-            fight.projs.push({
-              kind: 'bolt',
-              mini: true,
-              x: nx,
-              y: ny,
-              z: nz,
-              vx: Math.cos(a) * 12,
-              vy: (mr() - 0.3) * 2,
-              vz: Math.sin(a) * 12,
-              t: 0,
-              maxT: 0.3,
-              sp,
-              bounce: 0,
-              homing: 0,
-              hit: new Set([hm]),
-              dmg: [Math.max(1, Math.round(nth(must(md), 0) * k)), Math.max(1, Math.round(nth(must(md), 1) * k))],
-              trail: dl >= 5,
-            });
-          }
-          p.dust = 0;
-        }
-        if (p.trail && sp_elem(p)) addZone(nx, nz, 0.6, p.sp, 3, false);
         if ((p.pierce ?? NaN) > 0) {
           // @ts-expect-error -- 上の比べ方で数と分かっている（型では言えない。古い JS のまま）
           p.pierce--;
@@ -501,7 +406,7 @@ export function updateProjs(dt: number): void {
         } else p.dead = true;
       } else {
         if (p.moon) moonBurst(p, nx, ny, nz);
-        else orbBurst(nx, ny, nz, p.sp, p.mini ? { dmg: p.burstK, rad: 0.6, cloud: false, proj: p } : { proj: p });
+        else orbBurst(nx, ny, nz, p.sp);
         p.dead = true;
       }
       continue;
@@ -511,8 +416,7 @@ export function updateProjs(dt: number): void {
       floor = ny < 0.03 && level().tile[i] !== TC,
       ceil = ny > (level().ceil[i] ?? NaN);
     if (wall || floor || ceil) {
-      if (wall && !floor && !ceil && p.wallPass === undefined && p.kind === 'bolt' && !p.mini && !p.wind && TL(p.sp, 'pierce') >= 5)
-        p.wallPass = 1;
+      if (wall && !floor && !ceil && p.wallPass === undefined && p.kind === 'bolt' && !p.wind && TL(p.sp, 'pierce') >= 5) p.wallPass = 1;
       if (wall && !floor && !ceil && (p.wallPass ?? NaN) > 0 && p.kind === 'bolt') {
         // @ts-expect-error -- 上の比べ方で数と分かっている（型では言えない。古い JS のまま）
         p.wallPass--;
@@ -560,13 +464,11 @@ export function updateProjs(dt: number): void {
         continue;
       }
       p.dead = true;
-      if (p.boom) orbBurst(p.x, Math.max(0.1, p.y), p.z, p.sp, { dmg: 0.4, rad: 0.6, cloud: false });
       if (p.moon) {
         moonBurst(p, p.x, Math.max(0.1, p.y), p.z);
         continue;
       }
-      if (p.kind === 'orb')
-        orbBurst(p.x, Math.max(0.1, p.y), p.z, p.sp, p.mini ? { dmg: p.burstK, rad: 0.6, cloud: false, proj: p } : { proj: p });
+      if (p.kind === 'orb') orbBurst(p.x, Math.max(0.1, p.y), p.z, p.sp);
       else {
         for (let q = 0; q < 8; q++) {
           const a = mr() * 6.28;
@@ -596,44 +498,12 @@ export function updateProjs(dt: number): void {
   }
   fight.projs = fight.projs.filter((p) => !p.dead);
 }
-/** 連射の特性 steady（Lv5）：続けて3本当てると、大きな傷と火花 */
-export function m_rapidCrit(m: Mob, sp: Spec): void {
-  m.playerT = clock.time;
-  applyHit(m, 5, sp, true);
-  for (let q = 0; q < 10; q++) {
-    const a = mr() * 6.28;
-    spawn(m.x, m.y + 0.8, m.z, Math.cos(a) * 1.6, 0.4 + mr(), Math.sin(a) * 1.6, 0.4, G(mpick(['!', '*'])), 0.14, 2.6, 2.2, 1.2, 0);
-  }
-}
-/** 光の月が弾ける（大きさで強く広く。満ち欠けの段で小さな玉に分かれ、引き寄せの Lv5 は引き寄せた生き物を動けなくする） */
+/** 光の月が弾ける（大きさで強く広く。引き寄せの Lv5 は引き寄せた生き物を動けなくする） */
 export function moonBurst(p: Proj, x: number, y: number, z: number): void {
   const f = must(p.moon),
     sp = p.sp;
   orbBurst(x, y, z, sp, { dmg: f * 1.1, rad: 0.8 + 0.45 * f });
   vfx.shake = Math.max(vfx.shake, 0.1 + 0.05 * f);
-  if ((p.phases ?? NaN) >= 3 && f > 2.2) {
-    const n = (p.phases ?? NaN) >= 4 ? 5 : 3;
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2 + mr();
-      fight.projs.push({
-        kind: 'orb',
-        mini: true,
-        gen: 9,
-        x,
-        y: Math.max(0.5, y),
-        z,
-        vx: Math.cos(a) * 6,
-        vy: 3.2,
-        vz: Math.sin(a) * 6,
-        t: 0,
-        sp,
-        bounce: 0,
-        homing: 0,
-        hit: new Set(),
-        burstK: 0.6,
-      });
-    }
-  }
   if ((p.tide ?? NaN) >= 5 && p.pulled)
     for (const m of p.pulled) {
       if (m.dead || m.ty.boss) continue;
@@ -643,60 +513,6 @@ export function moonBurst(p: Proj, x: number, y: number, z: number): void {
         st.pinCd = clock.time + 1.6;
       }
     }
-}
-/** 矢の特性：散る（小さな矢に分かれる）・縫い止める（壁の前なら長く。Lv5 は状態異常の残りを倍に） */
-export function arrowTraits(p: Proj, hm: Mob, x: number, y: number, z: number): void {
-  const sp = p.sp,
-    gen = p.gen || 0;
-  const sc = TL(sp, 'scatter');
-  if (sc && gen < (sc >= 5 ? 2 : 1)) {
-    const n = sc >= 3 ? 3 : 2,
-      // @ts-expect-error -- 古い JS のまま（使っていない）
-      v = Math.hypot(p.vx, p.vz) || 1,
-      k = sc >= 4 ? 0.8 : sc >= 2 ? 0.65 : 0.5,
-      bd = lookup(RUNE_DEF, 'bolt').dmg;
-    for (let i = 0; i < n; i++) {
-      const a = Math.atan2(p.vz, p.vx) + (mr() - 0.5) * 1.4;
-      fight.projs.push({
-        kind: 'bolt',
-        mini: true,
-        gen: gen + 1,
-        x,
-        y,
-        z,
-        vx: Math.cos(a) * 14,
-        vy: (mr() - 0.4) * 2,
-        vz: Math.sin(a) * 14,
-        t: 0,
-        maxT: 0.35,
-        sp,
-        bounce: 0,
-        homing: 0,
-        hit: new Set([hm]),
-        dmg: [Math.max(1, Math.round(nth(must(bd), 0) * k)), Math.max(1, Math.round(nth(must(bd), 1) * k))],
-      });
-    }
-  }
-  const pn = TL(sp, 'pin');
-  if (pn && !hm.dead && !hm.ty.boss && hm.key !== 'lord' && hm.key !== 'final') {
-    const st = hm.st || (hm.st = {});
-    let dur = pn >= 2 ? 0.45 : 0.3;
-    if (pn >= 3) {
-      const v = Math.hypot(p.vx, p.vz) || 1,
-        wx = hm.x + (p.vx / v) * 1.1,
-        wz = hm.z + (p.vz / v) * 1.1,
-        wi = Math.floor(wz / CELL) * MW + Math.floor(wx / CELL);
-      if (wi >= 0 && wi < NCELL && (level().tile[wi] === TW || level().tile[wi] === TX)) {
-        dur = pn >= 4 ? 1.6 : 1.2;
-        for (let q = 0; q < 6; q++)
-          spawn(hm.x, hm.y + 0.8, hm.z, (mr() - 0.5) * 0.5, mr() * 0.4, (mr() - 0.5) * 0.5, 0.5, G('#'), 0.14, 1.6, 1.4, 1.0, 0);
-        if (pn >= 5) for (const k of ['burn', 'chill', 'shock', 'poison'] as const) if ((st[k] ?? NaN) > 0) st[k] = (st[k] ?? NaN) * 2;
-      }
-    }
-    if (clock.time < (st.pinCd || 0)) return;
-    st.pin = Math.max(st.pin || 0, dur);
-    st.pinCd = clock.time + dur + 1.2;
-  }
 }
 /**
  * 遅れて起きることを流し（中で止まっても、ゲームは続ける。コンソールに出し、テスト用モードでは外へ投げてページのエラーにする）、

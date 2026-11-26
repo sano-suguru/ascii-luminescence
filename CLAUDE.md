@@ -58,7 +58,7 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      当たり applyHit・性質を移す applyElem・反応 react・稲妻 chainLightning・conductWater、火 burstFire・ガスが爆ぜる boom、生き物の傷 damageMonster・プレイヤーの傷 hurtPlayer、
                      生き物の近接の攻撃 monsterStrike、発動のルーン onKilledBy・onDodged、立ち直り rallyOnHit、主が倒れた時 dropRune・lordFell、経験 gainExp、遅れて起きること later、魔法の場 addZone など）、
                      chant：詠唱と転がり（ゲームの時間の速さ timeScale・溜め始める beginCast・溜めが散る fizzle・放つ releaseCast・溜めを進める updateCast・転がる startRoll・転がった時 onRolled（今はどこからも呼ばれていない））、
-                     projs：飛ぶ物と、毎フレーム続く戦いの跡を進める（飛ぶ物 updateProjs と矢の特性 arrowTraits・光の月が弾ける moonBurst・続けて当てた矢 m_rapidCrit、状態異常 updateStatuses・生き物の時間の速さ monTimeK、
+                     projs：飛ぶ物と、毎フレーム続く戦いの跡を進める（飛ぶ物 updateProjs と光の月が弾ける moonBurst、状態異常 updateStatuses・生き物の時間の速さ monTimeK、
                      遅れて起きることと魔法の場 updateZones・雨 updateRains、毒の霧に火が届く cloudsMeetFire）、events：部屋の出来事を進める updateEvents と罠（踏んだ時 triggerTrap・見つける・網・鉄格子のレバー updateTraps）、
                      results：結果の画面（場所・伝承 runLore・awardLore・loreRows・墓に遺す物 graveCandidates・graveRows・saveGrave・勝った時 victory）、
                      player：プレイヤーの動き updatePlayer・通れない所の当たり判定 solidAt・3人称のカメラ placeThirdPerson、
@@ -132,6 +132,7 @@ tests/unit/step.test.mjs  詠唱と転がり・飛ぶ物と戦いの跡を進め
 tests/unit/level.test.mjs  階を移る処理（newLevel・advance・checkEvents・die・newRun）と世界の組み立て（buildWorld・setFog・updateWater）の単体テスト。たくさんの場合を作る level-cases.mjs
                      （探索を始め、進む向きと場所と着く所を変えて階を移り、階段・門・穴・封じられた階段を踏み、死んで結果の画面のボタンを押す。three.js の物は Node でも本物を作り、
                      描画する部品だけ偽物。迷宮の生成を変えると、この指紋も変わる。単独で15秒ほど、ほかのテストと同時なら25秒ほど。ほとんどは本物の newLevel・buildWorld の時間）を使う
+tests/unit/traits.test.mjs  特性を名前で読む所（TL・tv・wTL）が、どれも特性の表（src/lib/runes.ts の TRAITS）にある名前か（src/lib/*.ts と src/game/*.js を構文の木で調べる）
 tests/unit/same-code.test.mjs  tools/same-code.mjs の単体テスト（規則ごとに同じと言う物・違うと言う物、抜けた文・係数・比べ方・乱数を引く順番の違いを見つけるか）
 tests/unit/view.test.mjs  カメラから見て描く・調べる処理（生き物を描く・罠と鉄格子を描く・見た時の説明・灯りの揺らぎと灯りの配列・照準）の単体テスト。たくさんの場合を作る view-cases.mjs
                      （Node で本物の迷宮を生成し、全部の種類の生き物・罠・床の物・灯りの種類を足し、偽のカメラ（位置だけ）を物へ向ける。説明の分かれ道ごとの場面も通す。
