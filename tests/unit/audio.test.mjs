@@ -204,12 +204,38 @@ describe('音を鳴らす所が、見た目の乱数を引かない（src/ を�
           'function f(dt,i){ sDrip(1,2,0.2+mr()*0.1);', // 1：引数
           '  if(mr()<0.3)sBubble(1,2,0.3,true);', // 2：if の条件で、中身は音だけ
           '  if(mr()<dt){ found=true; sChime(1,2,0.2); msg("罠を見つけた"); }', // 音のほかのこともするので、見逃す
-          '  if(clock.time>t0){ t0=clock.time+6+mr()*5; omen(); sPing(1); } }', // 4：次に鳴らす時刻
+          '  if(clock.time>t0){ t0=clock.time+6+mr()*5; sPing(1); } }', // 4：次に鳴らす時刻
           'const sPop=(x,z)=>{ if(!sndReady())return; sTone(0,"sine",shuffle([1,2],mr)[0],0,1,null); };', // 矢印関数の音の関数。3：mr を値として渡す
           'function g(){ if(roll(1,3)>2)sPop(1,2); sChime(1,2,roll(1,2)*0.1);', // 2：矢印関数の音の関数を呼ぶ。1：roll
-          '  if(go){ nextT=performance.now()+Math.random()*9; sPop(1,2); } }', // 4：performance.now の時刻
+          '  if(performance.now()>nextT){ nextT=performance.now()+Math.random()*9; sPop(1,2); } }', // 4：performance.now の時刻
+          'function k(){ if(clock.time>o.next.t){ o.next={t:clock.time+4+mr()*6}; sChime(1,2,0.1); } }', // 4：オブジェクトの欄の中の時刻
+          'function n(m){ if(go){ m.nextMove=clock.time+2+mr(); sChime(1,2,0.1); } }', // 見逃す：音を鳴らすかを決めない時刻（ゲームの時刻）
+          'function u(){ if(mr()<0.3)sBubble(1,2,0.3,true); else spawnBat();', // 見逃す：else でゲームのことをする
+          '  if(mr()<0.3)sBubble(1,2,0.3,true); else if(on)sDrip(1,2,0.1);', // 2：else も音だけ
+          '  if(mr()<0.3){ if(trySpawn())sDrip(1,2,0.1); } }', // 見逃す：中の if の条件でゲームの処理を呼ぶ
+          'function w(o){ if(clock.time<o.t)return; o.t=clock.time+mr()*3; sDrip(1,2,0.1); }', // 4：if(…)return の後ろ
+          'function y(m){ const due=clock.time>m.dripT; if(due){ m.dripT=clock.time+mr()*3; sDrip(1,2,0.1); } }', // 4：比べた結果を変数に入れてから
+          'function z(m){ if(clock.time>m.atkT){ m.atkT=clock.time+1+mr(); hurtPlayer(3); sDrip(1,2,0.1); } }', // 見逃す：攻撃の待ち時間（ゲームのことも決める）
+          'function a1(){ let t=0; if(clock.time>t)sDrip(1,2,0.1); }', // 名前 t の比べる所は、この関数の t だけ
+          'function b1(){ let t; if(go){ t=clock.time+mr()*3; sDrip(1,2,0.1); } use(t); }', // 見逃す：別の関数の、同じ名前の変数
+          'function c1(m){ if(clock.time>m.hissT&&sndReady()){ m.hissT=clock.time+mr(); const t0=now(); sDrip(1,2,t0); } }', // 4：sndReady の条件の中（3 でも出る）
+          'function d1(m){ if(clock.time<m.t){ } else { m.t=clock.time+mr()*3; sDrip(1,2,0.1); } }', // 4：else の中
+          'function e1(m){ const due=m.dT; if(clock.time>due){ m.dT=clock.time+mr()*3; sDrip(1,2,0.1); } }', // 4：入れる先を変数に入れてから比べる
+          'function f1(m){ if(clock.time>m.dripT)dripNow(m); }', // 4：呼ぶ所で比べる（次の行）
+          'function dripNow(m){ m.dripT=clock.time+mr()*3; sDrip(1,2,0.1); }',
+          'function g1(m){ if(clock.time>m.nextMove)moveNow(m); }', // 見逃す：呼ぶ関数がゲームのこともする（次の行）
+          'function moveNow(m){ m.nextMove=clock.time+mr(); step(m); sDrip(1,2,0.1); }',
+          'function h1(m){ if(clock.time>m.t){ const d=mr()*3; m.t=clock.time+d; sDrip(1,2,0.1); } }', // 4：入れる先への代入にだけ使う変数の宣言
+          'function f2(m){ if(clock.time>m.hT)hissNow(m); }', // 呼ぶ所（hissNow は game/02-b.js）
+          'function i1(m){ if(clock.time>m.t){ const q=mr(); spawn(q,0,0); m.t=clock.time+mr(); sDrip(1,2,0.1); } }', // 見逃す：ゲームに使う変数の宣言がある
+          'function j1(m){ if(clock.time>m.t){ m.t=clock.time+mr()*3; sDrip(1,2,0.1); } else { hide(m); } }', // 見逃す：もう片方でゲームのことをする
+          'function k1(o){ if(clock.time<o.t){ wander(o); return; } o.t=clock.time+mr()*3; sDrip(1,2,0.1); }', // 見逃す：return の前でゲームのことをする
+          'function l1(mon){ if(clock.time>mon.wT)wailNow(mon); }', // 4：呼ぶ所で、引数の名前が違う（次の行）
+          'function wailNow(m){ m.wT=clock.time+mr()*3; sDrip(1,2,0.1); }',
         ].join('\n'),
       },
+      // 4：呼ぶ所が、ほかのファイルにある（game/01-a.js の f2 が、ここの hissNow を比べてから呼ぶ）
+      { name: 'game/02-b.js', text: 'function hissNow(m){ m.hT=clock.time+mr()*2; sDrip(1,2,0.1); }' },
       { name: 'lib/b.ts', text: 'export function g(): void { if (on && sndReady()) { const v = mr(); sDrip(0, 0, v); } }' }, // 3：sndReady の中
       {
         // 自分で roll を宣言しているファイルでは、roll は見た目の乱数として数えない
@@ -230,7 +256,62 @@ describe('音を鳴らす所が、見た目の乱数を引かない（src/ を�
       'game/01-a.js:7 if の条件で、音を鳴らすか',
       'game/01-a.js:7 sChime の引数',
       'game/01-a.js:8 次に鳴らす時刻',
+      'game/01-a.js:9 次に鳴らす時刻',
+      'game/01-a.js:12 if の条件で、音を鳴らすか',
+      'game/01-a.js:14 次に鳴らす時刻',
+      'game/01-a.js:15 次に鳴らす時刻',
+      'game/01-a.js:19 sndReady の中',
+      'game/01-a.js:19 次に鳴らす時刻',
+      'game/01-a.js:20 次に鳴らす時刻',
+      'game/01-a.js:21 次に鳴らす時刻',
+      'game/01-a.js:23 次に鳴らす時刻',
+      'game/01-a.js:32 次に鳴らす時刻',
+      'game/01-a.js:26 変数 d を経て 次に鳴らす時刻',
+      'game/02-b.js:1 次に鳴らす時刻',
       'lib/b.ts:1 sndReady の中',
+    ]);
+  });
+  it('見本：引いた値を変数に入れてから音に使う形を見つけ、音のほかのことにも使う変数は見逃す', () => {
+    const files = [
+      {
+        name: 'game/01-a.js',
+        text: [
+          'function f(dt,i){ const v=mr(); sDrip(1,2,v);', // 捕まえる：変数に入れてから引数に
+          '  const a=mr()*0.1; const vol=0.2+a; sChime(1,2,vol);', // 捕まえる：変数から変数へ
+          '  const r=mr(); if(r<0.3)sBubble(1,2,0.3,true);', // 捕まえる：if の条件で、中身は音だけ
+          '  let w; w=mpick([1,2]); setTimeout(()=>sDrip(0,0,w),9);', // 捕まえる：後から入れる・中の関数で使う
+          '  const d=Math.random()*5; if(clock.time>t1){ t1=clock.time+d; sChime(1,2,0.1); }', // 捕まえる：次に鳴らす時刻
+          '  const q=mr(); if(q<dt){ found=true; sChime(1,2,q); msg("罠を見つけた"); }', // 見逃す：罠を見つけたかの判定にも使う
+          '  const x=mr()*9; spawn(x,0,0); sDrip(x,0,1);', // 見逃す：粒子の位置にも使う
+          '  const k=mr(); const y=k*2; spawn(y,0,0); sDrip(0,0,k); }', // 見逃す：移した先の変数を、粒子の位置に使う
+          'function g(){ const v=mr(); spawn(v,0,0); { const v=0.5; sDrip(0,0,v); } }', // 見逃す：同じ名前の別の変数
+          'function h(){ const from=mr(); if(go){ b.morph={from,t0:clock.time}; sChime(1,2,0.1); } }', // 見逃す：オブジェクトの中の値は時刻ではない
+          'let lv=mr(); function c(){ sDrip(0,0,lv); }', // 追わない：一番外の変数
+          'function play(v){ sDrip(0,0,v); } function e(){ play(mr()); m.t=mr(); sDrip(0,0,m.t); }', // 追わない：引数とオブジェクトの欄
+          'function j(big){ const [px,vol]=[mr()*9,0.3]; spawn(px,0,0); sDrip(0,0,vol);', // 見逃す：分割代入で、vol に入るのは 0.3
+          '  const {a2,b2}={a2:0.3,b2:mr()}; spawn(a2,0,0); sDrip(0,0,b2);', // 捕まえる：分割代入で、b2 に入るのは引いた値
+          '  let pp=400+mr()*50; if(big)pp*=0.5; sDrip(0,0,pp);', // 捕まえる：その場で変えてから使う
+          '  const c2=mr(); const gg=()=>{ spawn(c2,0,0); return 1; }; sDrip(0,0,gg());', // 見逃す：中の関数で粒子の位置に使う
+          '  const sp=2+mr(); if(go){ m.nextMove=clock.time+sp; sChime(1,2,0.1); }', // 見逃す：ゲームの時刻
+          '  const r2=mr(); if(r2<0.3)sBubble(1,2,0.3,true); else spawnBat(); }', // 見逃す：else でゲームのことをする
+        ].join('\n'),
+      },
+      {
+        // TypeScript の型が付いていても追う
+        name: 'lib/b.ts',
+        text: 'export function g(n: number): void { const v: number = (mr() as number) * n; const s = v!; sDrip(0, 0, s); }',
+      },
+    ];
+    const r = soundRandomCheck(files, ['sTone', 'sDrip', 'sBubble', 'sChime']);
+    expect(r.bad).toEqual([
+      'game/01-a.js:1 変数 v を経て sDrip の引数',
+      'game/01-a.js:2 変数 a・vol を経て sChime の引数',
+      'game/01-a.js:3 変数 r を経て if の条件で、音を鳴らすか',
+      'game/01-a.js:4 変数 w を経て sDrip の引数',
+      'game/01-a.js:5 変数 d を経て 次に鳴らす時刻',
+      'game/01-a.js:14 変数 b2 を経て sDrip の引数',
+      'game/01-a.js:15 変数 pp を経て sDrip の引数',
+      'lib/b.ts:1 変数 v・s を経て sDrip の引数',
     ]);
   });
   it('src/ のどこにも無い（音を鳴らす所は、音の乱数 sndRand を使う）', () => {
