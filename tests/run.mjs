@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { build } from 'vite';
 import { ROOT } from './lib.mjs';
 
-// テストと、速い CI のランナーでかかるおよその秒（組に分ける時と、走らせる順番に使う。長くかかる物から始め、短い物が後ろで隙間を埋める）
+// 走らせるテストの一覧と、速い CI のランナーでかかるおよその秒（表に無いテストは走らないので、テストを足したらここにも足す。組に分ける時と、走らせる順番に使う。長くかかる物から始め、短い物が後ろで隙間を埋める）
 const SEC = {
   smoke: 114,
   visual: 86,
@@ -64,7 +64,9 @@ const unknown = named.filter((n) => !ALL.includes(n));
 if (unknown.length) stop(`知らないテストの名前：${unknown.join(' ')}（${ALL.join('・')}）`);
 const of = shard ? shardOf(shard.n) : null;
 const list = ALL.filter((n) => (!named.length || named.includes(n)) && (!shard || of?.[n] === shard.i));
-if (shard) console.log(`組 ${shard.i}/${shard.n}：${list.join('・') || '（無し）'}`);
+// 走らせるテストが無い時は、通ったことにせず止める（組の数がテストより多い・名前を挙げたテストがほかの組にある、など）
+if (!list.length) stop(`走らせるテストが無い（--shard ${shard ? `${shard.i}/${shard.n}` : '無し'}・名前 ${named.join(' ') || '無し'}）`);
+if (shard) console.log(`組 ${shard.i}/${shard.n}：${list.join('・')}`);
 
 const t0 = Date.now();
 // Artifact 版を読むのは frame だけ
