@@ -1,5 +1,5 @@
 // 詠唱と当たり（もとは src/game/18-level-player.js・20-chant-hits.js・21-altars-heal.js・24-goal.js）：遅れて起きること、魔法の場、雨、連射、
-// 剣の波、当たった時の見た目と音、ひるみと吹き飛び、水の中か、稲妻の線、近くの敵、冷気、立ち直り、主が倒れた時の祭壇と伝説の物、経験。
+// 剣の波、当たった時の見た目と音、ひるみと吹き飛び、水の中か、稲妻の線、近くの敵、冷気、立ち直り（光の粒が戻る updateRally も）、主が倒れた時の祭壇と伝説の物、経験。
 // 状態の入れ物 fight・player・here・adv・clock に頼る。
 import { lookup, must, nth } from './array.ts';
 import { handPoint, losClear, shotFrame, aimOrigin, beamFrame, doorBlock, groundPoint, hittable, reflectDir, viewDir } from './aim.ts';
@@ -15,12 +15,12 @@ import { msg } from './log.ts';
 import { foe, BL, hostile, statOf } from './monsters.ts';
 import { mCenter, turnDir } from './math.ts';
 import { LEGEND_KINDS, mname } from './names.ts';
-import { spawn } from './particles.ts';
+import { dyn, spawn } from './particles.ts';
 import { expNeed, expOf } from './progress.ts';
 import { mpick, mr, roll } from './random.ts';
 import { RALLY_FROM, RUNE_DEF, TL, TRAIT_V, elemCol, tv, RES, SLEEP_MULT } from './runes.ts';
 import { sEnv } from './sound.ts';
-import { type Mob, SND, adv, clock, fight, here, player, beamHold, blaze, gear, saved, ui, vfx, vmKick } from './state.ts';
+import { type Mob, SND, adv, clock, fight, here, hudInfo, player, beamHold, blaze, gear, saved, ui, vfx, vmKick } from './state.ts';
 import { renderStatus, makeNoise, onNoticed } from './status.ts';
 import { LQ_DEEP, LQ_WATER, MW, TF, CELL, MH, NCELL, TC, TW, TX } from './world.ts';
 import { clamp } from './rng.ts';
@@ -311,6 +311,60 @@ export function rallyOnHit(m: Mob, n: number, how: string): void {
       c: m.ty.col || [1, 0.9, 0.7],
       wob: mr() * 6.28,
     });
+  }
+}
+/**
+ * 立ち直りを dt 秒進める：しばらく傷を受けなければ、取り戻せる分が消えていく。光の粒は手元へ飛び、着いたら体力を戻す（音は間をあけて鳴らす）。
+ * 取り戻せる分か光りが変わった時だけ、状態の表示を描き直す
+ */
+export function updateRally(dt: number): void {
+  if (adv.dead) return;
+  // @ts-expect-error -- 古い JS のまま（使っていない。tools/same-code.mjs が同じ文と見るため）
+  const mn = bodyN('mend');
+  if ((player.rally ?? NaN) > 0 && clock.time - (player.lastHurt || -99) > 0.6) {
+    player.rally = Math.max(0, (player.rally ?? NaN) - dt * (player.rallyRate || 2));
+  }
+  const tx = player.x,
+    ty = ui.camMode === 'tps' ? 1.0 : player.eye - 0.35,
+    tz = player.z;
+  for (const p of fight.rallyMotes) {
+    p.t += dt;
+    if (p.t < 0) continue;
+    const f = Math.min(1, p.t / p.dur),
+      e = f * f * (3 - 2 * f),
+      arc = Math.sin(f * Math.PI) * 0.35;
+    const x = p.x0 + (tx - p.x0) * e + Math.cos(p.wob) * arc * 0.4,
+      y = p.y0 + (ty - p.y0) * e + arc,
+      z = p.z0 + (tz - p.z0) * e + Math.sin(p.wob) * arc * 0.4,
+      b = 1.6 + 1.2 * f;
+    dyn(
+      x,
+      y,
+      z,
+      G(f < 0.5 ? '*' : '.'),
+      0.12,
+      (nth(p.c, 0) * 0.5 + 0.6) * b,
+      (nth(p.c, 1) * 0.5 + 0.55) * b,
+      (nth(p.c, 2) * 0.5 + 0.4) * b,
+      0,
+      0,
+    );
+    if (f >= 1 && !p.done) {
+      p.done = true;
+      player.hp = Math.min(adv.PLAYER_MAX, player.hp + p.amt);
+      vfx.hpFlash = 0.35;
+      if (sndReady() && clock.time - fight.rallyChime > 0.12) {
+        fight.rallyChime = clock.time;
+        sChime(player.x, player.z, 0.12);
+      }
+    }
+  }
+  fight.rallyMotes = fight.rallyMotes.filter((p) => !p.done);
+  vfx.hpFlash = Math.max(0, vfx.hpFlash - dt);
+  const rs = Math.round((player.rally || 0) * 4) + (vfx.hpFlash > 0 ? 1000 : 0);
+  if (rs !== hudInfo.rallyShown) {
+    hudInfo.rallyShown = rs;
+    renderStatus();
   }
 }
 /** 主が倒れた所に、主の祭壇を置く（主だけ。王の影・小さな生き物・穏やかな物・的は置かない。近くの空いた床へずらす） */
