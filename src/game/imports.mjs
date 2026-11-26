@@ -53,7 +53,7 @@ import {
 import { descentSealed, drawLegendWorld, getLegend, legendAll, legendOfBranch } from '../lib/legend.ts';
 import { ceilAt, cellLight, updateLights } from '../lib/lightmap.ts';
 import { drawDoors, drawFixtures, drawGraves, drawSprings, drawTraps, drawWebs, webTouch } from '../lib/fixtures.ts';
-import { addBolt, drawBoltFx, drawFire, drawFrozen, drawZones, sparkCrown } from '../lib/fx.ts';
+import { addBolt, drawBoltFx, drawFire, drawFrozen, drawWave, drawZones, sparkCrown } from '../lib/fx.ts';
 import { BRANCH_OMEN, REALM_OMEN, SPECIAL_OMEN, STRATUM_OMEN, drawOmens, drawStairSeal, omenOf, stairsGuarded } from '../lib/omens.ts';
 import { loadBeasts, recordBeast, saveMeta, saveSet } from '../lib/save.ts';
 import { BL, canStep, chooseNext, fireNear, foe, hostile, makeMonster, statOf, summon, updateMonster } from '../lib/monsters.ts';
@@ -73,6 +73,8 @@ import {
   orbBurst, rallyOnHit, react, startRain, zapLine,
 } from '../lib/combat.ts';
 import { placeThirdPerson, solidAt, updatePlayer } from '../lib/player.ts';
+import { beginCast, releaseCast, startRoll, timeScale, updateCast } from '../lib/chant.ts';
+import { cloudsMeetFire, monTimeK, updateProjs, updateStatuses } from '../lib/projs.ts';
 import { awardLore, graveCandidates, graveRows, loreRows, resultPlace, runLore, saveGrave, victory } from '../lib/results.ts';
 // three.js（r147）と光のにじみなどの部品 T、霧の色 fogCol
 import { T, fogCol } from '../lib/three.ts';

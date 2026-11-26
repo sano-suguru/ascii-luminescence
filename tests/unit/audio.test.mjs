@@ -1,5 +1,5 @@
-// 音を鳴らす処理（src/lib/audio.ts）と詠唱の声（src/game/26-spells-hud.js の chantStart）の単体テスト。Node には Web Audio が無いので、偽の Web Audio（fake-audio.mjs）で確かめる。
-// 指紋の値は、移す前の古い JS（src/game/15-sound-fire.js と、遠吠え・警報は 13-creatures.js。詠唱の声は Math.random を直に引いていた版）に、
+// 音を鳴らす処理と詠唱の声 chantStart（どちらも src/lib/audio.ts）の単体テスト。Node には Web Audio が無いので、偽の Web Audio（fake-audio.mjs）で確かめる。
+// 指紋の値は、移す前の古い JS（src/game/15-sound-fire.js と、遠吠え・警報は 13-creatures.js。詠唱の声は 26-spells-hud.js の、Math.random を直に引いていた版）に、
 // 音の乱数（sndRand）と同じ並びを Math.random として入れた時と同じになる（audio-cases.mjs の場合を、古い関数で数えて確かめた）。
 // 迷宮の生成は使わないので、生成を変えてもこの指紋は変わらない。
 // 音を鳴らす所が見た目の乱数を引いていないかは、src/ を構文の木で調べて確かめる（sound-random-check.mjs）。
@@ -7,7 +7,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { legacyValues } from '../../tools/legacy-eval.mjs';
 import * as A from '../../src/lib/audio.ts';
 import { setSoundRand } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
@@ -142,9 +141,9 @@ describe('移す前と同じ', () => {
   }, 30000);
 });
 
-describe('詠唱の声（src/game/26-spells-hud.js の chantStart）', () => {
+describe('詠唱の声（chantStart）', () => {
   it('音節ごとの記録と、円の文字を光らせる音節の番号の指紋。見た目の乱数（Math.random）は引かない', async () => {
-    const { chantStart } = await legacyValues(['ELEM_ROOT', 'chantStart']);
+    const { chantStart } = A;
     const random = Math.random,
       oldSound = setSoundRand(Math.random),
       savedCast = gear.castSt,
@@ -323,15 +322,8 @@ describe('音を鳴らす所が、見た目の乱数を引かない（src/ を�
     // 古い JS の音を鳴らす関数も見つけている（本体が if(!sndReady())return で始まる関数）
     expect(r.sound).toEqual(expect.arrayContaining(['castSound', 'chantStart', 'humStart', 'omenSound', 'sShriek', 'sDrip', 'sChime']));
     expect(r.bad).toEqual([]);
-    // audio.ts（コメントを除く）と詠唱の声は丸ごと調べる：見た目の乱数を、どんな形でも使わない（音だけの処理の外の形も、変数に入れてから渡す形も）
-    const spells = readFileSync(join(SRC, 'game/26-spells-hud.js'), 'utf8'),
-      chant = spells.slice(spells.indexOf('function chantStart'), spells.indexOf('\n}\n', spells.indexOf('function chantStart')));
-    const anyVisual = /\b(mr|mpick)\b|Math\.random/;
-    expect([anyVisual.test(audioText.replace(/^\s*(\/\/|\*).*$/gm, '')), chant.length > 1000, anyVisual.test(chant)]).toEqual([
-      false,
-      true,
-      false,
-    ]);
+    // audio.ts（コメントを除く。詠唱の声も入る）は丸ごと調べる：見た目の乱数を、どんな形でも使わない（音だけの処理の外の形も、変数に入れてから渡す形も）
+    expect(/\b(mr|mpick)\b|Math\.random/.test(audioText.replace(/^\s*(\/\/|\*).*$/gm, ''))).toBe(false);
     // audio.ts が random.ts から読むのは sndRand だけ（random.ts の roll も読まない）
     expect([...audioText.matchAll(/^import .* from '\.\/random\.ts';$/gm)].map((m) => m[0])).toEqual([
       "import { sndRand } from './random.ts';",
