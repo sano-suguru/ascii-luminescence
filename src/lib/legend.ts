@@ -1,9 +1,10 @@
 // 伝説の物（もとは src/game/24-goal.js）。状態の入れ物 saved（今の探索の伝説の物 LEGEND）・adv（探索のシードと年代記）・here（今いる場所）に頼る物。
-// 伝説の物の読み方（どの支道にあるか・3つそろったか・最深部の手前の封）と、世界の中に描く物（床の伝説の物・封の印）。
+// 伝説の物の読み方（どの支道にあるか・3つそろったか・最深部の手前の封）と、世界の中に描く物（床の伝説の物・封の印）と、神託所が告げる在りか。
 import { lookup, must, nth } from './array.ts';
 import { cssOf } from './color.ts';
 import { G } from './glyphs.ts';
-import { LEGEND_KINDS, LEGEND_ORDER } from './names.ts';
+import { msg } from './log.ts';
+import { BRANCH_HINT, LEGEND_KINDS, LEGEND_ORDER } from './names.ts';
 import { dyn } from './particles.ts';
 import { mulberry32 } from './rng.ts';
 import { type Legend, adv, here, player, saved } from './state.ts';
@@ -120,4 +121,20 @@ export function drawLegendWorld(t: number): void {
         }
       });
   }
+}
+/** 神託所が、まだ手にしていない伝説の物の在りかを、それとなく告げる（0.9秒から0.7秒おきに1つずつ伝言を出す）。もとは src/game/24-goal.js */
+export function oracleLegendHints(): void {
+  const L = getLegend();
+  if (!L) return;
+  LEGEND_ORDER.forEach((k, j) => {
+    if (L.have.has(k)) return;
+    const it = lookup(L.items, k);
+    setTimeout(
+      () =>
+        msg(
+          `<b style="color:#bfe4ff">「</b>${lookup(LEGEND_KINDS, k).name}は、${lookup(BRANCH_HINT, must(it.branch, '伝説の物がある支道'))}で、主に抱かれている」`,
+        ),
+      900 + j * 700,
+    );
+  });
 }

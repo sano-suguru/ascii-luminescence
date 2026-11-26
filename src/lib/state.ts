@@ -25,6 +25,15 @@ export interface ZapFlash {
   r: number;
 }
 
+/** テスト用モード（?test=1）か（src/game/00-test-mode.js が時計と乱数を入れ替える。読めない時は違う） */
+export const TEST = (() => {
+  try {
+    return new URLSearchParams(location.search).get('test') === '1';
+  } catch {
+    return false;
+  }
+})();
+
 /** 時計（ゲームの時刻。止めている間・テスト用モードで進めない間は進まない。溜めている間・ヒットストップ中はゆっくり進む） */
 export interface Clock {
   /** ゲームが始まってからの秒（30-loop-init.js の tick が進める） */
@@ -262,13 +271,13 @@ export interface Player {
   /** 立ち止まっている秒と、最後に辺りを調べたマス（立ち止まると、隠された罠や化けた生き物が見つかる） */
   stillT: number;
   searchedAt: number;
-  /** 転がり（経った秒 t と向き dx・dz。26-spells-hud.js の startRoll が作り、終わると null） */
+  /** 転がり（経った秒 t と向き dx・dz。src/lib/chant.ts の startRoll が作り、終わると null） */
   roll?: { t: number; dx: number; dz: number } | null;
   /** 武器を振った残りの秒（0.22 から減る）と、振りの線の色（無ければ決まった色）、波を撃つ途中か（その間は振りの線を描かない） */
   swing?: number;
   swingCol?: readonly number[] | undefined;
   swingWave?: boolean;
-  /** 網に掛かった残りの秒（18-level-player.js の罠） */
+  /** 網に掛かった残りの秒（src/lib/events.ts の罠） */
   netT?: number;
   /** 最後に通れなかった物（'wall'・'chasm'・'lava'・'gate'・'xtal'。src/lib/player.ts の solidAt が入れる） */
   blockType: string;
@@ -353,7 +362,7 @@ export interface CastState {
   firing: boolean;
   tick: number;
   beamT: number;
-  /** 今の音節の番号（詠唱の声が鳴るたびに入る。26-spells-hud.js の chantStart） */
+  /** 今の音節の番号（詠唱の声が鳴るたびに入る。src/lib/audio.ts の chantStart） */
   syl?: number;
   /** 今の音節が鳴った時刻（詠唱の見た目が、鳴った直後だけ文字を光らせる） */
   sylT?: number;
@@ -384,8 +393,24 @@ export interface Gear {
   buildIdx: number;
   /** 次に作るルーンの番号（探索の中で通し。src/lib/gear.ts の makeRune が数える） */
   runeUid: number;
+  /** 鳴っている詠唱の声（src/lib/audio.ts の chantStart が作る。音を鳴らせない時と、詠唱していない時は null） */
+  humNode: ChantVoice | null;
 }
-export const gear: Gear = { hands: null, bag: [], castSt: null, swapSt: null, builds: [null, null], buildIdx: -1, runeUid: 1 };
+/** 詠唱の声（tick：溜まった割合と、溜め終わったかを伝える。stop：止める） */
+export interface ChantVoice {
+  tick(k: number, isFull: boolean): void;
+  stop(): void;
+}
+export const gear: Gear = {
+  hands: null,
+  bag: [],
+  castSt: null,
+  swapSt: null,
+  builds: [null, null],
+  buildIdx: -1,
+  runeUid: 1,
+  humNode: null,
+};
 
 /** 投げた火花（火打ち石。当たった所に火がつく） */
 export interface Spark {
@@ -418,12 +443,16 @@ export interface Blaze {
   spark: Spark | null;
   /** 凍らせた水のマス（マス → 溶けるまでの秒・元の液体・元の床）。src/lib/ground.ts の chillArea・updateFrozen */
   frozen: Map<number, { t: number; liq: number; surf: number }>;
-  /** 踏み分けた背の高い草や茸のマスと、踏んだゲームの時刻（src/lib/ground.ts の trample が足し、18-level-player.js の regrow が元に戻す。newLevel が空にする） */
+  /** 踏み分けた背の高い草や茸のマスと、踏んだゲームの時刻（src/lib/ground.ts の trample が足し、src/lib/ground.ts の regrow が元に戻す。newLevel が空にする） */
   trampled: [number, number][];
   /** 火の備品（松明・焚き火など）のマス（燃えるガスがここに触れると燃え上がる。src/lib/ground.ts の initFire が作る） */
   fireSrc: number[];
   /** 沼のガスが爆ぜた伝言を最後に出したゲームの時刻（3秒あける） */
   lastBoom: number;
+  /** ガスが広がる時の作業の配列（src/lib/ground.ts の stepGas） */
+  gasTmp: Float32Array;
+  /** 燃えた硫黄を戻すまでに経った秒（2秒ごとに戻す。src/lib/ground.ts の brimRecover） */
+  brimT: number;
 }
 export const blaze: Blaze = {
   fire: new Float32Array(NCELL),
@@ -439,6 +468,8 @@ export const blaze: Blaze = {
   trampled: [],
   fireSrc: [],
   lastBoom: -10,
+  gasTmp: new Float32Array(NCELL),
+  brimT: 0,
 };
 
 /** 光線の一切れ（点の並び・色・残りの秒） */
@@ -461,8 +492,8 @@ export interface Zone {
   z: number;
   r: number;
   r0: number;
-  /** 術の中身。型は、詠唱の処理を移す時に作る */
-  sp: unknown;
+  /** 術の中身 */
+  sp: Spec;
   el: string | null;
   t: number;
   tick: number;
@@ -483,8 +514,8 @@ export interface Rain {
   left: number;
   iv: number;
   tick: number;
-  /** 術の中身。型は、詠唱の処理を移す時に作る */
-  sp: unknown;
+  /** 術の中身 */
+  sp: Spec;
   follow: boolean;
   elemK: number;
   again: boolean;
@@ -505,7 +536,7 @@ export interface BeamRun {
   t: number;
   tick: number;
   auto: boolean;
-  dir: readonly number[] | null;
+  dir: readonly [number, number, number] | null;
 }
 /** 稲妻の見た目（a から b へ、ぎざぎざの線 pts） */
 export interface Bolt {
@@ -521,10 +552,69 @@ export interface Bolt {
   re: number;
   pts: (readonly [number, number, number])[];
 }
+/**
+ * 飛ぶ物（矢 bolt・玉 orb。src/lib/combat.ts の撃ち方が作り、src/lib/projs.ts の updateProjs が動かす）。
+ * 位置と速さ・経った秒 t・術 sp・跳ね返る数 bounce・追う強さ homing・当たった生き物 hit は必ずある。ほかは撃ち方ごとの欄
+ */
+export interface Proj {
+  kind: 'bolt' | 'orb';
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  t: number;
+  sp: Spec;
+  bounce: number;
+  homing: number;
+  hit: Set<Mob>;
+  /** 消えるまでの秒（無ければ 4） */
+  maxT?: number;
+  /** 自動で撃った物（発動のルーン） */
+  auto?: boolean;
+  /** 風の刃（剣の波・突き）・大きい・波の形・突きの形・幅・当たりの太さ */
+  wind?: boolean;
+  big?: boolean;
+  wave?: boolean;
+  thrust?: boolean;
+  cw?: number;
+  rad?: number;
+  /** 加速と最高の速さ */
+  accel?: number;
+  vmax?: number;
+  /** ダメージの幅と倍率、貫く残りの数と、貫いても弱らないか、壁を抜ける残りの数と、壁を抜けている途中か */
+  dmg?: readonly number[] | undefined;
+  dmgK?: number;
+  pierce?: number;
+  keep?: boolean;
+  wallPass?: number;
+  passing?: boolean;
+  /** 連射の特性：重さ・続けて当てる・最後の矢が弾ける */
+  heavy?: number;
+  steady?: number;
+  boom?: boolean;
+  /** 光の弾の星屑・跡に場を残す */
+  dust?: number;
+  trail?: boolean;
+  /** 光の月：大きさ・引き寄せ・満ち欠けの段・焼く間の溜め・引き寄せた生き物、重さが効かない */
+  moon?: number;
+  tide?: number;
+  phases?: number;
+  burnT?: number;
+  pulled?: Set<Mob>;
+  noGrav?: boolean;
+  /** 分かれた小さな物・何代目か・弾ける強さ */
+  mini?: boolean;
+  gen?: number;
+  burstK?: number;
+  /** 消える印 */
+  dead?: boolean;
+}
 /** 戦い：飛ぶ物・光線・毒の霧・魔法の場・遅れて起きること・雨・床の目印・ヒットストップ・発動の待ち・稲妻 */
 export interface Fight {
-  /** 飛ぶ物（矢・術の弾など）。種類が多いので、型は飛ぶ物の処理を移す時に作る */
-  projs: unknown[];
+  /** 飛ぶ物（矢・術の弾など） */
+  projs: Proj[];
   beamSegs: BeamSeg[];
   clouds: Cloud[];
   zones: Zone[];
@@ -620,6 +710,8 @@ export interface LevelExtra {
   engrSeen?: boolean;
   swimMsg?: boolean;
   iceMsg?: boolean;
+  /** 転移の陣の伝言を出したか（その階で一度だけ。src/lib/events.ts の updateEvents） */
+  teleMsg?: boolean;
 }
 /** 先にある物の手がかり（src/lib/omens.ts の computeOmen）：下り階段から漏れる物（特別な階・層の変わり目・支道の奥）、支道の入口、異界の門、
  * 支道の入口と奥の階段のまわりの跡、場所ごとに次に音を鳴らせるゲームの時刻 */
@@ -722,14 +814,19 @@ export interface Monster {
   blades?: { a: number; x: number; y: number; z: number }[];
   /** 驚いて逃げている残りの秒（小さな生き物） */
   flee?: number;
-  /** 動いている速さ（照準の先読みに使う。生き物の処理が入れる） */
+  /** 動いている速さ（照準の先読みに使う。src/lib/projs.ts の updateStatuses が、前のフレームの位置 plx・plz から入れる） */
   vlx?: number;
   vlz?: number;
+  plx?: number;
+  plz?: number;
+  /** 続けて当てた矢の数と、最後に当たったゲームの時刻（連射の特性 steady） */
+  rapidN?: number;
+  rapidT?: number;
   /** 最後に受けた攻撃の種類と、その吹き飛ばしの強さ（src/lib/combat.ts の hitReact が読む） */
   lastAtk?: string | undefined;
   lastKnock?: number | undefined;
   /** 叩きつけ（ぶつかった時の傷 d と、終わるゲームの時刻 until） */
-  slam?: { d: number; until: number };
+  slam?: { d: number; until: number } | null;
   /** 性質の跡を最後に残したゲームの時刻（火・冷気・稲妻・連鎖。0.5 秒あける） */
   fireT2?: number;
   iceT?: number;
@@ -813,8 +910,8 @@ export interface Mob extends Monster {
   tracked?: boolean;
   /** 剣を操る者：剣が回り始めた伝言を出したか */
   bladeMsg?: boolean;
-  /** 状態異常（残りの秒など） */
-  st?: MonStatus;
+  /** 状態異常（残りの秒など。死ぬと null） */
+  st?: MonStatus | null;
 }
 /** 生き物の状態異常（燃える burn・冷える chill・毒 poison・痺れ shock・動けない pin の残りの秒、次に動けなくなれるゲームの時刻 pinCd、
  * 焦がしの加護が効いたか scorched、毒と燃えの傷の溜め pt・bt） */
@@ -856,7 +953,7 @@ export interface Here {
   fovVis: Uint32Array;
   /** 見えるマスを数え直すたびに1増える番号 */
   fovStamp: number;
-  /** 部屋の出来事（神託・転移・噴き出し・像・崩れ・水攻め・霊など。src/lib/levels.ts の initEvents が作り、15-sound-fire.js が進める） */
+  /** 部屋の出来事（神託・転移・噴き出し・像・崩れ・水攻め・霊など。src/lib/levels.ts の initEvents が作り、src/lib/events.ts の updateEvents が進める） */
   events: RoomEvent[];
   /** 川のマスの一覧 */
   riverCells: number[];
@@ -877,11 +974,24 @@ export interface Here {
   /** 前の階の層（層が変わった時に、層の名前を出す） */
   lastStratum: Level['stratum'] | null;
 }
-/** 部屋の出来事（種類 type と、種類ごとの欄。中身を読むのは古い JS の出来事の処理） */
-export interface RoomEvent {
-  type: string;
-  [k: string]: unknown;
-}
+/**
+ * 部屋の出来事（src/lib/levels.ts の initEvents が作り、src/lib/events.ts の updateEvents が進める）。種類 type ごとの欄：
+ * 目覚める像（statue）：像のマス cell・済んだか done・組み直している途中か active・経った秒 t・鐘を鳴らしたか chimed。
+ * 崩れる床（collapse）：穴になるマス cells・部屋 ri・段階 state（0：待つ、1：揺れる、2：崩れた）・経った秒 t。
+ * 神託（oracle）：巻物のマス cell・済んだか done。
+ * 水攻めと溶岩（flood・lavaflow）：部屋 ri（罠から噴き出した水は -2）・広がる順 order・噴き出す所 src・段階 state・秒 t・広げた数 k・広げる数の上限 max。
+ * 転移（tele）：対の陣 a・b と、着いたばかりで踏んでも飛ばない陣 lock（-1 は無し）。
+ * 噴き出し（erupt）：火口 src・広がる順 order・段階 state（0：待つ、1：あふれる、2：とどまる、3：引く）・秒 t・広げた数 k。
+ * 霊（haunt）：部屋 ri・墓のマス tombs・済んだか done・経った秒 t（入る前は -1）・鐘を鳴らしたか chimed
+ */
+export type RoomEvent =
+  | { type: 'statue'; cell: number; done: boolean; active: boolean; t: number; chimed?: boolean }
+  | { type: 'collapse'; cells: number[] | undefined; ri: number; state: number; t: number }
+  | { type: 'oracle'; cell: number; done: boolean }
+  | { type: 'flood' | 'lavaflow'; ri: number; order: number[]; src: number | undefined; state: number; t: number; k: number; max: number }
+  | { type: 'tele'; a: number; b: number; lock: number }
+  | { type: 'erupt'; src: number; order: number[]; state: number; t: number; k: number }
+  | { type: 'haunt'; ri: number; tombs: number[]; done: boolean; t: number; chimed?: boolean };
 /** 最深部の状態：一番高い天井のマス c0（王の影が現れる所）、王の影 boss と、現れるまで・呼び出すまでの秒、着いた時の伝言を出したか */
 export interface FinalState {
   c0: number;

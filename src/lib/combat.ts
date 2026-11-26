@@ -1213,7 +1213,7 @@ export function orbBurst(
   y: number,
   z: number,
   sp: Spec,
-  opt?: { dmg?: number; rad?: number | undefined; cloud?: boolean; proj?: { gen?: number; mini?: boolean } },
+  opt?: { dmg?: number | undefined; rad?: number | undefined; cloud?: boolean; proj?: { gen?: number; mini?: boolean } },
 ): void {
   opt = opt || {};
   const dK = opt.dmg || 1,

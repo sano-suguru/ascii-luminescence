@@ -1,13 +1,15 @@
 // 地面と小さな生き物（もとは src/game/13-creatures.js の updateCritter・machineWork・splash、15-sound-fire.js の ignite・uploadCells、
-// 18-level-player.js の crackIce・tallAt・trample・brimFlare、26-spells-hud.js の chillArea・updateFrozen、15-sound-fire.js の initFire）：
+// 18-level-player.js の crackIce・tallAt・trample・brimFlare・regrow・brimRecover、26-spells-hud.js の chillArea・updateFrozen、15-sound-fire.js の initFire・stepFire・stepGas）：
 // 小さな生き物（魚・草を食べる物・叫ぶ物・化けた巻物・掃除機・修復機）の動き、水しぶき、火をつける、マスの絵を描画に渡す、
-// 薄い氷が割れる、背の高い茂みを踏み分ける、硫黄が燃え上がる、冷気で火を消して水を凍らせる・溶ける、階に入った時の燃える物のマス。
+// 薄い氷が割れる、背の高い茂みを踏み分ける・元に戻る、硫黄が燃え上がる・元に戻る、冷気で火を消して水を凍らせる・溶ける、階に入った時の燃える物のマス、
+// 火とガスを1歩進める。
 // 状態の入れ物 here（今の階と生き物）・blaze（火と地面のマス）・player・clock・ui（伝言の時刻と旗）・stealth（忍び足）・vfx（揺れ）・SND（音）と、
 // マスの絵 gfx.cellTex・その中身 cellData・薄い氷に乗っていた秒 iceT に頼る。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う動きと見た目になるので、順番を変えないこと。
 import { must, nth } from './array.ts';
-import { sChime, sCrackleBurst, sDist, sHiss, sNoise, sOut, sShriek, sSplash, sSqueak, sTone, sndReady } from './audio.ts';
+import { sBubble, sChime, sCrackleBurst, sDist, sHiss, sNoise, sOut, sShriek, sSplash, sSqueak, sTone, sndReady } from './audio.ts';
 import { type Color, css } from './color.ts';
+import { boom } from './combat.ts';
 import { G } from './glyphs.ts';
 import { msg } from './log.ts';
 import { lerpAngle } from './math.ts';
@@ -34,6 +36,7 @@ import {
   SF_HAY,
   SF_ICE,
   SF_LUMEN,
+  SF_OBSIDIAN,
   TF,
   TW,
   cpos,
@@ -378,7 +381,7 @@ export const tallAt = (i: number): boolean =>
   blaze.cellFlag[i] !== 20 &&
   !blaze.burnt[i] &&
   !level().liquid[i];
-/** マス i の茂みを踏み分ける（踏んだ時刻を blaze.trampled に覚える。18-level-player.js の regrow が、しばらくして元に戻す） */
+/** マス i の茂みを踏み分ける（踏んだ時刻を blaze.trampled に覚える。regrow が、しばらくして元に戻す） */
 export function trample(i: number): void {
   if (!tallAt(i)) return;
   blaze.cellFlag[i] = 20;
@@ -528,4 +531,184 @@ export function initFire(): void {
     .fixtures.filter((f) => FIRE_TYPES.has(f.type))
     .map((f) => Math.floor(f.z / CELL) * MW + Math.floor(f.x / CELL));
   uploadCells();
+}
+/** 火を1歩進める（火の備品に触れたガスが燃え上がる・燃える物を燃やして広がる・水のそばで湯気・燃え尽きると灰に・扉が焼け落ちる。火の明かりをぼかす。もとは src/game/15-sound-fire.js） */
+export function stepFire(): void {
+  const g = level().gas;
+  // open flames (braziers, torches, lava) ignite gas that drifts into them
+  for (const s0 of blaze.fireSrc) {
+    for (const j of [s0, s0 + 1, s0 - 1, s0 + MW, s0 - MW]) {
+      if (j >= 0 && j < NCELL && nth(g, j) > 0.15) {
+        ignite(j, 1, true);
+        boom(j);
+      }
+    }
+  }
+  const next: number[] = [];
+  for (const i of blaze.burning) {
+    if (nth(blaze.fire, i) <= 0) continue;
+    if (nth(blaze.fuel, i) > 0) {
+      blaze.fuel[i] = nth(blaze.fuel, i) - 0.05 * nth(blaze.fire, i);
+      blaze.fire[i] = Math.min(1, nth(blaze.fire, i) + 0.15);
+    } else blaze.fire[i] = nth(blaze.fire, i) * 0.6;
+    const x = i % MW;
+    for (const j of [i + 1, i - 1, i + MW, i - MW]) {
+      if (j < 0 || j >= NCELL || (j === i + 1 && x === MW - 1) || (j === i - 1 && x === 0)) continue;
+      if (nth(g, j) > 0.1) {
+        ignite(j, 1, true);
+        boom(j);
+        continue;
+      }
+      if (
+        nth(blaze.fire, j) <= 0 &&
+        nth(blaze.fuel, j) > 0 &&
+        mr() < 0.22 * nth(blaze.fire, i) * (level().surface[j] === SF_DEAD ? 1.4 : 1)
+      )
+        ignite(j, 0.25, false);
+      const lq = level().liquid[j];
+      if ((lq === LQ_WATER || lq === LQ_DEEP) && nth(blaze.fire, i) > 0.5 && mr() < 0.15) {
+        const sx = ((j % MW) + 0.5) * CELL,
+          sz = (((j / MW) | 0) + 0.5) * CELL;
+        for (let q = 0; q < 3; q++)
+          spawn(
+            sx + (mr() - 0.5),
+            0.2,
+            sz + (mr() - 0.5),
+            (mr() - 0.5) * 0.3,
+            0.6 + mr() * 0.6,
+            (mr() - 0.5) * 0.3,
+            2.5,
+            G(mpick(['~', '.', "'"])),
+            0.35,
+            0.35,
+            0.36,
+            0.4,
+            1,
+          );
+      }
+    }
+    if (nth(blaze.fire, i) < 0.04) {
+      blaze.fire[i] = 0;
+      blaze.burnt[i] = 1;
+      blaze.fuel[i] = 0;
+      if (level().surface[i] !== SF_OBSIDIAN && level().surface[i] !== SF_BRIM) level().surface[i] = 0;
+      const di = nth(level().doorAt, i);
+      if (di >= 0) nth(level().doors, di).gone = true;
+    } else next.push(i);
+  }
+  for (const i of blaze.burning) if (nth(blaze.fire, i) > 0 && !next.includes(i)) next.push(i);
+  blaze.burning = next;
+  // blurred firelight for the shader and for CPU-side lighting
+  blaze.fireLight.fill(0);
+  for (const i of blaze.burning) {
+    const f = nth(blaze.fire, i),
+      x = i % MW;
+    for (let dz = -2; dz <= 2; dz++)
+      for (let dx = -2; dx <= 2; dx++) {
+        if (x + dx < 0 || x + dx >= MW) continue;
+        const j = i + dx + dz * MW;
+        if (j < 0 || j >= NCELL) continue;
+        const w = f * Math.max(0, 1 - Math.hypot(dx, dz) / 2.6);
+        blaze.fireLight[j] = nth(blaze.fireLight, j) + w;
+      }
+  }
+  uploadCells();
+}
+/** 沼のガスを1歩進める（となりへ広がって薄れる・沼から泡と一緒に湧く）。もとは src/game/15-sound-fire.js */
+export function stepGas(): void {
+  const g = level().gas,
+    nb = blaze.gasTmp,
+    tile = level().tile;
+  let any = false;
+  for (let i = 0; i < NCELL; i++) {
+    if (tile[i] === TW) {
+      nb[i] = 0;
+      continue;
+    }
+    const v = nth(g, i),
+      x = i % MW;
+    let s = 0,
+      c = 0;
+    if (x > 0 && tile[i - 1] !== TW) {
+      s = s + nth(g, i - 1);
+      c++;
+    }
+    if (x < MW - 1 && tile[i + 1] !== TW) {
+      s = s + nth(g, i + 1);
+      c++;
+    }
+    if (i >= MW && tile[i - MW] !== TW) {
+      s = s + nth(g, i - MW);
+      c++;
+    }
+    if (i < NCELL - MW && tile[i + MW] !== TW) {
+      s = s + nth(g, i + MW);
+      c++;
+    }
+    let nv = (c ? v * 0.6 + (s / c) * 0.4 : v) * 0.993;
+    if (nv < 0.005) nv = 0;
+    nb[i] = nv;
+    if (nv > 0) any = true;
+  }
+  g.set(nb);
+  for (const i of level().bogList) {
+    if (mr() > 0.012) continue;
+    g[i] = Math.min(1, nth(g, i) + 0.8);
+    any = true;
+    const x = ((i % MW) + 0.3 + mr() * 0.4) * CELL,
+      z = (((i / MW) | 0) + 0.3 + mr() * 0.4) * CELL;
+    if (Math.hypot(x - player.x, z - player.z) < 26) {
+      for (let k = 0; k < 7; k++) {
+        const a = (k / 7) * Math.PI * 2;
+        spawn(
+          x + Math.cos(a) * 0.08,
+          0.08,
+          z + Math.sin(a) * 0.08,
+          Math.cos(a) * 0.4,
+          0.02,
+          Math.sin(a) * 0.4,
+          0.9,
+          G('o'),
+          0.13,
+          0.4,
+          0.48,
+          0.16,
+          1,
+        );
+      }
+      spawn(x, 0.15, z, 0, 0.35, 0, 2.2, G('~'), 0.3, 0.35, 0.6, 0.12, 1);
+      sBubble(x, z, 0.3, false);
+    }
+  }
+  blaze.gasAny = any;
+}
+/** 踏み分けた背の高い草や茸を、45秒たったら元に戻す（プレイヤーの立つマスは戻さない）。もとは src/game/18-level-player.js */
+export function regrow(): void {
+  if (!blaze.trampled.length) return;
+  const pc = Math.floor(player.z / CELL) * MW + Math.floor(player.x / CELL);
+  let ch = false;
+  blaze.trampled = blaze.trampled.filter(([i, t0]) => {
+    if (clock.time - t0 > 45 && i !== pc && blaze.cellFlag[i] === 20) {
+      blaze.cellFlag[i] = 0;
+      ch = true;
+      return false;
+    }
+    return blaze.cellFlag[i] === 20;
+  });
+  if (ch) uploadCells();
+}
+/** 燃えた硫黄（掃除機が掃いた物も）を、2秒ごとに少しずつ元に戻す。もとは src/game/18-level-player.js */
+export function brimRecover(dt: number): void {
+  blaze.brimT = blaze.brimT + dt;
+  if (blaze.brimT < 2) return;
+  blaze.brimT = 0;
+  let ch = false;
+  for (let i = 0; i < NCELL; i++) {
+    if (level().surface[i] === SF_BRIM && (blaze.burnt[i] || nth(blaze.fuel, i) <= 0) && nth(blaze.fire, i) <= 0 && mr() < 0.08) {
+      /* burnt, or swept by a cleaner (no ash, no fuel) */ blaze.burnt[i] = 0;
+      blaze.fuel[i] = 0.8;
+      ch = true;
+    }
+  }
+  if (ch) uploadCells();
 }

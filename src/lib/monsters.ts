@@ -154,11 +154,13 @@ export function fireNear(cx: number, cz: number, r: number): number {
   }
   return best;
 }
+/** canStep が読む生き物の欄（墓の霊を立たせる所を探す時は、種類の form だけを持つ仮の物を渡す） */
+export type Stepper = { ty: Pick<MonsterType, 'habitat' | 'critter' | 'aquatic' | 'form'>; home?: number | undefined };
 /**
  * 生き物 m がマス i に歩いて行けるか。火（溶岩に住む物は平気）・守りの印（小さな生き物は平気）・閉じた鉄格子・自分の部屋の外には行かない。
  * 住む所ごと：沼の物は沼だけ、深みの物は深い水だけ、両生の物は溶岩と沼のほか、溶岩の物は水のほか、水の物は水だけ、うなぎは深い水だけ、ほかは歩ける床だけ
  */
-export const canStep = (m: Mob, i: number): boolean =>
+export const canStep = (m: Stepper, i: number): boolean =>
   (m.ty.habitat === 'lava' || !fireAt(i)) &&
   !(level().glyph && level().glyph[i] && !m.ty.critter) &&
   !(level().gate && must(level().gate, '鉄格子 gate').o < 0.7 && i === must(level().gate, '鉄格子 gate').cell) &&

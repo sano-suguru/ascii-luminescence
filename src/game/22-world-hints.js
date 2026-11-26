@@ -80,7 +80,8 @@ function drawRunesWorld(t){
 }
 
 // ---------------------------------------------------------------- the feel of a chant: a circle of runes at the hand, light gathering, the lantern taking the element's colour, a rising hum
-let humNode=null, crossKey='', slowFx=0;
+// 詠唱の声 humNode は src/lib/state.ts の gear（src/game/imports.mjs で読む）
+let crossKey='', slowFx=0;
 function humStart(){ if(!sndReady())return null; const ctx=SND.ctx, t=ctx.currentTime, o=ctx.createOscillator(), o2=ctx.createOscillator(), g=ctx.createGain();
   o.type='triangle'; o.frequency.setValueAtTime(110,t); o.frequency.linearRampToValueAtTime(220,t+1.4); o2.type='sine'; o2.frequency.setValueAtTime(165,t); o2.frequency.linearRampToValueAtTime(330,t+1.4);
   g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.06,t+0.35); o.connect(g); o2.connect(g); g.connect(sOut(undefined,undefined,1)); o.start(t); o2.start(t);

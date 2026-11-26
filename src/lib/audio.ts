@@ -1,10 +1,11 @@
-// 音を鳴らす（Web Audio。もとは src/game/15-sound-fire.js。術を放つ音 castSound は 22-world-hints.js）。状態の入れ物 SND（音）・player（聞く位置と向き）・here・blaze（まわりの様子）に頼る物。
+// 音を鳴らす（Web Audio。もとは src/game/15-sound-fire.js。術を放つ音 castSound は 22-world-hints.js、詠唱の声 chantStart は 26-spells-hud.js）。
+// 状態の入れ物 SND（音）・player（聞く位置と向き）・here・blaze（まわりの様子）・gear（詠唱の声が溜めに音節を書く）に頼る物。
 // 音の表と小さな道具（SND_LV・sEnv など）は src/lib/sound.ts。
 import { must, nth } from './array.ts';
 import { sndRand } from './random.ts';
 import { clamp } from './rng.ts';
-import { SND_LV, sEnv } from './sound.ts';
-import { type DroneLoop, type SoundLoop, SND, blaze, here, player } from './state.ts';
+import { CHANT_STEPS, SND_LV, VOWELS, sEnv } from './sound.ts';
+import { type ChantVoice, type DroneLoop, type SoundLoop, SND, blaze, clock, gear, here, player } from './state.ts';
 import { CELL, FIRE_TYPES, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MH, MW, TC, TX } from './world.ts';
 
 /** 音を鳴らせるか（音の部品があって動いていて、音量がオフでない） */
@@ -473,4 +474,154 @@ export function castSound(sp: { elem: string | null }, x?: number, z?: number): 
   } else if (el === 'poison') {
     for (let k = 0; k < 4; k++) setTimeout(() => sBubble(player.x, player.z, 0.4, k % 2 === 0), k * 60);
   } else sWhoosh();
+}
+/** 性質ごとの詠唱の声の高さ（ヘルツ。性質が無い時と表に無い性質は 165） */
+const ELEM_ROOT: Partial<Record<string, number>> = { fire: 110, ice: 294, thunder: 196, poison: 98 };
+/**
+ * 詠唱の声を鳴らし始める（ささやく音節が、溜まるほど合唱になる。音節ごとに詠唱の円の文字が1つ光る。性質ごとの色の音を重ねる）。
+ * 音を鳴らせない時は null。tick で溜まった割合を伝え、stop で止める
+ */
+export function chantStart(el: string | null): ChantVoice | null {
+  if (!sndReady()) return null;
+  const ctx = must(SND.ctx),
+    out = ctx.createGain();
+  out.gain.value = 1;
+  out.connect(sOut(undefined, undefined, 0.85));
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- 性質が無い時（null）も、元のまま表を引いて 165 にする（表を文字の鍵で引くための型だけ）
+  const root = ELEM_ROOT[el as string] || 165;
+  let next = ctx.currentTime + 0.03,
+    syl = 0,
+    k = 0,
+    full = false,
+    pad: { o: OscillatorNode; lfo: OscillatorNode; g: GainNode }[] = [],
+    stopped = false;
+  const syllable = (t: number, f: number, vow: readonly number[], dur: number) => {
+    const amp = 0.035 * (0.25 + 0.75 * k),
+      breath = 0.05 * (1 - k) + 0.004;
+    const f1 = ctx.createBiquadFilter(),
+      f2 = ctx.createBiquadFilter();
+    f1.type = 'bandpass';
+    f2.type = 'bandpass';
+    f1.frequency.value = nth(vow, 0);
+    f2.frequency.value = nth(vow, 1);
+    f1.Q.value = 7;
+    f2.Q.value = 9;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(amp, t + 0.04);
+    g.gain.setValueAtTime(amp, t + dur * 0.6);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    f1.connect(g);
+    f2.connect(g);
+    g.connect(out);
+    const n = 1 + Math.floor(k * 3);
+    for (let j = 0; j < n; j++) {
+      const o = ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = f * nth([1, 2, 1.5, 0.5], j) * Math.pow(2, (sndRand() - 0.5) * 0.014);
+      o.connect(f1);
+      o.connect(f2);
+      o.start(t);
+      o.stop(t + dur + 0.05);
+    }
+    // the whisper: breath through a vowel-shaped band
+    const s0 = ctx.createBufferSource();
+    s0.buffer = SND.noise;
+    const wf = ctx.createBiquadFilter();
+    wf.type = 'bandpass';
+    wf.frequency.value = nth(vow, 1);
+    wf.Q.value = 2.5;
+    const wg = ctx.createGain();
+    wg.gain.setValueAtTime(0.0001, t);
+    wg.gain.exponentialRampToValueAtTime(breath, t + 0.03);
+    wg.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.9);
+    s0.connect(wf);
+    wf.connect(wg);
+    wg.connect(out);
+    s0.start(t, sndRand() * 1.5);
+    s0.stop(t + dur + 0.05);
+    // a consonant at the front of the syllable
+    sEnv(sNoise(t, 0.04, 'highpass', 3500 + sndRand() * 2500, 0.8, out), t, 0.003, 0.035, 0.02 * (0.5 + 0.5 * (1 - k)));
+    // the element's own colour
+    if (el === 'ice') sEnv(sTone(t, 'sine', f * 4, f * 4, 0.5, out), t, 0.004, 0.45, 0.012);
+    else if (el === 'thunder' && sndRand() < 0.6) {
+      const tc = t + dur * (0.2 + 0.6 * sndRand());
+      sEnv(sNoise(tc, 0.04, 'highpass', 4500, 1, out), tc, 0.004, 0.03, 0.018);
+    } else if (el === 'fire') sEnv(sTone(t, 'sawtooth', f * 0.5, f * 0.5, dur, out), t, 0.03, dur * 0.9, 0.01);
+    else if (el === 'poison') {
+      const o = sTone(t, 'sine', root * 0.5, root * 0.48, dur, out);
+      sEnv(o, t, 0.05, dur * 0.9, 0.02);
+    }
+  };
+  const startPad = () => {
+    const t = ctx.currentTime;
+    for (const [mul, vow] of [
+      [2, nth(VOWELS, 0)],
+      [3, nth(VOWELS, 1)],
+      [4, nth(VOWELS, 0)],
+    ] as const) {
+      const o = ctx.createOscillator(),
+        f1 = ctx.createBiquadFilter(),
+        g = ctx.createGain(),
+        lfo = ctx.createOscillator(),
+        lg = ctx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.value = root * mul;
+      lfo.frequency.value = 5 + sndRand();
+      lg.gain.value = root * mul * 0.006;
+      lfo.connect(lg);
+      lg.connect(o.frequency);
+      f1.type = 'bandpass';
+      f1.frequency.value = nth(vow, 0);
+      f1.Q.value = 6;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.03, t + 0.12);
+      o.connect(f1);
+      f1.connect(g);
+      g.connect(out);
+      o.start(t);
+      lfo.start(t);
+      pad.push({ o, lfo, g });
+    }
+    sEnv(sTone(t, 'sine', root * 8, root * 8, 1.4, out), t, 0.003, 1.3, 0.05);
+    sEnv(sTone(t + 0.02, 'sine', root * 12, root * 12, 1.0, out), t + 0.02, 0.003, 0.9, 0.025);
+  };
+  return {
+    tick(kk, isFull) {
+      if (stopped) return;
+      k = kk;
+      if (isFull && !full) {
+        full = true;
+        startPad();
+      }
+      while (next < ctx.currentTime + 0.06) {
+        const step = nth(CHANT_STEPS, Math.min(CHANT_STEPS.length - 1, (syl % 4) + Math.floor(k * 3) + (syl % 3 === 2 ? 1 : 0))),
+          f = root * Math.pow(2, step / 12);
+        const dur = full ? 0.3 : 0.2;
+        syllable(next, f, nth(VOWELS, (syl * 3) % 5), dur);
+        if (gear.castSt) {
+          gear.castSt.syl = syl;
+          gear.castSt.sylT = clock.time;
+        }
+        syl++;
+        next += full ? 0.3 : 0.21;
+      }
+    },
+    stop() {
+      if (stopped) return;
+      stopped = true;
+      const t = ctx.currentTime;
+      try {
+        out.gain.cancelScheduledValues(t);
+        out.gain.setValueAtTime(out.gain.value, t);
+        out.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+        for (const p of pad) {
+          p.o.stop(t + 0.25);
+          p.lfo.stop(t + 0.25);
+        }
+      } catch {
+        // 止め終えた部品をまた止めても、そのまま続ける
+      }
+    },
+  };
 }

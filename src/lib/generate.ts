@@ -281,6 +281,8 @@ export interface Gate {
   o: number;
   axis: number;
   heir?: string;
+  /** レバーを引いたゲームの時刻（src/lib/events.ts の updateTraps が入れる） */
+  pulled?: number;
 }
 /** 隠れた罠（流れ出す罠は、水の広がる順 order を持つ） */
 export interface Trap {

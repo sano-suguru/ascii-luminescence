@@ -25,9 +25,7 @@ function pickLegend(it){
   msg(`<b style="color:${css(c)}">${kd.ch}</b><b style="color:${css(c)}">${L.items[k].name}</b>を手にした。`); msg(`<span class="lab">${L.items[k].lore}</span>`);
   if(L.have.size===3)setTimeout(()=>msg(`<b style="color:#ffe9b0">*</b>三つの光が、手の中で同じ方へ震えている。ずっと下の、闇の底へ。`),1800);
 }
-// the oracle names, in its own way, where the three are kept
-function oracleLegendHints(){ const L=getLegend(); if(!L)return;
-  LEGEND_ORDER.forEach((k,j)=>{ if(L.have.has(k))return; const it=L.items[k]; setTimeout(()=>msg(`<b style="color:#bfe4ff">「</b>${LEGEND_KINDS[k].name}は、${BRANCH_HINT[it.branch]}で、主に抱かれている」`),900+j*700); }); }
+// 神託所が伝説の物の在りかを告げる oracleLegendHints は src/lib/legend.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- the deepest place: with the three legendary things in hand, the king's shadow rises there
 // setupFinal は src/lib/levels.ts（src/game/imports.mjs で読む）
