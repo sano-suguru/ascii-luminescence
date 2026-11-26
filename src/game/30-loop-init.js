@@ -82,6 +82,8 @@ if(TEST)window.__test={
   frames(n){ if(TESTQ.done)return Promise.reject(new Error('__test.frames: the previous call has not finished'));
     return new Promise(ok=>{ TESTQ.n=Math.max(0,n|0); if(!TESTQ.n)ok(); else TESTQ.done=ok; }); },
   // give every blessing at level n (default 1), so a level-up offers their next level (shown with II)
+  // 指の操作の、試して合わせる値を変える（{look, analog}。src/lib/touchpad.ts の TUNE。tools/feel.mjs が使う）
+  touchTune(o){ Object.assign(TUNE,o||{}); return {...TUNE}; },
   bless(n=1){ for(const k in BLESS)adv.lvl.bless[k]=n; return Object.keys(BLESS).length; },
   // how many columns the panels count for a piece of text (visW)
   width(text){ return visW(text); },
