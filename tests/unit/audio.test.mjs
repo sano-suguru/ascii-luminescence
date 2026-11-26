@@ -233,6 +233,41 @@ describe('音を鳴らす所が、見た目の乱数を引かない（src/ を�
       'lib/b.ts:1 sndReady の中',
     ]);
   });
+  it('見本：引いた値を変数に入れてから音に使う形を見つけ、音のほかのことにも使う変数は見逃す', () => {
+    const files = [
+      {
+        name: 'game/01-a.js',
+        text: [
+          'function f(dt,i){ const v=mr(); sDrip(1,2,v);', // 捕まえる：変数に入れてから引数に
+          '  const a=mr()*0.1; const vol=0.2+a; sChime(1,2,vol);', // 捕まえる：変数から変数へ
+          '  const r=mr(); if(r<0.3)sBubble(1,2,0.3,true);', // 捕まえる：if の条件で、中身は音だけ
+          '  let w; w=mpick([1,2]); setTimeout(()=>sDrip(0,0,w),9);', // 捕まえる：後から入れる・中の関数で使う
+          '  const d=Math.random()*5; if(go){ t1=clock.time+d; sChime(1,2,0.1); }', // 捕まえる：次に鳴らす時刻
+          '  const q=mr(); if(q<dt){ found=true; sChime(1,2,q); msg("罠を見つけた"); }', // 見逃す：罠を見つけたかの判定にも使う
+          '  const x=mr()*9; spawn(x,0,0); sDrip(x,0,1);', // 見逃す：粒子の位置にも使う
+          '  const k=mr(); const y=k*2; spawn(y,0,0); sDrip(0,0,k); }', // 見逃す：移した先の変数を、粒子の位置に使う
+          'function g(){ const v=mr(); spawn(v,0,0); { const v=0.5; sDrip(0,0,v); } }', // 見逃す：同じ名前の別の変数
+          'function h(){ const from=mr(); if(go){ b.morph={from,t0:clock.time}; sChime(1,2,0.1); } }', // 見逃す：オブジェクトの中の値は時刻ではない
+          'let lv=mr(); function c(){ sDrip(0,0,lv); }', // 追わない：一番外の変数
+          'function play(v){ sDrip(0,0,v); } function e(){ play(mr()); m.t=mr(); sDrip(0,0,m.t); }', // 追わない：引数とオブジェクトの欄
+        ].join('\n'),
+      },
+      {
+        // TypeScript の型が付いていても追う
+        name: 'lib/b.ts',
+        text: 'export function g(n: number): void { const v: number = (mr() as number) * n; const s = v!; sDrip(0, 0, s); }',
+      },
+    ];
+    const r = soundRandomCheck(files, ['sTone', 'sDrip', 'sBubble', 'sChime']);
+    expect(r.bad).toEqual([
+      'game/01-a.js:1 変数 v を経て sDrip の引数',
+      'game/01-a.js:2 変数 a・vol を経て sChime の引数',
+      'game/01-a.js:3 変数 r を経て if の条件で、音を鳴らすか',
+      'game/01-a.js:4 変数 w を経て sDrip の引数',
+      'game/01-a.js:5 変数 d を経て 次に鳴らす時刻',
+      'lib/b.ts:1 変数 v・s を経て sDrip の引数',
+    ]);
+  });
   it('src/ のどこにも無い（音を鳴らす所は、音の乱数 sndRand を使う）', () => {
     const files = readdirSync(SRC, { recursive: true })
       .map(String)
