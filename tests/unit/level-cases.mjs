@@ -40,7 +40,7 @@ import {
 import { T, fogCol } from '../../src/lib/three.ts';
 import { BRANCHES, CELL, FINAL_DEPTH, MH, MW, NCELL, REALMS, SF_HAY, TF, TP } from '../../src/lib/world.ts';
 import { fakeAudioClass } from './fake-audio.mjs';
-import { fakeCamera, fakeDom, fakeTimers, fakeUniforms } from './fight-cases.mjs';
+import { fakeCamera, fakeDom, fakeTimers, fakeUniforms, hashArr } from './fight-cases.mjs';
 import { swapGlobals } from './ui-cases.mjs';
 
 /** 移した関数の名前（場合が全部を呼ぶか、level.test.mjs が確かめる） */
@@ -73,14 +73,6 @@ const FN_FIELDS = [
   ['hurtPlayer', 'mc'],
 ];
 
-const hashArr = (a, from = 0, to = a.length) => {
-  if (a instanceof Float32Array || a instanceof Float64Array) a = a.slice(from, Math.max(from, to)).map((x) => (Number.isNaN(x) ? NaN : x));
-  else a = a.subarray(from, Math.max(from, to));
-  const b = new Uint8Array(a.buffer, a.byteOffset, a.length * a.BYTES_PER_ELEMENT);
-  let h = 0x811c9dc5;
-  for (let i = 0; i < b.length; i++) h = Math.imul(h ^ (b[i] ?? 0), 0x01000193);
-  return (h >>> 0).toString(16).padStart(8, '0');
-};
 const fnv = (s) => {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
@@ -114,7 +106,7 @@ const restore = (obj, copy) => {
   Object.assign(obj, copy);
 };
 /** 階の文字の部品（区切りごとの文字の数・置き方・属性）と、壁の向こうを隠す板の指紋 */
-const worldPrint = () =>
+const worldPrint0 = () =>
   fnv(
     gfx.chunks
       .map((c) => {
@@ -135,10 +127,28 @@ const worldPrint = () =>
       '#' +
       gfx.scene.children.length,
   );
-
+/**
+ * worldPrint0 を、部品が作り直された時だけ数え直す（呼ぶたびに全部の配列の指紋を取ると、テストの時間の半分以上になるため）。
+ * 作り直したかは、区切りの配列・各区切りの Mesh と幾何・隠す板とその幾何・場面の子の数が、前と同じ物かで見る（buildWorld は毎回これらを新しく作り、ほかの所は書き換えない）。
+ * buildWorld を、これらを使い回して中身だけ書き換える形に変えたら、この見分け方も変えること（変えないと、違いを見逃す）
+ */
+const worldKey = () => [
+  gfx.chunks,
+  gfx.occMesh,
+  gfx.occMesh && gfx.occMesh.geometry,
+  gfx.scene.children.length,
+  ...gfx.chunks.flatMap((c) => [c.mesh, c.mesh.geometry]),
+];
+let lastWorld = { key: [], print: '' };
+const worldPrint = () => {
+  const key = worldKey();
+  if (key.length !== lastWorld.key.length || key.some((k, i) => k !== lastWorld.key[i])) lastWorld = { key, print: worldPrint0() };
+  return lastWorld.print;
+};
 /** seeds：場合の数。page：fakeDom() の偽の画面 */
 export async function levelCases(F, seeds, page) {
   const out = [];
+  lastWorld = { key: [], print: '' };
   const keep = {
     here: { ...here },
     adv: { ...adv },
@@ -626,6 +636,8 @@ export async function levelCases(F, seeds, page) {
       out.push({ s, calls, dom: fnv(text(page.log)), audio: fnv(text(alog)), stored: fnv(text(stored)), timers: { ...timers.st } });
     }
   } finally {
+    // 終わった階の部品を持ち続けない
+    lastWorld = { key: [], print: '' };
     restoreGlobals();
     delete msgs.push;
     for (const [k, fields] of keptTypes)

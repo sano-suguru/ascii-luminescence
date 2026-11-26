@@ -123,7 +123,7 @@ tests/unit/fight.test.mjs  詠唱と当たり・反応・ダメージ・プレ�
                      遅れて起きることと setTimeout は、時計を進めながらここで流す。偽の画面の部品 fakeDom・偽の setTimeout fakeTimers も。迷宮の生成を変えると、この指紋も変わる）を使う
 tests/unit/level.test.mjs  階を移る処理（newLevel・advance・checkEvents・die・newRun）と世界の組み立て（buildWorld・setFog・updateWater）の単体テスト。たくさんの場合を作る level-cases.mjs
                      （探索を始め、進む向きと場所と着く所を変えて階を移り、階段・門・穴・封じられた階段を踏み、死んで結果の画面のボタンを押す。three.js の物は Node でも本物を作り、
-                     描画する部品だけ偽物。迷宮の生成を変えると、この指紋も変わる。30秒ほどかかる）を使う
+                     描画する部品だけ偽物。迷宮の生成を変えると、この指紋も変わる。単独で15秒ほど、ほかのテストと同時なら25秒ほど。ほとんどは本物の newLevel・buildWorld の時間）を使う
 tests/unit/same-code.test.mjs  tools/same-code.mjs の単体テスト（規則ごとに同じと言う物・違うと言う物、抜けた文・係数・比べ方・乱数を引く順番の違いを見つけるか）
 tests/unit/view.test.mjs  カメラから見て描く・調べる処理（生き物を描く・罠と鉄格子を描く・見た時の説明・灯りの揺らぎと灯りの配列・照準）の単体テスト。たくさんの場合を作る view-cases.mjs
                      （Node で本物の迷宮を生成し、全部の種類の生き物・罠・床の物・灯りの種類を足し、偽のカメラ（位置だけ）を物へ向ける。説明の分かれ道ごとの場面も通す。
@@ -165,7 +165,7 @@ docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 ## 組み立て・実行・テスト（Node 26・pnpm 12）
 ```
 pnpm install --frozen-lockfile   # 依存を入れる（クラウドのセッションでは SessionStart hook が Node・pnpm ごと自動で行う）
-pnpm check            # 構文 + lint（エラーだけ。型の情報も使う） + 型（tsc） + 整形の確かめ + 単体テスト（Vite の組み立ても試す） + 使う文字 + 組み立て。50秒ほど（単体テストの階の比べ合わせ level.test.mjs が長い）。編集のたびにこれ
+pnpm check            # 構文 + lint（エラーだけ。型の情報も使う） + 型（tsc） + 整形の確かめ + 単体テスト（Vite の組み立ても試す） + 使う文字 + 組み立て。40秒ほど（単体テストの階の比べ合わせ level.test.mjs が長い）。編集のたびにこれ
 pnpm lint             # 警告も含めて lint を見る（src/game/ はつないで調べる）
 pnpm fmt              # 整形する（Oxfmt。src/game/ の古い JS と index.html 以外）
 pnpm typecheck        # 型を確かめる（TypeScript 7 の tsc。src/lib/ と tests/unit/*.ts。1秒かからない）
