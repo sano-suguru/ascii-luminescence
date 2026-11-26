@@ -43,14 +43,17 @@ const level = () => must(here.D, '今の階 here.D');
 /**
  * 生き物を作る（湧く所 s から）。形と初めの値（向き・待つ秒・歩きと揺れの位相・攻撃の間など）は、その生き物だけの見た目の乱数の並び rnd で決め、
  * 生き物に覚えさせる（m.rnd。初めて描く時に作る眠った姿やまわりの飾りも、これで作る）。rnd を省くと、階のシードと、その階で何体目か（here.mobSeq。
- * src/lib/levels.ts の newLevel が生き物を作る前に 0 に戻す）から作る。なので、ほかの所で見た目の乱数を引く回数が変わっても、形と初めの値は変わらない
+ * src/lib/levels.ts の newLevel が生き物を作る前に 0 に戻す）から作る。なので、ほかの所で見た目の乱数を引く回数が変わっても、形と初めの値は変わらない。
+ * 何体目かは m.seq に覚えさせる（tick が、この生き物の動きと描画の見た目の乱数の鍵にする。rnd を渡した時は -1）
  */
-export function makeMonster(s: Spawn, rnd: () => number = keyedRand('mob', levelSeed(), here.mobSeq++)): Mob {
-  return withVisualRand(rnd, () => newMonster(s, rnd));
+export function makeMonster(s: Spawn, rnd?: () => number): Mob {
+  const seq = rnd ? -1 : here.mobSeq++;
+  const r = rnd ?? keyedRand('mob', levelSeed(), seq);
+  return withVisualRand(r, () => newMonster(s, r, seq));
 }
 
 /** 生き物を作る中身（makeMonster が、見た目の乱数を rnd にして呼ぶ。ゴーレムは部屋の中に見回りの道を作る。強い個体は体力が 2.5 倍、剣を操る者は剣を3本持つ） */
-function newMonster(s: Spawn, rnd: () => number): Mob {
+function newMonster(s: Spawn, rnd: () => number, seq: number): Mob {
   const ty = lookup(MTYPES, s.key);
   if (ty && ty.golem && !s.route && here.D && here.D.roomOf) {
     const r = (here.D.roomOf[s.cz * MW + s.cx] ?? NaN) >= 0 ? nth(here.D.rooms, must(here.D.roomOf[s.cz * MW + s.cx], '部屋の番号')) : null;
@@ -106,6 +109,7 @@ function newMonster(s: Spawn, rnd: () => number): Mob {
     fy: 1.8,
     flitT: 0,
     rnd,
+    seq,
   };
   if (ty.form === 'eel') m.y = -0.6;
   if (ty.critter === 'mimic') {
