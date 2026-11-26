@@ -260,14 +260,13 @@ export const adv: Adv = {
   HIST_SEED: -1,
 };
 
-/** プレイヤー（位置・速さ・向き・揺れ・目の高さ・体力）。丸ごと入れ替えることは無いので、古い JS は今までどおり player.x のように読む。
- * 後から足される欄（roll・lunge・netT など）は、使う処理を移す時に型を足す */
 /** 指の操作の入力（src/lib/touchpad.ts が書き、src/lib/player.ts が読む） */
 export const thumb: {
   /** スティックの倒し具合（アナログの時だけ。左右 x・前後 y、どちらも -1 から 1。前が -y。無ければ null で、キー WASD を使う） */
   stick: [number, number] | null;
 } = { stick: null };
 
+/** プレイヤー（位置・速さ・向き・揺れ・目の高さ・体力）。丸ごと入れ替えることは無いので、古い JS は今までどおり player.x のように読む */
 export interface Player {
   x: number;
   z: number;
@@ -299,9 +298,6 @@ export interface Player {
   lastHurt?: number;
   /** 攻撃の後の立ち直りの残りの秒（その間は次の攻撃ができない） */
   recover?: number;
-  /** ダメージを受けないゲームの時刻（それまで）と、次にそうなれるゲームの時刻 */
-  invulT?: number;
-  invCd?: number;
   /** 加護の効く間：反撃（ctrUntil）・持ち替えの直後（swapEdgeUntil）・倒した勢い（momUntil）・素早い詠唱（qcUntil）のゲームの時刻 */
   ctrUntil?: number;
   swapEdgeUntil?: number;
@@ -329,7 +325,7 @@ export interface Lunge {
   dx: number;
   dz: number;
   sp: number;
-  cut?: { sp: Spec; hit: Set<Mob>; w: number; dK: number; link: boolean };
+  cut: { sp: Spec; hit: Set<Mob>; w: number; dK: number; link: boolean };
 }
 export const player: Player = {
   x: 0,
@@ -1253,8 +1249,8 @@ export const SL = new Float32Array(NSL * 3),
 export const keys: { KeyW?: boolean; KeyA?: boolean; KeyS?: boolean; KeyD?: boolean; [code: string]: boolean | undefined } = {};
 /** 手元の武器が跳ねたゲームの時刻（術を放った時。19-hands-runes.js の drawViewWeapons が読む）。丸ごと入れ替えない */
 export const vmKick = { L: -9, R: -9 };
-/** 光線を撃ち続けている間の、手ごとの記録（続けた秒 hold・最後に撃った時刻 last・弾けた時刻 burst）。丸ごと入れ替えない */
-export const beamHold = { L: { hold: 0, last: -9, burst: -9 }, R: { hold: 0, last: -9, burst: -9 } };
+/** 光線を撃ち続けている間の、手ごとの記録（続けた秒 hold・最後に撃った時刻 last）。丸ごと入れ替えない */
+export const beamHold = { L: { hold: 0, last: -9 }, R: { hold: 0, last: -9 } };
 /** 漂う塵の粒（位置 x・y・z、揺れの位相 ph、文字 g、大きさ s。src/lib/particles.ts の initDust・respawnDust が置き、15-sound-fire.js が動かす）。丸ごと入れ替えない */
 export const dust = {
   x: new Float32Array(DUST_N),

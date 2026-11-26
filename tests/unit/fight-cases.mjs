@@ -461,7 +461,7 @@ export async function fightCases(F, seeds, page) {
         rallyMotes: [],
       });
       Object.assign(vmKick, { L: -9, R: -9 });
-      for (const h of ['L', 'R']) Object.assign(beamHold[h], { hold: 0, last: -9, burst: -9 });
+      for (const h of ['L', 'R']) Object.assign(beamHold[h], { hold: 0, last: -9 });
       Object.assign(edge, { t: 0, k: '', idle: 0 });
       for (const k of Object.keys(keys)) delete keys[k];
       gfx.camera = fakeCamera();
@@ -486,7 +486,6 @@ export async function fightCases(F, seeds, page) {
         roll: null,
         lunge: null,
         recover: 0,
-        invulT: 0,
         netT: chance(0.1) ? 1 : 0,
         blockType: '',
         lastCell: -1,
@@ -747,6 +746,13 @@ export async function fightCases(F, seeds, page) {
         call('dashCast', sp0('dash', el), dir(), chance(0.5));
         tick(0.25);
         if (player.lunge) call('dashCuts');
+        if (k === 0) {
+          // 突進が無い時は何もしない（突進は戻す）
+          const L = player.lunge;
+          player.lunge = null;
+          call('dashCuts');
+          player.lunge = L;
+        }
         tick(0.4);
         call('castStar', sp0('star', el), player.x + (r() - 0.5) * 6, player.z + (r() - 0.5) * 6);
         call('startRain', sp0('rain', el), player.x, player.z, chance(0.3));
@@ -859,7 +865,8 @@ export async function fightCases(F, seeds, page) {
         if (chance(0.3)) call('hitFeedback', m, pick([0, 0.2, 1, 2]), pick(ELEMS), chance(0.5));
         if (chance(0.3)) call('rallyOnHit', m, 5, pick(['blade', 'fire', 'env']));
         if (chance(0.3)) call('dropRune', m);
-        if (chance(0.3)) call('lordFell', m);
+        // 主にした時はいつも呼ぶ（伝説の物がこぼれ落ちる道を、乱数の並びによらず通すため）
+        if (m.key === 'lord' || chance(0.3)) call('lordFell', m);
         tick(0.2);
       }
       // 発動のルーン：倒した時・かわした時（両手の発動を入れ替えて）
@@ -916,10 +923,9 @@ export async function fightCases(F, seeds, page) {
         call('monsterStrike', m, pick([0.1, 0.3]), pick([0.5, 1, 4]));
         tick(0.1);
       }
-      // ---- 場面：プレイヤーの傷（神のモード・無敵・加護・死）
+      // ---- 場面：プレイヤーの傷（神のモード・加護・死）
       for (let k = 0; k < 4; k++) {
         ui.godMode = chance(0.2);
-        player.invulT = chance(0.2) ? clock.time + 1 : 0;
         if (chance(0.25)) player.hp = 2;
         call('hurtPlayer', pick([0, 1, 3, 8]), pick(['炎', '爆発', 'ネズミ']));
         tick(0.1);
@@ -1129,7 +1135,7 @@ export async function fightCases(F, seeds, page) {
             dx: 1,
             dz: 0,
             sp: 10,
-            cut: chance(0.5) ? { sp: sp0('dash', null), hit: new Set(), w: 1, dK: 1, link: chance(0.5) } : undefined,
+            cut: { sp: sp0('dash', null), hit: new Set(), w: 1, dK: 1, link: chance(0.5) },
           };
         if (chance(0.1)) player.roll = { t: 0, dx: 0, dz: 1 };
         if (chance(0.05)) ui.started = !ui.started;
