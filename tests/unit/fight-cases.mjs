@@ -133,7 +133,19 @@ const FN_FIELDS = [
   ['updatePlayer', 'sealT'],
 ];
 const ELEMS = [null, ...RUNE_TYPES.elem];
-const BLESS_KEYS = ['charge', 'counter', 'swapedge', 'reckless', 'momentum', 'kindle', 'scorch', 'branch', 'devour', 'shatter'];
+const BLESS_KEYS = [
+  'charge',
+  'counter',
+  'quickdodge',
+  'swapedge',
+  'reckless',
+  'momentum',
+  'kindle',
+  'scorch',
+  'branch',
+  'devour',
+  'shatter',
+];
 const SUBS = ['gsweep', 'gwave', 'bpower', 'rshot', 'mshot', 'mmoon'];
 
 /** 配列の中身の指紋（NaN は1つの並びにそろえる。指紋は monsters-cases.mjs と同じ。level-cases.mjs も使う） */
@@ -757,7 +769,6 @@ export async function fightCases(F, seeds, page) {
                 dmg: r() * 2,
                 rad: chance(0.5) ? r() * 2 : undefined,
                 cloud: chance(0.8),
-                proj: chance(0.6) ? { gen: Math.floor(r() * 2), mini: chance(0.3) } : undefined,
               },
         );
         for (let q = 0; q < 6; q++) tick(pick([0.1, 0.3]));

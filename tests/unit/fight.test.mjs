@@ -2,6 +2,7 @@
 // 指紋の値は、移す前の古い JS（src/game/13・15・16・17・18・19・20・21・22・24・26・28）でも同じになる（fight-cases.mjs の場合を、古い関数で数えて確かめた）。
 // ただし、勝った時の伝承（runLore の「王の影に勝った +30」）だけは、移した後で直した（古い JS では、その行がコメントの中にあって加わらなかった）。
 // また、特性の表（src/lib/runes.ts の TRAITS）に無い特性を読む処理と、いつも 0 の欄（連射の矢の heavy・steady・boom など）は消した（指紋は、消した欄を除けば同じ）。
+// 加護の身軽な詠唱（quickdodge）と返しの一撃（counter）は、攻撃を転がってかわした時（onDodged）に効き始めるようにした（古い JS では、どこからも始まらなかった）。
 // 階は Node で本物の迷宮を生成するので、迷宮の生成を変えると、この指紋も変わる（その時は generate.test.ts の指紋と一緒に作り直す）。
 // テストを .mjs で書くのは、偽の画面の部品・偽の Web Audio を、本物の型に合わせられないため。
 import { describe, expect, it } from 'vitest';
@@ -25,7 +26,7 @@ describe('移す前と同じ', () => {
     const all = await fightCases({ ...AIM, ...AUDIO, ...COMBAT, ...GEAR, ...MON, ...PLAYER, ...RESULTS }, 16, fakeDom()),
       body = fightText(all),
       calls = all.flatMap((c) => c.calls);
-    expect([fnv(body), body.length]).toEqual(['85e11705', 3818657]);
+    expect([fnv(body), body.length]).toEqual(['0f05ba23', 3727744]);
     // 場合が中身を通っているか：59の関数が全部呼ばれ、どれも止まらない。見た目の乱数・音の乱数・伝言・setTimeout を使う呼び出しもある
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);

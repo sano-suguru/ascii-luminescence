@@ -1619,8 +1619,13 @@ export declare namespace hurtPlayer {
   let mt: number | undefined;
   let mc: string | undefined;
 }
-/** 転がって攻撃をかわした時：かわした時に放つ発動のルーンで、手ごとに、かわした相手へ術を放つ（剣は近くだけ）。粒と音（もとは src/game/26-spells-hud.js） */
+/**
+ * 転がって攻撃をかわした時：加護の身軽な詠唱（quickdodge）と返しの一撃（counter）の効く間を始め、かわした時に放つ発動のルーンで、手ごとに、
+ * かわした相手へ術を放つ（剣は近くだけ）。粒と音（もとは src/game/26-spells-hud.js）。生き物の攻撃1回ごとに呼ばれる（何体も同時なら、効く間を入れ直すだけ）
+ */
 export function onDodged(m: Mob): void {
+  if (BL('quickdodge')) player.qcUntil = clock.time + (BL('quickdodge') >= 2 ? 2.5 : 1.5);
+  if (BL('counter')) player.ctrUntil = clock.time + 1.5;
   if (!gear.hands) return;
   let any = false;
   for (const h of ['L', 'R'] as const) {

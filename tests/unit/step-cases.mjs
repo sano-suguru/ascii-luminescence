@@ -36,7 +36,6 @@ export const NAMES = [
   'releaseCast',
   'updateCast',
   'startRoll',
-  'onRolled',
   'updateProjs',
   'moonBurst',
   'updateStatuses',
@@ -548,19 +547,6 @@ export async function stepCases(F, seeds, page) {
         call('startRoll');
         for (const k of ks) delete keys[k];
         Object.assign(player, { rollCd: 0, roll: null });
-      }
-      // かわした時（加護・かわした時に撃つ発動のルーン・両手持ち・待ち時間・持ち替えの途中）
-      for (let q = 0; q < 4; q++) {
-        if (q === 2) arm(pick(TWO));
-        else setHands(oneHand(), oneHand());
-        for (const h of ['L', 'R']) gear.hands[h].trig = chance(0.7) ? makeRune(pick(['dodge', 'kill'])) : null;
-        if (q === 3) gear.hands.L.atk = null;
-        fight.trigCd = { L: chance(0.3) ? 1 : 0, R: 0 };
-        gear.swapSt = chance(0.2) ? { t: 0, dur: 1, snap: snapHands(), last: 0 } : null;
-        adv.lvl.bless.quickdodge = q % 3;
-        adv.lvl.bless.counter = q % 2;
-        call('onRolled');
-        gear.swapSt = null;
       }
       // ---- 場面：飛ぶ物（武器ごとに撃ち、生き物を前に並べて何歩も進める）
       const SHOT = ['bolt', 'orb', 'rapid', 'mstaff', 'blade', 'gsword', 'star', 'rain'];

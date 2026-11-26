@@ -90,8 +90,9 @@ if(TEST)window.__test={
   // a plain copy of what matters, to compare runs
   state(){ const f=v=>+(+v||0).toFixed(3);
     return {time:f(clock.time),seed:adv.runSeed,place:placeLabel(),depth:here.depth,started:ui.started,dead:adv.dead,hp:f(player.hp),pos:[f(player.x),f(player.z)],yaw:f(player.yaw),lvl:adv.lvl.n,
-      monsters:here.monsters.map(m=>[m.key,f(m.x),f(m.z),f(m.hp),m.sleep?1:0]),projs:fight.projs.length,
-      trans:here.trans?here.trans.phase:null,maxDepth:adv.runStats&&adv.runStats.maxDepth!==undefined?adv.runStats.maxDepth:null,cast:gear.castSt?{h:gear.castSt.h,t:f(gear.castSt.t),need:f(gear.castSt.need),full:gear.castSt.full}:null,recover:f(player.recover),paused:isPaused()}; },
+      monsters:here.monsters.map(m=>[m.key,f(m.x),f(m.z),f(m.hp),m.sleep?1:0,f(m.wind)]),projs:fight.projs.length,
+      trans:here.trans?here.trans.phase:null,maxDepth:adv.runStats&&adv.runStats.maxDepth!==undefined?adv.runStats.maxDepth:null,cast:gear.castSt?{h:gear.castSt.h,t:f(gear.castSt.t),need:f(gear.castSt.need),full:gear.castSt.full}:null,recover:f(player.recover),paused:isPaused(),
+      roll:!!player.roll,quick:f(player.qcUntil),counter:f(player.ctrUntil)}; },
   // the room events of this level (type, crater cell, state, timer, step, done) and how many cells lava has flowed into (an eruption or a lava flow)
   events(){ return {list:here.events.map(e=>({type:e.type,src:e.src===undefined?null:e.src,state:e.state===undefined?null:e.state,t:e.t===undefined?null:+e.t.toFixed(3),k:e.k===undefined?null:e.k,done:!!e.done})),lava:blaze.cellFlag.reduce((n,v)=>n+(v===70?1:0),0)}; },
   // hold a weapon (a RUNE_DEF key such as 'blade', 'bolt', 'orb'), and press / release a hand's button ('L' or 'R')

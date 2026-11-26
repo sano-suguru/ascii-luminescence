@@ -13,6 +13,7 @@
 //  10. 消してすぐまた火がついたマスは、燃えているマスの一覧に1回だけ入る
 //  11. 薄い氷に乗っていた秒は、階を移ると0に戻る（前の階の同じ番号のマスの秒が残らない）
 //  12. 火山の異界の火口は、噴き上がると溶岩が流れ出し（状態 1）、しばらく待って（2）引き（3）、また待って（0）噴き上がる
+//  13. 加護の身軽な詠唱と返しの一撃は、敵の攻撃を転がってかわすと効き始める（ただ転がっただけでは効かない）
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { withBrowser, newPage, openTest, advance } from './lib.mjs';
 
@@ -356,6 +357,60 @@ async function eruptChecks(pg, base) {
     errs.push(`12：溶岩のマスが、増えてから 0 に戻り、また増える、にならない（2 秒ごと：${lava.join(',')}）`);
 }
 
+// 13：かわした時の加護（身軽な詠唱・返しの一撃）
+async function dodgeChecks(pg, base) {
+  await openTest(pg, base, 'seed=7&depth=2&god=1');
+  await advance(pg, 2);
+  await pg.mouse.click(480, 270); // キーを届かせる（押すと撃つので、生き物を置く前に）
+  await advance(pg, 1);
+  await pg.evaluate(() => {
+    __test.bless(2);
+    __test.clearAll();
+  });
+  // ただ転がっただけでは、効かない
+  await pg.keyboard.press('Space');
+  await advance(pg, 0.1);
+  const plain = await pg.evaluate(() => __test.state());
+  if (!plain.roll) errs.push('13：Space で転がらない（テストの前提が崩れた）');
+  if (plain.quick || plain.counter) errs.push(`13：ただ転がっただけで、かわした時の加護が効いた（${plain.quick}・${plain.counter}）`);
+  await advance(pg, 1.5); // 転がりの待ち（1 秒）が明けるまで
+  // 隣のマスに生き物を置き、攻撃の溜めが終わる直前に転がってかわす
+  const put = await pg.evaluate(() => {
+    const s = __test.state(),
+      { w } = __test.size(),
+      C = __test.cell(0).x * 2,
+      pi = Math.floor(s.pos[1] / C) * w + Math.floor(s.pos[0] / C);
+    for (const d of [1, -1, w, -w]) if (__test.cell(pi + d).floor) return __test.summon('k', pi + d);
+    return null;
+  });
+  if (!put) {
+    errs.push('13：隣に床が無く、生き物を置けない（テストの前提が崩れた。シードを変える）');
+    return;
+  }
+  let st = null;
+  for (let q = 0; q < 300; q++) {
+    const s = await pg.evaluate(() => __test.state()),
+      wind = s.monsters[0]?.[5] ?? 0;
+    if (wind > 0 && wind < 0.07) {
+      await pg.keyboard.press('Space');
+      await advance(pg, 0.1);
+      st = await pg.evaluate(() => __test.state());
+      break;
+    }
+    await advance(pg, 1 / 30);
+  }
+  if (!st) {
+    errs.push('13：生き物が攻撃の溜めに入らない（テストの前提が崩れた）');
+    return;
+  }
+  // 加護 2 段目：身軽な詠唱は 2.5 秒、返しの一撃は 1.5 秒（かわした時刻から）
+  const left = (until) => +(until - st.time).toFixed(2);
+  if (!st.roll || !(left(st.quick) > 2.3 && left(st.quick) <= 2.5) || !(left(st.counter) > 1.3 && left(st.counter) <= 1.5))
+    errs.push(
+      `13：攻撃を転がってかわしても、加護が効かない（転がり ${st.roll}・身軽な詠唱の残り ${left(st.quick)}・返しの一撃の残り ${left(st.counter)}）`,
+    );
+}
+
 await withBrowser(async ({ browser, base }) => {
   const pg = await newPage(browser, errs);
   await doorChecks(pg, base);
@@ -365,6 +420,7 @@ await withBrowser(async ({ browser, base }) => {
   await chillChecks(pg, base);
   await thinIceChecks(pg, base);
   await eruptChecks(pg, base);
+  await dodgeChecks(pg, base);
 });
 console.log('page errors:', errs.length ? errs : 'none');
 process.exit(errs.length ? 1 : 0);

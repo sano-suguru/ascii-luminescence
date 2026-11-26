@@ -43,6 +43,5 @@
 // groundPoint は src/lib/aim.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- triggers
-// 転がった時 onRolled は src/lib/chant.ts（src/game/imports.mjs で読む。今はどこからも呼ばれていない）
 // onKilledBy は src/lib/combat.ts（src/game/imports.mjs で読む）
 
