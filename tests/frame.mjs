@@ -4,10 +4,14 @@
 // ポインタロックは断られる（Chromium は Promise の reject と pointerlockerror の両方）。ポインタロックは差し替えない（newPage の realLock）。
 //   1. 本物のサンドボックス：タイトル → 探索（ドラッグの案内が1回）→ ドラッグで見回す → Esc でメニュー → 続ける → レベルアップ（Esc では何もしない）→ 祭壇を Esc で閉じる
 //      → Esc でメニュー → 死 → 始め直し → タイトル → 図鑑 → もう一度探索
+//      同じ流れを、Artifact 版（.build/artifact/index.html。JS・CSS・フォントを全部入れた HTML 1つ）でも通す。Artifact 版は、ほかのファイルを読まないことも確かめる
 //   2. ほかのブラウザ（初めに動く台本で作る）：requestPointerLock が無い（iPhone の Safari など）・呼んでも何も起きない・音の部品を作れない。
 //      どれも Esc でメニューが開き、ドラッグで見回せる
 // iframe の中のキー入力は、iframe の中を一度クリックしてから届く（タイトルのボタンを押すので届く）。ページのエラーは iframe の中の物も errs に集まる（最後に確かめる）。
-import { withBrowser, newPage } from './lib.mjs';
+import { join } from 'node:path';
+import { build } from 'vite';
+import { serve } from '../tools/serve.mjs';
+import { ROOT, withBrowser, newPage } from './lib.mjs';
 
 const errs = [];
 const W = 960,
@@ -60,12 +64,24 @@ async function escMenu(pg, E, label) {
   return v;
 }
 
+// Artifact 版：まとめて走らせる時（tests/run.mjs）は組み立て済み（AL_PREBUILT）
+if (process.env.AL_PREBUILT !== '1') await build({ configFile: join(ROOT, 'vite.config.mjs'), mode: 'artifact', logLevel: 'warn' });
+const artSrv = await serve(join(ROOT, '.build/artifact'), 0, { cors: true });
+const artBase = `http://127.0.0.1:${artSrv.port}/index.html`;
+
 await withBrowser(async ({ browser, base }) => {
-  // ---------------------------------------------------------------- 1. 本物のサンドボックス
-  {
-    const label = '1';
+  // ---------------------------------------------------------------- 1. 本物のサンドボックス（テスト版と Artifact 版）
+  for (const [label, url] of [
+    ['1', base],
+    ['1・Artifact 版', artBase],
+  ]) {
     const pg = await newPage(browser, errs, { width: W, height: H, realLock: true });
-    const { fr, E } = await openFrame(pg, base, 'seed=202');
+    // 読んだ物（data: は数えない）。Artifact 版は index.html だけのはず
+    const reqs = [];
+    pg.on('request', (r) => {
+      if (/^https?:/.test(r.url())) reqs.push(r.url().replace(/^https?:\/\/[^/]+\//, ''));
+    });
+    const { fr, E } = await openFrame(pg, url, 'seed=202');
     // テストの前提：起源が null で、localStorage にさわると例外になる
     const pre = await E(() => {
       let ls = 'ok';
@@ -173,6 +189,10 @@ await withBrowser(async ({ browser, base }) => {
     await E(() => __test.advance(0.5));
     const got = errs.splice(n0).filter((e) => e.includes('frame-error-check'));
     if (got.length !== 1) errs.push(`${label}：iframe の中のエラーが集まらない（テストの前提が崩れた）`);
+    if (url === artBase) {
+      const other = reqs.filter((u) => !u.startsWith('index.html'));
+      if (other.length) errs.push(`${label}：ほかのファイルを読んでいる（${other.slice(0, 5).join(' ')}）`);
+    } else if (!reqs.some((u) => u.endsWith('.woff2'))) errs.push(`${label}：読んだ物を集められていない（テストの前提が崩れた）`);
     await pg.close();
   }
 
@@ -216,5 +236,6 @@ await withBrowser(async ({ browser, base }) => {
     await pg.close();
   }
 });
+artSrv.close();
 console.log('page errors:', errs.length ? errs : 'none');
 process.exit(errs.length ? 1 : 0);

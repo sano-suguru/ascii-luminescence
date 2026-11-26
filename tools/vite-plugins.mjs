@@ -6,6 +6,8 @@
 //   privateMaps(dir) ソースマップを出力の外（.build/maps/）へ移す。公開物には入れない（tools/where.mjs とテストだけが読む）
 //   noCssStub()      ページの中の <style> から Vite が作る、空の JS モジュールを消す
 //   fontCss()        @fontsource の CSS を絞る：古い形式（woff）の候補を外し、BIZ UDGothic は補いの文字（BIZ_CHARS）を含む面だけ残す
+//   inlineAll()      Artifact 版：JS と CSS を index.html の中に書き込み、HTML 1つにする（フォントは vite.config.mjs が CSS の data URI にする）。
+//                    ARTIFACT_MAX を越えたら止める
 import { mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { BIZ_CHARS } from '../src/lib/text.ts';
@@ -166,6 +168,49 @@ export function privateMaps(mapDir) {
         writeFileSync(join(mapDir, 'assets', f), JSON.stringify(map));
         rmSync(src);
       }
+    },
+  };
+}
+
+// Artifact 版（vite build --mode artifact）：claude.ai の Artifact は、外から読める物が決まっている（決まった CDN の script と Google Fonts の CSS だけ）。
+// 同じ所に置いたファイルを読めるかは決まりに書かれていないので、全部を HTML 1つに入れる。フォントは vite.config.mjs が CSS の data URI にする。
+// HTML 1つは 16MB まで（Artifact の決まり）。少し手前で止める
+export const ARTIFACT_MAX = 16_000_000;
+export function inlineAll() {
+  return {
+    name: 'inline-all',
+    apply: 'build',
+    enforce: 'post',
+    generateBundle(_opts, bundle) {
+      const page = bundle['index.html'];
+      if (!page || page.type !== 'asset') throw new Error('index.html が出力に無い');
+      let html = String(page.source);
+      const take = (file) => {
+        const f = bundle[file];
+        if (!f) throw new Error(`index.html が読む ${file} が出力に無い`);
+        delete bundle[file];
+        delete bundle[`${file}.map`];
+        return f.type === 'chunk' ? f.code : String(f.source);
+      };
+      // 中に書くと、文の中の </script や </style が、その場で要素を閉じてしまう
+      const body = (code, tag) => {
+        if (new RegExp(`</${tag}`, 'i').test(code)) throw new Error(`中に書く文に </${tag} がある`);
+        return code;
+      };
+      html = html
+        .replace(
+          /<script type="module" crossorigin src="\.\/([^"]+)"><\/script>/g,
+          (_m, f) => `<script type="module">\n${body(take(f), 'script')}</script>`,
+        )
+        .replace(/<link rel="stylesheet" crossorigin href="\.\/([^"]+)">/g, (_m, f) => `<style>\n${body(take(f), 'style')}</style>`);
+      // ソースマップ（.map）は、中に書いた後は行が合わないので出さない
+      for (const f of Object.keys(bundle)) if (f.endsWith('.map')) delete bundle[f];
+      const left = Object.keys(bundle).filter((f) => f !== 'index.html');
+      if (left.length) throw new Error(`HTML の中に入れられなかったファイルがある：${left.join(' ')}`);
+      if (/\s(?:src|href)="\.\//.test(html)) throw new Error('index.html に、ほかのファイルを読む所が残っている');
+      const size = Buffer.byteLength(html);
+      if (size > ARTIFACT_MAX) throw new Error(`Artifact 版の HTML が大きすぎる：${size} バイト（${ARTIFACT_MAX} まで）`);
+      page.source = html;
     },
   };
 }
