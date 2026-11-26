@@ -1,8 +1,8 @@
-// マスの明るさ（もとは src/game/14-lights-fixtures.js）。状態の入れ物 here（今の階の灯り）・blaze（火の明かり）に頼る物。
+// マスの明るさ（もとは src/game/14-lights-fixtures.js）と天井の高さ（もとは 06-world.js）。状態の入れ物 here（今の階の灯りと天井）・blaze（火の明かり）に頼る物。
 // 灯りの計算そのもの（迷宮の生成も使う）は src/lib/light.ts。
 import { must, nth } from './array.ts';
 import { blaze, here } from './state.ts';
-import { CELL, MH, MW } from './world.ts';
+import { BASE_H, CELL, MH, MW } from './world.ts';
 
 /** cellLight が返す色（毎回同じ配列を書き直して返す。持っておく時は写すこと） */
 const out: [number, number, number] = [0, 0, 0];
@@ -31,3 +31,11 @@ export function cellLight(x: number, z: number): [number, number, number] {
   }
   return out;
 }
+
+/** x・z のマスの天井の高さ。マップの外は BASE_H。座標が NaN の時は、範囲の確かめをすり抜けて undefined（呼ぶ側の計算で NaN になる） */
+export const ceilAt = (x: number, z: number): number | undefined => {
+  const cx = Math.floor(x / CELL),
+    cz = Math.floor(z / CELL);
+  if (cx < 0 || cz < 0 || cx >= MW || cz >= MH) return BASE_H;
+  return must(here.D, '今の階 here.D').ceil[cz * MW + cx];
+};

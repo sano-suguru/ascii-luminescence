@@ -208,6 +208,12 @@ export interface LevelLight extends Omit<Light, 'vis'> {
   ph: number;
   f: number;
   vis: Light['vis'] | null;
+  /** 噴き出し口・泉の灯り：噴き出しているか・流れているか（部屋の出来事が入れ替える） */
+  active?: boolean;
+  /** ブラッドワートの灯り：弾けた後の明るさ（1 から 0.25 まで、ゆっくり落ちる。src/lib/fixtures.ts の drawFixtures） */
+  fade?: number;
+  /** 噴気孔の灯り：噴き出している間に足す明るさ */
+  boost?: number;
 }
 /** 灯りの備品（たいまつ・水晶 など） */
 export interface Fixture {
@@ -224,6 +230,17 @@ export interface Fixture {
   wz?: number;
   /** 泉の、壁の向き */
   wd?: readonly number[];
+  /** ここから下は、描く時（src/lib/fixtures.ts の drawFixtures）と部屋の出来事が足す欄。噴き出し口（crater）・泉（spring）が噴き出しているか */
+  active?: boolean;
+  /** ブラッドワートは弾けたか（true）、溶岩は次の泡までの秒 */
+  burst?: boolean | number;
+  /** 噴気孔：次に噴き出すまでの秒と、噴き出している残りの秒 */
+  next?: number;
+  erupt?: number;
+  /** 溶岩：泡の位置と、泡が弾けていく度合い（1 で終わり） */
+  bx?: number;
+  bz?: number;
+  bt?: number;
 }
 /** マスに描く飾りの文字 */
 export interface CellMark {
@@ -239,6 +256,18 @@ export interface Door {
   bz: number;
   yaw: number;
   o: number;
+  /** 燃え尽きたか（修復機が作り直す） */
+  gone?: boolean;
+  /** 開き始めにきしむ音を鳴らしたか（閉じたら戻す） */
+  creaked?: boolean;
+}
+/** クモの巣（マス i、向き ax、燃え落ちたか。触れると震える：震えの残り shake と、最後に触れたゲームの時刻 touchT） */
+export interface Web {
+  i: number;
+  ax: number;
+  gone: boolean;
+  shake?: number;
+  touchT?: number;
 }
 /** 鉄格子の宝物庫（cell の鉄格子と、別の所にある lever のレバー。ld はレバーの壁の向き、heir は中の遺品の名前） */
 export interface Gate {
@@ -290,6 +319,9 @@ export interface Item {
   ev?: string;
   /** 墓の記録（kind が 'grave' の物） */
   g?: Grave;
+  /** 伝説の物の種類（kind が 'legend' の物。LEGEND_ORDER の candle・bell・mirror）と、落ちたゲームの時刻 */
+  legend?: string;
+  born?: number;
 }
 /** その階の主の種類（生き物の表の1つを元に、名前や形を変えた物。古い JS が MTYPES.lord に入れる） */
 export type LordType = MonsterType & { sk: string; boss: boolean };
@@ -3066,7 +3098,7 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
     }
   }
   // spider nests: narrow passages strung with glowing webs
-  const webs: { i: number; ax: number; gone: boolean }[] = [];
+  const webs: Web[] = [];
   if ((depth >= 2 || stratum.branch || stratum.realm) && !stratum.special && stratum.k !== 'abyss') {
     const dense = !!stratum.denseWebs,
       narrow: number[] = [];

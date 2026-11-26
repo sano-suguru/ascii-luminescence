@@ -46,10 +46,7 @@ function updateRally(dt){ if(adv.dead)return; const mn=bodyN('mend');
   rallyMotes=rallyMotes.filter(p=>!p.done);
   vfx.hpFlash=Math.max(0,vfx.hpFlash-dt);
   const rs=Math.round((player.rally||0)*4)+(vfx.hpFlash>0?1000:0); if(rs!==rallyShown){ rallyShown=rs; renderStatus(); } }
-// 癒しの泉を描く（1つで1回、全回復。泉を置くのは src/lib/altars.ts の placeSpring）
-function drawSprings(t){ for(const it of (here.D.items||[])){ if(it.kind!=='spring')continue; const [x,z]=cpos(it.i); if(Math.hypot(x-player.x,z-player.z)>26)continue; const used=it.taken;
-    for(let k=0;k<16;k++){ const a=k/16*Math.PI*2+t*0.25, rr=0.55+0.05*Math.sin(t*2+k), b=used?0.25:0.7+0.3*Math.sin(t*1.8+k); dyn(x+Math.cos(a)*rr,0.05,z+Math.sin(a)*rr,G('~'),0.15,0.35*b,0.85*b,1.0*b,0,0); }
-    if(!used){ dyn(x,0.06,z,G('o'),0.3,0.8,1.6,2.0,0,0); if(mr()<0.2)spawn(x+(mr()-0.5)*0.6,0.1,z+(mr()-0.5)*0.6,0,0.6,0,1.4,G(mpick(['.','\''])),0.1,0.6,1.5,1.8,0); } } }
+// 癒しの泉を描く drawSprings は src/lib/fixtures.ts、泉を置く placeSpring は src/lib/altars.ts（src/game/imports.mjs で読む）
 
 function pickupItems(){
   for(let k=0;k<(here.D.items||[]).length;k++){ const it=here.D.items[k]; if(it.taken)continue; if(it.kind==='rune'&&it.guardG!==undefined){ const gd=guardedNow(it); if(it.wasGuarded&&!gd&&!(here.D.lit||(here.D.lit=new Set())).has(it.grp||it.i)){ here.D.lit.add(it.grp||it.i); const [lx,lz]=cpos(it.i); sChime(lx,lz,0.5); msg(it.elitePrize?'<b style="color:#ffd27a">*</b>番人が倒れた。守られていたルーンが、手の届く光になった。':'<b style="color:#ffd27a">_</b>祭壇に光が灯った。'); } it.wasGuarded=gd; if(gd)continue; }

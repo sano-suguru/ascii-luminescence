@@ -30,7 +30,7 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      light：灯りの計算、runes：ルーンの定義 RUNE_DEF・性質の効き目 RES・特性・反応・手の枠・ルーンの名前と色と付けられるか（表だけに頼る物）、
                      gear：手と持ち物の処理（makeRune・randomRuneType・effHand・isTwo・canPutAt・武器を持つ equipWeapon・空いた枠 freeSlotFor・墓のルーン graveRune など。状態 gear に頼る物）、progress：経験・伝承・解放・加護 BLESS（表。状態の入れ物は読まない）、
                      unlocks：解放の確かめ（unlocked・lockedOf・weaponPool。状態 saved に頼る物）と試練（trialOn）、altars：祭壇とルーンを置く（階ごとに置く placeRunesForLevel・mainPathAltars、祭壇の中身 altarFill・番人・鍛え方・泉・石碑のそばか nearStele・祭壇の画面の1行と説明、拾ったルーンを手か袋に入れる takeRune）、
-                     levels：階のシード levelSeed と最深部か isFinal、monsters：生き物の処理（強さ statOf）と加護の段 BL、hands：手元の武器の文字、
+                     levels：階のシード levelSeed と最深部か isFinal と特別な階の場所 interAt・interAfter、monsters：生き物の処理（強さ statOf）と加護の段 BL、hands：手元の武器の文字、
                      creatures：生き物の表 MTYPES（探索の途中で種類が足される）と強さの表 MSTAT、
                      strata：層・テーマ・特別な階・支道と異界の中身・地形・群れ、noise：ノイズ（種は setNoiseSeed）、vaults：洞窟と宝物庫の絵、
                      shaders：描画のシェーダーのソースと、描画用の配列の大きさ、title：タイトルのロゴ、hud：表示の大きさ（ミニマップ・装備の画面など）、
@@ -39,9 +39,12 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      inventory：装備の画面 renderInv（中のボタンの処理・ビルドの呼び出し applyBuild も）と、開け閉め setInv・付け替えの詠唱 startSwap、
                      status：状態の表示 renderStatus・明るさと気配 updateStealth・年代記・操作の案内・魔導書・表示の量・見つかった時 onNoticed・物音 makeNoise・
                      立ち止まって調べる updateSearch・止まっているか isPaused・場所の名前 placeLabel・下の一言 showHint・頭の上の印 drawMark、
-                     screens：マウスを捕まえる tryLock・「クリックで視点操作に戻る」の一言 updateResume・視点 setCamMode・音量 sndToggle、particles：粒子を出す spawn・消す killP と、世界の中に文字を置く dyn（配列も）、legend：今の探索の伝説の物 getLegend と状態の表示の1行、
-                     lightmap：マスの明るさ cellLight（状態に頼る。灯りの計算そのものは light）
-src/lib/state.ts     ゲームの状態の入れ物（分野ごと：clock＝時計（ゲームの時刻 time）、blaze＝火と地面のマス（fire・fuel・burnt・scent・凍らせた水 frozen など）、fight＝戦い（飛ぶ物 projs・光線・毒の霧・魔法の場・遅れて起きること・雨・床の目印・ヒットストップ・稲妻など）、vfx＝揺れと光り、ui＝画面の開け閉め（started・camMode・invOpen・近くの祭壇 altarNear・装備の画面で選んでいるルーン packSel・下の一言 hintHTML・メニューの確かめ待ち・マウスを捕まえられなかったか plFailed・3人称のカメラの位置 camPos・装備の画面を開けた時の両手 packSnap など）、adv＝今の探索（runSeed・lvl・dead・年代記 HIST など）、gear＝手と詠唱（hands・bag・castSt など）、here＝今いる場所と階の中身（D・depth・branch・monsters・見えたマス・部屋の出来事 events・川のマス riverCells・最深部の状態 finalSt など）、saved＝保存する記録（META・BOOK・RSEEN・SEEN・DEVALL と、今の探索の伝説の物 LEGEND）、player・placeMem・伝言の一覧 msgs・音 SND・忍び足 stealth・手元の灯り lantern・表示の数 hudInfo（今の階の見たマスの割合 explored・速さの表示の数）・押しているキー keys・描く物の数 buf（置いた文字の数 dn・生きている粒子の数 pN）。古い JS は clock.time・vfx.shake・ui.started のように欄で読み書きする。player から keys までは丸ごと入れ替えないので名前のまま。buf は入れ物）
+                     screens：マウスを捕まえる tryLock・「クリックで視点操作に戻る」の一言 updateResume・視点 setCamMode・音量 sndToggle、particles：粒子を出す spawn・消す killP と、世界の中に文字を置く dyn（配列も）、legend：今の探索の伝説の物 getLegend と状態の表示の1行・伝説の物の読み方（legendOfBranch・legendAll・descentSealed）と世界の中に描く drawLegendWorld、
+                     lightmap：マスの明るさ cellLight と天井の高さ ceilAt（状態に頼る。灯りの計算そのものは light）、
+                     fixtures：階に置いてある物を描く（灯りの備品 drawFixtures・扉 drawDoors・泉 drawSprings・墓 drawGraves・クモの巣 drawWebs）と巣に触れた時 webTouch、
+                     fx：火と術の跡を描く（火 drawFire・凍らせた水 drawFrozen・稲妻 addBolt・sparkCrown・drawBoltFx・床の目印と魔法の場 drawZones）、
+                     omens：先にある物の手がかり（表 STRATUM_OMEN など・computeOmen・omenOf・drawOmens）と階段の封（stairsGuarded・drawStairSeal）
+src/lib/state.ts     ゲームの状態の入れ物（分野ごと：clock＝時計（ゲームの時刻 time）、blaze＝火と地面のマス（fire・fuel・burnt・scent・凍らせた水 frozen など）、fight＝戦い（飛ぶ物 projs・光線・毒の霧・魔法の場・遅れて起きること・雨・床の目印・ヒットストップ・稲妻など）、vfx＝揺れと光り、ui＝画面の開け閉め（started・camMode・invOpen・近くの祭壇 altarNear・装備の画面で選んでいるルーン packSel・下の一言 hintHTML・メニューの確かめ待ち・マウスを捕まえられなかったか plFailed・3人称のカメラの位置 camPos・装備の画面を開けた時の両手 packSnap など）、adv＝今の探索（runSeed・lvl・dead・年代記 HIST など）、gear＝手と詠唱（hands・bag・castSt など）、here＝今いる場所と階の中身（D・depth・branch・monsters・見えたマス・部屋の出来事 events・川のマス riverCells・最深部の状態 finalSt・その階で一度だけの巣と修復機の伝言の旗 webMsg など）、saved＝保存する記録（META・BOOK・RSEEN・SEEN・DEVALL と、今の探索の伝説の物 LEGEND）、player・placeMem・伝言の一覧 msgs・音 SND・忍び足 stealth・手元の灯り lantern・表示の数 hudInfo（今の階の見たマスの割合 explored・速さの表示の数）・押しているキー keys・描く物の数 buf（置いた文字の数 dn・生きている粒子の数 pN）。古い JS は clock.time・vfx.shake・ui.started のように欄で読み書きする。player から keys までは丸ごと入れ替えないので名前のまま。buf は入れ物）
 src/lib/generate.ts  迷宮の生成（generateLevel。「入力 → 結果」の形。入力 GenInput・古い JS の物 GenEnv・結果 GenResult と、部屋 Room などの型）
 src/lib/bodies/*.ts  生き物の形（build：種類から形を選んで作る buildForm と、人型・四つ足の見た目の特徴、表 MTYPES に見た目を書き足す addLooks、kit：点の型と道具 q2・q3、
                      small・beasts・lords：各生き物の形と忘れられた獣（図鑑の見本 beastSamples も）、bosses：主の形（不死の王・蜘蛛の女王・ナーガの女王・古竜・深みの主・王の影の二つ目の姿）、
@@ -54,6 +57,9 @@ tools/sourcemap.mjs  ソースマップの読み書き（自前の小さな道�
 tools/lint-game.mjs  src/game/ をつないで構文と lint を調べ、場所を元のファイルの行で出す（読んだ名前の宣言し直しと、状態の入れ物の名前の宣言も止める。入れ物の名前は src/lib/state.ts の export から取る）
 tools/state-move.mjs 状態を入れ物に移す道具：古い JS の一番外の状態を、src/lib/state.ts の入れ物の欄に移す書き換え（名前の見分けは eslint-scope）。単体テストは tests/unit/state-move.test.mjs（小さな見本で確かめる）
 tools/legacy-eval.mjs  テストの道具：古い JS のトップレベルの宣言を名前で取り出して評価する（移す前の古い関数を取り出して、新しい関数と結果を比べる。まだ古い JS にある関数を単体テストで本物のまま使う。型は .d.mts）
+tools/same-code.mjs  移した関数が、移す前の古い関数と「同じ文」かを、構文の木で確かめる道具（型を外し、型のための決まった書き換えを元に戻して比べる。
+                     規則と使い方はファイルの頭。古い JS は git の版（--rev）から読み、状態を移した名前は --state か --auto-state で古い側にも同じ書き換えをする。
+                     PR の CI も、元の版と比べて走らせる）。単体テストは tests/unit/same-code.test.mjs
 tools/where.mjs      組み立てた JS の場所 → src/game/ のどのファイルの何行目か（ソースマップで戻す）
 tools/map.mjs        ゲーム本体の地図（ファイルごとの行の数と見出し）
 tools/serve.mjs      静的ファイルの小さなサーバー
@@ -84,6 +90,9 @@ tests/unit/ui.test.mjs  伝言・下の HUD・手の枠・保存・ルーンの�
                      たくさんの場合を作る ui-cases.mjs を使う
 tests/unit/status.test.mjs  状態の表示・気配・年代記・操作の案内・魔導書・見つかった時・物音・立ち止まって調べる・伝説の物・マスの明るさの単体テスト。
                      たくさんの場合を作る status-cases.mjs（Node で本物の迷宮を生成し、偽の画面の部品に書く。迷宮の生成を変えると、この指紋も変わる）を使う
+tests/unit/draw.test.mjs  階に置いてある物と、火と術の跡を描く処理・先にある物の手がかりと階段の封・伝説の物の読み方と描く処理・特別な階の場所・天井の高さの単体テスト。
+                     たくさんの場合を作る draw-cases.mjs（Node で本物の迷宮を生成し、全部の種類の備品・巣・床の物・稲妻・生き物を足す。迷宮の生成を変えると、この指紋も変わる）を使う
+tests/unit/same-code.test.mjs  tools/same-code.mjs の単体テスト（規則ごとに同じと言う物・違うと言う物、抜けた文・係数・比べ方・乱数を引く順番の違いを見つけるか）
 tests/unit/screens.test.mjs  粒子と置く文字・頭の上の印・装備の画面の開け閉めと付け替えの詠唱・マウスを捕まえる・視点・音量の単体テスト。たくさんの場合を作る screens-cases.mjs
                      （偽の画面の部品が、したことを記録する。マウスを捕まえる時の返し方も変える）を使う
 tests/unit/bodies.test.ts  生き物の形の性質（点の座標が有限か・文字の番号が表の中か・眠った獣の形・深みの主の触手）と、src/lib/bodies/ の各生き物の形が移す前と同じ乱数で同じ形になるか
@@ -102,8 +111,8 @@ pnpm-workspace.yaml  pnpm のサプライチェーン対策（公開24時間未�
 .node-version        Node の版（26.13.1）。CI・SessionStart hook・Cloudflare が読む
 wrangler.jsonc       Cloudflare Workers（静的アセット）の設定。公開は dist/
 .claude/settings.json  権限と hooks
-.github/workflows/ci.yml  確かめるだけの CI。pnpm check（ジョブ static）と、ブラウザのテストと画面写真の比較（ジョブ browser。Chromium は headless shell だけ入れる）を別のランナーで同時に走らせ、
-                     ジョブ check が2つの結果をまとめる（ブランチの保護で必須にするのは check だけでよい）。どれも違えば失敗
+.github/workflows/ci.yml  確かめるだけの CI。pnpm check（ジョブ static。PR では、移した関数が移す前と同じ文かの比べ合わせ tools/same-code.mjs も）と、ブラウザのテストと画面写真の比較
+                     （ジョブ browser。Chromium は headless shell だけ入れる）を別のランナーで同時に走らせ、ジョブ check が2つの結果をまとめる（ブランチの保護で必須にするのは check だけでよい）。どれも違えば失敗
 .github/workflows/dependency-review.yml  PR で増える依存の脆弱性とライセンス
 .github/workflows/codeql.yml  CodeQL（JavaScript の静的解析。PR と毎週）
 .github/dependabot.yml  依存の更新の PR（Dependabot。毎週。公開から1日たった版だけ。three.js と Playwright は minor 以上を手で上げる）
@@ -180,7 +189,16 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
    src/lib/ のファイルの頭の「もとは src/game/〜」と、古い JS の「〜は src/lib/xx.ts」の行は、移している間の手がかり。古い JS を全部移し終えたら消す。
    消し忘れると、包みの中の古い定義が import を黙って隠す。lint-game（pnpm check と編集直後の hook）が、包みの一番外での宣言をエラーにして止める
    （関数の中で同じ名前を使い直すのは、その中だけのことなので止めない。色の名前の `EYE` など）。
-3. 移す前の実装と、たくさんの入力で同じ結果になることを確かめる（Node 26 は .ts をそのまま動かせる。古い関数は git の版から取り出す）。
+3. 移した関数が、移す前と同じ文かを `node tools/same-code.mjs --rev origin/main --auto-state src/lib` で確かめる（違いが0、比べていない名前が無いこと。
+   比べるのは古い JS から消えた名前だけ。状態を入れ物に移した名前は --auto-state が見つける（src/lib/state.ts の入れ物に初めの値を書いた欄から）。
+   見つからない時は --state 入れ物:名前,… で渡す。古い JS でも使われていなかった物や、呼ぶ所も一緒に消した物（今はどこからも使われていない物）は、
+   「消した」と出して止めない）。PR の CI も同じことをする。移す時は名前を変えない（変えると、古い名前がどこからも使われなくなり「消した」に見えて、比べない）。
+   移す PR では動きを変えない。変えたい時は、移す PR を入れてから別の PR で変える（同じ PR で変えると、CI の比べ合わせが止める。
+   写し漏れを直して元の動きに戻すのは止まらない）。道具が出す「人が確かめる一覧」は、1件ずつ確かめ、一覧と確かめた結果を PR の説明に書く。
+   型のための書き換えは、道具の規則（nth・lookup・must・level()・算術の中の `?? NaN` など。ファイルの頭）の形だけにする。規則に無い書き換えは違いとして出るので、
+   写し方を規則に合わせる（無い値をそのまま渡す・返す所は `?? NaN` ではなく `nth`・`must`）。「先に読む」（`const D = here.D` など）は、道具が出す一覧を見て、
+   間で中身が変わらないことを確かめる。道具は通るかどうかに関係なく全部の行を見るので、写し漏れ・係数・比べ方・乱数を引く順番の違いはここで見つける。
+   そのうえで、移す前の実装と、たくさんの入力で同じ結果になることを確かめる（規則と、状態の入れ物の読み書きを確かめるため。Node 26 は .ts をそのまま動かせる。古い関数は git の版から取り出す）。
    乱数を引く順番を変えると、同じシードで違う結果になる。移す前の値を、単体テスト（tests/unit/*.test.ts）に残す。
    本物の型に合わせられない偽物を使うテスト（音の偽の Web Audio など）は、`as` を使わないように .mjs で書く（その分、型では確かめない）。
    移した物が、まだ古い JS にある関数を使う時は、テストで `tools/legacy-eval.mjs` の legacyValues から本物を取り出す。
@@ -188,7 +206,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
    （古い関数も、TypeScript の状態の入れ物を同じ物として読む）。比べ方の見本は、tests/unit/gear.test.ts の頭にある。
    迷宮の生成は Node とブラウザで同じ迷宮になる（混ぜるのは shuffle）。生成に関わる変更は、Node の単体テストの指紋（generate.test.ts。欄の並びによらない）で、
    前の版と作り比べる。意図して迷宮を変えた時は、ブラウザの `__test.gen` でも Node と同じ指紋になることを確かめてから、指紋を作り直す
-   （生成した迷宮を使う place.test.ts と status.test.mjs の指紋も変わるので、一緒に作り直す）。
+   （生成した迷宮を使う place.test.ts・status.test.mjs・draw.test.mjs の指紋も変わるので、一緒に作り直す）。
 4. `pnpm fmt`・`pnpm check`・`pnpm test`（画面写真の比較も含む。画素まで同じはず）。
 - 型を外すだけで組み立てる（Vite）。enum・namespace など、型を外すだけでは動かない書き方は使わない（`erasableSyntaxOnly`）。
 - import は `.ts` まで書く（`./rng.ts`）。`noUncheckedIndexedAccess` なので、配列の要素は `undefined` かもしれない物として扱う。
@@ -266,27 +284,27 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 |---|---|
 | 00-test-mode | テスト用モード（`TEST`、時計、乱数） |
 | 01-title | タイトルのロゴ。ロゴの絵 LOGO_ART・TITLE_LINES は src/lib/title.ts |
-| 02-constants | 特別な階の場所（interAt）。生き物の表 MTYPES は src/lib/creatures.ts。層・テーマ・支道と異界の中身・迷宮の乱数・迷宮の大きさ・タイル・灯りの計算などは src/lib/。飾りの文字の並び（RUNESET など）は src/lib/glyphs.ts、今いる場所の名前 placeLabel は src/lib/status.ts |
+| 02-constants | 特別な階の場所 interAt・interAfter は src/lib/levels.ts。生き物の表 MTYPES は src/lib/creatures.ts。層・テーマ・支道と異界の中身・迷宮の乱数・迷宮の大きさ・タイル・灯りの計算などは src/lib/。飾りの文字の並び（RUNESET など）は src/lib/glyphs.ts、今いる場所の名前 placeLabel は src/lib/status.ts |
 | 03-vaults-history | 歴史の飾り（壁の絵 ARTS）。探索ごとの年代記の中身 HIST は src/lib/state.ts の adv、洞窟の形と宝物庫の絵は src/lib/vaults.ts、makeHistory は src/lib/history.ts、岩・鉱脈・宝物庫の壁の高さは src/lib/world.ts |
 | 04-generate | 迷宮の生成の呼び出し口（generate）：今のゲームの状態から入力を作り、src/lib/generate.ts の generateLevel を呼び、結果（階・主の種類・忘れられた獣）をゲームの状態に入れる |
 | 05-renderer | 描画（シェーダー、水面、文字の絵の表、置いた文字と粒子を GPU に渡す部品）。シェーダーのソースと描画用の配列の大きさは src/lib/shaders.ts、文字を置く dyn・粒子を出す spawn・消す killP とその配列は src/lib/particles.ts、その数 buf は src/lib/state.ts |
-| 06-world | 世界の組み立て（buildWorld）と、組み立てた物の状態（区切りごとの壁と床の形・壁の向こうを隠す板 occMesh・入った部屋 visitedRooms など）。今の階の中身 D・depth・monsters・player などと、描いた文字の数 glyphCount・chunksDrawn（hudInfo）は src/lib/state.ts。画面の下の一言 showHint は src/lib/status.ts、sstep は src/lib/math.ts、CHUNK は src/lib/world.ts、flowW は src/lib/math.ts |
+| 06-world | 世界の組み立て（buildWorld）と、組み立てた物の状態（区切りごとの壁と床の形・壁の向こうを隠す板 occMesh・入った部屋 visitedRooms など）。今の階の中身 D・depth・monsters・player などと、描いた文字の数 glyphCount・chunksDrawn（hudInfo）は src/lib/state.ts。画面の下の一言 showHint は src/lib/status.ts、sstep は src/lib/math.ts、CHUNK は src/lib/world.ts、flowW は src/lib/math.ts、天井の高さ ceilAt は src/lib/lightmap.ts |
 | 07-bodies-lords | 表 MTYPES に見た目を書き足す（addLooks を呼ぶだけ。addLooks は src/lib/bodies/build.ts）。生き物の形を作る buildForm は src/lib/bodies/build.ts、まわりの飾り・王の影の変身・姿を変える途中は src/lib/bodies/auras.ts、各生き物の形は src/lib/bodies/ |
 | 11-monster-move | 生き物を作る（makeMonster）、歩ける所（canStep）、行き先（chooseNext） |
-| 13-creatures | 小さな生き物、群れ、大きな生き物の動き（updateMonster）、描く（drawMonster）。頭の上の印 drawMark は src/lib/status.ts、主などのまわりの飾り（lichAura など）と姿を変える途中 drawMorph は src/lib/bodies/auras.ts、古い形は src/lib/bodies/small.ts、遠吠えと警報の音 sHowl・sAlarm は src/lib/audio.ts |
-| 14-lights-fixtures | 灯り、備品、扉。LANTERN は src/lib/light.ts、マスの明るさ cellLight は src/lib/lightmap.ts |
-| 15-sound-fire | ガス、火、火花、部屋の出来事、粒子を動かす。音量の切り替え sndToggle は src/lib/screens.ts、音を鳴らす処理（sndInit・効果音・まわりの音 sndUpdate など）は src/lib/audio.ts、SND_NAME・sEnv は src/lib/sound.ts、cpos・FIRE_TYPES は src/lib/world.ts。火と地面のマスの状態は src/lib/state.ts の blaze、音 SND も src/lib/state.ts |
+| 13-creatures | 小さな生き物、群れ、大きな生き物の動き（updateMonster）、描く（drawMonster）。頭の上の印 drawMark は src/lib/status.ts、主などのまわりの飾り（lichAura など）と姿を変える途中 drawMorph は src/lib/bodies/auras.ts、古い形は src/lib/bodies/small.ts、遠吠えと警報の音 sHowl・sAlarm は src/lib/audio.ts、クモの巣を描く drawWebs と巣に触れた時 webTouch は src/lib/fixtures.ts |
+| 14-lights-fixtures | 灯り（種類ごとの揺らぎ flicker と、近い灯りを選んで描画に渡す updateLights）。LANTERN は src/lib/light.ts、マスの明るさ cellLight は src/lib/lightmap.ts、備品を描く drawFixtures と扉を描く drawDoors は src/lib/fixtures.ts |
+| 15-sound-fire | ガス、火、火花、部屋の出来事、粒子を動かす。音量の切り替え sndToggle は src/lib/screens.ts、音を鳴らす処理（sndInit・効果音・まわりの音 sndUpdate など）は src/lib/audio.ts、SND_NAME・sEnv は src/lib/sound.ts、cpos・FIRE_TYPES は src/lib/world.ts。火と地面のマスの状態は src/lib/state.ts の blaze、音 SND も src/lib/state.ts、火を描く drawFire は src/lib/fx.ts |
 | 16-view-input | 視界とミニマップ、伝言の1秒ごとの描き直し、通れない所の当たり判定（solidAt：壁・崖・溶岩・柱など）、入力の状態（マウスを捕まえた・捕まえられなかった時の受け取り）。マウスを捕まえる tryLock・updateResume は src/lib/screens.ts、伝言 msg・renderLog は src/lib/log.ts、伝言の一覧 msgs は src/lib/state.ts。ミニマップの大きさは src/lib/hud.ts、押しているキー keys は src/lib/state.ts |
 | 17-meta | 伝承・解放・墓・試練、タイトルの画面（buildIntroPanel）。UNLOCKS・META_DEF は src/lib/progress.ts、解放の確かめ（unlocked・lockedOf・weaponPool）と試練（trialOn）は src/lib/unlocks.ts、保存する記録 META などは src/lib/state.ts の saved、保存する saveMeta は src/lib/save.ts |
 | 18-level-player | 階の切り替え（newLevel）、罠、プレイヤーと生き物のダメージ（hurtPlayer・damageMonster）、当たった生き物のひるみと吹き飛び（hitReact）、生き物の近接の攻撃（monsterStrike）、死と始め直し（die・newRun）、レベルアップ（levelChoices、lvlLine。加護の表 BLESS は src/lib/progress.ts、加護の段 BL は src/lib/monsters.ts）。階のシード levelSeed は src/lib/levels.ts、生き物の強さの表 MSTAT は src/lib/creatures.ts、statOf は src/lib/monsters.ts、墓のルーン graveRune は src/lib/gear.ts。expNeed・expOf は src/lib/progress.ts、serRune は src/lib/runes.ts。TRAP_INFO は src/lib/names.ts、WEAPON・SLEEP_MULT は src/lib/runes.ts、roll は src/lib/random.ts |
 | 19-hands-runes | 手元の武器（VM_MODELS、drawViewWeapons）、性質と反応、術の中身（specOf）。ルーンを作る・ルーンの種類を選ぶ・手と持ち物の処理は src/lib/gear.ts、ルーンの名前と色と付けられるか・特性の説明 trDesc は src/lib/runes.ts。ルーンの定義 RUNE_DEF・性質の効き目 RES・TRAITS・REACT・手の枠は src/lib/runes.ts |
-| 20-chant-hits | 詠唱（beginCast、castNow…）、攻撃の当たり（applyHit）、反応、飛ぶ物。turnDir は src/lib/math.ts、sp_elem は src/lib/runes.ts。戦いの状態は src/lib/state.ts の fight |
-| 21-altars-heal | ルーンの手に入れ方（主を倒した時の祭壇）、宝物庫の褒美を取った時、祭壇の画面、回復、拾う。階ごとに祭壇とルーンを置く・祭壇の中身・番人・鍛え方・泉を置く・石碑のそばか・祭壇の画面の1行と説明と選択肢・拾ったルーンを手か袋に入れる（placeRunesForLevel・mainPathAltars・altarFill・addGuards・forgeOptions・placeSpring・nearStele・altarLine・altarDetail・altarOpts・takeRune・placeChosen など）は src/lib/altars.ts、近くの祭壇 altarNear は src/lib/state.ts の ui、RALLY_FROM は src/lib/runes.ts、ALTAR_W は src/lib/hud.ts |
-| 22-world-hints | 先にある物の手がかり（computeOmen・drawOmens：階段から漏れる光と音、支道の入口の跡、異界の門の光）、方向の矢印、床のルーン、詠唱の見た目、照準。stratumAtDepth は src/lib/strata.ts |
+| 20-chant-hits | 詠唱（beginCast、castNow…）、攻撃の当たり（applyHit）、反応、飛ぶ物。turnDir は src/lib/math.ts、sp_elem は src/lib/runes.ts。戦いの状態は src/lib/state.ts の fight、床の目印と魔法の場を描く drawZones は src/lib/fx.ts |
+| 21-altars-heal | ルーンの手に入れ方（主を倒した時の祭壇）、宝物庫の褒美を取った時、祭壇の画面、回復、拾う。階ごとに祭壇とルーンを置く・祭壇の中身・番人・鍛え方・泉を置く・石碑のそばか・祭壇の画面の1行と説明と選択肢・拾ったルーンを手か袋に入れる（placeRunesForLevel・mainPathAltars・altarFill・addGuards・forgeOptions・placeSpring・nearStele・altarLine・altarDetail・altarOpts・takeRune・placeChosen など）は src/lib/altars.ts、近くの祭壇 altarNear は src/lib/state.ts の ui、RALLY_FROM は src/lib/runes.ts、ALTAR_W は src/lib/hud.ts、泉を描く drawSprings は src/lib/fixtures.ts |
+| 22-world-hints | 方向の矢印、床のルーン、詠唱の見た目、照準。先にある物の手がかり（computeOmen・drawOmens：階段から漏れる光と音、支道の入口の跡、異界の門の光）と階段の封（stairsGuarded・drawStairSeal）は src/lib/omens.ts、墓を描く drawGraves は src/lib/fixtures.ts |
 | 23-debug | デバッグ（dbg、F2 の画面、URL の指定） |
-| 24-goal | 目的（伝説の物、最深部、王の影）、勝利、稲妻、タイトルへ戻る。王の影の大きさ shadowKingScale は src/lib/bodies/lords.ts、二つ目の姿の大きさ shadowSerpentScale は src/lib/bodies/bosses.ts。最深部か isFinal は src/lib/levels.ts、最深部の状態 finalSt は src/lib/state.ts の here、王の影の変身 transformShadow は src/lib/bodies/auras.ts、今の探索の伝説の物 getLegend と状態の表示の1行 legendLine は src/lib/legend.ts、伝説の物の表は src/lib/names.ts、jagged は src/lib/math.ts |
+| 24-goal | 目的（伝説の物、最深部、王の影）、勝利、稲妻、タイトルへ戻る。王の影の大きさ shadowKingScale は src/lib/bodies/lords.ts、二つ目の姿の大きさ shadowSerpentScale は src/lib/bodies/bosses.ts。最深部か isFinal は src/lib/levels.ts、最深部の状態 finalSt は src/lib/state.ts の here、王の影の変身 transformShadow は src/lib/bodies/auras.ts、今の探索の伝説の物 getLegend と状態の表示の1行 legendLine・伝説の物の読み方（legendOfBranch・legendAll・descentSealed）・世界の中に描く drawLegendWorld は src/lib/legend.ts、伝説の物の表は src/lib/names.ts、稲妻の見た目 addBolt・sparkCrown・drawBoltFx は src/lib/fx.ts |
 | 25-gallery | 見た物の記録、図鑑、試しの間。図鑑の主・試しの間の的の表は src/lib/names.ts、保存する saveSet と忘れられた獣の記録 loadBeasts・recordBeast は src/lib/save.ts、図鑑の見本の獣 beastSamples は src/lib/bodies/lords.ts |
-| 26-spells-hud | 術と世界（扉・氷・雷）、詠唱の声。止まっているか isPaused は src/lib/status.ts、下の HUD renderHotbar は src/lib/hotbar.ts、詠唱の声の表は src/lib/sound.ts |
+| 26-spells-hud | 術と世界（扉・氷・雷）、詠唱の声。止まっているか isPaused は src/lib/status.ts、下の HUD renderHotbar は src/lib/hotbar.ts、詠唱の声の表は src/lib/sound.ts、凍らせた水を描く drawFrozen は src/lib/fx.ts |
 | 27-rune-screen | メニュー（renderMenu・setMenu・menuAct・menuArmReset）。魔導書 renderBook と立ち止まって調べる updateSearch は src/lib/status.ts。装備の画面を作る renderInv と中のボタンの処理（選ぶ・はめる・袋のページ・ビルドの保存と呼び出し applyBuild）・開け閉め setInv・付け替えの詠唱 startSwap は src/lib/inventory.ts、装備の画面の状態（選んでいるルーン packSel・開けた時の両手 packSnap など）は src/lib/state.ts の ui。視点 setCamMode・音量 sndToggle・マウスを捕まえる tryLock は src/lib/screens.ts、枠 boxText は src/lib/text.ts |
 | 28-camera-player | 1人称・3人称、プレイヤーの動き（updatePlayer）、霧と目の慣れ（updateAtmosphere：霧の濃さ・露出・溶岩の近くの熱のゆらぎ・水中の見え方）。視点を変える setCamMode は src/lib/screens.ts、3人称のカメラの位置 camPos は src/lib/state.ts の ui、AVATAR_TY は src/lib/names.ts |
 | 29-look | 見た時の説明（look）。説明の表と lookLine は src/lib/names.ts |

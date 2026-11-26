@@ -63,29 +63,7 @@ function sShriek(x,z){ if(!sndReady())return; const t=SND.ctx.currentTime, o=sOu
     g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.1,t+0.03); g.gain.exponentialRampToValueAtTime(0.001,t+1.0); os.connect(g); g.connect(o); os.start(t); os.stop(t+1.05); } }
 
 // ---------------------------------------------------------------- packs and hunters: spiders and their webs, hounds on your scent, snapjaw camps, ancient machines
-let webMsg=false, webBurnMsg=false, repairMsg=false;
-function drawWebs(t){
-  if(!here.D.webs)return;
-  for(const w of here.D.webs){
-    if(w.gone)continue;
-    const [x,z]=cpos(w.i), dd=Math.hypot(x-player.x,z-player.z); if(dd>30)continue;
-    if(blaze.fire[w.i]>0.1){ w.gone=true; for(let q=0;q<30;q++){ const a=mr()*6.28; spawn(x,0.6+mr()*1.6,z,Math.cos(a)*0.6,0.4+mr(),Math.sin(a)*0.6,1+mr(),G(mpick(['*','.','\''])),0.14,2.4,1.2,0.4,0); }
-      if(!webBurnMsg&&dd<20){ webBurnMsg=true; msg('<b style="color:#ff9a4a">%</b>クモの巣が、ぱちぱちと音を立てて燃え落ちた。'); } continue; }
-    const yaw=w.ax===0?Math.PI/2:0, tX=Math.cos(yaw), tZ=-Math.sin(yaw), sh=0.85+0.15*Math.sin(t*1.3+w.i), k=(w.shake>0?1.8:1)*sh;
-    if(w.shake>0)w.shake-=1/60;
-    const jit=w.shake>0?Math.sin(t*40)*0.04:0;
-    for(let s2=0;s2<8;s2++){ const a=s2/8*Math.PI*2, ch=Math.abs(Math.cos(a))>0.92?'-':Math.abs(Math.sin(a))>0.92?'|':(Math.cos(a)*Math.sin(a)>0?'/':'\\');
-      for(let r=1;r<=4;r++){ const u=Math.cos(a)*r*0.24+jit, v=Math.sin(a)*r*0.24; dyn(x+tX*u,1.3+v,z+tZ*u,G(ch),0.2,0.8*k,0.75*k,1.0*k,2,yaw); } }
-    for(const rr of [0.42,0.84])for(let s2=0;s2<12;s2++){ const a=s2/12*Math.PI*2+0.26; dyn(x+tX*(Math.cos(a)*rr+jit),1.3+Math.sin(a)*rr,z+tZ*(Math.cos(a)*rr+jit),G(s2%3?'.':'*'),0.14,1.1*k,1.0*k,1.4*k,2,yaw); }
-  }
-}
-function webTouch(i){
-  const w=here.D.webAt&&here.D.webAt.get(i); if(!w||w.gone)return false;
-  if(clock.time-(w.touchT||-99)>3){ w.touchT=clock.time; w.shake=1.2; sSqueak(player.x,player.z);
-    for(const m of here.monsters){ if(!m.ty.spider||Math.hypot(m.x-player.x,m.z-player.z)>24)continue; m.sleep=false; m.aware=Math.max(m.aware,1.05); m.goal=[(i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL]; m.goalT=clock.time+12; }
-    if(!webMsg){ webMsg=true; msg('<b style="color:#d8c8ff">%</b>光る糸に絡まった！ 巣全体が震えている……。炎なら、糸を焼き払える。'); } }
-  return true;
-}
+// クモの巣を描く drawWebs と触れた時の webTouch は src/lib/fixtures.ts（src/game/imports.mjs で読む）。その階で一度だけの伝言の旗は src/lib/state.ts の here
 // hounds follow the freshest scent; water washes it away
 function houndScent(m){
   let best=null, bs=clock.time-40;
@@ -101,7 +79,7 @@ function machineWork(m,dt){
       m.work=(m.work||0)+dt; m.moving=0;
       if(mr()<dt*10)spawn(jx+(mr()-0.5)*0.4,0.3+mr()*0.6,jz+(mr()-0.5)*0.4,(mr()-0.5)*0.8,0.6+mr(),(mr()-0.5)*0.8,0.5,G(mpick(['*','.','+'])),0.1,ty.col[0]*2,ty.col[1]*2,ty.col[2]*2,0);
       if(m.work>(ty.critter==='engineer'?3:1.8)){
-        if(ty.critter==='engineer'){ const d=here.D.doors[m.job]; if(!d.gone){ m.job=-1; m.work=0; return true; } d.gone=false; d.o=0; blaze.fuel[d.i]=1.4; blaze.burnt[d.i]=0; uploadCells(); if(!repairMsg&&m.visible){ repairMsg=true; msg(`<b style="color:${css(ty.col)}">R</b>${mname(m)}が、焼け落ちた扉を黙々と作り直した。`); } }
+        if(ty.critter==='engineer'){ const d=here.D.doors[m.job]; if(!d.gone){ m.job=-1; m.work=0; return true; } d.gone=false; d.o=0; blaze.fuel[d.i]=1.4; blaze.burnt[d.i]=0; uploadCells(); if(!here.repairMsg&&m.visible){ here.repairMsg=true; msg(`<b style="color:${css(ty.col)}">R</b>${mname(m)}が、焼け落ちた扉を黙々と作り直した。`); } }
         else { blaze.burnt[m.job]=0; blaze.fire[m.job]=0; uploadCells(); }
         m.job=-1; m.work=0;
       }

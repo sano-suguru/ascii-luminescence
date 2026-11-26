@@ -1,10 +1,13 @@
-// 伝説の物（もとは src/game/24-goal.js）。状態の入れ物 saved（今の探索の伝説の物 LEGEND）・adv（探索のシードと年代記）に頼る物。
-import { lookup, nth } from './array.ts';
+// 伝説の物（もとは src/game/24-goal.js）。状態の入れ物 saved（今の探索の伝説の物 LEGEND）・adv（探索のシードと年代記）・here（今いる場所）に頼る物。
+// 伝説の物の読み方（どの支道にあるか・3つそろったか・最深部の手前の封）と、世界の中に描く物（床の伝説の物・封の印）。
+import { lookup, must, nth } from './array.ts';
 import { cssOf } from './color.ts';
+import { G } from './glyphs.ts';
 import { LEGEND_KINDS, LEGEND_ORDER } from './names.ts';
+import { dyn } from './particles.ts';
 import { mulberry32 } from './rng.ts';
-import { type Legend, adv, saved } from './state.ts';
-import { BRANCHES } from './world.ts';
+import { type Legend, adv, here, player, saved } from './state.ts';
+import { BRANCHES, FINAL_DEPTH, cpos } from './world.ts';
 
 /**
  * 今の探索の伝説の物（燭台・鐘・鏡。名前と言い伝えは年代記から、ある支道は探索のシードで決める）。はじめて読んだ時に作って saved.LEGEND に入れる。
@@ -67,4 +70,54 @@ export function legendLine(): string {
       return has ? `<span class="glow" style="color:${cssOf(kd.col)}">${kd.ch}</span>` : `<span class="dim">${kd.ch}</span>`;
     }).join(' ') + `  <span class="lab">${LEGEND_ORDER.map((k) => lookup(LEGEND_KINDS, k).name).join('・')}</span>`
   );
+}
+
+/** 支道 bk にある伝説の物の種類。無ければ（年代記がまだ無い時も）null */
+export const legendOfBranch = (bk: string): string | null => {
+  const L = getLegend();
+  if (!L) return null;
+  return LEGEND_ORDER.find((k) => lookup(L.items, k).branch === bk) || null;
+};
+/** 伝説の物が3つそろったか */
+export const legendAll = (): boolean => {
+  const L = getLegend();
+  return !!L && L.have.size >= 3;
+};
+/** 最深部の手前の階で、下りが封じられているか（伝説の物が3つそろうまで。支道・異界にはない） */
+export const descentSealed = (): boolean => here.depth === FINAL_DEPTH - 1 && !here.branch && !here.realm && !legendAll();
+/** 伝説の物を世界の中に描く：床に落ちている伝説の物（光の柱）と、封じられた下り階段のまわりの3つの印（手にした物は光る） */
+export function drawLegendWorld(t: number): void {
+  const L = getLegend();
+  if (!L || !here.D) return;
+  const D = here.D;
+  for (const it of D.items || []) {
+    if (it.taken || it.kind !== 'legend') continue;
+    const [x, z] = cpos(it.i),
+      kd = lookup(LEGEND_KINDS, must(it.legend, '伝説の物の種類')),
+      c = kd.col,
+      b = 2.4 + 0.6 * Math.sin(t * 2.5);
+    dyn(x, 1.0 + Math.sin(t * 1.6) * 0.08, z, G(kd.ch), 0.7, nth(c, 0) * b, nth(c, 1) * b, nth(c, 2) * b);
+    for (let k = 0; k < 10; k++) {
+      const a = t * 0.9 + (k / 10) * Math.PI * 2;
+      dyn(x + Math.cos(a) * 0.5, 0.3 + k * 0.04, z + Math.sin(a) * 0.5, G('*'), 0.1, nth(c, 0) * 2, nth(c, 1) * 2, nth(c, 2) * 2);
+    }
+    for (let y = 0; y < 10; y++)
+      dyn(x, 1.4 + y * 0.5, z, G('|'), 0.2, nth(c, 0) * (1.2 - y * 0.1), nth(c, 1) * (1.2 - y * 0.1), nth(c, 2) * (1.2 - y * 0.1));
+  }
+  if (descentSealed()) {
+    const [x, z] = cpos(D.stairs);
+    if (Math.hypot(x - player.x, z - player.z) < 30)
+      LEGEND_ORDER.forEach((k, j) => {
+        const a = (j / 3) * Math.PI * 2 + t * 0.3,
+          kd = lookup(LEGEND_KINDS, k),
+          has = L.have.has(k),
+          c = kd.col,
+          br = has ? 2.4 : 0.35;
+        dyn(x + Math.cos(a) * 1.1, 0.9, z + Math.sin(a) * 1.1, G(kd.ch), 0.4, nth(c, 0) * br, nth(c, 1) * br, nth(c, 2) * br);
+        for (let q = 0; q < 8; q++) {
+          const b2 = a + q * 0.09;
+          dyn(x + Math.cos(b2) * 1.1, 0.12, z + Math.sin(b2) * 1.1, G('.'), 0.1, 0.5, 0.45, 0.7);
+        }
+      });
+  }
 }
