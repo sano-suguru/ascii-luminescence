@@ -10,10 +10,11 @@
 //   3. 音だけの処理の中で引く（if(…sndReady()){…} の中と、if(!sndReady())return で始まる関数の中）
 //   4. 次に鳴らす時刻を、引いた値で決める（if(clock.time>t0){ t0=clock.time+6+mr()*5; sPing(1); }）。次に鳴らす時刻と見るのは、
 //      入れる文が、時刻（clock.time・performance.now()・currentTime）と入れる先を比べる if の中（then か else）か、その if(…)return の後ろにあり、
-//      その範囲が音のことだけをする時（音を鳴らす呼び出し・入れる先への代入・音の引数と入れる先への代入にだけ使う変数の宣言・条件も中身も音だけの if。
+//      その範囲と、時刻で決まるほかの所（if のもう片方と、if(…)return の return までの中身）が、音のことだけをする時（音を鳴らす呼び出し・入れる先への代入・音の引数と入れる先への代入にだけ使う変数の宣言・条件も中身も音だけの if。
 //      if の条件に sndReady() があれば、中身は問わない）。比べた結果や入れる先を変数に入れてから比べる形（const due = clock.time > m.t; if(due){…}）も数える。
-//      入れる文がある関数の中身が音のことだけをする時は、その関数を呼ぶ所が、時刻と入れる先を比べる if で決められている形も数える
-//      （if(clock.time>m.dripT) dripNow(m) と、dripNow の中の m.dripT=clock.time+mr()*3。入れる先が欄の時だけ。名前は関数ごとに別の物なので）。
+//      入れる文がある関数の中身が音のことだけをする時は、その関数を呼ぶ所（全部のファイル）が、時刻と入れる先を比べる if で決められている形も数える
+//      （if(clock.time>mon.dripT) dripNow(mon) と、dripNow の中の m.dripT=clock.time+mr()*3。入れる先の頭の名前が引数なら、呼ぶ所で渡した式に置き換えて比べる。
+//      入れる先が欄の時だけ。名前は関数ごとに別の物なので）。
 //      入れる先は、名前なら同じ宣言の物、欄（m.hissT など）なら同じ書き方の物と比べる。音のほかのことも決める時刻（攻撃の待ち時間など）は、
 //      見た目やゲームの時刻なので見ない。値は、時刻と同じ式の中の物だけ（オブジェクトと配列は、値が入っている欄・要素の中に時刻がある時だけ）
 //   5. 引いた値を変数に入れてから、1〜4の所で使う（const v = mr(); … sDrip(x, z, v)）。変数から変数へ移す形（const a = mr(); const b = a * 2;）と、
@@ -166,6 +167,112 @@ export function soundRandomCheck(files, audioNames) {
   const exits = (st) =>
     ['ReturnStatement', 'ContinueStatement'].includes(st.type) ||
     (st.type === 'BlockStatement' && st.body.length > 0 && exits(st.body.at(-1)));
+  // 次に鳴らす時刻の入れ先か（4つ目の形。決まりはファイルの頭）。呼ぶ所をほかのファイルでも探すので、名前がどの宣言を指すかと親の節を、先に全部のファイルで作る
+  for (const p of parsed) {
+    p.sm = scopes(p.ast);
+    p.parent = new Map();
+    walk(p.ast, (n) => {
+      for (const k of kids(n)) p.parent.set(k, n);
+    });
+    p.resolvedOf = new Map(); // 名前の節 → 変数（一番外で宣言されていない名前は null）
+    for (const sc of p.sm.scopes) for (const r of sc.references) p.resolvedOf.set(r.identifier, r.resolved);
+  }
+  // 入れる先 t は { node, text }。node は名前の時だけ（同じ宣言の物と比べる）。欄（m.hissT など）は、同じ書き方 text の物と比べる
+  const same = (p, id, target) =>
+    id.type === 'Identifier' && id.name === target.name && (p.resolvedOf.get(id) ?? null) === (p.resolvedOf.get(target) ?? null);
+  const mentions = (p, e, t) => {
+    if (!t.node) {
+      const re = new RegExp(`(?<![\\w$.])${t.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w$])`);
+      return re.test(textOf(p, e));
+    }
+    let found = false;
+    walk(e, (x) => {
+      if (same(p, x, t.node)) found = true;
+    });
+    return found;
+  };
+  // 時刻と入れる先を比べる条件か。比べた結果や入れる先を変数に入れてから使う形（const due = clock.time > m.t、const due = m.t; … clock.time > due）も数える
+  const gateTest = (p, test, t) => {
+    const timed = TIME.test(textOf(p, test));
+    if (timed && mentions(p, test, t)) return true;
+    let flag = false;
+    walk(test, (x) => {
+      const v = x.type === 'Identifier' ? p.resolvedOf.get(x) : null;
+      const init = v?.defs.length === 1 && v.defs[0].type === 'Variable' ? v.defs[0].node.init : null;
+      if (init && (timed || TIME.test(textOf(p, init))) && mentions(p, init, t)) flag = true;
+    });
+    return flag;
+  };
+  // 音を鳴らす呼び出しか（extra は、中身が音のことだけをする関数の名前。呼ぶ側で比べる形を見る時に使う）
+  const isSnd = (c, extra) => sound.has(nameOf(c)) || Boolean(extra?.has(nameOf(c)));
+  // 音の引数の中か、入れる先への代入の右の中か
+  const forSound = (p, id, t) => {
+    for (let x = id, up = p.parent.get(x); up; x = up, up = p.parent.get(up)) {
+      if (up.type === 'CallExpression' && sound.has(nameOf(up)) && up.arguments.includes(x)) return true;
+      if (up.type === 'AssignmentExpression' && up.right === x && textOf(p, up.left) === t.text) return true;
+    }
+    return false;
+  };
+  // 音のことだけをする文か：音を鳴らす呼び出し、入れる先への代入、音の引数と入れる先への代入にだけ使う変数の宣言、条件も中身も音だけの if
+  const soundish = (p, st, t, extra) =>
+    st.type === 'BlockStatement'
+      ? st.body.every((x) => soundish(p, x, t, extra))
+      : st.type === 'IfStatement'
+        ? soundTest(st.test) && soundish(p, st.consequent, t, extra) && (!st.alternate || soundish(p, st.alternate, t, extra))
+        : st.type === 'ExpressionStatement'
+          ? (st.expression.type === 'CallExpression' && isSnd(st.expression, extra)) ||
+            (st.expression.type === 'AssignmentExpression' && textOf(p, st.expression.left) === t.text)
+          : st.type === 'VariableDeclaration'
+            ? p.sm.getDeclaredVariables(st).every((v) => v.references.filter((r) => r.isRead()).every((r) => forSound(p, r.identifier, t)))
+            : st.type === 'ReturnStatement' || st.type === 'EmptyStatement';
+  // 時刻で決める範囲 sts と、時刻で決まるほかの所 others（if のもう片方と、if(…)return の return までの中身）。どちらも音のことだけをする時だけ
+  const region = (p, sts, others, gate, t, extra) =>
+    gateTest(p, gate.test, t) &&
+    sts.some((x) => callsIn(x).some((c) => isSnd(c, extra))) &&
+    others.every((x) => soundish(p, x, t, extra)) &&
+    (callsIn(gate.test).some((c) => nameOf(c) === 'sndReady') || sts.every((x) => soundish(p, x, t, extra)));
+  const fnName = (p, f) => {
+    const up = p.parent.get(f);
+    return f.type === 'FunctionDeclaration'
+      ? f.id?.name
+      : up?.type === 'VariableDeclarator' && up.id.type === 'Identifier'
+        ? up.id.name
+        : undefined;
+  };
+  // from（入れる文か、呼ぶ所）から上へ、同じ関数の中で、時刻と入れる先を比べる if の中（then と else）と、その if(…)return の後ろを探す。
+  // 見つからず、入れる文がある関数の中身が音のことだけをする時は、その関数を呼ぶ所でも探す（全部のファイルで。欄の時だけ。名前は関数ごとに別の物なので）。
+  // 呼ぶ所では、入れる先の頭の名前が関数の引数なら、渡した式に置き換えて比べる（dripNow(mon) なら m.dripT を mon.dripT に）
+  const timer = (p, from, t, extra = null) => {
+    let x = from;
+    for (let up = p.parent.get(x); up && !/Function/.test(x.type); x = up, up = p.parent.get(up)) {
+      if (up.type === 'IfStatement' && (up.consequent === x || up.alternate === x)) {
+        const other = up.consequent === x ? up.alternate : up.consequent;
+        if (region(p, x.type === 'BlockStatement' ? x.body : [x], other ? [other] : [], up, t, extra)) return true;
+      }
+      if (up.type === 'BlockStatement' || up.type === 'Program') {
+        const j = up.body.indexOf(x);
+        for (let i = 0; i < j; i++) {
+          const g = up.body[i];
+          if (g.type === 'IfStatement' && exits(g.consequent) && region(p, up.body.slice(i + 1), [g.consequent], g, t, extra)) return true;
+        }
+      }
+    }
+    if (extra || t.node || !/Function/.test(x.type) || x.body.type !== 'BlockStatement') return false;
+    const name = fnName(p, x),
+      body = x.body.body;
+    if (!name || !body.every((st) => soundish(p, st, t, null)) || !body.some((st) => sounds(st).length)) return false;
+    const root = /^[\w$]+/.exec(t.text)?.[0] ?? '',
+      i = x.params.findIndex((q) => q.type === 'Identifier' && q.name === root);
+    return parsed.some((q) => {
+      const calls = [];
+      walk(q.ast, (n) => n.type === 'CallExpression' && nameOf(n) === name && calls.push(n));
+      return calls.some((c) => {
+        const arg = i >= 0 ? c.arguments[i] : null;
+        if (i >= 0 && !arg) return false;
+        return timer(q, c, { node: null, text: arg ? textOf(q, arg) + t.text.slice(root.length) : t.text }, new Set([name]));
+      });
+    });
+  };
   const bad = [];
   for (const p of parsed) {
     // このファイルで自分で宣言している名前は、見た目の乱数として数えない
@@ -183,7 +290,7 @@ export function soundRandomCheck(files, audioNames) {
     };
 
     // 引いた値を入れた変数（関数の中で宣言した物）。書き込む式に、見た目の乱数か、引いた値を入れた変数があれば、その変数も引いた値を入れた物
-    const sm = scopes(p.ast);
+    const sm = p.sm;
     // 一番外（モジュールと、古い JS を包んだ関数）の変数は追わない（ほかのファイルからも読まれうるので、読む所を全部は見られない）
     const wrapper = p.off ? p.ast.body[0].expression : null;
     const vars = sm.scopes
@@ -246,101 +353,6 @@ export function soundRandomCheck(files, audioNames) {
     const refVar = new Map(); // 読む所の名前の節 → 変数
     for (const v of tainted) for (const r of v.references) if (r.isRead()) refVar.set(r.identifier, v);
     const visual = (n) => direct(n).concat([...refVar.keys()].filter((id) => inside(id, n)));
-    // 次に鳴らす時刻の入れ先か（4つ目の形。決まりはファイルの頭）。入れる先は、名前なら同じ宣言の物、欄（m.hissT など）なら同じ書き方の物と比べる
-    const parent = new Map();
-    walk(p.ast, (n) => {
-      for (const k of kids(n)) parent.set(k, n);
-    });
-    const resolvedOf = new Map(); // 名前の節 → 変数（一番外で宣言されていない名前は null）
-    for (const sc of sm.scopes) for (const r of sc.references) resolvedOf.set(r.identifier, r.resolved);
-    const same = (id, target) =>
-      id.type === 'Identifier' && id.name === target.name && (resolvedOf.get(id) ?? null) === (resolvedOf.get(target) ?? null);
-    const mentions = (e, target) => {
-      if (target.type !== 'Identifier') {
-        const t = textOf(p, target).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        return new RegExp(`(?<![\\w$.])${t}(?![\\w$])`).test(textOf(p, e));
-      }
-      let found = false;
-      walk(e, (x) => {
-        if (same(x, target)) found = true;
-      });
-      return found;
-    };
-    // 時刻と入れる先を比べる条件か。比べた結果や入れる先を変数に入れてから使う形（const due = clock.time > m.t、const due = m.t; … clock.time > due）も数える
-    const gateTest = (test, target) => {
-      const timed = TIME.test(textOf(p, test));
-      if (timed && mentions(test, target)) return true;
-      let flag = false;
-      walk(test, (x) => {
-        const v = x.type === 'Identifier' ? resolvedOf.get(x) : null;
-        const init = v?.defs.length === 1 && v.defs[0].type === 'Variable' ? v.defs[0].node.init : null;
-        if (init && (timed || TIME.test(textOf(p, init))) && mentions(init, target)) flag = true;
-      });
-      return flag;
-    };
-    // 音を鳴らす呼び出しか（extra は、中身が音のことだけをする関数の名前。呼ぶ側で比べる形を見る時に使う）
-    const isSnd = (c, extra) => sound.has(nameOf(c)) || Boolean(extra?.has(nameOf(c)));
-    // 音の引数の中か、入れる先への代入の右の中か
-    const forSound = (id, target) => {
-      for (let x = id, up = parent.get(x); up; x = up, up = parent.get(up)) {
-        if (up.type === 'CallExpression' && sound.has(nameOf(up)) && up.arguments.includes(x)) return true;
-        if (up.type === 'AssignmentExpression' && up.right === x && textOf(p, up.left) === textOf(p, target)) return true;
-      }
-      return false;
-    };
-    // 範囲が音のことだけをするか：音を鳴らす呼び出し、入れる先への代入、音の引数と入れる先への代入にだけ使う変数の宣言、条件も中身も音だけの if
-    const soundish = (st, target, extra) =>
-      st.type === 'BlockStatement'
-        ? st.body.every((x) => soundish(x, target, extra))
-        : st.type === 'IfStatement'
-          ? soundTest(st.test) && soundish(st.consequent, target, extra) && (!st.alternate || soundish(st.alternate, target, extra))
-          : st.type === 'ExpressionStatement'
-            ? (st.expression.type === 'CallExpression' && isSnd(st.expression, extra)) ||
-              (st.expression.type === 'AssignmentExpression' && textOf(p, st.expression.left) === textOf(p, target))
-            : st.type === 'VariableDeclaration'
-              ? sm
-                  .getDeclaredVariables(st)
-                  .every((v) => v.references.filter((r) => r.isRead()).every((r) => forSound(r.identifier, target)))
-              : st.type === 'ReturnStatement' || st.type === 'EmptyStatement';
-    const region = (sts, gate, target, extra) =>
-      gateTest(gate.test, target) &&
-      sts.some((x) => callsIn(x).some((c) => isSnd(c, extra))) &&
-      (callsIn(gate.test).some((c) => nameOf(c) === 'sndReady') || sts.every((x) => soundish(x, target, extra)));
-    const fnName = (f) => {
-      const up = parent.get(f);
-      return f.type === 'FunctionDeclaration'
-        ? f.id?.name
-        : up?.type === 'VariableDeclarator' && up.id.type === 'Identifier'
-          ? up.id.name
-          : undefined;
-    };
-    const callSites = (name) => {
-      const out = [];
-      walk(p.ast, (n) => n.type === 'CallExpression' && nameOf(n) === name && out.push(n));
-      return out;
-    };
-    // from（入れる文か、呼ぶ所）から上へ、同じ関数の中で、時刻と入れる先を比べる if の中（then と else）と、その if(…)return の後ろを探す。
-    // 見つからず、入れる文がある関数の中身が音のことだけをする時は、その関数を呼ぶ所でも探す（欄の時だけ。名前は関数ごとに別の物なので）
-    const timer = (from, target, extra = null) => {
-      let x = from;
-      for (let up = parent.get(x); up && !/Function/.test(x.type); x = up, up = parent.get(up)) {
-        if (up.type === 'IfStatement' && (up.consequent === x || up.alternate === x)) {
-          if (region(x.type === 'BlockStatement' ? x.body : [x], up, target, extra)) return true;
-        }
-        if (up.type === 'BlockStatement' || up.type === 'Program') {
-          const j = up.body.indexOf(x);
-          for (let i = 0; i < j; i++) {
-            const g = up.body[i];
-            if (g.type === 'IfStatement' && exits(g.consequent) && region(up.body.slice(i + 1), g, target, extra)) return true;
-          }
-        }
-      }
-      if (extra || target.type === 'Identifier' || !/Function/.test(x.type) || x.body.type !== 'BlockStatement') return false;
-      const name = fnName(x),
-        body = x.body.body;
-      if (!name || !body.every((st) => soundish(st, target, null)) || !body.some((st) => sounds(st).length)) return false;
-      return callSites(name).some((c) => timer(c, target, new Set([name])));
-    };
     const sinks = new Map(); // 読む所 → どの形か
     // 見つけた所：見た目の乱数を直に引いていれば、その場所を返す。引いた値を入れた変数を読む所は、音に使う所として覚える
     const hit = (refs, node, why) => {
@@ -361,7 +373,10 @@ export function soundRandomCheck(files, audioNames) {
         n.type === 'ExpressionStatement' &&
         n.expression.type === 'AssignmentExpression' &&
         visual(n.expression.right).length &&
-        timer(n, n.expression.left)
+        timer(p, n, {
+          node: n.expression.left.type === 'Identifier' ? n.expression.left : null,
+          text: textOf(p, n.expression.left),
+        })
       ) {
         // 時刻と同じ式の中の値だけを見る。オブジェクトと配列は、値が入っている欄・要素の中に時刻がある時だけ
         // （o.next = { t: clock.time + mr() } の mr() は見る。b.morph = { from, t0: clock.time } の from は時刻ではない）
