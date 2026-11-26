@@ -204,6 +204,8 @@ if(TEST)window.__test={
     return {draws:n,statues}; },
   // remove every creature (lords too), so a check is not upset by one that happens to be near
   clearAll(){ const n=here.monsters.length; here.monsters=[]; return n; },
+  // creature n's cell, the cell it walks to and its body scale
+  mob(n){ const m=here.monsters[n]; return m?{cx:m.cx,cz:m.cz,tx:m.tx,tz:m.tz,scale:m.ty.scale,x:m.x,z:m.z}:null; },
   // every place a run can visit, for generation checks
   places(){ return [...Array.from({length:FINAL_DEPTH},(_,i)=>({depth:i+1})), ...Object.keys(SPECIALS).map(k=>({inter:k})),
     ...Object.values(BRANCHES).flatMap(B=>Array.from({length:B.len},(_,i)=>({branch:B.key,lvl:i+1}))), ...Object.values(REALMS).map(R=>({realm:R.key,depth:R.minD+2}))]; },

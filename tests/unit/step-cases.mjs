@@ -22,7 +22,7 @@ import { setSoundRand } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 import { RUNE_TYPES, TRAITS } from '../../src/lib/runes.ts';
 import { SND, adv, blaze, buf, clock, fight, gear, gfx, here, keys, msgs, player, saved, stealth, ui, vfx } from '../../src/lib/state.ts';
-import { CELL, LQ_BOG, LQ_DEEP, LQ_WATER, MW, NCELL, SF_BRIM, SF_DEAD, TF, TW, cpos } from '../../src/lib/world.ts';
+import { CELL, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MW, NCELL, SF_BRIM, SF_DEAD, TF, TW, cpos } from '../../src/lib/world.ts';
 import { fakeAudioClass } from './fake-audio.mjs';
 import { fakeCamera, fakeDom, fakeTimers, fakeUniforms, fnv, hashArr, text } from './fight-cases.mjs';
 import { PLACES, gen, loadEnv } from './gen-places.ts';
@@ -322,7 +322,10 @@ export async function stepCases(F, seeds, page) {
         if (m.hp <= 0) m.hp = 10;
       };
       const calls = [];
-      let eruptSeen = null;
+      let eruptSeen = null,
+        bigCell = -1,
+        bigLava = false,
+        lavaflow = null;
       const state = () =>
         text({
           player: { ...player },
@@ -836,8 +839,8 @@ export async function stepCases(F, seeds, page) {
           { type: 'statue', cell: cells0[0], done: false, active: false, t: 0 },
           { type: 'collapse', cells: cells0.slice(1, 4), ri: ri0, state: 0, t: 0 },
           { type: 'oracle', cell: cells0[2], done: false },
-          { type: 'flood', ri: ri0, order: order.slice(), src: fixCell(spring), state: 0, t: 0, k: 0, max: order.length * 3 },
-          { type: 'lavaflow', ri: ri0, order: order.slice(), src: fixCell(crater), state: 0, t: 0, k: 0, max: order.length * 3 },
+          { type: 'flood', ri: ri0, order: order.slice(), src: fixCell(spring), state: 0, t: 0, k: 0 },
+          { type: 'lavaflow', ri: ri0, order: order.slice(), src: fixCell(crater), state: 0, t: 0, k: 0 },
           { type: 'tele', a: cells0[3], b: cells1[0], lock: -1 },
           { type: 'erupt', src: fixCell(crater) >= 0 ? fixCell(crater) : cells1[1], order: cells1.slice(0, 6), state: 0, t: 0.2, k: 0 },
           { type: 'haunt', ri: ri0, tombs: cells0.slice(4, 6), done: false, t: -1 },
@@ -861,6 +864,19 @@ export async function stepCases(F, seeds, page) {
         if (chance(0.5)) saved.LEGEND = null;
         const erupts = here.events.filter((e) => e.type === 'erupt'),
           seen = new Map(erupts.map((e) => [e, new Set([e.state])]));
+        // 体の大きな生き物（トロル）を、流れる道の隣のマスの、道との境の近くに止めておく（体が道のマスにかかる。溶岩はそこへ流れない）
+        const way = erupts[0].order[2];
+        for (const d of [1, -1, MW, -MW]) {
+          const j = way + d;
+          if (D.tile[j] !== TF || D.liquid[j] || erupts.some((e) => e.order.includes(j))) continue;
+          const big = makeMonster({ key: 'T', cx: j % MW, cz: (j / MW) | 0, g: -1 }),
+            [jx, jz] = cpos(j),
+            [wx, wz] = cpos(way);
+          Object.assign(big, { x: jx + (wx - jx) * 0.45, z: jz + (wz - jz) * 0.45, wait: 999 });
+          here.monsters.push(big);
+          bigCell = way;
+          break;
+        }
         for (let q = 0; q < 60; q++) {
           if (q === 0) goto(cells0[0]);
           if (q === 20) goto(cells0[3]);
@@ -871,6 +887,7 @@ export async function stepCases(F, seeds, page) {
           call('updateEvents', pick([0.1, 0.3]), clock.time);
           tick(0.2);
           for (const e of erupts) seen.get(e).add(e.state);
+          if (bigCell >= 0 && D.liquid[bigCell] === LQ_LAVA) bigLava = true;
         }
         // 噴き上がりを最後まで（流れ出す 1 → 待つ 2 → 引く 3 → 次まで待つ 0）。足もとには流れないので、離れて立つ
         goto(cells0[5]);
@@ -878,8 +895,30 @@ export async function stepCases(F, seeds, page) {
           call('updateEvents', pick([0.2, 0.4]), clock.time);
           tick(0.2);
           for (const e of erupts) seen.get(e).add(e.state);
+          if (bigCell >= 0 && D.liquid[bigCell] === LQ_LAVA) bigLava = true;
         }
         eruptSeen = erupts.map((e) => [...seen.get(e)].sort((a, b) => a - b).join(''));
+        // 部屋の出来事の溶岩の流れ：状態と、流れる順のマスで、溶岩でなく、塞がれてもいない物の数
+        // （塞がれている：プレイヤーの近くか、溶岩を歩けない生き物がいる・向かっている・体がかかる。src/lib/events.ts の lavaBlocked と同じ決まり）
+        const blocked = (i) => {
+          const [x, z] = cpos(i),
+            x0 = (i % MW) * CELL,
+            z0 = Math.floor(i / MW) * CELL;
+          return (
+            Math.hypot(x - player.x, z - player.z) < 1.6 ||
+            here.monsters.some(
+              (m) =>
+                !m.ty.flier &&
+                m.ty.habitat !== 'lava' &&
+                (m.cz * MW + m.cx === i ||
+                  m.tz * MW + m.tx === i ||
+                  Math.hypot(m.x - Math.max(x0, Math.min(m.x, x0 + CELL)), m.z - Math.max(z0, Math.min(m.z, z0 + CELL))) <
+                    0.35 * m.ty.scale),
+            )
+          );
+        };
+        const lf = here.events.find((e) => e.type === 'lavaflow');
+        lavaflow = lf ? [lf.state, lf.order.filter((i) => D.liquid[i] !== LQ_LAVA && !blocked(i)).length] : null;
         call('oracleLegendHints');
         adv.HIST = null;
         saved.LEGEND = null;
@@ -920,7 +959,15 @@ export async function stepCases(F, seeds, page) {
         D.gate = null;
         call('updateTraps', 0.2);
       }
-      out.push({ seed: s, place: place.label ?? JSON.stringify(place), calls, timers: { ...timers.st }, eruptSeen });
+      out.push({
+        seed: s,
+        place: place.label ?? JSON.stringify(place),
+        calls,
+        timers: { ...timers.st },
+        eruptSeen,
+        big: bigCell >= 0 ? bigLava : null,
+        lavaflow,
+      });
     }
   } finally {
     console.error = keepErr;

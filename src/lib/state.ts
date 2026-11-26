@@ -970,9 +970,20 @@ export type RoomEvent =
   | { type: 'statue'; cell: number; done: boolean; active: boolean; t: number; chimed?: boolean }
   | { type: 'collapse'; cells: number[] | undefined; ri: number; state: number; t: number }
   | { type: 'oracle'; cell: number; done: boolean }
-  | { type: 'flood' | 'lavaflow'; ri: number; order: number[]; src: number | undefined; state: number; t: number; k: number; max: number }
+  | {
+      type: 'flood' | 'lavaflow';
+      ri: number;
+      order: number[];
+      src: number | undefined;
+      state: number;
+      t: number;
+      k: number;
+      /** 溶岩の流れ：同じマスを試し直した回数と、流せずに待っているマス（src/lib/events.ts の nextFlow） */
+      tries?: Map<number, number>;
+      wait?: number[];
+    }
   | { type: 'tele'; a: number; b: number; lock: number }
-  | { type: 'erupt'; src: number; order: number[]; state: number; t: number; k: number }
+  | { type: 'erupt'; src: number; order: number[]; state: number; t: number; k: number; tries?: Map<number, number>; wait?: number[] }
   | { type: 'haunt'; ri: number; tombs: number[]; done: boolean; t: number; chimed?: boolean };
 /** 最深部の状態：一番高い天井のマス c0（王の影が現れる所）、王の影 boss と、現れるまで・呼び出すまでの秒、着いた時の伝言を出したか */
 export interface FinalState {

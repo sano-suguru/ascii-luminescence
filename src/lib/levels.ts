@@ -279,7 +279,7 @@ export function initEvents(): void {
     if (ri === 0) {
       for (const tp of level().teles || []) here.events.push({ type: 'tele', a: tp.a, b: tp.b, lock: -1 });
       for (const e of level().erupts || [])
-        here.events.push({ type: 'erupt', src: e.src, order: e.order, state: 0, t: 8 + mr() * 14, k: 0 });
+        here.events.push({ type: 'erupt', src: e.src, order: e.order.slice(), state: 0, t: 8 + mr() * 14, k: 0 });
     }
     const md = r.mdata;
     if (!md) return;
@@ -287,7 +287,7 @@ export function initEvents(): void {
       for (const c of md.awaken || []) here.events.push({ type: 'statue', cell: c, done: false, active: false, t: 0 });
     if (md.type === 'collapse') here.events.push({ type: 'collapse', cells: md.pit, ri, state: 0, t: 0 });
     if ((md.type === 'flood' || md.type === 'lavaflow') && md.order)
-      here.events.push({ type: md.type, ri, order: md.order.slice(), src: md.src, state: 0, t: 0, k: 0, max: md.order.length * 3 });
+      here.events.push({ type: md.type, ri, order: md.order.slice(), src: md.src, state: 0, t: 0, k: 0 });
     if (md.type === 'crypt' && must(md.tombs).length)
       here.events.push({ type: 'haunt', ri, tombs: must(md.tombs).map((tb) => tb.i), done: false, t: -1 });
   });

@@ -14,7 +14,8 @@
 //  11. 薄い氷に乗っていた秒は、階を移ると0に戻る（前の階の同じ番号のマスの秒が残らない）
 //  12. 火山の異界の火口は、噴き上がると溶岩が流れ出し（状態 1）、しばらく待って（2）引き（3）、また待って（0）噴き上がる
 //  13. 加護の身軽な詠唱と返しの一撃は、敵の攻撃を転がってかわすと効き始める（ただ転がっただけでは効かない）
-//  14. 火口の溶岩は、生き物のいるマスにも、生き物が歩いて向かっているマスにも流れない（溶岩の上に立つ生き物がいない）
+//  14. 火口の溶岩は、生き物のいるマスにも、生き物が歩いて向かっているマスにも流れない（溶岩の上に立つ生き物がいない）。
+//      生き物が塞いだマスは、後でまた試す（流し終えた後も、引き始めるまで）ので、引き始める前に、生き物のいないマスの穴が残らない
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { withBrowser, newPage, openTest, advance } from './lib.mjs';
 
@@ -412,7 +413,7 @@ async function dodgeChecks(pg, base) {
     );
 }
 
-// 14：溶岩の上に立つ生き物がいない（火口の流れる道の横に生き物を置き、プレイヤーは遠くへ。0.1 秒ごとに 70 秒見る）
+// 14：溶岩の上に立つ生き物がいない・引き始める前に穴が無い（火口の流れる道の横に生き物を置き、プレイヤーは遠くへ。0.1 秒ごとに 70 秒見る）
 async function lavaMobChecks(pg, base) {
   await openTest(pg, base, 'seed=42&realm=volcano&god=1');
   await advance(pg, 2);
@@ -429,25 +430,41 @@ async function lavaMobChecks(pg, base) {
               break;
             }
     dbg.to('stairs'); // 追いかけてこないように、遠くへ
-    const n = __test.state().monsters.length;
+    const n = __test.state().monsters.length,
+      prev = new Map(),
+      holes = [];
     let on = 0,
       first = null,
       lavaTop = 0;
     for (let q = 0; q < 700; q++) {
       __test.advance(0.1);
       const s = __test.state(),
+        ev = __test.events(),
         hit = s.monsters.filter((m) => __test.cell(cellOf(m[1], m[2])).lava);
-      lavaTop = Math.max(lavaTop, __test.events().lava);
+      lavaTop = Math.max(lavaTop, ev.lava);
       if (hit.length) {
         on++;
         first ??= [s.time, hit[0].slice(0, 3)];
       }
+      // 引き始める直前（状態 2 の最後）に、流れる順のマスで溶岩でない物（生き物がいる・向かっているマスは除く。溶岩に囲まれて動けない生き物もいる）
+      const taken = new Set();
+      for (let k = 0; k < s.monsters.length; k++) {
+        const m = __test.mob(k);
+        taken.add(m.cz * w + m.cx).add(m.tz * w + m.tx);
+      }
+      for (const e of ev.list.filter((x) => x.type === 'erupt')) {
+        const p = prev.get(e.src);
+        if (p && p[0] === 2 && e.state === 3) holes.push([e.src, p[1]]);
+        prev.set(e.src, [e.state, e.order.filter((i) => !__test.cell(i).lava && !taken.has(i)).length]);
+      }
     }
-    return { n, on, first, lavaTop };
+    return { n, on, first, lavaTop, holes };
   });
   if (!(r.n > 10) || !(r.lavaTop > 20))
     errs.push(`14：生き物か溶岩の流れが足りない（生き物 ${r.n}・溶岩のマス ${r.lavaTop}。テストの前提が崩れた）`);
   if (r.on) errs.push(`14：溶岩の上に立つ生き物がいる（0.1 秒ごとに見て ${r.on} 回。初めは ${JSON.stringify(r.first)}）`);
+  if (!r.holes.length || r.holes.some(([, k]) => k > 0))
+    errs.push(`14：引き始める前に、流れの中に溶岩でないマスが残っている（火口ごとの [マス, 数]：${JSON.stringify(r.holes)}）`);
 }
 
 await withBrowser(async ({ browser, base }) => {
