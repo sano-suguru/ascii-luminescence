@@ -43,7 +43,7 @@ function drawArrows(){ if(!arrowCtx)return; const W=Math.round(arrowCv.clientWid
 let ambK=1;
 function updateSectionAir(dt){ if(!here.D||!here.D.prof)return; const pc=((player.z/CELL)|0)*MW+((player.x/CELL)|0); let k=1;
   if(here.D.hub&&here.D.roomOf[pc]===here.D.hub.ri)k=1.25; else if(here.D.dS&&here.D.pathL>0&&here.D.dS[pc]>here.D.pathL*0.7)k=0.85;
-  ambK+=(k-ambK)*Math.min(1,dt*1.2); U.uAmb.value=here.D.prof.ambient*ambK; }
+  ambK+=(k-ambK)*Math.min(1,dt*1.2); gfx.U.uAmb.value=here.D.prof.ambient*ambK; }
 // 墓を描く drawGraves は src/lib/fixtures.ts（src/game/imports.mjs で読む）
 function drawRunesWorld(t){
   drawZones(t);
@@ -80,23 +80,15 @@ function drawRunesWorld(t){
 }
 
 // ---------------------------------------------------------------- the feel of a chant: a circle of runes at the hand, light gathering, the lantern taking the element's colour, a rising hum
-let humNode=null, crossKey='', aimT=0, crossMon=null, slowFx=0;
+let humNode=null, crossKey='', slowFx=0;
 function humStart(){ if(!sndReady())return null; const ctx=SND.ctx, t=ctx.currentTime, o=ctx.createOscillator(), o2=ctx.createOscillator(), g=ctx.createGain();
   o.type='triangle'; o.frequency.setValueAtTime(110,t); o.frequency.linearRampToValueAtTime(220,t+1.4); o2.type='sine'; o2.frequency.setValueAtTime(165,t); o2.frequency.linearRampToValueAtTime(330,t+1.4);
   g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.06,t+0.35); o.connect(g); o2.connect(g); g.connect(sOut(undefined,undefined,1)); o.start(t); o2.start(t);
   return {stop(){ const t2=ctx.currentTime; try{ g.gain.cancelScheduledValues(t2); g.gain.setValueAtTime(Math.max(0.0001,g.gain.value),t2); g.gain.exponentialRampToValueAtTime(0.0001,t2+0.15); o.stop(t2+0.2); o2.stop(t2+0.2); }catch(e){} }}; }
-function castSound(sp,x,z){ if(!sndReady())return; const t=SND.ctx.currentTime, o=sOut(x,z,0.32), el=sp.elem;
-  if(el==='fire'){ sEnv(sNoise(t,0.5,'lowpass',1400,0.7,o,300),t,0.01,0.45); sCrackleBurst(player.x,player.z); }
-  else if(el==='ice'){ sEnv(sTone(t,'sine',1760,2640,0.35,o),t,0.005,0.3); sEnv(sTone(t,'sine',2349,3520,0.25,o),t,0.01,0.25,0.5); }
-  else if(el==='thunder'){ sEnv(sNoise(t,0.3,'highpass',3000,0.7,o),t,0.002,0.28); sEnv(sTone(t,'square',90,40,0.25,o),t,0.003,0.22,0.4); }
-  else if(el==='poison'){ for(let k=0;k<4;k++)setTimeout(()=>sBubble(player.x,player.z,0.4,k%2===0),k*60); }
-  else sWhoosh(); }
+// castSound は src/lib/audio.ts（src/game/imports.mjs で読む）
 // 照準の小さな関数（handUp・aimPoint・centerPoint・castPoint・handPoint）は src/lib/aim.ts（src/game/imports.mjs で読む）
-function shotFrame(h,chanted,kind){ const o=chanted?(()=>{ const c=castPoint(h,1), u=handUp()[2]; return [c[0]-u[0]*0.14,c[1]-u[1]*0.14,c[2]-u[2]*0.14]; })():handPoint(h), a=assistPoint(o,kind)||aimPoint(), dx=a[0]-o[0], dy=a[1]-o[1], dz=a[2]-o[2], l=Math.hypot(dx,dy,dz);
-  return {o,d:l>1?[dx/l,dy/l,dz/l]:viewDir()}; }
-function assistPoint(o,kind){ if(kind!=='bolt'&&kind!=='beam')return null; const m=aimTarget(); if(!m||m.dead)return null;
-  const c=[m.x,m.y+(m.ty.flier?0:0.6*m.ty.scale),m.z]; if(kind==='beam')return c;
-  const t=Math.hypot(c[0]-o[0],c[1]-o[1],c[2]-o[2])/20; return [c[0]+(m.vlx||0)*t,c[1],c[2]+(m.vlz||0)*t]; }
+// shotFrame は src/lib/aim.ts（src/game/imports.mjs で読む）
+// assistPoint は src/lib/aim.ts（src/game/imports.mjs で読む）
 // where the spell will go: straight (arrows, beams) or an arc (orbs), with bounces; the first creature in the way
 function simPath(sp){
   const fr=sp.atk==='beam'?beamFrame(sp.h):shotFrame(sp.h,true,sp.atk), [ox,oy,oz]=fr.o, d0=fr.d, pts=[]; let hitM=null;
@@ -117,7 +109,7 @@ function simPath(sp){
   return {pts,end:[x,y,z],hitM}; }
 function drawCastFx(t){
   if(!gear.hands)return;
-  if(!gear.castSt){ if(crossMon&&crossMon.dead)crossMon=null; return; }
+  if(!gear.castSt){ if(ui.crossMon&&ui.crossMon.dead)ui.crossMon=null; return; }
   const sp=specOf(gear.castSt.h), c=elemCol(sp.elem), k=Math.min(1,gear.castSt.t/Math.max(0.01,gear.castSt.need)), full=gear.castSt.full;
   // the circle at the hand
   const P=castPoint(gear.castSt.h,k), [f,r,u]=handUp(), H=gear.hands[gear.castSt.h], rs=[H.elem].filter(Boolean).map(ru=>RUNE_DEF[ru.type].ch), n=12, rr=0.05+0.03*k, spin=t*(full?5:2);
@@ -137,15 +129,11 @@ function drawCastFx(t){
   const m=path.hitM; if(m){ const cy=m.y+0.6*m.ty.scale, w=0.35*m.ty.scale+0.25; dyn(m.x-r[0]*w,cy,m.z-r[2]*w,G('['),0.42*Math.max(0.8,m.ty.scale),c[0]*3,c[1]*3,c[2]*3); dyn(m.x+r[0]*w,cy,m.z+r[2]*w,G(']'),0.42*Math.max(0.8,m.ty.scale),c[0]*3,c[1]*3,c[2]*3); }
 }
 // the crosshair is a glyph: it closes from ( + ) to [+] as the chant fills; it warms when a creature is in the line
-function aimTarget(){ if(clock.time-aimT<0.1)return crossMon; aimT=clock.time; crossMon=null; const [ox,oy,oz]=aimOrigin(), [vx,vy,vz]=viewDir(); let bd=1e9;
-  let ba=1e9; for(const m of here.monsters){ if(!foe(m)||!m.visible)continue; if(m.ty.habitat==='deep'&&(m.rise||0)<0.3)continue; const cy=m.y+0.6*m.ty.scale, ax=m.x-ox, ay=cy-oy, az=m.z-oz, d=Math.hypot(ax,ay,az); if(d>28)continue;
-    const ang=Math.acos(clamp((ax*vx+ay*vy+az*vz)/Math.max(d,1e-3),-1,1)), tol=0.08+Math.atan2(0.6*m.ty.scale,Math.max(d,0.5)); if(ang>tol)continue;
-    const score=ang/tol+d*0.01; if(score<ba&&losClear(ox,oy,oz,m.x,cy,m.z)){ ba=score; crossMon=m; } }
-  return crossMon; }
+// aimTarget は src/lib/aim.ts（src/game/imports.mjs で読む）
 function updateCross(dt){
   const el=document.getElementById('cross'); if(!el)return;
-  slowFx+=((gear.castSt?1:0)-slowFx)*Math.min(1,(dt||0.016)*8); finalPass.uniforms.uSlow.value=slowFx;
-  if(gear.castSt){ const c=elemCol(gear.hands[gear.castSt.h].elem?gear.hands[gear.castSt.h].elem.type:null); finalPass.uniforms.uTint.value.set(c[0],c[1],c[2]); }
+  slowFx+=((gear.castSt?1:0)-slowFx)*Math.min(1,(dt||0.016)*8); gfx.finalPass.uniforms.uSlow.value=slowFx;
+  if(gear.castSt){ const c=elemCol(gear.hands[gear.castSt.h].elem?gear.hands[gear.castSt.h].elem.type:null); gfx.finalPass.uniforms.uTint.value.set(c[0],c[1],c[2]); }
   const tg=ui.started&&!adv.dead&&!isPaused()?aimTarget():null;
   // the sight: a small dot; it is flanked when it holds a creature; while chanting, the runes of that hand close in on it and, when the chant is full, rest beside it and pulse
   let txt='·', col='rgba(225,215,255,.55)', cls='';

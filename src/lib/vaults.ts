@@ -1,4 +1,4 @@
-// 洞窟の形と宝物庫の絵（もとは src/game/03-vaults-history.js）。迷宮の乱数（rand）を使う。
+// 洞窟の形と宝物庫の絵と、壁に刻む絵 ARTS（もとは src/game/03-vaults-history.js）。洞窟の形は迷宮の乱数（rand）を使う。
 import { nth } from './array.ts';
 import { rand } from './random.ts';
 import { D4 } from './world.ts';
@@ -345,3 +345,22 @@ export function vaultCells(v: { map: readonly string[] }): string[][] {
   }
   return m;
 }
+
+// ASCII-art motifs carved into walls; each row is exactly 7 characters
+/** 壁に刻む絵（行はどれも7文字。年代記の出来事の彫刻に使う。もとは src/game/03-vaults-history.js） */
+export const ARTS: Record<string, string[]> = {
+  tower: ['   ^   ', '  /#\\  ', '  |#|  ', ' /|#|\\ ', '/_|#|_\\'],
+  star: ['   .   ', ' \\ | / ', '-- * --', ' / | \\ ', "   '   "],
+  hammer: [' _____ ', '|_____|', '   |   ', '   |   ', '  _|_  '],
+  bridge: ['_______', '| \\_/ |', '|  |  |', '~~~~~~~'],
+  fountain: ['  ( )  ', ' ( | ) ', '  \\|/  ', ' _/ \\_ ', '~~~~~~~'],
+  swords: ['\\     /', ' \\   / ', '  \\ /  ', '  / \\  ', ' /   \\ '],
+  serpent: ['  __   ', ' (oo)  ', '  \\ \\  ', '  / /  ', ' ( (__ ', '  \\__) '],
+  skull: [' _____ ', '/ o o \\', '|  ^  |', ' \\___/ ', '  |||  '],
+  eye: ['  ___  ', ' /   \\ ', '| (o) |', ' \\___/ '],
+  crown: ['^  ^  ^', '|\\/ \\/|', '|_____|'],
+  wave: ['  .-.  ', ' /   \\ ', '~~~~~~~', '~ ~ ~ ~', '~~~~~~~'],
+  tree: ['  ___  ', ' (   ) ', '(_____)', '   |   ', '  /|\\  '],
+  moon: ['  __   ', ' /  )  ', '(  (   ', ' \\__)  ', '     . '],
+  lantern: ['   |   ', '  _|_  ', ' |   | ', ' | * | ', ' |___| '],
+};

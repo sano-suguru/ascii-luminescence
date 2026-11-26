@@ -6,33 +6,15 @@
 // ---------------------------------------------------------------- swamp gas
 let gasTmp=new Float32Array(NCELL);
 // ---------------------------------------------------------------- fire (after Brogue: spreads through flammable terrain, ignites gas)
-let fireSrc=[], lastBoom=-10, sparkCD=0;
+let sparkCD=0;
 // FIRE_TYPES は src/lib/world.ts（src/game/imports.mjs で読む）
-function initFire(){
-  blaze.fire=new Float32Array(NCELL); blaze.fuel=new Float32Array(NCELL); blaze.burnt=new Uint8Array(NCELL); blaze.cellFlag=new Uint8Array(NCELL); blaze.fireLight=new Float32Array(NCELL); blaze.burning=[];
-  for(let i=0;i<NCELL;i++){ const sf=here.D.surface[i]; blaze.fuel[i]=sf===SF_DEAD?1.0:sf===SF_GRASS?0.7:sf===SF_LUMEN?0.6:sf===SF_FOLIAGE?1.0:sf===SF_HAY?1.2:sf===SF_BRIM?0.8:0; }
-  for(const d of here.D.doors)blaze.fuel[d.i]=Math.max(blaze.fuel[d.i],1.4);
-  here.D.webAt=new Map(); for(const w of (here.D.webs||[])){ blaze.fuel[w.i]=Math.max(blaze.fuel[w.i],0.9); here.D.webAt.set(w.i,w); }
-  for(const r of here.D.rooms){ if(r.theme&&r.theme.k==='ashfield')for(const i of r.cells)if(!here.D.liquid[i])blaze.burnt[i]=1; }
-  for(const r of here.D.rooms){ const md=r.mdata; if(!md)continue; for(const i of (md.ash||[]))blaze.burnt[i]=1; for(const i of (md.char||[]))blaze.burnt[i]=1; }
-  for(const [i,dc] of here.D.decoCell)if(dc.ch==='['||dc.ch==='='||dc.k==='carpet')blaze.fuel[i]=Math.max(blaze.fuel[i],1.5);
-  fireSrc=here.D.fixtures.filter(f=>FIRE_TYPES.has(f.type)).map(f=>Math.floor(f.z/CELL)*MW+Math.floor(f.x/CELL));
-  uploadCells();
-}
+// initFire は src/lib/ground.ts（src/game/imports.mjs で読む）
 // 火をつける ignite は src/lib/ground.ts（src/game/imports.mjs で読む）
-function boom(i){
-  const x=(i%MW+0.5)*CELL, z=(((i/MW)|0)+0.5)*CELL, dd=Math.hypot(x-player.x,z-player.z);
-  if(clock.time-(boom.last||-9)>0.35){ boom.last=clock.time; sBoom(clamp(1-dd/34,0.05,1)); makeNoise(x,z,20,1.3); }
-  if(dd<30){ for(let q=0;q<10;q++){ const a=mr()*6.28, e2=mr(); spawn(x,0.6+mr(),z,Math.cos(a)*3*e2,0.5+mr()*2.5,Math.sin(a)*3*e2,0.6+mr()*0.6,G(mpick(['*','#','^','%'])),0.3+mr()*0.2,3.2,1.6,0.5,0); } }
-  vfx.flash=Math.max(vfx.flash,clamp(1-dd/26,0,1)); vfx.shake=Math.max(vfx.shake,clamp(1-dd/22,0,1)*0.6);
-  if(dd<3.6)hurtPlayer(Math.round(12*(1-dd/3.6))+2,'爆発');
-  for(const m of here.monsters){ if(m.dead||m.ty.critter)continue; const dm=Math.hypot(m.x-x,m.z-z); if(dm<3.6)damageMonster(m,Math.round(16*(1-dm/3.6))+3,'fire'); }
-  if(clock.time-lastBoom>3&&dd<34){ lastBoom=clock.time; msg('<b style="color:#ffb347">*</b>沼のガスに火が回り、轟音とともに爆ぜた！'); }
-}
+// boom は src/lib/combat.ts（src/game/imports.mjs で読む）
 function stepFire(){
   const g=here.D.gas;
   // open flames (braziers, torches, lava) ignite gas that drifts into them
-  for(const s0 of fireSrc){ for(const j of [s0,s0+1,s0-1,s0+MW,s0-MW]){ if(j>=0&&j<NCELL&&g[j]>0.15){ ignite(j,1,true); boom(j); } } }
+  for(const s0 of blaze.fireSrc){ for(const j of [s0,s0+1,s0-1,s0+MW,s0-MW]){ if(j>=0&&j<NCELL&&g[j]>0.15){ ignite(j,1,true); boom(j); } } }
   const next=[];
   for(const i of blaze.burning){
     if(blaze.fire[i]<=0)continue;
@@ -87,19 +69,7 @@ function updateSpark(dt){
   if(lit&&blaze.burning.length<4)msg('<b style="color:#ffb347">^</b>火花が燃え移り、炎が広がり始めた。');
   blaze.spark=null;
 }
-function initEvents(){
-  here.events=[];
-  here.D.collapsed=false; here.D.pit=new Uint8Array(NCELL);
-  here.D.rooms.forEach((r,ri)=>{
-    if(r.vault&&r.vault.k==='oracle'&&r.valtar&&r.valtar.length)here.events.push({type:'oracle',cell:r.valtar[0],done:false});
-    if(ri===0){ for(const tp of (here.D.teles||[]))here.events.push({type:'tele',a:tp.a,b:tp.b,lock:-1}); for(const e of (here.D.erupts||[]))here.events.push({type:'erupt',src:e.src,order:e.order,state:0,t:8+mr()*14,k:0}); }
-    const md=r.mdata; if(!md)return;
-    if(md.type==='statues')for(const c of (md.awaken||[]))here.events.push({type:'statue',cell:c,done:false,active:false,t:0});
-    if(md.type==='collapse')here.events.push({type:'collapse',cells:md.pit,ri,state:0,t:0});
-    if((md.type==='flood'||md.type==='lavaflow')&&md.order)here.events.push({type:md.type,ri,order:md.order.slice(),src:md.src,state:0,t:0,k:0,max:md.order.length*3});
-    if(md.type==='crypt'&&md.tombs.length)here.events.push({type:'haunt',ri,tombs:md.tombs.map(tb=>tb.i),done:false,t:-1});
-  });
-}
+// initEvents は src/lib/levels.ts（src/game/imports.mjs で読む）
 // cpos は src/lib/world.ts（src/game/imports.mjs で読む）
 // 生き物を呼び出す summon は src/lib/monsters.ts（src/game/imports.mjs で読む）
 function updateEvents(dt,t){
@@ -126,7 +96,7 @@ function updateEvents(dt,t){
         ev.t+=dt; vfx.shake=Math.max(vfx.shake,0.18+ev.t*0.15);
         if(mr()<dt*30){ const c=ev.cells[Math.floor(mr()*ev.cells.length)], [x,z]=cpos(c); spawn(x+(mr()-0.5)*1.8,here.D.ceil[c]-0.1,z+(mr()-0.5)*1.8,0,-1.5,0,1.5,G(mpick(['.',',','\''])),0.12,0.4,0.38,0.45,1); }
         if(ev.t>1.4){
-          ev.state=2; here.D.collapsed=true; sBoom(0.7); makeNoise(player.x,player.z,22,1.2); U.uCollT.value=t;
+          ev.state=2; here.D.collapsed=true; sBoom(0.7); makeNoise(player.x,player.z,22,1.2); gfx.U.uCollT.value=t;
           for(const c of ev.cells){ blaze.cellFlag[c]=200; here.D.tile[c]=TC; here.D.pit[c]=1; const [x,z]=cpos(c);
             for(let q=0;q<10;q++)spawn(x+(mr()-0.5)*1.8,0.1,z+(mr()-0.5)*1.8,(mr()-0.5)*0.6,-0.5-mr()*2,(mr()-0.5)*0.6,1.6,G(mpick(['.','#',':','%'])),0.2,0.6,0.55,0.6,1); }
           for(const m of here.monsters){ if(here.D.pit[m.cz*MW+m.cx]&&!m.ty.flier){ m.dead=true; } }
@@ -239,18 +209,8 @@ function updateGasPoints(t){
 }
 
 // ---------------------------------------------------------------- particle update
-function respawnDust(i,near){
-  for(let tries=0;tries<8;tries++){
-    const a=mr()*Math.PI*2, r=near?Math.sqrt(mr())*15:10+mr()*5;
-    const x=player.x+Math.cos(a)*r, z=player.z+Math.sin(a)*r, cx=Math.floor(x/CELL), cz=Math.floor(z/CELL);
-    if(cx<0||cz<0||cx>=MW||cz>=MH)continue;
-    const ci=cz*MW+cx, tt=here.D.tile[ci]; if(tt!==TF&&tt!==TC)continue;
-    const lo=tt===TC?-CH_D+1:0.15, hi=Math.min(here.D.ceil[ci]-0.2,8);
-    dust.x[i]=x; dust.z[i]=z; dust.y[i]=lo+mr()*(hi-lo); return;
-  }
-  dust.x[i]=player.x; dust.z[i]=player.z; dust.y[i]=-50;
-}
-function initDust(){ const fl=here.D.stratum.fall; for(let i=0;i<DUST_N;i++){ dust.ph[i]=mr()*100; dust.g[i]=G(mpick(fl==='snow'?['*','.','+','*']:fl==='ash'?[',','.','`','\'']:['.','.','.','+','*','\'',':','`'])); dust.s[i]=0.1+mr()*0.11; respawnDust(i,true); } }
+// respawnDust は src/lib/particles.ts（src/game/imports.mjs で読む）
+// initDust は src/lib/particles.ts（src/game/imports.mjs で読む）
 function riverFX(dt){
   if(!here.riverCells.length)return;
   for(let k=0;k<6&&mr()<dt*14;k++){

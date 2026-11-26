@@ -5,7 +5,7 @@ saved.META=loadMeta();
 // developer mode (al_dev) is read here, before the title is built below (the title's trials row depends on it)
 try{ saved.DEVALL=localStorage.getItem('al_dev')==='1'; }catch(e){}
 // 記録 META を保存する saveMeta は src/lib/save.ts、解放の確かめ（unlocked・lockedOf・weaponPool）は src/lib/unlocks.ts（src/game/imports.mjs で読む）
-const loreLeft=()=>Math.max(0,(saved.META.lore||0)-(saved.META.spent||0));
+// loreLeft は src/lib/unlocks.ts（src/game/imports.mjs で読む）
 // 試練を選んでいるか trialOn は src/lib/unlocks.ts（古い JS は読まない）
 let introMode='main';
 function buildUnlockPanel(){ const el=document.getElementById('intropanel'); if(!el)return; const f=t=>`<span class="f">${t}</span>`, KIND={weapon:'武器',rune:'ルーン',bless:'恩恵',build:'ビルド',trial:'試練'};

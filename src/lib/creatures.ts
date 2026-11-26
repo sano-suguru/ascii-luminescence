@@ -61,6 +61,8 @@ export interface MonsterType {
   lore?: string;
   /** 試しの間の的 */
   dummy?: boolean;
+  /** 支道の主（主の祭壇を残す） */
+  lord?: boolean;
 }
 
 /** 生き物の表（種類の記号 → 種類） */

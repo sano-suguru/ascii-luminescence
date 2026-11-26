@@ -1,7 +1,7 @@
 // 地面と小さな生き物（もとは src/game/13-creatures.js の updateCritter・machineWork・splash、15-sound-fire.js の ignite・uploadCells、
-// 18-level-player.js の crackIce・tallAt・trample・brimFlare、26-spells-hud.js の chillArea・updateFrozen）：
+// 18-level-player.js の crackIce・tallAt・trample・brimFlare、26-spells-hud.js の chillArea・updateFrozen、15-sound-fire.js の initFire）：
 // 小さな生き物（魚・草を食べる物・叫ぶ物・化けた巻物・掃除機・修復機）の動き、水しぶき、火をつける、マスの絵を描画に渡す、
-// 薄い氷が割れる、背の高い茂みを踏み分ける、硫黄が燃え上がる、冷気で火を消して水を凍らせる・溶ける。
+// 薄い氷が割れる、背の高い茂みを踏み分ける、硫黄が燃え上がる、冷気で火を消して水を凍らせる・溶ける、階に入った時の燃える物のマス。
 // 状態の入れ物 here（今の階と生き物）・blaze（火と地面のマス）・player・clock・ui（伝言の時刻と旗）・stealth（忍び足）・vfx（揺れ）・SND（音）と、
 // マスの絵 gfx.cellTex・その中身 cellData・薄い氷に乗っていた秒 iceT に頼る。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う動きと見た目になるので、順番を変えないこと。
@@ -20,15 +20,18 @@ import { type Mob, SND, blaze, cellData, clock, gfx, here, iceT, player, stealth
 import {
   CELL,
   D4,
+  FIRE_TYPES,
   LQ_DEEP,
   LQ_WATER,
   MH,
   MW,
   NCELL,
   SF_BRIM,
+  SF_DEAD,
   SF_FOLIAGE,
   SF_FUNGFOR,
   SF_GRASS,
+  SF_HAY,
   SF_ICE,
   SF_LUMEN,
   TF,
@@ -475,4 +478,54 @@ export function updateFrozen(dt: number): void {
     }
   }
   if (ch) uploadCells();
+}
+/**
+ * 階に入った時の、火と燃える物のマス（燃える床・扉・クモの巣・絨毯と書架、灰の野と仕掛けの灰と焦げ跡）と、火の備品のマス（blaze.fireSrc）を作る
+ * （もとは src/game/15-sound-fire.js）
+ */
+export function initFire(): void {
+  blaze.fire = new Float32Array(NCELL);
+  blaze.fuel = new Float32Array(NCELL);
+  blaze.burnt = new Uint8Array(NCELL);
+  blaze.cellFlag = new Uint8Array(NCELL);
+  blaze.fireLight = new Float32Array(NCELL);
+  blaze.burning = [];
+  for (let i = 0; i < NCELL; i++) {
+    const sf = level().surface[i];
+    blaze.fuel[i] =
+      sf === SF_DEAD
+        ? 1.0
+        : sf === SF_GRASS
+          ? 0.7
+          : sf === SF_LUMEN
+            ? 0.6
+            : sf === SF_FOLIAGE
+              ? 1.0
+              : sf === SF_HAY
+                ? 1.2
+                : sf === SF_BRIM
+                  ? 0.8
+                  : 0;
+  }
+  for (const d of level().doors) blaze.fuel[d.i] = Math.max(nth(blaze.fuel, d.i), 1.4);
+  level().webAt = new Map();
+  for (const w of level().webs || []) {
+    blaze.fuel[w.i] = Math.max(nth(blaze.fuel, w.i), 0.9);
+    must(level().webAt).set(w.i, w);
+  }
+  for (const r of level().rooms) {
+    if (r.theme && r.theme.k === 'ashfield') for (const i of r.cells) if (!level().liquid[i]) blaze.burnt[i] = 1;
+  }
+  for (const r of level().rooms) {
+    const md = r.mdata;
+    if (!md) continue;
+    for (const i of md.ash || []) blaze.burnt[i] = 1;
+    for (const i of md.char || []) blaze.burnt[i] = 1;
+  }
+  for (const [i, dc] of level().decoCell)
+    if (dc.ch === '[' || dc.ch === '=' || dc.k === 'carpet') blaze.fuel[i] = Math.max(nth(blaze.fuel, i), 1.5);
+  blaze.fireSrc = level()
+    .fixtures.filter((f) => FIRE_TYPES.has(f.type))
+    .map((f) => Math.floor(f.z / CELL) * MW + Math.floor(f.x / CELL));
+  uploadCells();
 }

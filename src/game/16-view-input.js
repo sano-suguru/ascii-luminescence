@@ -1,20 +1,5 @@
 // ---------------------------------------------------------------- field of view & minimap
-function computeFOV(){
-  here.fovStamp++;
-  const ox=player.x/CELL, oz=player.z/CELL, pcF=Math.floor(oz)*MW+Math.floor(ox);
-  for(let k=0;k<300;k++){
-    const a=k/300*Math.PI*2, dx=Math.cos(a), dz=Math.sin(a);
-    for(let s=0;s<18;s+=0.25){
-      const x=ox+dx*s, z=oz+dz*s, cx=Math.floor(x), cz=Math.floor(z);
-      if(cx<0||cz<0||cx>=MW||cz>=MH)break;
-      const i=cz*MW+cx; here.fovVis[i]=here.fovStamp; here.explored[i]=1;
-      const tt=here.D.tile[i]; if(tt===TW)break;
-      if(s>0.9&&i!==pcF&&tallAt(i))break;
-      if(tt===TP&&Math.hypot(x-cx-0.5,z-cz-0.5)<0.28)break;
-      const di=here.D.doorAt[i]; if(di>=0&&i!==pcF&&!here.D.doors[di].gone&&here.D.doors[di].o<0.35&&s>0.3)break; // a door in the cell you stand in does not hide what is around you
-    }
-  }
-}
+// computeFOV は src/lib/levels.ts（src/game/imports.mjs で読む）
 const mapC=document.getElementById('map'), mctx=mapC.getContext('2d');
 // MMC・MMR・MCW・MCH・MPAD は src/lib/hud.ts（src/game/imports.mjs で読む）
 function sizeMap(){ const dpr=Math.min(2,window.devicePixelRatio||1); mapC.width=Math.round((MMC*MCW+MPAD*2)*dpr); mapC.height=Math.round((MMR*MCH+MPAD*2)*dpr); mctx.setTransform(dpr,0,0,dpr,0,0); }
@@ -109,20 +94,7 @@ function drawMap(){
 setInterval(renderLog,1000);
 
 // ---------------------------------------------------------------- collisions
-let blockType='';
-function solidAt(x,z,r){
-  const x0=Math.floor((x-r)/CELL), x1=Math.floor((x+r)/CELL), z0=Math.floor((z-r)/CELL), z1=Math.floor((z+r)/CELL);
-  for(let cz=z0;cz<=z1;cz++)for(let cx=x0;cx<=x1;cx++){
-    if(cx<0||cz<0||cx>=MW||cz>=MH){ blockType='wall'; return true; }
-    if(here.D.gate&&here.D.gate.o<0.7&&cz*MW+cx===here.D.gate.cell){ const nx=clamp(x,cx*CELL,(cx+1)*CELL), nz=clamp(z,cz*CELL,(cz+1)*CELL); if((x-nx)**2+(z-nz)**2<r*r){ blockType='gate'; return true; } }
-    const tt=here.D.tile[cz*MW+cx];
-    const lqc=here.D.liquid[cz*MW+cx];
-    if(tt===TW||(tt===TC&&!(here.D.pit&&here.D.pit[cz*MW+cx]))||tt===TX||lqc===LQ_LAVA){ const nx=clamp(x,cx*CELL,(cx+1)*CELL), nz=clamp(z,cz*CELL,(cz+1)*CELL); if((x-nx)**2+(z-nz)**2<r*r){ blockType=tt===TC?'chasm':tt===TX?'xtal':lqc===LQ_LAVA?'lava':'wall'; return true; } }
-    else if(tt===TP){ if(Math.hypot(x-(cx+0.5)*CELL,z-(cz+0.5)*CELL)<0.55+r){ blockType='wall'; return true; } }
-    else { const sr=here.D.solid.get(cz*MW+cx); if(sr&&Math.hypot(x-(cx+0.5)*CELL,z-(cz+0.5)*CELL)<sr+r){ blockType='wall'; return true; } }
-  }
-  return false;
-}
+// solidAt は src/lib/player.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- input
 // keys は src/lib/state.ts（src/game/imports.mjs で読む。丸ごと入れ替えないので、名前はそのまま）

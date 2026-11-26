@@ -1,9 +1,15 @@
 // 粒子と、世界の中に置く文字（もとは src/game/05-renderer.js）。どちらも、決まった大きさの配列に値を書いて、数を増やすだけ。
 // 配列を GPU に渡す部品（three.js の属性）と、毎フレームの数の受け渡し（flushDyn）・粒子を動かす処理は、古い JS（05・15）にある。
-// 数は状態の入れ物 buf（dn・pN）。
-import { mr } from './random.ts';
-import { DYN_MAX, P_MAX } from './shaders.ts';
-import { buf } from './state.ts';
+// 数は状態の入れ物 buf（dn・pN）。漂う塵の粒を置く処理（initDust・respawnDust。もとは 15-sound-fire.js）もここ（塵の配列 dust は src/lib/state.ts）。
+import { must, nth } from './array.ts';
+import { G } from './glyphs.ts';
+import { mpick, mr } from './random.ts';
+import { DUST_N, DYN_MAX, P_MAX } from './shaders.ts';
+import { buf, dust, here, player } from './state.ts';
+import { CELL, CH_D, MH, MW, TC, TF } from './world.ts';
+
+/** 今の階 */
+const level = () => must(here.D, '今の階 here.D');
 
 /** 世界の中に置く文字（毎フレーム置き直す）：位置 dPos・色 dCol・文字と大きさと描き方と向き dPar */
 export const dPos = new Float32Array(DYN_MAX * 3),
@@ -99,4 +105,40 @@ export function spawn(
 export function killP(i: number): void {
   const j = --buf.pN;
   if (i !== j) for (const a of PF) a[i] = a[j] ?? NaN;
+}
+/** 塵の粒 i を、プレイヤーのまわりの床の上（near なら近く、ほかは 10 から 15 先）に置き直す。置ける所が無ければ見えない所へ（もとは src/game/15-sound-fire.js） */
+export function respawnDust(i: number, near: boolean): void {
+  for (let tries = 0; tries < 8; tries++) {
+    const a = mr() * Math.PI * 2,
+      r = near ? Math.sqrt(mr()) * 15 : 10 + mr() * 5;
+    const x = player.x + Math.cos(a) * r,
+      z = player.z + Math.sin(a) * r,
+      cx = Math.floor(x / CELL),
+      cz = Math.floor(z / CELL);
+    if (cx < 0 || cz < 0 || cx >= MW || cz >= MH) continue;
+    const ci = cz * MW + cx,
+      tt = level().tile[ci];
+    if (tt !== TF && tt !== TC) continue;
+    const lo = tt === TC ? -CH_D + 1 : 0.15,
+      hi = Math.min(nth(level().ceil, ci) - 0.2, 8);
+    dust.x[i] = x;
+    dust.z[i] = z;
+    dust.y[i] = lo + mr() * (hi - lo);
+    return;
+  }
+  dust.x[i] = player.x;
+  dust.z[i] = player.z;
+  dust.y[i] = -50;
+}
+/** 塵の粒を全部置き直す（層の降る物で文字を変える：雪・灰・ふつうの塵。もとは src/game/15-sound-fire.js） */
+export function initDust(): void {
+  const fl = level().stratum.fall;
+  for (let i = 0; i < DUST_N; i++) {
+    dust.ph[i] = mr() * 100;
+    dust.g[i] = G(
+      mpick(fl === 'snow' ? ['*', '.', '+', '*'] : fl === 'ash' ? [',', '.', '`', "'"] : ['.', '.', '.', '+', '*', "'", ':', '`']),
+    );
+    dust.s[i] = 0.1 + mr() * 0.11;
+    respawnDust(i, true);
+  }
 }
