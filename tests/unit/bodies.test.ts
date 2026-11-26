@@ -86,8 +86,8 @@ describe('生き物の形', () => {
       const b = seeded(() => lords.beastForm(spec));
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
-    expect(all.length).toBe(2934388);
-    expect(fnv(all)).toBe('189c2d1a'); // 移す前の実装で出した値。ただし、トロル（trollForm2）は移した後で作り直した（王の影の一つ目の姿は、作り直したので下の別のテスト）
+    expect(all.length).toBe(2935826);
+    expect(fnv(all)).toBe('d4d3a95c'); // トロル（trollForm2）を除き、移す前の実装で出した値と同じ（トロルは移した後で作り直した。作り直した王の影の一つ目の姿は、下の別のテスト）
   });
   it('主と大きな生き物の形：TypeScript に移す前と、同じ乱数で同じ形になる', () => {
     let all = '';
@@ -122,12 +122,12 @@ describe('生き物の形', () => {
     const marked = TY_FORMS.filter((f) => seeded(() => f(nth(TYS, 0))).noExtra).map((f) => f.name);
     expect(marked).toEqual(['wraithForm2', 'phantomForm']);
   });
-  it('トロル：腕の点（手と棍棒の頭も）はどれも肩を、脚の点は腰を軸に回る（軸が 0 だと、歩く時に床の高さを軸に回って離れる）', () => {
+  it('トロル：腕の点（手と棍棒の頭も）はどれも肩を、脚の点は腰を軸に回る（軸がずれると、歩く時に体から離れる）', () => {
     for (const ty of TYS) {
       const b = seeded(() => beasts.trollForm2(ty)),
-        piv = (part: string) => new Set(b.filter((p) => p.part === part).map((p) => p.piv));
-      expect([piv('armL'), piv('armR')]).toEqual([new Set([1.42]), new Set([1.42])]);
-      expect([piv('legL'), piv('legR')]).toEqual([new Set([0.62]), new Set([0.62])]);
+        axis = (part: string) => new Set(b.filter((p) => p.part === part).map((p) => `${p.piv},${p.pz}`));
+      expect([axis('armL'), axis('armR')]).toEqual([new Set(['1.42,0.4']), new Set(['1.42,0.4'])]);
+      expect([axis('legL'), axis('legR')]).toEqual([new Set(['0.62,0']), new Set(['0.62,0'])]);
     }
   });
   it('眠った獣は、脚を体に畳み、低くなる', () => {

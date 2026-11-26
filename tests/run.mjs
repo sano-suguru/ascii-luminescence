@@ -8,11 +8,12 @@
 //   node tests/run.mjs smoke world  名前を挙げた物だけ（ほかの指定 --prod・--update などは受け付けない。1つずつ node tests/smoke.mjs --prod のように走らせる）
 //   node tests/run.mjs --shard 1/2  n 組に分けた i 組目だけ（CI が2台のランナーで分けて走らせる）。分け方は SEC のおよその秒で、組ごとの合計が近くなるように決める
 import { spawn } from 'node:child_process';
+import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { build } from 'vite';
 import { ROOT } from './lib.mjs';
 
-// 走らせるテストの一覧と、速い CI のランナーでかかるおよその秒（表に無いテストは走らないので、テストを足したらここにも足す。組に分ける時と、走らせる順番に使う。長くかかる物から始め、短い物が後ろで隙間を埋める）
+// 走らせるテストの一覧と、速い CI のランナーでかかるおよその秒（テストを足したらここにも足す。足し忘れは、下の NOT_TESTS と比べて止める。組に分ける時と、走らせる順番に使う。長くかかる物から始め、短い物が後ろで隙間を埋める）
 const SEC = {
   smoke: 114,
   visual: 86,
@@ -26,6 +27,18 @@ const SEC = {
   levels: 14,
   panels: 11,
 };
+// tests/ の .mjs のうち、ここで走らせない物（テストの部品と、pnpm check が走らせる glyphs）。これと SEC のどちらにも無いファイルがあれば止める
+const NOT_TESTS = ['lib', 'run', 'reach', 'gallery-specimens', 'glyphs'];
+const missing = readdirSync(import.meta.dirname)
+  .filter((f) => f.endsWith('.mjs'))
+  .map((f) => f.slice(0, -4))
+  .filter((n) => !(n in SEC) && !NOT_TESTS.includes(n));
+if (missing.length) {
+  console.error(
+    `tests/ に、SEC にも NOT_TESTS にも無いファイルがある：${missing.join(' ')}（テストなら SEC に、部品なら NOT_TESTS に足す）`,
+  );
+  process.exit(2);
+}
 const ALL = Object.keys(SEC).sort((a, b) => (SEC[b] ?? 0) - (SEC[a] ?? 0));
 // n 組に分ける：長い物から順に、その時の合計が一番小さい組へ入れる
 const shardOf = (n) => {

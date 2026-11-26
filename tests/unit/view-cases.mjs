@@ -154,6 +154,8 @@ const SCENES = [
   'floor',
   'start',
   'tongue',
+  'trampled',
+  'gates',
 ];
 /**
  * 配列の中身の指紋（Float32Array・Uint8Array のバイト列の from から to まで）。NaN は1つの並びにそろえる
@@ -764,7 +766,9 @@ export async function viewCases(F, seeds) {
         run(name, args(), times);
       }
       // 場面：説明と描き方の細かい分かれ道を、毎回1つずつ通す（ランダムな狙い方だけでは、場合の並びで出たり出なかったりするので）
-      const scene = SCENES[(s - 1) % SCENES.length];
+      const scene = SCENES[(s - 1) % SCENES.length],
+        // その場面を通るのが何回目か（場面の中の分かれ道を、乱数によらず順に通す）
+        visit = Math.floor((s - 1) / SCENES.length);
       const near = (d) => {
         const a = r() * 6.28;
         return [player.x + Math.cos(a) * d, player.z + Math.sin(a) * d];
@@ -842,12 +846,15 @@ export async function viewCases(F, seeds) {
         aimAt(f.x, 1.3, f.z, 2);
         run('look', [], 2);
       } else if (scene === 'tomb') {
-        // 王の墓（飾りの当たりのあるマスで、マスの番号が3で割り切れる所）と、民の墓・巨像
-        const v = pick(['ruler', 'civ', 'colossus']),
+        // 王の墓（飾りの当たりのあるマスで、マスの番号が3で割り切れる所）と、民の墓・巨像・名前の無い飾り（祭壇）
+        const v = ['ruler', 'civ', 'colossus', 'plain'][visit % 4],
           i = floorAt((j) => j % 3 === (v === 'civ' ? 1 : 0)),
           [x, z] = cpos(i);
         D.solid.set(i, 0.5);
-        D.decoCell.set(i, v === 'colossus' ? { ch: '&', col: [0.8, 0.8, 0.9], k: 'colossus' } : { ch: '+', col: [0.8, 0.8, 0.9] });
+        D.decoCell.set(
+          i,
+          v === 'colossus' ? { ch: '&', col: [0.8, 0.8, 0.9], k: 'colossus' } : { ch: v === 'plain' ? '?' : '+', col: [0.8, 0.8, 0.9] },
+        );
         aimAt(x, 1, z, 2);
         run('look', [], 2);
       } else if (scene === 'halo') {
@@ -865,8 +872,8 @@ export async function viewCases(F, seeds) {
         aimAt(m.x, 1.1, m.z, 2);
         Object.assign(player, { x: gfx.camera.position.x, z: gfx.camera.position.z });
         run('look', [], 2);
-      } else if (scene === 'floor') {
-        // 床の表面（ほかの物の無い床）
+      } else if (scene === 'floor' || scene === 'trampled') {
+        // 床の表面（ほかの物の無い床）。trampled は、踏み分けた茂みと茸の森を交互に
         const i = floorAt(() => chance(0.1)),
           [x, z] = cpos(i);
         blaze.fire[i] = 0;
@@ -877,9 +884,9 @@ export async function viewCases(F, seeds) {
         D.decoCell.delete(i);
         D.darkMul[i] = 1;
         D.glyph[i] = 0;
-        D.surface[i] = pick(SURFACES);
+        D.surface[i] = scene === 'trampled' ? [SF_FOLIAGE, SF_FUNGFOR][visit % 2] : pick(SURFACES);
         D.thin[i] = chance(0.5) ? 1 : 0;
-        blaze.cellFlag[i] = chance(0.5) ? 20 : 0;
+        blaze.cellFlag[i] = scene === 'trampled' || chance(0.5) ? 20 : 0;
         gfx.camera.position = { x, y: 1.2, z };
         player.pitch = -1.55;
         run('look', [], 2);
@@ -890,6 +897,20 @@ export async function viewCases(F, seeds) {
         ui.lookHTML = chance(0.7) ? 'old' : '';
         lookEl.innerHTML = ui.lookHTML;
         run('look', []);
+      } else if (scene === 'gates') {
+        // 異界の門と、封じられた下り階段を交互に（封の番人は見えない所に置き、説明の的にしない）
+        const kind = visit % 2 ? 'stairs' : 'portal';
+        if (kind === 'portal') D.portal = D.portal || { key: pick(Object.keys(REALMS)), cell: c0 };
+        else {
+          D.stairGuard = 7;
+          const [x, z] = near(8);
+          Object.assign(mon(pick(types.filter(([, ty]) => !ty.invisible)), x, z), { g: 7, dead: false, visible: false });
+        }
+        const [x, z] = cpos(kind === 'portal' ? D.portal.cell : D.stairs >= 0 ? D.stairs : c0);
+        if (!here.fixtures.some((f) => f.type === kind)) here.fixtures.push({ type: kind, x, z, col: [1, 1, 1], li: 99999, acc: 0, ph: 0 });
+        const f = here.fixtures.find((g) => g.type === kind);
+        aimAt(f.x, 1.3, f.z, 2);
+        run('look', [], 2);
       } else if (scene === 'tongue') {
         // 舌を出し入れする生き物を、時刻を変えて何度か描く（舌は、出ている間だけ描く）
         const list = types.filter((_, i) => partsOf[i]?.has('tongue')),
