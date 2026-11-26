@@ -4,6 +4,8 @@
 //      （ルーン文字は、パネルと同じく <b class="rn"> の中で測る）
 //   2. 実際の画面（操作・装備・メニュー・レベルアップ・祭壇・結果）で、右の縦線が全部の行で同じ位置にあるか
 //      レベルアップと祭壇は、一覧の見出しの後ろの名前の列も揃っているか
+//   3. 十字の下：「クリックで視点操作に戻る」は、照準の先の説明があってもなくても同じ場所に出て、説明はその下に 8px あけて並ぶ（重ならない）。
+//      説明だけの時は、十字の下 22px に出る
 import { gameText } from '../tools/game-source.mjs';
 import { withBrowser, newPage, openTest, advance, nearAltar } from './lib.mjs';
 
@@ -20,6 +22,35 @@ await withBrowser(async ({ browser, base }) => {
   await openTest(pg, base, 'seed=202&depth=1&god=1');
   await advance(pg, 2);
   await pg.evaluate(() => document.fonts.ready);
+
+  // 3. 十字の下（ゲームを進めずに、一言と説明を直接出して測る。進めると、ゲームが説明を書き直す）
+  {
+    const m = await pg.evaluate(() => {
+      const res = document.getElementById('resume'),
+        look = document.getElementById('look'),
+        r = (el) => el.getBoundingClientRect(),
+        keep = [res.style.display, look.innerHTML];
+      const long = '<b>骸骨の戦士</b>眠っている<span>' + 'とても長い説明の文。'.repeat(8) + '</span>';
+      res.style.display = 'block';
+      look.innerHTML = '';
+      const alone = r(res);
+      look.innerHTML = long;
+      const both = { res: r(res), look: r(look) };
+      res.style.display = 'none';
+      const lookOnly = r(look);
+      [res.style.display, look.innerHTML] = keep;
+      return { alone, both, lookOnly, mid: innerHeight / 2 };
+    });
+    const near = (a, b) => Math.abs(a - b) < 0.5;
+    const gap = m.both.look.top - m.both.res.bottom;
+    if (!near(m.alone.top, m.both.res.top)) errs.push(`十字の下：説明が出ると、一言の場所が変わる（${m.alone.top} → ${m.both.res.top}）`);
+    if (!near(gap, 8)) errs.push(`十字の下：一言と説明の間が 8px でない（${gap}）`);
+    if (!(m.both.look.height > 30)) errs.push(`十字の下：長い説明が折り返されていない（テストの前提が崩れた。高さ ${m.both.look.height}）`);
+    if (!near(m.lookOnly.top, m.mid + 22))
+      errs.push(`十字の下：説明だけの時、十字の下 22px に出ない（${m.lookOnly.top}、真ん中 ${m.mid}）`);
+    if (!near(m.alone.top, m.mid + 22)) errs.push(`十字の下：一言が十字の下 22px に出ない（${m.alone.top}）`);
+    console.log(`${errs.length ? '✗' : '✓'} 十字の下：一言は同じ場所、説明はその下に ${gap}px あけて並ぶ`);
+  }
 
   // 1. 文字ごとの幅
   const bad = await pg.evaluate(async (chars) => {
