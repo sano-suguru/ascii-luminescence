@@ -29,8 +29,8 @@ export function resultPlace(): string {
     ? `深度${here.depth}（${(here.D && here.D.stratum && here.D.stratum.name) || ''}）`
     : `${pl}（深度${here.depth}）`;
 }
-/** この探索で得る伝承（届いた深さ・倒した主・最深部へ持ち帰った伝説の物・上がったレベル・新しく記した反応・初めて会った忘れられた獣。試練で倍になる。勝った分の行は、元からコメントの中にあって数えない） */
-export function runLore(_victory: boolean): LoreResult {
+/** この探索で得る伝承（届いた深さ・倒した主・最深部へ持ち帰った伝説の物・王の影に勝った・上がったレベル・新しく記した反応・初めて会った忘れられた獣。試練で倍になる） */
+export function runLore(victory: boolean): LoreResult {
   const L = getLegend(),
     parts: [string, string, number][] = [],
     add = (lab: string, n: string, v: number) => {
@@ -41,7 +41,8 @@ export function runLore(_victory: boolean): LoreResult {
   const lords = adv.runState.lordsDone ? adv.runState.lordsDone.size : 0;
   add('倒した支道の主', `${lords}体`, lords * 8);
   const pl = L && md >= FINAL_DEPTH ? L.have.size : 0;
-  add('最深部へ持ち帰った伝説の物', `${pl}つ`, pl * 6); // only those brought to the bottom if(victory)add('王の影に勝った','',30);
+  add('最深部へ持ち帰った伝説の物', `${pl}つ`, pl * 6); // only those brought to the bottom
+  if (victory) add('王の影に勝った', '', 30);
   const lg = Math.max(0, (adv.lvl.n || 1) - 1);
   add('上がったレベル', `${lg}つ`, lg);
   const nb = Math.max(0, saved.BOOK.size - ((adv.runStats && adv.runStats.book0) || 0));
