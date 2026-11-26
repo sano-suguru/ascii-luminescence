@@ -25,7 +25,8 @@
 // 古い JS は、--rev の git の版（既定 HEAD）か、--old のフォルダから読む。状態を入れ物に移した名前は、--state で古い側にも同じ書き換え
 // （tools/state-move.mjs の stateMove）をしてから比べる。--auto-state は、それを自分で見つける（古い JS から消えた変数の名前 X で、
 // src/lib/state.ts の入れ物の欄として初めの値を書いてある物。CI はこれを使う。詳しくは detectStates）。
-// 古い JS から消えた名前で、古い JS でも使われていなかった物は、使っていない物を消しただけなので「消した」として出し、止めない。古い JS から消えた名前で、渡した .ts のどれにも無い物は「比べていない」として出す（これも 1 で終わる）。
+// 古い JS から消えた名前で、古い JS でも使われていなかった物と、今はどこからも使われていない物（呼ぶ所も一緒に消した物）は、
+// 消しただけなので「消した」として出し、止めない（なので、移す時は名前を変えない。変えると「消した」に見えて比べない）。古い JS から消えた名前で、渡した .ts のどれにも無い物は「比べていない」として出す（これも 1 で終わる）。
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -42,11 +43,12 @@ function topDecls(body, file, text, base) {
   const out = new Map();
   for (let st of body) {
     if (st.type === 'ExportNamedDeclaration' && st.declaration) st = st.declaration;
-    if (st.type === 'FunctionDeclaration') out.set(st.id.name, { node: st, file, text, base });
+    if (st.type === 'FunctionDeclaration' || st.type === 'ClassDeclaration') out.set(st.id.name, { node: st, file, text, base });
     else if (st.type === 'VariableDeclaration')
+      // 分けて読む形（const [a, b] = …・const {a, b} = …）は、作る名前ごとに、同じ宣言を持たせる
       for (const d of st.declarations)
-        if (d.id.type === 'Identifier')
-          out.set(d.id.name, {
+        for (const name of boundNames(d.id))
+          out.set(name, {
             node: { type: 'VariableDeclaration', kind: st.kind, declarations: [d], start: st.start },
             file,
             text,
@@ -240,6 +242,14 @@ function usesInLoops(n, name, inside = false) {
       c += usesInLoops(n[k], name, loop);
   return c;
 }
+/** 名前 → 式 の表の名前を、まとめて1回で置き換える（置き換えた式の中は見ない） */
+const substMany = (n, map) =>
+  walk(n, (x, parent, key) => {
+    if (x.type !== 'Identifier' || !map.has(x.name)) return undefined;
+    if ((key === 'property' && parent?.type === 'MemberExpression' && !parent.computed) || (key === 'key' && parent && !parent.computed))
+      return x;
+    return map.get(x.name);
+  });
 /** オブジェクトの別名に入れてよい値（数・文字・名前と、その計算だけ。欄の読み取りや呼び出しは入れない） */
 const plain = (n) =>
   n?.type === 'Literal' ||
@@ -287,7 +297,11 @@ function unalias(n, where, found, show, mark = new Set()) {
               const u = uses([restDecls, tail], nm);
               return u.write || u.shadow;
             }) ||
-            [...reads].some((nm) => uses([restDecls, tail], nm).shadow)
+            [...reads].some((nm) => {
+              // 式が読む名前を、その先で宣言し直す（捕まる）か、書き換える（i++ など。読む時が変わる）
+              const u = uses([restDecls, tail], nm);
+              return u.shadow || u.write;
+            })
           ) {
             found.pop();
             continue;
@@ -337,8 +351,8 @@ function inlineHelpers(fnNode, helpers, opened) {
     // 道具の中の名前を、使う所で宣言し直している時と、渡す値が読む名前を、道具の中で宣言し直している時（捕まる）は開かない
     if ([...free(f)].some((nm) => uses(fnNode, nm).shadow)) return undefined;
     if (x.arguments.some((a) => [...readNames(a)].some((nm) => uses(f.body, nm).shadow))) return undefined;
-    let body = f.body;
-    f.params.forEach((p, i) => (body = subst(body, p.name, x.arguments[i])));
+    // 引数はまとめて1回で置き換える（1つずつ置き換えると、前に入れた値の中の名前まで、後の引数で置き換えてしまう）
+    const body = substMany(f.body, new Map(f.params.map((p, i) => [p.name, x.arguments[i]])));
     opened(x.callee.name);
     return body;
   });
@@ -361,18 +375,23 @@ const SKIP = new Set([
   // BigInt の数は value と、同じ値の文字 bigint の両方を持つ
   'bigint',
 ]);
+const TS_ONLY = new Set(['abstract', 'override', 'implements', 'superTypeArguments', 'accessibility', 'readonly']);
+/** 比べる時に落とす欄か（canon と diff が同じ決まりで落とす） */
+function dropped(n, k) {
+  const v = n[k];
+  if (SKIP.has(k) || v === undefined || (v === null && k !== 'value')) return true;
+  // TS だけが付ける欄（クラスの abstract・override・implements など）は、空なら JS と同じ
+  if (TS_ONLY.has(k) && (v === false || (Array.isArray(v) && !v.length))) return true;
+  // 名前の optional は TS の ? だけ（a?.b の optional は残す）
+  return k === 'optional' && (v === false || n.type === 'Identifier' || n.type === 'ArrayPattern' || n.type === 'ObjectPattern');
+}
 /** 比べる形：位置・raw・型の欄などを落とす（名前の optional は TS の ? だけなので落とす。a?.b の optional は残す） */
 function canon(n) {
   if (typeof n === 'bigint') return `${n}n`;
   if (Array.isArray(n)) return n.map(canon);
   if (!n || typeof n !== 'object') return n;
   const o = {};
-  for (const k of Object.keys(n).sort()) {
-    if (SKIP.has(k) || n[k] === undefined || (n[k] === null && k !== 'value')) continue;
-    if (k === 'optional' && (n[k] === false || n.type === 'Identifier' || n.type === 'ArrayPattern' || n.type === 'ObjectPattern'))
-      continue;
-    o[k] = canon(n[k]);
-  }
+  for (const k of Object.keys(n).sort()) if (!dropped(n, k)) o[k] = canon(n[k]);
   return o;
 }
 const key = (n) => JSON.stringify(canon(n));
@@ -381,8 +400,8 @@ function diff(a, b, out, pa = null, pb = null) {
   if (key(a) === key(b)) return;
   if (a && b && typeof a === 'object' && typeof b === 'object' && !Array.isArray(a) && !Array.isArray(b) && a.type === b.type) {
     for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
-      // 片方にだけ null の欄がある（読み方の違い）のは、違いではない
-      if (SKIP.has(k) || (a[k] == null && b[k] == null && k !== 'value')) continue;
+      // 片方にだけ null や空の欄がある（読み方の違い）のは、違いではない
+      if (dropped(a, k) && dropped(b, k)) continue;
       diff(a[k], b[k], out, a, b);
     }
     return;
@@ -610,6 +629,15 @@ export function wasUnused(oldGame, old, name) {
     own = count(d.text.slice(firstPos(d.node) - d.base, lastPos(d.node) - d.base));
   return all - own === 0;
 }
+/** 文 text の中で、名前 name を使っているか（欄の名前 a.name の name は数えない。文字で数えるので、コメントや文字列にあれば「使っている」になる） */
+export function referenced(text, name) {
+  return new RegExp(`(?<![\\w$.])${name.replace(/\$/g, '\\$')}(?![\\w$])`).test(text);
+}
+/** src/lib の .ts（git に入っている物） */
+const libFiles = () =>
+  execFileSync('git', ['ls-files', 'src/lib'], { cwd: root, encoding: 'utf8' })
+    .split('\n')
+    .filter((f) => f.endsWith('.ts'));
 /** 構文の木の中で、いちばん後ろの位置 */
 function lastPos(n) {
   let m = -1;
@@ -714,10 +742,7 @@ if (process.argv[1] && import.meta.filename === process.argv[1]) {
   if (auto) {
     // 状態の入れ物の欄と、今の文（古い JS と src/lib の全部）
     const fields = boxFields(readFileSync(join(root, 'src/lib/state.ts'), 'utf8')),
-      lib = execFileSync('git', ['ls-files', 'src/lib'], { cwd: root, encoding: 'utf8' })
-        .split('\n')
-        .filter((f) => f.endsWith('.ts')),
-      text = [...nowGame.values(), ...lib.map((f) => readFileSync(join(root, f), 'utf8'))].join('\n'),
+      text = [...nowGame.values(), ...libFiles().map((f) => readFileSync(join(root, f), 'utf8'))].join('\n'),
       old0 = legacyDecls(rawOld),
       gone0 = [...old0.keys()].filter((k) => !now.has(k));
     // .ts に同じ名前の一番外の宣言がある物は、状態ではなく移した物
@@ -744,12 +769,14 @@ if (process.argv[1] && import.meta.filename === process.argv[1]) {
     }
     bad += r.diffs.length;
   }
-  // 古い JS から消えたのに、渡した .ts で比べていない名前（古い JS でも使われていなかった物は、消しただけなので止めない）
+  // 古い JS から消えたのに、渡した .ts で比べていない名前。古い JS でも使われていなかった物と、今はどこからも使われていない物（呼ぶ所も一緒に消した物）は、
+  // 消しただけなので止めない（名前を変えて移すと、ここで「消した」に見えてしまうので、移す時は名前を変えない）
   const unchecked = [...goneAll].filter((k) => !compared.has(k)),
     oldGame = withStates(rawOld, states),
-    deleted = unchecked.filter((k) => wasUnused(oldGame, old, k)),
+    nowText = [...nowGame.values(), ...libFiles().map((f) => readFileSync(join(root, f), 'utf8'))].join('\n'),
+    deleted = unchecked.filter((k) => wasUnused(oldGame, old, k) || !referenced(nowText, k)),
     gone = unchecked.filter((k) => !deleted.includes(k));
-  if (deleted.length) console.log(`\n消した（古い JS でも使われていなかった）：${deleted.join('、')}`);
+  if (deleted.length) console.log(`\n消した（古い JS でも使われていなかったか、今はどこからも使われていない）：${deleted.join('、')}`);
   if (gone.length) console.log(`\n比べていない（古い JS から消えたが、渡した .ts に無い）：${gone.join('、')}`);
   if (review.length) console.log(`\n人が確かめる（間で中身が変わらないこと）${review.length} 件\n  ${review.join('\n  ')}`);
   console.log(`\n比べた ${results.length}　違い ${bad}　当てた規則 ${JSON.stringify(used)}`);

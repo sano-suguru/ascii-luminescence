@@ -1,7 +1,7 @@
 // 構文の木で、移した関数と移す前の古い関数を比べる道具（tools/same-code.mjs）の単体テスト。
 // 規則ごとに「同じと言う物」と「違うと言う物」を小さな見本で確かめ、写し漏れ・係数・比べ方・乱数を引く順番の違いを見つけることも確かめる。
 import { describe, expect, it } from 'vitest';
-import { boxFields, compareSources, detectStates, legacyDecls, wasUnused } from '../../tools/same-code.mjs';
+import { boxFields, compareSources, detectStates, legacyDecls, referenced, wasUnused } from '../../tools/same-code.mjs';
 
 /** 古い JS の文 oldJs と新しい .ts の文 newTs を比べ、関数ごとの違いの数・人が確かめる一覧・比べた名前を返す */
 function cmp(oldJs, newTs) {
@@ -205,6 +205,23 @@ describe('違うと言う物', () => {
     expect(cmp(`function f(){ return 1n; }`, `export function f() { return 1n; }`).n).toEqual({ f: 0 });
     expect(cmp(`function f(){ return 1n; }`, `export function f() { return 2n; }`).n).toEqual({ f: 1 });
   });
+  it('小さな道具の引数は、まとめて置き換える（/code-review の指摘）', () => {
+    const helper = `const sub = (a: number, b: number): number => a - b;\n`;
+    expect(cmp(`function f(a,b){ return b-a; }`, `${helper}export function f(a, b) { return sub(b, a); }`).n).toEqual({ f: 0 });
+    expect(cmp(`function f(a,b){ return a-a; }`, `${helper}export function f(a, b) { return sub(b, a); }`).n.f).toBeGreaterThan(0);
+  });
+  it('先に読む式が読む名前を、その先で書き換えている時は戻さない（/code-review の指摘）', () => {
+    expect(
+      cmp(`function f(o,i){ i++; return o[i]+o[i]; }`, `export function f(o, i) { const v = o[i]; i++; return v + o[i]; }`).n.f,
+    ).toBeGreaterThan(0);
+  });
+  it('クラスと、分けて読む形の一番外の宣言も比べる（/code-review の指摘）', () => {
+    const r = cmp(
+      `const [W0, W1] = SIZES; class Box { f(){ return 1; } }`,
+      `export const [W0, W1] = [1, 2];\nexport class Box { f() { return 2; } }`,
+    );
+    expect([new Set(r.compared), r.n.W0 > 0, r.n.W1 > 0, r.n.Box]).toEqual([new Set(['Box', 'W0', 'W1']), true, true, 1]);
+  });
   it('違いの場所（古い文と新しい文の行）を出す', () => {
     const r = cmp(`function f(a){\n  g(a);\n  h(a*2);\n}`, `export function f(a) {\n  g(a);\n  h(a * 3);\n}`);
     expect(r.results[0].diffs).toEqual([{ old: '2', new: '3', oldLine: 3, newLine: 3 }]);
@@ -249,5 +266,15 @@ describe('使っていない物を消しただけか（wasUnused）', () => {
   });
   it('古い JS に無い名前は「使っていない」と言わない', () => {
     expect(wasUnused(game, old, 'none')).toBe(false);
+  });
+});
+
+describe('今どこかで使っているか（referenced）', () => {
+  it('名前として使っている所だけ（欄の名前 a.foo と、名前の一部は数えない）', () => {
+    expect([referenced('foo();', 'foo'), referenced('o.foo = 1; foobar(); xfoo;', 'foo'), referenced('$a + 1', '$a')]).toEqual([
+      true,
+      false,
+      true,
+    ]);
   });
 });

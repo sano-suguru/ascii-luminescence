@@ -24,9 +24,6 @@ const MACHINE_INFO={
 
 // THEMES・RUIN_THEMES・BIOMES など 14 個は src/lib/strata.ts（古い JS が読むのは、そのうち src/game/imports.mjs にある物）
 // MTYPES は src/lib/creatures.ts（src/game/imports.mjs で読む）
-// special levels (after NetHack's special levels and Dwarf Fortress's abandoned fortresses): one-off landmarks, placed per run seed
-// special levels come between depths (they no longer take a depth's place): the town after the stone labyrinth, the great hall within the great cavern,
-// the oracle before the ruins, the abandoned fortress within the lava sea
 // 特別な階の場所 interAt・interAfter は src/lib/levels.ts（src/game/imports.mjs で読む）
 let lockCell=-1; // placeMem は src/lib/state.ts（src/game/imports.mjs で読む）
 const placeKey=()=>`${adv.runSeed}:`+(here.realm?`r:${here.realm.key}:${here.realm.ret}`:here.branch?`b:${here.branch.key}:${here.branch.lvl}`:here.inter?`i:${here.inter.key}`:`m:${here.depth}`);

@@ -16,7 +16,10 @@ export const levelSeed = (): number =>
 /** 今いるのが最深部か（本道の一番深い階。支道・異界・特別な階は違う） */
 export const isFinal = (): boolean => here.depth === FINAL_DEPTH && !here.branch && !here.realm && !here.inter;
 
-/** 特別な階 key（town・bigroom・oracle・fortress）がある深さ（大広間と砦は、探索のシードで1つずれる）。ほかの key は undefined */
+/**
+ * 特別な階 key（town・bigroom・oracle・fortress）がある深さ（大広間と砦は、探索のシードで1つずれる）。ほかの key は undefined。
+ * 特別な階は、深さと深さの間に入る一度きりの場所（深さの代わりにはならない）：石の迷宮の後の地下の町、大洞窟の中の大広間、遺跡の前の神託所、溶岩の海の中の砦
+ */
 export function interAt(key: string): number | undefined {
   const h = Math.imul(adv.runSeed ^ 0x5bd1e995, 2654435761) >>> 0;
   const at: Readonly<Record<string, number>> = { town: 2, bigroom: 3 + (h & 1), oracle: 5, fortress: 9 + ((h >> 2) & 1) };
