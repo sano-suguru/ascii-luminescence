@@ -200,11 +200,13 @@ export function trollForm2(ty: BodyType): Body {
     ST: Color = [0.62, 0.62, 0.6],
     EYE: Color = [1, 0.85, 0.3],
     IVORY: Color = [0.95, 0.92, 0.8];
-  // 腕の一部の楕円（ell は回す軸を受け取らないので、作った点に腕の軸を入れる。入れないと、歩く時に床の高さを軸に回って腕から離れる）
+  // 腕は肩（高さ 1.42・奥行き 0.4）を軸に回る
+  const SHOULDER = { piv: 1.42, pz: 0.4 };
+  // 腕の一部の楕円（ell は回す軸を受け取らないので、作った点に肩の軸を入れる。入れないと、歩く時に床の高さを軸に回って腕から離れる）
   const armEll: typeof ell = (...a) => {
     const n0 = pts.length;
     ell(...a);
-    for (let i = n0; i < pts.length; i++) nth(pts, i).piv = 1.42;
+    for (let i = n0; i < pts.length; i++) Object.assign(nth(pts, i), SHOULDER);
   };
   // 脚：短く太く、がに股
   for (const sd of [-1, 1]) {
@@ -241,7 +243,7 @@ export function trollForm2(ty: BodyType): Body {
   // 腕：太く長い。前腕がふくらみ、拳は地面の近く
   for (const sd of [-1, 1]) {
     const part = sd < 0 ? 'armL' : 'armR',
-      ex = { piv: 1.42, pz: 0 };
+      ex = SHOULDER;
     tube([sd * 0.44, 1.42, 0.38], [sd * 0.66, 0.98, 0.46], 0.12, 0.09, SKINR, ARM, part, ex, 0.2);
     tube([sd * 0.66, 0.98, 0.46], [sd * 0.5, 0.42, 0.7], 0.09, 0.12, SKINR, ARM, part, ex, 0.3);
     armEll([sd * 0.48, 0.32, 0.74], 0.1, 0.09, 0.1, SKINR, () => ARM, part);
@@ -262,13 +264,20 @@ export function trollForm2(ty: BodyType): Body {
   // 長い鼻
   stroke([0, 1.48, 0.83], [0, 1.4, 0.91], SK, 1.4, 1.2, 'head');
   // 棍棒：右手に握り、先を前の床につける
-  tube([0.48, 0.34, 0.76], [0.46, 0.16, 1.18], 0.035, 0.05, STONE, WOOD, 'armR', { piv: 1.42, pz: 0 });
+  tube([0.48, 0.34, 0.76], [0.46, 0.16, 1.18], 0.035, 0.05, STONE, WOOD, 'armR', SHOULDER);
   armEll([0.46, 0.17, 1.32], 0.16, 0.15, 0.17, STONE, () => WOOD, 'armR');
   for (let q = 0; q < 8; q++)
-    lit(0.46 + (mr() - 0.5) * 0.38, 0.17 + (mr() - 0.5) * 0.3, 1.32 + (mr() - 0.5) * 0.38, mpick(['#', '%']), 1.1, 1.2, ST, 'armR', {
-      piv: 1.42,
-      pz: 0,
-    });
+    lit(
+      0.46 + (mr() - 0.5) * 0.38,
+      0.17 + (mr() - 0.5) * 0.3,
+      1.32 + (mr() - 0.5) * 0.38,
+      mpick(['#', '%']),
+      1.1,
+      1.2,
+      ST,
+      'armR',
+      SHOULDER,
+    );
   return pts;
 }
 

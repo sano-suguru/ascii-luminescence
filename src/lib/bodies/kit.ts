@@ -7,8 +7,8 @@
 //   なので背中の点は暗くなり、前の明るい点が透けて勝つ。背中で見せたい物（苔など）は、明るさを決めて置く lit にする。
 // - 明るさ b が 1.8 を超える点は、光のにじみで白い塊になる。小さな物（牙・目など）でも、集まると顔が読めなくなる。
 // - 細い文字（, " '）は、濃い文字（% # &）に負けて見えない。色で見せたい面には、濃い文字を混ぜる。
-// - ell は回す軸（piv・pz）を受け取らない。腕や脚（part が armL・armR・legL・legR）に使うと、歩く時に床の高さを軸に回って離れる。
-//   作った点に軸を入れる（見本は beasts.ts の trollForm2 の armEll）。
+// - 腕と脚（part が armL・armR・legL・legR）は、歩く時に piv（高さ）と pz（奥行き）の所を軸に回る。どちらも関節（肩・腰）の位置にする。
+//   ずれると、歩く時に体から離れる。ell は軸を受け取らないので、作った点に入れる（見本は beasts.ts の trollForm2 の SHOULDER と armEll）。
 // - コメントの文字も、フォントにある文字だけにする（pnpm check の tests/glyphs.mjs が調べる）。
 import { nth } from '../array.ts';
 import type { Color } from '../color.ts';
