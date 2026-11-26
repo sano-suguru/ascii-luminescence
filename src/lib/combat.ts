@@ -48,13 +48,11 @@ export function addZone(x: number, z: number, r: number, sp: Spec, dur: number, 
 }
 /** 性質の雨を降らせる（範囲と長さは特性で変わる。床に目印を出す） */
 export function startRain(sp: Spec, x: number, z: number, again?: boolean): void {
-  const de = 0,
-    n = 8 + 3 * (sp.aff.count || 0),
+  const n = 8 + 3 * (sp.aff.count || 0),
     r = 1.8 * (tv(sp, 'area') ?? NaN),
     span = 0.6 * (tv(sp, 'span') ?? NaN);
   fight.rains.push({ x, z, r, n, left: n, iv: span / n, tick: again ? 0 : 0.45, sp, follow: false, elemK: 0.25, again: !!again });
   fight.marks.push({ x, z, r, t: (again ? 0 : 0.45) + span, c: must(elemCol(sp.elem)) });
-  if (de >= 3 && !again) later(0.45 + span + 0.25, () => startRain(sp, x, z, true));
 }
 /** 連射（0.07 秒ごとに矢を撃つ。opt.dir があればその向きへ、ほかは照準へ。少しばらつく） */
 export function castRapid(h: string, sp: Spec, opt: { dir?: V3 | null | undefined; auto?: boolean | undefined }): void {
@@ -318,9 +316,7 @@ export function rallyOnHit(m: Mob, n: number, how: string): void {
 /** 主が倒れた所に、主の祭壇を置く（主だけ。王の影・小さな生き物・穏やかな物・的は置かない。近くの空いた床へずらす） */
 export function dropRune(m: Mob): void {
   if (m.ty.critter || m.ty.peaceful || m.ty.dummy) return;
-  // @ts-expect-error -- 古い JS のまま（使っていない。tools/same-code.mjs が同じ文と見るため）
-  const strong = (m.maxHp || 0) >= 40 || (m.isLead && (m.g ?? NaN) >= 0),
-    lord = m.key === 'lord' || m.ty.lord;
+  const lord = m.key === 'lord' || m.ty.lord;
   if (m.key === 'final') return;
   if (!lord) return;
   let at = m.cz * MW + m.cx;
@@ -432,12 +428,8 @@ export function castNow(h: Side, opt?: CastOpt): void {
   vmKick[h] = clock.time;
   if (isTwo()) vmKick.R = clock.time;
   if (sp.atk !== 'beam') turnElem(h);
-  // @ts-expect-error -- 古い JS のまま（使っていない。tools/same-code.mjs が同じ文と見るため）
-  const _sp0 = sp,
-    fr = shotFrame(h, !!opt.chanted, specOf(h).atk),
+  const fr = shotFrame(h, !!opt.chanted, specOf(h).atk),
     dir = opt.dir || fr.d,
-    // @ts-expect-error -- 古い JS のまま（使っていない）
-    col = elemCol(sp.elem),
     HP = opt.dir ? handPoint(h) : fr.o;
   if (!opt.auto) player.recover = Math.max(player.recover || 0, (sp.atk === 'bare' ? 0.5 : lookup(RUNE_DEF, must(sp.atk)).rec) ?? NaN);
   if (sp.atk === 'blade' || sp.atk === 'bare') {
@@ -672,7 +664,7 @@ export function dashCast(sp: Spec, dir: V3, auto: boolean): void {
         sp,
         bounce: 0,
         homing: 0,
-        hit: new Set(player.lunge && player.lunge.cut ? player.lunge.cut.hit : []),
+        hit: new Set(player.lunge ? player.lunge.cut.hit : []),
         dmg: [Math.max(1, Math.round(nth(dm, 0) * 0.7)), Math.max(1, Math.round(nth(dm, 1) * 0.7))],
         pierce: 2,
         keep: true,
@@ -727,9 +719,9 @@ export function dashCast(sp: Spec, dir: V3, auto: boolean): void {
 }
 /** 突進の間、触れた生き物を切る（一度ずつ） */
 export function dashCuts(): void {
-  const L = player.lunge,
-    c = L && L.cut;
-  if (!c) return;
+  const L = player.lunge;
+  if (!L) return;
+  const c = L.cut;
   const dm = must(lookup(RUNE_DEF, 'dash').dmg);
   for (const m of here.monsters) {
     if (!hittable(m) || c.hit.has(m)) continue;
@@ -743,10 +735,7 @@ export function dashCuts(): void {
 }
 /** 星を落とす（床に目印を出し、少し遅れて落ちて弾ける。数の分だけまわりにも。引き寄せの特性で、落ちる前に生き物を寄せる） */
 export function castStar(sp: Spec, x: number, z: number): void {
-  // @ts-expect-error -- 古い JS のまま（使っていない）
-  const tw = 0,
-    sw = 0,
-    pl = TL(sp, 'pull'),
+  const pl = TL(sp, 'pull'),
     sz = tv(sp, 'size'),
     delay = 0.6 * (tv(sp, 'fall') ?? NaN),
     pts: [number, number][] = [[x, z]];
@@ -774,30 +763,12 @@ export function castStar(sp: Spec, x: number, z: number): void {
         }
       });
     later(dl, () => {
-      let fx = px,
-        fz = pz;
-      if (sw >= 3) {
-        let best = null,
-          bd = 2.5;
-        for (const m of here.monsters) {
-          if (!foe(m)) continue;
-          const dd = Math.hypot(m.x - px, m.z - pz);
-          if (dd < bd) {
-            bd = dd;
-            best = m;
-          }
-        }
-        if (best) {
-          fx = best.x;
-          fz = best.z;
-        }
-      }
       const c = elemCol(sp.elem);
       for (let y = 0; y < 7; y += 0.35)
         spawn(
-          fx + (mr() - 0.5) * 0.2,
+          px + (mr() - 0.5) * 0.2,
           y,
-          fz + (mr() - 0.5) * 0.2,
+          pz + (mr() - 0.5) * 0.2,
           0,
           -6,
           0,
@@ -809,20 +780,8 @@ export function castStar(sp: Spec, x: number, z: number): void {
           nth(must(c), 2) * 3,
           0,
         );
-      orbBurst(fx, 0.2, fz, sp, { dmg: 1.25 * Math.sqrt(sz ?? NaN), rad: sz });
+      orbBurst(px, 0.2, pz, sp, { dmg: 1.25 * Math.sqrt(sz ?? NaN), rad: sz });
       vfx.shake = Math.max(vfx.shake, 0.1);
-      // oxlint-disable-next-line no-constant-condition -- 古い JS のまま（止めてある処理。tools/same-code.mjs が同じ文と見るため）
-      if (false)
-        for (const m of here.monsters) {
-          if (!hittable(m) || m.ty.boss || m.key === 'lord' || m.key === 'final') continue;
-          if (Math.hypot(m.x - fx, m.z - fz) < 1.2) {
-            const st = m.st || (m.st = {});
-            if (clock.time >= (st.pinCd || 0)) {
-              st.pin = Math.max(st.pin || 0, 0.6);
-              st.pinCd = clock.time + 1.8;
-            }
-          }
-        }
     });
   });
 }
@@ -861,60 +820,6 @@ export function meleeCast(sp: Spec, dir: V3): void {
   const dm = sp.atk === 'bare' ? [1, 2] : MD.dmg;
   for (const [, m] of cands.slice(0, maxT)) applyHit(m, Math.round(roll(nth(must(dm), 0), nth(must(dm), 1))), sp);
   fireWave(sp, dir, new Set(cands.slice(0, maxT).map((c) => c[1])));
-  const wL = 0;
-  if (wL) {
-    const HP = handPoint(sp.h || 'R'),
-      n = wL >= 3 ? 2 : 1,
-      wK = wL >= 4 ? 0.6 : wL >= 2 ? 0.5 : 0.4,
-      wd = [Math.max(1, Math.round(nth(must(dm), 0) * wK)), Math.max(1, Math.round(nth(must(dm), 1) * wK))];
-    for (let k = 0; k < n; k++) {
-      const d = turnDir(dir, (k - (n - 1) / 2) * 0.18);
-      fight.projs.push({
-        kind: 'bolt',
-        wind: true,
-        x: HP[0],
-        y: HP[1],
-        z: HP[2],
-        vx: d[0] * 16,
-        vy: d[1] * 16,
-        vz: d[2] * 16,
-        t: 0,
-        maxT: 0.38,
-        sp,
-        bounce: 0,
-        homing: 0,
-        hit: new Set(),
-        dmg: wd,
-        pierce: wL >= 5 ? 2 : 0,
-        keep: false,
-      });
-    }
-  }
-  const lL = 0;
-  if (lL) {
-    const hx = vx,
-      hz = vz,
-      hl = Math.hypot(hx, hz) || 1,
-      dist = nth([0, 0.8, 1.1, 1.1, 1.5, 1.5], lL);
-    player.lunge = { t: 0, dur: 0.14, dx: hx / hl, dz: hz / hl, sp: dist / 0.14 };
-    if (lL >= 5 && clock.time > (player.invCd || 0)) {
-      player.invulT = clock.time + 0.25;
-      player.invCd = clock.time + 1.2;
-    }
-    if (lL >= 3)
-      for (const m of here.monsters) {
-        if (!hittable(m)) continue;
-        const ax = m.x - player.x,
-          az = m.z - player.z,
-          dd = Math.hypot(ax, az);
-        if (dd < reach + 0.6 && (ax * hx + az * hz) / Math.max(0.01, dd * hl) > 0.6) {
-          const v = 6 / Math.max(0.5, m.ty.scale || 1);
-          m.kx = (m.kx || 0) + (ax / dd) * v;
-          m.kz = (m.kz || 0) + (az / dd) * v;
-          m.st = m.st || {};
-        }
-      }
-  }
   if (sp.elem) {
     const fx = player.x + vx * 1.5,
       fz = player.z + vz * 1.5,
@@ -1004,11 +909,6 @@ export function fireBeam(h: Side, dirIn: V3 | null, orgIn: readonly number[] | n
     }
     if (seg.length < 2) seg.push([x, y, z]);
     const e = nth(seg, seg.length - 1);
-    // oxlint-disable-next-line no-constant-condition -- 古い JS のまま（止めてある処理。tools/same-code.mjs が同じ文と見るため）
-    if (false) {
-      fb.burst = clock.time;
-      orbBurst(nth(e, 0), Math.max(0.2, nth(e, 1)), nth(e, 2), sp, { dmg: 0.5, rad: 0.6, cloud: false });
-    }
     for (let q = 0; q < 3; q++) {
       const a = mr() * 6.28;
       spawn(
@@ -1587,7 +1487,6 @@ export function damageMonster(m: Mob, n: number, how: string): void {
  */
 export function hurtPlayer(n: number, cause: string): void {
   if (ui.godMode) return;
-  if ((player.invulT || 0) > clock.time) return;
   if (BL('reckless')) n *= BL('reckless') >= 2 ? 1.35 : 1.25;
   n *= Math.max(0.4, 1 - 0.15 * bodyN('ward'));
   if (adv.dead || !ui.started || ui.gallery || n <= 0) return;

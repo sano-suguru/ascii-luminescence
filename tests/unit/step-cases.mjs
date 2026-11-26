@@ -225,7 +225,6 @@ export async function stepCases(F, seeds, page) {
         rollCd: 0,
         lunge: null,
         recover: 0,
-        invulT: 0,
         netT: 0,
         fall: null,
         qcUntil: 0,

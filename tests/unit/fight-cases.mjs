@@ -461,7 +461,7 @@ export async function fightCases(F, seeds, page) {
         rallyMotes: [],
       });
       Object.assign(vmKick, { L: -9, R: -9 });
-      for (const h of ['L', 'R']) Object.assign(beamHold[h], { hold: 0, last: -9, burst: -9 });
+      for (const h of ['L', 'R']) Object.assign(beamHold[h], { hold: 0, last: -9 });
       Object.assign(edge, { t: 0, k: '', idle: 0 });
       for (const k of Object.keys(keys)) delete keys[k];
       gfx.camera = fakeCamera();
@@ -486,7 +486,6 @@ export async function fightCases(F, seeds, page) {
         roll: null,
         lunge: null,
         recover: 0,
-        invulT: 0,
         netT: chance(0.1) ? 1 : 0,
         blockType: '',
         lastCell: -1,
@@ -916,10 +915,9 @@ export async function fightCases(F, seeds, page) {
         call('monsterStrike', m, pick([0.1, 0.3]), pick([0.5, 1, 4]));
         tick(0.1);
       }
-      // ---- 場面：プレイヤーの傷（神のモード・無敵・加護・死）
+      // ---- 場面：プレイヤーの傷（神のモード・加護・死）
       for (let k = 0; k < 4; k++) {
         ui.godMode = chance(0.2);
-        player.invulT = chance(0.2) ? clock.time + 1 : 0;
         if (chance(0.25)) player.hp = 2;
         call('hurtPlayer', pick([0, 1, 3, 8]), pick(['炎', '爆発', 'ネズミ']));
         tick(0.1);
@@ -1129,7 +1127,7 @@ export async function fightCases(F, seeds, page) {
             dx: 1,
             dz: 0,
             sp: 10,
-            cut: chance(0.5) ? { sp: sp0('dash', null), hit: new Set(), w: 1, dK: 1, link: chance(0.5) } : undefined,
+            cut: { sp: sp0('dash', null), hit: new Set(), w: 1, dK: 1, link: chance(0.5) },
           };
         if (chance(0.1)) player.roll = { t: 0, dx: 0, dz: 1 };
         if (chance(0.05)) ui.started = !ui.started;
