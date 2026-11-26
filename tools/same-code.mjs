@@ -16,7 +16,8 @@
 //   使わない catch の引数は外す（両方に当てる）。使わない引数の頭の _ は外す（本体がどちらの名前も読まない時だけ）。ファイルの一番外の別名（const specials = SPECIALS など、型を広げるためだけの物）は
 //   元の名前に戻す（const で、ファイルのどこでも書き換えず、関数の中でどちらかの名前を宣言し直していない時だけ）
 //   ファイルの小さな道具（古い JS に無い名前の、const 名前 = (引数) => 式 の形の物）は、使う所で開く。渡す値が名前と欄の読み取りか定数で、
-//   使う所で道具の中の名前を宣言し直さず、道具の中で渡す値の名前を宣言し直さない時だけ（toPlayer(m) → Math.hypot(m.x - player.x, m.z - player.z) など）
+//   使う所で道具の中の名前を宣言し直さず、道具の中で渡す値の名前を宣言し直さない時だけ（toPlayer(m) → Math.hypot(m.x - player.x, m.z - player.z) など）。
+//   古い方の関数も同じ名前で読んでいる道具（古い JS が import で読む sndReady など）は開かない
 //   先に読む：const X = 式（式は名前と欄の読み取りだけか、数・名前とその計算だけでできた、ループや関数の内側でない所で1回だけ使うオブジェクト）、
 //   const [a, b] = 式 の後ろで、X を式に戻す（両方に当てる。X を書き換えている・宣言し直している時と、式が読む名前をその先で宣言し直している時は戻さない。
 //   古い方と新しい方の両方にある先読みは、消した所に印を残し、位置も比べる）
@@ -556,9 +557,11 @@ export function compareSources(old, files, only = null) {
       compared.add(name);
       const o0 = norm(od.node, ctx);
       let n = unType(nd.node);
+      // 古い方も同じ名前で読んでいる道具は開かない（src/lib の物を古い JS が import で読む時。sndReady など）
+      const open = new Map([...helpers].filter(([k]) => !uses(od.node, k).n));
       for (let round = 0; round < 5; round++) {
         const before = key(n);
-        n = inlineHelpers(n, helpers, (k) => {
+        n = inlineHelpers(n, open, (k) => {
           const line = `${basename(file)} の道具を開いた：${k}`;
           if (!review.includes(line)) review.push(line);
         });

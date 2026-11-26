@@ -71,6 +71,14 @@ describe('同じと言う物', () => {
     expect(r.n).toEqual({ f: 0 });
     expect(r.review).toEqual(['a.ts の道具を開いた：toPlayer', 'a.ts の道具を開いた：now']);
   });
+  it('古い方も同じ名前で読んでいる道具（古い JS が import で読む物）は開かない', () => {
+    const r = cmp(
+      `function f(){ if(!sndReady())return; g(); }`,
+      `export const sndReady = (): boolean => SND.on;\nexport function f() { if (!sndReady()) return; g(); }`,
+    );
+    expect(r.n).toEqual({ f: 0 });
+    expect(r.review).toEqual([]);
+  });
   it('型だけの書き方（as const・後ろの !）と、名前の ?', () => {
     expect(
       cmp(
