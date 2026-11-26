@@ -39,7 +39,8 @@ function showroom(){
       for(let r=1;r<=12;r++){ let ok=true; for(let a=0;a<16&&ok;a++){ const an=a/16*Math.PI*2, j=Math.round(cz+Math.sin(an)*r)*W+Math.round(cx+Math.cos(an)*r); if(!open(j))ok=false; } if(!ok)break; c=r; }
       if(c>bc){ bc=c; best=i; } }
   const cx=best%W, cz=(best/W)|0, x=(cx+0.5)*CELL, z=(cz+0.5)*CELL;
-  here.D.items=[]; here.D.steles=[]; here.monsters=[]; fight.projs=[]; fight.clouds=[]; fight.boltFx=[]; fight.zapQueue=[];
+  // the room's events too (statues, eruptions, floods and the like start when the player comes near, and change the cells)
+  here.D.items=[]; here.D.steles=[]; here.monsters=[]; here.events=[]; fight.projs=[]; fight.clouds=[]; fight.boltFx=[]; fight.zapQueue=[];
   here.fixtures=here.fixtures.filter(f=>{ const d=Math.hypot(f.x-x,f.z-z); if(d<8&&f.li!==undefined&&here.D.lights[f.li])here.D.lights[f.li].int=0; return d>=8; });
   for(const L of here.D.lights)if(Math.hypot(L.x-x,L.z-z)<8)L.int=0;
   // the open direction for the camera
@@ -51,12 +52,24 @@ function openBestiary(){
   introEl.classList.add('gone');
   // 部屋を作る前に入れる（階を作る処理が、図鑑の中だと分かるように。探索の届いた深さや墓に触れない）
   ui.gallery={mode:'beast',list,all:all.length,idx:0,room:null,m:null,t:0}; ui.gallery.room=showroom();
+  // the room's fittings and lamps as they are now: each creature shown puts them back (showBeast)
+  ui.gallery.still=structuredClone({fixtures:here.fixtures,lights:here.D.lights});
   showBeast(0); renderGallery(); document.getElementById('gal').classList.add('show');
 }
 function showBeast(i){
   const g=ui.gallery; here.monsters=[]; g.m=null; g.fix=null; g.view=null; g.drag=null; g.aimY=undefined; g.rNow=undefined; if(!g.list.length){ renderGallery(); return; }
   g.idx=(i+g.list.length)%g.list.length; const e=g.list[g.idx];
-  MTYPES.__gal=e.ty; const m=makeMonster({key:'__gal',cx:g.room.cx,cz:g.room.cz,g:-1,lead:true});
+  // while a creature is on show, the visual random (mr) reads a sequence of its own, from its key: here (its shape and first values, then the falling dust made anew),
+  // and in each step of the game (stepTick). So draws elsewhere (before it was shown, or outside the game's steps) do not change the picture.
+  // The player stands at the room's middle until the first step puts it at the camera: the dust is made round the player (and made again when it strays
+  // 16 away), and a few auras look at how far the player is, so neither hangs on where the last creature's camera was. For the same reason the eye's
+  // exposure and the fog settle at once, in the step after the camera is placed (settle: 1 waits for updateGallery to place it, 2 settles in updateAtmosphere).
+  // The fittings and lamps go back to how they were when the bestiary opened: they keep counters that run only while the player is within 46
+  // (the sparks' f.acc, f.next, the lamps' fade and boost). The lamps are refilled in place, the same number as then
+  { const s=structuredClone(g.still), Ls=here.D.lights; here.fixtures=s.fixtures; Ls.length=s.lights.length;
+    s.lights.forEach((S,k)=>{ const L=Ls[k]; if(!L){ Ls[k]=S; return; } for(const a of Object.keys(L))delete L[a]; Object.assign(L,S); }); }
+  MTYPES.__gal=e.ty; g.rnd=keyedRand('gallery '+e.key); player.x=g.room.x; player.z=g.room.z; g.settle=1;
+  const m=withVisualRand(g.rnd,()=>{ const m=makeMonster({key:'__gal',cx:g.room.cx,cz:g.room.cz,g:-1,lead:true}); initDust(); return m; });
   m.x=g.room.x; m.z=g.room.z; m.sleep=false; m.hidden=false; m.wait=1e9; m.galShow=true; m.heartOn=true; m.rise=1; m.surf=1; m.yaw=0; if(e.ty.form==='eel')m.y=0;
   g.water=e.ty.form==='kraken'||e.ty.form==='deepkraken'||e.ty.form==='eel'||e.ty.form==='fish'||e.ty.habitat==='deep'; if(g.water&&e.ty.form==='kraken')m.y=-0.25*(e.ty.scale||1); if(e.ty.form==='deepkraken')m.y=0; if(e.ty.habitat==='bog')m.y=0;
   here.monsters.push(m); g.m=m; g.t=0; renderGallery();
@@ -118,7 +131,7 @@ function updateGallery(dt){
     player.x=cx; player.z=cz; player.yaw=Math.atan2(-(g.room.x-cx),-(g.room.z-cz)); player.pitch=Math.atan2(ty2-ch,Rh)-(centered?0:0.16); g.aimY=ty2; g.tiltNow=Math.atan2(ch-ty2,Rh); g.stretchNow=Math.hypot(Rh,ch-ty2)/R;
     if(fix)m.yaw=player.yaw+fix.yaw;
     if(!!m.sleep!==!!g.shownSleep)galleryLine(); // a dragon fell asleep or woke: show the line that fits
-    gfx.camera.position.set(cx,ch,cz); gfx.camera.rotation.set(player.pitch,player.yaw,0);
+    gfx.camera.position.set(cx,ch,cz); gfx.camera.rotation.set(player.pitch,player.yaw,0); if(g.settle===1)g.settle=2; // the camera is placed: the eye settles in the next step
     if(R<want-0.2){ U.uCamP.value.set(cx,ch,cz); U.uCutP.value.set(g.room.x,ty2,g.room.z); U.uCut.value=1; } else U.uCut.value=0;
     vfx.zapFlash={x:g.room.x+Math.cos(a)*Rh*0.6,y:2.2+1.2*sc,z:g.room.z+Math.sin(a)*Rh*0.6,col:[0.5,0.48,0.45],t:999,r:7+3*sc}; }
   if(g.mode==='range'){ for(const d of g.dummies){ if(d.m.dead){ d.respawn-=dt; if(d.respawn<=0)spawnDummy(d); } else { d.respawn=1.5; d.m.dT=Math.max(0,(d.m.dT||0)-dt); if(d.m.dT<=0)d.m.dsum=0; } } }
