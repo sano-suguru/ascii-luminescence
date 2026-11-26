@@ -5,19 +5,9 @@
 // 伝説の物の読み方（legendOfBranch・legendAll・descentSealed）は src/lib/legend.ts（src/game/imports.mjs で読む）
 // 最深部か isFinal は src/lib/levels.ts、最深部の状態 here.finalSt は src/lib/state.ts（src/game/imports.mjs で読む）
 
-// a lord falls: its legendary thing (if it holds one) or a golden rune
-function lordFell(m){
-  if(m.key!=='lord'||!here.branch)return;
-  adv.runState.lordsDone.add(here.branch.key);
-  { let si=m.cz*MW+m.cx; for(const d of [1,-1,MW,-MW])if(here.D.tile[si+d]===TF&&!here.D.liquid[si+d]){ si+=d; break; } here.D.items.push({i:si,kind:'slot',taken:false,born:clock.time}); }
-  const k=legendOfBranch(here.branch.key), L=getLegend();
-  if(k&&L&&!L.have.has(k)){ here.D.items.push({i:m.cz*MW+m.cx,kind:'legend',legend:k,taken:false,born:clock.time});
-    const c=LEGEND_KINDS[k].col; for(let q=0;q<60;q++){ const a=mr()*6.28; spawn(m.x,0.8+mr()*1.5,m.z,Math.cos(a)*2.2,0.5+mr()*2.4,Math.sin(a)*2.2,1.2+mr(),G(mpick(['*','+','.','\''])),0.2,c[0]*3,c[1]*3,c[2]*3,0); }
-    sChime(m.x,m.z,0.6); setTimeout(()=>sChime(m.x,m.z,0.5),300);
-    msg(`<b style="color:${css(c)}">${LEGEND_KINDS[k].ch}</b>${mname(m)}が崩れ落ちた。その胸の奥から、ひとつの光がこぼれ落ちた。`); }
-}
+// lordFell は src/lib/combat.ts（src/game/imports.mjs で読む）
 let slotPickN=0;
-function applyOpen(t){ if(t==='slotR'||t==='slotL'){ const H=gear.hands[t.slice(4)]; H.slotN=Math.min(SLOT_MAX,(H.slotN||2)+1); while(H.slots.length<H.slotN)H.slots.push(null); } else if(t==='body')adv.runState.bodyOpen=Math.min(2,(adv.runState.bodyOpen||0)+1); syncHands(); renderHotbar(); if(ui.invOpen)renderInv(); }
+// applyOpen は src/lib/gear.ts（src/game/imports.mjs で読む）
 function openSlot(cell){ const opts=[];
   for(const h of ['R','L'])if((gear.hands[h].slotN||2)<SLOT_MAX)opts.push({target:'slot'+h,label:`${h==='L'?'左':'右'}手に、ルーンの枠をもう1つ`});
   if((adv.runState.bodyOpen||0)<2)opts.push({target:'body',label:'身の護符の枠'});
@@ -40,15 +30,7 @@ function oracleLegendHints(){ const L=getLegend(); if(!L)return;
   LEGEND_ORDER.forEach((k,j)=>{ if(L.have.has(k))return; const it=L.items[k]; setTimeout(()=>msg(`<b style="color:#bfe4ff">「</b>${LEGEND_KINDS[k].name}は、${BRANCH_HINT[it.branch]}で、主に抱かれている」`),900+j*700); }); }
 
 // ---------------------------------------------------------------- the deepest place: with the three legendary things in hand, the king's shadow rises there
-function setupFinal(){
-  // the bottom: the place with the highest vault on this level, with open floor around it, so the shadow can stand under the vault
-  let c0=here.D.stairs, bc=here.D.ceil[c0]||0; const open=i=>i>=0&&i<NCELL&&here.D.tile[i]===TF&&!here.D.liquid[i]&&!here.D.solid.has(i);
-  for(const rad of [3,2,1]){ for(let i=0;i<NCELL;i++){ if(!open(i)||here.D.ceil[i]<=bc)continue; const x=i%MW, z=(i/MW)|0; let ok=x>rad&&z>rad&&x<MW-rad-1&&z<MH-rad-1;
-      for(let dz=-rad;dz<=rad&&ok;dz++)for(let dx=-rad;dx<=rad;dx++)if(!open(i+dz*MW+dx)){ ok=false; break; } if(ok){ bc=here.D.ceil[i]; c0=i; } }
-    if(bc>=10)break; }
-  here.monsters=here.monsters.filter(m=>m.ty.critter);
-  here.finalSt={c0,boss:null,bossT:-1,summonT:12,said:false};
-}
+// setupFinal は src/lib/levels.ts（src/game/imports.mjs で読む）
 function updateFinal(dt){
   if(!here.finalSt||!isFinal()||adv.dead)return;
   if(!here.finalSt.said&&ui.started){ here.finalSt.said=true; setTimeout(()=>msg('<b style="color:#bfe4ff">.</b>底に着いた。光の届かない、静かな闇だ。手の中で、三つの光が震えている。'),1600); }
@@ -74,16 +56,7 @@ function spawnFinalBoss(){
   setTimeout(()=>msg(`<b style="color:#a98cff">&amp;</b><b style="color:#c9b8ff">${last.title}${last.name}の影</b>が立ち上がった。`),1400);
 }
 // 伝説の物を世界の中に描く drawLegendWorld は src/lib/legend.ts（src/game/imports.mjs で読む）
-// the end: a screen like the one for death, but light
-function victory(){
-  if(adv.won)return; adv.won=true; adv.dead=true; keys.KeyW=keys.KeyA=keys.KeyS=keys.KeyD=false;
-  const el=document.getElementById('death'); if(!el)return; const L=getLegend();
-  const secs=Math.floor(clock.time-adv.runStats.t0), mm=Math.floor(secs/60), ss=String(secs%60).padStart(2,'0'), f=t=>`<span class="f">${t}</span>`;
-  const R=awardLore(true); graveCands=[]; document.body.classList.add('over');
-  el.innerHTML=boxText([f('+-- 光 は 戻 っ た ---'),f('|'),...LEGEND_ORDER.map(k=>`${f('|')}  <b style="color:${css(LEGEND_KINDS[k].col)}">${LEGEND_KINDS[k].ch}</b> ${L.items[k].name}`),f('|'),
-    `${f('|')}  Lv${adv.lvl.n}　倒した敵 ${adv.runStats.kills}　時間 ${mm}:${ss}　シード ${adv.runSeed}`,f('|'),...loreRows(R,f),f('|'),`${f('|')}  ${adv.HIST.civ.name}の地の底に、ひとつの灯りがともった。`,f('|'),`${f('|')}  <b>[Enter]</b> 新しい探索へ`,f('+---')]);
-  el.classList.add('show','won'); for(let k=0;k<4;k++)setTimeout(()=>sChime(player.x,player.z,0.5),k*380);
-}
+// victory は src/lib/results.ts（src/game/imports.mjs で読む）
 
 // 稲妻の見た目 addBolt・sparkCrown・drawBoltFx は src/lib/fx.ts（src/game/imports.mjs で読む）
 

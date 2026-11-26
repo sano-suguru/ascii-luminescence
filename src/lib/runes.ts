@@ -640,7 +640,7 @@ export function slotsAllow(others: readonly Rune[], ru: Rune, cat: string): bool
   return true;
 }
 /** 手 H の、次に放つ性質（二つの性質は turn で交代）と、発動のルーンを決める */
-export function syncHand(H: Hand & { turn?: number; elem?: Rune | null; trig?: Rune | null }): void {
+export function syncHand(H: Hand & { turn?: number; elem?: Rune | null | undefined; trig?: Rune | null | undefined }): void {
   const rs = handRunes(H),
     els = [...new Set(rs.filter((r) => lookup(RUNE_DEF, r.type).cat === 'elem').map((r) => r.type))];
   const et = els.length ? els[(H.turn || 0) % els.length] : null;

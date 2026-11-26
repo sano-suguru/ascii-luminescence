@@ -6,9 +6,13 @@ import { type MonsterType } from './creatures.ts';
 import { type BranchPlace, type Fixture, type InterPlace, type Level, type RealmPlace, type Web } from './generate.ts';
 import { META_DEF, type Meta } from './progress.ts';
 import { type History } from './history.ts';
-import type { HandsSnap } from './gear.ts';
+import type { HandsSnap, Spec } from './gear.ts';
+import type { LoreResult } from './results.ts';
 import type { Body, Glyph } from './bodies/kit.ts';
 import { type Rune } from './runes.ts';
+import type { DataTexture, InstancedMesh, Mesh, Scene, ShaderMaterial, Sphere, Texture, Vector3, WebGLRenderer } from 'three';
+import type { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { DUST_N } from './shaders.ts';
 import { NCELL, NDL, NSL } from './world.ts';
 
 /** 稲妻の光り（灯りの1つとして描く。t は残りの秒。900 より大きいと消えない） */
@@ -108,6 +112,16 @@ export interface Ui {
   shriekMsgT: number;
   /** 草を食べる生き物が灯りに驚いた伝言を出したか（探索の間に一度だけ） */
   grazeMsg: boolean;
+  /** 照準の先の生き物を最後に探したゲームの時刻と、その生き物（src/lib/aim.ts の aimTarget。0.1秒ごとに探し直す） */
+  aimT: number;
+  crossMon: Mob | null;
+  /** 結果の画面：墓に遺せるルーンの一覧と、選んでいる番号（0 は遺さない。src/lib/results.ts） */
+  graveCands: Rune[];
+  graveSel: number;
+  /** 開発用：ダメージを受けない（dbg.god） */
+  godMode: boolean;
+  /** 背の高い茂みに入った伝言を出したか（階ごとに戻す） */
+  tallMsg: boolean;
 }
 export const ui: Ui = {
   started: false,
@@ -145,6 +159,12 @@ export const ui: Ui = {
   fleeMsgT: -10,
   shriekMsgT: -99,
   grazeMsg: false,
+  aimT: 0,
+  crossMon: null,
+  graveCands: [],
+  graveSel: 0,
+  godMode: false,
+  tallMsg: false,
 };
 
 /** レベルと経験（n：レベル、exp：経験、pending：まだ選んでいない加護の数、bless：加護ごとの段、strata：入った層）。後から足される欄は、使う処理を移す時に型を足す */
@@ -161,6 +181,11 @@ export interface RunStats {
   t0: number;
   /** この探索で新しく記録した忘れられた獣の数 */
   beastsNew?: number;
+  /** 届いた一番深い深さ・探索の始めに魔導書に記してあった反応の数・死因・受け取った伝承（src/lib/results.ts） */
+  maxDepth?: number;
+  book0?: number;
+  cause?: string;
+  loreRes?: LoreResult;
 }
 /** 探索の進み（最初の武器を選んだか・最初の祭壇・取った物・倒した主・開いた体の枠の数）。古い JS が後から足すほかの欄は、使う処理を移す時に型を足す */
 export interface RunState {
@@ -170,6 +195,8 @@ export interface RunState {
   lordsDone: Set<string>;
   /** 開いた体の枠の数（0 から 2） */
   bodyOpen?: number;
+  /** 枠を選ぶ祭壇の組（選ばなかった枠を、離れた時に開ける。src/lib/levels.ts の settleSlotPick） */
+  slotPend?: string | null;
 }
 /** 今の探索（シード・レベル・死んだか・勝ったか・記録・進み・試練・体力の上限・表示している体力） */
 export interface Adv {
@@ -229,8 +256,60 @@ export interface Player {
   swingWave?: boolean;
   /** 網に掛かった残りの秒（18-level-player.js の罠） */
   netT?: number;
+  /** 最後に通れなかった物（'wall'・'chasm'・'lava'・'gate'・'xtal'。src/lib/player.ts の solidAt が入れる） */
+  blockType: string;
+  /** 取り戻せる体力が戻る速さ（1秒あたり） */
+  rallyRate?: number;
+  /** 最後にダメージを受けたゲームの時刻 */
+  lastHurt?: number;
+  /** 攻撃の後の立ち直りの残りの秒（その間は次の攻撃ができない） */
+  recover?: number;
+  /** ダメージを受けないゲームの時刻（それまで）と、次にそうなれるゲームの時刻 */
+  invulT?: number;
+  invCd?: number;
+  /** 加護の効く間：反撃（ctrUntil）・持ち替えの直後（swapEdgeUntil）・倒した勢い（momUntil）・素早い詠唱（qcUntil）のゲームの時刻 */
+  ctrUntil?: number;
+  swapEdgeUntil?: number;
+  momUntil?: number;
+  qcUntil?: number;
+  /** 突進（経った秒 t・かかる秒 dur・向き dx・dz・速さ sp と、突進の間に切る物 cut） */
+  lunge?: Lunge | null;
+  /** 振った手 */
+  swingH?: string;
+  /** 次に転がれるまでの秒 */
+  rollCd?: number;
+  /** 水を歩いた時の水しぶきの溜め */
+  splash?: number;
+  /** 落ちて次の階へ行く途中（着いた時に落下のダメージ） */
+  fall?: boolean;
+  /** 炎の上にいた秒（0.5 秒ごとにダメージ） */
+  fireT?: number;
+  /** 最後にいたマス（マスが変わった時だけ、茂みと硫黄を調べる） */
+  lastCell?: number;
 }
-export const player: Player = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, pitch: -0.04, bob: 0, eye: 1.62, hp: 40, stillT: 0, searchedAt: -1 };
+/** 突進（経った秒 t・かかる秒 dur・向き dx・dz・速さ sp と、突進の間に切る物 cut：術 sp・当たった物 hit・幅 w・ダメージの倍率 dK・切った時に立ち直るか link） */
+export interface Lunge {
+  t: number;
+  dur: number;
+  dx: number;
+  dz: number;
+  sp: number;
+  cut?: { sp: Spec; hit: Set<Mob>; w: number; dK: number; link: boolean };
+}
+export const player: Player = {
+  x: 0,
+  z: 0,
+  vx: 0,
+  vz: 0,
+  yaw: 0,
+  pitch: -0.04,
+  bob: 0,
+  eye: 1.62,
+  hp: 40,
+  stillT: 0,
+  searchedAt: -1,
+  blockType: '',
+};
 
 /** 片手（L・R）の状態：武器のルーン atk と、付けたルーンの枠 slots（枠の数 slotN）。elem・trig は、その手の性質と発動のルーン。後から足される欄は、使う処理を移す時に型を足す。
  * runes.ts の Hand（handRunes などが読む、枠だけの形）とは別の物 */
@@ -239,8 +318,9 @@ export interface HandState {
   slots: (Rune | null)[];
   slotN: number;
   turn: number;
-  elem: Rune | null;
-  trig: Rune | null;
+  /** 次に放つ性質と発動のルーン（両手持ちの時は、実際に使う手の物を写す。無い時は null か undefined） */
+  elem: Rune | null | undefined;
+  trig: Rune | null | undefined;
 }
 /** 両手と、体のルーンの枠 B（b0・b1） */
 export interface Hands {
@@ -303,7 +383,7 @@ export interface Spark {
   vz: number;
   t: number;
 }
-/** 火と地面のマス（マスごとの火・燃える物・灰になったか・マスの変わり方の種類・火の明かり・匂い）と、燃えているマスの一覧・ガス・投げた火花。階に入るたびに作り直す（火・燃える物・灰・マスの変わり方・明かりと燃えているマスは 15-sound-fire.js の initFire、匂い・ガス・火花は 18-level-player.js の newLevel） */
+/** 火と地面のマス（マスごとの火・燃える物・灰になったか・マスの変わり方の種類・火の明かり・匂い）と、燃えているマスの一覧・ガス・投げた火花。階に入るたびに作り直す（火・燃える物・灰・マスの変わり方・明かりと燃えているマスは src/lib/ground.ts の initFire、匂い・ガス・火花は src/lib/levels.ts の newLevel） */
 export interface Blaze {
   /** マスごとの火の強さ */
   fire: Float32Array;
@@ -326,6 +406,10 @@ export interface Blaze {
   frozen: Map<number, { t: number; liq: number; surf: number }>;
   /** 踏み分けた背の高い草や茸のマスと、踏んだゲームの時刻（src/lib/ground.ts の trample が足し、18-level-player.js の regrow が元に戻す。newLevel が空にする） */
   trampled: [number, number][];
+  /** 火の備品（松明・焚き火など）のマス（燃えるガスがここに触れると燃え上がる。src/lib/ground.ts の initFire が作る） */
+  fireSrc: number[];
+  /** 沼のガスが爆ぜた伝言を最後に出したゲームの時刻（3秒あける） */
+  lastBoom: number;
 }
 export const blaze: Blaze = {
   fire: new Float32Array(NCELL),
@@ -339,6 +423,8 @@ export const blaze: Blaze = {
   spark: null,
   frozen: new Map(),
   trampled: [],
+  fireSrc: [],
+  lastBoom: -10,
 };
 
 /** 光線の一切れ（点の並び・色・残りの秒） */
@@ -443,6 +529,19 @@ export interface Fight {
   boltFx: Bolt[];
   /** 少しずつ遅れて落ちる稲妻（t 秒後に fn。済んだら done） */
   zapQueue: { t: number; fn: () => void; done?: boolean }[];
+  /** 立ち直りの光の粒（当てた生き物から手元へ飛ぶ。src/lib/combat.ts の rallyOnHit が足し、21-altars-heal.js の updateRally が動かす） */
+  rallyMotes: RallyMote[];
+}
+/** 立ち直りの光の粒（出た所 x0・y0・z0、経った秒 t（初めは負で、少し遅れて出る）、飛ぶ秒 dur、戻す体力 amt、色 c、揺れの位相 wob） */
+export interface RallyMote {
+  x0: number;
+  y0: number;
+  z0: number;
+  t: number;
+  dur: number;
+  amt: number;
+  c: readonly number[];
+  wob: number;
 }
 export const fight: Fight = {
   projs: [],
@@ -459,6 +558,7 @@ export const fight: Fight = {
   beamIgT: -9,
   boltFx: [],
   zapQueue: [],
+  rallyMotes: [],
 };
 
 /** 階を移る途中（out：暗くなって出ていく、in：明るくなって入る。go は行き先の種類） */
@@ -470,7 +570,7 @@ export interface Trans {
 }
 /** 今の階に、古い JS が後から足す欄（型は、使う処理を移す時に足す） */
 export interface LevelExtra {
-  /** 最深部の階（王の影が現れる。18-level-player.js の newLevel が入れる） */
+  /** 最深部の階（王の影が現れる。src/lib/levels.ts の newLevel が入れる） */
   finalVault?: boolean;
   /**
    * ここから stairGuard までは、深さ2から下（と支道・異界）の祭壇などを置く時（src/lib/altars.ts の mainPathAltars）に入れる。深さ1・特別な階・最深部には無い。
@@ -491,17 +591,21 @@ export interface LevelExtra {
   steles?: { i: number; g: string }[];
   /** 薄い氷のきしむ伝言を出したか（その階で一度だけ。src/lib/ground.ts の crackIce） */
   crackMsg?: boolean;
-  /** 床が崩れたか（部屋の出来事。15-sound-fire.js の initEvents が false にする） */
+  /** 床が崩れたか（部屋の出来事。src/lib/levels.ts の initEvents が false にする） */
   collapsed?: boolean;
-  /** 床が崩れて開いた穴のマス（1 が穴。15-sound-fire.js の initEvents が作り、床が崩れる出来事が入れる） */
+  /** 床が崩れて開いた穴のマス（1 が穴。src/lib/levels.ts の initEvents が作り、床が崩れる出来事が入れる） */
   pit?: Uint8Array;
-  /** マス → クモの巣（15-sound-fire.js の initFire が作る） */
+  /** マス → クモの巣（src/lib/ground.ts の initFire が作る） */
   webAt?: Map<number, Web>;
   /** 先にある物の手がかり（はじめて読んだ時に作る。src/lib/omens.ts の omenOf） */
   omen?: Omen;
   /** 封じられた階段のうなり声を、次に鳴らせるゲームの時刻と、封が解けた伝言を出したか（src/lib/omens.ts の drawStairSeal） */
   sealSnd?: number;
   sealOpenMsg?: boolean;
+  /** 壁の彫刻を見つけた伝言・深い水に入った伝言・氷の上の伝言を出したか（その階で一度だけ） */
+  engrSeen?: boolean;
+  swimMsg?: boolean;
+  iceMsg?: boolean;
 }
 /** 先にある物の手がかり（src/lib/omens.ts の computeOmen）：下り階段から漏れる物（特別な階・層の変わり目・支道の奥）、支道の入口、異界の門、
  * 支道の入口と奥の階段のまわりの跡、場所ごとに次に音を鳴らせるゲームの時刻 */
@@ -602,6 +706,31 @@ export interface Monster {
   blades?: { a: number; x: number; y: number; z: number }[];
   /** 驚いて逃げている残りの秒（小さな生き物） */
   flee?: number;
+  /** 動いている速さ（照準の先読みに使う。生き物の処理が入れる） */
+  vlx?: number;
+  vlz?: number;
+  /** 最後に受けた攻撃の種類と、その吹き飛ばしの強さ（src/lib/combat.ts の hitReact が読む） */
+  lastAtk?: string | undefined;
+  lastKnock?: number | undefined;
+  /** 叩きつけ（ぶつかった時の傷 d と、終わるゲームの時刻 until） */
+  slam?: { d: number; until: number };
+  /** 性質の跡を最後に残したゲームの時刻（火・冷気・稲妻・連鎖。0.5 秒あける） */
+  fireT2?: number;
+  iceT?: number;
+  chainT?: number;
+  chainT2?: number;
+  /** 沼と深みの物が姿を現した伝言を出したか・ノームが最後に話したゲームの時刻・重い足音の溜め */
+  riseMsg?: boolean;
+  talkT?: number;
+  stepT?: number;
+  /** 試しの間の的：受けた傷の合計と、それを出しておく残りの秒 */
+  dsum?: number;
+  dT?: number;
+  /** 吹き飛ばされている速さ */
+  kx?: number;
+  kz?: number;
+  /** 最後にプレイヤーの攻撃が当たったゲームの時刻（立ち直りに使う） */
+  playerT?: number;
 }
 /** src/lib/monsters.ts の makeMonster が作る生き物（階の生き物 here.monsters）。makeMonster が必ず入れる欄を、必ずある物にした型 */
 export interface Mob extends Monster {
@@ -665,8 +794,21 @@ export interface Mob extends Monster {
   tracked?: boolean;
   /** 剣を操る者：剣が回り始めた伝言を出したか */
   bladeMsg?: boolean;
-  /** 状態異常（TypeScript が読み書きするのは、冷え chill の残りの秒だけ） */
-  st?: { chill?: number };
+  /** 状態異常（残りの秒など） */
+  st?: MonStatus;
+}
+/** 生き物の状態異常（燃える burn・冷える chill・毒 poison・痺れ shock・動けない pin の残りの秒、次に動けなくなれるゲームの時刻 pinCd、
+ * 焦がしの加護が効いたか scorched、毒と燃えの傷の溜め pt・bt） */
+export interface MonStatus {
+  burn?: number;
+  chill?: number;
+  poison?: number;
+  shock?: number;
+  pin?: number;
+  pinCd?: number;
+  scorched?: boolean;
+  pt?: number;
+  bt?: number;
 }
 /** 今いる場所と、階の中身。深さ・支道・異界・特別な階、生き物、灯りの備品、階を移る途中、着いた所 */
 export interface Here {
@@ -687,7 +829,7 @@ export interface Here {
   showroomGen: boolean;
   /** 今の階の中身（generate.ts の generateLevel の結果）。初期化（30-loop-init.js の init）で1つ目の階を作るまでは null。古い JS が後から足す欄は LevelExtra（まだ型の無い hub などは、使う処理を移す時に足す） */
   D: (Level & LevelExtra) | null;
-  /** 見たことのあるマス（階に入るたびに作り直す。18-level-player.js の newLevel） */
+  /** 見たことのあるマス（階に入るたびに作り直す。src/lib/levels.ts の newLevel） */
   explored: Uint8Array;
   /** マスごとの覚えた色（マスの数×3） */
   mem: Float32Array;
@@ -695,17 +837,29 @@ export interface Here {
   fovVis: Uint32Array;
   /** 見えるマスを数え直すたびに1増える番号 */
   fovStamp: number;
-  /** 部屋の出来事（神託・転移・噴き出し・像・崩れ・水攻め・霊など）。型は、出来事の処理を移す時に作る */
-  events: unknown[];
+  /** 部屋の出来事（神託・転移・噴き出し・像・崩れ・水攻め・霊など。src/lib/levels.ts の initEvents が作り、15-sound-fire.js が進める） */
+  events: RoomEvent[];
   /** 川のマスの一覧 */
   riverCells: number[];
-  /** 最深部の状態（最深部の階に入った時に作る。ほかの階では null。24-goal.js の setupFinal） */
+  /** 最深部の状態（最深部の階に入った時に作る。ほかの階では null。src/lib/levels.ts の setupFinal） */
   finalSt: FinalState | null;
-  /** その階で一度だけ出す伝言を出したか：巣に絡まった・巣が燃え落ちた・修復機が扉を直した・足元の硫黄が燃え上がった（18-level-player.js の newLevel が階ごとに戻す） */
+  /** その階で一度だけ出す伝言を出したか：巣に絡まった・巣が燃え落ちた・修復機が扉を直した・足元の硫黄が燃え上がった（src/lib/levels.ts の newLevel が階ごとに戻す） */
   webMsg: boolean;
   webBurnMsg: boolean;
   repairMsg: boolean;
   brimMsg: boolean;
+  /** 着いた時に立っていた階段や門のマス（離れるまで、踏んでも階を移らない。離れたら -1） */
+  lockCell: number;
+  /** その階で入った部屋（初めて入った時に部屋の伝言を出す）と、下り階段を見つけた伝言を出したか */
+  visitedRooms: Set<number>;
+  stairsSeen: boolean;
+  /** 前の階の層（層が変わった時に、層の名前を出す） */
+  lastStratum: Level['stratum'] | null;
+}
+/** 部屋の出来事（種類 type と、種類ごとの欄。中身を読むのは古い JS の出来事の処理） */
+export interface RoomEvent {
+  type: string;
+  [k: string]: unknown;
 }
 /** 最深部の状態：一番高い天井のマス c0（王の影が現れる所）、王の影 boss と、現れるまで・呼び出すまでの秒、着いた時の伝言を出したか */
 export interface FinalState {
@@ -738,6 +892,10 @@ export const here: Here = {
   webBurnMsg: false,
   repairMsg: false,
   brimMsg: false,
+  lockCell: -1,
+  visitedRooms: new Set(),
+  stairsSeen: false,
+  lastStratum: null,
 };
 /** 行った階の覚え（場所の名前 → 見えた所と覚えた色の写し）。丸ごと入れ替えないので、古い JS は今までどおり placeMem で読む */
 export const placeMem = new Map<string, { explored: Uint8Array; mem: Float32Array }>();
@@ -862,9 +1020,10 @@ export interface Buf {
   pN: number;
 }
 export const buf: Buf = { dn: 0, pN: 0 };
-/** three.js のカメラのうち、TypeScript が読む欄だけ（本物は 05-renderer.js が作る PerspectiveCamera。TypeScript からは書き換えない） */
+/** three.js のカメラのうち、TypeScript が使う欄だけ（本物は 05-renderer.js が作る PerspectiveCamera。位置と向きは src/lib/player.ts が set で書く） */
 export interface CameraView {
-  readonly position: { readonly x: number; readonly y: number; readonly z: number };
+  readonly position: { readonly x: number; readonly y: number; readonly z: number; set(x: number, y: number, z: number): unknown };
+  readonly rotation: { set(x: number, y: number, z: number): unknown };
 }
 /** three.js の、マスの火・灰・変わり方を描画に渡す絵（DataTexture）のうち、TypeScript が書く欄だけ（本物は 05-renderer.js が作る。中身は cellData） */
 export interface CellTex {
@@ -876,11 +1035,64 @@ export interface Gfx {
   camera: CameraView;
   cellTex: CellTex;
   drawBodyOnly: boolean;
+  /** ここから下は、05-renderer.js・30-loop-init.js・06-world.js がその場で入れる three.js の物（入れるまでは null・undefined か空）。
+   * 描画する部品（WebGL を使えない時は作れず、ゲームは始まらない） */
+  renderer: WebGLRenderer | undefined;
+  /** 描く物を入れる場面（05-renderer.js が作る。three.js は物を作る時に Math.random を引くので、テスト用モードの乱数の入れ替えの後に作る） */
+  scene: Scene | null;
+  /** 描画の全部の部品が分け合う値（シェーダーの uniform） */
+  U: Uniforms | null;
+  /** 階の文字の部品（30-loop-init.js の init が作る）と、壁の向こうを隠す板の部品 */
+  staticMat: ShaderMaterial | undefined;
+  occMat: ShaderMaterial | undefined;
+  /** 画面の最後の後処理（露出・熱のゆらぎ・水中・傷の赤み・詠唱の間の色） */
+  finalPass: ShaderPass | null;
+  /** 階の文字を区切りごとにまとめた物（区切りを包む球で、見えない区切りを描かない）と、壁の向こうを隠す板（src/lib/build.ts の buildWorld が作る） */
+  chunks: { mesh: InstancedMesh; sphere: Sphere }[];
+  occMesh: Mesh | null;
+  /** 水面の絵（マスごとの水の深さ・流れ・湖か・藻と、灯りの番号と重み。06-world.js の makeWater が作り、src/lib/build.ts の updateWater が書く） */
+  waterTex: DataTexture | null;
+  waterLTex: DataTexture | null;
+  /** その階の霧の濃さの基 */
+  fogBase: number;
 }
-export const gfx: Gfx = { camera: { position: { x: 0, y: 0, z: 0 } }, cellTex: { needsUpdate: false }, drawBodyOnly: false };
+/** 描画の部品が分け合う値（シェーダーの uniform。05-renderer.js が作る） */
+export interface Uniforms {
+  uCell: { value: unknown };
+  uCollT: { value: number };
+  uAtlas: { value: Texture | null };
+  uTime: { value: number };
+  uSL: { value: Float32Array };
+  uDLP: { value: Float32Array };
+  uDLC: { value: Float32Array };
+  uCamP: { value: Vector3 };
+  uCutP: { value: Vector3 };
+  uCut: { value: number };
+  uFogDen: { value: number };
+  uFogColor: { value: Vector3 };
+  uScale: { value: number };
+  uRamp: { value: Float32Array };
+  uAmb: { value: number };
+}
+export const gfx: Gfx = {
+  camera: { position: { x: 0, y: 0, z: 0, set: () => undefined }, rotation: { set: () => undefined } },
+  cellTex: { needsUpdate: false },
+  drawBodyOnly: false,
+  renderer: undefined,
+  scene: null,
+  U: null,
+  staticMat: undefined,
+  occMat: undefined,
+  finalPass: null,
+  chunks: [],
+  occMesh: null,
+  waterTex: null,
+  waterLTex: null,
+  fogBase: 0.05,
+};
 /** マスの絵 gfx.cellTex の中身（マス1つに4つ：火の明かり・火の強さ・灰か・変わり方の種類。src/lib/ground.ts の uploadCells が書く）。丸ごと入れ替えない */
 export const cellData = new Uint8Array(NCELL * 4);
-/** 薄い氷のマスに乗っていた秒（マス → 秒。src/lib/ground.ts の crackIce。18-level-player.js の newLevel が階ごとに空にする）。丸ごと入れ替えない */
+/** 薄い氷のマスに乗っていた秒（マス → 秒。src/lib/ground.ts の crackIce。src/lib/levels.ts の newLevel が階ごとに空にする）。丸ごと入れ替えない */
 export const iceT = new Map<number, number>();
 /** 灯りを描画に渡す配列（src/lib/lightmap.ts の updateLights が毎フレーム書き、05-renderer.js の U が描画に渡す）。丸ごと入れ替えない。
  * SL：階の灯りの色と強さ（灯り1つに3つ）、DLP：動く灯りの位置と届く距離（1つに4つ。0番は手元の灯り、最後は稲妻か火花）、DLC：動く灯りの色（1つに3つ） */
@@ -888,4 +1100,19 @@ export const SL = new Float32Array(NSL * 3),
   DLP = new Float32Array(NDL * 4),
   DLC = new Float32Array(NDL * 3);
 /** 押しているキー（キーの code → 押しているか）。丸ごと入れ替えない */
-export const keys: Record<string, boolean> = {};
+export const keys: { KeyW?: boolean; KeyA?: boolean; KeyS?: boolean; KeyD?: boolean; [code: string]: boolean | undefined } = {};
+/** 手元の武器が跳ねたゲームの時刻（術を放った時。19-hands-runes.js の drawViewWeapons が読む）。丸ごと入れ替えない */
+export const vmKick = { L: -9, R: -9 };
+/** 光線を撃ち続けている間の、手ごとの記録（続けた秒 hold・最後に撃った時刻 last・焼いた時刻 sear・弾けた時刻 burst）。丸ごと入れ替えない */
+export const beamHold = { L: { hold: 0, last: -9, sear: -9, burst: -9 }, R: { hold: 0, last: -9, sear: -9, burst: -9 } };
+/** 漂う塵の粒（位置 x・y・z、揺れの位相 ph、文字 g、大きさ s。src/lib/particles.ts の initDust・respawnDust が置き、15-sound-fire.js が動かす）。丸ごと入れ替えない */
+export const dust = {
+  x: new Float32Array(DUST_N),
+  y: new Float32Array(DUST_N),
+  z: new Float32Array(DUST_N),
+  ph: new Float32Array(DUST_N),
+  g: new Float32Array(DUST_N),
+  s: new Float32Array(DUST_N),
+};
+/** 通れない所に押し当てている間の記録（押した秒 t・何に当たっているか k・離してからの秒 idle）。丸ごと入れ替えない */
+export const edge = { t: 0, k: '', idle: 0 };

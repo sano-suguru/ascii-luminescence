@@ -2,7 +2,7 @@
 // 22-world-hints.js の drawGraves、13-creatures.js の drawWebs・webTouch）：灯りの備品（火鉢・水晶・たいまつ・階段など）、扉（近づくと開く）、
 // 泉、墓、クモの巣（触れると震え、燃えると落ちる）、罠と鉄格子（18-level-player.js の drawTraps）。毎フレーム、世界の中に文字を置き（dyn）、粒子を出す（spawn）。
 // 状態の入れ物 here（今の階）・player・blaze（火）・clock・ui（1人称か3人称か）・gfx（カメラの位置。読むだけ）に頼る。呼ぶのは古い JS の描画（30-loop-init.js の tick と 22-world-hints.js の drawRunesWorld）と、
-// プレイヤーの動き（28-camera-player.js の updatePlayer が webTouch）。
+// プレイヤーの動き（src/lib/player.ts の updatePlayer が webTouch）。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
 import { lookup, must, nth } from './array.ts';
 import { sChime, sCreak, sHiss, sSqueak } from './audio.ts';

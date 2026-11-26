@@ -1,5 +1,5 @@
-// 名前と説明の表（もとは src/game/12・18・24・25・28・29）：見た時の説明、罠・伝説の物・主の名前、試しの間の的、3人称の時の自分の姿。
-import { cssOf } from './color.ts';
+// 名前と説明の表（もとは src/game/02・12・18・24・25・28・29）：見た時の説明、罠・伝説の物・主の名前、試しの間の的、3人称の時の自分の姿、部屋の仕掛けの伝言。
+import { type Color, cssOf } from './color.ts';
 
 /** 見た時の説明の1行（文字 ch を色 col で、名前 name と説明 desc。色は3つの数。無い・足りない時は止まる。文字・名前・説明が無い時は undefined と書く） */
 export const lookLine = (
@@ -61,7 +61,7 @@ export const TRAP_INFO: Readonly<Record<string, readonly [string, string, string
   methane: ['ガスの', '#a8e05a', '踏むと沼のガスが噴き出す。火気は厳禁'],
 };
 /** 伝説の物（名前・文字・色）と、その並び */
-export const LEGEND_KINDS = {
+export const LEGEND_KINDS: Record<string, { name: string; ch: string; col: Color }> = {
   candle: { name: '燭台', ch: 'i', col: [1.0, 0.78, 0.42] },
   bell: { name: '鐘', ch: 'A', col: [0.98, 0.9, 0.55] },
   mirror: { name: '鏡', ch: 'O', col: [0.72, 0.9, 1.0] },
@@ -105,4 +105,19 @@ export const AVATAR_TY = {
   fl: 0,
   light: 0,
   trail: 0,
+};
+/** 部屋の仕掛け（野営の跡・祭壇・書庫・墓所など）の、文字と色と、初めて入った時の伝言（もとは src/game/02-constants.js） */
+export const MACHINE_INFO: Record<string, { ch: string; col: Color; msg: string }> = {
+  camp: { ch: '%', col: [0.95, 0.85, 0.7], msg: '焚き火の跡と朽ちた寝袋。散らばった骨が、先客の末路を物語っている。' },
+  altar: { ch: '_', col: [1.0, 0.82, 0.42], msg: '石の祭壇の上に、一枚の巻物 ? が静かに浮かんでいる。' },
+  library: { ch: '[', col: [0.75, 0.6, 1.0], msg: '崩れかけた書架。読めない文字の頁が、宙をゆっくりと舞っている。' },
+  crypt: { ch: '+', col: [0.55, 0.75, 1.0], msg: 'R.I.P. と刻まれた墓石が並ぶ墓所。冷たい霧が足元を這っている。' },
+  idyll: { ch: '~', col: [0.5, 0.9, 1.0], msg: '小さな泉を草が囲む、穏やかな一角。天井の裂け目から、地上の光が差し込んでいる。' },
+  remnant: { ch: '.', col: [0.95, 0.4, 0.35], msg: '焼け焦げた灰に囲まれて、古い絨毯だけが色を留めている。' },
+  dismal: { ch: '%', col: [0.85, 0.25, 0.25], msg: '血と骨と炭が散らばる、陰惨な部屋。何があったのかは考えたくない。' },
+  bloodwort: { ch: '*', col: [1.0, 0.3, 0.35], msg: '壁際で、赤く熟したブラッドワートの実が脈打つように光っている。' },
+  flood: { ch: '~', col: [0.45, 0.75, 1.0], msg: '壁の亀裂から、水の滴る音がする。' },
+  lavaflow: { ch: '^', col: [1.0, 0.45, 0.15], msg: '床の裂け目が赤く脈打っている。足元から熱が這い上がってくる。' },
+  collapse: { ch: ':', col: [1.0, 0.6, 0.3], msg: '床に走る無数のひび割れから、下の階層のかすかな光が漏れている。' },
+  statues: { ch: '&', col: [0.8, 0.8, 0.95], msg: '石を刻んだ彫像たちが、部屋の中央を見つめている。' },
 };

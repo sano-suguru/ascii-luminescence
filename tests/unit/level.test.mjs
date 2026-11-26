@@ -1,0 +1,34 @@
+// 階を移る処理と世界の組み立て（src/lib/levels.ts・build.ts と、ground.ts の initFire・particles.ts の initDust・respawnDust）の単体テスト。
+// 指紋の値は、移す前の古い JS（src/game/02・04・06・15・16・17・18・24）でも同じになる（level-cases.mjs の場合を、古い関数で数えて確かめた）。
+// 階は Node で本物の迷宮を生成するので、迷宮の生成を変えると、この指紋も変わる（その時は generate.test.ts の指紋と一緒に作り直す）。
+// テストを .mjs で書くのは、偽の画面の部品・偽の描画の部品を、本物の型に合わせられないため。
+import { describe, expect, it } from 'vitest';
+import * as BUILD from '../../src/lib/build.ts';
+import { hurtPlayer } from '../../src/lib/combat.ts';
+import * as GROUND from '../../src/lib/ground.ts';
+import * as LEVELS from '../../src/lib/levels.ts';
+import * as PART from '../../src/lib/particles.ts';
+import { updatePlayer } from '../../src/lib/player.ts';
+import { fakeDom } from './fight-cases.mjs';
+import { NAMES, levelCases, levelText } from './level-cases.mjs';
+
+const fnv = (s) => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
+  return (h >>> 0).toString(16).padStart(8, '0');
+};
+
+describe('移す前と同じ', () => {
+  it('階を移る処理と世界の組み立て（5の場合、19の関数）の指紋', { timeout: 180000 }, async () => {
+    const all = await levelCases({ ...LEVELS, ...BUILD, ...GROUND, ...PART, updatePlayer, hurtPlayer }, 5, fakeDom()),
+      body = levelText(all),
+      calls = all.flatMap((c) => c.calls);
+    expect([fnv(body), body.length]).toEqual(['6e1bdb55', 196804]);
+    expect(new Set(calls.map((c) => c.name).filter((n) => NAMES.includes(n)))).toEqual(new Set(NAMES));
+    expect(calls.filter((c) => c.threw).length).toBe(0);
+    expect(all.every((c) => c.timers.threw === 0)).toBe(true);
+    const by = (name, f) => calls.filter((c) => c.name === name && f(c)).length;
+    for (const name of ['newLevel', 'checkEvents']) expect(by(name, (c) => c.msg > 0 || c.timers > 0)).toBeGreaterThan(0);
+    expect(by('newLevel', (c) => c.mr > 0)).toBeGreaterThan(0);
+  });
+});
