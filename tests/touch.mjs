@@ -5,12 +5,19 @@
 //   3. 描く画面を指で押しても、左手の詠唱が始まらない（ブラウザが後から出すマウスの事件を止めている）
 //   4. タッチのボタン [装備] [メニュー] で、装備の画面とメニューを開け閉めできる。[全画面] は、全画面にできる時だけ出る
 //   5. マウスを動かすと、指の遊び方が終わり、タッチのボタンが消える
+//   6. 探索中のタッチのボタンが、左上の状態の表示とも、右上のミニマップとも重ならない（狭い横向きの端末でも）
+import { FIT_MIN } from '../src/lib/layout.ts';
 import { withBrowser, newPage, openTest, advance } from './lib.mjs';
 
 const errs = [];
 const HINT = 'マウスをドラッグして視点を動かせます';
-const FIT_MIN = 0.75; // src/lib/layout.ts と同じ
 
+const tapEnter = async (pg) => {
+  await pg.locator('#enter').scrollIntoViewIfNeeded();
+  const b = await pg.locator('#enter').boundingBox();
+  if (!b) throw new Error('#enter が見えない');
+  await pg.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+};
 await withBrowser(async ({ browser, base }) => {
   // ---------------------------------------------------------------- 1. タイトルの枠が画面に収まる
   for (const device of ['iPhone SE', 'iPhone 13', 'Pixel 7', 'iPhone SE landscape', 'iPhone 13 landscape', 'Pixel 7 landscape']) {
@@ -27,6 +34,23 @@ await withBrowser(async ({ browser, base }) => {
       errs.push(`${device}：タイトルがはみ出しているのに、縮め切っていない（横 ${m.sw}/${m.cw}、縦 ${m.sh}/${m.ch}、倍率 ${m.zoom}）`);
     if (m.sw > m.cw) errs.push(`${device}：タイトルが横にはみ出す（${m.sw}/${m.cw}、倍率 ${m.zoom}）`);
     console.log(`${device}：倍率 ${m.zoom.toFixed(2)}、${fits ? '収まる' : `縦に送る（${m.sh}/${m.ch}）`}`);
+    await pg.context().close();
+  }
+
+  // ---------------------------------------------------------------- 6. 探索中のタッチのボタンの場所
+  for (const device of ['iPhone SE landscape', 'iPhone 13 landscape', 'Pixel 7 landscape']) {
+    const pg = await newPage(browser, errs, { device });
+    await openTest(pg, base, 'seed=202');
+    await tapEnter(pg);
+    await advance(pg, 3);
+    const r = await pg.evaluate(() => {
+      const q = (s) => document.querySelector(s).getBoundingClientRect();
+      const bar = q('#touchbar'),
+        hit = (o) => bar.left < o.right && o.left < bar.right && bar.top < o.bottom && o.top < bar.bottom;
+      return { status: hit(q('#status')), map: hit(q('#mapwrap')), w: bar.width };
+    });
+    if (r.status || r.map) errs.push(`${device}：探索中のタッチのボタンが重なる（状態の表示 ${r.status}、ミニマップ ${r.map}）`);
+    if (!(r.w > 0)) errs.push(`${device}：探索中のタッチのボタンが出ていない`);
     await pg.context().close();
   }
 
@@ -57,7 +81,11 @@ await withBrowser(async ({ browser, base }) => {
     }));
 
   if (await shown('#touchbar')) errs.push('指で触れる前から、タッチのボタンが出ている');
-  await tap('#enter');
+  // タイトルで指で触れると、全画面にできる時だけ [全画面] が出る
+  await pg.touchscreen.tap(5, 5);
+  const fsOk = await E(() => document.fullscreenEnabled);
+  if ((await shown('#fsB')) !== fsOk) errs.push(`タイトルの [全画面] の出し分けが違う（全画面にできる ${fsOk}）`);
+  await tapEnter(pg);
   await advance(pg, 2);
   let v = await view();
   if (!v.touch || !v.started) errs.push(`指で「迷宮に入る」を押しても、指の遊び方で始まらない（touch ${v.touch}、started ${v.started}）`);
@@ -72,8 +100,7 @@ await withBrowser(async ({ browser, base }) => {
 
   // 4. ボタン
   for (const sel of ['#packB', '#menuB']) if (!(await shown(sel))) errs.push(`探索中に ${sel} が出ていない`);
-  const fsOk = await E(() => document.fullscreenEnabled);
-  if ((await shown('#fsB')) !== fsOk) errs.push(`[全画面] の出し分けが違う（全画面にできる ${fsOk}）`);
+  if (await shown('#fsB')) errs.push('探索中に [全画面] が出ている（タイトルだけのはず）');
   await tap('#packB');
   await advance(pg, 0.1);
   v = await view();
