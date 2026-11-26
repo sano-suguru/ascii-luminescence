@@ -124,7 +124,6 @@ function toggleMenu(){
   if(ui.lvlOpen||!ui.started||adv.dead)return;
   setMenu(!ui.menuOpen);
 }
-initTouch({pack:togglePack,menu:toggleMenu});
 // 診断の記録（claude.ai の Artifact の中で、持ち主が開いた時だけ。src/lib/diag.ts）
 void initDiag();
 // Esc のキーを処理している間は、マウスを捕まえにいかない（ui.escKey。Esc のキーで掛けたロックは、ブラウザがすぐ外し、外れた事件でメニューが開いてしまうため）

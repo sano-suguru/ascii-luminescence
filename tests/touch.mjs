@@ -2,7 +2,9 @@
 // 指で遊ぶ時の土台（src/lib/touch.ts・src/lib/layout.ts）を、Playwright のスマホの真似（端末の名前で開く）で、テスト用モードで確かめる。
 //   1. タイトルの枠が、どの端末でも画面に収まる（縮める下限 FIT_MIN まで縮めても収まらない時だけ、タイトルの画面の中で送る）
 //   2. 指で「迷宮に入る」を押すと始まり、マウスを捕まえにいかない（マウスのドラッグの案内が出ない）
-//   3. 描く画面を指で押しても、左手の詠唱が始まらない（ブラウザが後から出すマウスの事件を止めている）
+//   3. 描く画面を指で押しても、左手の詠唱が始まらない（ブラウザが後から出すマウスの事件を止めている）。
+//      iPhone（WebKit）は pointerdown の preventDefault でマウスの事件を止めないので、iPhone と同じ順番で事件を送っても確かめる
+//      （指の pointerdown → pointerup → mousedown → mouseup → click。Chromium の真似の tap では、マウスの事件は出ない）
 //   4. タッチのボタン [装備] [メニュー] で、装備の画面とメニューを開け閉めできる。[全画面] は、全画面にできる時だけ出る
 //   5. マウスを動かすと、指の遊び方が終わり、タッチのボタンが消える
 //   6. 探索中のタッチのボタンが、左上の状態の表示とも、右上のミニマップとも重ならない（狭い横向きの端末でも）
@@ -77,6 +79,7 @@ await withBrowser(async ({ browser, base }) => {
       started: __test.state().started,
       paused: __test.state().paused,
       cast: __test.state().cast,
+      projs: __test.state().projs,
       pack: document.getElementById('pack').classList.contains('show'),
       menu: document.getElementById('menu').classList.contains('show'),
       log: document.getElementById('log').innerText,
@@ -93,12 +96,54 @@ await withBrowser(async ({ browser, base }) => {
   if (!v.touch || !v.started) errs.push(`指で「迷宮に入る」を押しても、指の遊び方で始まらない（touch ${v.touch}、started ${v.started}）`);
   if (v.log.includes(HINT)) errs.push('指で遊んでいるのに、マウスのドラッグの案内が出た（マウスを捕まえにいった）');
 
-  // 3. 描く画面を押しても詠唱しない（押したまま少し進めて、溜めが始まっていないか）
+  // 3. 描く画面を押しても詠唱しない（溜めが始まらず、飛ぶ物も増えない。左手の小剣は、押すとすぐ三日月の斬撃を飛ばす）
   const [W, H] = await E(() => [innerWidth, innerHeight]);
+  const p0 = v.projs;
   await pg.touchscreen.tap(W / 2, H / 2);
   await advance(pg, 0.2);
   v = await view();
-  if (v.cast) errs.push(`描く画面を指で押すと、詠唱が始まる（${JSON.stringify(v.cast)}）`);
+  if (v.cast || v.projs > p0) errs.push(`描く画面を指で押すと、詠唱が始まる（溜め ${JSON.stringify(v.cast)}、飛ぶ物 ${p0} → ${v.projs}）`);
+
+  // 3'. iPhone と同じ順番の事件
+  // up：false なら mousedown まで送って止める（押したままの間に、詠唱が始まっていないかを見るため）。後で iosUp で残りを送る
+  const iosTap = (sel, up = true) =>
+    E(
+      ([s, up]) => {
+        const el = document.querySelector(s),
+          o = { bubbles: true, cancelable: true, pointerType: 'touch', isPrimary: true, pointerId: 7 };
+        el.dispatchEvent(new PointerEvent('pointerdown', o));
+        el.dispatchEvent(new PointerEvent('pointerup', o));
+        el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
+        if (!up) return;
+        el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, button: 0 }));
+        el.click();
+      },
+      [sel, up],
+    );
+  const iosUp = (sel) =>
+    E((s) => document.querySelector(s).dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, button: 0 })), sel);
+  await advance(pg, 1);
+  const p1 = (await view()).projs;
+  await iosTap('#gl', false);
+  await advance(pg, 0.2);
+  v = await view();
+  if (v.cast || v.projs > p1)
+    errs.push(`iPhone の順番の事件で描く画面を押すと、詠唱が始まる（溜め ${JSON.stringify(v.cast)}、飛ぶ物 ${p1} → ${v.projs}）`);
+  await iosUp('#gl');
+  await advance(pg, 1);
+  await iosTap('#packB');
+  await advance(pg, 0.1);
+  await iosTap('#menuB');
+  await advance(pg, 0.1);
+  v = await view();
+  if (v.pack || v.menu)
+    errs.push(`iPhone の順番の事件で、装備の画面で [メニュー] を押すと、装備の画面が閉じるだけでない（pack ${v.pack}、menu ${v.menu}）`);
+  await iosTap('#menuB');
+  await advance(pg, 0.1);
+  v = await view();
+  if (!v.menu) errs.push('iPhone の順番の事件で、[メニュー] でメニューが開かない');
+  await iosTap('#menuB');
+  await advance(pg, 0.1);
 
   // 4. ボタン
   for (const sel of ['#packB', '#menuB']) if (!(await shown(sel))) errs.push(`探索中に ${sel} が出ていない`);
