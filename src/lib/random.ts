@@ -1,6 +1,7 @@
 // 乱数（もとは src/game/02-constants.js の mr・mpick・rand・R・RI・pick）。
 //   見た目の乱数（mr・mpick）：Math.random。テスト用モードでは、シードで決まる物に入れ替わる
 //   迷宮の乱数（rand・R・RI・pick）：迷宮の生成が、階ごとのシードで setRand して使う。同じシードなら同じ迷宮になる
+//   出来事ごとの乱数（keyedRand）：祭壇の中身・レベルアップの選択肢など、遊びの中身を選ぶ所が、出来事の鍵から作る。見た目の乱数の並びに左右されない
 //   音の乱数（sndRand）：音だけが使う、見た目の乱数とは別の並び。音を足したり変えたりしても、見た目の乱数の並びは変わらない
 import { nth } from './array.ts';
 import { mulberry32 } from './rng.ts';
@@ -42,6 +43,25 @@ export const shuffle = <T>(a: T[], r: () => number = rand): T[] => {
     a[j] = t;
   }
   return a;
+};
+
+/**
+ * 出来事ごとの乱数を作る。何の出来事か what（'altar' など）と鍵 keys（階のシード・マス・何レベル目かなど）を混ぜたシードで、新しい並びを作る。
+ * 鍵が同じなら、いつも同じ並びになり、見た目の乱数も、ほかの出来事の順番も関わらない。祭壇の中身・レベルアップの選択肢など、遊びの中身を選ぶ所で使う。
+ * 鍵は 32bit の整数にする（>>> 0 で読むので、小数は切り捨てられ、2^32 以上は下の 32bit だけになる。時刻などの小数は鍵にしない）
+ */
+export const keyedRand = (what: string, ...keys: readonly number[]): (() => number) => {
+  let h = 0x811c9dc5;
+  const mix = (v: number): void => {
+    h = Math.imul(h ^ v, 0x85ebca6b);
+    h ^= h >>> 13;
+    h = Math.imul(h, 0xc2b2ae35);
+    h ^= h >>> 16;
+  };
+  for (let i = 0; i < what.length; i++) mix(what.charCodeAt(i));
+  mix(0x10000); // 出来事の名前の終わり（文字の番号より大きい数）。名前と鍵の境目が1つに決まるので、違う名前と鍵の組が同じシードにならない
+  for (const k of keys) mix(k >>> 0);
+  return mulberry32(h >>> 0);
 };
 
 // 今の音の乱数。初めのシードは crypto で決める（crypto が無い環境では時刻）。Math.random は使わない：テスト用モードが

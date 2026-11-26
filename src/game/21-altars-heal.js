@@ -17,7 +17,8 @@ let rockfall=null;
 function vaultSprung(it){ const ri=here.D.roomOf[it.i], room=ri>=0&&here.D.rooms[ri]&&here.D.rooms[ri].cells.length>6?here.D.rooms[ri]:{cells:vaultArea(it,4)};
   if(it.ev==='guard'){ const pool=here.monsters.filter(m=>!m.dead&&!m.ty.critter&&!m.ty.peaceful&&!m.ty.boss&&m.key!=='lord'&&MTYPES[m.key]); const key=pool.length?pool.sort((a,b)=>(b.maxHp||0)-(a.maxHp||0))[0].key:'O';
     const cells=vaultArea(it,5).filter(c=>{ const [x,z]=cpos(c); return Math.hypot(x-player.x,z-player.z)>2.0; });
-    for(let k=0;k<2&&cells.length;k++){ const c=cells.splice(Math.floor(mr()*cells.length),1)[0]; const m=makeMonster({key,cx:c%MW,cz:(c/MW)|0,g:-1,lead:true}); m.sleep=false; m.aware=1; m.noticed=true; m.alert=1; m.guardian=true; here.monsters.push(m);
+    const r=keyedRand('vault',levelSeed(),it.i); // where the guardians stand: its own random, not the look random (mr)
+    for(let k=0;k<2&&cells.length;k++){ const c=cells.splice(Math.floor(r()*cells.length),1)[0]; const m=makeMonster({key,cx:c%MW,cz:(c/MW)|0,g:-1,lead:true}); m.sleep=false; m.aware=1; m.noticed=true; m.alert=1; m.guardian=true; here.monsters.push(m);
       for(let q=0;q<24;q++){ const a=mr()*6.28; spawn(m.x,0.2+mr()*1.6,m.z,Math.cos(a)*0.8,mr()*0.8,Math.sin(a)*0.8,0.9,G(mpick(['#','%','.'])),0.14,0.8,0.78,0.85,0); } }
     sRumble(0.4,1.2); msg('<b style="color:#ffb0a0">!</b>石像の目に光が灯った。宝の番人たちが、目を覚ます。'); }
   else if(room.cells.length){ rockfall={t:0,dur:9,cells:room.cells.filter(c=>here.D.tile[c]===TF),rocks:[],next:0.2}; sRumble(0.5,2.0); msg('<b style="color:#ffd0a0">!</b>天井が軋み、崩れ始めた。早く外へ。'); } }

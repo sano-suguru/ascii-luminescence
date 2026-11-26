@@ -27,8 +27,9 @@ function newLevel(seedOverride){
   if(here.branch&&adv.runState.lordsDone&&adv.runState.lordsDone.has(here.branch.key))here.monsters=here.monsters.filter(m=>m.key!=='lord');
   here.finalSt=null; if(isFinal())setupFinal();
   for(const m of here.monsters)if(!m.isLead)m.leader=here.monsters.find(o=>o.g===m.g&&o.isLead)||null;
-  for(const m of here.monsters)if(m.ty.beast||(m.ty.dragon&&Math.random()<0.9))m.sleep=true;
-  { const asleep=new Set(); for(const m of here.monsters)if(m.isLead&&m.g>=0&&m.ty.form!=='eel'&&Math.random()<0.10)asleep.add(m.g); for(const m of here.monsters)if(asleep.has(m.g))m.sleep=true; }
+  // who sleeps: its own random from the level's seed (keyedRand), not the look random (mr)
+  { const sr=keyedRand('sleep',levelSeed()); for(const m of here.monsters)if(m.ty.beast||(m.ty.dragon&&sr()<0.9))m.sleep=true;
+  const asleep=new Set(); for(const m of here.monsters)if(m.isLead&&m.g>=0&&m.ty.form!=='eel'&&sr()<0.10)asleep.add(m.g); for(const m of here.monsters)if(asleep.has(m.g))m.sleep=true; }
   ui.noticeMsgT={}; stealth.hudKey='';
   here.explored=new Uint8Array(NCELL); here.mem=new Float32Array(NCELL*3); here.fovVis=new Uint32Array(NCELL); here.fovStamp=1;
   { const pm=placeMem.get(placeKey()); if(pm){ here.explored.set(pm.explored); here.mem.set(pm.mem); } }
@@ -134,11 +135,12 @@ function coldSnap(x,z,r){ chillArea(x,z,r); for(const m of here.monsters){ if(m.
   for(let q=0;q<28;q++){ const a=q/28*Math.PI*2; spawn(x+Math.cos(a)*r*0.9,0.15,z+Math.sin(a)*r*0.9,Math.cos(a)*0.6,0.4,Math.sin(a)*0.6,0.6,G(mpick(['*','.','+'])),0.14,1.2,1.7,2.2,0); } }
 function gainExp(e){ if(!(e>0)||adv.dead)return; adv.lvl.exp+=e; let up=0; while(adv.lvl.exp>=expNeed(adv.lvl.n)){ adv.lvl.exp-=expNeed(adv.lvl.n); adv.lvl.n++; adv.lvl.pending++; up++; }
   renderStatus(); if(up){ sChime(player.x,player.z,0.6); setTimeout(()=>sChime(player.x,player.z,0.45),180); for(let q=0;q<40;q++){ const a=mr()*6.28, r=1.6+mr(); spawn(player.x+Math.cos(a)*r,0.4+mr()*1.6,player.z+Math.sin(a)*r,-Math.cos(a)*r*2.2,0.2,-Math.sin(a)*r*2.2,0.45,G(mpick(['*','+','.'])),0.14,2.6,2.3,1.5,0); } } }
-function levelChoices(){ const BEHAVE=['quickdodge','counter','momentum','devour','shatter','charge','swapedge','branch']; let pool=Object.keys(BLESS).filter(k=>BL(k)<2&&!lockedOf('bless',k)), out=[];
+// the choices come from their own random, made from the run's seed and which level this is (keyedRand), not the look random (mr): same seed, same choices. r is for tests
+function levelChoices(r=keyedRand('levelup',adv.runSeed,adv.lvl.n-adv.lvl.pending+1)){ const BEHAVE=['quickdodge','counter','momentum','devour','shatter','charge','swapedge','branch']; let pool=Object.keys(BLESS).filter(k=>BL(k)<2&&!lockedOf('bless',k)), out=[];
   if(!adv.lvl.firstDone){ const b=pool.filter(k=>BEHAVE.includes(k)); if(b.length>=2)pool=b; adv.lvl.firstDone=true; }
-  for(let i=0;i<2&&pool.length;i++){ const k=pool.splice(Math.floor(mr()*pool.length),1)[0]; out.push({kind:'bless',k}); }
-  const useCharm=(adv.runState.bodyOpen||0)>0&&mr()<0.3, t=useCharm?RUNE_TYPES.body[Math.floor(mr()*RUNE_TYPES.body.length)]:randomRuneType(mr,{elem:0.45,trig:0.15,mod:0.4,body:0});
-  out.push({kind:'rune',ru:RUNE_DEF[t].cat==='mod'&&mr()<0.1?makeStrong(t):makeRune(t)}); return shuffle(out,mr); }
+  for(let i=0;i<2&&pool.length;i++){ const k=pool.splice(Math.floor(r()*pool.length),1)[0]; out.push({kind:'bless',k}); }
+  const useCharm=(adv.runState.bodyOpen||0)>0&&r()<0.3, t=useCharm?RUNE_TYPES.body[Math.floor(r()*RUNE_TYPES.body.length)]:randomRuneType(r,{elem:0.45,trig:0.15,mod:0.4,body:0});
+  out.push({kind:'rune',ru:RUNE_DEF[t].cat==='mod'&&r()<0.1?makeStrong(t):makeRune(t)}); return shuffle(out,r); }
 function lvlLine(o){ const K=t=>t+' '.repeat(Math.max(2,14-visW(t))); // the label column is 14 wide (the longest, 恩恵（代償）, is 12)
   if(o.kind==='bless'){ const B=BLESS[o.k], l=BL(o.k)+1; return `${K(B.cost?'恩恵（代償）':'恩恵')}<span style="color:${B.cost?'#ff9a8a':'#ffe3a0'}">${B.name}${l>1?' II':''}</span>`; }
   const d=RUNE_DEF[o.ru.type], br=CAT_BR[d.cat]||['','']; return `${K(d.cat==='body'?'護符':'ルーン')}${br[0]}<b class="rn" style="color:${css(runeCol(o.ru))}">${d.ch}</b> ${runeName(o.ru)}${br[1]}　<span class="lab">${CAT_NAME[d.cat]}</span>`; }
