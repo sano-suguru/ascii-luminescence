@@ -48,6 +48,8 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      立ち止まって調べる updateSearch・止まっているか isPaused・場所の名前 placeLabel・下の一言 showHint・頭の上の印 drawMark、
                      layout：画面の大きさに合わせる（タイトルの枠を zoom で縮めて画面に収める fitIntro。下限 FIT_MIN）、
                      touch：指で遊ぶ時の土台（指で触れたら指の遊び方 setTouch。描く画面とタッチのボタンでは、後から出るマウスの事件を止める。タッチのボタン [全画面] [装備] [メニュー] initTouch）、
+                     diag：診断の記録（claude.ai の Artifact の中で、持ち主が開いた時だけ、端末・速さ・できごと・エラーを Artifact のデータベースの diag に書く initDiag。
+                     Claude が ArtifactData の道具で読む。window.claude.use が無い所では何もしない）、
                      screens：マウスを捕まえる tryLock（指で遊んでいる間は捕まえにいかない）・失敗した時 lockFailed（一度も捕まえていないか、最後に捕まえてから3回続けて失敗したら（外れてから1.5秒の間の分は数えない）、捕まえられないと決め、ドラッグの案内を1回出す。それまでは、次のクリックでまた捕まえる。Esc のキーを処理している間 ui.escKey は捕まえにいかない）・捕まえる遊び方で探索中なのにマウスが外れているか lockLost・描く画面を押した時に、lockLost なら捕まえ直すだけにする relockClick・外れた時にメニューを開くか menuOnUnlock（止まっている画面が開いていない時だけ）・「クリックで視点操作に戻る」の一言 updateResume（lockLost の時だけ出す。止まっている間・死んだ時・タイトルでは CSS が隠す）・視点 setCamMode・音量 sndToggle、particles：粒子を出す spawn・消す killP と、世界の中に文字を置く dyn（配列も）と、漂う塵を置く initDust・respawnDust、legend：今の探索の伝説の物 getLegend と状態の表示の1行・伝説の物の読み方（legendOfBranch・legendAll・descentSealed）と世界の中に描く drawLegendWorld と神託所の手がかり oracleLegendHints、
                      lightmap：マスの明るさ cellLight と天井の高さ ceilAt・灯りの揺らぎ flicker と灯りを描画に渡す配列を書き直す updateLights（状態に頼る。灯りの計算そのものは light）、
                      fixtures：階に置いてある物を描く（灯りの備品 drawFixtures・扉 drawDoors・泉 drawSprings・墓 drawGraves・クモの巣 drawWebs・罠と鉄格子 drawTraps）と巣に触れた時 webTouch、
@@ -98,7 +100,8 @@ tests/frame.mjs      サンドボックス付きの iframe の中（allow-script
                      はじめの流れを Artifact 版（.build/artifact/index.html）でも通し、ほかのファイルを読まないか ＋ Artifact 版を、テスト用モードでなく開いてもタイトルが出るか
 tests/touch.mjs      指で遊ぶ時の土台（スマホの真似で、テスト用モード）：タイトルの枠がどの端末でも画面に収まるか（縮める下限まで縮めても収まらない時だけ縦に送る）＋
                      指で「迷宮に入る」を押すとマウスを捕まえにいかずに始まるか ＋ 描く画面を指で押しても左手の詠唱が始まらないか ＋ [装備] [メニュー] で開け閉めできるか・
-                     [全画面] はタイトルで全画面にできる時だけ出るか ＋ マウスを動かすとタッチのボタンが消えるか ＋ 探索中のタッチのボタンが状態の表示ともミニマップとも重ならないか
+                     [全画面] はタイトルで全画面にできる時だけ出るか ＋ マウスを動かすとタッチのボタンが消えるか ＋ 探索中のタッチのボタンが状態の表示ともミニマップとも重ならないか ＋
+                     診断の記録：偽の window.claude で、持ち主なら端末・できごと・速さを書き、持ち主でなければ書かないか
 tests/gallery.mjs    図鑑：全部の生き物を立つ・歩く・眠るの姿で出して、例外・描いた文字の数・NaN を確かめる ＋ 図鑑を手で動かす（ホイールで寄る・引く、ドラッグで回す・見下ろす、離すとしばらく止まってまた回る、R と ← → で戻る、ドラッグが外れる、背の高い生き物に寄ると狙う点が上がる） ＋ ほかの所で見た目の乱数を余分に引いても、前に別の生き物を出しても、図鑑の写真（画面写真の比較の4体）が変わらないか（違えば、3つのページの画面写真を tests/out/gallery-rand/ に残す。走らせるたびに空にする） ＋ 出してすぐ __test.galleryDraw で覗いても、後の描いた物が変わらないか
 tests/gallery-specimens.mjs  画面写真の比較で写す図鑑の4体と写し方（visual.mjs と gallery.mjs が使う）
 tests/world.mjs      世界とのやり取り：扉・火・氷と冷気・小さな生き物（修復機・清掃機・猟犬）がマスや扉を変える処理（扉が視界を遮る・燃え尽きる・修復機が作り直す、階に残る物が階を移ると消える、猟犬が匂いの無いマスを追わない、硫黄・氷・冷気と火、薄い氷に乗っていた秒が階を移ると0に戻る）。生き物は全部消してから、要る物だけ置く
@@ -203,7 +206,9 @@ pnpm build:artifact   # claude.ai の Artifact 用を .build/artifact/index.html
 pnpm serve            # dist/ を組み立てて http://127.0.0.1:8000/ で配信
 pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers Builds が git から公開する）。pnpm deploy は pnpm 組み込みの別のコマンドなので使わない
 ```
-- **Artifact に公開する**：`pnpm build:artifact` の後、Artifact の道具で `.build/artifact/index.html` を公開する。公開先の URL は https://claude.ai/artifact/QJStjdouDGtGtEBFBStU3d 。
+- **Artifact に公開する**：`pnpm build:artifact` の後、Artifact の道具で `.build/artifact/index.html` を公開する。
+  診断の記録（src/lib/diag.ts）のため、capabilities は `{db: {rules: [{path: "diag", read: "owner", write: "owner"}]}, user: {}}`（一度渡せば、上げ直す時に省くと、そのまま残る）。
+  記録は、ArtifactData の道具の list で、コレクション diag を読む（開くたびに1件。端末 device・速さ fps（10秒ごとの平均 avg と一番遅い1回 min）・できごと events・エラー errors）。公開先の URL は https://claude.ai/artifact/QJStjdouDGtGtEBFBStU3d 。
   上げ直す時は、その URL を `url` に渡す（渡さないと別の Artifact になる。初めは非公開で、見せる相手はユーザーが共有の画面で決める）。公開は外に出す操作なので、ユーザーに確かめてから。
 - **依存を足す・上げる時**：`pnpm add -D --save-exact 名前@版`（確認が出る）。公開から24時間未満の版は入らない（pnpm-workspace.yaml）。
   インストール時にスクリプトを動かす依存は、中身を確かめてから `pnpm approve-builds` で許可する。npm で入れない（権限で止めている）。
