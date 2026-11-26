@@ -1,5 +1,5 @@
 // 名前と説明の表（もとは src/game/12・18・24・25・28・29）：見た時の説明、罠・伝説の物・主の名前、試しの間の的、3人称の時の自分の姿。
-import { cssOf } from './color.ts';
+import { type Color, cssOf } from './color.ts';
 
 /** 見た時の説明の1行（文字 ch を色 col で、名前 name と説明 desc。色は3つの数。無い・足りない時は止まる。文字・名前・説明が無い時は undefined と書く） */
 export const lookLine = (
@@ -61,7 +61,7 @@ export const TRAP_INFO: Readonly<Record<string, readonly [string, string, string
   methane: ['ガスの', '#a8e05a', '踏むと沼のガスが噴き出す。火気は厳禁'],
 };
 /** 伝説の物（名前・文字・色）と、その並び */
-export const LEGEND_KINDS = {
+export const LEGEND_KINDS: Record<string, { name: string; ch: string; col: Color }> = {
   candle: { name: '燭台', ch: 'i', col: [1.0, 0.78, 0.42] },
   bell: { name: '鐘', ch: 'A', col: [0.98, 0.9, 0.55] },
   mirror: { name: '鏡', ch: 'O', col: [0.72, 0.9, 1.0] },

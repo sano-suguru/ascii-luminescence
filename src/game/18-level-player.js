@@ -33,7 +33,7 @@ function newLevel(seedOverride){
   ui.noticeMsgT={}; stealth.hudKey='';
   here.explored=new Uint8Array(NCELL); here.mem=new Float32Array(NCELL*3); here.fovVis=new Uint32Array(NCELL); here.fovStamp=1;
   { const pm=placeMem.get(placeKey()); if(pm){ here.explored.set(pm.explored); here.mem.set(pm.mem); } }
-  visitedRooms=new Set(); stairsSeen=false; player.rally=0; rallyMotes=[]; if(adv.runStats&&!ui.gallery)adv.runStats.maxDepth=Math.max(adv.runStats.maxDepth||0,here.depth); setTimeout(strataGrowth,50);
+  visitedRooms=new Set(); stairsSeen=false; player.rally=0; fight.rallyMotes=[]; if(adv.runStats&&!ui.gallery)adv.runStats.maxDepth=Math.max(adv.runStats.maxDepth||0,here.depth); setTimeout(strataGrowth,50);
   if(ui.started&&!ui.gallery&&!adv.dead&&!here.arrive){ const sp=here.inter?SPECIALS[here.inter.key]:null; if(sp&&(sp.k==='town'||sp.k==='oracle')){ player.hp=adv.PLAYER_MAX; setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>静かな場所だ。張りつめていた体が、すっかりほどけた。'),1600); } else if(player.hp<adv.PLAYER_MAX){ player.hp=Math.min(adv.PLAYER_MAX,player.hp+adv.PLAYER_MAX*0.2); setTimeout(()=>msg('<span class="lab">階段を降りると、少し息が整った。</span>'),1600); } }
   player.x=(here.D.start%MW+0.5)*CELL; player.z=(((here.D.start/MW)|0)+0.5)*CELL; player.vx=player.vz=0; player.yaw=here.D.startYaw; player.pitch=-0.04; lockCell=-1;
   { const tc=here.arrive==='portal'&&here.D.portal?here.D.portal.cell:here.arrive==='bstairs'&&here.D.bstairs?here.D.bstairs.cell:here.arrive==='stairs'?here.D.stairs:-1;
@@ -118,10 +118,8 @@ function updateTraps(dt){
 let lvlOpenT=0, lvlOpts=[];
 // BLESS は src/lib/progress.ts、加護の段 BL は src/lib/monsters.ts（src/game/imports.mjs で読む）
 // a cold snap: the creatures around are chilled (and fire goes out, water freezes)
-function coldSnap(x,z,r){ chillArea(x,z,r); for(const m of here.monsters){ if(m.dead||m.ty.critter)continue; if(Math.hypot(m.x-x,m.z-z)<r+0.3*m.ty.scale){ const st=m.st||(m.st={}); st.chill=Math.max(st.chill||0,4); } }
-  for(let q=0;q<28;q++){ const a=q/28*Math.PI*2; spawn(x+Math.cos(a)*r*0.9,0.15,z+Math.sin(a)*r*0.9,Math.cos(a)*0.6,0.4,Math.sin(a)*0.6,0.6,G(mpick(['*','.','+'])),0.14,1.2,1.7,2.2,0); } }
-function gainExp(e){ if(!(e>0)||adv.dead)return; adv.lvl.exp+=e; let up=0; while(adv.lvl.exp>=expNeed(adv.lvl.n)){ adv.lvl.exp-=expNeed(adv.lvl.n); adv.lvl.n++; adv.lvl.pending++; up++; }
-  renderStatus(); if(up){ sChime(player.x,player.z,0.6); setTimeout(()=>sChime(player.x,player.z,0.45),180); for(let q=0;q<40;q++){ const a=mr()*6.28, r=1.6+mr(); spawn(player.x+Math.cos(a)*r,0.4+mr()*1.6,player.z+Math.sin(a)*r,-Math.cos(a)*r*2.2,0.2,-Math.sin(a)*r*2.2,0.45,G(mpick(['*','+','.'])),0.14,2.6,2.3,1.5,0); } } }
+// coldSnap は src/lib/combat.ts（src/game/imports.mjs で読む）
+// gainExp は src/lib/combat.ts（src/game/imports.mjs で読む）
 // the choices come from their own random, made from the run's seed and which level this is (keyedRand), not the look random (mr): same seed, same choices. r is for tests
 function levelChoices(r=keyedRand('levelup',adv.runSeed,adv.lvl.n-adv.lvl.pending+1)){ const BEHAVE=['quickdodge','counter','momentum','devour','shatter','charge','swapedge','branch']; let pool=Object.keys(BLESS).filter(k=>BL(k)<2&&!lockedOf('bless',k)), out=[];
   if(!adv.lvl.firstDone){ const b=pool.filter(k=>BEHAVE.includes(k)); if(b.length>=2)pool=b; adv.lvl.firstDone=true; }
@@ -153,7 +151,7 @@ function chooseLevel(i){ const o=lvlOpts[i]; if(!o)return;
 function strataGrowth(){ if(!here.D||here.branch||here.realm||here.inter||!ui.started||ui.gallery)return; const k=here.D.stratum&&here.D.stratum.k; if(!['cavern','ruins','magma','abyss'].includes(k)||adv.lvl.strata.has(k))return; adv.lvl.strata.add(k); adv.PLAYER_MAX+=4; player.hp=Math.min(adv.PLAYER_MAX,player.hp+4); renderStatus();
   setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>新しい層の空気が、体を強くした。最大体力 +4。'),2200); }
 function hurtPlayer(n,cause){
-  if(godMode)return; if((player.invulT||0)>clock.time)return; if(BL('reckless'))n*=BL('reckless')>=2?1.35:1.25;
+  if(ui.godMode)return; if((player.invulT||0)>clock.time)return; if(BL('reckless'))n*=BL('reckless')>=2?1.35:1.25;
   n*=Math.max(0.4,1-0.15*bodyN('ward'));
   if(adv.dead||!ui.started||ui.gallery||n<=0)return;
   player.hp-=n; player.lastHurt=clock.time; { const mn=bodyN('mend'); player.rally=Math.min(Math.max(0,adv.PLAYER_MAX-player.hp),(player.rally||0)+n*0.6); player.rallyRate=player.rally/Math.max(1,4*(1+0.5*mn)-0.6); } vfx.hurtFlash=Math.min(1.2,vfx.hurtFlash+0.35+n*0.05); vfx.shake=Math.max(vfx.shake,Math.min(0.5,0.12+n*0.03));
@@ -163,38 +161,25 @@ function hurtPlayer(n,cause){
   renderStatus();
   if(player.hp<=0)die(cause);
 }
-function resultPlace(){ const pl=placeLabel(); return /^[0-9]+$/.test(String(pl).trim())?`深度${here.depth}（${(here.D&&here.D.stratum&&here.D.stratum.name)||''}）`:`${pl}（深度${here.depth}）`; }
-function runLore(victory){ const L=getLegend(), parts=[], add=(lab,n,v)=>{ if(v>0)parts.push([lab,n,v]); }, md=(adv.runStats&&adv.runStats.maxDepth)||here.depth;
-  add('到達した深さ',`深度${md}`,md*2); const lords=adv.runState.lordsDone?adv.runState.lordsDone.size:0; add('倒した支道の主',`${lords}体`,lords*8);
-  const pl=L&&md>=FINAL_DEPTH?L.have.size:0; add('最深部へ持ち帰った伝説の物',`${pl}つ`,pl*6); // only those brought to the bottom if(victory)add('王の影に勝った','',30);
-  const lg=Math.max(0,(adv.lvl.n||1)-1); add('上がったレベル',`${lg}つ`,lg);
-  const nb=Math.max(0,saved.BOOK.size-((adv.runStats&&adv.runStats.book0)||0)); add('新しく記した反応',`${nb}つ`,nb*3); const nbe=(adv.runStats&&adv.runStats.beastsNew)||0; add('初めて出会った忘れられた獣',`${nbe}体`,nbe*4);
-  const base=parts.reduce((a,p)=>a+p[2],0), mult=1+0.25*adv.runTrials.length; return {parts,base,mult,total:Math.round(base*mult)}; }
-function awardLore(victory){ if(!adv.runStats||ui.gallery)return null; if(adv.runStats.loreRes)return adv.runStats.loreRes; const R=runLore(victory); saved.META.lore=(saved.META.lore||0)+R.total; saveMeta(); adv.runStats.loreRes=R; return R; }
-function loreRows(R,f){ if(!R)return []; const rows=[`${f('|')}  <b>伝承</b>`]; for(const [lab,n,v] of R.parts)rows.push(`${f('|')}    ${padTo(lab+(n?`（${n}）`:''),34)}${String(v).padStart(4)}`);
-  if(R.mult>1)rows.push(`${f('|')}    ${padTo(`試練（${adv.runTrials.map(k=>({dusk:'薄明',fury:'猛り'})[k]).join('・')}）`,34)}  ×${R.mult.toFixed(2)}`);
-  rows.push(`${f('|')}    ${padTo('合計',34)}<b style="color:#ffe3a0">${String('+'+R.total).padStart(4)}</b>`, `${f('|')}    <span class="lab">累計 ${saved.META.lore}　　使える伝承 ${loreLeft()}</span>`);
-  if(UNLOCKS.some(u=>!unlocked(u.id)&&u.cost<=loreLeft()))rows.push(`${f('|')}    <span style="color:#ffe3a0">解放できるものがある（タイトルの［解放］から）</span>`);
-  else { const nx=UNLOCKS.filter(u=>!unlocked(u.id)).sort((a,b)=>a.cost-b.cost)[0]; if(nx)rows.push(`${f('|')}    <span class="lab">次の解放まで あと ${nx.cost-loreLeft()}（${nx.name} ${nx.cost}）</span>`); } return rows; }
+// resultPlace は src/lib/results.ts（src/game/imports.mjs で読む）
+// runLore は src/lib/results.ts（src/game/imports.mjs で読む）
+// awardLore は src/lib/results.ts（src/game/imports.mjs で読む）
+// loreRows は src/lib/results.ts（src/game/imports.mjs で読む）
 // the grave: what the fallen player leaves (one thing, chosen on the results screen)
-let graveSel=0, graveCands=[];
 // 墓のルーンを作る graveRune は src/lib/gear.ts（祭壇などを置く src/lib/altars.ts が使う）
-function graveCandidates(){ const out=[], seen=new Set(), add=ru=>{ if(ru&&!seen.has(ru)){ seen.add(ru); out.push(ru); } };
-  add(gear.hands.L.atk); add(gear.hands.R.atk); for(const h of ['L','R'])for(const r of gear.hands[h].slots)add(r); if(gear.hands.B){ add(gear.hands.B.b0); add(gear.hands.B.b1); } for(const r of gear.bag)add(r); return out.slice(0,10); }
-function saveGrave(){ if(adv.won||!graveCands)return; const ru=graveSel>0?graveCands[graveSel-1]:null; saved.META.grave=ru?{k:(STRATA.find(st=>here.depth>=st.from&&here.depth<=st.to)||{}).k||'',depth:here.depth,cause:adv.runStats.cause||'',item:serRune(ru)}:null; saveMeta(); graveCands=[]; }
-function graveRows(f){ const rows=[`${f('|')}  <b>墓に遺すもの</b>　<span class="lab">（ひとつ選ぶ。次の探索で、同じ深さに墓が現れる）</span>`];
-  const opt=(i,label)=>`${f('|')}    <button class="row gv" data-gv="${i}"><span class="mk">${graveSel===i?'&gt;':' '}</span> ${label}</button>`;
-  rows.push(opt(0,'<span class="lab">遺さない</span>')); graveCands.forEach((ru,i)=>rows.push(opt(i+1,clipHtml(thingLabel(ru),48)))); return rows; }
+// graveCandidates は src/lib/results.ts（src/game/imports.mjs で読む）
+// saveGrave は src/lib/results.ts（src/game/imports.mjs で読む）
+// graveRows は src/lib/results.ts（src/game/imports.mjs で読む）
 function die(cause){
   if(adv.won)return;
   adv.dead=true; keys.KeyW=keys.KeyA=keys.KeyS=keys.KeyD=false;
   const el=document.getElementById('death'); if(!el)return;
   const secs=Math.floor(clock.time-adv.runStats.t0), mm=Math.floor(secs/60), ss=String(secs%60).padStart(2,'0');
   const f=t=>`<span class="f">${t}</span>`;
-  adv.runStats.cause=cause; const R=awardLore(false); graveCands=ui.gallery?[]:graveCandidates(); graveSel=0; if(ui.locked&&document.exitPointerLock)document.exitPointerLock();
+  adv.runStats.cause=cause; const R=awardLore(false); ui.graveCands=ui.gallery?[]:graveCandidates(); ui.graveSel=0; if(ui.locked&&document.exitPointerLock)document.exitPointerLock();
   const draw=()=>{ el.innerHTML=boxText([f('+-- あ な た は 死 ん だ ---'),f('|'),`${f('|')}  死因      ${cause}`,`${f('|')}  場所      ${resultPlace()}`,
-    `${f('|')}  Lv${adv.lvl.n}　倒した敵 ${adv.runStats.kills}　時間 ${mm}:${ss}`,f('|'),...loreRows(R,f),f('|'),...(graveCands.length?[...graveRows(f),f('|')]:[]),`${f('|')}  ${adv.HIST?adv.HIST.civ.name+'の地に、またひとつ灯りが消えた。':''}`,f('|'),`${f('|')}  <button class="row" id="newRunB"><b>[Enter]</b> 新しい探索へ</button>`,f('+---')],64); };
-  document.body.classList.add('over'); draw(); el.onclick=e=>{ const b=e.target.closest&&e.target.closest('button'); if(!b)return; if(b.dataset.gv!==undefined){ graveSel=+b.dataset.gv; draw(); } else if(b.id==='newRunB')newRun(); };
+    `${f('|')}  Lv${adv.lvl.n}　倒した敵 ${adv.runStats.kills}　時間 ${mm}:${ss}`,f('|'),...loreRows(R,f),f('|'),...(ui.graveCands.length?[...graveRows(f),f('|')]:[]),`${f('|')}  ${adv.HIST?adv.HIST.civ.name+'の地に、またひとつ灯りが消えた。':''}`,f('|'),`${f('|')}  <button class="row" id="newRunB"><b>[Enter]</b> 新しい探索へ</button>`,f('+---')],64); };
+  document.body.classList.add('over'); draw(); el.onclick=e=>{ const b=e.target.closest&&e.target.closest('button'); if(!b)return; if(b.dataset.gv!==undefined){ ui.graveSel=+b.dataset.gv; draw(); } else if(b.id==='newRunB')newRun(); };
   el.classList.add('show'); sRumble(0.6,2.5);
 }
 function newRun(){
@@ -204,13 +189,7 @@ function newRun(){
   here.trans=null; player.fall=false; ui.gallery=null; { const gp=document.getElementById('gal'); if(gp)gp.classList.remove('show'); }
   adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(saved.META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:clock.time,maxDepth:here.depth,book0:saved.BOOK.size,beastsNew:0}; resetRunes(); newLevel();
 }
-function hitReact(m,n){ const ty=m.ty, boss=ty.boss||m.key==='lord'||m.key==='final', now=performance.now();
-  m.flinchUntil=clock.time+Math.min(0.26,0.08+n*0.015);
-  if(!boss&&!ty.habitat&&!['shroom','kraken','deepkraken'].includes(ty.form)){ const heavy=['O','T','Y','B','D','X'].includes(m.key)||ty.beast?2.5:1, w=Math.max(0.3,(ty.scale||1)*(ty.scale||1)*heavy), v=Math.min(6,n*0.9/w);
-    const ak={blade:1.0,bolt:0.45,orb:0.75,beam:0.12,bare:0.6}[m.lastAtk]||0.6, vv=v*0.5*ak*(m.lastKnock||1), src=(m.lastAtk==='orb'&&fight.hitSrcPoint)?fight.hitSrcPoint:[player.x,player.z];
-    if(vv>0.3){ const dx=m.x-src[0], dz=m.z-src[1], d=Math.hypot(dx,dz)||1; m.kx=(m.kx||0)+dx/d*vv; m.kz=(m.kz||0)+dz/d*vv; m.st=m.st||{}; } }
-  if(m.wind>0&&!boss&&(n>=6||n>=(m.maxHp||99)*0.2)){ m.wind=0; m.atkCd=Math.max(m.atkCd||0,0.8); const cy=m.y+1.2*(ty.scale||1); for(let q=0;q<8;q++){ const a=mr()*6.28; spawn(m.x,cy,m.z,Math.cos(a)*1.6,0.4+mr(),Math.sin(a)*1.6,0.35,G(mpick(['!','\'','.'])),0.14,2.4,1.4,0.6,0); } }
-  const strong=m.hp<=0||n>=8||n>=(m.maxHp||99)*0.25; if(strong&&now>fight.hitStopUntil+90)fight.hitStopUntil=now+(m.hp<=0?65:45); }
+// hitReact は src/lib/combat.ts（src/game/imports.mjs で読む）
 function damageMonster(m,n,how){
   if(m.dead||n<=0)return;
   if(m.key==='final'&&m.invulnT>0){ if(how!=='env')hitFeedback(m,0,null,false); return; }

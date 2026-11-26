@@ -7,6 +7,7 @@ import { type BranchPlace, type Fixture, type InterPlace, type Level, type Realm
 import { META_DEF, type Meta } from './progress.ts';
 import { type History } from './history.ts';
 import type { HandsSnap } from './gear.ts';
+import type { LoreResult } from './results.ts';
 import type { Body, Glyph } from './bodies/kit.ts';
 import { type Rune } from './runes.ts';
 import { NCELL, NDL, NSL } from './world.ts';
@@ -108,6 +109,14 @@ export interface Ui {
   shriekMsgT: number;
   /** 草を食べる生き物が灯りに驚いた伝言を出したか（探索の間に一度だけ） */
   grazeMsg: boolean;
+  /** 照準の先の生き物を最後に探したゲームの時刻と、その生き物（src/lib/aim.ts の aimTarget。0.1秒ごとに探し直す） */
+  aimT: number;
+  crossMon: Mob | null;
+  /** 結果の画面：墓に遺せるルーンの一覧と、選んでいる番号（0 は遺さない。src/lib/results.ts） */
+  graveCands: Rune[];
+  graveSel: number;
+  /** 開発用：ダメージを受けない（dbg.god） */
+  godMode: boolean;
 }
 export const ui: Ui = {
   started: false,
@@ -145,6 +154,11 @@ export const ui: Ui = {
   fleeMsgT: -10,
   shriekMsgT: -99,
   grazeMsg: false,
+  aimT: 0,
+  crossMon: null,
+  graveCands: [],
+  graveSel: 0,
+  godMode: false,
 };
 
 /** レベルと経験（n：レベル、exp：経験、pending：まだ選んでいない加護の数、bless：加護ごとの段、strata：入った層）。後から足される欄は、使う処理を移す時に型を足す */
@@ -161,6 +175,11 @@ export interface RunStats {
   t0: number;
   /** この探索で新しく記録した忘れられた獣の数 */
   beastsNew?: number;
+  /** 届いた一番深い深さ・探索の始めに魔導書に記してあった反応の数・死因・受け取った伝承（src/lib/results.ts） */
+  maxDepth?: number;
+  book0?: number;
+  cause?: string;
+  loreRes?: LoreResult;
 }
 /** 探索の進み（最初の武器を選んだか・最初の祭壇・取った物・倒した主・開いた体の枠の数）。古い JS が後から足すほかの欄は、使う処理を移す時に型を足す */
 export interface RunState {
@@ -239,8 +258,9 @@ export interface HandState {
   slots: (Rune | null)[];
   slotN: number;
   turn: number;
-  elem: Rune | null;
-  trig: Rune | null;
+  /** 次に放つ性質と発動のルーン（両手持ちの時は、実際に使う手の物を写す。無い時は null か undefined） */
+  elem: Rune | null | undefined;
+  trig: Rune | null | undefined;
 }
 /** 両手と、体のルーンの枠 B（b0・b1） */
 export interface Hands {
@@ -443,6 +463,19 @@ export interface Fight {
   boltFx: Bolt[];
   /** 少しずつ遅れて落ちる稲妻（t 秒後に fn。済んだら done） */
   zapQueue: { t: number; fn: () => void; done?: boolean }[];
+  /** 立ち直りの光の粒（当てた生き物から手元へ飛ぶ。src/lib/combat.ts の rallyOnHit が足し、21-altars-heal.js の updateRally が動かす） */
+  rallyMotes: RallyMote[];
+}
+/** 立ち直りの光の粒（出た所 x0・y0・z0、経った秒 t（初めは負で、少し遅れて出る）、飛ぶ秒 dur、戻す体力 amt、色 c、揺れの位相 wob） */
+export interface RallyMote {
+  x0: number;
+  y0: number;
+  z0: number;
+  t: number;
+  dur: number;
+  amt: number;
+  c: readonly number[];
+  wob: number;
 }
 export const fight: Fight = {
   projs: [],
@@ -459,6 +492,7 @@ export const fight: Fight = {
   beamIgT: -9,
   boltFx: [],
   zapQueue: [],
+  rallyMotes: [],
 };
 
 /** 階を移る途中（out：暗くなって出ていく、in：明るくなって入る。go は行き先の種類） */
@@ -602,6 +636,17 @@ export interface Monster {
   blades?: { a: number; x: number; y: number; z: number }[];
   /** 驚いて逃げている残りの秒（小さな生き物） */
   flee?: number;
+  /** 動いている速さ（照準の先読みに使う。生き物の処理が入れる） */
+  vlx?: number;
+  vlz?: number;
+  /** 最後に受けた攻撃の種類と、その吹き飛ばしの強さ（src/lib/combat.ts の hitReact が読む） */
+  lastAtk?: string;
+  lastKnock?: number;
+  /** 吹き飛ばされている速さ */
+  kx?: number;
+  kz?: number;
+  /** 最後にプレイヤーの攻撃が当たったゲームの時刻（立ち直りに使う） */
+  playerT?: number;
 }
 /** src/lib/monsters.ts の makeMonster が作る生き物（階の生き物 here.monsters）。makeMonster が必ず入れる欄を、必ずある物にした型 */
 export interface Mob extends Monster {
@@ -888,4 +933,8 @@ export const SL = new Float32Array(NSL * 3),
   DLP = new Float32Array(NDL * 4),
   DLC = new Float32Array(NDL * 3);
 /** 押しているキー（キーの code → 押しているか）。丸ごと入れ替えない */
-export const keys: Record<string, boolean> = {};
+export const keys: { KeyW?: boolean; KeyA?: boolean; KeyS?: boolean; KeyD?: boolean; [code: string]: boolean | undefined } = {};
+/** 手元の武器が跳ねたゲームの時刻（術を放った時。19-hands-runes.js の drawViewWeapons が読む）。丸ごと入れ替えない */
+export const vmKick = { L: -9, R: -9 };
+/** 光線を撃ち続けている間の、手ごとの記録（続けた秒 hold・最後に撃った時刻 last・焼いた時刻 sear・弾けた時刻 burst）。丸ごと入れ替えない */
+export const beamHold = { L: { hold: 0, last: -9, sear: -9, burst: -9 }, R: { hold: 0, last: -9, sear: -9, burst: -9 } };

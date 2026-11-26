@@ -66,9 +66,7 @@ function dashCast(sp,dir,auto){ const hx=dir[0], hz=dir[2], l=Math.hypot(hx,hz)|
 function dashCuts(){ const L=player.lunge, c=L&&L.cut; if(!c)return; const dm=RUNE_DEF.dash.dmg;
   for(const m of here.monsters){ if(!hittable(m)||c.hit.has(m))continue; if(Math.hypot(m.x-player.x,m.z-player.z)<c.w+0.35*m.ty.scale){ c.hit.add(m); m.playerT=clock.time; applyHit(m,Math.max(1,Math.round(roll(dm[0],dm[1])*c.dK)),c.sp); if(c.link)player.recover=Math.min(player.recover||0,0.05); } } }
 // the longbow: a rain of arrows over the aimed place
-function startRain(sp,x,z,again){ const de=0, n=8+3*(sp.aff.count||0), r=1.8*tv(sp,'area'), span=0.6*tv(sp,'span');
-  fight.rains.push({x,z,r,n,left:n,iv:span/n,tick:again?0:0.45,sp,follow:false,elemK:0.25,again:!!again}); fight.marks.push({x,z,r,t:(again?0:0.45)+span,c:elemCol(sp.elem)});
-  if(de>=3&&!again)later(0.45+span+0.25,()=>startRain(sp,x,z,true)); }
+// startRain は src/lib/combat.ts（src/game/imports.mjs で読む）
 function updateRains(dt){ for(const rn of fight.rains){ rn.tick-=dt;
     if(rn.follow){ let best=null, bd=4; for(const m of here.monsters){ if(!foe(m))continue; const dd=Math.hypot(m.x-rn.x,m.z-rn.z); if(dd<bd){ bd=dd; best=m; } } if(best){ const k=Math.min(1,dt*2/Math.max(0.1,bd)); rn.x+=(best.x-rn.x)*k; rn.z+=(best.z-rn.z)*k; } }
     while(rn.tick<=0&&rn.left>0){ rn.tick+=rn.iv; rn.left--; const a=mr()*6.28, rr=Math.sqrt(mr())*rn.r, px=rn.x+Math.cos(a)*rr, pz=rn.z+Math.sin(a)*rr, c=elemCol(rn.sp.elem), sp=rn.sp, eK=rn.elemK;
@@ -79,9 +77,7 @@ function updateRains(dt){ for(const rn of fight.rains){ rn.tick-=dt;
     if(rn.left<=0&&!rn.done){ rn.done=true; } }
   fight.rains=fight.rains.filter(rn=>!rn.done); for(const mk of fight.marks)mk.t-=dt; fight.marks=fight.marks.filter(mk=>mk.t>0); }
 // the crossbow: bolts in quick succession
-function castRapid(h,sp,opt){ const vo=0, sd=0, hv=0, ac=TL(sp,'accuracy'), n=3+(sp.aff.count||0), volleys=1;
-  for(let v=0;v<volleys;v++)for(let k=0;k<n;k++)later(k*0.07+v*0.45,()=>{ if(adv.dead)return; const fr=shotFrame(h,false,'bolt'), base=opt.dir||fr.d, HP=opt.dir?handPoint(h):fr.o, spread=0.045*(1-0.16*ac), d=turnDir(base,(mr()-0.5)*spread*2);
-    fight.projs.push({kind:'bolt',auto:!!opt.auto,x:HP[0],y:HP[1],z:HP[2],vx:d[0]*22,vy:d[1]*22,vz:d[2]*22,t:0,sp,bounce:sp.aff.bounce||0,homing:(sp.aff.homing||0)+(sd>=2?20:sd>=1?10:0),hit:new Set(),dmg:RUNE_DEF.rapid.dmg,dmgK:(sd>=4?1.3:1)*(hv>=4?1.4:hv>=2?1.2:1),pierce:sd>=3?1:0,keep:true,heavy:hv,steady:sd,boom:vo>=5&&k===n-1}); if(k%2===0)sWhoosh(); }); }
+// castRapid は src/lib/combat.ts（src/game/imports.mjs で読む）
 // the star staff: a pillar of light falls on the aimed place after a moment
 function castStar(sp,x,z){ const tw=0, sw=0, pl=TL(sp,'pull'), sz=tv(sp,'size'), delay=0.6*tv(sp,'fall'), pts=[[x,z]];
   const extra=(sp.aff.count||0);
@@ -104,9 +100,7 @@ function drawWave(p){ const c=elemCol(p.sp.elem), v=Math.hypot(p.vx,p.vz)||1, dx
     for(let i=0;i<n;i++){ const s=i/(n-1)*2-1, core=1-s*s, rows=trail?1:Math.max(1,Math.round(1+core*2.2));
       const T=[S[0]*half+dx*(-2*bow*s),S[1]*half,S[2]*half+dz*(-2*bow*s)], g=vmGlyph(T[0]*cr[0]+T[2]*cr[2],T[0]*cu[0]+T[1]*cu[1]+T[2]*cu[2]);
       for(let k=0;k<rows;k++){ const q=pt(s,k*0.07), bb=b*tb*(0.45+0.75*core)*(1-k*0.22); dyn(q[0]+ox,q[1],q[2]+oz,G(g),(p.big?0.2:0.16)*(0.7+0.45*core),c[0]*2.3*bb,c[1]*2.3*bb,c[2]*2.3*bb); } } } }
-function fireWave(sp,dir,cut){ if(sp.atk==='bare')return; player.swingWave=true; const wide=sp.atk==='gsweep', W=(wide?2.0:1.2)+2*TRAIT_V.width[TL(sp,'width')], n=1+(sp.aff.count||0), HP=handPoint(sp.h||'R'), dm=RUNE_DEF[wide?'gsweep':'blade'].dmg, k=wide?0.55:0.65, v=wide?14:16;
-  for(let i=0;i<n;i++){ const d=turnDir(dir,(i-(n-1)/2)*0.13); fight.projs.push({kind:'bolt',wind:true,big:wide,wave:true,x:HP[0],y:HP[1],z:HP[2],vx:d[0]*v,vy:d[1]*v,vz:d[2]*v,t:0,maxT:(wide?0.28:0.32)*tv(sp,'range'),sp,bounce:sp.aff.bounce||0,homing:sp.aff.homing||0,hit:new Set(cut||[]),
-    dmg:[Math.max(1,Math.round(dm[0]*k)),Math.max(1,Math.round(dm[1]*k))],pierce:wide?6:4,keep:true,cw:W,rad:Math.max(0,W/2-0.56)}); } }
+// fireWave は src/lib/combat.ts（src/game/imports.mjs で読む）
 function meleeCast(sp,dir){
   player.swingWave=false; player.swingH=sp.h; player.swing=0.22; player.swingCol=elemCol(sp.elem); sWhoosh();
   const MD=RUNE_DEF[sp.atk==='bare'?'blade':sp.atk], wgt=TL(sp,'weight'), [vx,vy,vz]=dir, [ox,oy,oz]=aimOrigin(), spL=TL(sp,'spin'), reach=(MD.reach||2.2)+(spL>=2?0.5:0), maxT=1+(sp.aff.count||0)+(spL>=3?3:0)+(sp.atk==='gsweep'?2:0), cands=[];
@@ -133,7 +127,7 @@ function meleeCast(sp,dir){
   if(sp.elem){ const fx=player.x+vx*1.5, fz=player.z+vz*1.5, ci=Math.floor(fz/CELL)*MW+Math.floor(fx/CELL); if(sp.elem!=='fire'||doorBlock(ci)||blaze.fuel[ci]>0)landElem(sp,fx,0.3,fz,ci); }
 }
 // the light beam: a ray each tick, reflecting off walls when it has bounces
-const beamHold={L:{hold:0,last:-9,sear:-9,burst:-9},R:{hold:0,last:-9,sear:-9,burst:-9}};
+// beamHold は src/lib/state.ts（src/game/imports.mjs で読む）
 function fireBeam(h,dirIn,orgIn,auto){
   const sp=specOf(h), fr=dirIn?null:beamFrame(h), base=dirIn||fr.d, n=1+(sp.aff.count||0), [ox,oy,oz]=orgIn||fr.o; fight.beamSegs=[];
   const fb=beamHold[h]||beamHold.R, gap=clock.time-fb.last; fb.hold=gap>0.4?0:fb.hold+gap; fb.last=clock.time;
@@ -154,12 +148,8 @@ function fireBeam(h,dirIn,orgIn,auto){
     for(let q=0;q<3;q++){ const a=mr()*6.28; spawn(e[0],e[1],e[2],Math.cos(a)*1.2,0.4+mr(),Math.sin(a)*1.2,0.3,G(mpick(['*','+'])),0.12,elemCol(sp.elem)[0]*2.8,elemCol(sp.elem)[1]*2.8,elemCol(sp.elem)[2]*2.8,0); }
     fight.beamSegs.push({pts:seg,col:auto?elemCol(sp.elem).map(v=>v*0.6+0.4):elemCol(sp.elem),t:0.16}); }
 }
-function reflectDir(x,y,z,d){ const s=0.25, cx=Math.floor((x+d[0]*s)/CELL), cz=Math.floor((z+d[2]*s)/CELL), ox=Math.floor(x/CELL), oz=Math.floor(z/CELL);
-  const solidAt=(a,b)=>a<0||b<0||a>=MW||b>=MH||here.D.tile[b*MW+a]===TW||here.D.tile[b*MW+a]===TX;
-  let r=[d[0],d[1],d[2]]; const ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL);
-  if(y+d[1]*s<0.02||y+d[1]*s>here.D.ceil[ci]){ r[1]=-r[1]; return r; }
-  const bx=solidAt(cx,oz), bz=solidAt(ox,cz); if(bx)r[0]=-r[0]; if(bz)r[2]=-r[2]; if(!bx&&!bz){ r[0]=-r[0]; r[2]=-r[2]; } return r; }
-const inWater=m=>{ const l=here.D.liquid[m.cz*MW+m.cx]; return l===LQ_WATER||l===LQ_DEEP; };
+// reflectDir は src/lib/aim.ts（src/game/imports.mjs で読む）
+// inWater は src/lib/combat.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- hits, elements and reactions (all shown, never written)
 function applyHit(m,dmg,sp,quiet){
@@ -174,14 +164,7 @@ function applyHit(m,dmg,sp,quiet){
   else if(!m.noticed&&hostile(m)){ m.sleep=false; m.aware=1.25; onNoticed(m); }
   if(el&&mult>0.25&&!m.dead)applyElem(m,el,sp,dmg);
 }
-function hitFeedback(m,mult,el,quiet){
-  const cy=m.y+0.6*m.ty.scale, c=elemCol(el);
-  if(mult<=0.25){ for(let q=0;q<9;q++){ const a=mr()*6.28; spawn(m.x,cy,m.z,Math.cos(a)*2.2,0.6+mr(),Math.sin(a)*2.2,0.45,G(mpick(['x','.','\''])),0.12,0.45,0.45,0.5,0); }
-    if(sndReady()&&!quiet){ const t=SND.ctx.currentTime; sEnv(sTone(t,'sine',120,80,0.12,sOut(m.x,m.z,0.25)),t,0.005,0.12); } return; }
-  if(mult>=1.5){ for(let q=0;q<(quiet?6:18);q++){ const a=mr()*6.28; spawn(m.x,cy,m.z,Math.cos(a)*3,0.8+mr()*2,Math.sin(a)*3,0.6+mr()*0.4,G(mpick(['*','+','#','%'])),0.2,c[0]*3,c[1]*3,c[2]*3,0); }
-    m.hitT=0.35; if(sndReady()&&!quiet){ const t=SND.ctx.currentTime; sEnv(sNoise(t,0.25,'highpass',2400,0.8,sOut(m.x,m.z,0.35)),t,0.003,0.22); } }
-  else if(el){ for(let q=0;q<6;q++){ const a=mr()*6.28; spawn(m.x,cy,m.z,Math.cos(a)*1.4,0.5+mr(),Math.sin(a)*1.4,0.5,G(mpick(['*','.'])),0.14,c[0]*2.2,c[1]*2.2,c[2]*2.2,0); } }
-}
+// hitFeedback は src/lib/combat.ts（src/game/imports.mjs で読む）
 function applyElem(m,el,sp,base){
   const st=m.st||(m.st={}), durK=(1+(sp.aff.dur||0)/100)*sp.pow*(1+0.5*bodyN('linger')), areaK=1+(sp.aff.area||0)/100;
   if(el==='fire'){ if(st.chill>0)react('steam',m,sp,base); else if(st.poison>0)react('blast',m,sp,base); else if(st.shock>0)react('overload',m,sp,base);
@@ -195,8 +178,8 @@ function applyElem(m,el,sp,base){
     for(let k=0;k<sp.aff.chain;k++){ const nx=nearestFoe(from.x,from.z,4*areaK,seen,from.y+0.6*from.ty.scale); if(!nx)break; seen.add(nx); zapLine(from,nx,elemCol(el),el); const s2=nx.st||(nx.st={});
       if(el==='fire')s2.burn=Math.max(s2.burn||0,2*durK); else if(el==='ice')s2.chill=Math.max(s2.chill||0,1.8*durK); else if(el==='poison')s2.poison=Math.max(s2.poison||0,3.5*durK); from=nx; } }
 }
-function nearestFoe(x,z,r,skip,fy){ let b=null, bd=r; for(const o of here.monsters){ if(!foe(o)||skip.has(o))continue; const d=Math.hypot(o.x-x,o.z-z); if(d<bd&&(fy===undefined||losClear(x,fy,z,...mCenter(o)))){ bd=d; b=o; } } return b; }
-function zapLine(a,b,c,style){ addBolt([a.x,a.y+0.6*a.ty.scale,a.z],[b.x,b.y+0.6*b.ty.scale,b.z],c,style||'thunder'); }
+// nearestFoe は src/lib/combat.ts（src/game/imports.mjs で読む）
+// zapLine は src/lib/combat.ts（src/game/imports.mjs で読む）
 function chainLightning(m,jumps,dmg,areaK){ let from=m; const seen=new Set([m]), order=[];
   sparkCrown(m,RUNE_DEF.thunder.col); vfx.zapFlash={x:m.x,y:m.y+0.6*m.ty.scale,z:m.z,col:RUNE_DEF.thunder.col,t:0.16,r:6};
   for(let k=0;k<jumps;k++){ const nx=nearestFoe(from.x,from.z,4*areaK,seen,from.y+0.6*from.ty.scale); if(!nx)break; seen.add(nx); order.push([from,nx]); from=nx; }
@@ -314,8 +297,8 @@ function orbBurst(x,y,z,sp,opt){
       const v=(iL>=2?8:6)/Math.max(0.6,(m.ty.scale||1)); m.kx=(m.kx||0)+ax/dd*v; m.kz=(m.kz||0)+az/dd*v; m.st=m.st||{}; if(iL>=3)m.slam={d:iL>=4?6:3,until:clock.time+0.7}; if(iL>=5){ m.wind=0; m.st.pin=Math.max(m.st.pin||0,0.8); } } }
 }
 // lingering traces of an element: every half second, what stands in them takes the element
-function addZone(x,z,r,sp,dur,grow){ const near=fight.zones.find(zn=>zn.el===sp.elem&&Math.hypot(zn.x-x,zn.z-z)<Math.max(0.7,zn.r*0.6)); if(near){ near.t=Math.max(near.t,dur); near.sp=sp; return; } fight.zones.push({x,z,r,r0:r,sp,el:sp.elem,t:dur,tick:0,grow}); if(fight.zones.length>14)fight.zones.shift(); }
-function later(dt,fn){ fight.laters.push({t:clock.time+dt,fn}); }
+// addZone は src/lib/combat.ts（src/game/imports.mjs で読む）
+// later は src/lib/combat.ts（src/game/imports.mjs で読む）
 function updateZones(dt){ updateRains(dt); for(const L of fight.laters)if(clock.time>=L.t){ L.done=true; try{ L.fn(); }catch(e){ /* play goes on, but the error is shown in the console; in test mode, throw it outside so the page reports it */ console.error(e); if(TEST)setTimeout(()=>{ throw e; },0); } } fight.laters=fight.laters.filter(L=>!L.done);
   for(const zn of fight.zones){ zn.t-=dt; zn.tick-=dt; if(zn.grow)zn.r=Math.min(zn.r0*1.7,zn.r+dt*0.18);
     if(zn.tick<=0&&zn.el){ zn.tick=0.5; for(const m of here.monsters){ if(!hittable(m)||m.ty.critter)continue; if(Math.hypot(m.x-zn.x,m.z-zn.z)<zn.r+0.3*m.ty.scale){ m.playerT=clock.time; applyElem(m,zn.el,zn.sp,1); } } } }
@@ -328,10 +311,7 @@ function burstFire(i,r,str){
     blaze.fuel[j]=Math.max(blaze.fuel[j],0.5); ignite(j,str,false); if(here.D.gas[j]>0.1)boom(j); }
 }
 // 見ている向き viewDir は src/lib/aim.ts（src/game/imports.mjs で読む）
-function groundPoint(o,d,maxD){ let x=o[0], y=o[1], z=o[2], px=x, pz=z; for(let s2=0;s2<(maxD||22);s2+=0.3){ x+=d[0]*0.3; y+=d[1]*0.3; z+=d[2]*0.3;
-    for(const m of here.monsters){ if(!foe(m))continue; const cy=m.y+0.6*m.ty.scale; if(Math.hypot(m.x-x,cy-y,m.z-z)<0.6+0.35*m.ty.scale)return [m.x,m.z]; }
-    const ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL); if(ci<0||ci>=NCELL||here.D.tile[ci]===TW||here.D.tile[ci]===TX||doorBlock(ci))return [px,pz]; if(y<=0.05)return [x,z]; px=x; pz=z; }
-  return [x,z]; }
+// groundPoint は src/lib/aim.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- triggers
 function onRolled(){ if(BL('quickdodge'))player.qcUntil=clock.time+(BL('quickdodge')>=2?2.5:1.5); if(BL('counter'))player.ctrUntil=clock.time+1.5;

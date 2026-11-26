@@ -1,8 +1,27 @@
 // 手と持ち物の処理（もとは src/game/19-hands-runes.js）。状態の入れ物 gear（両手・持ち物）に頼る物。
 // 表だけに頼る物（ルーンの名前・色・付けられるか）は src/lib/runes.ts。
-import { lookup, must } from './array.ts';
-import { RUNE_DEF, RUNE_TYPES, type Rune, type SavedRune, TWO_SLOTS, slotsAllow, syncHand, trList, canPut, modWorks } from './runes.ts';
-import { type HandState, type Hands, adv, gear } from './state.ts';
+import { lookup, must, nth } from './array.ts';
+import { renderHotbar } from './hotbar.ts';
+import { BL } from './monsters.ts';
+import {
+  ELEM_POW,
+  RUNE_DEF,
+  RUNE_TYPES,
+  type Rune,
+  type SavedRune,
+  TRAIT_V,
+  TWO_SLOTS,
+  elemCount,
+  handRunes,
+  modVal,
+  slotsAllow,
+  syncHand,
+  trList,
+  canPut,
+  modWorks,
+} from './runes.ts';
+import { saveSet } from './save.ts';
+import { type HandState, type Hands, adv, fight, gear, here, saved, ui } from './state.ts';
 import { lockedOf, weaponPool } from './unlocks.ts';
 
 /** 左手・右手 */
@@ -14,8 +33,8 @@ export interface EffHand {
   slotN: number;
   turn: number;
   two?: true;
-  elem?: Rune | null;
-  trig?: Rune | null;
+  elem?: Rune | null | undefined;
+  trig?: Rune | null | undefined;
 }
 /** 両手と持ち物の写し（持ち替えの途中に戻すため） */
 export interface HandsSnap {
@@ -230,4 +249,82 @@ export function bodyN(type: string): number {
     if (ru && ru.type === type) n++;
   }
   return n;
+}
+/** 効き方の合計（効き方のルーンの種類 mk → 値。数 count・跳ね返り bounce・追う homing・連鎖 chain・範囲 area・長さ dur など） */
+export interface Aff {
+  count?: number;
+  bounce?: number;
+  homing?: number;
+  chain?: number;
+  area?: number;
+  dur?: number;
+  [mk: string]: number | undefined;
+}
+/** 武器の特性の段（特性の鍵 → 段） */
+export interface SpecTraits {
+  count?: number;
+  bounce?: number;
+  homing?: number;
+  accuracy?: number;
+  [k: string]: number | undefined;
+}
+/** 術の中身（手 h・攻撃の種類 atk・性質 elem・効き方の合計 aff・武器の特性の段 tr・性質の強さ pow。溜めの加護で powK が付く） */
+export interface Spec {
+  h: Side;
+  atk: string | undefined;
+  elem: string | null;
+  aff: Aff;
+  tr: SpecTraits;
+  pow: number;
+  powK?: number;
+}
+/** 手 h で今放つ術の中身（両手持ちは、次に放つ性質と発動を左右でそろえる。もとは src/game/19-hands-runes.js） */
+export function specOf(h: Side): Spec {
+  const H = effHand(h);
+  syncHand(H);
+  if (H.two) {
+    hands().L.elem = hands().R.elem = H.elem;
+    hands().L.trig = hands().R.trig = H.trig;
+  }
+  const aff: Aff = {};
+  for (const ru of handRunes(H)) {
+    const d = lookup(RUNE_DEF, ru.type);
+    if (d.cat === 'mod' && modWorks(must(d.mk), H)) aff[must(d.mk)] = (aff[must(d.mk)] || 0) + modVal(ru);
+  }
+  const el = H.elem ? H.elem.type : null;
+  const tr: SpecTraits = {},
+    el0 = H.elem ? H.elem.type : null;
+  for (const t of trList(H.atk)) tr[t.k] = t.lv;
+  if (el0 === 'thunder' && BL('branch')) aff.chain = (aff.chain || 0) + BL('branch');
+  if (tr.count) aff.count = (aff.count || 0) + nth(TRAIT_V.count, tr.count);
+  if (tr.bounce) aff.bounce = (aff.bounce || 0) + nth(TRAIT_V.bounce, tr.bounce);
+  if (tr.homing) aff.homing = (aff.homing || 0) + nth(TRAIT_V.homing, tr.homing);
+  if (tr.accuracy) aff.homing = (aff.homing || 0) + tr.accuracy * 4;
+  return { h, atk: atkType(h), elem: el, aff, tr, pow: el ? ELEM_POW[Math.min(4, elemCount(H, el))] || 1 : 1 };
+}
+/** 探索の始めの手と持ち物に戻す（右手は杖・左手は剣、袋は空。ビルド・祭壇の記録・伝説の物・最深部の状態も。もとは src/game/19-hands-runes.js） */
+export function resetRunes(): void {
+  fight.trigCd = { L: 0, R: 0 };
+  fight.hitSrcPoint = null;
+  gear.hands = { L: newHand('blade'), R: newHand('orb'), B: { b0: null, b1: null } };
+  gear.bag = [];
+  gear.builds = [null, null, null];
+  gear.buildIdx = -1;
+  gear.castSt = null;
+  gear.swapSt = null;
+  ui.packSel = null;
+  fight.beamSegs = [];
+  fight.clouds = [];
+  adv.runState = { startChosen: false, altar1: false, taken: new Set(), lordsDone: new Set(), bodyOpen: 0 };
+  saved.LEGEND = null;
+  here.finalSt = null;
+  adv.won = false;
+  renderHotbar();
+  try {
+    if (!saved.RSEEN.has('blade') || !saved.RSEEN.has('bolt')) {
+      saved.RSEEN.add('blade');
+      saved.RSEEN.add('bolt');
+      saveSet('al_runes', saved.RSEEN);
+    }
+  } catch {}
 }

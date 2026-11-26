@@ -54,7 +54,7 @@ const VM_BRIGHT={fill:0.8,edge:1.1,metal:0.95,wood:0.78,woodedge:1.0,hand:0.75,k
 // the rest to VM_REST. Chanting, holding a full chant, a swing and the kick of a shot bring them back up to full
 const VM_REST=0.75, VM_REST_HOT=0.65;
 const VM_TINT={edge:0.7,head:0.85,glow:0.85,fill:0.25};
-const vmKick={L:-9,R:-9};
+// vmKick は src/lib/state.ts（src/game/imports.mjs で読む）
 function drawViewWeapons(t){ if(ui.camMode==='tps'||!ui.started||adv.dead||!gear.hands||!here.D)return; if(ui.gallery&&ui.gallery.mode==='beast')return;
   const [f,r,u]=handUp(), [ex,ey,ez]=aimOrigin(); let dw=0.62;
   for(const side of [-0.3,0,0.3])for(let st=0.05;st<=0.62;st+=0.04){ const x=ex+f[0]*st+r[0]*side, z=ez+f[2]*st+r[2]*side, ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL); if(ci<0||ci>=NCELL||here.D.tile[ci]===TW||here.D.tile[ci]===TX||doorBlock(ci)){ dw=Math.min(dw,st-0.07); break; } }
@@ -102,17 +102,6 @@ try{ saved.BOOK=new Set(JSON.parse(localStorage.getItem('al_book')||'[]')); }cat
 // ルーンの種類を選ぶ randomRuneType は src/lib/gear.ts（src/game/imports.mjs で読む）
 // 幅に合わせて HTML を切る clipHtml は src/lib/text.ts（src/game/imports.mjs で読む）
 // called only when a run starts, after the page has loaded (saved.RSEEN is filled from al_runes in 25-gallery.js; before that it is an empty placeholder)
-function resetRunes(){ fight.trigCd={L:0,R:0}; fight.hitSrcPoint=null;
-  gear.hands={L:newHand('blade'), R:newHand('orb'), B:{b0:null,b1:null}};
-  gear.bag=[]; gear.builds=[null,null,null]; gear.buildIdx=-1; gear.castSt=null; gear.swapSt=null; ui.packSel=null; fight.beamSegs=[]; fight.clouds=[];
-  adv.runState={startChosen:false,altar1:false,taken:new Set(),lordsDone:new Set(),bodyOpen:0}; saved.LEGEND=null; here.finalSt=null; adv.won=false; renderHotbar();
-  try{ if(!saved.RSEEN.has('blade')||!saved.RSEEN.has('bolt')){ saved.RSEEN.add('blade'); saved.RSEEN.add('bolt'); saveSet('al_runes',saved.RSEEN); } }catch(e){}
-}
-function specOf(h){ const H=effHand(h); syncHand(H); if(H.two){ gear.hands.L.elem=gear.hands.R.elem=H.elem; gear.hands.L.trig=gear.hands.R.trig=H.trig; } const aff={};
-  for(const ru of handRunes(H)){ const d=RUNE_DEF[ru.type]; if(d.cat==='mod'&&modWorks(d.mk,H))aff[d.mk]=(aff[d.mk]||0)+modVal(ru); }
-  const el=H.elem?H.elem.type:null;
-  const tr={}, el0=H.elem?H.elem.type:null; for(const t of trList(H.atk))tr[t.k]=t.lv;
-  if(el0==='thunder'&&BL('branch'))aff.chain=(aff.chain||0)+BL('branch');
-  if(tr.count)aff.count=(aff.count||0)+TRAIT_V.count[tr.count]; if(tr.bounce)aff.bounce=(aff.bounce||0)+TRAIT_V.bounce[tr.bounce]; if(tr.homing)aff.homing=(aff.homing||0)+TRAIT_V.homing[tr.homing]; if(tr.accuracy)aff.homing=(aff.homing||0)+tr.accuracy*4;
-  return {h,atk:atkType(h),elem:el,aff,tr,pow:el?(ELEM_POW[Math.min(4,elemCount(H,el))]||1):1}; }
+// resetRunes は src/lib/gear.ts（src/game/imports.mjs で読む）
+// specOf は src/lib/gear.ts（src/game/imports.mjs で読む）
 

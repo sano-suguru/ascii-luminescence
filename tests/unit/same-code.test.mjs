@@ -27,6 +27,16 @@ describe('同じと言う物', () => {
       cmp(`function f(a,o,x){ return a[1]+o[k]+x.y; }`, `export function f(a, o, x) { return nth(a, 1) + lookup(o, k) + must(x, 'x').y; }`)
         .n,
     ).toEqual({ f: 0 });
+    // 名前にできる文字の鍵は、欄の読み取りと同じ（名前にできない鍵と、名前の鍵は [ ] のまま）
+    expect(
+      cmp(
+        `function f(o){ return o.rapid+o['a-b']+o[k]; }`,
+        `export function f(o) { return lookup(o, 'rapid') + lookup(o, 'a-b') + lookup(o, k); }`,
+      ).n,
+    ).toEqual({
+      f: 0,
+    });
+    expect(cmp(`function f(o){ return o.rapid; }`, `export function f(o) { return lookup(o, 'blade'); }`).n).toEqual({ f: 1 });
   });
   it('level() は、そのファイルの level が () => must(here.D, …) の時だけ here.D に戻す', () => {
     const old = `function f(){ return here.D.stairs; }`;

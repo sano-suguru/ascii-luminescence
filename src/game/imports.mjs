@@ -19,7 +19,7 @@ import {
   CAT_BR, CAT_NAME, ELEM_POW, RUNE_FONT, RUNE_TYPES, RALLY_FROM, SLEEP_MULT, SLOT_MAX, TIER_COL, TL, TRAITS, TRAIT_V, WEAPON, elemCount, handRunes, serRune, sp_elem, trList, trName, tv, RES, RUNE_DEF, detailLines, elemCol, modVal, modWorks, rollTraits, runeCol, runeName, syncHand, thingLabel,
 } from '../lib/runes.ts';
 import {
-  allRunes, atkType, bodyN, effHand, equipWeapon, isTwo, makeRune, makeStrong, newHand, randomRuneType, restoreHands, snapHands, syncHands, turnElem, wTL,
+  allRunes, atkType, bodyN, effHand, equipWeapon, isTwo, makeRune, makeStrong, newHand, randomRuneType, resetRunes, restoreHands, snapHands, specOf, syncHands, turnElem, wTL,
 } from '../lib/gear.ts';
 import { BLESS, META_DEF, UNLOCKS, expNeed, expOf } from '../lib/progress.ts';
 import { MTYPES } from '../lib/creatures.ts';
@@ -35,12 +35,12 @@ import { ALTAR_W, MARK_H, MCH, MCW, MMC, MMR, MPAD, tone } from '../lib/hud.ts';
 import { AVATAR_TY, BRANCH_HINT, DECO_K, DECO_NAMES, DUMMY_KINDS, FIX_NAMES, GALLERY_SLEEP, LEGEND_KINDS, LEGEND_ORDER, LORD_GAL, TRAP_INFO, lookLine, mname } from '../lib/names.ts';
 import { CHANT_STEPS, SND_NAME, VOWELS, sEnv } from '../lib/sound.ts';
 import {
-  sAlarm, sBoom, sBubble, sChime, sCrackleBurst, sCreak, sDist, sHiss, sHowl, sndInit, sndReady, sndUpdate, sNoise, sOut, sRumble, sSplash, sSqueak, sTone, sWhoosh,
+  castSound, sAlarm, sBoom, sBubble, sChime, sCrackleBurst, sCreak, sDist, sHiss, sHowl, sndInit, sndReady, sndUpdate, sNoise, sOut, sRumble, sSplash, sSqueak, sTone, sWhoosh,
 } from '../lib/audio.ts';
 import {
   altarDetail, altarFill, altarLine, altarOpts, guardedNow, placeAltar, placeChosen, placeRunesForLevel, takeRune, vaultArea,
 } from '../lib/altars.ts';
-import { lockedOf, unlocked, weaponPool } from '../lib/unlocks.ts';
+import { lockedOf, loreLeft, unlocked, weaponPool } from '../lib/unlocks.ts';
 import { interAfter, interAt, isFinal, levelSeed } from '../lib/levels.ts';
 import { msg, renderLog } from '../lib/log.ts';
 import { renderHotbar } from '../lib/hotbar.ts';
@@ -62,7 +62,13 @@ import { bogAura, dragonAura, drawMorph, houndAura, krakenAura, lichAura, nagaAu
 import { P, dCol, dPar, dPos, dyn, killP, spawn } from '../lib/particles.ts';
 import { drawMonster, drawMonster0, drawTentacles } from '../lib/bodies/draw.ts';
 import { look } from '../lib/look.ts';
-import { aimOrigin, aimPoint, castPoint, drawSwing, handPoint, handUp, headPos, hittable, viewDir } from '../lib/aim.ts';
+import {
+  aimOrigin, aimPoint, aimTarget, assistPoint, beamFrame, castPoint, doorBlock, drawSwing, groundPoint, handPoint, handUp, headPos, hittable, losClear, reflectDir, shotFrame, viewDir,
+} from '../lib/aim.ts';
+import {
+  addZone, castRapid, coldSnap, dropRune, fireWave, gainExp, hitFeedback, hitReact, inWater, later, lordFell, nearestFoe, rallyOnHit, startRain, zapLine,
+} from '../lib/combat.ts';
+import { awardLore, graveCandidates, graveRows, loreRows, resultPlace, runLore, saveGrave, victory } from '../lib/results.ts';
 // three.js（r147）。npm の three から読んで、組み立てに入れる（CDN からは読まない）。
 // 光のにじみの4つの部品（examples/jsm の EffectComposer・RenderPass・ShaderPass・UnrealBloomPass）は、古い JS が T.EffectComposer などで使うので、00-test-mode.js で T に一緒に入れる
 import * as THREE from 'three';
@@ -70,4 +76,4 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { DLC, DLP, SL, SND, adv, blaze, buf, cellData, clock, fight, gear, gfx, here, hudInfo, iceT, keys, lantern, placeMem, player, saved, stealth, ui, vfx } from '../lib/state.ts';
+import { DLC, DLP, SL, SND, adv, beamHold, blaze, buf, cellData, clock, fight, gear, gfx, here, hudInfo, iceT, keys, lantern, placeMem, player, saved, stealth, ui, vfx, vmKick } from '../lib/state.ts';

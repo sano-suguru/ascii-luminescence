@@ -1,12 +1,9 @@
 // ---------------------------------------------------------------- spells meet the world: doors stop them, sight lines matter, ice freezes water and puts out fire, thunder runs through water, fire lights poison mist
 // doorAt is the door number of each cell (-1 where there is no door), as generate() made it
-function doorBlock(ci){ const di=here.D.doorAt[ci], d=di>=0?here.D.doors[di]:null; return !!d&&!d.gone&&d.o<0.5; }
-function losClear(ax,ay,az,bx,by,bz){ const d=Math.hypot(bx-ax,by-ay,bz-az), n=Math.ceil(d/0.3);
-  for(let k=1;k<n;k++){ const f=k/n, x=ax+(bx-ax)*f, y=ay+(by-ay)*f, z=az+(bz-az)*f, ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL); if(ci<0||ci>=NCELL)return false;
-    const tt=here.D.tile[ci]; if(tt===TW||tt===TX||doorBlock(ci)||y>here.D.ceil[ci])return false; }
-  return true; }
+// doorBlock は src/lib/aim.ts（src/game/imports.mjs で読む）
+// losClear は src/lib/aim.ts（src/game/imports.mjs で読む）
 // mCenter は src/lib/math.ts（src/game/imports.mjs で読む）
-function beamFrame(h){ const o=handPoint(h), a=assistPoint(o,'beam')||aimPoint(), dx=a[0]-o[0], dy=a[1]-o[1], dz=a[2]-o[2], l=Math.hypot(dx,dy,dz); return {o,d:l>1?[dx/l,dy/l,dz/l]:viewDir()}; }
+// beamFrame は src/lib/aim.ts（src/game/imports.mjs で読む）
 // 冷気 chillArea と、凍らせた水が溶ける updateFrozen は src/lib/ground.ts（src/game/imports.mjs で読む）
 // 凍らせた水を描く drawFrozen は src/lib/fx.ts（src/game/imports.mjs で読む）
 // thunder runs through water: everything standing in the same water near the hit takes a share
