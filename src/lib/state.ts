@@ -103,6 +103,11 @@ export interface Ui {
   lookPendT: number;
   lookHTML: string;
   lookEl: HTMLElement | null;
+  /** 伝言を出したゲームの時刻：生き物が炎から逃げた（6秒あける）・叫ぶ生き物が叫んだ（8秒あける）。src/lib/monsters.ts の chooseNext・src/lib/ground.ts の updateCritter */
+  fleeMsgT: number;
+  shriekMsgT: number;
+  /** 草を食べる生き物が灯りに驚いた伝言を出したか（探索の間に一度だけ） */
+  grazeMsg: boolean;
 }
 export const ui: Ui = {
   started: false,
@@ -137,6 +142,9 @@ export const ui: Ui = {
   lookPendT: 0,
   lookHTML: '',
   lookEl: null,
+  fleeMsgT: -10,
+  shriekMsgT: -99,
+  grazeMsg: false,
 };
 
 /** レベルと経験（n：レベル、exp：経験、pending：まだ選んでいない加護の数、bless：加護ごとの段、strata：入った層）。後から足される欄は、使う処理を移す時に型を足す */
@@ -314,8 +322,10 @@ export interface Blaze {
   /** どこかにガスがあるか */
   gasAny: boolean;
   spark: Spark | null;
-  /** 凍らせた水のマス（マス → 溶けるまでの秒・元の液体・元の床）。26-spells-hud.js の chillArea・updateFrozen */
+  /** 凍らせた水のマス（マス → 溶けるまでの秒・元の液体・元の床）。src/lib/ground.ts の chillArea・updateFrozen */
   frozen: Map<number, { t: number; liq: number; surf: number }>;
+  /** 踏み分けた背の高い草や茸のマスと、踏んだゲームの時刻（src/lib/ground.ts の trample が足し、18-level-player.js の regrow が元に戻す。newLevel が空にする） */
+  trampled: [number, number][];
 }
 export const blaze: Blaze = {
   fire: new Float32Array(NCELL),
@@ -328,6 +338,7 @@ export const blaze: Blaze = {
   gasAny: false,
   spark: null,
   frozen: new Map(),
+  trampled: [],
 };
 
 /** 光線の一切れ（点の並び・色・残りの秒） */
@@ -478,6 +489,8 @@ export interface LevelExtra {
   stairGuard?: number;
   /** 階段と門のそばの石碑（マス i と、刻まれた文字 g。どの階でも、src/lib/altars.ts の placeRunesForLevel が入れる） */
   steles?: { i: number; g: string }[];
+  /** 薄い氷のきしむ伝言を出したか（その階で一度だけ。src/lib/ground.ts の crackIce） */
+  crackMsg?: boolean;
   /** 床が崩れたか（部屋の出来事。15-sound-fire.js の initEvents が false にする） */
   collapsed?: boolean;
   /** 床が崩れて開いた穴のマス（1 が穴。15-sound-fire.js の initEvents が作り、床が崩れる出来事が入れる） */
@@ -517,7 +530,7 @@ export interface Monster {
   visible?: boolean;
   dead?: boolean;
   /** 群れの番号 */
-  g?: number;
+  g?: number | undefined;
   /** 水から出ている度合い（うなぎ。0 なら潜っている） */
   surf?: number;
   /** 気づいている度合い（0 から 1.25。0.35 を超えると、眠りから覚める）と、気づいたか・眠っているか */
@@ -566,7 +579,7 @@ export interface Monster {
   glow?: number;
   heartOn?: boolean;
   /** ここから下は、描く処理（src/lib/bodies/draw.ts）と見た時の説明（src/lib/look.ts）・灯り（src/lib/lightmap.ts の updateLights）が読む欄。
-   * 生き物の表の鍵（'final' は王の影）と、揺れの位相 ph・歩きの位相 walk・警戒 alert（11-monster-move.js の makeMonster が入れる） */
+   * 生き物の表の鍵（'final' は王の影）と、揺れの位相 ph・歩きの位相 walk・警戒 alert（src/lib/monsters.ts の makeMonster が入れる） */
   key?: string;
   ph?: number;
   walk?: number;
@@ -590,10 +603,75 @@ export interface Monster {
   /** 驚いて逃げている残りの秒（小さな生き物） */
   flee?: number;
 }
+/** src/lib/monsters.ts の makeMonster が作る生き物（階の生き物 here.monsters）。makeMonster が必ず入れる欄を、必ずある物にした型 */
+export interface Mob extends Monster {
+  /** 出てはいけない部屋の外（その部屋の番号）・見回りの道のマスと、次に向かう番号・野営の火のマス */
+  home?: number | undefined;
+  route?: number[] | undefined;
+  ri: number;
+  camp?: number | undefined;
+  key: string;
+  /** いるマス cx・cz と、向かっているマス tx・tz、向かう向き dir（上下左右の1つ。初めは [0, 0]） */
+  cx: number;
+  cz: number;
+  tx: number;
+  tz: number;
+  dir: readonly [number, number];
+  yaw: number;
+  /** 進む向き（ラジアン。体は少しずつこちらへ回る） */
+  dirYaw: number;
+  wait: number;
+  alert: number;
+  /** 見たか（初めて見た時の伝言を出したか） */
+  seen: boolean;
+  visible: boolean;
+  walk: number;
+  moving: number;
+  ph: number;
+  form: Body;
+  /** 光の尾・うなぎの波紋を出すまでの溜め */
+  acc: number;
+  glow: number;
+  y: number;
+  /** 群れの頭か、群れの頭（頭は null） */
+  isLead?: boolean | undefined;
+  leader: Mob | null;
+  dead: boolean;
+  aware: number;
+  noticed: boolean;
+  sleep: boolean;
+  mark: number;
+  surf: number;
+  /** うなぎが次に水から出るまでの秒 */
+  surfT: number;
+  /** 飛ぶ生き物の速さと、飛ぶ高さ fy、次に向きを変えるまでの秒 flitT */
+  vx: number;
+  vz: number;
+  vy: number;
+  fy: number;
+  flitT: number;
+  /** 次に近接の攻撃をするまでの秒（src/lib/monsters.ts の initMonsterLife が入れる） */
+  atkCd?: number;
+  /** 掃除機・修復機：している仕事（灰や火のマス、作り直す扉の番号。無ければ -1）・仕事をした秒・最後に仕事を探したゲームの時刻 */
+  job?: number;
+  work?: number;
+  scanT?: number;
+  /** 叫ぶ生き物が最後に叫んだゲームの時刻 */
+  shriekT?: number;
+  /** 魚：次に跳ねるまでの秒と、跳ねている途中（0 から 1。跳ねていなければ 0） */
+  jumpT?: number;
+  jump?: number;
+  /** 猟犬の群れの頭：匂いを嗅ぎつけたか */
+  tracked?: boolean;
+  /** 剣を操る者：剣が回り始めた伝言を出したか */
+  bladeMsg?: boolean;
+  /** 状態異常（TypeScript が読み書きするのは、冷え chill の残りの秒だけ） */
+  st?: { chill?: number };
+}
 /** 今いる場所と、階の中身。深さ・支道・異界・特別な階、生き物、灯りの備品、階を移る途中、着いた所 */
 export interface Here {
   /** 階の生き物（型は、TypeScript が読む欄だけ。ほかの欄は、生き物の処理を移す時に足す） */
-  monsters: Monster[];
+  monsters: Mob[];
   depth: number;
   branch: BranchPlace | null;
   realm: RealmPlace | null;
@@ -623,10 +701,11 @@ export interface Here {
   riverCells: number[];
   /** 最深部の状態（最深部の階に入った時に作る。ほかの階では null。24-goal.js の setupFinal） */
   finalSt: FinalState | null;
-  /** その階で一度だけ出す伝言を出したか：巣に絡まった・巣が燃え落ちた・修復機が扉を直した（18-level-player.js の newLevel が階ごとに戻す） */
+  /** その階で一度だけ出す伝言を出したか：巣に絡まった・巣が燃え落ちた・修復機が扉を直した・足元の硫黄が燃え上がった（18-level-player.js の newLevel が階ごとに戻す） */
   webMsg: boolean;
   webBurnMsg: boolean;
   repairMsg: boolean;
+  brimMsg: boolean;
 }
 /** 最深部の状態：一番高い天井のマス c0（王の影が現れる所）、王の影 boss と、現れるまで・呼び出すまでの秒、着いた時の伝言を出したか */
 export interface FinalState {
@@ -658,6 +737,7 @@ export const here: Here = {
   webMsg: false,
   webBurnMsg: false,
   repairMsg: false,
+  brimMsg: false,
 };
 /** 行った階の覚え（場所の名前 → 見えた所と覚えた色の写し）。丸ごと入れ替えないので、古い JS は今までどおり placeMem で読む */
 export const placeMem = new Map<string, { explored: Uint8Array; mem: Float32Array }>();
@@ -786,13 +866,22 @@ export const buf: Buf = { dn: 0, pN: 0 };
 export interface CameraView {
   readonly position: { readonly x: number; readonly y: number; readonly z: number };
 }
-/** 描画の部品（three.js の物）と描き方の切り替え：カメラ camera（本当の値は 05-renderer.js がその場で入れる。ここの値は仮）と、
+/** three.js の、マスの火・灰・変わり方を描画に渡す絵（DataTexture）のうち、TypeScript が書く欄だけ（本物は 05-renderer.js が作る。中身は cellData） */
+export interface CellTex {
+  needsUpdate: boolean;
+}
+/** 描画の部品（three.js の物）と描き方の切り替え：カメラ camera とマスの絵 cellTex（本当の値は 05-renderer.js がその場で入れる。ここの値は仮）と、
  * 生き物の体だけを描くか drawBodyOnly（まわりの飾り・強い個体の輪・頭の上の印を描かない。__test.monsterView だけが入れる） */
 export interface Gfx {
   camera: CameraView;
+  cellTex: CellTex;
   drawBodyOnly: boolean;
 }
-export const gfx: Gfx = { camera: { position: { x: 0, y: 0, z: 0 } }, drawBodyOnly: false };
+export const gfx: Gfx = { camera: { position: { x: 0, y: 0, z: 0 } }, cellTex: { needsUpdate: false }, drawBodyOnly: false };
+/** マスの絵 gfx.cellTex の中身（マス1つに4つ：火の明かり・火の強さ・灰か・変わり方の種類。src/lib/ground.ts の uploadCells が書く）。丸ごと入れ替えない */
+export const cellData = new Uint8Array(NCELL * 4);
+/** 薄い氷のマスに乗っていた秒（マス → 秒。src/lib/ground.ts の crackIce。18-level-player.js の newLevel が階ごとに空にする）。丸ごと入れ替えない */
+export const iceT = new Map<number, number>();
 /** 灯りを描画に渡す配列（src/lib/lightmap.ts の updateLights が毎フレーム書き、05-renderer.js の U が描画に渡す）。丸ごと入れ替えない。
  * SL：階の灯りの色と強さ（灯り1つに3つ）、DLP：動く灯りの位置と届く距離（1つに4つ。0番は手元の灯り、最後は稲妻か火花）、DLC：動く灯りの色（1つに3つ） */
 export const SL = new Float32Array(NSL * 3),

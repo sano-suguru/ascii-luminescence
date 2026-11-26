@@ -7,18 +7,7 @@ function losClear(ax,ay,az,bx,by,bz){ const d=Math.hypot(bx-ax,by-ay,bz-az), n=M
   return true; }
 // mCenter は src/lib/math.ts（src/game/imports.mjs で読む）
 function beamFrame(h){ const o=handPoint(h), a=assistPoint(o,'beam')||aimPoint(), dx=a[0]-o[0], dy=a[1]-o[1], dz=a[2]-o[2], l=Math.hypot(dx,dy,dz); return {o,d:l>1?[dx/l,dy/l,dz/l]:viewDir()}; }
-// ice: puts out fire, freezes water for a while (walkable, slippery); fire melts it again
-function chillArea(x,z,r){ const cx=Math.floor(x/CELL), cz=Math.floor(z/CELL), rr=Math.ceil(r/CELL)+1; let ch=false, froze=false;
-  for(let dz=-rr;dz<=rr;dz++)for(let dx=-rr;dx<=rr;dx++){ if(cx+dx<0||cx+dx>=MW||cz+dz<0||cz+dz>=MH)continue; const i=(cz+dz)*MW+cx+dx; const px=(cx+dx+0.5)*CELL, pz=(cz+dz+0.5)*CELL; if(Math.hypot(px-x,pz-z)>r+0.7)continue;
-    if(blaze.fire[i]>0){ blaze.fire[i]=0; ch=true; for(let q=0;q<5;q++)spawn(px+(mr()-0.5)*1.4,0.3,pz+(mr()-0.5)*1.4,0,0.9+mr(),0,0.9,G(mpick(['~','.'])),0.16,1.6,1.7,1.8,0); }
-    const lq=here.D.liquid[i]; if((lq===LQ_WATER||lq===LQ_DEEP)&&!blaze.frozen.has(i)){ blaze.frozen.set(i,{t:25,liq:lq,surf:here.D.surface[i]}); here.D.liquid[i]=0; here.D.surface[i]=SF_ICE; ch=true; froze=true;
-      for(const m of here.monsters){ if(m.dead||m.cx!==cx+dx||m.cz!==cz+dz)continue; const s2=m.st||(m.st={}); s2.chill=Math.max(s2.chill||0,4); } }
-    else if(blaze.frozen.has(i))blaze.frozen.get(i).t=25; }
-  if(ch)uploadCells();
-  if(froze&&sndReady()){ const t=SND.ctx.currentTime, o=sOut(x,z,0.3); sEnv(sTone(t,'sine',2093,3136,0.4,o),t,0.004,0.35); sEnv(sNoise(t,0.3,'highpass',5000,0.6,o),t,0.003,0.25,0.4); } }
-function updateFrozen(dt){ if(!blaze.frozen.size)return; let ch=false;
-  for(const [i,f] of blaze.frozen){ f.t-=dt; if(f.t<=0||blaze.fire[i]>0.1){ here.D.liquid[i]=f.liq; here.D.surface[i]=f.surf; blaze.fire[i]=0; blaze.fuel[i]=0; blaze.frozen.delete(i); ch=true; const [x,z]=cpos(i); for(let q=0;q<8;q++){ const a=mr()*6.28; spawn(x+Math.cos(a)*0.6,0.1,z+Math.sin(a)*0.6,Math.cos(a),0.6+mr(),Math.sin(a),0.6,G(mpick(['/','\\','~'])),0.14,0.7,0.95,1.2,1); } } }
-  if(ch)uploadCells(); }
+// 冷気 chillArea と、凍らせた水が溶ける updateFrozen は src/lib/ground.ts（src/game/imports.mjs で読む）
 // 凍らせた水を描く drawFrozen は src/lib/fx.ts（src/game/imports.mjs で読む）
 // thunder runs through water: everything standing in the same water near the hit takes a share
 function conductWater(m,base){ if(!inWater(m))return; let n=0;

@@ -19,12 +19,7 @@ function initFire(){
   fireSrc=here.D.fixtures.filter(f=>FIRE_TYPES.has(f.type)).map(f=>Math.floor(f.z/CELL)*MW+Math.floor(f.x/CELL));
   uploadCells();
 }
-function ignite(i,strength,gasBurn){
-  if(i<0||i>=NCELL||here.D.tile[i]===TW)return;
-  if(blaze.fire[i]<=0){ blaze.fire[i]=strength; if(!blaze.burning.includes(i))blaze.burning.push(i); } // put out and lit again before stepFire: it is still in the list
-  else blaze.fire[i]=Math.max(blaze.fire[i],strength);
-  if(gasBurn){ blaze.fuel[i]=Math.max(blaze.fuel[i],0.25); here.D.gas[i]=0; }
-}
+// 火をつける ignite は src/lib/ground.ts（src/game/imports.mjs で読む）
 function boom(i){
   const x=(i%MW+0.5)*CELL, z=(((i/MW)|0)+0.5)*CELL, dd=Math.hypot(x-player.x,z-player.z);
   if(clock.time-(boom.last||-9)>0.35){ boom.last=clock.time; sBoom(clamp(1-dd/34,0.05,1)); makeNoise(x,z,20,1.3); }
@@ -61,10 +56,7 @@ function stepFire(){
     for(let dz=-2;dz<=2;dz++)for(let dx=-2;dx<=2;dx++){ if(x+dx<0||x+dx>=MW)continue; const j=i+dx+dz*MW; if(j<0||j>=NCELL)continue; const w=f*Math.max(0,1-Math.hypot(dx,dz)/2.6); blaze.fireLight[j]+=w; } }
   uploadCells();
 }
-function uploadCells(){
-  for(let i=0;i<NCELL;i++){ const o=i*4; cellData[o]=Math.min(255,blaze.fireLight[i]*150); cellData[o+1]=Math.min(255,blaze.fire[i]*255); cellData[o+2]=blaze.burnt[i]?255:0; cellData[o+3]=blaze.cellFlag[i]; }
-  cellTex.needsUpdate=true;
-}
+// マスの火・灰・変わり方を描画に渡す uploadCells は src/lib/ground.ts（src/game/imports.mjs で読む）
 // 火を描く drawFire は src/lib/fx.ts（src/game/imports.mjs で読む）
 let sparks=3, sparkRegen=0; const SPARK_MAX=3;
 function updateSparkHud(){ renderStatus(); }
@@ -109,7 +101,7 @@ function initEvents(){
   });
 }
 // cpos は src/lib/world.ts（src/game/imports.mjs で読む）
-function summon(key,cell){ const m=makeMonster({key,cx:cell%MW,cz:(cell/MW)|0,g:-1,lead:true}); m.alert=1; m.seen=true; here.monsters.push(m); return m; }
+// 生き物を呼び出す summon は src/lib/monsters.ts（src/game/imports.mjs で読む）
 function updateEvents(dt,t){
   const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL);
   for(const ev of here.events){

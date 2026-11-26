@@ -41,7 +41,7 @@ function newLevel(seedOverride){
       player.x=(nb%MW+0.5)*CELL; player.z=(((nb/MW)|0)+0.5)*CELL; player.yaw=Math.atan2(-((tc%MW)-(nb%MW)),-(((tc/MW)|0)-((nb/MW)|0)))+Math.PI; lockCell=tc; } here.arrive=null; }
   stealth.sneak=false; lantern.r=8.2; lantern.k=1;
   here.riverCells=[]; for(let i=0;i<NCELL;i++)if(here.D.flow[i]&&(here.D.liquid[i]===LQ_WATER||here.D.liquid[i]===LQ_DEEP))here.riverCells.push(i);
-  trampled=[]; tallMsg=false; brimMsg=false; player.lastCell=-1; player.netT=0;
+  blaze.trampled=[]; iceT.clear(); tallMsg=false; here.brimMsg=false; player.lastCell=-1; player.netT=0;
   blaze.scent=new Float32Array(NCELL); here.webMsg=false; here.webBurnMsg=false; here.repairMsg=false;
   buf.pN=0; blaze.gasAny=false; initFire(); initEvents(); blaze.spark=null; fight.projs=[]; showHint(''); edge.t=0; setFog(); initDust();
   renderStatus(); if(ui.helpOn)renderHelp();
@@ -71,21 +71,10 @@ function checkEvents(first){
 }
 
 // ---------------------------------------------------------------- player
-const iceT=new Map();
-function crackIce(i,dt){
-  const t0=(iceT.get(i)||0)+dt; iceT.set(i,t0);
-  if(t0<dt*1.5){ sSqueak(player.x,player.z); if(!here.D.crackMsg){ here.D.crackMsg=true; msg('<b style="color:#b8e4ff">/</b>足元の氷が、ぴしりと音を立ててきしんだ。'); } }
-  if(t0>0.85){ here.D.liquid[i]=LQ_WATER; here.D.thin[i]=0; blaze.cellFlag[i]=50; uploadCells(); sSplash(0.45); vfx.shake=Math.max(vfx.shake,0.15);
-    msg('<b style="color:#6ab4ff">~</b>氷が割れ、冷たい水に足が沈んだ。');
-    const [x,z]=cpos(i); for(let q=0;q<26;q++){ const a=mr()*6.28; spawn(x+Math.cos(a)*0.5,0.1,z+Math.sin(a)*0.5,Math.cos(a)*1.2,0.6+mr(),Math.sin(a)*1.2,1+mr(),G(mpick(['/','\\','~','*'])),0.16,0.6,0.85,1.0,1); } }
-}
-const tallAt=i=>i>=0&&i<NCELL&&(here.D.surface[i]===SF_FOLIAGE||here.D.surface[i]===SF_FUNGFOR)&&blaze.cellFlag[i]!==20&&!blaze.burnt[i]&&!here.D.liquid[i];
-let trampled=[], tallMsg=false, brimMsg=false;
-function trample(i){ if(!tallAt(i))return; blaze.cellFlag[i]=20; uploadCells(); trampled.push([i,clock.time]); sHiss(player.x,player.z,0.22); }
-function regrow(){ if(!trampled.length)return; const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL); let ch=false;
-  trampled=trampled.filter(([i,t0])=>{ if(clock.time-t0>45&&i!==pc&&blaze.cellFlag[i]===20){ blaze.cellFlag[i]=0; ch=true; return false; } return blaze.cellFlag[i]===20; }); if(ch)uploadCells(); }
-function brimFlare(i){ if(here.D.surface[i]!==SF_BRIM||blaze.fire[i]>0.1||blaze.fuel[i]<=0)return; ignite(i,1.0,false); for(const d of D4){ const j=i+d[0]+d[1]*MW; if(here.D.surface[j]===SF_BRIM&&blaze.fuel[j]>0)ignite(j,0.6,false); } sCrackleBurst&&sCrackleBurst((i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL);
-  if(!brimMsg){ brimMsg=true; msg('<b style="color:#ffd04a">*</b>足元の硫黄が、ぼっと燃え上がった！ しばらくすると、また燃えるようになる。'); } }
+// 薄い氷に乗っていた秒 iceT は src/lib/state.ts、氷が割れる crackIce・背の高い茂みか tallAt・踏み分ける trample・硫黄が燃え上がる brimFlare は src/lib/ground.ts（src/game/imports.mjs で読む）
+let tallMsg=false;
+function regrow(){ if(!blaze.trampled.length)return; const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL); let ch=false;
+  blaze.trampled=blaze.trampled.filter(([i,t0])=>{ if(clock.time-t0>45&&i!==pc&&blaze.cellFlag[i]===20){ blaze.cellFlag[i]=0; ch=true; return false; } return blaze.cellFlag[i]===20; }); if(ch)uploadCells(); }
 let brimT=0; function brimRecover(dt){ brimT+=dt; if(brimT<2)return; brimT=0; let ch=false; for(let i=0;i<NCELL;i++){ if(here.D.surface[i]===SF_BRIM&&(blaze.burnt[i]||blaze.fuel[i]<=0)&&blaze.fire[i]<=0&&mr()<0.08){ /* burnt, or swept by a cleaner (no ash, no fuel) */ blaze.burnt[i]=0; blaze.fuel[i]=0.8; ch=true; } } if(ch)uploadCells(); }
 // ---------------------------------------------------------------- hidden traps, a lever-and-portcullis vault, sanctuaries (mechanisms after Brogue's machines; written independently)
 // TRAP_INFO は src/lib/names.ts（src/game/imports.mjs で読む）
@@ -119,13 +108,11 @@ function updateTraps(dt){
 // 生き物の強さ statOf は src/lib/monsters.ts（src/game/imports.mjs で読む）。強さの表 MSTAT は src/lib/creatures.ts（statOf だけが読む）
 // WEAPON・SLEEP_MULT は src/lib/runes.ts（src/game/imports.mjs で読む）
 // roll は src/lib/random.ts（src/game/imports.mjs で読む）
-const hostile=m=>!m.ty.critter&&!m.ty.peaceful&&!m.ty.watcher&&m.ty.form!=='bloat'&&!m.dead;
-// 攻撃が当たる生き物か hittable は src/lib/aim.ts（src/game/imports.mjs で読む）
-const foe=m=>hittable(m)&&(hostile(m)||m.ty.watcher||m.ty.form==='bloat'||m.ty.form==='shroom'||(m.ty.critter==='mimic'&&!m.hidden));
+// 敵か hostile・攻撃の的にしてよいか foe は src/lib/monsters.ts、攻撃が当たる生き物か hittable は src/lib/aim.ts（src/game/imports.mjs で読む）
 // angDiff は src/lib/math.ts（古い JS は使わない。src/lib/ の生成などが使う）
 // expNeed・expOf は src/lib/progress.ts（src/game/imports.mjs で読む）
 // serRune は src/lib/runes.ts（src/game/imports.mjs で読む）
-function initMonsterLife(m){ const st=statOf(m); m.maxHp=Math.round(st[0]*(m.ty.boss?1.5:1)); m.hp=m.maxHp; m.atkCd=0.5+mr(); m.wind=0; }
+// 生き物の体力を初めの値にする initMonsterLife は src/lib/monsters.ts（古い JS は読まない。makeMonster が呼ぶ）
 // ---------------------------------------------------------------- levelling: defeating creatures gives experience; at each level time stops and you choose one of three
 // (two blessings - strengths tied to actions and elements, some with a price - and one rune or charm). Max health does not grow with level: it grows by 4 on entering each new stratum.
 let lvlOpenT=0, lvlOpts=[];

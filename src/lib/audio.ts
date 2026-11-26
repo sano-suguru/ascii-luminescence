@@ -413,6 +413,28 @@ export function sHowl(x: number | undefined, z: number | undefined): void {
   os.stop(t + 1.85);
   lfo.stop(t + 1.85);
 }
+/** 叫び声（叫ぶ生き物が灯りに気づいた時。高い矩形波を2つ重ね、上げてから下げる） */
+export function sShriek(x: number | undefined, z: number | undefined): void {
+  if (!sndReady()) return;
+  const ctx = actx(),
+    t = ctx.currentTime,
+    o = sOut(x, z, 0.5);
+  for (let k = 0; k < 2; k++) {
+    const os = ctx.createOscillator(),
+      g = ctx.createGain();
+    os.type = 'square';
+    os.frequency.setValueAtTime(1300 + k * 230, t);
+    os.frequency.linearRampToValueAtTime(2100 + k * 300, t + 0.25);
+    os.frequency.linearRampToValueAtTime(1000, t + 0.9);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.1, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
+    os.connect(g);
+    g.connect(o);
+    os.start(t);
+    os.stop(t + 1.05);
+  }
+}
 /** 警報（監視の機械が気づいた時。高い音と低い音を3回ずつ交互に） */
 export function sAlarm(x: number | undefined, z: number | undefined): void {
   if (!sndReady()) return;

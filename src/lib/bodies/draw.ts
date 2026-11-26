@@ -29,7 +29,7 @@ import { dragonSleepForm } from './beasts.ts';
 import type { Body } from './kit.ts';
 import { beastSleep } from './lords.ts';
 
-/** 描く生き物（11-monster-move.js の makeMonster が、足もとの高さ・向き・揺れと歩きの位相・歩いている度合い・明るさ・形を必ず入れる） */
+/** 描く生き物（src/lib/monsters.ts の makeMonster が、足もとの高さ・向き・揺れと歩きの位相・歩いている度合い・明るさ・形を必ず入れる） */
 type Mon = Monster & { y: number; yaw: number; ph: number; walk: number; moving: number; glow: number; form: Body };
 
 // kraken tentacles: columns of glyphs rising out of the water around the body, swaying
