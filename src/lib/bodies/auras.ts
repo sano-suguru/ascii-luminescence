@@ -10,7 +10,7 @@ import { G } from '../glyphs.ts';
 import { msg } from '../log.ts';
 import { dyn, spawn } from '../particles.ts';
 import { clamp } from '../rng.ts';
-import { mpick, mr, sndRand } from '../random.ts';
+import { mpick, mr, sndRand, withMobRand } from '../random.ts';
 import { sEnv } from '../sound.ts';
 import { type Monster, SND, adv, clock, here, player, ui, vfx } from '../state.ts';
 import { BASE_H, CELL, MW } from '../world.ts';
@@ -32,18 +32,20 @@ export function lichAura(m: Mon, t: number): void {
     dp = toPlayer(m);
   if (dp > 30) return;
   if (!m.swords) {
-    m.swords = [];
-    for (let k = 0; k < 7; k++) {
-      const a = (k / 7) * Math.PI * 2 + mr() * 0.4,
-        r = (1.7 + mr() * 0.9) * sc;
-      m.swords.push({
-        x: m.x + Math.cos(a) * r,
-        z: m.z + Math.sin(a) * r,
-        tx: (mr() - 0.5) * 0.5,
-        tz: (mr() - 0.5) * 0.5,
-        h: 0.8 + mr() * 0.5,
-      });
-    }
+    const swords: NonNullable<Mon['swords']> = (m.swords = []);
+    withMobRand(m, () => {
+      for (let k = 0; k < 7; k++) {
+        const a = (k / 7) * Math.PI * 2 + mr() * 0.4,
+          r = (1.7 + mr() * 0.9) * sc;
+        swords.push({
+          x: m.x + Math.cos(a) * r,
+          z: m.z + Math.sin(a) * r,
+          tx: (mr() - 0.5) * 0.5,
+          tz: (mr() - 0.5) * 0.5,
+          h: 0.8 + mr() * 0.5,
+        });
+      }
+    });
   }
   for (const s of m.swords) {
     for (let y = 0; y < s.h; y += 0.12) dyn(s.x + s.tx * y, y, s.z + s.tz * y, G('|'), 0.14, 0.42, 0.42, 0.48);
@@ -157,17 +159,19 @@ export function dragonAura(m: Mon, _t: number): void {
     dp = toPlayer(m);
   if (dp > 36) return;
   if (!m.hoard) {
-    m.hoard = [];
-    for (let k = 0; k < 70; k++) {
-      const a = mr() * 6.28,
-        r = (0.4 + mr() * 0.9) * sc;
-      m.hoard.push({
-        x: m.x + Math.cos(a) * r,
-        z: m.z + Math.sin(a) * r,
-        y: 0.05 + mr() * 0.15,
-        ch: mpick(['$', 'o', '$', 'o', 'U', '#', '*']),
-      });
-    }
+    const hoard: NonNullable<Mon['hoard']> = (m.hoard = []);
+    withMobRand(m, () => {
+      for (let k = 0; k < 70; k++) {
+        const a = mr() * 6.28,
+          r = (0.4 + mr() * 0.9) * sc;
+        hoard.push({
+          x: m.x + Math.cos(a) * r,
+          z: m.z + Math.sin(a) * r,
+          y: 0.05 + mr() * 0.15,
+          ch: mpick(['$', 'o', '$', 'o', 'U', '#', '*']),
+        });
+      }
+    });
   }
   for (const h of m.hoard) dyn(h.x, h.y, h.z, G(h.ch), 0.2, h.ch === '*' ? 1.6 : 1.1, h.ch === '*' ? 1.4 : 0.85, h.ch === '*' ? 0.9 : 0.3);
   if (mr() < 0.05) {
@@ -329,7 +333,7 @@ export function transformShadow(b: Monster & { form: Body }): void {
   };
   MTYPES['final2'] = final2;
   b.ty = final2;
-  b.form = buildForm(b.ty);
+  b.form = withMobRand(b, () => buildForm(b.ty));
   b.morph = { from, t0: clock.time, dur: 2.5 };
   msg(`<b style="color:#a98cff">&amp;</b>王の姿が砕け、封じられていた闇があふれ出した。`);
   setTimeout(() => msg(`<b style="color:#a98cff">&amp;</b>${last.title}${last.name}の影が、底の闇から長い体をもたげた。`), 1500);
@@ -427,12 +431,14 @@ export function krakenAura(m: Mon, t: number): void {
     }
   }
   if (!m.lamps) {
-    m.lamps = [];
-    for (let k = 0; k < 6; k++) {
-      const a = mr() * 6.28,
-        r = (2.4 + mr() * 1.2) * sc;
-      m.lamps.push([m.x + Math.cos(a) * r, m.z + Math.sin(a) * r, mr() * 6]);
-    }
+    const lamps: NonNullable<Mon['lamps']> = (m.lamps = []);
+    withMobRand(m, () => {
+      for (let k = 0; k < 6; k++) {
+        const a = mr() * 6.28,
+          r = (2.4 + mr() * 1.2) * sc;
+        lamps.push([m.x + Math.cos(a) * r, m.z + Math.sin(a) * r, mr() * 6]);
+      }
+    });
   }
   for (const L of m.lamps) {
     const b = 0.6 + 0.4 * Math.sin(t * 0.9 + L[2]);

@@ -596,6 +596,8 @@ export interface Monster {
   formSleep?: Body;
   wasSleep?: boolean;
   drawForm?: Body | null;
+  /** その生き物だけの見た目の乱数の並び（src/lib/monsters.ts の makeMonster が作る）。形と初めの値と、初めて描く時に作って覚える物（眠った姿・まわりの飾り）に使う */
+  rnd?: () => number;
   /** 強い個体（足もとに輪を描く） */
   elite?: boolean;
   /** 剣を操る者のまわりの剣 */
@@ -650,6 +652,7 @@ export interface Mob extends Monster {
   vy: number;
   fy: number;
   flitT: number;
+  rnd: () => number;
   /** 次に近接の攻撃をするまでの秒（src/lib/monsters.ts の initMonsterLife が入れる） */
   atkCd?: number;
   /** 掃除機・修復機：している仕事（灰や火のマス、作り直す扉の番号。無ければ -1）・仕事をした秒・最後に仕事を探したゲームの時刻 */
@@ -706,6 +709,8 @@ export interface Here {
   webBurnMsg: boolean;
   repairMsg: boolean;
   brimMsg: boolean;
+  /** その階で作った生き物の数（src/lib/monsters.ts の makeMonster が、生き物ごとの見た目の乱数の鍵にする。18-level-player.js の newLevel が階ごとに 0 に戻す） */
+  mobSeq: number;
 }
 /** 最深部の状態：一番高い天井のマス c0（王の影が現れる所）、王の影 boss と、現れるまで・呼び出すまでの秒、着いた時の伝言を出したか */
 export interface FinalState {
@@ -738,6 +743,7 @@ export const here: Here = {
   webBurnMsg: false,
   repairMsg: false,
   brimMsg: false,
+  mobSeq: 0,
 };
 /** 行った階の覚え（場所の名前 → 見えた所と覚えた色の写し）。丸ごと入れ替えないので、古い JS は今までどおり placeMem で読む */
 export const placeMem = new Map<string, { explored: Uint8Array; mem: Float32Array }>();

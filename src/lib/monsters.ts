@@ -9,9 +9,10 @@ import { buildForm } from './bodies/build.ts';
 import { css } from './color.ts';
 import { type MonsterType, MSTAT, MTYPES } from './creatures.ts';
 import type { Spawn } from './generate.ts';
+import { levelSeed } from './levels.ts';
 import { msg } from './log.ts';
 import { mname } from './names.ts';
-import { mr } from './random.ts';
+import { keyedRand, mr, withVisualRand } from './random.ts';
 import { type Mob, adv, blaze, clock, here, player, stealth, ui } from './state.ts';
 import { trialOn } from './unlocks.ts';
 import { CELL, D4, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MW, NCELL, SF_LUMEN, TF, blocksWalk, cpos } from './world.ts';
@@ -31,15 +32,24 @@ export const statOf = (m: { ty: MonsterType; key: string }): readonly number[] =
 /** 今の階 */
 const level = () => must(here.D, '今の階 here.D');
 
-/** 生き物を作る（湧く所 s から。ゴーレムは部屋の中に見回りの道を作る。強い個体は体力が 2.5 倍、剣を操る者は剣を3本持つ） */
-export function makeMonster(s: Spawn): Mob {
+/**
+ * 生き物を作る（湧く所 s から）。形と初めの値（向き・待つ秒・歩きと揺れの位相・攻撃の間など）は、その生き物だけの見た目の乱数の並び rnd で決め、
+ * 生き物に覚えさせる（m.rnd。初めて描く時に作る眠った姿やまわりの飾りも、これで作る）。rnd を省くと、階のシードと、その階で何体目か（here.mobSeq。
+ * 18-level-player.js の newLevel が生き物を作る前に 0 に戻す）から作る。なので、ほかの所で見た目の乱数を引く回数が変わっても、形と初めの値は変わらない
+ */
+export function makeMonster(s: Spawn, rnd: () => number = keyedRand('mob', levelSeed(), here.mobSeq++)): Mob {
+  return withVisualRand(rnd, () => newMonster(s, rnd));
+}
+
+/** 生き物を作る中身（makeMonster が、見た目の乱数を rnd にして呼ぶ。ゴーレムは部屋の中に見回りの道を作る。強い個体は体力が 2.5 倍、剣を操る者は剣を3本持つ） */
+function newMonster(s: Spawn, rnd: () => number): Mob {
   const ty = lookup(MTYPES, s.key);
   if (ty && ty.golem && !s.route && here.D && here.D.roomOf) {
     const r = (here.D.roomOf[s.cz * MW + s.cx] ?? NaN) >= 0 ? nth(here.D.rooms, must(here.D.roomOf[s.cz * MW + s.cx], '部屋の番号')) : null;
     if (r && r.cells.length > 12) {
       const pts = [];
       for (let k = 0; k < 4; k++) {
-        const c = nth(r.cells, Math.floor(Math.random() * r.cells.length));
+        const c = nth(r.cells, Math.floor(mr() * r.cells.length));
         if (here.D.tile[c] === TF && !here.D.liquid[c] && !here.D.solid.has(c)) pts.push(c);
       }
       s.route = pts;
@@ -87,6 +97,7 @@ export function makeMonster(s: Spawn): Mob {
     vy: 0,
     fy: 1.8,
     flitT: 0,
+    rnd,
   };
   if (ty.form === 'eel') m.y = -0.6;
   if (ty.critter === 'mimic') {

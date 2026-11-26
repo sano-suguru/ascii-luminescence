@@ -1,5 +1,5 @@
 // 乱数（もとは src/game/02-constants.js の mr・mpick・rand・R・RI・pick）。
-//   見た目の乱数（mr・mpick）：Math.random。テスト用モードでは、シードで決まる物に入れ替わる。withVisualRand の間だけ、渡した並びになる（図鑑で生き物を出している間）
+//   見た目の乱数（mr・mpick）：Math.random。テスト用モードでは、シードで決まる物に入れ替わる。withVisualRand の間だけ、渡した並びになる（図鑑で生き物を出している間と、生き物の形と初めの値を作る間）
 //   迷宮の乱数（rand・R・RI・pick）：迷宮の生成が、階ごとのシードで setRand して使う。同じシードなら同じ迷宮になる
 //   出来事ごとの乱数（keyedRand）：祭壇の中身・レベルアップの選択肢など、遊びの中身を選ぶ所が、出来事の鍵から作る。見た目の乱数の並びに左右されない
 //   音の乱数（sndRand）：音だけが使う、見た目の乱数とは別の並び。音を足したり変えたりしても、見た目の乱数の並びは変わらない
@@ -27,6 +27,12 @@ export const withVisualRand = <T>(f: () => number, fn: () => T): T => {
     visual = old;
   }
 };
+
+/**
+ * 生き物 m が初めて描かれる時に作って覚える見た目（眠った姿・まわりの飾りなど）を、m だけの並び m.rnd で作る（fn を呼ぶ間だけ mr() が m.rnd を読む。
+ * m.rnd が無ければ、今の並びのまま呼ぶ）。いつ初めて描かれるか、それまでに見た目の乱数を何回引いたかで、見た目が変わらないように
+ */
+export const withMobRand = <T>(m: { rnd?: () => number }, fn: () => T): T => (m.rnd ? withVisualRand(m.rnd, fn) : fn());
 
 /** 配列から1つ選ぶ（mr を使う）。空の配列は渡さないこと */
 export const mpick = <T>(a: readonly T[]): T => nth(a, Math.floor(mr() * a.length));

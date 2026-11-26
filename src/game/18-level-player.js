@@ -23,7 +23,8 @@ function newLevel(seedOverride){
   hudInfo.explored=0;
   buildWorld(); updateWater();
   here.fixtures=here.D.fixtures;
-  here.monsters=here.D.spawns.map(makeMonster);
+  // each creature's own visual random comes from the level's seed and its number in the level (here.mobSeq); not map(makeMonster), which would hand it the index as that random
+  here.mobSeq=0; here.monsters=here.D.spawns.map(s=>makeMonster(s));
   if(here.branch&&adv.runState.lordsDone&&adv.runState.lordsDone.has(here.branch.key))here.monsters=here.monsters.filter(m=>m.key!=='lord');
   here.finalSt=null; if(isFinal())setupFinal();
   for(const m of here.monsters)if(!m.isLead)m.leader=here.monsters.find(o=>o.g===m.g&&o.isLead)||null;

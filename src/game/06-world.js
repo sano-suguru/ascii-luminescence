@@ -35,6 +35,8 @@ function updateWater(){
 }
 
 // flowW は src/lib/math.ts（src/game/imports.mjs で読む）
+// a statue's shape (a stone person): made with a visual random of its own, from the level's seed and its cell, so draws elsewhere do not change it
+const statueForm=cell=>withVisualRand(keyedRand('statue',levelSeed(),cell),()=>buildForm({ch:'&',form:'humanoid'}));
 function buildWorld(){
   for(const c of chunks){ scene.remove(c.mesh); c.mesh.geometry.dispose(); }
   chunks=[];
@@ -410,7 +412,7 @@ function buildWorld(){
         for(let k=0;k<6;k++)push(tx+nx*R(0.3,0.8)+tX*R(-0.3,0.3),0.04,tz+nz*R(0.3,0.8)+tZ*R(-0.3,0.3),-Math.PI/2,R(0,6.28),0.3,G(pick(['~','.',',','o'])),0.45,0.48,0.62,0.04,1,tb.i,0,1,0);
       }
     } else if(md.type==='statues'){
-      const form=buildForm({ch:'&',form:'humanoid'});
+      const form=statueForm(r.cells[0]);
       for(const si of md.statues){
         const [sx,sz]=cxy(si), sc=1.35;
         for(let k=0;k<14;k++){ const a=k/14*Math.PI*2, nx=Math.cos(a), nz=Math.sin(a); push(sx+nx*0.5,0.12,sz+nz*0.5,0,Math.atan2(nx,nz),0.3,G('='),stone[0],stone[1],stone[2],0.04,8,si,nx,0,nz); push(sx+nx*0.45,0.36,sz+nz*0.45,0,Math.atan2(nx,nz),0.3,G('#'),stone[0],stone[1],stone[2],0.04,8,si,nx,0,nz); }
@@ -456,7 +458,7 @@ function buildWorld(){
     const stone=[0.62,0.6,0.78];
     for(const si of (r.vstat||[])){ const sx=(si%MW+0.5)*CELL, sz=(((si/MW)|0)+0.5)*CELL, sc=1.35;
       for(let k=0;k<14;k++){ const a=k/14*Math.PI*2, nx=Math.cos(a), nz=Math.sin(a); push(sx+nx*0.5,0.12,sz+nz*0.5,0,Math.atan2(nx,nz),0.3,G('='),stone[0],stone[1],stone[2],0.04,8,si,nx,0,nz); push(sx+nx*0.45,0.36,sz+nz*0.45,0,Math.atan2(nx,nz),0.3,G('#'),stone[0],stone[1],stone[2],0.04,8,si,nx,0,nz); }
-      for(const pnt of buildForm({ch:'&',form:'humanoid'})){ if(pnt.part==='core')continue; pushX(sx+pnt.x*sc,0.45+pnt.y*sc,sz+pnt.z*sc,pnt.s*sc*1.25,G(pick(['&','#','%','&'])),stone,0.07,8,si); }
+      for(const pnt of statueForm(si)){ if(pnt.part==='core')continue; pushX(sx+pnt.x*sc,0.45+pnt.y*sc,sz+pnt.z*sc,pnt.s*sc*1.25,G(pick(['&','#','%','&'])),stone,0.07,8,si); }
       pushX(sx,0.45+1.52*sc,sz,0.5,G('&'),[0.7,0.68,0.9],0.06,8,si); }
     for(const ai of (r.valtar||[])){ const ax=(ai%MW+0.5)*CELL, az=(((ai/MW)|0)+0.5)*CELL;
       for(let y=0.15;y<0.95;y+=0.28)for(let k=0;k<8;k++){ const a=k/8*Math.PI*2, nx=Math.cos(a), nz=Math.sin(a); push(ax+nx*0.5,y,az+nz*0.5,0,Math.atan2(nx,nz),0.32,G(y>0.7?'=':'#'),stone[0],stone[1],stone[2],0.05,8,ai,nx,0,nz); }
@@ -471,7 +473,7 @@ function buildWorld(){
     if(r.colossus===undefined)return;
     const c=r.colossus, sx=(c%MW+0.5)*CELL, sz=(((c/MW)|0)+0.5)*CELL, sc=Math.min(3.4,(ceil[c]-1.4)/2.1), stone=[0.66,0.64,0.8], col=r.theme.col;
     for(const [rad,y,ch] of [[1.5,0.15,'#'],[1.35,0.45,'='],[1.2,0.75,'#']])for(let k=0;k<22;k++){ const a=k/22*Math.PI*2, nx=Math.cos(a), nz=Math.sin(a); push(sx+nx*rad,y,sz+nz*rad,0,Math.atan2(nx,nz),0.36,G(ch),stone[0],stone[1],stone[2],0.05,8,c,nx,0,nz); }
-    for(const pnt of buildForm({ch:'&',form:'humanoid'})){ if(pnt.part==='core')continue; pushX(sx+pnt.x*sc,0.9+pnt.y*sc,sz+pnt.z*sc,pnt.s*sc*1.25,G(pick(['&','#','%','&','='])),stone,0.05,8,c); }
+    for(const pnt of statueForm(c)){ if(pnt.part==='core')continue; pushX(sx+pnt.x*sc,0.9+pnt.y*sc,sz+pnt.z*sc,pnt.s*sc*1.25,G(pick(['&','#','%','&','='])),stone,0.05,8,c); }
     for(const ex of [-0.07,0.07])push(sx+ex*sc,0.9+1.56*sc,sz+0.17*sc,0,0,0.22*sc,G('*'),col[0],col[1],col[2],1.1,7,c,0,0,1);
   });
   // remnant carpets, dismal rooms, idyll ferns, bloodwort stalks, steam vents
@@ -485,7 +487,7 @@ function buildWorld(){
           const edgeX=(a===0&&!set.has(i-1))||(a===3&&!set.has(i+1)), edgeZ=(bb===0&&!set.has(i-MW))||(bb===3&&!set.has(i+MW));
           const border=edgeX||edgeZ, ch=border?'=':((a+bb)%2?'+':'*'), c=border?[1.0,0.78,0.35]:((a+bb)%2?[0.85,0.22,0.3]:[0.55,0.3,0.85]);
           push(x0+lx,0.03,z0+lz,-Math.PI/2,border&&edgeZ?0:Math.PI/2,0.48,G(ch),c[0],c[1],c[2],0.06,1,i,0,1,0); } }
-      const form=buildForm({ch:'&',form:'humanoid'}), stone=[0.62,0.6,0.78];
+      const form=statueForm(r.cells[0]), stone=[0.62,0.6,0.78];
       for(const si of md.inert){ const [sx,sz]=cxy(si); for(const pnt of form){ if(pnt.part==='core')continue; pushX(sx+pnt.x*1.3,0.3+pnt.y*1.3,sz+pnt.z*1.3,pnt.s*1.6,G(pick(['&','#','%'])),stone,0.06,8,si); } }
     } else if(md.type==='dismal'){
       for(const i of md.blood){ const [x0,z0]=cxy(i); for(let k=0;k<7;k++)push(x0+R(-0.6,0.6),0.035,z0+R(-0.6,0.6),-Math.PI/2,R(0,6.28),R(0.35,0.6),G(pick(['~',',','.','~'])),0.55,0.05,0.07,0.04,1,i,0,1,0); }

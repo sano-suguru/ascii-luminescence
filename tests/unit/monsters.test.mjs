@@ -19,23 +19,15 @@ describe('移す前と同じ', () => {
     const all = await monsterCases({ ...MON, ...GROUND, sShriek }, 40),
       body = monsterText(all),
       calls = all.flatMap((c) => c.calls);
-    expect([fnv(body), body.length]).toEqual(['e4eba3b0', 22052303]);
+    expect([fnv(body), body.length]).toEqual(['ace54717', 22428593]);
     // 場合が中身を通っているか：23の関数が全部呼ばれ、どれも止まらない。伝言・見た目の乱数・音の乱数を引く呼び出しもある
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);
     const by = (name, f) => calls.filter((c) => c.name === name && f(c)).length;
     for (const name of ['chooseNext', 'updateCritter', 'crackIce', 'brimFlare']) expect(by(name, (c) => c.msg > 0)).toBeGreaterThan(0);
-    for (const name of [
-      'makeMonster',
-      'chooseNext',
-      'critterStep',
-      'updateCritter',
-      'machineWork',
-      'splash',
-      'crackIce',
-      'chillArea',
-      'updateFrozen',
-    ])
+    // 生き物を作る時は、その生き物だけの並び（m.rnd）を引き、ほかと分け合う見た目の乱数は引かない
+    expect(by('makeMonster', (c) => c.mr > 0)).toBe(0);
+    for (const name of ['chooseNext', 'critterStep', 'updateCritter', 'machineWork', 'splash', 'crackIce', 'chillArea', 'updateFrozen'])
       expect(by(name, (c) => c.mr > 0)).toBeGreaterThan(0);
     // 火・マスの変わり方・液体・床・マスの絵の中身・凍らせた水・踏み分けた茂み・氷に乗っていた秒が、歩みの間に変わり、絵を描画に渡す
     const steps = all.flatMap((c) => c.steps);

@@ -170,6 +170,11 @@ if(TEST)window.__test={
       screen:{x0:c(sb[0],0,W),y0:c(sb[1],0,H),x1:c(sb[2],0,W),y1:c(sb[3],0,H)},cut:+(out/pts.length).toFixed(3)}; },
   // stop drawing a creature (the first one alive with this key) for a moment, and draw it again (on false). It stays in the level, so its light still shines
   hideMonster(key,on){ const m=here.monsters.find(m=>m.key===key&&!m.dead); if(!m)return false; m.drawHide=!!on; return true; },
+  // the shapes and first values of the creatures (from the from-th on): for each, its key, a fingerprint of its shape (each point's place, size, brightness, glyph and part,
+  // to 1/1000) and the first values makeMonster gives it (facing, the way it heads, the wait, the walk's and the sway's phases, the eel's surfacing, the strike's pause), to 1/10000
+  mobLooks(from=0){ const f=v=>v===undefined?'-':(+v).toFixed(4);
+    return here.monsters.slice(from).map(m=>{ let h=0x811c9dc5; for(const ch of JSON.stringify(m.form.map(p=>[+p.x.toFixed(3),+p.y.toFixed(3),+p.z.toFixed(3),+(p.s||0).toFixed(3),+(p.b||0).toFixed(3),p.g,p.part||'']))){ h=Math.imul(h^ch.charCodeAt(0),16777619); }
+      return `${m.key}:${(h>>>0).toString(16)}:${[m.yaw,m.dirYaw,m.wait,m.walk,m.ph,m.surfT,m.atkCd].map(f).join(',')}`; }); },
   // remove every creature (lords too), so a check is not upset by one that happens to be near
   clearAll(){ const n=here.monsters.length; here.monsters=[]; return n; },
   // every place a run can visit, for generation checks
