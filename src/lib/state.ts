@@ -56,8 +56,10 @@ export interface Ui {
   locked: boolean;
   /** このページで一度でもマウスを捕まえられたか（それからは、続けて3回失敗するまで、捕まえられないとは決めない） */
   lockedOnce: boolean;
-  /** 最後に捕まえてから、捕まえようとした回数（捕まえると0に戻る） */
+  /** 最後に捕まえてから、捕まえようとした回数（捕まえると0に戻る。外れてから1.5秒の間の分は数えない） */
   lockTries: number;
+  /** マウスが最後に外れた時刻（performance.now の値） */
+  unlockedAt: number;
   /** Esc のキーを処理している間か（その間は tryLock が捕まえにいかない） */
   escKey: boolean;
   /** 1人称（'fps'）か3人称 */
@@ -123,6 +125,7 @@ export const ui: Ui = {
   locked: false,
   lockedOnce: false,
   lockTries: 0,
+  unlockedAt: -1e9,
   escKey: false,
   camMode: 'fps',
   lvlOpen: false,

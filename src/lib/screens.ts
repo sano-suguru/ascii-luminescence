@@ -4,7 +4,7 @@ import { must, nth } from './array.ts';
 import { msg } from './log.ts';
 import { SND_LV, SND_NAME } from './sound.ts';
 import { SND, adv, ui } from './state.ts';
-import { showHint } from './status.ts';
+import { isPaused, showHint } from './status.ts';
 
 /**
  * 捕まえる遊び方（一度でも捕まえていて、捕まえられないと決めていない）で、探索中なのにマウスが外れているか
@@ -12,6 +12,16 @@ import { showHint } from './status.ts';
  * 描く画面のクリックは捕まえ直すだけにする（攻撃しない）
  */
 export const lockLost = (): boolean => ui.started && !adv.dead && ui.lockedOnce && !ui.plFailed && !ui.locked;
+
+/** 描く画面を押した時：lockLost なら捕まえ直すだけにして true を返す（攻撃・詠唱・ドラッグを始めない）。そうでなければ何もせず false */
+export function relockClick(): boolean {
+  if (!lockLost()) return false;
+  tryLock();
+  return true;
+}
+
+/** マウスが外れた時（pointerlockchange）に、メニューを開くか。探索中で、止まっている画面（装備・レベルアップ・祭壇・F2 など）が開いていない時だけ */
+export const menuOnUnlock = (was: boolean): boolean => was && !ui.locked && ui.started && !adv.dead && !isPaused();
 
 /** 「クリックで視点操作に戻る」の一言（#resume）を、lockLost の時だけ出す。止まっている間・死んだ時・タイトルでは CSS が隠す（src/index.html） */
 export function updateResume(): void {
@@ -21,11 +31,15 @@ export function updateResume(): void {
 /**
  * マウスを捕まえるのに失敗した時（pointerlockerror・Promise の reject・例外・requestPointerLock が無い）。どれから来ても同じ扱い。
  * このページで一度も捕まえられていなければ、捕まえられないと決め（ui.plFailed）、それからは捕まえようとしない。案内の伝言は1回だけ出す。
- * 一度でも捕まえられていれば、最後に捕まえてから3回続けて失敗するまでは、そのたびの失敗とみなし、何もしない
- * （Esc で外した直後に掛け直すと断られるため。次のクリックで、また捕まえる）
+ * 一度でも捕まえられていれば、最後に捕まえてから3回続けて失敗するまでは（外れてから1.5秒の間の分は数えない）、そのたびの失敗とみなし、
+ * 「クリックで視点操作に戻る」を出すだけにする（Esc で外した直後に掛け直すと断られるため。次のクリックで、また捕まえる）
  */
 export function lockFailed(): void {
-  if (ui.plFailed || (ui.lockedOnce && ui.lockTries < 3)) return;
+  if (ui.plFailed) return;
+  if (ui.lockedOnce && ui.lockTries < 3) {
+    updateResume();
+    return;
+  }
   ui.plFailed = true;
   updateResume();
   msg('<b style="color:#8fe9ff">i</b>マウスをドラッグして視点を動かせます。');
@@ -38,7 +52,8 @@ export function lockFailed(): void {
 export function tryLock(): void {
   const canvas = must(document.getElementById('gl'), '#gl');
   if (ui.plFailed || ui.escKey) return;
-  ui.lockTries++;
+  // 外れてから1.5秒の間はブラウザが断ることがあるので、その間の分は数えない
+  if (performance.now() - ui.unlockedAt > 1500) ui.lockTries++;
   // requestPointerLock が無いブラウザ（iPhone の Safari など。型には必ずある）
   // oxlint-disable-next-line typescript/no-unnecessary-condition
   if (!canvas.requestPointerLock) {

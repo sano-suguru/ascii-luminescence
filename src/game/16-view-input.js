@@ -128,7 +128,7 @@ function solidAt(x,z,r){
 // keys は src/lib/state.ts（src/game/imports.mjs で読む。丸ごと入れ替えないので、名前はそのまま）
 let dragging=false, lmx=0, lmy=0;
 const introEl=document.getElementById('intro');
-// マウスを捕まえる tryLock・失敗した時 lockFailed・「クリックで視点操作に戻る」の一言 updateResume は src/lib/screens.ts、捕まえられないと決めたか ui.plFailed・一度でも捕まえたか ui.lockedOnce・最後に捕まえてから捕まえようとした回数 ui.lockTries は src/lib/state.ts（src/game/imports.mjs で読む）
-document.addEventListener('pointerlockchange',()=>{ const was=ui.locked; ui.locked=document.pointerLockElement===canvas; if(ui.locked){ ui.lockedOnce=true; ui.lockTries=0; } if(ui.locked&&ui.menuOpen)setMenu(false); if(was&&!ui.locked&&ui.started&&!adv.dead&&!ui.invOpen&&!ui.lvlOpen&&!ui.altarOpen)setMenu(true); updateResume(); });
+// マウスを捕まえる tryLock・失敗した時 lockFailed・外れた時にメニューを開くか menuOnUnlock・「クリックで視点操作に戻る」の一言 updateResume は src/lib/screens.ts、捕まえられないと決めたか ui.plFailed・一度でも捕まえたか ui.lockedOnce・最後に捕まえてから捕まえようとした回数 ui.lockTries・最後に外れた時刻 ui.unlockedAt は src/lib/state.ts（src/game/imports.mjs で読む）
+document.addEventListener('pointerlockchange',()=>{ const was=ui.locked; ui.locked=document.pointerLockElement===canvas; if(ui.locked){ ui.lockedOnce=true; ui.lockTries=0; } else if(was)ui.unlockedAt=performance.now(); if(ui.locked&&ui.menuOpen)setMenu(false); if(menuOnUnlock(was))setMenu(true); updateResume(); });
 document.addEventListener('pointerlockerror',lockFailed);
 let startDepth=1;
