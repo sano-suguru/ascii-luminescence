@@ -189,8 +189,8 @@ pnpm build:artifact   # claude.ai の Artifact 用を .build/artifact/index.html
 pnpm serve            # dist/ を組み立てて http://127.0.0.1:8000/ で配信
 pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers Builds が git から公開する）。pnpm deploy は pnpm 組み込みの別のコマンドなので使わない
 ```
-- **Artifact に公開する**：`pnpm build:artifact` の後、Artifact の道具で `.build/artifact/index.html` を公開する。公開先の URL は（未公開）。
-  上げ直す時は、その URL を `url` に渡す（渡さないと別の Artifact になる）。公開は外に出す操作なので、ユーザーに確かめてから。
+- **Artifact に公開する**：`pnpm build:artifact` の後、Artifact の道具で `.build/artifact/index.html` を公開する。公開先の URL は https://claude.ai/artifact/QJStjdouDGtGtEBFBStU3d 。
+  上げ直す時は、その URL を `url` に渡す（渡さないと別の Artifact になる。初めは非公開で、見せる相手はユーザーが共有の画面で決める）。公開は外に出す操作なので、ユーザーに確かめてから。
 - **依存を足す・上げる時**：`pnpm add -D --save-exact 名前@版`（確認が出る）。公開から24時間未満の版は入らない（pnpm-workspace.yaml）。
   インストール時にスクリプトを動かす依存は、中身を確かめてから `pnpm approve-builds` で許可する。npm で入れない（権限で止めている）。
 - **依存の更新（Dependabot）**：毎週月曜に PR が来る（npm と GitHub Actions。公開から1日たった版だけ）。自動マージはしない。
