@@ -4,7 +4,7 @@
 // 最後に Esc でタイトルへ戻る。図鑑の写真が、ほかの所で見た目の乱数を余分に引いても、前に別の生き物を出しても変わらないか（別の2つのページで比べる）。ページのエラーを確かめる。
 //   node tests/gallery.mjs          テスト版（.build/test/。既定）
 //   node tests/gallery.mjs --prod   公開用の版（dist/）
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { GALLERY_SPECIMENS } from './gallery-specimens.mjs';
 import { withBrowser, newPage, openTest, advance, annotate, OUT } from './lib.mjs';
@@ -310,8 +310,8 @@ await withBrowser(
     //    - ふつう：前にネズミをそのまま出す
     //    - 余分に引く：ふつうと同じ。ただ、図鑑を開く前に Math.random を1000回、その後も1フレームごとに1回、余分に引く（ほかの所で見た目の乱数を
     //      引く回数が変わった時の代わり）。1フレームごとに __test.galleryDraw() でも覗く。描いた物の指紋（形・初めの値・揺れ・まわりの粒子）と画面写真が、ふつうと同じか
-    //    - 前が違う：前に年老いた竜を、一番引いて見下ろした所から出す（カメラが前の生き物の所、部屋の壁の近くにある）。描いた物の指紋が、ふつうと同じか
-    //      （画面写真は比べない：目の慣れ（露出）が、前の画面の明るさを少し引きずるため。乱数とは別の話）
+    //    - 前が違う：前に年老いた竜を、一番引いて見下ろした所から出す（カメラが前の生き物の所、部屋の壁の近くにある）。描いた物の指紋と画面写真が、
+    //      ふつうと同じか（降る粒子・目の慣れ（露出）・霧も、前の生き物の見え方を引きずらないか）
     const specimens = async ({ burn, before }) => {
       const p2 = await newPage(browser, errs, { still: true }); // タイトルが消える CSS のアニメーションは実時間で進むので、止める
       await openTest(p2, base);
@@ -352,6 +352,7 @@ await withBrowser(
       await p2.close();
       return out;
     };
+    rmSync(RAND_OUT, { recursive: true, force: true }); // 前に落ちた時の画像を残さない
     const rat = { name: 'ネズミ', opt: {} },
       plain = await specimens({ burn: 0, before: rat }),
       burnt = await specimens({ burn: 1, before: rat }),
@@ -365,6 +366,7 @@ await withBrowser(
       else if (b && !a.png.equals(b.png))
         why.push(`ほかの所で見た目の乱数を余分に引くと、${a.name}の画面写真が変わる（描いた物の指紋は同じ）`);
       if (c && a.hash !== c.hash) why.push(`前に別の生き物を出すと、${a.name}の描いた物が変わる（指紋 ${a.hash} → ${c.hash}）`);
+      else if (c && !a.png.equals(c.png)) why.push(`前に別の生き物を出すと、${a.name}の画面写真が変わる（描いた物の指紋は同じ）`);
       if (!why.length) continue;
       // 違った時は、画面写真を残す（tests/out/gallery-rand/。-a がふつう、-b が余分に引いた方、-c が前が違う方）
       mkdirSync(RAND_OUT, { recursive: true });

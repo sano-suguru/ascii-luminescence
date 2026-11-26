@@ -51,6 +51,8 @@ function openBestiary(){
   introEl.classList.add('gone');
   // 部屋を作る前に入れる（階を作る処理が、図鑑の中だと分かるように。探索の届いた深さや墓に触れない）
   ui.gallery={mode:'beast',list,all:all.length,idx:0,room:null,m:null,t:0}; ui.gallery.room=showroom();
+  // the room's fittings and lamps as they are now: each creature shown puts them back (showBeast)
+  ui.gallery.still=structuredClone({fixtures:here.fixtures,lights:here.D.lights});
   showBeast(0); renderGallery(); document.getElementById('gal').classList.add('show');
 }
 function showBeast(i){
@@ -59,8 +61,11 @@ function showBeast(i){
   // while a creature is on show, the visual random (mr) reads a sequence of its own, from its key: here (its shape and first values, then the falling dust made anew),
   // and in each step of the game (stepTick). So draws elsewhere (before it was shown, or outside the game's steps) do not change the picture.
   // The player stands at the room's middle until the first step puts it at the camera: the dust is made round the player (and made again when it strays
-  // 16 away), and a few auras look at how far the player is, so neither hangs on where the last creature's camera was
-  MTYPES.__gal=e.ty; g.rnd=keyedRand('gallery '+e.key); player.x=g.room.x; player.z=g.room.z;
+  // 16 away), and a few auras look at how far the player is, so neither hangs on where the last creature's camera was. The eye's exposure and the fog
+  // settle at once in the first step (settle, updateAtmosphere), for the same reason. The fittings and lamps go back to how they were when the bestiary
+  // opened: they keep counters that run only while the player is within 46 (the sparks' f.acc, f.next, the lamps' fade and boost)
+  { const s=structuredClone(g.still); here.fixtures=s.fixtures; here.D.lights.forEach((L,k)=>{ for(const a of Object.keys(L))delete L[a]; Object.assign(L,s.lights[k]); }); }
+  MTYPES.__gal=e.ty; g.rnd=keyedRand('gallery '+e.key); player.x=g.room.x; player.z=g.room.z; g.settle=true;
   const m=withVisualRand(g.rnd,()=>{ const m=makeMonster({key:'__gal',cx:g.room.cx,cz:g.room.cz,g:-1,lead:true}); initDust(); return m; });
   m.x=g.room.x; m.z=g.room.z; m.sleep=false; m.hidden=false; m.wait=1e9; m.galShow=true; m.heartOn=true; m.rise=1; m.surf=1; m.yaw=0; if(e.ty.form==='eel')m.y=0;
   g.water=e.ty.form==='kraken'||e.ty.form==='deepkraken'||e.ty.form==='eel'||e.ty.form==='fish'||e.ty.habitat==='deep'; if(g.water&&e.ty.form==='kraken')m.y=-0.25*(e.ty.scale||1); if(e.ty.form==='deepkraken')m.y=0; if(e.ty.habitat==='bog')m.y=0;
