@@ -45,10 +45,10 @@ import {
   advance, checkEvents, computeFOV, die, generate, initEvents, newLevel, newRun, interAfter, interAt, isFinal, levelSeed, placeKey, settleSlotPick, setupFinal, showStratum, strataGrowth,
 } from '../lib/levels.ts';
 import { msg, renderLog } from '../lib/log.ts';
-import { renderHotbar } from '../lib/hotbar.ts';
+import { buildsHave, renderHotbar } from '../lib/hotbar.ts';
 import { applyBuild, renderInv, setInv, startSwap } from '../lib/inventory.ts';
 import {
-  cycleUi, drawMark, flyOpen, isPaused, makeNoise, onNoticed, placeLabel, renderBook, renderChron, renderHelp, renderStatus, setHelp, showHint, updateSearch, updateStealth,
+  bookRows, chronRows, cycleUi, drawMark, flyOpen, helpRows, isPaused, makeNoise, onNoticed, placeLabel, renderBook, renderChron, renderHelp, renderStatus, setHelp, showHint, updateSearch, updateStealth,
 } from '../lib/status.ts';
 import { descentSealed, drawLegendWorld, getLegend, legendAll, legendOfBranch } from '../lib/legend.ts';
 import { ceilAt, cellLight, updateLights } from '../lib/lightmap.ts';
@@ -82,6 +82,6 @@ import { T, fogCol } from '../lib/three.ts';
 import { buildWorld, setFog, updateWater } from '../lib/build.ts';
 import { DLC, DLP, SL, SND, adv, beamHold, blaze, buf, cellData, clock, fight, gear, gfx, here, hudInfo, iceT, keys, lantern, placeMem, player, saved, stealth, ui, vfx, vmKick, dust, edge, TEST } from '../lib/state.ts';
 import { initFitIntro } from '../lib/layout.ts';
-import { confirmTap, initTouch } from '../lib/touch.ts';
+import { byInput, confirmTap, initTouch } from '../lib/touch.ts';
 import { TUNE, initTouchpad } from '../lib/touchpad.ts';
 import { initDiag } from '../lib/diag.ts';

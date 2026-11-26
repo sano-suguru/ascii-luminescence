@@ -1,5 +1,5 @@
 // 指の操作（スマホの横向き）：左半分に触れた所に出るスティックで移動、右半分のドラッグで見回す、右下の [右手] [左手] で詠唱（押して溜め、離して放つ）、
-// 左の [回避]（左上の状態の表示の下）で回避。指の遊び方（ui.touch。src/lib/touch.ts）の時だけ、CSS が出す（src/index.html の #tctl）。
+// その左の [持ち替え] で次のビルドへ（ビルドを2つ以上保存した時だけ出る。src/lib/hotbar.ts）、左の [回避]（左上の状態の表示の下）で回避。指の遊び方（ui.touch。src/lib/touch.ts）の時だけ、CSS が出す（src/index.html の #tctl）。
 // 移動はスティックの向きを WASD に置き換え（8方向）、端まで倒すと走る（Shift）。詠唱のボタンを押したまま指をずらすと、見回しもできる。
 // ボタンの外で離した時・指を取り逃した時（pointercancel）も、離したことにする。止まっている間（メニューなど）は、新しく押しても何もしない。
 // 描く画面と指の操作のボタンは touch-action を既定のままにし、touchmove の preventDefault で、ブラウザの送りと拡大を止める
@@ -80,8 +80,13 @@ function endHold(id: number): void {
   if (gear.hands) releaseCast(f.h);
 }
 
+/** ボタンを押した時にすること（ビルドの持ち替えは、古い JS のホイールと同じ処理を渡す） */
+export interface PadActions {
+  build: () => void;
+}
+
 /** 指の操作を用意する（ページを開いた時に1回） */
-export function initTouchpad(): void {
+export function initTouchpad(act: PadActions): void {
   const gl = must(document.getElementById('gl'), '#gl'),
     stickEl = must(document.getElementById('stick'), '#stick');
   // 指を動かした時の、ブラウザの送りと拡大を止める（上の説明。touch-action: none は使わない）
@@ -119,6 +124,10 @@ export function initTouchpad(): void {
   }
   must(document.getElementById('rollB'), '#rollB').addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'touch' && canPlay()) startRoll();
+  });
+  must(document.getElementById('swapB'), '#swapB').addEventListener('pointerdown', (e) => {
+    // 詠唱のボタンを押している間は持ち替えない（持ち替えると溜めが散るが、押している指は見回しと離した時の放つ処理を続けてしまう）
+    if (e.pointerType === 'touch' && canPlay() && !holds.size) act.build();
   });
   window.addEventListener('pointermove', (e) => {
     if (e.pointerType !== 'touch') return;
