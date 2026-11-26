@@ -91,22 +91,27 @@ export function updateRains(dt: number): void {
 }
 /**
  * 溶岩を歩けない生き物 m（飛ぶ物と溶岩に住む物のほか）の体（半径 0.35×大きさ）が、溶岩のマスにどれだけ入っているか
- * （溶岩のマスの縁から体の真ん中までの近さで、一番深い物。かかっていなければ -Infinity）
+ * （溶岩のマスごとのめり込みを足した物。めり込みは、体の真ん中がマスの外なら 半径−縁までの距離、中なら 半径＋縁までの距離。かかっていなければ 0）
  */
 function lavaDepth(m: Mob): number {
-  if (m.ty.flier || m.ty.habitat === 'lava') return -Infinity;
+  if (m.ty.flier || m.ty.habitat === 'lava') return 0;
   const r = 0.35 * m.ty.scale,
     cx = Math.floor(m.x / CELL),
     cz = Math.floor(m.z / CELL),
     reach = Math.ceil(r / CELL);
-  let deep = -Infinity;
+  let deep = 0;
   for (let dz = -reach; dz <= reach; dz++)
     for (let dx = -reach; dx <= reach; dx++) {
       const x = cx + dx,
         z = cz + dz;
       if (x < 0 || z < 0 || x >= MW || z >= MH || level().liquid[z * MW + x] !== LQ_LAVA) continue;
-      const d = r - Math.hypot(m.x - clamp(m.x, x * CELL, (x + 1) * CELL), m.z - clamp(m.z, z * CELL, (z + 1) * CELL));
-      if (d > 0) deep = Math.max(deep, d);
+      const x0 = x * CELL,
+        z0 = z * CELL,
+        inside = m.x >= x0 && m.x <= x0 + CELL && m.z >= z0 && m.z <= z0 + CELL,
+        d = inside
+          ? r + Math.min(m.x - x0, x0 + CELL - m.x, m.z - z0, z0 + CELL - m.z)
+          : r - Math.hypot(m.x - clamp(m.x, x0, x0 + CELL), m.z - clamp(m.z, z0, z0 + CELL));
+      if (d > 0) deep += d;
     }
   return deep;
 }
@@ -145,7 +150,7 @@ export function updateStatuses(dt: number): void {
       // 壁・通れない物に入ったか、溶岩を歩けない生き物（飛ぶ物と溶岩に住む物のほか）の体（半径 0.35×大きさ）が、このフレームに動いて溶岩にかかった・
       // 深く入ったら、動いた分を戻して止まる（初めから体がかかっている大きな生き物も、溶岩から離れる向きには動ける）
       const ci = Math.floor(m.z / CELL) * MW + Math.floor(m.x / CELL);
-      if (level().tile[ci] === TW || level().tile[ci] === TX || level().solid.has(ci) || lavaDepth(m) > deep0) {
+      if (level().tile[ci] === TW || level().tile[ci] === TX || level().solid.has(ci) || lavaDepth(m) > deep0 + 1e-9) {
         m.x -= mx;
         m.z -= mz;
         m.kx = 0;

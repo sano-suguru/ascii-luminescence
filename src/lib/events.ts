@@ -259,6 +259,8 @@ export function updateEvents(dt: number, t: number): void {
       /** マス i に溶岩を流す（まわりの燃える物に火をつけ、燃えるガスは爆ぜる） */
       const pourLava = (i: number) => {
         const [x, z] = cpos(i);
+        // この溶岩は引かないので、火口の噴き上がりが引く時に戻すマスから外す
+        for (const o of here.events) if (o.type === 'erupt') o.poured?.delete(i);
         level().liquid[i] = LQ_LAVA;
         blaze.cellFlag[i] = 70;
         for (const j of [i + 1, i - 1, i + MW, i - MW]) if (j >= 0 && j < NCELL && nth(blaze.fuel, j) > 0) ignite(j, 0.6, false);
@@ -364,12 +366,17 @@ export function updateEvents(dt: number, t: number): void {
       const f = here.fixtures.find((f) => f.type === 'crater' && Math.floor(f.z / CELL) * MW + Math.floor(f.x / CELL) === ev.src);
       /** マス i に溶岩を流す（まわりの燃える物に火をつける） */
       const pour = (i: number) => {
-        // もう溶岩のマス（ほかの火口が流した物など）には流さない。引く時も、その火口に任せる
-        if (level().liquid[i] === LQ_LAVA) return;
-        // 凍らせた水は、本当の中身（液体と床）を覚えて、氷を溶かす
+        // もう溶岩のマスには流さない。ほかの火口が流した溶岩なら、待つマスに入れ、その溶岩が引いた後に流す（引く時も、その火口に任せる）
+        if (level().liquid[i] === LQ_LAVA) {
+          if (here.events.some((o) => o !== ev && o.type === 'erupt' && o.poured?.has(i))) (ev.wait ??= []).push(i);
+          return;
+        }
+        // 凍らせた水は、本当の中身（液体と床）を覚えて、氷を溶かす（氷が溶ける時と同じく、火と燃える物も消す）
         const ice = blaze.frozen.get(i);
         if (ice) {
           level().surface[i] = ice.surf;
+          blaze.fire[i] = 0;
+          blaze.fuel[i] = 0;
           blaze.frozen.delete(i);
         }
         (ev.poured ??= new Map()).set(i, [ice ? ice.liq : nth(level().liquid, i), nth(blaze.cellFlag, i)]);

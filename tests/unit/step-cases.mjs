@@ -882,7 +882,14 @@ export async function stepCases(F, seeds, page) {
         blaze.trampled.push([grass, clock.time]);
         // 流れる道のマスで、初めから溶岩でない物（引き終えたら、どれも溶岩でなくなる）
         const dry = [...new Set(erupts.flatMap((e) => e.order))].filter((i) => D.liquid[i] !== LQ_LAVA);
-        let wetLava = false;
+        let wetLava = false,
+          // 踏み分けた草のマス：溶岩が流れたか、引いて印 20 に戻った時に生え戻りの一覧にあったか
+          grassLava = false,
+          grassBack = null;
+        const watchGrass = () => {
+          if (blaze.cellFlag[grass] === 70) grassLava = true;
+          else if (grassLava && grassBack === null && blaze.cellFlag[grass] === 20) grassBack = blaze.trampled.some(([i]) => i === grass);
+        };
         // 体の大きな生き物（トロル）を、流れる道の隣のマスの、道との境の近くに止めておく（体が道のマスにかかる。溶岩はそこへ流れない）
         const way = erupts[0].order[2];
         for (const d of [1, -1, MW, -MW]) {
@@ -908,6 +915,7 @@ export async function stepCases(F, seeds, page) {
           for (const e of erupts) seen.get(e).add(e.state);
           if (bigCell >= 0 && D.liquid[bigCell] === LQ_LAVA) bigLava = true;
           if (D.liquid[wet] === LQ_LAVA) wetLava = true;
+          watchGrass();
           regrow();
         }
         // 噴き上がりを最後まで（流れ出す 1 → 待つ 2 → 引く 3 → 次まで待つ 0）。足もとには流れないので、離れて立つ
@@ -918,16 +926,13 @@ export async function stepCases(F, seeds, page) {
           for (const e of erupts) seen.get(e).add(e.state);
           if (bigCell >= 0 && D.liquid[bigCell] === LQ_LAVA) bigLava = true;
           if (D.liquid[wet] === LQ_LAVA) wetLava = true;
+          watchGrass();
           regrow();
         }
         orderKept = erupts.every((e, n) => JSON.stringify(e.order) === JSON.stringify(order0[n]));
         water = [wetLava, D.liquid[wet] === LQ_WATER];
-        // 引いた後：凍らせた水は水に（氷の一覧から外れる）、踏み分けた草は印 20 で生え戻りの一覧にある。全部の火口が引き終えたら、流れる道に溶岩は残らない
-        thawed = [
-          D.liquid[ice] === LQ_WATER,
-          !blaze.frozen.has(ice),
-          blaze.cellFlag[grass] !== 20 || blaze.trampled.some(([i]) => i === grass),
-        ];
+        // 引いた後：凍らせた水は水に（氷の一覧から外れる）。踏み分けた草は、溶岩が流れ、引いて印 20 に戻った時に生え戻りの一覧にある
+        thawed = [D.liquid[ice] === LQ_WATER, !blaze.frozen.has(ice), grassLava && grassBack === true];
         lavaLeft = erupts.every((e) => e.state === 0) ? dry.filter((i) => D.liquid[i] === LQ_LAVA).length : null;
         eruptSeen = erupts.map((e) => [...seen.get(e)].sort((a, b) => a - b).join(''));
         // 部屋の出来事の溶岩の流れ：状態と、流れる順のマスで、溶岩でなく、塞がれてもいない物の数
