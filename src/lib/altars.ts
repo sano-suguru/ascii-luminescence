@@ -35,6 +35,7 @@ import {
 } from './runes.ts';
 import { type Hands, adv, gear, here, player, saved, ui } from './state.ts';
 import { visW } from './text.ts';
+import { byInput } from './touch.ts';
 import { lockedOf, weaponPool } from './unlocks.ts';
 import { FINAL_DEPTH, LQ_DEEP, LQ_LAVA, MH, MW, NCELL, TF, cpos } from './world.ts';
 
@@ -716,7 +717,7 @@ export function runeDest(ru: Rune): string {
 }
 /** 祭壇の選択肢 o の説明の5行（祭壇の画面の下に出す。HTML の文字列。o が無ければ、案内の1行） */
 export function altarDetail(o: Item | null | undefined): string[] {
-  if (!o) return ['<span class="lab">選択肢にマウスを乗せると、ここに説明が出る</span>', '', '', '', ''];
+  if (!o) return [`<span class="lab">${byInput('選択肢にマウスを乗せると', '選択肢を押すと')}、ここに説明が出る</span>`, '', '', '', ''];
   if (o.opt === 'heal')
     return [
       '<b style="color:#ff9aa8">+</b> 癒し',
@@ -770,7 +771,7 @@ export function placeChosen(ru: Rune): void {
     col = runeCol(ru);
   gear.bag.push(ru);
   msg(
-    `<b class="rn" style="color:${cssOf(col)}">${String(def.ch)}</b>${thingLabel(ru)}を手にした。袋に収めた。Tab で付け替えられる（祭壇のそばなら詠唱はいらない）。`,
+    `<b class="rn" style="color:${cssOf(col)}">${String(def.ch)}</b>${thingLabel(ru)}を手にした。袋に収めた。${byInput('Tab', '[装備]')} で付け替えられる（祭壇のそばなら詠唱はいらない）。`,
   );
   renderHotbar();
   if (ui.invOpen) renderInv();

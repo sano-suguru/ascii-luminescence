@@ -412,11 +412,8 @@ export async function drawCases(F, seeds) {
         ['ceilAt', () => [player.x + (r() - 0.5) * 300, player.z + (r() - 0.5) * 300]],
       ];
       const calls = [];
-      for (let n = 0; n < 14; n++) {
-        if (chance(0.3)) placeNear();
-        clock.time += r() * 3;
-        const [name, args, times = 1] = pick(ops),
-          a = args();
+      /** name の関数を、引数 a で times 回呼び、記録を足す */
+      const run = (name, a, times = 1) => {
         buf.dn = 0;
         const pN0 = buf.pN,
           mr0 = mrN,
@@ -443,6 +440,17 @@ export async function drawCases(F, seeds) {
           snd: fnv(text(alog.slice(al0))),
           msg: msgs.slice(ms0).map((m) => m.html),
         });
+      };
+      for (let n = 0; n < 14; n++) {
+        if (chance(0.3)) placeNear();
+        clock.time += r() * 3;
+        const [name, args, times = 1] = pick(ops);
+        run(name, args(), times);
+      }
+      // 場面：10の場合に1つ、弾けていないブラッドワートのそばに立って描く（ランダムな置き方だけでは、場合の並びで出たり出なかったりするので）
+      if (s % 10 === 0 && D.lights.length) {
+        here.fixtures.push({ type: 'bloodwort', x: player.x + 1, z: player.z, col: [1, 0.3, 0.35], li: 0, acc: 0, ph: 0 });
+        run('drawFixtures', [clock.time, 1 / 30]);
       }
       // 最後の状態：備品・灯り・扉・巣・生き物・稲妻・遅れて落ちる稲妻・稲妻の光り・手がかり・階段の封・伝言の旗
       const state = {

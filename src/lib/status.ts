@@ -18,7 +18,7 @@ import { clamp } from './rng.ts';
 import { REACT } from './runes.ts';
 import { type Mob, type Monster, adv, blaze, clock, here, hudInfo, keys, lantern, player, saved, stealth, ui, vfx } from './state.ts';
 import { SPECIALS } from './strata.ts';
-import { boxText } from './text.ts';
+import { boxText, visW } from './text.ts';
 import { trialOn } from './unlocks.ts';
 import { BRANCHES, CELL, MH, MW, REALMS, TW, TX, cpos } from './world.ts';
 
@@ -110,12 +110,11 @@ export function renderStatus(): void {
       ? `\n<span class="lab">${hudInfo.pfFps} fps   文字 ${(hudInfo.glyphCount / 10000).toFixed(1)}万   描画 ${(hudInfo.chunksDrawn / 10000).toFixed(1)}万   生き物 ${here.monsters.length}</span>`
       : '');
 }
-/** 年代記（この探索の文明と、王たちの出来事）を、案内の欄 #help に書く */
-export function renderChron(): void {
-  const el = document.getElementById('help'),
-    H = adv.HIST;
-  if (!el || !H) return;
-  const f = (t: string): string => `<span class="f">${t}</span>`;
+const f = (t: string): string => `<span class="f">${t}</span>`;
+/** 年代記の枠の行（この探索の文明と、王たちの出来事。年代記が無ければ空）。案内の欄 #help と、指で遊ぶ時のメニューの中に出す */
+export function chronRows(): string[] {
+  const H = adv.HIST;
+  if (!H) return [];
   const lines = [f(`+-- 年代記 ── ${H.civ.name}（${H.civ.ep}）`)];
   H.events.forEach((e) => {
     const r = nth(H.rulers, e.ruler);
@@ -123,27 +122,54 @@ export function renderChron(): void {
     lines.push(`${f('|')}   ${e.text}`);
   });
   lines.push(f('+------------------------------'));
-  el.innerHTML = boxText(lines);
+  return lines;
 }
-/** 操作の案内（キーと、今の深さ・場所・見たマスの割合・シード）を、案内の欄 #help に書く */
-export function renderHelp(): void {
+/** 年代記を、案内の欄 #help に書く */
+export function renderChron(): void {
   const el = document.getElementById('help');
-  if (!el || !here.D) return;
-  const f = (t: string): string => `<span class="f">${t}</span>`;
-  el.innerHTML = boxText([
+  if (!el || !adv.HIST) return;
+  el.innerHTML = boxText(chronRows());
+}
+/**
+ * 操作の案内の枠の行（操作と、今の深さ・場所・見たマスの割合・シード）。案内の欄 #help と、指で遊ぶ時のメニューの中に出す。
+ * 指で遊んでいる時は、指の操作（src/lib/touchpad.ts）の説明にする
+ */
+export function helpRows(): string[] {
+  const K = (t: string): string => `<b>${t}</b>${' '.repeat(Math.max(1, 15 - visW(t)))}`;
+  const keysRows = ui.touch
+    ? [
+        `${f('|')} ${K('左半分')}押すとスティック。倒して移動、端まで倒すと走る`,
+        `${f('|')} ${K('右半分')}なぞって視点`,
+        `${f('|')} ${K('[右手] [左手]')}押して詠唱、満ちたら離して放つ`,
+        `${f('|')} ${K('[回避]')}転がってかわす`,
+        `${f('|')} ${K('[持ち替え]')}次のビルドへ（2つ以上保存した時に出る）`,
+        `${f('|')} ${K('[装備]')}装備の画面`,
+        `${f('|')} ${K('[メニュー]')}メニュー`,
+        `${f('|')} 選ぶ画面は、1回押すと説明、もう1回で決まる`,
+      ]
+    : [
+        `${f('|')} <b>WASD</b>     移動        <b>マウス</b>  視点`,
+        `${f('|')} <b>左クリック</b> 左手      <b>右クリック</b> 右手`,
+        `${f('|')} 押して詠唱、満ちたら離して放つ`,
+        `${f('|')} <b>ホイール</b> ビルド切替  <b>Space</b>  回避`,
+        `${f('|')} <b>Shift</b>    走る`,
+        `${f('|')} <b>Tab</b>      装備        <b>Esc</b>    メニュー`,
+      ];
+  return [
     f('+-- 操作 ----------------------'),
-    `${f('|')} <b>WASD</b>     移動        <b>マウス</b>  視点`,
-    `${f('|')} <b>左クリック</b> 左手      <b>右クリック</b> 右手`,
-    `${f('|')} 押して詠唱、満ちたら離して放つ`,
-    `${f('|')} <b>ホイール</b> ビルド切替  <b>Space</b>  回避`,
-    `${f('|')} <b>Shift</b>    走る`,
-    `${f('|')} <b>Tab</b>      装備        <b>Esc</b>    メニュー`,
+    ...keysRows,
     `${f('|')} 立ち止まると、辺りを自動で調べる`,
     f('|'),
     `${f('|')} 深度 ${here.depth}${here.branch || here.realm ? `（${placeLabel()}）` : ''}    地図 ${hudInfo.explored}%`,
     `${f('|')} シード ${adv.runSeed}`,
     f('+------------------------------'),
-  ]);
+  ];
+}
+/** 操作の案内を、案内の欄 #help に書く */
+export function renderHelp(): void {
+  const el = document.getElementById('help');
+  if (!el || !here.D) return;
+  el.innerHTML = boxText(helpRows());
 }
 /** 操作の案内を出す・消す（年代記は閉じる） */
 export function setHelp(on: boolean): void {
@@ -154,12 +180,9 @@ export function setHelp(on: boolean): void {
   if (on) renderHelp();
   el.classList.toggle('off', !on);
 }
-/** 魔導書（見つけた反応と、まだ見ていない反応）を、案内の欄 #help に書く */
-export function renderBook(): void {
-  const el = document.getElementById('help');
-  if (!el) return;
-  const f = (t: string): string => `<span class="f">${t}</span>`;
-  const lines = [
+/** 魔導書の枠の行（見つけた反応と、まだ見ていない反応）。案内の欄 #help と、指で遊ぶ時のメニューの中に出す */
+export function bookRows(): string[] {
+  return [
     f('+-- 魔導書 ── 見つけた反応'),
     ...Object.entries(REACT).map(([k, r]) =>
       saved.BOOK.has(k)
@@ -171,7 +194,12 @@ export function renderBook(): void {
     `${f('|')} <span class="lab">記録は探索をまたいで残る</span>`,
     f('+------------------------------'),
   ];
-  el.innerHTML = boxText(lines);
+}
+/** 魔導書を、案内の欄 #help に書く */
+export function renderBook(): void {
+  const el = document.getElementById('help');
+  if (!el) return;
+  el.innerHTML = boxText(bookRows());
 }
 /** 表示の量を、通常・最小・なしの順に変える（なし以外は、画面の下に少しの間だけ出す） */
 export function cycleUi(): void {

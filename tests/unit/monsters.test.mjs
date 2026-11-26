@@ -1,5 +1,6 @@
 // 生き物を作る・歩いて行けるか・次に向かうマス（src/lib/monsters.ts）と、小さな生き物と地面（src/lib/ground.ts）・叫び声の音（audio.ts の sShriek）の単体テスト。
-// 指紋の値は、移す前の古い JS（src/game/11・13・15・18・26）でも同じになる（monsters-cases.mjs の場合を、古い関数で数えて確かめた）。
+// 指紋の値は、トロルのいる場合を除き、移す前の古い JS（src/game/11・13・15・18・26）でも同じになる（monsters-cases.mjs の場合を、古い関数で数えて確かめた）。
+// トロルの形は移した後で作り直したので、トロルのいる場合は、形と、形を作る時に引く見た目の乱数の数に続く初めの値と後の結果が、古い JS と違う。
 // 階は Node で本物の迷宮を生成するので、迷宮の生成を変えると、この指紋も変わる（その時は generate.test.ts の指紋と一緒に作り直す）。
 // テストを .mjs で書くのは、偽の画面の部品・偽の Web Audio を、本物の型に合わせられないため。
 import { describe, expect, it } from 'vitest';
@@ -19,7 +20,7 @@ describe('移す前と同じ', () => {
     const all = await monsterCases({ ...MON, ...GROUND, sShriek }, 40),
       body = monsterText(all),
       calls = all.flatMap((c) => c.calls);
-    expect([fnv(body), body.length]).toEqual(['78a9682e', 22738673]);
+    expect([fnv(body), body.length]).toEqual(['0d74661f', 22738596]);
     // 場合が中身を通っているか：23の関数が全部呼ばれ、どれも止まらない。伝言・見た目の乱数・音の乱数を引く呼び出しもある
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);
