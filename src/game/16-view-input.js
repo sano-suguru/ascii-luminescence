@@ -103,4 +103,6 @@ const introEl=document.getElementById('intro');
 // マウスを捕まえる tryLock・失敗した時 lockFailed・外れた時にメニューを開くか menuOnUnlock・「クリックで視点操作に戻る」の一言 updateResume は src/lib/screens.ts、捕まえられないと決めたか ui.plFailed・一度でも捕まえたか ui.lockedOnce・最後に捕まえてから捕まえようとした回数 ui.lockTries・最後に外れた時刻 ui.unlockedAt は src/lib/state.ts（src/game/imports.mjs で読む）
 document.addEventListener('pointerlockchange',()=>{ const was=ui.locked; ui.locked=document.pointerLockElement===canvas; if(ui.locked){ ui.lockedOnce=true; ui.lockTries=0; } else if(was)ui.unlockedAt=performance.now(); if(ui.locked&&ui.menuOpen)setMenu(false); if(menuOnUnlock(was))setMenu(true); updateResume(); });
 document.addEventListener('pointerlockerror',lockFailed);
+// 指で遊ぶ時の土台（src/lib/touch.ts）。指の後に出るマウスの事件を止めるので、ゲームのマウスの処理（17-meta.js）より先に用意する。togglePack・toggleMenu は 17-meta.js
+initTouch({pack:togglePack,menu:toggleMenu});
 let startDepth=1;
