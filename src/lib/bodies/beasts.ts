@@ -605,37 +605,147 @@ export function nagaForm(ty: BodyType): Body {
   return pts;
 }
 
+/** クラーケンの色（体の形と、水から立ち上がる触手 krakenArms が使う） */
+export const KRAKEN = {
+  /** 外套の上：藍 */
+  top: [0.34, 0.26, 0.66],
+  /** 外套の下：青紫 */
+  mid: [0.3, 0.42, 0.8],
+  /** 頭と触手：青緑 */
+  skin: [0.2, 0.52, 0.64],
+  /** 水際：白っぽい青 */
+  pale: [0.58, 0.76, 0.82],
+  /** 外套のまだら：明るい紫 */
+  blot: [0.6, 0.44, 0.9],
+  /** 目の奥：黒（目の輪の中に見え、後ろからは目を隠す） */
+  pupil: [0.04, 0.03, 0.05],
+  /** 外套の光る斑点 */
+  spot: [0.55, 0.95, 1.0],
+  /** 吸盤：薄紅 */
+  sucker: [0.98, 0.6, 0.56],
+  /** 目：金 */
+  eye: [1.0, 0.78, 0.3],
+} as const satisfies Record<string, Color>;
+/** クラーケンの頭（形の中の高さ y での、真ん中の奥行きと半径）。体の点と、斑点・目の位置を、同じ式から出す */
+export const krakenHead = {
+  /** 目のある頭（下）と、後ろへ傾いた外套（上）の、大きい方。間がくびれる */
+  r: (y: number): number =>
+    Math.max(0.35 * Math.sqrt(Math.max(0, 1 - ((y - 0.44) / 0.26) ** 2)), 0.3 * Math.sqrt(Math.max(0, 1 - ((y - 0.88) / 0.3) ** 2))),
+  cz: (y: number): number => 0.04 - 0.3 * clamp((y - 0.6) / 0.58, 0, 1) ** 2,
+  /** 横の半径に対する、奥行きの半径 */
+  kz: 0.92,
+  /** 外套のてっぺん（水面から 2.4 ほど。天井の低い部屋 3.2 の下に、立ち上がる腕と一緒に収まる） */
+  top: 1.18,
+};
+/** 水面の高さ（形の中の高さ。深い水の生き物は 0.7 沈むので、クラーケンの大きさ 2.6 なら 0.7 / 2.6） */
+export const KRAKEN_WATER = 0.27;
+/** 沈んでいる時（水から出ている度合い rise が 0）に、形を下げる高さ。外套の上だけが水面に出る（draw.ts の drawMonster0） */
+export const KRAKEN_SINK = 0.7;
+
+// kraken: an octopus's head rising out of deep water. The lower head holds the gold eyes, a waist, then the tall mantle leaning back,
+// indigo with glowing spots (seen from behind too). Six arms lie on the water and curl at the tips, their edges lined with pink suckers.
+// The arms standing up out of the water are drawn each frame (draw.ts の krakenArms), as they rise with the creature
 export function krakenForm2(ty: BodyType): Body {
-  const { pts, lit, ell } = q3(ty),
-    BODY: Color = [0.28, 0.5, 0.6],
-    SUCK: Color = [0.7, 0.9, 0.95],
-    EYE: Color = [1, 0.3, 0.25];
-  ell(
-    [0, 0.18, 0],
-    0.38,
-    0.4,
-    0.36,
-    SCALE,
-    () => BODY,
-    'body',
-    null,
-    (_nx, ny) => ny < -0.3,
-  );
-  for (const sd of [-1, 1]) {
-    lit(sd * 0.12, 0.3, 0.34, '*', 1, 3.8, EYE, 'eye');
-  }
-  for (let ti = 0; ti < 4; ti++) {
-    const a0 = (ti / 4) * Math.PI * 2 + 0.4;
-    for (let i = 0; i <= 14; i++) {
-      const t2 = i / 14,
-        r = 0.35 + 0.55 * t2,
-        y = 0.9 * Math.sin(Math.PI * Math.min(1, t2 * 1.1)),
-        x = Math.cos(a0) * r,
-        z = Math.sin(a0) * r;
-      lit(x, y, z, mpick(['%', '~', ':']), 1, 1.0, BODY, 'tent', { piv: i * 0.45, ti });
-      if (i % 2 === 0) lit(x, y - 0.06, z, 'o', 0.8, 1.6, SUCK, 'tent', { piv: i * 0.45, ti });
+  const { S, pts, put, lit } = q3(ty),
+    K = KRAKEN,
+    H = krakenHead,
+    W = KRAKEN_WATER,
+    RAMP: Ramp = ['.', ':', '~', '%', '#'],
+    // 頭と外套は、暗い側も濃い文字にする（細い文字だと、後ろから目の金が透ける）
+    HEAD: Ramp = ['&', '%', '%', '#', '#'];
+  // 目の位置（頭の前の左右）。体の点は、目のまわりを空けて、目が埋もれないようにする
+  const ey = 0.47,
+    EYES = [-1, 1].map((sd) => {
+      const r = H.r(ey),
+        x = sd * 0.17,
+        z = H.cz(ey) + r * H.kz * Math.sqrt(1 - (x / r) ** 2),
+        // 楕円の外向きの向き（x / r と (z - cz) / (r * kz) は、2つを2乗して足すと 1）
+        ox = x / r,
+        oz = (z - H.cz(ey)) / (r * H.kz);
+      return { sd, x, z, ox, oz };
+    });
+  // 1. 頭と外套：高さを等しく割った行ごとの輪
+  const rows = Math.round((H.top - W) / (S * 0.8));
+  for (let i = 0; i <= rows; i++) {
+    const y = W + ((H.top - W) * i) / rows,
+      r = H.r(y),
+      dr = (H.r(y + 0.01) - H.r(y - 0.01)) / 0.02,
+      n = Math.max(1, Math.round((2 * Math.PI * r) / (S * 0.9))),
+      m = clamp((y - 0.66) / 0.45, 0, 1),
+      col: Color =
+        y < W + 0.07
+          ? K.pale
+          : y < 0.66
+            ? K.skin
+            : [K.mid[0] + (K.top[0] - K.mid[0]) * m, K.mid[1] + (K.top[1] - K.mid[1]) * m, K.mid[2] + (K.top[2] - K.mid[2]) * m];
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2,
+        nx = Math.cos(a),
+        nz = Math.sin(a),
+        px = nx * r,
+        pz = H.cz(y) + nz * r * H.kz;
+      if (EYES.some((e) => Math.hypot(px - e.x, y - ey, pz - e.z) < 0.14)) continue;
+      // 外套のまだら：向きと高さの波で、明るい斑を散らす
+      const blot = y > 0.7 && Math.sin(a * 4 + y * 7) + Math.sin(a * 3 - y * 10) > 0.7;
+      put(px, y, pz, nx, clamp(-dr, -4, 4), nz, HEAD, blot ? K.blot : col, 'body');
     }
   }
+  // 外套の斑点：表面から少し外へ（前・横・後ろに散らす）
+  for (let k = 0; k < 22; k++) {
+    const y = 0.72 + 0.4 * ((k * 0.618) % 1),
+      a = k * 2.39996,
+      r = H.r(y) + 0.03;
+    lit(Math.cos(a) * r, y, H.cz(y) + Math.sin(a) * r * H.kz, 'o', 1.1, 1.7, K.spot, 'body');
+  }
+  // 2. 目：頭の前の左右。金の輪（まわりの体の点を空けたので、輪の中は暗く、瞳に見える）と、上のまぶたの弧
+  for (const { sd, x, z: zs, ox, oz } of EYES) {
+    lit(x - ox * 0.02, ey, zs - oz * 0.02, '#', 2.8, 1, K.pupil, 'head');
+    lit(x + ox * 0.05, ey, zs + oz * 0.05, 'O', 2.3, 1.6, K.eye, 'head');
+    for (let j = -1; j <= 1; j++)
+      lit(
+        x + ox * 0.05 + j * 0.08 * oz,
+        ey + 0.13 - Math.abs(j) * 0.035,
+        zs + oz * 0.05 - j * 0.08 * ox,
+        j ? (j * sd > 0 ? '\\' : '/') : '-',
+        1,
+        1.2,
+        K.pale,
+        'head',
+      );
+  }
+  // 3. 水の上に伸びる6本の腕（前は目の前を空ける）。上は青緑、水際の両側に吸盤、先は巻く
+  const ARMS = [1.0, -1.0, 1.8, -1.8, 2.6, -2.6];
+  ARMS.forEach((a0, ti) => {
+    const sd = Math.sign(a0),
+      L = 0.85 + 0.12 * ((ti * 0.37) % 1),
+      ds = S * 0.8,
+      N = Math.round(L / ds);
+    let px = Math.sin(a0) * H.r(W) * 0.95,
+      pz = H.cz(W) + Math.cos(a0) * H.r(W) * 0.95,
+      th = a0;
+    for (let i = 0; i <= N; i++) {
+      const f = i / N,
+        w = 0.09 * (1 - 0.75 * f),
+        y = W + 0.02 + w * 0.6,
+        // 進む向き：少し横へ曲がり、先の3割で強く巻く
+        turn = sd * (0.25 + 3.2 * Math.max(0, (f - 0.62) / 0.38) ** 2);
+      th = a0 + turn;
+      const dx = Math.sin(th),
+        dz = Math.cos(th),
+        ex = { piv: i * 0.45, ti };
+      // 断面は水の上の半分：両脇（吸盤）・肩・背
+      for (const c of [-1, -0.5, 0, 0.5, 1]) {
+        const sx = dz * c * w,
+          sz = -dx * c * w,
+          up = Math.sqrt(1 - c * c) * w;
+        if (Math.abs(c) === 1) {
+          if (i % 2 === 0) lit(px + sx, y, pz + sz, 'o', 0.8 + 0.5 * (1 - f), 1.5, K.sucker, 'tent', ex);
+        } else put(px + sx, y + up, pz + sz, dz * c, Math.sqrt(1 - c * c), -dx * c, RAMP, f > 0.6 ? K.skin : K.top, 'tent', ex);
+      }
+      px += dx * ds;
+      pz += dz * ds;
+    }
+  });
   return pts;
 }
 
