@@ -48,6 +48,7 @@ import { tryLock, updateResume } from './screens.ts';
 import { type Hands, adv, fight, gear, player, ui } from './state.ts';
 import { isPaused } from './status.ts';
 import { boxText, clipHtml, padTo, visW } from './text.ts';
+import { byInput } from './touch.ts';
 import { unlocked } from './unlocks.ts';
 
 /** 手（左右と、体の枠 B） */
@@ -110,7 +111,7 @@ export const handResult = (h: Side): string => {
 export function setPackDetail(ru: Rune | null | undefined): void {
   const el = document.getElementById('pack');
   if (!el) return;
-  const L = detailLines(ru);
+  const L = ru || !ui.touch ? detailLines(ru) : ['<span class="lab">武器・ルーン・護符を押すと、ここに説明が出る</span>', '', '', '', ''];
   el.querySelectorAll('.pdet').forEach((sp, i) => {
     sp.innerHTML = padTo(clipHtml(L[i] || '', PACK_W - 3), PACK_W - 2);
   });
@@ -238,7 +239,7 @@ export function renderInv(): void {
   }
   rows.push(
     f('|'),
-    `${f('|')} <span class="lab">選んで、光る枠をクリック　ダブルクリックで自動ではめる　右クリックで取り消し</span>`,
+    `${f('|')} <span class="lab">${byInput('選んで、光る枠をクリック　ダブルクリックで自動ではめる　右クリックで取り消し', '選んで、光る枠を押す　続けて2回押すと自動ではめる　空いた所を押すと取り消し')}</span>`,
     `${f('|')} <span class="lab">閉じると付け替えの詠唱（約1.5秒）。石碑のそばなら一瞬</span>`,
     f('+---'),
   );
@@ -270,6 +271,22 @@ export function renderInv(): void {
       }
     });
   }
+}
+/**
+ * 指で遊ぶ時、袋のルーン ru を選んだら、はめられる枠（光る枠）が見えるまで、装備の画面の中を送る（狭い画面では、袋と手の枠が一度に入らない。src/lib/layout.ts）。
+ * 続けて2回押す（自動ではめる）間は待つ（すぐ送ると、2回目が別の物に当たる）
+ */
+function revealSlots(ru: Rune): void {
+  setTimeout(() => {
+    const el = document.getElementById('pack'),
+      b = el?.querySelector('button.rs.can');
+    if (!el || !b || !ui.invOpen || ui.packSel?.ru !== ru || !gear.bag.includes(ru)) return;
+    const r = b.getBoundingClientRect(),
+      p = el.getBoundingClientRect(),
+      z = Number(el.style.zoom) || 1;
+    // 枠の行が、画面の中の装備の画面の上下に入っていなければ、その行が上から2行目あたりに来るまで送る（scrollTop は縮める前の大きさ）
+    if (r.top < p.top || r.bottom > p.bottom) el.scrollTop += (r.top - p.top) / z - (2 * r.height) / z;
+  }, 650);
 }
 /** 装備の画面のクリック（ボタンの無い所：選んだ物を取り消す。ページ送り・枠・袋のルーン（続けて押すと自動ではめる）・ビルドの保存と呼び出し） */
 function onPackClick(e: MouseEvent): void {
@@ -310,6 +327,7 @@ function onPackClick(e: MouseEvent): void {
     ui.packClick = { u, t: performance.now() };
     ui.packSel = { ru, from: 'bag' };
     updatePackSel();
+    if (ui.touch) revealSlots(ru);
     return;
   }
   if (d['save'] !== undefined) {

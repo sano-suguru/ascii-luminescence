@@ -1,9 +1,14 @@
 // 下の HUD（もとは src/game/26-spells-hud.js）。状態の入れ物 gear（両手・詠唱・付け替え）に頼り、画面の #hotbar に書く。
+// 指の操作の [持ち替え]（#swapB）も、ここで出し分ける（ビルドが変わった後は、いつも下の HUD を描き直すため）。
 import { lookup } from './array.ts';
 import { cssOf } from './color.ts';
 import { type Side, effHand } from './gear.ts';
 import { RUNE_DEF, TIER_COL, elemCol, handName, handRunes, syncHand } from './runes.ts';
 import { gear } from './state.ts';
+import { unlocked } from './unlocks.ts';
+
+/** 持ち替えられるビルドの番号（保存した物だけ。3つ目は解放した時だけ）。ホイールと [持ち替え] が、この順に回る */
+export const buildsHave = (): number[] => (unlocked('build3') ? [0, 1, 2] : [0, 1]).filter((k) => gear.builds[k]);
 
 /** 下の HUD を描き直す（左右の手の性質・武器・発動と、詠唱の溜め・付け替えの進み） */
 export function renderHotbar(): void {
@@ -40,4 +45,7 @@ export function renderHotbar(): void {
     sw = `\n<span class="lab">付け替え</span> ${'='.repeat(n)}<span class="dim">${'-'.repeat(10 - n)}</span>`;
   }
   el.innerHTML = part('L') + '      ' + part('R') + sw;
+  // [持ち替え] は、ビルドを2つ以上保存した時だけ出す（1つなら、押しても同じビルドに戻るだけ）
+  const swapB = document.getElementById('swapB');
+  if (swapB) swapB.hidden = buildsHave().length < 2;
 }

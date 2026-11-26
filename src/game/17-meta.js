@@ -60,8 +60,11 @@ document.getElementById('intropanel').addEventListener('click',e=>{
   adv.dead=false; { const de=document.getElementById('death'); if(de)de.classList.remove('show','won'); }
   adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(saved.META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:clock.time,maxDepth:here.depth,book0:saved.BOOK.size,beastsNew:0}; resetRunes();
   if(regen)newLevel();
-  ui.started=true; document.body.classList.add('started'); if(here.D)showStratum(here.D.stratum); setHelp(true); ui.helpT=25; introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume();
+  ui.started=true; document.body.classList.add('started'); if(here.D)showStratum(here.D.stratum); if(ui.touch)touchTip(); else { setHelp(true); ui.helpT=25; } introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume();
 });
+// 指で遊ぶ時は、始めに操作の案内（キーボードの説明）を出さず、初めて指で迷宮に入った時だけ、左下の伝言に一言を出す（記録 META の touchTip で1回だけ。
+// 十字の下の一言 showHint は、行く手を塞がれていない間は毎フレーム消える（src/lib/player.ts）ので使わない）
+function touchTip(){ if(saved.META.touchTip)return; saved.META.touchTip=true; saveMeta(); msg('<b style="color:#bfe4ff">?</b>左半分で動く・右半分で見回す。くわしくはメニューの「操作の案内」'); }
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 // the bestiary: the wheel moves in and out, a drag with the left button turns the creature and moves the camera up and down (galleryWheel, galleryDrag)
 canvas.addEventListener('wheel',e=>{ if(!(ui.gallery&&ui.gallery.mode==='beast'))return; e.preventDefault(); galleryWheel(e.deltaY*(e.deltaMode===1?33:e.deltaMode===2?400:1)); },{passive:false});
@@ -79,8 +82,10 @@ window.addEventListener('mousedown',e=>{
   if(ui.menuOpen){ setMenu(false); if(!ui.plFailed)tryLock(); }
   if(ui.invOpen)setInv(false);
 },true);
-canvas.addEventListener('wheel',e=>{ if(!ui.started||isPaused()||!gear.hands)return; e.preventDefault(); const have=(unlocked('build3')?[0,1,2]:[0,1]).filter(k=>gear.builds[k]); if(!have.length||clock.time-(canvas.wheelT||-9)<0.35)return; canvas.wheelT=clock.time;
-  const pos=Math.max(0,have.indexOf(gear.buildIdx)), next=have[(pos+1)%have.length]; const prev=snapHands(); if(applyBuild(next)){ startSwap(prev); showHint(`ビルド${next+1}`); setTimeout(()=>showHint(''),900); } renderHotbar(); },{passive:false});
+canvas.addEventListener('wheel',e=>{ if(!ui.started||isPaused()||!gear.hands)return; e.preventDefault(); nextBuild(); },{passive:false});
+// 次のビルドに持ち替える（ホイールと、指の操作の [持ち替え]。続けて回した時は 0.35 秒あける）。buildsHave は src/lib/hotbar.ts
+function nextBuild(){ if(!ui.started||isPaused()||!gear.hands)return; const have=buildsHave(); if(!have.length||clock.time-(canvas.wheelT||-9)<0.35)return; canvas.wheelT=clock.time;
+  const pos=Math.max(0,have.indexOf(gear.buildIdx)), next=have[(pos+1)%have.length]; const prev=snapHands(); if(applyBuild(next)){ startSwap(prev); showHint(`ビルド${next+1}`); setTimeout(()=>showHint(''),900); } renderHotbar(); }
 let downAt=null;
 canvas.addEventListener('mousedown',e=>{ if(!ui.started||isPaused())return; if(relockClick()){ canvas.focus(); return; } if(e.button===2){ beginCast('R'); return; } if(ui.locked&&e.button===0){ beginCast('L'); return; } if(e.button===0){ downAt=[e.clientX,e.clientY]; beginCast('L'); } dragging=true; lmx=e.clientX; lmy=e.clientY; if(!ui.locked)tryLock(); canvas.focus(); updateResume(); });
 window.addEventListener('mouseup',e=>{ if(gear.hands){ if(e.button===0)releaseCast('L'); if(e.button===2)releaseCast('R'); } downAt=null; dragging=false; updateResume(); });

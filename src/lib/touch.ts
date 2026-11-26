@@ -3,8 +3,10 @@
 // ブラウザが指の後に出すマウスの事件（mousedown・mouseup・mousemove。描く画面では左手の詠唱を始め、装備の画面やメニューの外を押したら閉じる処理も動く）は止める。
 // Chromium は指の pointerdown の preventDefault で止まるが、iPhone（WebKit）は止まらないので、指の事件から COMPAT_MS 以内のマウスの事件も、
 // ゲームの処理に届く前（window の捕まえる段。ゲームのマウスの処理より先に登録する）で、伝わりを止める。click と mouseover は止めない（ボタンと説明が効くように）
+// 指で遊ぶ時は、パネルを画面に収める（src/lib/layout.ts の fitPanels）。
 // タッチのボタン（#touchbar）：[全画面]（タイトルで、全画面にできて、まだ全画面でない時だけ）・[装備]・[メニュー]（探索中だけ。CSS が出し分ける）
 import { must } from './array.ts';
+import { fitPanels, initFitPanels } from './layout.ts';
 import { ui } from './state.ts';
 
 /** 指の事件の後、これだけの間（ミリ秒）に来たマウスの事件は、ブラウザが指の後に出した物とみなして止める */
@@ -25,11 +27,15 @@ export function confirmTap(key: string): boolean {
   return false;
 }
 
+/** 指で遊んでいる時は finger を、マウスとキーボードの時は mouse を返す（操作の説明を、遊び方で書き分ける） */
+export const byInput = (mouse: string, finger: string): string => (ui.touch ? finger : mouse);
+
 /** 指の遊び方にする・戻す */
 export function setTouch(on: boolean): void {
   if (ui.touch === on) return;
   ui.touch = on;
   document.body.classList.toggle('touch', on);
+  fitPanels();
 }
 
 /** 全画面のボタンを、全画面にできて、まだ全画面でない時だけ出す */
@@ -94,4 +100,5 @@ export function initTouch(act: TouchActions): void {
   });
   document.addEventListener('fullscreenchange', updateFullscreenButton);
   updateFullscreenButton();
+  initFitPanels();
 }

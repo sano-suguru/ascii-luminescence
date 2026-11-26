@@ -171,7 +171,7 @@ function openRange(){
   player.x=room.x; player.z=room.z+3; player.yaw=0; player.pitch=-0.05; player.hp=adv.PLAYER_MAX;
   adv.dead=false; ui.started=true; document.body.classList.add('started'); adv.runStats={kills:0,t0:clock.time};
   canvas.focus(); tryLock(); updateResume(); renderHotbar(); renderStatus();
-  setTimeout(()=>{ msg('<b style="color:#bfe4ff">+</b>試しの間。<b>Tab</b> で武器・ルーン・護符を自由に付け替えられる（ここでは付け替えが一瞬で済む）。'); msg('<span class="lab">的の人形は動かず、何度倒れても起き上がる。頭の上の数字は、直前に与えたダメージの合計。メニューからタイトルへ戻れる。</span>'); },400);
+  setTimeout(()=>{ msg('<b style="color:#bfe4ff">+</b>試しの間。<b>'+byInput('Tab','[装備]')+'</b> で武器・ルーン・護符を自由に付け替えられる（ここでは付け替えが一瞬で済む）。'); msg('<span class="lab">的の人形は動かず、何度倒れても起き上がる。頭の上の数字は、直前に与えたダメージの合計。メニューからタイトルへ戻れる。</span>'); },400);
 }
 function drawGallery(t){
   if(!ui.gallery)return;
