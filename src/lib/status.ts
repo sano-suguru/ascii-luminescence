@@ -16,7 +16,7 @@ import { dyn } from './particles.ts';
 import { expNeed } from './progress.ts';
 import { clamp } from './rng.ts';
 import { REACT } from './runes.ts';
-import { type Monster, adv, blaze, clock, here, hudInfo, keys, lantern, player, saved, stealth, ui, vfx } from './state.ts';
+import { type Mob, type Monster, adv, blaze, clock, here, hudInfo, keys, lantern, player, saved, stealth, ui, vfx } from './state.ts';
 import { SPECIALS } from './strata.ts';
 import { boxText } from './text.ts';
 import { trialOn } from './unlocks.ts';
@@ -187,7 +187,7 @@ export function cycleUi(): void {
  * 生き物 m がこちらに気づいた。監視の機械は警報を鳴らして周りを起こし、野営の群れは遠吠えで仲間を起こし、猟犬は遠吠えを上げ、
  * 忘れられた獣は目を覚ます（伝言を出してここで終わる）。ほかは群れごと気づき、同じ群れの伝言は12秒あける
  */
-export function onNoticed(m: Monster): void {
+export function onNoticed(m: Mob): void {
   if (m.ty.watcher && !m.alarmed) {
     m.alarmed = true;
     sAlarm(m.x, m.z);

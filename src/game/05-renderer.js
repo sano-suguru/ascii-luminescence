@@ -55,12 +55,11 @@ composer.addPass(finalPass);
 // GLSL_COMMON（古い JS は使わない）・STATIC_VS・WATER_VS・WATER_FS・GLYPH_FS・DYN_VS・PT_VS・PT_FS は src/lib/shaders.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- shared uniforms
-// 灯りを描画に渡す配列 SL・DLP・DLC は src/lib/state.ts（src/game/imports.mjs で読む）
-const cellData=new Uint8Array(NCELL*4);
-const cellTex=new T.DataTexture(cellData,MW,MH,T.RGBAFormat,T.UnsignedByteType);
-cellTex.magFilter=T.LinearFilter; cellTex.minFilter=T.LinearFilter; cellTex.needsUpdate=true;
+// 灯りを描画に渡す配列 SL・DLP・DLC と、マスの絵の中身 cellData は src/lib/state.ts（src/game/imports.mjs で読む。マスの絵 gfx.cellTex はここでその場で入れる）
+gfx.cellTex=new T.DataTexture(cellData,MW,MH,T.RGBAFormat,T.UnsignedByteType);
+gfx.cellTex.magFilter=T.LinearFilter; gfx.cellTex.minFilter=T.LinearFilter; gfx.cellTex.needsUpdate=true;
 const U={
-  uCell:{value:cellTex}, uCollT:{value:-100},
+  uCell:{value:gfx.cellTex}, uCollT:{value:-100},
   uAtlas:{value:null}, uTime:{value:0}, uSL:{value:SL}, uDLP:{value:DLP}, uDLC:{value:DLC},
   uCamP:{value:new T.Vector3()}, uCutP:{value:new T.Vector3()}, uCut:{value:0},
   uFogDen:{value:0.05}, uFogColor:{value:fogCol}, uScale:{value:600}, uRamp:{value:new Float32Array([...RAMP_CH].map(c=>c.charCodeAt(0)-32))}, uAmb:{value:1}

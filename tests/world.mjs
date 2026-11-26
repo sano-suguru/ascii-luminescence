@@ -11,6 +11,7 @@
 //   8. 火で氷が溶けて水に戻ると、そのマスの火は消える（水の上で燃えず、灰の印も付かない）
 //   9. 冷気は、マップの端で反対側の端に届かない
 //  10. 消してすぐまた火がついたマスは、燃えているマスの一覧に1回だけ入る
+//  11. 薄い氷に乗っていた秒は、階を移ると0に戻る（前の階の同じ番号のマスの秒が残らない）
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { withBrowser, newPage, openTest, advance } from './lib.mjs';
 
@@ -294,6 +295,36 @@ async function chillChecks(pg, base) {
   if (times !== 1) errs.push(`10：消してすぐまた火がついたマスが、燃えているマスの一覧に ${times} 回入っている`);
 }
 
+// 11：薄い氷（氷の洞窟の、深い水が凍った所）
+async function thinIceChecks(pg, base) {
+  await openTest(pg, base, 'seed=202&realm=ice&god=1');
+  await advance(pg, 2);
+  await pg.evaluate(() => __test.clearAll());
+  const t = await pg.evaluate(() => {
+    const { w, h } = __test.size();
+    for (let i = 0; i < w * h; i++) if (__test.cell(i).thin) return i;
+    return -1;
+  });
+  if (t < 0) {
+    errs.push('11：薄い氷が無い（テストの前提が崩れた。シードを変える）');
+    return;
+  }
+  await pg.evaluate((i) => {
+    const c = __test.cell(i);
+    dbg.step(c.x, c.z);
+  }, t);
+  await advance(pg, 0.3); // 割れる（0.85秒）より前
+  const before = await pg.evaluate((i) => __test.cell(i).iceT, t);
+  if (!(before > 0)) {
+    errs.push(`11：薄い氷に乗っても、乗っていた秒が増えない（${before}。テストの前提が崩れた）`);
+    return;
+  }
+  await pg.evaluate(() => dbg.go(2));
+  await advance(pg, 0.5);
+  const after = await pg.evaluate((i) => __test.cell(i).iceT, t);
+  if (after !== 0) errs.push(`11：階を移っても、前の階で薄い氷に乗っていた秒が残っている（${after}）`);
+}
+
 await withBrowser(async ({ browser, base }) => {
   const pg = await newPage(browser, errs);
   await doorChecks(pg, base);
@@ -301,6 +332,7 @@ await withBrowser(async ({ browser, base }) => {
   await houndChecks(pg, base);
   await brimChecks(pg, base);
   await chillChecks(pg, base);
+  await thinIceChecks(pg, base);
 });
 console.log('page errors:', errs.length ? errs : 'none');
 process.exit(errs.length ? 1 : 0);

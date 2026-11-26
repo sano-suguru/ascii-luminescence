@@ -1,97 +1,10 @@
 // ---------------------------------------------------------------- small creatures (the living layer of the world; they never hunt you)
 // 小さな生き物の形（critterForm など）は src/lib/bodies/small.ts（形は src/lib/bodies/build.ts の buildForm が選んで作る。古い JS は読まない）
-function critterStep(m,away){
-  const opts=[]; for(const d of D4){ const i=(m.cz+d[1])*MW+m.cx+d[0]; if(canStep(m,i))opts.push(d); }
-  if(!opts.length)return;
-  let ch;
-  if(away){ let bd=-1; for(const d of opts){ const dd=Math.hypot((m.cx+d[0]+0.5)*CELL-player.x,(m.cz+d[1]+0.5)*CELL-player.z)+mr()*0.4; if(dd>bd){bd=dd;ch=d;} } }
-  else if((m.ty.critter==='cleaner'||m.ty.critter==='engineer')&&m.job>=0){ const [gx,gz]=m.ty.critter==='engineer'?[here.D.doors[m.job].bx,here.D.doors[m.job].bz]:cpos(m.job); let bd=1e9; for(const d of opts){ const dd=Math.hypot((m.cx+d[0]+0.5)*CELL-gx,(m.cz+d[1]+0.5)*CELL-gz)+mr()*0.5; if(dd<bd){bd=dd;ch=d;} } }
-  else if(m.ty.critter==='grazer'){ const moss=opts.filter(d=>here.D.surface[(m.cz+d[1])*MW+m.cx+d[0]]===SF_LUMEN); ch=moss.length&&mr()<0.8?moss[Math.floor(mr()*moss.length)]:opts[Math.floor(mr()*opts.length)]; }
-  else { const fwd=opts.find(o=>o[0]===m.dir[0]&&o[1]===m.dir[1]); const nrev=opts.filter(o=>!(o[0]===-m.dir[0]&&o[1]===-m.dir[1])); ch=(fwd&&mr()<0.6)?fwd:(nrev.length?nrev[Math.floor(mr()*nrev.length)]:opts[0]); }
-  m.dir=ch; m.tx=m.cx+ch[0]; m.tz=m.cz+ch[1];
-}
-let shriekMsgT=-99, grazeMsg=false;
-function updateCritter(m,dt,t,dp){
-  const ty=m.ty; m.aware=0; m.noticed=false; m.sleep=false; m.alert=0;
-  const lit=!stealth.sneak;
-  if(ty.critter==='shrieker'){
-    m.glow=1.2+0.7*Math.pow(0.5+0.5*Math.sin(t*1.1+m.ph),2);
-    if(dp<3.2&&lit&&m.visible&&clock.time-(m.shriekT||-99)>12){
-      m.shriekT=clock.time; m.glow=3; sShriek(m.x,m.z); vfx.shake=Math.max(vfx.shake,0.12);
-      for(let q=0;q<36;q++){ const a=q/36*Math.PI*2; spawn(m.x,0.7,m.z,Math.cos(a)*2.2,0.2,Math.sin(a)*2.2,0.9,G(q%2?'!':'.'),0.18,ty.col[0]*2.4,ty.col[1]*2.4,ty.col[2]*2.4,1); }
-      let woke=0; for(const o of here.monsters){ if(o===m||o.ty.critter||o.dead)continue; if(Math.hypot(o.x-m.x,o.z-m.z)<15){ if(o.sleep||!o.noticed)woke++; o.sleep=false; o.aware=Math.max(o.aware,1.05); } }
-      if(clock.time-shriekMsgT>8){ shriekMsgT=clock.time; msg(`<b style="color:${css(ty.col)}">p</b>${mname(m)}が甲高い叫び声を上げた！${woke?' 周りの獣たちが目を覚ます。':''}`); }
-    }
-    return;
-  }
-  if(ty.critter==='cleaner'||ty.critter==='engineer'){ if(machineWork(m,dt)){ m.yaw=lerpAngle(m.yaw,m.dirYaw,1-Math.exp(-dt*4)); return; } }
-  if(ty.critter==='mimic'&&m.hidden){
-    if(dp<2.3||m.revealNow){ m.hidden=false; m.flee=8; sSqueak(m.x,m.z); sChime(m.x,m.z,0.25); vfx.shake=Math.max(vfx.shake,0.1);
-      msg(`<b style="color:${css(ty.col)}">q</b>浮かんでいた巻物が脚を生やし、すばやく走り去った！ ${mname(m)}だ。`);
-      for(let q=0;q<24;q++){ const a=mr()*6.28; spawn(m.x,1.2,m.z,Math.cos(a)*1.2,mr(),Math.sin(a)*1.2,1,G(mpick(['?','.','*'])),0.14,1.6,1.3,0.6,1); } }
-    return;
-  }
-  // startle: a lit lantern close by sends fish and grazers fleeing
-  if((ty.critter==='fish'&&dp<4.5&&lit)||(ty.critter==='grazer'&&dp<3.5&&lit)){
-    if(!(m.flee>0)){ if(ty.critter==='fish'){ sSplash(0.15); splash(m.x,m.z,ty.col); } else if(!grazeMsg&&m.visible){ grazeMsg=true; msg(`<b style="color:${css(ty.col)}">h</b>${mname(m)}が灯りに驚いて、ぱたぱたと逃げ出した。灯りを絞れば、近くで眺められる。`); } }
-    m.flee=ty.critter==='fish'?1.6:3;
-  }
-  if(m.flee>0)m.flee-=dt;
-  if(m.wait>0){ m.wait-=dt; if(m.flee>0)m.wait=0;
-    // grazing: a moss cell loses its glow
-    if(ty.critter==='grazer'&&m.wait<=0){ const i=m.cz*MW+m.cx; if(here.D.surface[i]===SF_LUMEN&&blaze.cellFlag[i]!==30){ blaze.cellFlag[i]=30; here.D.surface[i]=SF_GRASS; uploadCells(); } }
-    m.moving+=(0-m.moving)*Math.min(1,dt*5);
-  } else {
-    const tx=(m.tx+0.5)*CELL, tz=(m.tz+0.5)*CELL, ddx=tx-m.x, ddz=tz-m.z, d=Math.hypot(ddx,ddz);
-    if(d<0.05){ m.x=tx; m.z=tz; m.cx=m.tx; m.cz=m.tz; critterStep(m,m.flee>0);
-      if(ty.critter==='grazer'&&!(m.flee>0)&&here.D.surface[m.cz*MW+m.cx]===SF_LUMEN&&mr()<0.35)m.wait=2+mr()*3; }
-    else { const sp=ty.speed*(m.flee>0?(ty.critter==='fish'?2.6:3):1)*dt, st=Math.min(sp,d); m.x+=ddx/d*st; m.z+=ddz/d*st; m.dirYaw=Math.atan2(ddx,ddz); m.cx=Math.floor(m.x/CELL); m.cz=Math.floor(m.z/CELL); }
-    m.moving+=(1-m.moving)*Math.min(1,dt*5);
-  }
-  m.yaw=lerpAngle(m.yaw,m.dirYaw,1-Math.exp(-dt*6));
-  m.walk+=dt*m.moving*ty.speed*5.5;
-  // fish now and then leap out of the water in a glowing arc
-  if(ty.critter==='fish'){ m.jumpT=(m.jumpT===undefined?3+mr()*10:m.jumpT)-dt;
-    if(m.jumpT<=0&&!m.jump&&dp<26){ m.jump=0.001; splash(m.x,m.z,ty.col); }
-    if(m.jump){ m.jump+=dt/0.9; if(m.jump>=1){ m.jump=0; m.jumpT=5+mr()*10; splash(m.x,m.z,ty.col); sSplash(0.08); } else if(mr()<0.6)spawn(m.x,m.y+0.1,m.z,0,-0.3,0,0.6,G(mpick(['.','*'])),0.1,ty.col[0]*2.4,ty.col[1]*2.4,ty.col[2]*2.4,1); } }
-  m.y=ty.critter==='fish'?-0.16+Math.sin(t*2+m.ph)*0.03+(m.jump?Math.sin(Math.PI*m.jump)*1.0:0):0;
-  m.glow=ty.critter==='fish'?1.4+0.4*Math.sin(t*3+m.ph):ty.critter==='grazer'?1.5+0.3*Math.sin(t*1.2+m.ph):1.2;
-}
-function sShriek(x,z){ if(!sndReady())return; const t=SND.ctx.currentTime, o=sOut(x,z,0.5);
-  for(let k=0;k<2;k++){ const os=SND.ctx.createOscillator(), g=SND.ctx.createGain(); os.type='square';
-    os.frequency.setValueAtTime(1300+k*230,t); os.frequency.linearRampToValueAtTime(2100+k*300,t+0.25); os.frequency.linearRampToValueAtTime(1000,t+0.9);
-    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.1,t+0.03); g.gain.exponentialRampToValueAtTime(0.001,t+1.0); os.connect(g); g.connect(o); os.start(t); os.stop(t+1.05); } }
+// 小さな生き物の動き updateCritter は src/lib/ground.ts（src/game/imports.mjs で読む）。次に向かうマス critterStep は src/lib/monsters.ts、叫び声の音 sShriek は src/lib/audio.ts（古い JS は読まない）
 
 // ---------------------------------------------------------------- packs and hunters: spiders and their webs, hounds on your scent, snapjaw camps, ancient machines
 // クモの巣を描く drawWebs と触れた時の webTouch は src/lib/fixtures.ts（src/game/imports.mjs で読む）。その階で一度だけの伝言の旗は src/lib/state.ts の here
-// hounds follow the freshest scent; water washes it away
-function houndScent(m){
-  let best=null, bs=clock.time-40;
-  for(const d of D4){ const i=(m.cz+d[1])*MW+m.cx+d[0]; if(!canStep(m,i))continue; if(blaze.scent[i]>0&&blaze.scent[i]>bs){bs=blaze.scent[i];best=d;} } // 0 is a cell with no scent (in the first 40 s, bs is below 0)
-  return best;
-}
-function machineWork(m,dt){
-  // cleaners clear ash and put out fires; engineers rebuild burnt doors
-  const ty=m.ty;
-  if(m.job!==undefined&&m.job>=0){
-    const [jx,jz]=ty.critter==='engineer'?[here.D.doors[m.job].bx,here.D.doors[m.job].bz]:cpos(m.job);
-    if(Math.hypot(jx-m.x,jz-m.z)<(ty.critter==='engineer'?1.6:0.4)){
-      m.work=(m.work||0)+dt; m.moving=0;
-      if(mr()<dt*10)spawn(jx+(mr()-0.5)*0.4,0.3+mr()*0.6,jz+(mr()-0.5)*0.4,(mr()-0.5)*0.8,0.6+mr(),(mr()-0.5)*0.8,0.5,G(mpick(['*','.','+'])),0.1,ty.col[0]*2,ty.col[1]*2,ty.col[2]*2,0);
-      if(m.work>(ty.critter==='engineer'?3:1.8)){
-        if(ty.critter==='engineer'){ const d=here.D.doors[m.job]; if(!d.gone){ m.job=-1; m.work=0; return true; } d.gone=false; d.o=0; blaze.fuel[d.i]=1.4; blaze.burnt[d.i]=0; uploadCells(); if(!here.repairMsg&&m.visible){ here.repairMsg=true; msg(`<b style="color:${css(ty.col)}">R</b>${mname(m)}が、焼け落ちた扉を黙々と作り直した。`); } }
-        else { blaze.burnt[m.job]=0; blaze.fire[m.job]=0; uploadCells(); }
-        m.job=-1; m.work=0;
-      }
-      return true;
-    }
-    return false;
-  }
-  if(clock.time-(m.scanT||-9)<1.5)return false; m.scanT=clock.time;
-  if(ty.critter==='engineer'){ let bi=-1,bd=1e9; here.D.doors.forEach((d,k)=>{ if(!d.gone)return; const dd=Math.hypot(d.bx-m.x,d.bz-m.z); if(dd<bd&&dd<40){bd=dd;bi=k;} }); m.job=bi; }
-  else { let bi=-1,bd=1e9; for(let dz=-10;dz<=10;dz++)for(let dx=-10;dx<=10;dx++){ const x=m.cx+dx, z=m.cz+dz; if(x<0||z<0||x>=MW||z>=MH)continue; const i=z*MW+x; if(!blaze.burnt[i]&&!(blaze.fire[i]>0.1))continue; if(here.D.tile[i]!==TF)continue; const dd=Math.abs(dx)+Math.abs(dz); if(dd<bd){bd=dd;bi=i;} } m.job=bi; }
-  return false;
-}
+// 猟犬が追う匂い houndScent は src/lib/monsters.ts、掃除機と修復機の仕事 machineWork は src/lib/ground.ts（古い JS は読まない）
 // 遠吠え sHowl・警報 sAlarm の音は src/lib/audio.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- large creatures of the terrain, mighty ones of the deep, and the lords of the branches
@@ -209,10 +122,6 @@ function updateMonster(m,dt,t){
     }
   }
 }
-function splash(x,z,c){
-  if(Math.hypot(x-player.x,z-player.z)<24)sSplash(0.25*sDist(x,z));
-  if(Math.hypot(x-player.x,z-player.z)>26)return;
-  for(let q=0;q<14;q++){ const a=mr()*6.28; spawn(x+Math.cos(a)*0.3,0.1,z+Math.sin(a)*0.3,Math.cos(a)*0.8,0.8+mr()*1.2,Math.sin(a)*0.8,0.9+mr()*0.5,G(mpick(['~','.','\'','o'])),0.13,0.25,0.55,0.9,1); }
-}
+// 水しぶき splash は src/lib/ground.ts（src/game/imports.mjs で読む）
 // 生き物を描く drawMonster・drawMonster1・drawMonster0 は src/lib/bodies/draw.ts（src/game/imports.mjs で読む）
 

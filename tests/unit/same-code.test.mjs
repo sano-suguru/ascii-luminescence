@@ -4,8 +4,13 @@ import { describe, expect, it } from 'vitest';
 import { boxFields, compareSources, detectStates, legacyDecls, referenced, wasUnused } from '../../tools/same-code.mjs';
 
 /** 古い JS の文 oldJs と新しい .ts の文 newTs を比べ、関数ごとの違いの数・人が確かめる一覧・比べた名前を返す */
-function cmp(oldJs, newTs) {
-  const { results, review, compared } = compareSources(legacyDecls(new Map([['01-a.js', oldJs]])), [{ file: 'src/lib/a.ts', text: newTs }]);
+function cmp(oldJs, newTs, imported = new Map()) {
+  const { results, review, compared } = compareSources(
+    legacyDecls(new Map([['01-a.js', oldJs]])),
+    [{ file: 'src/lib/a.ts', text: newTs }],
+    null,
+    imported,
+  );
   return { n: Object.fromEntries(results.map((r) => [r.name, r.diffs.length])), review, compared: [...compared], results };
 }
 
@@ -71,6 +76,15 @@ describe('同じと言う物', () => {
     expect(r.n).toEqual({ f: 0 });
     expect(r.review).toEqual(['a.ts の道具を開いた：toPlayer', 'a.ts の道具を開いた：now']);
   });
+  it('古い方も同じ名前で読んでいて、古い JS がこのファイルから import している道具（このファイルが export する物）は開かない', () => {
+    const r = cmp(
+      `function f(){ if(!sndReady())return; g(); }`,
+      `export const sndReady = (): boolean => SND.on;\nexport function f() { if (!sndReady()) return; g(); }`,
+      new Map([['sndReady', 'src/lib/a.ts']]),
+    );
+    expect(r.n).toEqual({ f: 0 });
+    expect(r.review).toEqual([]);
+  });
   it('型だけの書き方（as const・後ろの !）と、名前の ?', () => {
     expect(
       cmp(
@@ -99,6 +113,26 @@ describe('違うと言う物', () => {
   it('Number(x) を算術の外で使った時・a?.b と a.b', () => {
     expect(cmp(`function f(a){ g(a||0); }`, `export function f(a) { g(Number(a || 0)); }`).n).toEqual({ f: 1 });
     expect(cmp(`function f(a){ return a?.b; }`, `export function f(a) { return a.b; }`).n).toEqual({ f: 1 });
+  });
+  it('古い方と同じ名前でも、古い JS が読む物とは別の道具は開く（中身が違えば違いとして出る）', () => {
+    const old = `function f(){ if(!sndReady())return; g(); }`,
+      mine = new Map([['sndReady', 'src/lib/a.ts']]);
+    // export しない、このファイルだけの道具
+    expect(
+      cmp(old, `const sndReady = (): boolean => SND.on;\nexport function f() { if (!sndReady()) return; g(); }`, mine).n.f,
+    ).toBeGreaterThan(0);
+    // export しているが、古い JS は別のファイルから読んでいる
+    expect(
+      cmp(
+        old,
+        `export const sndReady = (): boolean => SND.on;\nexport function f() { if (!sndReady()) return; g(); }`,
+        new Map([['sndReady', 'src/lib/audio.ts']]),
+      ).n.f,
+    ).toBeGreaterThan(0);
+    // 古い JS が import で読んでいない
+    expect(
+      cmp(old, `export const sndReady = (): boolean => SND.on;\nexport function f() { if (!sndReady()) return; g(); }`).n.f,
+    ).toBeGreaterThan(0);
   });
   it('小さな道具に、呼び出しを渡している時と、使う所で道具の中の名前を宣言し直している時は開かない', () => {
     const helper = `const toPlayer = (m) => Math.hypot(m.x - player.x, m.z - player.z);\n`;

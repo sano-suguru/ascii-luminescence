@@ -54,7 +54,8 @@ import { drawDoors, drawFixtures, drawGraves, drawSprings, drawTraps, drawWebs, 
 import { addBolt, drawBoltFx, drawFire, drawFrozen, drawZones, sparkCrown } from '../lib/fx.ts';
 import { BRANCH_OMEN, REALM_OMEN, SPECIAL_OMEN, STRATUM_OMEN, drawOmens, drawStairSeal, omenOf, stairsGuarded } from '../lib/omens.ts';
 import { loadBeasts, recordBeast, saveMeta, saveSet } from '../lib/save.ts';
-import { BL, statOf } from '../lib/monsters.ts';
+import { BL, canStep, chooseNext, fireNear, foe, hostile, makeMonster, statOf, summon } from '../lib/monsters.ts';
+import { brimFlare, chillArea, crackIce, ignite, splash, tallAt, trample, updateCritter, updateFrozen, uploadCells } from '../lib/ground.ts';
 import { setCamMode, sndToggle, tryLock, updateResume } from '../lib/screens.ts';
 import { addLooks, buildForm } from '../lib/bodies/build.ts';
 import { bogAura, dragonAura, drawMorph, houndAura, krakenAura, lichAura, nagaAura, salamanderAura, shadowAura, spiderAura, transformShadow } from '../lib/bodies/auras.ts';
@@ -69,4 +70,4 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { DLC, DLP, SL, SND, adv, blaze, buf, clock, fight, gear, gfx, here, hudInfo, keys, lantern, placeMem, player, saved, stealth, ui, vfx } from '../lib/state.ts';
+import { DLC, DLP, SL, SND, adv, blaze, buf, cellData, clock, fight, gear, gfx, here, hudInfo, iceT, keys, lantern, placeMem, player, saved, stealth, ui, vfx } from '../lib/state.ts';
