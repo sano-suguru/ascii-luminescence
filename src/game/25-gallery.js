@@ -56,10 +56,9 @@ function openBestiary(){
 function showBeast(i){
   const g=ui.gallery; here.monsters=[]; g.m=null; g.fix=null; g.view=null; g.drag=null; g.aimY=undefined; g.rNow=undefined; if(!g.list.length){ renderGallery(); return; }
   g.idx=(i+g.list.length)%g.list.length; const e=g.list[g.idx];
-  // the creature has a visual random of its own, from its key (withVisualRand: its shape and first values here, its sway and aura when drawn), so draws elsewhere
-  // do not change how it looks, and a kind always shows the same specimen
-  MTYPES.__gal=e.ty; const rnd=keyedRand('gallery '+e.key), m=withVisualRand(rnd,()=>makeMonster({key:'__gal',cx:g.room.cx,cz:g.room.cz,g:-1,lead:true})); m.rnd=rnd;
-  g.rnd=keyedRand('gallery room '+e.key); withVisualRand(g.rnd,initDust);
+  // while a creature is on show, the visual random (mr) reads a sequence of its own, from its key: here (its shape and first values, and the falling dust made anew),
+  // and in each step of the game (stepTick) and in __test.galleryDraw. So draws elsewhere (before it was shown, or outside the game's steps) do not change the picture
+  MTYPES.__gal=e.ty; g.rnd=keyedRand('gallery '+e.key); const m=withVisualRand(g.rnd,()=>{ initDust(); return makeMonster({key:'__gal',cx:g.room.cx,cz:g.room.cz,g:-1,lead:true}); });
   m.x=g.room.x; m.z=g.room.z; m.sleep=false; m.hidden=false; m.wait=1e9; m.galShow=true; m.heartOn=true; m.rise=1; m.surf=1; m.yaw=0; if(e.ty.form==='eel')m.y=0;
   g.water=e.ty.form==='kraken'||e.ty.form==='deepkraken'||e.ty.form==='eel'||e.ty.form==='fish'||e.ty.habitat==='deep'; if(g.water&&e.ty.form==='kraken')m.y=-0.25*(e.ty.scale||1); if(e.ty.form==='deepkraken')m.y=0; if(e.ty.habitat==='bog')m.y=0;
   here.monsters.push(m); g.m=m; g.t=0; renderGallery();

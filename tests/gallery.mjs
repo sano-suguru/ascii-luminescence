@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 図鑑のテスト：全部の生き物を、立つ・歩く・眠るの姿で出して、例外・描いた文字の数・NaN を確かめる。寄る・引く・見下ろす角度、図鑑を手で動かす
 // （ホイールで寄る・引く、ドラッグで回す・見下ろす、離すとしばらく止まってまた回る、R と ← → で戻る、ドラッグが外れる、背の高い生き物に寄ると狙う点が上がる）。
-// 最後に Esc でタイトルへ戻る。図鑑の生き物が、ほかの所で見た目の乱数を余分に引いても変わらないか（別の2つのページで比べる）。ページのエラーを確かめる。
+// 最後に Esc でタイトルへ戻る。図鑑の写真が、ほかの所で見た目の乱数を余分に引いても変わらないか（別の2つのページで比べる）。ページのエラーを確かめる。
 //   node tests/gallery.mjs          テスト版（.build/test/。既定）
 //   node tests/gallery.mjs --prod   公開用の版（dist/）
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -302,7 +302,8 @@ await withBrowser(
     if (await pg.evaluate(() => document.getElementById('gal').classList.contains('show')))
       errs.push('図鑑で Esc を押しても、タイトルへ戻らない');
 
-    // 図鑑の生き物は、見た目の乱数から切り離されているか：その種類から作った自分の乱数で作り、描く（withVisualRand）。
+    // 図鑑の写真は、ほかの所で引く見た目の乱数から切り離されているか：生き物を出している間、見た目の乱数は、その種類から作った並びを読む
+    //    （出す時に作る形・初めの値・降る粒子と、ゲームの一歩ごとの揺れ・まわりの粒子・ランプの揺らぎなど。withVisualRand）。
     //    2つのページで、画面写真の比較（tests/visual.mjs）と同じ4体を同じように出す。片方は、図鑑を開く前に Math.random を1000回、
     //    出した後も1フレームごとに1回、余分に引く（ほかの所で見た目の乱数を引く回数が変わった時の代わり）。描いた物の指紋（形・初めの値・揺れ・
     //    まわりの粒子）と、画面写真が同じか
@@ -313,7 +314,7 @@ await withBrowser(
       ['燃える鱗の竜（見本）', 0.6, 'stand', 1.6],
     ];
     const specimens = async (burn) => {
-      const p2 = await newPage(browser, errs);
+      const p2 = await newPage(browser, errs, { still: true }); // タイトルが消える CSS のアニメーションは実時間で進むので、止める
       await openTest(p2, base);
       const out = [];
       for (const [i, [name, yaw, pose, zoom]] of SPECIMENS.entries()) {

@@ -543,8 +543,6 @@ export interface Monster {
   maxHp?: number;
   /** 形（src/lib/bodies/build.ts の buildForm） */
   form?: Body;
-  /** その生き物だけの見た目の乱数（図鑑の生き物だけが持つ。描く間、mr() がこれを読む。src/lib/bodies/draw.ts の drawMonster） */
-  rnd?: () => number;
   /** 姿を変える途中（前の姿の点 from、始めたゲームの時刻 t0、かかる秒 dur。王の影の変身） */
   morph?: { from: Glyph[]; t0: number; dur: number } | null;
   /** 王の影：二つ目の姿になったか、攻撃が効かない残りの秒 */
