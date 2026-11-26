@@ -1,4 +1,4 @@
-// 音を鳴らす（Web Audio。もとは src/game/15-sound-fire.js）。状態の入れ物 SND（音）・player（聞く位置と向き）・here・blaze（まわりの様子）に頼る物。
+// 音を鳴らす（Web Audio。もとは src/game/15-sound-fire.js。術を放つ音 castSound は 22-world-hints.js）。状態の入れ物 SND（音）・player（聞く位置と向き）・here・blaze（まわりの様子）に頼る物。
 // 音の表と小さな道具（SND_LV・sEnv など）は src/lib/sound.ts。
 import { must, nth } from './array.ts';
 import { sndRand } from './random.ts';
@@ -454,4 +454,23 @@ export function sAlarm(x: number | undefined, z: number | undefined): void {
     os.start(t + k * 0.22);
     os.stop(t + k * 0.22 + 0.21);
   }
+}
+/** 術を放つ音（性質ごと：火はこもった音とぱちぱち、氷は高い澄んだ音、雷は鋭い音と低いうなり、毒は泡、ほかは風切り。もとは src/game/22-world-hints.js） */
+export function castSound(sp: { elem: string | null }, x?: number, z?: number): void {
+  if (!sndReady()) return;
+  const t = must(SND.ctx).currentTime,
+    o = sOut(x, z, 0.32),
+    el = sp.elem;
+  if (el === 'fire') {
+    sEnv(sNoise(t, 0.5, 'lowpass', 1400, 0.7, o, 300), t, 0.01, 0.45);
+    sCrackleBurst(player.x, player.z);
+  } else if (el === 'ice') {
+    sEnv(sTone(t, 'sine', 1760, 2640, 0.35, o), t, 0.005, 0.3);
+    sEnv(sTone(t, 'sine', 2349, 3520, 0.25, o), t, 0.01, 0.25, 0.5);
+  } else if (el === 'thunder') {
+    sEnv(sNoise(t, 0.3, 'highpass', 3000, 0.7, o), t, 0.002, 0.28);
+    sEnv(sTone(t, 'square', 90, 40, 0.25, o), t, 0.003, 0.22, 0.4);
+  } else if (el === 'poison') {
+    for (let k = 0; k < 4; k++) setTimeout(() => sBubble(player.x, player.z, 0.4, k % 2 === 0), k * 60);
+  } else sWhoosh();
 }

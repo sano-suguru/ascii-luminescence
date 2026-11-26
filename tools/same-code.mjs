@@ -7,6 +7,7 @@
 //
 // 規則（どれも「そう書き換えても動きが変わらない」所だけ。止まる時の扱いは変わりうる）：
 //   nth(a, i) → a[i]、lookup(o, k) → o[k]：範囲の外や無い欄では止まる（元は undefined）
+//   o['k'] → o.k（k が名前にできる文字の時。両方に当てる）
 //   must(x, '…') → x：x が null・undefined の時は止まる（元はその先で止まるか、黙って進む）
 //   level() → here.D：そのファイルの level が () => must(here.D, …) の時だけ
 //   x ?? NaN → x：算術（- * / % **、もう片方が数と分かる +）・大小の比べ方・単項の - +・Math.* の引数の中だけ（undefined も NaN も同じ結果になる所）。
@@ -118,6 +119,15 @@ function norm(n, ctx) {
     // 使わない catch の引数は書かなくても同じ（catch (e) {…} と catch {…}）
     if (x.type === 'CatchClause' && x.param?.type === 'Identifier' && !uses(x.body, x.param.name).n)
       return { ...x, param: null, body: norm(x.body, ctx) };
+    // 名前にできる文字の鍵の読み書き（o['lord']・lookup(o, 'lord')）は、欄の読み書き（o.lord）と同じ
+    if (
+      x.type === 'MemberExpression' &&
+      x.computed &&
+      x.property.type === 'Literal' &&
+      typeof x.property.value === 'string' &&
+      /^[A-Za-z_$][\w$]*$/.test(x.property.value)
+    )
+      return { ...x, object: norm(x.object, ctx), property: ident(x.property.value), computed: false };
     if (x.type !== 'AssignmentExpression' || !OPS[x.operator] || !isPath(x.left)) return undefined;
     ctx.hit('a op= b');
     const left = norm(x.left, ctx);

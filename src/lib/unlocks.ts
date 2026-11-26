@@ -15,3 +15,5 @@ export const lockedOf = (kind: Unlock['kind'], t: string): boolean => {
 export const weaponPool = (): string[] => RUNE_TYPES.atk.filter((t) => !lockedOf('weapon', t));
 /** 今の探索で、試練 k を選んでいるか */
 export const trialOn = (k: string): boolean => adv.runTrials.includes(k);
+/** まだ使える伝承（たまった伝承から、解放に使った分を引く。もとは src/game/17-meta.js） */
+export const loreLeft = (): number => Math.max(0, (saved.META.lore || 0) - (saved.META.spent || 0));
