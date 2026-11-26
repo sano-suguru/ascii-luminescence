@@ -276,5 +276,7 @@ describe('今どこかで使っているか（referenced）', () => {
       false,
       true,
     ]);
+    // 名前の中の記号（$）は、正規表現の記号としてでなく、その文字として探す
+    expect([referenced('a$b();', 'a$b'), referenced('ab();', 'a$b')]).toEqual([true, false]);
   });
 });

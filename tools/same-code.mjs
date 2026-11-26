@@ -623,15 +623,17 @@ export function compareSources(old, files, only = null) {
 export function wasUnused(oldGame, old, name) {
   const d = old.get(name);
   if (!d) return false;
-  const re = new RegExp(`(?<![\\w$.])${name.replace(/\$/g, '\\$')}(?![\\w$])`, 'g'),
+  const re = new RegExp(`(?<![\\w$.])${escapeRe(name)}(?![\\w$])`, 'g'),
     count = (t) => (t.match(re) ?? []).length;
   const all = [...oldGame].filter(([f]) => /^\d{2}-[a-z0-9-]+\.js$/.test(f)).reduce((a, [, t]) => a + count(t), 0),
     own = count(d.text.slice(firstPos(d.node) - d.base, lastPos(d.node) - d.base));
   return all - own === 0;
 }
+/** 正規表現の中で、文字をそのままの意味にする（記号を全部逃がす） */
+const escapeRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /** 文 text の中で、名前 name を使っているか（欄の名前 a.name の name は数えない。文字で数えるので、コメントや文字列にあれば「使っている」になる） */
 export function referenced(text, name) {
-  return new RegExp(`(?<![\\w$.])${name.replace(/\$/g, '\\$')}(?![\\w$])`).test(text);
+  return new RegExp(`(?<![\\w$.])${escapeRe(name)}(?![\\w$])`).test(text);
 }
 /** src/lib の .ts（git に入っている物） */
 const libFiles = () =>
@@ -693,7 +695,7 @@ export function detectStates(old, gone, text, fields) {
   for (const x of gone) {
     if (old.get(x)?.node.type !== 'VariableDeclaration') continue;
     let cand = [...fields].filter(([, keys]) => keys.has(x)).map(([b]) => b);
-    if (cand.length > 1) cand = cand.filter((b) => new RegExp(`(?<![\\w$.])${b}\\.${x.replace(/\$/g, '\\$')}(?![\\w$])`).test(text));
+    if (cand.length > 1) cand = cand.filter((b) => new RegExp(`(?<![\\w$.])${escapeRe(b)}\\.${escapeRe(x)}(?![\\w$])`).test(text));
     if (cand.length === 1) (by.get(cand[0]) ?? by.set(cand[0], []).get(cand[0])).push(x);
   }
   return [...by].map(([box, names]) => ({ box, names }));
