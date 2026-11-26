@@ -73,13 +73,33 @@ const FN_FIELDS = [
   ['hurtPlayer', 'mc'],
 ];
 
-const hashArr = (a, from = 0, to = a.length) => {
-  if (a instanceof Float32Array || a instanceof Float64Array) a = a.slice(from, Math.max(from, to)).map((x) => (Number.isNaN(x) ? NaN : x));
-  else a = a.subarray(from, Math.max(from, to));
+const hashArr0 = (a, from = 0, to = a.length) => {
+  // 配列は写さずに読む（NaN がある時だけ、写して1つの並びにそろえる。呼ぶ数が多く、写すとテストの時間の多くを占めるため）
+  a = a.subarray(from, Math.max(from, to));
+  if (a instanceof Float32Array || a instanceof Float64Array)
+    for (let i = 0; i < a.length; i++)
+      if (Number.isNaN(a[i])) {
+        a = a.map((x) => (Number.isNaN(x) ? NaN : x));
+        break;
+      }
   const b = new Uint8Array(a.buffer, a.byteOffset, a.length * a.BYTES_PER_ELEMENT);
   let h = 0x811c9dc5;
-  for (let i = 0; i < b.length; i++) h = Math.imul(h ^ (b[i] ?? 0), 0x01000193);
+  for (let i = 0; i < b.length; i++) h = Math.imul(h ^ b[i], 0x01000193);
   return (h >>> 0).toString(16).padStart(8, '0');
+};
+/**
+ * hashArr0 を、前と同じ中身なら数え直さない（同じ配列・同じ範囲で、前に数えた時の中身の写しとバイトごとに同じなら、前の指紋を返す。
+ * 火と地面のマスなどの大きな配列は、呼ぶたびに数えるが、たいてい変わっていないため。比べるのは Buffer の equals で、指紋を数えるより速い）
+ */
+const lastHash = new WeakMap();
+const hashArr = (a, from = 0, to = a.length) => {
+  const v = a.subarray(from, Math.max(from, to)),
+    b = Buffer.from(v.buffer, v.byteOffset, v.length * v.BYTES_PER_ELEMENT),
+    m = lastHash.get(a);
+  if (m && m.from === from && m.to === to && m.copy.equals(b)) return m.h;
+  const h = hashArr0(a, from, to);
+  lastHash.set(a, { from, to, copy: Buffer.from(b), h });
+  return h;
 };
 const fnv = (s) => {
   let h = 0x811c9dc5;
@@ -114,7 +134,7 @@ const restore = (obj, copy) => {
   Object.assign(obj, copy);
 };
 /** 階の文字の部品（区切りごとの文字の数・置き方・属性）と、壁の向こうを隠す板の指紋 */
-const worldPrint = () =>
+const worldPrint0 = () =>
   fnv(
     gfx.chunks
       .map((c) => {
@@ -135,6 +155,21 @@ const worldPrint = () =>
       '#' +
       gfx.scene.children.length,
   );
+/**
+ * worldPrint0 を、部品が作り直された時だけ数え直す（buildWorld は区切りの配列 gfx.chunks と隠す板 gfx.occMesh を作り直し、ほかの所は部品を書き換えない。
+ * 呼ぶたびに全部の配列の指紋を取ると、テストの時間の半分以上になるため）
+ */
+let lastWorld = { chunks: null, occ: null, n: -1, kids: -1, print: '' };
+const worldPrint = () => {
+  if (
+    lastWorld.chunks !== gfx.chunks ||
+    lastWorld.occ !== gfx.occMesh ||
+    lastWorld.n !== gfx.chunks.length ||
+    lastWorld.kids !== gfx.scene.children.length
+  )
+    lastWorld = { chunks: gfx.chunks, occ: gfx.occMesh, n: gfx.chunks.length, kids: gfx.scene.children.length, print: worldPrint0() };
+  return lastWorld.print;
+};
 
 /** seeds：場合の数。page：fakeDom() の偽の画面 */
 export async function levelCases(F, seeds, page) {

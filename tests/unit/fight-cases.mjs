@@ -137,13 +137,33 @@ const BLESS_KEYS = ['charge', 'counter', 'swapedge', 'reckless', 'momentum', 'ki
 const SUBS = ['gsweep', 'gwave', 'bpower', 'rshot', 'mshot', 'mmoon'];
 
 /** 配列の中身の指紋（NaN は1つの並びにそろえる。monsters-cases.mjs と同じ） */
-const hashArr = (a, from = 0, to = a.length) => {
-  if (a instanceof Float32Array || a instanceof Float64Array) a = a.slice(from, Math.max(from, to)).map((x) => (Number.isNaN(x) ? NaN : x));
-  else a = a.subarray(from, Math.max(from, to));
+const hashArr0 = (a, from = 0, to = a.length) => {
+  // 配列は写さずに読む（NaN がある時だけ、写して1つの並びにそろえる。呼ぶ数が多く、写すとテストの時間の多くを占めるため）
+  a = a.subarray(from, Math.max(from, to));
+  if (a instanceof Float32Array || a instanceof Float64Array)
+    for (let i = 0; i < a.length; i++)
+      if (Number.isNaN(a[i])) {
+        a = a.map((x) => (Number.isNaN(x) ? NaN : x));
+        break;
+      }
   const b = new Uint8Array(a.buffer, a.byteOffset, a.length * a.BYTES_PER_ELEMENT);
   let h = 0x811c9dc5;
-  for (let i = 0; i < b.length; i++) h = Math.imul(h ^ (b[i] ?? 0), 0x01000193);
+  for (let i = 0; i < b.length; i++) h = Math.imul(h ^ b[i], 0x01000193);
   return (h >>> 0).toString(16).padStart(8, '0');
+};
+/**
+ * hashArr0 を、前と同じ中身なら数え直さない（同じ配列・同じ範囲で、前に数えた時の中身の写しとバイトごとに同じなら、前の指紋を返す。
+ * 火と地面のマスなどの大きな配列は、呼ぶたびに数えるが、たいてい変わっていないため。比べるのは Buffer の equals で、指紋を数えるより速い）
+ */
+const lastHash = new WeakMap();
+const hashArr = (a, from = 0, to = a.length) => {
+  const v = a.subarray(from, Math.max(from, to)),
+    b = Buffer.from(v.buffer, v.byteOffset, v.length * v.BYTES_PER_ELEMENT),
+    m = lastHash.get(a);
+  if (m && m.from === from && m.to === to && m.copy.equals(b)) return m.h;
+  const h = hashArr0(a, from, to);
+  lastHash.set(a, { from, to, copy: Buffer.from(b), h });
+  return h;
 };
 const fnv = (s) => {
   let h = 0x811c9dc5;
