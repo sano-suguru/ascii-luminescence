@@ -71,8 +71,10 @@ export async function initDiag(): Promise<void> {
     events: [],
     errors: [],
   };
+  // busy：書き込みの途中。again：その途中に、また書くよう頼まれた（終わったらもう一度書く。ページを離れる時の分が抜けないように）
   let dirty = true,
-    busy = false;
+    busy = false,
+    again = false;
   const push = (list: Record<string, unknown>[], max: number, item: Record<string, unknown>): void => {
     list.push({ t: since(), ...item });
     if (list.length > max) list.splice(0, list.length - max);
@@ -80,7 +82,11 @@ export async function initDiag(): Promise<void> {
   };
   const event = (k: string, v?: unknown): void => push(rec.events, KEEP.events, v === undefined ? { k } : { k, v });
   const flush = (): void => {
-    if (!dirty || busy) return;
+    if (busy) {
+      again = true;
+      return;
+    }
+    if (!dirty) return;
     dirty = false;
     busy = true;
     doc
@@ -92,6 +98,10 @@ export async function initDiag(): Promise<void> {
       })
       .finally(() => {
         busy = false;
+        if (again) {
+          again = false;
+          flush();
+        }
       });
   };
 

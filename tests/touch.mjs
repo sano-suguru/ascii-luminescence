@@ -6,7 +6,8 @@
 //   4. タッチのボタン [装備] [メニュー] で、装備の画面とメニューを開け閉めできる。[全画面] は、全画面にできる時だけ出る
 //   5. マウスを動かすと、指の遊び方が終わり、タッチのボタンが消える
 //   6. 探索中のタッチのボタンが、左上の状態の表示とも、右上のミニマップとも重ならない（狭い横向きの端末でも）
-//   7. 診断の記録（src/lib/diag.ts）：偽の window.claude（Artifact の中の真似）で、持ち主なら端末・できごと・速さを db に書き、持ち主でなければ書かない
+//   7. 診断の記録（src/lib/diag.ts）：偽の window.claude（Artifact の中の真似）で、持ち主なら端末・できごと・速さを db に書き、持ち主でなければ書かない。
+//      書き込みの途中に頼まれた分（ページが隠れた時）も、途中の分が終わってから書く
 import { FIT_MIN } from '../src/lib/layout.ts';
 import { withBrowser, newPage, openTest, advance } from './lib.mjs';
 
@@ -136,19 +137,26 @@ await withBrowser(async ({ browser, base }) => {
   await pg.context().close();
 
   // ---------------------------------------------------------------- 7. 診断の記録
-  // 偽の window.claude：user は持ち主か（owner）を答え、db は書き込まれた物を window.__sets に貯める
+  // 偽の window.claude：user は持ち主か（owner）を答え、db は書き込まれた物を window.__sets に貯める。
+  // window.__hold が true の間は、書き込みを終わらせない（window.__release() で終わる。書き込みの途中を作るため）
   const fakeClaude = (owner) => {
     window.__sets = [];
+    window.__hold = false;
+    const waits = [];
+    window.__release = () => {
+      window.__hold = false;
+      for (const f of waits.splice(0)) f();
+    };
+    const set = async (p, id, d) => {
+      window.__sets.push({ p, id, d: JSON.parse(JSON.stringify(d)) });
+      if (window.__hold) await new Promise((ok) => waits.push(ok));
+    };
     window.claude = {
       use: async (n) =>
         n === 'user'
           ? { isOwner: async () => owner }
           : n === 'db'
-            ? {
-                collection: (p) => ({
-                  doc: (id) => ({ set: async (d) => void window.__sets.push({ p, id, d: JSON.parse(JSON.stringify(d)) }) }),
-                }),
-              }
+            ? { collection: (p) => ({ doc: (id) => ({ set: (d) => set(p, id, d) }) }) }
             : null,
     };
   };
@@ -183,6 +191,25 @@ await withBrowser(async ({ browser, base }) => {
         if (!d.events.some((e) => e.k === 'press' && String(e.v).startsWith('packB'))) errs.push('診断の記録：[装備] を押したことが無い');
         if (!(d.fps.length >= 1 && d.fps[0].avg > 0)) errs.push(`診断の記録：速さが無い（${JSON.stringify(d.fps)}）`);
         console.log(`診断の記録：${sets.length} 回書いた。できごと ${d.events.length}、速さ ${JSON.stringify(d.fps[0])}`);
+        // 書き込みの途中に、ページが隠れた（書くよう頼まれた）時：途中の分が終わってから、隠れたことも書く
+        await p.evaluate(() => {
+          window.__hold = true;
+          Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' }); // 隠れた（テストのページは実際には隠れない）
+          document.dispatchEvent(new Event('visibilitychange')); // ここで書き始め、__hold で止まる
+        });
+        const n1 = await p.evaluate(() => window.__sets.length);
+        await p.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); // 途中に頼む（書かずに待つ）
+        const n2 = await p.evaluate(() => window.__sets.length);
+        await p.evaluate(async () => {
+          window.__release();
+          for (let i = 0; i < 3; i++) await Promise.resolve();
+          await new Promise((ok) => queueMicrotask(ok));
+        });
+        await advance(p, 0.1);
+        const after = await p.evaluate(() => window.__sets);
+        const visible = after.at(-1)?.d.events.filter((e) => e.k === 'visible').length ?? 0;
+        if (!(n2 === n1 && after.length === n1 + 1 && visible >= 2))
+          errs.push(`診断の記録：書き込みの途中に頼んだ分が、後で書かれない（${n1} → ${n2} → ${after.length}、見える／隠れた ${visible}）`);
       }
     }
     await p.context().close();
