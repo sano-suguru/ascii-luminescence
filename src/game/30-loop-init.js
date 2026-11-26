@@ -92,6 +92,8 @@ if(TEST)window.__test={
     return {time:f(clock.time),seed:adv.runSeed,place:placeLabel(),depth:here.depth,started:ui.started,dead:adv.dead,hp:f(player.hp),pos:[f(player.x),f(player.z)],yaw:f(player.yaw),lvl:adv.lvl.n,
       monsters:here.monsters.map(m=>[m.key,f(m.x),f(m.z),f(m.hp),m.sleep?1:0]),projs:fight.projs.length,
       trans:here.trans?here.trans.phase:null,maxDepth:adv.runStats&&adv.runStats.maxDepth!==undefined?adv.runStats.maxDepth:null,cast:gear.castSt?{h:gear.castSt.h,t:f(gear.castSt.t),need:f(gear.castSt.need),full:gear.castSt.full}:null,recover:f(player.recover),paused:isPaused()}; },
+  // the room events of this level (type, crater cell, state, timer, step, done) and how many cells lava has flowed into (an eruption or a lava flow)
+  events(){ return {list:here.events.map(e=>({type:e.type,src:e.src===undefined?null:e.src,state:e.state===undefined?null:e.state,t:e.t===undefined?null:+e.t.toFixed(3),k:e.k===undefined?null:e.k,done:!!e.done})),lava:blaze.cellFlag.reduce((n,v)=>n+(v===70?1:0),0)}; },
   // hold a weapon (a RUNE_DEF key such as 'blade', 'bolt', 'orb'), and press / release a hand's button ('L' or 'R')
   open(t){ if(!['slotL','slotR','body'].includes(t))return 'no such slot: '+t; applyOpen(t); return t; },
   equip(h,type){ if(!RUNE_DEF[type]||RUNE_DEF[type].cat!=='atk')return 'no such weapon: '+type; equipWeapon(h,makeRune(type)); renderHotbar(); return type; },

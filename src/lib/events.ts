@@ -302,7 +302,8 @@ export function updateEvents(dt: number, t: number): void {
         }
       }
     } else if (ev.type === 'erupt') {
-      ev.t -= dt;
+      // 待つ間（0：次に噴き上がるまで、2：引き始めるまで）だけ時計を減らす。流れ出す（1）・引く（3）間は、下で時計を足して1マスずつ進める
+      if (ev.state === 0 || ev.state === 2) ev.t -= dt;
       const f = here.fixtures.find((f) => f.type === 'crater' && Math.floor(f.z / CELL) * MW + Math.floor(f.x / CELL) === ev.src);
       if (ev.state === 0 && ev.t <= 0) {
         ev.state = 1;

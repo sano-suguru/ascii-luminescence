@@ -323,6 +323,7 @@ export async function stepCases(F, seeds, page) {
         if (m.hp <= 0) m.hp = 10;
       };
       const calls = [];
+      let eruptSeen = null;
       const state = () =>
         text({
           player: { ...player },
@@ -872,6 +873,8 @@ export async function stepCases(F, seeds, page) {
         here.events.push({ type: 'erupt', src: src2, order: cells1.slice(0, 4), state: 0, t: 0.1, k: 0 });
         if (chance(0.5)) here.fovVis[cells1[1]] = here.fovStamp;
         if (chance(0.5)) saved.LEGEND = null;
+        const erupts = here.events.filter((e) => e.type === 'erupt'),
+          seen = new Map(erupts.map((e) => [e, new Set([e.state])]));
         for (let q = 0; q < 60; q++) {
           if (q === 0) goto(cells0[0]);
           if (q === 20) goto(cells0[3]);
@@ -881,7 +884,16 @@ export async function stepCases(F, seeds, page) {
           if (q === 30) goto(cells0[5]);
           call('updateEvents', pick([0.1, 0.3]), clock.time);
           tick(0.2);
+          for (const e of erupts) seen.get(e).add(e.state);
         }
+        // 噴き上がりを最後まで（流れ出す 1 → 待つ 2 → 引く 3 → 次まで待つ 0）。足もとには流れないので、離れて立つ
+        goto(cells0[5]);
+        for (let q = 0; q < 70 && !erupts.every((e) => seen.get(e).has(3) && e.state === 0); q++) {
+          call('updateEvents', pick([0.2, 0.4]), clock.time);
+          tick(0.2);
+          for (const e of erupts) seen.get(e).add(e.state);
+        }
+        eruptSeen = erupts.map((e) => [...seen.get(e)].sort((a, b) => a - b).join(''));
         call('oracleLegendHints');
         adv.HIST = null;
         saved.LEGEND = null;
@@ -922,7 +934,7 @@ export async function stepCases(F, seeds, page) {
         D.gate = null;
         call('updateTraps', 0.2);
       }
-      out.push({ seed: s, place: place.label ?? JSON.stringify(place), calls, timers: { ...timers.st } });
+      out.push({ seed: s, place: place.label ?? JSON.stringify(place), calls, timers: { ...timers.st }, eruptSeen });
     }
   } finally {
     console.error = keepErr;

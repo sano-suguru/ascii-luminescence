@@ -12,6 +12,7 @@
 //   9. 冷気は、マップの端で反対側の端に届かない
 //  10. 消してすぐまた火がついたマスは、燃えているマスの一覧に1回だけ入る
 //  11. 薄い氷に乗っていた秒は、階を移ると0に戻る（前の階の同じ番号のマスの秒が残らない）
+//  12. 火山の異界の火口は、噴き上がると溶岩が流れ出し（状態 1）、しばらく待って（2）引き（3）、また待って（0）噴き上がる
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { withBrowser, newPage, openTest, advance } from './lib.mjs';
 
@@ -325,6 +326,36 @@ async function thinIceChecks(pg, base) {
   if (after !== 0) errs.push(`11：階を移っても、前の階で薄い氷に乗っていた秒が残っている（${after}）`);
 }
 
+// 12：火口の噴き上がり（火山の異界の、3つの火口）
+async function eruptChecks(pg, base) {
+  await openTest(pg, base, 'seed=7&realm=volcano&god=1');
+  await advance(pg, 2);
+  // 火口ごとに、変わった状態の並び（初めの 0 から）。溶岩のマスの数の、いちばん多い時と、その後の少ない時
+  const seq = new Map(),
+    lava = [];
+  for (let t = 0; t < 100; t += 2) {
+    const e = await pg.evaluate(() => __test.events());
+    for (const ev of e.list.filter((x) => x.type === 'erupt')) {
+      const a = seq.get(ev.src) ?? [];
+      if (a.at(-1) !== ev.state) a.push(ev.state);
+      seq.set(ev.src, a);
+    }
+    lava.push(e.lava);
+    await advance(pg, 2);
+  }
+  if (seq.size === 0) {
+    errs.push('12：火口の噴き上がりが無い（テストの前提が崩れた。シードを変える）');
+    return;
+  }
+  // 100 秒あれば、どの火口も 1 回は最後まで進み（0 → 1 → 2 → 3 → 0）、また噴き上がる（20〜40 秒待つ）
+  const full = [...seq].filter(([, a]) => a.join('').startsWith('012301'));
+  if (full.length !== seq.size) errs.push(`12：火口の噴き上がりが、状態 0 → 1 → 2 → 3 → 0 → 1 と進まない（${JSON.stringify([...seq])}）`);
+  const top = Math.max(...lava),
+    back = lava.indexOf(0, lava.indexOf(top));
+  if (!(top > 10) || back < 0 || !lava.slice(back).some((n) => n > 0))
+    errs.push(`12：溶岩のマスが、増えてから 0 に戻り、また増える、にならない（2 秒ごと：${lava.join(',')}）`);
+}
+
 await withBrowser(async ({ browser, base }) => {
   const pg = await newPage(browser, errs);
   await doorChecks(pg, base);
@@ -333,6 +364,7 @@ await withBrowser(async ({ browser, base }) => {
   await brimChecks(pg, base);
   await chillChecks(pg, base);
   await thinIceChecks(pg, base);
+  await eruptChecks(pg, base);
 });
 console.log('page errors:', errs.length ? errs : 'none');
 process.exit(errs.length ? 1 : 0);
