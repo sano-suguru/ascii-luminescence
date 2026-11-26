@@ -3,15 +3,8 @@ let expo=1.1;
 adv.runSeed=(Math.random()*1e9)>>>0;
 // levelSeed は src/lib/levels.ts（src/game/imports.mjs で読む）
 function setFog(){ const k=here.D.prof.fogDark, f=(here.D.stratum.fog?here.D.stratum.fog:here.D.stratum.k==='magma'?[0.016,0.004,0.003]:here.D.stratum.k==='abyss'?[0.007,0.003,0.014]:FOGS[(here.depth-1)%FOGS.length]).map(v=>v*k); fogCol.set(f[0],f[1],f[2]); renderer.setClearColor(new T.Color(f[0],f[1],f[2]),1); fogBase=0.05+Math.min(here.depth-1,6)*0.002; U.uFogDen.value=fogBase; }
-let lastStratum=null;
-function showStratum(st){
-  const el=document.getElementById('stratum'); if(!el)return;
-  const name=[...st.name].join(' ');
-  el.innerHTML=`<span class="r">-  -  -</span>   ${st.special?'特 別 な 階':st.branch?'支 道':st.realm?'異 界':`第 ${st.n} 層`}   <span class="r">-  -  -</span>\n<b>${name}</b>`;
-  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
-  clearTimeout(showStratum.t); showStratum.t=setTimeout(()=>el.classList.remove('show'),5600);
-}
-function settleSlotPick(){ if(!adv.runState||!adv.runState.slotPend||!here.D)return; const o=(here.D.items||[]).find(x=>x.grp===adv.runState.slotPend&&!x.taken); if(o){ applyOpen(o.target); msg(`<span class="lab">選ばれなかった空の枠は、${o.label}を開けた。</span>`); } adv.runState.slotPend=null; }
+// showStratum は src/lib/levels.ts（src/game/imports.mjs で読む）
+// settleSlotPick は src/lib/levels.ts（src/game/imports.mjs で読む）
 function newLevel(seedOverride){
   settleSlotPick();
   if(advance.bounced){ advance.bounced=false; setTimeout(()=>msg('<b style="color:#a98cff">.</b>闇の底に触れた途端、何かに押し返された。まだ、降りることは許されていない。'),1200); }
@@ -33,36 +26,36 @@ function newLevel(seedOverride){
   ui.noticeMsgT={}; stealth.hudKey='';
   here.explored=new Uint8Array(NCELL); here.mem=new Float32Array(NCELL*3); here.fovVis=new Uint32Array(NCELL); here.fovStamp=1;
   { const pm=placeMem.get(placeKey()); if(pm){ here.explored.set(pm.explored); here.mem.set(pm.mem); } }
-  visitedRooms=new Set(); stairsSeen=false; player.rally=0; fight.rallyMotes=[]; if(adv.runStats&&!ui.gallery)adv.runStats.maxDepth=Math.max(adv.runStats.maxDepth||0,here.depth); setTimeout(strataGrowth,50);
+  here.visitedRooms=new Set(); here.stairsSeen=false; player.rally=0; fight.rallyMotes=[]; if(adv.runStats&&!ui.gallery)adv.runStats.maxDepth=Math.max(adv.runStats.maxDepth||0,here.depth); setTimeout(strataGrowth,50);
   if(ui.started&&!ui.gallery&&!adv.dead&&!here.arrive){ const sp=here.inter?SPECIALS[here.inter.key]:null; if(sp&&(sp.k==='town'||sp.k==='oracle')){ player.hp=adv.PLAYER_MAX; setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>静かな場所だ。張りつめていた体が、すっかりほどけた。'),1600); } else if(player.hp<adv.PLAYER_MAX){ player.hp=Math.min(adv.PLAYER_MAX,player.hp+adv.PLAYER_MAX*0.2); setTimeout(()=>msg('<span class="lab">階段を降りると、少し息が整った。</span>'),1600); } }
-  player.x=(here.D.start%MW+0.5)*CELL; player.z=(((here.D.start/MW)|0)+0.5)*CELL; player.vx=player.vz=0; player.yaw=here.D.startYaw; player.pitch=-0.04; lockCell=-1;
+  player.x=(here.D.start%MW+0.5)*CELL; player.z=(((here.D.start/MW)|0)+0.5)*CELL; player.vx=player.vz=0; player.yaw=here.D.startYaw; player.pitch=-0.04; here.lockCell=-1;
   { const tc=here.arrive==='portal'&&here.D.portal?here.D.portal.cell:here.arrive==='bstairs'&&here.D.bstairs?here.D.bstairs.cell:here.arrive==='stairs'?here.D.stairs:-1;
     if(tc>=0){ const nb=[1,-1,MW,-MW,MW+1,MW-1,-MW+1,-MW-1].map(o=>tc+o).find(j=>j>=0&&j<NCELL&&here.D.tile[j]===TF&&!here.D.liquid[j]&&!here.D.solid.has(j))??tc;
-      player.x=(nb%MW+0.5)*CELL; player.z=(((nb/MW)|0)+0.5)*CELL; player.yaw=Math.atan2(-((tc%MW)-(nb%MW)),-(((tc/MW)|0)-((nb/MW)|0)))+Math.PI; lockCell=tc; } here.arrive=null; }
+      player.x=(nb%MW+0.5)*CELL; player.z=(((nb/MW)|0)+0.5)*CELL; player.yaw=Math.atan2(-((tc%MW)-(nb%MW)),-(((tc/MW)|0)-((nb/MW)|0)))+Math.PI; here.lockCell=tc; } here.arrive=null; }
   stealth.sneak=false; lantern.r=8.2; lantern.k=1;
   here.riverCells=[]; for(let i=0;i<NCELL;i++)if(here.D.flow[i]&&(here.D.liquid[i]===LQ_WATER||here.D.liquid[i]===LQ_DEEP))here.riverCells.push(i);
-  blaze.trampled=[]; iceT.clear(); tallMsg=false; here.brimMsg=false; player.lastCell=-1; player.netT=0;
+  blaze.trampled=[]; iceT.clear(); ui.tallMsg=false; here.brimMsg=false; player.lastCell=-1; player.netT=0;
   blaze.scent=new Float32Array(NCELL); here.webMsg=false; here.webBurnMsg=false; here.repairMsg=false;
   buf.pN=0; blaze.gasAny=false; initFire(); initEvents(); blaze.spark=null; fight.projs=[]; showHint(''); edge.t=0; setFog(); initDust();
   renderStatus(); if(ui.helpOn)renderHelp();
   computeFOV(); checkEvents(true);
   if(player.fall){ player.fall=false; setTimeout(()=>{ hurtPlayer(roll(2,4),'落下の衝撃'); },300); }
-  if(here.D.stratum!==lastStratum){ if(lastStratum!==null){ showStratum(here.D.stratum); if(here.D.stratum.msg)msg(`<b style="color:#c9b8ff">=</b>${here.D.stratum.msg}`); } lastStratum=here.D.stratum; }
+  if(here.D.stratum!==here.lastStratum){ if(here.lastStratum!==null){ showStratum(here.D.stratum); if(here.D.stratum.msg)msg(`<b style="color:#c9b8ff">=</b>${here.D.stratum.msg}`); } here.lastStratum=here.D.stratum; }
 }
 function checkEvents(first){
   const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL);
   const ri=here.D.roomOf[pc];
   if(first)msg(here.depth===1?'<b style="color:#c9b8ff">@</b>石の迷宮に降り立った。闇の奥で、何かが息づいている。':`<b style="color:#ffcf7a">&gt;</b>深度 ${here.depth}。光はより鮮やかに、闇はより深くなった。`);
-  if(ri>=0&&!visitedRooms.has(ri)){ visitedRooms.add(ri); const th=here.D.rooms[ri].theme; msg(`<b style="color:${css(th.col)}">${here.D.rooms[ri].cave?'~':'*'}</b>${th.msg}`); const km=here.D.rooms[ri].kindMsg; if(km)msg(`<b style="color:${css(th.col)}">=</b>${km}`); const mc=here.D.rooms[ri].machine; if(mc){ const mi=MACHINE_INFO[mc]; msg(`<b style="color:${css(mi.col)}">${mi.ch}</b>${mi.msg}`); } }
+  if(ri>=0&&!here.visitedRooms.has(ri)){ here.visitedRooms.add(ri); const th=here.D.rooms[ri].theme; msg(`<b style="color:${css(th.col)}">${here.D.rooms[ri].cave?'~':'*'}</b>${th.msg}`); const km=here.D.rooms[ri].kindMsg; if(km)msg(`<b style="color:${css(th.col)}">=</b>${km}`); const mc=here.D.rooms[ri].machine; if(mc){ const mi=MACHINE_INFO[mc]; msg(`<b style="color:${css(mi.col)}">${mi.ch}</b>${mi.msg}`); } }
   if(!here.D.engrSeen&&here.D.engr.size){ for(const k of here.D.engr.keys()){ const i=k>>2; if(here.fovVis[i]===here.fovStamp&&Math.hypot((i%MW+0.5)*CELL-player.x,(((i/MW)|0)+0.5)*CELL-player.z)<7){ here.D.engrSeen=true; msg('<b style="color:#ffdca0">#</b>壁に彫刻が刻まれている。見つめれば、そこに描かれた出来事が読み取れる。'); break; } } }
-  if(!stairsSeen&&here.fovVis[here.D.stairs]===here.fovStamp){ stairsSeen=true; msg('<b style="color:#ffcf7a">&gt;</b>金色に輝く下り階段を見つけた。踏み込めば、さらに深い階層へ。'); }
-  if(lockCell>=0){ const lx=(lockCell%MW+0.5)*CELL, lz=(((lockCell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-lx,player.z-lz)>1.6)lockCell=-1; }
-  if(ui.started&&!here.trans&&here.D.upstairs>=0&&lockCell!==here.D.upstairs){ const ux=(here.D.upstairs%MW+0.5)*CELL, uz=(((here.D.upstairs/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-ux,player.z-uz)<0.95){ here.trans={phase:'out',t:0,regen:false,go:'up'}; msg('<b style="color:#c9b8ff">&lt;</b>上り階段を上り、来た道を引き返す……'); } }
-  if(ui.started&&!here.trans&&here.D.bstairs&&lockCell!==here.D.bstairs.cell){ const bx=(here.D.bstairs.cell%MW+0.5)*CELL, bz=(((here.D.bstairs.cell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-bx,player.z-bz)<0.95){ here.trans={phase:'out',t:0,regen:false,go:'branch'}; msg(`<b style="color:${css(BRANCHES[here.D.bstairs.key].col)}">&gt;</b>本道を外れ、${BRANCHES[here.D.bstairs.key].name}へ続く脇道を下りていく……`); } }
-  if(ui.started&&!here.trans&&here.D.portal&&lockCell!==here.D.portal.cell){ const px2=(here.D.portal.cell%MW+0.5)*CELL, pz2=(((here.D.portal.cell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-px2,player.z-pz2)<1.0){ here.trans={phase:'out',t:0,regen:false,go:'realm'}; msg(`<b style="color:${css(REALMS[here.D.portal.key].col)}">0</b>揺らめく門をくぐった……`); } }
+  if(!here.stairsSeen&&here.fovVis[here.D.stairs]===here.fovStamp){ here.stairsSeen=true; msg('<b style="color:#ffcf7a">&gt;</b>金色に輝く下り階段を見つけた。踏み込めば、さらに深い階層へ。'); }
+  if(here.lockCell>=0){ const lx=(here.lockCell%MW+0.5)*CELL, lz=(((here.lockCell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-lx,player.z-lz)>1.6)here.lockCell=-1; }
+  if(ui.started&&!here.trans&&here.D.upstairs>=0&&here.lockCell!==here.D.upstairs){ const ux=(here.D.upstairs%MW+0.5)*CELL, uz=(((here.D.upstairs/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-ux,player.z-uz)<0.95){ here.trans={phase:'out',t:0,regen:false,go:'up'}; msg('<b style="color:#c9b8ff">&lt;</b>上り階段を上り、来た道を引き返す……'); } }
+  if(ui.started&&!here.trans&&here.D.bstairs&&here.lockCell!==here.D.bstairs.cell){ const bx=(here.D.bstairs.cell%MW+0.5)*CELL, bz=(((here.D.bstairs.cell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-bx,player.z-bz)<0.95){ here.trans={phase:'out',t:0,regen:false,go:'branch'}; msg(`<b style="color:${css(BRANCHES[here.D.bstairs.key].col)}">&gt;</b>本道を外れ、${BRANCHES[here.D.bstairs.key].name}へ続く脇道を下りていく……`); } }
+  if(ui.started&&!here.trans&&here.D.portal&&here.lockCell!==here.D.portal.cell){ const px2=(here.D.portal.cell%MW+0.5)*CELL, pz2=(((here.D.portal.cell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-px2,player.z-pz2)<1.0){ here.trans={phase:'out',t:0,regen:false,go:'realm'}; msg(`<b style="color:${css(REALMS[here.D.portal.key].col)}">0</b>揺らめく門をくぐった……`); } }
   const sx=(here.D.stairs%MW+0.5)*CELL, sz=(((here.D.stairs/MW)|0)+0.5)*CELL;
   if(ui.started&&!here.trans&&here.D.pit&&here.D.pit[pc]){ here.trans={phase:'out',t:0,regen:false}; player.fall=true; msg('<b style="color:#ffa060">:</b>崩れた穴へ身を投じ、下の階層へと落ちていく……'); }
-  if(ui.started&&!here.trans&&lockCell!==here.D.stairs&&Math.hypot(player.x-sx,player.z-sz)<0.95&&!isFinal()){
+  if(ui.started&&!here.trans&&here.lockCell!==here.D.stairs&&Math.hypot(player.x-sx,player.z-sz)<0.95&&!isFinal()){
     if(stairsGuarded()){ if(clock.time-(updatePlayer.sealT||-99)>6){ updatePlayer.sealT=clock.time; msg('<b style="color:#ff8a8a">=</b>階段は、見えない封に閉ざされている。控えの間に潜むものを退ければ、解けるだろう。'); } }
     else if(descentSealed()){ if(clock.time-(updatePlayer.sealT||-99)>9){ updatePlayer.sealT=clock.time; msg('<b style="color:#a98cff">.</b>階段の先は、底の見えない闇に塞がれている。三つの窪みが、何かを待つように淡く光っている。'); } }
     else { here.trans={phase:'out',t:0,regen:false}; msg(legendAll()&&here.depth===FINAL_DEPTH-1?'<b style="color:#ffe9b0">*</b>三つの光が闇を押し分けた。最後の階段を、底へと降りていく……':'<b style="color:#ffcf7a">&gt;</b>光の螺旋に身を委ね、さらに深くへ降りていく。'); } }
@@ -72,7 +65,6 @@ function checkEvents(first){
 
 // ---------------------------------------------------------------- player
 // 薄い氷に乗っていた秒 iceT は src/lib/state.ts、氷が割れる crackIce・背の高い茂みか tallAt・踏み分ける trample・硫黄が燃え上がる brimFlare は src/lib/ground.ts（src/game/imports.mjs で読む）
-let tallMsg=false;
 function regrow(){ if(!blaze.trampled.length)return; const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL); let ch=false;
   blaze.trampled=blaze.trampled.filter(([i,t0])=>{ if(clock.time-t0>45&&i!==pc&&blaze.cellFlag[i]===20){ blaze.cellFlag[i]=0; ch=true; return false; } return blaze.cellFlag[i]===20; }); if(ch)uploadCells(); }
 let brimT=0; function brimRecover(dt){ brimT+=dt; if(brimT<2)return; brimT=0; let ch=false; for(let i=0;i<NCELL;i++){ if(here.D.surface[i]===SF_BRIM&&(blaze.burnt[i]||blaze.fuel[i]<=0)&&blaze.fire[i]<=0&&mr()<0.08){ /* burnt, or swept by a cleaner (no ash, no fuel) */ blaze.burnt[i]=0; blaze.fuel[i]=0.8; ch=true; } } if(ch)uploadCells(); }
@@ -148,8 +140,7 @@ function chooseLevel(i){ const o=lvlOpts[i]; if(!o)return;
   if(adv.lvl.pending>0){ lvlOpenT=performance.now(); lvlOpts=levelChoices(); renderLevelUp(); return; }
   ui.lvlOpen=false; const el=document.getElementById('altarp'); if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused()); if(!ui.plFailed&&ui.started&&!adv.dead)tryLock(); updateResume(); }
 // a new stratum strengthens the body
-function strataGrowth(){ if(!here.D||here.branch||here.realm||here.inter||!ui.started||ui.gallery)return; const k=here.D.stratum&&here.D.stratum.k; if(!['cavern','ruins','magma','abyss'].includes(k)||adv.lvl.strata.has(k))return; adv.lvl.strata.add(k); adv.PLAYER_MAX+=4; player.hp=Math.min(adv.PLAYER_MAX,player.hp+4); renderStatus();
-  setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>新しい層の空気が、体を強くした。最大体力 +4。'),2200); }
+// strataGrowth は src/lib/levels.ts（src/game/imports.mjs で読む）
 function hurtPlayer(n,cause){
   if(ui.godMode)return; if((player.invulT||0)>clock.time)return; if(BL('reckless'))n*=BL('reckless')>=2?1.35:1.25;
   n*=Math.max(0.4,1-0.15*bodyN('ward'));

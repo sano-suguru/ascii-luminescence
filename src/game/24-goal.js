@@ -8,7 +8,7 @@
 // a lord falls: its legendary thing (if it holds one) or a golden rune
 // lordFell は src/lib/combat.ts（src/game/imports.mjs で読む）
 let slotPickN=0;
-function applyOpen(t){ if(t==='slotR'||t==='slotL'){ const H=gear.hands[t.slice(4)]; H.slotN=Math.min(SLOT_MAX,(H.slotN||2)+1); while(H.slots.length<H.slotN)H.slots.push(null); } else if(t==='body')adv.runState.bodyOpen=Math.min(2,(adv.runState.bodyOpen||0)+1); syncHands(); renderHotbar(); if(ui.invOpen)renderInv(); }
+// applyOpen は src/lib/gear.ts（src/game/imports.mjs で読む）
 function openSlot(cell){ const opts=[];
   for(const h of ['R','L'])if((gear.hands[h].slotN||2)<SLOT_MAX)opts.push({target:'slot'+h,label:`${h==='L'?'左':'右'}手に、ルーンの枠をもう1つ`});
   if((adv.runState.bodyOpen||0)<2)opts.push({target:'body',label:'身の護符の枠'});
@@ -31,15 +31,7 @@ function oracleLegendHints(){ const L=getLegend(); if(!L)return;
   LEGEND_ORDER.forEach((k,j)=>{ if(L.have.has(k))return; const it=L.items[k]; setTimeout(()=>msg(`<b style="color:#bfe4ff">「</b>${LEGEND_KINDS[k].name}は、${BRANCH_HINT[it.branch]}で、主に抱かれている」`),900+j*700); }); }
 
 // ---------------------------------------------------------------- the deepest place: with the three legendary things in hand, the king's shadow rises there
-function setupFinal(){
-  // the bottom: the place with the highest vault on this level, with open floor around it, so the shadow can stand under the vault
-  let c0=here.D.stairs, bc=here.D.ceil[c0]||0; const open=i=>i>=0&&i<NCELL&&here.D.tile[i]===TF&&!here.D.liquid[i]&&!here.D.solid.has(i);
-  for(const rad of [3,2,1]){ for(let i=0;i<NCELL;i++){ if(!open(i)||here.D.ceil[i]<=bc)continue; const x=i%MW, z=(i/MW)|0; let ok=x>rad&&z>rad&&x<MW-rad-1&&z<MH-rad-1;
-      for(let dz=-rad;dz<=rad&&ok;dz++)for(let dx=-rad;dx<=rad;dx++)if(!open(i+dz*MW+dx)){ ok=false; break; } if(ok){ bc=here.D.ceil[i]; c0=i; } }
-    if(bc>=10)break; }
-  here.monsters=here.monsters.filter(m=>m.ty.critter);
-  here.finalSt={c0,boss:null,bossT:-1,summonT:12,said:false};
-}
+// setupFinal は src/lib/levels.ts（src/game/imports.mjs で読む）
 function updateFinal(dt){
   if(!here.finalSt||!isFinal()||adv.dead)return;
   if(!here.finalSt.said&&ui.started){ here.finalSt.said=true; setTimeout(()=>msg('<b style="color:#bfe4ff">.</b>底に着いた。光の届かない、静かな闇だ。手の中で、三つの光が震えている。'),1600); }

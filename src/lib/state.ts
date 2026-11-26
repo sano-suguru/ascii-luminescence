@@ -10,6 +10,7 @@ import type { HandsSnap } from './gear.ts';
 import type { LoreResult } from './results.ts';
 import type { Body, Glyph } from './bodies/kit.ts';
 import { type Rune } from './runes.ts';
+import { DUST_N } from './shaders.ts';
 import { NCELL, NDL, NSL } from './world.ts';
 
 /** 稲妻の光り（灯りの1つとして描く。t は残りの秒。900 より大きいと消えない） */
@@ -117,6 +118,8 @@ export interface Ui {
   graveSel: number;
   /** 開発用：ダメージを受けない（dbg.god） */
   godMode: boolean;
+  /** 背の高い茂みに入った伝言を出したか（階ごとに戻す） */
+  tallMsg: boolean;
 }
 export const ui: Ui = {
   started: false,
@@ -159,6 +162,7 @@ export const ui: Ui = {
   graveCands: [],
   graveSel: 0,
   godMode: false,
+  tallMsg: false,
 };
 
 /** レベルと経験（n：レベル、exp：経験、pending：まだ選んでいない加護の数、bless：加護ごとの段、strata：入った層）。後から足される欄は、使う処理を移す時に型を足す */
@@ -189,6 +193,8 @@ export interface RunState {
   lordsDone: Set<string>;
   /** 開いた体の枠の数（0 から 2） */
   bodyOpen?: number;
+  /** 枠を選ぶ祭壇の組（選ばなかった枠を、離れた時に開ける。src/lib/levels.ts の settleSlotPick） */
+  slotPend?: string | null;
 }
 /** 今の探索（シード・レベル・死んだか・勝ったか・記録・進み・試練・体力の上限・表示している体力） */
 export interface Adv {
@@ -346,6 +352,8 @@ export interface Blaze {
   frozen: Map<number, { t: number; liq: number; surf: number }>;
   /** 踏み分けた背の高い草や茸のマスと、踏んだゲームの時刻（src/lib/ground.ts の trample が足し、18-level-player.js の regrow が元に戻す。newLevel が空にする） */
   trampled: [number, number][];
+  /** 火の備品（松明・焚き火など）のマス（燃えるガスがここに触れると燃え上がる。src/lib/ground.ts の initFire が作る） */
+  fireSrc: number[];
 }
 export const blaze: Blaze = {
   fire: new Float32Array(NCELL),
@@ -359,6 +367,7 @@ export const blaze: Blaze = {
   spark: null,
   frozen: new Map(),
   trampled: [],
+  fireSrc: [],
 };
 
 /** 光線の一切れ（点の並び・色・残りの秒） */
@@ -740,8 +749,8 @@ export interface Here {
   fovVis: Uint32Array;
   /** 見えるマスを数え直すたびに1増える番号 */
   fovStamp: number;
-  /** 部屋の出来事（神託・転移・噴き出し・像・崩れ・水攻め・霊など）。型は、出来事の処理を移す時に作る */
-  events: unknown[];
+  /** 部屋の出来事（神託・転移・噴き出し・像・崩れ・水攻め・霊など。src/lib/levels.ts の initEvents が作り、15-sound-fire.js が進める） */
+  events: RoomEvent[];
   /** 川のマスの一覧 */
   riverCells: number[];
   /** 最深部の状態（最深部の階に入った時に作る。ほかの階では null。24-goal.js の setupFinal） */
@@ -751,6 +760,18 @@ export interface Here {
   webBurnMsg: boolean;
   repairMsg: boolean;
   brimMsg: boolean;
+  /** 着いた時に立っていた階段や門のマス（離れるまで、踏んでも階を移らない。離れたら -1） */
+  lockCell: number;
+  /** その階で入った部屋（初めて入った時に部屋の伝言を出す）と、下り階段を見つけた伝言を出したか */
+  visitedRooms: Set<number>;
+  stairsSeen: boolean;
+  /** 前の階の層（層が変わった時に、層の名前を出す） */
+  lastStratum: Level['stratum'] | null;
+}
+/** 部屋の出来事（種類 type と、種類ごとの欄。中身を読むのは古い JS の出来事の処理） */
+export interface RoomEvent {
+  type: string;
+  [k: string]: unknown;
 }
 /** 最深部の状態：一番高い天井のマス c0（王の影が現れる所）、王の影 boss と、現れるまで・呼び出すまでの秒、着いた時の伝言を出したか */
 export interface FinalState {
@@ -783,6 +804,10 @@ export const here: Here = {
   webBurnMsg: false,
   repairMsg: false,
   brimMsg: false,
+  lockCell: -1,
+  visitedRooms: new Set(),
+  stairsSeen: false,
+  lastStratum: null,
 };
 /** 行った階の覚え（場所の名前 → 見えた所と覚えた色の写し）。丸ごと入れ替えないので、古い JS は今までどおり placeMem で読む */
 export const placeMem = new Map<string, { explored: Uint8Array; mem: Float32Array }>();
@@ -938,3 +963,14 @@ export const keys: { KeyW?: boolean; KeyA?: boolean; KeyS?: boolean; KeyD?: bool
 export const vmKick = { L: -9, R: -9 };
 /** 光線を撃ち続けている間の、手ごとの記録（続けた秒 hold・最後に撃った時刻 last・焼いた時刻 sear・弾けた時刻 burst）。丸ごと入れ替えない */
 export const beamHold = { L: { hold: 0, last: -9, sear: -9, burst: -9 }, R: { hold: 0, last: -9, sear: -9, burst: -9 } };
+/** 漂う塵の粒（位置 x・y・z、揺れの位相 ph、文字 g、大きさ s。src/lib/particles.ts の initDust・respawnDust が置き、15-sound-fire.js が動かす）。丸ごと入れ替えない */
+export const dust = {
+  x: new Float32Array(DUST_N),
+  y: new Float32Array(DUST_N),
+  z: new Float32Array(DUST_N),
+  ph: new Float32Array(DUST_N),
+  g: new Float32Array(DUST_N),
+  s: new Float32Array(DUST_N),
+};
+/** 通れない所に押し当てている間の記録（押した秒 t・何に当たっているか k・離してからの秒 idle）。丸ごと入れ替えない */
+export const edge = { t: 0, k: '', idle: 0 };

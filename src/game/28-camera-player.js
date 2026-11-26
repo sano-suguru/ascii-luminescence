@@ -53,7 +53,7 @@ function updatePlayer(dt){
     if(k.ArrowLeft)player.yaw+=dt*2.0; if(k.ArrowRight)player.yaw-=dt*2.0;
     const sy=Math.sin(player.yaw), cy=Math.cos(player.yaw);
     const pci=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL), lq=here.D.liquid[pci], wade=(here.D.bridge[pci]?1:lq===LQ_DEEP?0.45:lq===LQ_BOG?0.55:lq===LQ_WATER?0.8:1)*(webTouch(pci)?0.35:1)*(here.D.surface[pci]===SF_MUD&&!lq?0.72:1)*(player.netT>0?0:1);
-    if(pci!==player.lastCell){ player.lastCell=pci; brimFlare(pci); if(tallAt(pci)){ if(!tallMsg){ tallMsg=true; msg('<b style="color:#7ad86a">"</b>背の高い茂みを踏み分けた。茂みは視線を遮る。獣との間に挟めば、身を隠す壁になる。踏み分けた跡は、しばらくすると元に戻る。'); } trample(pci); } }
+    if(pci!==player.lastCell){ player.lastCell=pci; brimFlare(pci); if(tallAt(pci)){ if(!ui.tallMsg){ ui.tallMsg=true; msg('<b style="color:#7ad86a">"</b>背の高い茂みを踏み分けた。茂みは視線を遮る。獣との間に挟めば、身を隠す壁になる。踏み分けた跡は、しばらくすると元に戻る。'); } trample(pci); } }
     if(!lq)blaze.scent[pci]=clock.time;
     if(lq===LQ_DEEP&&!here.D.swimMsg){ here.D.swimMsg=true; msg('<b style="color:#5aa0ff">~</b>深い水に入った。足が届かない。ゆっくりと泳いで進む。'); }
     const ix=-sy*fw+cy*st, iz=-cy*fw-sy*st, len=Math.hypot(ix,iz), sp=((k.ShiftLeft||k.ShiftRight)&&!stealth.sneak?5.6:stealth.sneak?2.3:3.2)*wade;

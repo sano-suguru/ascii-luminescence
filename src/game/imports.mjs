@@ -19,7 +19,7 @@ import {
   CAT_BR, CAT_NAME, ELEM_POW, RUNE_FONT, RUNE_TYPES, RALLY_FROM, SLEEP_MULT, SLOT_MAX, TIER_COL, TL, TRAITS, TRAIT_V, WEAPON, elemCount, handRunes, serRune, sp_elem, trList, trName, tv, RES, RUNE_DEF, detailLines, elemCol, modVal, modWorks, rollTraits, runeCol, runeName, syncHand, thingLabel,
 } from '../lib/runes.ts';
 import {
-  allRunes, atkType, bodyN, effHand, equipWeapon, isTwo, makeRune, makeStrong, newHand, randomRuneType, resetRunes, restoreHands, snapHands, specOf, syncHands, turnElem, wTL,
+  allRunes, atkType, bodyN, effHand, equipWeapon, isTwo, makeRune, makeStrong, newHand, randomRuneType, applyOpen, resetRunes, restoreHands, snapHands, specOf, syncHands, turnElem, wTL,
 } from '../lib/gear.ts';
 import { BLESS, META_DEF, UNLOCKS, expNeed, expOf } from '../lib/progress.ts';
 import { MTYPES } from '../lib/creatures.ts';
@@ -32,7 +32,7 @@ import { generateLevel } from '../lib/generate.ts';
 import { LOGO_ART, TITLE_LINES } from '../lib/title.ts';
 import { DUST_N, DYN_VS, GAS_N, GLYPH_FS, P0, PT_FS, PT_TOTAL, PT_VS, STATIC_VS, WATER_FS, WATER_VS } from '../lib/shaders.ts';
 import { ALTAR_W, MARK_H, MCH, MCW, MMC, MMR, MPAD, tone } from '../lib/hud.ts';
-import { AVATAR_TY, BRANCH_HINT, DECO_K, DECO_NAMES, DUMMY_KINDS, FIX_NAMES, GALLERY_SLEEP, LEGEND_KINDS, LEGEND_ORDER, LORD_GAL, TRAP_INFO, lookLine, mname } from '../lib/names.ts';
+import { AVATAR_TY, BRANCH_HINT, DECO_K, DECO_NAMES, DUMMY_KINDS, FIX_NAMES, GALLERY_SLEEP, LEGEND_KINDS, LEGEND_ORDER, LORD_GAL, MACHINE_INFO, TRAP_INFO, lookLine, mname } from '../lib/names.ts';
 import { CHANT_STEPS, SND_NAME, VOWELS, sEnv } from '../lib/sound.ts';
 import {
   castSound, sAlarm, sBoom, sBubble, sChime, sCrackleBurst, sCreak, sDist, sHiss, sHowl, sndInit, sndReady, sndUpdate, sNoise, sOut, sRumble, sSplash, sSqueak, sTone, sWhoosh,
@@ -41,7 +41,9 @@ import {
   altarDetail, altarFill, altarLine, altarOpts, guardedNow, placeAltar, placeChosen, placeRunesForLevel, takeRune, vaultArea,
 } from '../lib/altars.ts';
 import { lockedOf, loreLeft, unlocked, weaponPool } from '../lib/unlocks.ts';
-import { interAfter, interAt, isFinal, levelSeed } from '../lib/levels.ts';
+import {
+  advance, computeFOV, generate, initEvents, interAfter, interAt, isFinal, levelSeed, placeKey, settleSlotPick, setupFinal, showStratum, strataGrowth,
+} from '../lib/levels.ts';
 import { msg, renderLog } from '../lib/log.ts';
 import { renderHotbar } from '../lib/hotbar.ts';
 import { applyBuild, renderInv, setInv, startSwap } from '../lib/inventory.ts';
@@ -55,11 +57,11 @@ import { addBolt, drawBoltFx, drawFire, drawFrozen, drawZones, sparkCrown } from
 import { BRANCH_OMEN, REALM_OMEN, SPECIAL_OMEN, STRATUM_OMEN, drawOmens, drawStairSeal, omenOf, stairsGuarded } from '../lib/omens.ts';
 import { loadBeasts, recordBeast, saveMeta, saveSet } from '../lib/save.ts';
 import { BL, canStep, chooseNext, fireNear, foe, hostile, makeMonster, statOf, summon } from '../lib/monsters.ts';
-import { brimFlare, chillArea, crackIce, ignite, splash, tallAt, trample, updateCritter, updateFrozen, uploadCells } from '../lib/ground.ts';
+import { brimFlare, chillArea, crackIce, ignite, initFire, splash, tallAt, trample, updateCritter, updateFrozen, uploadCells } from '../lib/ground.ts';
 import { setCamMode, sndToggle, tryLock, updateResume } from '../lib/screens.ts';
 import { addLooks, buildForm } from '../lib/bodies/build.ts';
 import { bogAura, dragonAura, drawMorph, houndAura, krakenAura, lichAura, nagaAura, salamanderAura, shadowAura, spiderAura, transformShadow } from '../lib/bodies/auras.ts';
-import { P, dCol, dPar, dPos, dyn, killP, spawn } from '../lib/particles.ts';
+import { P, dCol, dPar, dPos, dyn, initDust, killP, respawnDust, spawn } from '../lib/particles.ts';
 import { drawMonster, drawMonster0, drawTentacles } from '../lib/bodies/draw.ts';
 import { look } from '../lib/look.ts';
 import {
@@ -76,4 +78,4 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { DLC, DLP, SL, SND, adv, beamHold, blaze, buf, cellData, clock, fight, gear, gfx, here, hudInfo, iceT, keys, lantern, placeMem, player, saved, stealth, ui, vfx, vmKick } from '../lib/state.ts';
+import { DLC, DLP, SL, SND, adv, beamHold, blaze, buf, cellData, clock, fight, gear, gfx, here, hudInfo, iceT, keys, lantern, placeMem, player, saved, stealth, ui, vfx, vmKick, dust, edge } from '../lib/state.ts';

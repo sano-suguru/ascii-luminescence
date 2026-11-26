@@ -312,8 +312,9 @@ export interface Item {
   forgeTo?: number;
   /** 番人の群れ（この群れが生きている間は暗く、取れない。番人を置けなかった祭壇では undefined の欄がある） */
   guardG?: number | undefined;
-  /** 枠を開ける選択肢の名前 */
+  /** 枠を開ける選択肢の名前と、開ける枠（'slotL'・'slotR'・'body'） */
   label?: string;
+  target?: string;
   /** 深さ1の始まりのそばの台（3つから1つ選ぶ） */
   pedestal?: boolean;
   /** 強敵の部屋の褒美（強敵が倒れるまで取れない） */

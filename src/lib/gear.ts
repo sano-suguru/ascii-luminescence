@@ -2,9 +2,11 @@
 // 表だけに頼る物（ルーンの名前・色・付けられるか）は src/lib/runes.ts。
 import { lookup, must, nth } from './array.ts';
 import { renderHotbar } from './hotbar.ts';
+import { renderInv } from './inventory.ts';
 import { BL } from './monsters.ts';
 import {
   ELEM_POW,
+  SLOT_MAX,
   RUNE_DEF,
   RUNE_TYPES,
   type Rune,
@@ -327,4 +329,16 @@ export function resetRunes(): void {
       saveSet('al_runes', saved.RSEEN);
     }
   } catch {}
+}
+/** 枠を1つ開ける（t：手の枠 'slotL'・'slotR' は多くても SLOT_MAX まで、体の枠 'body' は2まで。もとは src/game/24-goal.js） */
+export function applyOpen(t: string): void {
+  if (t === 'slotR' || t === 'slotL') {
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- t は 'slotR' か 'slotL' なので、t.slice(4) は 'R' か 'L'（元の読み方のまま）
+    const H = hands()[t.slice(4) as Side];
+    H.slotN = Math.min(SLOT_MAX, (H.slotN || 2) + 1);
+    while (H.slots.length < H.slotN) H.slots.push(null);
+  } else if (t === 'body') adv.runState.bodyOpen = Math.min(2, (adv.runState.bodyOpen || 0) + 1);
+  syncHands();
+  renderHotbar();
+  if (ui.invOpen) renderInv();
 }

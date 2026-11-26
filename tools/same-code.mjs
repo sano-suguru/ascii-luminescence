@@ -6,7 +6,8 @@
 // 動かして比べるテストと違い、通るかどうかに関係なく全部の行を見る（係数・比べ方・乱数を引く順番・抜けた文を見つける）。
 //
 // 規則（どれも「そう書き換えても動きが変わらない」所だけ。止まる時の扱いは変わりうる）：
-//   nth(a, i) → a[i]、lookup(o, k) → o[k]（k が名前にできる文字なら o.k）：範囲の外や無い欄では止まる（元は undefined）
+//   nth(a, i) → a[i]、lookup(o, k) → o[k]：範囲の外や無い欄では止まる（元は undefined）
+//   o['k'] → o.k（k が名前にできる文字の時。両方に当てる）
 //   must(x, '…') → x：x が null・undefined の時は止まる（元はその先で止まるか、黙って進む）
 //   level() → here.D：そのファイルの level が () => must(here.D, …) の時だけ
 //   x ?? NaN → x：算術（- * / % **、もう片方が数と分かる +）・大小の比べ方・単項の - +・Math.* の引数の中だけ（undefined も NaN も同じ結果になる所）。
@@ -118,6 +119,15 @@ function norm(n, ctx) {
     // 使わない catch の引数は書かなくても同じ（catch (e) {…} と catch {…}）
     if (x.type === 'CatchClause' && x.param?.type === 'Identifier' && !uses(x.body, x.param.name).n)
       return { ...x, param: null, body: norm(x.body, ctx) };
+    // 名前にできる文字の鍵の読み書き（o['lord']・lookup(o, 'lord')）は、欄の読み書き（o.lord）と同じ
+    if (
+      x.type === 'MemberExpression' &&
+      x.computed &&
+      x.property.type === 'Literal' &&
+      typeof x.property.value === 'string' &&
+      /^[A-Za-z_$][\w$]*$/.test(x.property.value)
+    )
+      return { ...x, object: norm(x.object, ctx), property: ident(x.property.value), computed: false };
     if (x.type !== 'AssignmentExpression' || !OPS[x.operator] || !isPath(x.left)) return undefined;
     ctx.hit('a op= b');
     const left = norm(x.left, ctx);
@@ -130,11 +140,7 @@ function undo(n, ctx) {
   return walk(n, (x) => {
     if ((isCall(x, 'nth') || isCall(x, 'lookup')) && x.arguments.length === 2) {
       ctx.hit(x.callee.name);
-      const k = x.arguments[1];
-      // 名前にできる文字の鍵（lookup(RUNE_DEF, 'rapid')）は、欄の読み取り（RUNE_DEF.rapid）と同じ
-      if (k.type === 'Literal' && typeof k.value === 'string' && /^[A-Za-z_$][\w$]*$/.test(k.value))
-        return member(undo(x.arguments[0], ctx), ident(k.value), false);
-      return member(undo(x.arguments[0], ctx), undo(k, ctx), true);
+      return member(undo(x.arguments[0], ctx), undo(x.arguments[1], ctx), true);
     }
     if (isCall(x, 'must') && x.arguments.length >= 1) return (ctx.hit('must'), undo(x.arguments[0], ctx));
     if (ctx.levelIsHereD && isCall(x, 'level') && x.arguments.length === 0)

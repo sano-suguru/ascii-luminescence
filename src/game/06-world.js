@@ -1,8 +1,8 @@
 // ---------------------------------------------------------------- world state
 let staticMesh=null, occMesh=null;
-let visitedRooms=new Set(), stairsSeen=false, fogBase=0.05;
+let fogBase=0.05;
 // player は src/lib/state.ts（src/game/imports.mjs で読む。丸ごと入れ替えないので、名前はそのまま）
-const edge={t:0,k:'',idle:0};
+// edge は src/lib/state.ts（src/game/imports.mjs で読む）
 // 画面の下の一言 showHint は src/lib/status.ts（src/game/imports.mjs で読む）
 // ceilAt は src/lib/lightmap.ts（src/game/imports.mjs で読む）
 

@@ -103,6 +103,6 @@ const ptGeo=new T.BufferGeometry();
 const bpPos=new T.BufferAttribute(ptPos,3).setUsage(T.DynamicDrawUsage), bpCol=new T.BufferAttribute(ptCol,3).setUsage(T.DynamicDrawUsage),
       bpSize=new T.BufferAttribute(ptSize,1).setUsage(T.DynamicDrawUsage), bpGly=new T.BufferAttribute(ptGly,1).setUsage(T.DynamicDrawUsage);
 ptGeo.setAttribute('position',bpPos); ptGeo.setAttribute('aCol',bpCol); ptGeo.setAttribute('aSize',bpSize); ptGeo.setAttribute('aGlyph',bpGly);
-const dust={x:new Float32Array(DUST_N),y:new Float32Array(DUST_N),z:new Float32Array(DUST_N),ph:new Float32Array(DUST_N),g:new Float32Array(DUST_N),s:new Float32Array(DUST_N)};
+// dust は src/lib/state.ts（src/game/imports.mjs で読む）
 // 粒子の配列 P と、粒子を出す spawn・消す killP は src/lib/particles.ts、生きている数 buf.pN は src/lib/state.ts（src/game/imports.mjs で読む）
 

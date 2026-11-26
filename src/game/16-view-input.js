@@ -1,20 +1,5 @@
 // ---------------------------------------------------------------- field of view & minimap
-function computeFOV(){
-  here.fovStamp++;
-  const ox=player.x/CELL, oz=player.z/CELL, pcF=Math.floor(oz)*MW+Math.floor(ox);
-  for(let k=0;k<300;k++){
-    const a=k/300*Math.PI*2, dx=Math.cos(a), dz=Math.sin(a);
-    for(let s=0;s<18;s+=0.25){
-      const x=ox+dx*s, z=oz+dz*s, cx=Math.floor(x), cz=Math.floor(z);
-      if(cx<0||cz<0||cx>=MW||cz>=MH)break;
-      const i=cz*MW+cx; here.fovVis[i]=here.fovStamp; here.explored[i]=1;
-      const tt=here.D.tile[i]; if(tt===TW)break;
-      if(s>0.9&&i!==pcF&&tallAt(i))break;
-      if(tt===TP&&Math.hypot(x-cx-0.5,z-cz-0.5)<0.28)break;
-      const di=here.D.doorAt[i]; if(di>=0&&i!==pcF&&!here.D.doors[di].gone&&here.D.doors[di].o<0.35&&s>0.3)break; // a door in the cell you stand in does not hide what is around you
-    }
-  }
-}
+// computeFOV は src/lib/levels.ts（src/game/imports.mjs で読む）
 const mapC=document.getElementById('map'), mctx=mapC.getContext('2d');
 // MMC・MMR・MCW・MCH・MPAD は src/lib/hud.ts（src/game/imports.mjs で読む）
 function sizeMap(){ const dpr=Math.min(2,window.devicePixelRatio||1); mapC.width=Math.round((MMC*MCW+MPAD*2)*dpr); mapC.height=Math.round((MMR*MCH+MPAD*2)*dpr); mctx.setTransform(dpr,0,0,dpr,0,0); }
