@@ -73,5 +73,5 @@ import {
 import { awardLore, graveCandidates, graveRows, loreRows, resultPlace, runLore, saveGrave, victory } from '../lib/results.ts';
 // three.js（r147）と光のにじみなどの部品 T、場面 scene、霧の色 fogCol
 import { T, fogCol, scene } from '../lib/three.ts';
-import { setFog, updateWater } from '../lib/build.ts';
+import { buildWorld, setFog, updateWater } from '../lib/build.ts';
 import { DLC, DLP, SL, SND, adv, beamHold, blaze, buf, cellData, clock, fight, gear, gfx, here, hudInfo, iceT, keys, lantern, placeMem, player, saved, stealth, ui, vfx, vmKick, dust, edge } from '../lib/state.ts';
