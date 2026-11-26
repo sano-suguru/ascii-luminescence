@@ -122,6 +122,14 @@ describe('生き物の形', () => {
     const marked = TY_FORMS.filter((f) => seeded(() => f(nth(TYS, 0))).noExtra).map((f) => f.name);
     expect(marked).toEqual(['wraithForm2', 'phantomForm']);
   });
+  it('トロル：腕の点（手と棍棒の頭も）はどれも肩を、脚の点は腰を軸に回る（軸が 0 だと、歩く時に床の高さを軸に回って離れる）', () => {
+    for (const ty of TYS) {
+      const b = seeded(() => beasts.trollForm2(ty)),
+        piv = (part: string) => new Set(b.filter((p) => p.part === part).map((p) => p.piv));
+      expect([piv('armL'), piv('armR')]).toEqual([new Set([1.42]), new Set([1.42])]);
+      expect([piv('legL'), piv('legR')]).toEqual([new Set([0.62]), new Set([0.62])]);
+    }
+  });
   it('眠った獣は、脚を体に畳み、低くなる', () => {
     const spec = nth(SPECS, 0),
       b = seeded(() => lords.beastForm(spec)),

@@ -232,7 +232,7 @@ export function trollForm2(ty: BodyType): Body {
       else put(Math.cos(a) * rx, y, sn * rz + lean, Math.cos(a) / rx, 0.25 + f * 0.5, sn / rz, SKINR, belly ? BELLY : SK);
     }
   }
-  // 腰布：腰のまわりと、前と後ろに垂れる布
+  // 腰布：腰のまわりと、前に垂れる布
   for (let k = 0; k < 14; k++) {
     const a = (k / 14) * Math.PI * 2;
     lit(Math.cos(a) * 0.27, 0.6, Math.sin(a) * 0.23, '=', 1, 1.1, CLOTH);
