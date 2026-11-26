@@ -29,7 +29,7 @@
 // 状態異常を進める updateStatuses と生き物の時間の速さ monTimeK は src/lib/projs.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- projectiles: arrows fly straight, orbs arc and burst; both can bounce and seek
-// 飛ぶ物を進める updateProjs と、続けて当てた矢 m_rapidCrit・光の月が弾ける moonBurst・矢の特性 arrowTraits は src/lib/projs.ts（src/game/imports.mjs で読む）
+// 飛ぶ物を進める updateProjs と、光の月が弾ける moonBurst は src/lib/projs.ts（src/game/imports.mjs で読む）
 // sp_elem は src/lib/runes.ts（src/game/imports.mjs で読む）
 
 // orbBurst は src/lib/combat.ts（src/game/imports.mjs で読む）
@@ -43,6 +43,5 @@
 // groundPoint は src/lib/aim.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- triggers
-// 転がった時 onRolled は src/lib/chant.ts（src/game/imports.mjs で読む。今はどこからも呼ばれていない）
 // onKilledBy は src/lib/combat.ts（src/game/imports.mjs で読む）
 
