@@ -10,7 +10,7 @@ import { MARK_H } from '../hud.ts';
 import { cellLight } from '../lightmap.ts';
 import { dyn, spawn } from '../particles.ts';
 import { clamp } from '../rng.ts';
-import { mr } from '../random.ts';
+import { mr, withMobRand } from '../random.ts';
 import { type Monster, clock, gfx, player, ui } from '../state.ts';
 import { drawMark } from '../status.ts';
 import {
@@ -106,7 +106,7 @@ export function drawMonster1(m: Mon, t: number): void {
 export function drawMonster0(m: Mon, t: number): void {
   const fj = (m.flinchUntil || 0) > clock.time ? ((m.flinchUntil ?? NaN) - clock.time) * 0.9 * (m.ty.scale || 1) : 0;
   if ((m.ty.form === 'dragon' && !m.ty.boss) || m.ty.beast) {
-    if (!m.formSleep) m.formSleep = m.ty.beast ? beastSleep(m.form, m.ty) : dragonSleepForm(m.ty);
+    if (!m.formSleep) m.formSleep = withMobRand(m, () => (m.ty.beast ? beastSleep(m.form, m.ty) : dragonSleepForm(m.ty)));
     if (m.wasSleep && !m.sleep && !m.morph) m.morph = { from: m.formSleep, t0: clock.time, dur: 1.0 };
     m.wasSleep = !!m.sleep;
     m.drawForm = m.sleep && !m.morph ? m.formSleep : null;

@@ -69,7 +69,8 @@ function showBeast(i){
   { const s=structuredClone(g.still), Ls=here.D.lights; here.fixtures=s.fixtures; Ls.length=s.lights.length;
     s.lights.forEach((S,k)=>{ const L=Ls[k]; if(!L){ Ls[k]=S; return; } for(const a of Object.keys(L))delete L[a]; Object.assign(L,S); }); }
   MTYPES.__gal=e.ty; g.rnd=keyedRand('gallery '+e.key); player.x=g.room.x; player.z=g.room.z; g.settle=1;
-  const m=withVisualRand(g.rnd,()=>{ const m=makeMonster({key:'__gal',cx:g.room.cx,cz:g.room.cz,g:-1,lead:true}); initDust(); return m; });
+  // makeMonster is handed g.rnd as the creature's own sequence (m.rnd), so what it makes when first drawn (in the first step) reads it too
+  const m=withVisualRand(g.rnd,()=>{ const m=makeMonster({key:'__gal',cx:g.room.cx,cz:g.room.cz,g:-1,lead:true},g.rnd); initDust(); return m; });
   m.x=g.room.x; m.z=g.room.z; m.sleep=false; m.hidden=false; m.wait=1e9; m.galShow=true; m.heartOn=true; m.rise=1; m.surf=1; m.yaw=0; if(e.ty.form==='eel')m.y=0;
   g.water=e.ty.form==='kraken'||e.ty.form==='deepkraken'||e.ty.form==='eel'||e.ty.form==='fish'||e.ty.habitat==='deep'; if(g.water&&e.ty.form==='kraken')m.y=-0.25*(e.ty.scale||1); if(e.ty.form==='deepkraken')m.y=0; if(e.ty.habitat==='bog')m.y=0;
   here.monsters.push(m); g.m=m; g.t=0; renderGallery();

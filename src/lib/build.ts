@@ -6,9 +6,10 @@ import type { Color } from './color.ts';
 import type { Engraving, Theme } from './generate.ts';
 import { G, RUNESET, WG } from './glyphs.ts';
 import { topLights } from './light.ts';
+import { levelSeed } from './levels.ts';
 import { flowW, sstep } from './math.ts';
 import { setNoiseSeed, vnoise } from './noise.ts';
-import { R, RI, pick, rand } from './random.ts';
+import { R, RI, keyedRand, pick, rand, withVisualRand } from './random.ts';
 import { clamp } from './rng.ts';
 import { gfx, here, hudInfo } from './state.ts';
 import { T, fogCol } from './three.ts';
@@ -96,6 +97,15 @@ export function updateWater(): void {
   must(gfx.waterTex).needsUpdate = true;
   must(gfx.waterLTex).needsUpdate = true;
 }
+/**
+ * 像の形（石の人。buildForm）。像の種類 kind（'room'・'vault'・'colossus'）と階のシードとマス cell から作った、像ごとの見た目の乱数の並びで作る。
+ * 像の点の位置は見た目の乱数によらない（よるのは文字と揺れの位相だけで、像はどちらも使わない。像の文字は迷宮の乱数で選ぶ）が、buildForm は見た目の乱数を引く。
+ * こうすると、世界を組み立てる間に見た目の乱数 mr() を引かないので、その後の粒子などが、形の作り方や階の像の数でずれない（tests/determinism.mjs が __test.worldDraws で数える）
+ */
+const statueForm = (kind: string, cell: number) =>
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- 石像の形を選ぶだけの種類（大きさと色の欄は、人型の形を作る時に読まない。元の渡し方のまま）
+  withVisualRand(keyedRand('statue ' + kind, levelSeed(), cell), () => buildForm({ ch: '&', form: 'humanoid' } as FormType));
+
 /**
  * 階の文字を組み立てる（壁の面・洞窟の岩肌と天井・床と液体・橋・茂み・結晶・大きな茸・部屋の仕掛け・宝物庫・柱）。文字は区切りごとに1つの
  * three.js の InstancedMesh にまとめて場面に入れ（gfx.chunks）、壁の向こうを隠す板も作る（gfx.occMesh）。前の階の物は捨てる（もとは src/game/06-world.js）
@@ -1896,8 +1906,7 @@ export function buildWorld(): void {
           );
       }
     } else if (md.type === 'statues') {
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- 石像の形を選ぶだけの種類（大きさと色の欄は、人型の形を作る時に読まない。元の渡し方のまま）
-      const form = buildForm({ ch: '&', form: 'humanoid' } as FormType);
+      const form = statueForm('room', r.cells[0] ?? 0);
       for (const si of must(md.statues)) {
         const [sx, sz] = cxy(si),
           sc = 1.35;
@@ -2113,8 +2122,7 @@ export function buildWorld(): void {
           nz,
         );
       }
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- 石像の形を選ぶだけの種類（大きさと色の欄は、人型の形を作る時に読まない。元の渡し方のまま）
-      for (const pnt of buildForm({ ch: '&', form: 'humanoid' } as FormType)) {
+      for (const pnt of statueForm('vault', si)) {
         if (pnt.part === 'core') continue;
         pushX(sx + pnt.x * sc, 0.45 + pnt.y * sc, sz + pnt.z * sc, pnt.s * sc * 1.25, G(pick(['&', '#', '%', '&'])), stone, 0.07, 8, si);
       }
@@ -2218,8 +2226,7 @@ export function buildWorld(): void {
           nz = Math.sin(a);
         push(sx + nx * rad, y, sz + nz * rad, 0, Math.atan2(nx, nz), 0.36, G(ch), stone[0], stone[1], stone[2], 0.05, 8, c, nx, 0, nz);
       }
-    // oxlint-disable-next-line typescript/consistent-type-assertions -- 石像の形を選ぶだけの種類（大きさと色の欄は、人型の形を作る時に読まない。元の渡し方のまま）
-    for (const pnt of buildForm({ ch: '&', form: 'humanoid' } as FormType)) {
+    for (const pnt of statueForm('colossus', c)) {
       if (pnt.part === 'core') continue;
       pushX(sx + pnt.x * sc, 0.9 + pnt.y * sc, sz + pnt.z * sc, pnt.s * sc * 1.25, G(pick(['&', '#', '%', '&', '='])), stone, 0.05, 8, c);
     }
@@ -2264,8 +2271,7 @@ export function buildWorld(): void {
             );
           }
       }
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- 石像の形を選ぶだけの種類（大きさと色の欄は、人型の形を作る時に読まない。元の渡し方のまま）
-      const form = buildForm({ ch: '&', form: 'humanoid' } as FormType),
+      const form = statueForm('room', r.cells[0] ?? 0),
         stone: Color = [0.62, 0.6, 0.78];
       for (const si of must(md.inert)) {
         const [sx, sz] = cxy(si);

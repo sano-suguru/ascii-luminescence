@@ -712,6 +712,8 @@ export interface Monster {
   formSleep?: Body;
   wasSleep?: boolean;
   drawForm?: Body | null;
+  /** その生き物だけの見た目の乱数の並び（src/lib/monsters.ts の makeMonster が作る）。形と初めの値と、初めて描く時に作って覚える物（眠った姿・まわりの飾り）に使う */
+  rnd?: () => number;
   /** 強い個体（足もとに輪を描く） */
   elite?: boolean;
   /** 剣を操る者のまわりの剣 */
@@ -791,6 +793,7 @@ export interface Mob extends Monster {
   vy: number;
   fy: number;
   flitT: number;
+  rnd: () => number;
   /** 次に近接の攻撃をするまでの秒（src/lib/monsters.ts の initMonsterLife が入れる） */
   atkCd?: number;
   /** 掃除機・修復機：している仕事（灰や火のマス、作り直す扉の番号。無ければ -1）・仕事をした秒・最後に仕事を探したゲームの時刻 */
@@ -860,6 +863,8 @@ export interface Here {
   webBurnMsg: boolean;
   repairMsg: boolean;
   brimMsg: boolean;
+  /** その階で作った生き物の数（src/lib/monsters.ts の makeMonster が、生き物ごとの見た目の乱数の鍵にする。src/lib/levels.ts の newLevel が階ごとに 0 に戻す） */
+  mobSeq: number;
   /** 着いた時に立っていた階段や門のマス（離れるまで、踏んでも階を移らない。離れたら -1） */
   lockCell: number;
   /** その階で入った部屋（初めて入った時に部屋の伝言を出す）と、下り階段を見つけた伝言を出したか */
@@ -904,6 +909,7 @@ export const here: Here = {
   webBurnMsg: false,
   repairMsg: false,
   brimMsg: false,
+  mobSeq: 0,
   lockCell: -1,
   visitedRooms: new Set(),
   stairsSeen: false,

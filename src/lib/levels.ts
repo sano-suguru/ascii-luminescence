@@ -463,7 +463,9 @@ export function newLevel(seedOverride?: number): void {
   buildWorld();
   updateWater();
   here.fixtures = level().fixtures;
-  here.monsters = level().spawns.map(makeMonster);
+  // 生き物ごとの見た目の乱数は、階のシードとその階で何体目か（here.mobSeq）から作る。map(makeMonster) にしない（番号を並びとして渡してしまう）
+  here.mobSeq = 0;
+  here.monsters = level().spawns.map((s) => makeMonster(s));
   if (here.branch && adv.runState.lordsDone && adv.runState.lordsDone.has(here.branch.key))
     here.monsters = here.monsters.filter((m) => m.key !== 'lord');
   here.finalSt = null;
