@@ -17,7 +17,7 @@
 //  14. 火口の溶岩は、生き物のいるマスにも、生き物が歩いて向かっているマスにも流れない（溶岩の上に立つ生き物がいない）。
 //      生き物が塞いだマスは、後でまた試す（流し終えた後も、引き始めるまで）ので、引き始める前に、生き物のいないマスの穴が残らない
 //  15. 吹き飛ばされた生き物は、溶岩の手前で止まる（溶岩は、歩けない生き物には壁と同じ。体の大きな生き物は、体が溶岩にかかる手前）。止まると、行き先は今いるマスになる
-//  16. 宝物庫の落石は、ゲームの時刻で進む（溜めている間は半分の速さ、止まっている間は進まない）
+//  16. 宝物庫の落石は、ゲームの時刻で進む（溜めている間は半分の速さ、止まっている間は進まない）。階を移ると消える
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { withBrowser, newPage, openTest, advance } from './lib.mjs';
 
@@ -544,6 +544,11 @@ async function rockfallChecks(pg, base) {
   await pg.keyboard.press('Tab');
   if (!paused) errs.push('16：Tab で装備の画面が開かない（テストの前提が崩れた）');
   else if (!r3 || !(r3.t - r2.t < 0.05)) errs.push(`16：止まっている間も、落石が進む（${r2 && r2.t} → ${r3 && r3.t}）`);
+  // 階を移ると消える（前の階のマスに石が落ち続けない）
+  await pg.evaluate(() => dbg.go(3));
+  await advance(pg, 0.5);
+  const r4 = await pg.evaluate(() => __test.rockfall());
+  if (r4) errs.push(`16：階を移っても、前の階の落石が続いている（${JSON.stringify(r4)}）`);
 }
 
 await withBrowser(async ({ browser, base }) => {

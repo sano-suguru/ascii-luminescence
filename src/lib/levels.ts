@@ -601,6 +601,7 @@ export function newLevel(seedOverride?: number): void {
   here.stairsSeen = false;
   player.rally = 0;
   fight.rallyMotes = [];
+  fight.rockfall = null;
   if (adv.runStats && !ui.gallery) adv.runStats.maxDepth = Math.max(adv.runStats.maxDepth || 0, here.depth);
   setTimeout(strataGrowth, 50);
   if (ui.started && !ui.gallery && !adv.dead && !here.arrive) {
