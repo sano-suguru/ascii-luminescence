@@ -1,6 +1,5 @@
 // 階を移る処理と世界の組み立て（src/lib/levels.ts・build.ts と、ground.ts の initFire・particles.ts の initDust・respawnDust）の単体テスト。
-// 指紋の値は、移す前の古い JS（src/game/02・04・06・15・16・17・18・24）でも同じになる（level-cases.mjs の場合を、古い関数で数えて確かめた）。
-// ただし、水と溶岩の流れの出来事の欄 max（流す数の上限）は、使わなくなったので消した（指紋は、その欄を除けば同じ）。
+// 指紋は、level-cases.mjs の場合の結果。動きを意図して変えた時は、変わり方を確かめてから作り直す（何が変わったかは、コミットと PR に書く）。
 // 階は Node で本物の迷宮を生成するので、迷宮の生成を変えると、この指紋も変わる（その時は generate.test.ts の指紋と一緒に作り直す）。
 // テストを .mjs で書くのは、偽の画面の部品・偽の描画の部品を、本物の型に合わせられないため。
 import { describe, expect, it } from 'vitest';

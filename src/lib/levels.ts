@@ -279,7 +279,7 @@ export function initEvents(): void {
     if (ri === 0) {
       for (const tp of level().teles || []) here.events.push({ type: 'tele', a: tp.a, b: tp.b, lock: -1 });
       for (const e of level().erupts || [])
-        here.events.push({ type: 'erupt', src: e.src, order: e.order.slice(), state: 0, t: 8 + mr() * 14, k: 0 });
+        here.events.push({ type: 'erupt', src: e.src, order: e.order, state: 0, t: 8 + mr() * 14, k: 0 });
     }
     const md = r.mdata;
     if (!md) return;

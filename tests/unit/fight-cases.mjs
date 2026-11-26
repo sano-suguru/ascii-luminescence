@@ -461,7 +461,7 @@ export async function fightCases(F, seeds, page) {
         rallyMotes: [],
       });
       Object.assign(vmKick, { L: -9, R: -9 });
-      for (const h of ['L', 'R']) Object.assign(beamHold[h], { hold: 0, last: -9, sear: -9, burst: -9 });
+      for (const h of ['L', 'R']) Object.assign(beamHold[h], { hold: 0, last: -9, burst: -9 });
       Object.assign(edge, { t: 0, k: '', idle: 0 });
       for (const k of Object.keys(keys)) delete keys[k];
       gfx.camera = fakeCamera();

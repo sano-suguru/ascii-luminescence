@@ -37,36 +37,33 @@ const lavaBlocked = (i: number): boolean => {
   const [x, z] = cpos(i);
   return Math.hypot(x - player.x, z - player.z) < 1.6 || here.monsters.some((m) => onWay(m, i));
 };
-/** 流れる途中で、同じマスを順の終わりへ回して試し直す回数 */
+/** 流れる途中で、同じマスを試し直す回数 */
 const FLOW_TRIES = 10;
 /** 溶岩の流れ（噴き上がりと、部屋の出来事の流れ）の、流す順と進み具合 */
 interface Flow {
   order: number[];
   k: number;
   tries?: Map<number, number>;
+  retry?: number[];
   wait?: number[];
 }
+/** まだ流すマスがあるか（流す順の残りか、試し直すマス） */
+const flowLeft = (ev: Flow): boolean => ev.k < ev.order.length || (ev.retry?.length ?? 0) > 0;
 /**
- * 溶岩の流れる順（ev.order）の、次に流すマスを返す。流せなければ、順の終わりへ回して null
- * （同じマスは FLOW_TRIES 回まで回す。越えたら、待つマス ev.wait に入れて次へ進む。待つマスは、流し終えた後も retryWaiting で試し続ける）。
- * ev.k は、流したマスと待つマスに入れたマスの数
+ * 次に流すマスを返す。流す順（ev.order。並べ替えない）を先に、それが尽きたら試し直すマス ev.retry を順に見る。流せなければ null を返し、
+ * そのマスを ev.retry の終わりに入れる（同じマスは FLOW_TRIES 回まで。越えたら、待つマス ev.wait に入れる。待つマスは、流し終えた後も retryWaiting で試し続ける）
  */
 function nextFlow(ev: Flow): number | null {
-  const i = nth(ev.order, ev.k);
-  if (!lavaBlocked(i)) {
-    ev.k++;
-    return i;
-  }
+  const fromOrder = ev.k < ev.order.length,
+    i = fromOrder ? nth(ev.order, ev.k) : nth(ev.retry ?? [], 0);
+  if (fromOrder) ev.k++;
+  else ev.retry?.shift();
+  if (!lavaBlocked(i)) return i;
   const tries = (ev.tries ??= new Map()),
     n = (tries.get(i) ?? 0) + 1;
   tries.set(i, n);
-  if (n < FLOW_TRIES) {
-    ev.order.splice(ev.k, 1);
-    ev.order.push(i);
-  } else {
-    ev.k++;
-    (ev.wait ??= []).push(i);
-  }
+  if (n < FLOW_TRIES) (ev.retry ??= []).push(i);
+  else (ev.wait ??= []).push(i);
   return null;
 }
 /** 待つマスのうち、今は流せるマスを、待つマスから外して返す */
@@ -293,7 +290,7 @@ export function updateEvents(dt: number, t: number): void {
         ev.t += dt;
         const step = lava ? 0.38 : 0.11;
         let changed = false;
-        while (ev.t >= step && ev.k < ev.order.length) {
+        while (ev.t >= step && (lava ? flowLeft(ev) : ev.k < ev.order.length)) {
           ev.t -= step;
           const i = lava ? nextFlow(ev) : nth(ev.order, ev.k++);
           if (i === null) continue;
@@ -308,7 +305,7 @@ export function updateEvents(dt: number, t: number): void {
           }
         }
         if (changed) uploadCells();
-        if (ev.k >= ev.order.length) ev.state = 2;
+        if (!(lava ? flowLeft(ev) : ev.k < ev.order.length)) ev.state = 2;
       } else if (ev.state === 2 && lava) {
         // 流せなかったマスは、空いたら流す
         const free = retryWaiting(ev);
@@ -367,6 +364,7 @@ export function updateEvents(dt: number, t: number): void {
       const f = here.fixtures.find((f) => f.type === 'crater' && Math.floor(f.z / CELL) * MW + Math.floor(f.x / CELL) === ev.src);
       /** マス i に溶岩を流す（まわりの燃える物に火をつける） */
       const pour = (i: number) => {
+        (ev.poured ??= new Map()).set(i, [nth(level().liquid, i), nth(blaze.cellFlag, i)]);
         level().liquid[i] = LQ_LAVA;
         blaze.cellFlag[i] = 70;
         for (const j of [i + 1, i - 1, i + MW, i - MW]) if (j >= 0 && j < NCELL && nth(blaze.fuel, j) > 0) ignite(j, 0.6, false);
@@ -376,7 +374,9 @@ export function updateEvents(dt: number, t: number): void {
         ev.k = 0;
         ev.t = 0;
         ev.tries = new Map();
+        ev.retry = [];
         ev.wait = [];
+        ev.poured = new Map();
         if (f) {
           f.active = true;
           const L = level().lights[f.li];
@@ -412,7 +412,7 @@ export function updateEvents(dt: number, t: number): void {
       } else if (ev.state === 1) {
         ev.t += dt;
         let ch = false;
-        while (ev.t >= 0.3 && ev.k < ev.order.length) {
+        while (ev.t >= 0.3 && flowLeft(ev)) {
           ev.t -= 0.3;
           const i = nextFlow(ev);
           if (i === null) continue;
@@ -420,7 +420,7 @@ export function updateEvents(dt: number, t: number): void {
           ch = true;
         }
         if (ch) uploadCells();
-        if (ev.k >= ev.order.length) {
+        if (!flowLeft(ev)) {
           ev.state = 2;
           ev.t = 12;
         }
@@ -444,10 +444,12 @@ export function updateEvents(dt: number, t: number): void {
         let ch = false;
         while (ev.t >= 0.15 && ev.k >= 0) {
           ev.t -= 0.15;
-          const i = nth(ev.order, ev.k--);
-          if (blaze.cellFlag[i] === 70) {
-            level().liquid[i] = 0;
-            blaze.cellFlag[i] = 0;
+          const i = nth(ev.order, ev.k--),
+            was = ev.poured?.get(i);
+          // この噴き上がりで流したマスだけを、流す前の中身（液体と印）に戻す
+          if (was && blaze.cellFlag[i] === 70) {
+            level().liquid[i] = was[0];
+            blaze.cellFlag[i] = was[1];
             ch = true;
             const [x, z] = cpos(i);
             if (mr() < 0.4) spawn(x, 0.2, z, 0, 0.5, 0, 2, G('.'), 0.4, 0.15, 0.13, 0.13, 1);

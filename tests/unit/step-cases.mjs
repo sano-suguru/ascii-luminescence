@@ -325,7 +325,9 @@ export async function stepCases(F, seeds, page) {
       let eruptSeen = null,
         bigCell = -1,
         bigLava = false,
-        lavaflow = null;
+        lavaflow = null,
+        orderKept = null,
+        water = null;
       const state = () =>
         text({
           player: { ...player },
@@ -570,7 +572,7 @@ export async function stepCases(F, seeds, page) {
           tick(0.05);
         }
       }
-      // 飛ぶ物を直に作る（壁を抜ける・跳ね返る・床と天井・地図の外・ゆっくり速くなる・追う・重い・続けて当てる・星屑・跡）
+      // 飛ぶ物を直に作る（壁を抜ける・跳ね返る・床と天井・地図の外・ゆっくり速くなる・追う）
       const sp = (w, el, lv) => {
         arm(w, lv);
         const s2 = specOf('L');
@@ -640,7 +642,7 @@ export async function stepCases(F, seeds, page) {
         if (k === 1) for (const o of pulled) delete o.st;
         call('moonBurst', { moon: 1 + r() * 2, sp: s3, tide: pick([0, 5]), pulled }, m.x, 1, m.z);
       }
-      // ---- 場面：状態異常・吹き飛び（壁に叩きつける）・毒の霧・魔法の場・雨・遅れて起きること
+      // ---- 場面：状態異常・吹き飛び（壁で止まる）・毒の霧・魔法の場・雨・遅れて起きること
       for (let k = 0; k < 3; k++) {
         adv.lvl.bless.scorch = k === 1 ? 1 : 0;
         for (const m of foes()) {
@@ -864,6 +866,11 @@ export async function stepCases(F, seeds, page) {
         if (chance(0.5)) saved.LEGEND = null;
         const erupts = here.events.filter((e) => e.type === 'erupt'),
           seen = new Map(erupts.map((e) => [e, new Set([e.state])]));
+        // 流れる順の写し（噴き上がりの後も、並びが変わらないか）と、水のマスを1つ（引いた後に水へ戻るか）
+        const order0 = erupts.map((e) => e.order.slice()),
+          wet = erupts[0].order[4];
+        D.liquid[wet] = LQ_WATER;
+        let wetLava = false;
         // 体の大きな生き物（トロル）を、流れる道の隣のマスの、道との境の近くに止めておく（体が道のマスにかかる。溶岩はそこへ流れない）
         const way = erupts[0].order[2];
         for (const d of [1, -1, MW, -MW]) {
@@ -888,6 +895,7 @@ export async function stepCases(F, seeds, page) {
           tick(0.2);
           for (const e of erupts) seen.get(e).add(e.state);
           if (bigCell >= 0 && D.liquid[bigCell] === LQ_LAVA) bigLava = true;
+          if (D.liquid[wet] === LQ_LAVA) wetLava = true;
         }
         // 噴き上がりを最後まで（流れ出す 1 → 待つ 2 → 引く 3 → 次まで待つ 0）。足もとには流れないので、離れて立つ
         goto(cells0[5]);
@@ -896,7 +904,10 @@ export async function stepCases(F, seeds, page) {
           tick(0.2);
           for (const e of erupts) seen.get(e).add(e.state);
           if (bigCell >= 0 && D.liquid[bigCell] === LQ_LAVA) bigLava = true;
+          if (D.liquid[wet] === LQ_LAVA) wetLava = true;
         }
+        orderKept = erupts.every((e, n) => JSON.stringify(e.order) === JSON.stringify(order0[n]));
+        water = [wetLava, D.liquid[wet] === LQ_WATER];
         eruptSeen = erupts.map((e) => [...seen.get(e)].sort((a, b) => a - b).join(''));
         // 部屋の出来事の溶岩の流れ：状態と、流れる順のマスで、溶岩でなく、塞がれてもいない物の数
         // （塞がれている：プレイヤーの近くか、溶岩を歩けない生き物がいる・向かっている・体がかかる。src/lib/events.ts の lavaBlocked と同じ決まり）
@@ -967,6 +978,8 @@ export async function stepCases(F, seeds, page) {
         eruptSeen,
         big: bigCell >= 0 ? bigLava : null,
         lavaflow,
+        orderKept,
+        water,
       });
     }
   } finally {

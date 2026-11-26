@@ -11,6 +11,7 @@ import { mCenter } from './math.ts';
 import { foe, BL } from './monsters.ts';
 import { spawn } from './particles.ts';
 import { mpick, mr, roll } from './random.ts';
+import { clamp } from './rng.ts';
 import { RES, RUNE_DEF, TL, TRAIT_V, elemCol } from './runes.ts';
 import { type Mob, type Proj, TEST, blaze, clock, fight, here, player, saved, vfx } from './state.ts';
 import { CELL, LQ_LAVA, MH, MW, NCELL, TC, TW, TX } from './world.ts';
@@ -88,8 +89,23 @@ export function updateRains(dt: number): void {
   for (const mk of fight.marks) mk.t -= dt;
   fight.marks = fight.marks.filter((mk) => mk.t > 0);
 }
+/** 溶岩を歩けない生き物 m（飛ぶ物と溶岩に住む物のほか）の体（半径 0.35×大きさ）が、溶岩のマスにかかっているか */
+function onLava(m: Mob): boolean {
+  if (m.ty.flier || m.ty.habitat === 'lava') return false;
+  const r = 0.35 * m.ty.scale,
+    cx = Math.floor(m.x / CELL),
+    cz = Math.floor(m.z / CELL);
+  for (let dz = -1; dz <= 1; dz++)
+    for (let dx = -1; dx <= 1; dx++) {
+      const x = cx + dx,
+        z = cz + dz;
+      if (x < 0 || z < 0 || x >= MW || z >= MH || level().liquid[z * MW + x] !== LQ_LAVA) continue;
+      if (Math.hypot(m.x - clamp(m.x, x * CELL, (x + 1) * CELL), m.z - clamp(m.z, z * CELL, (z + 1) * CELL)) < r) return true;
+    }
+  return false;
+}
 /**
- * 状態異常を進める（生き物の速さを数え直し、吹き飛びを進めて壁に当たれば叩きつけの傷。燃える・毒は傷を与え、冷える・動けない・痺れるは時間が減る。
+ * 状態異常を進める（生き物の速さを数え直し、吹き飛びを進める。吹き飛びは、壁・通れない物と、溶岩を歩けない生き物には溶岩の手前で止まる。燃える・毒は傷を与え、冷える・動けない・痺れるは時間が減る。
  * 見えていれば粒を出す）。毒の霧の中の敵を毒にし、遅れて起きることと魔法の場と雨を進める
  */
 export function updateStatuses(dt: number): void {
@@ -109,20 +125,23 @@ export function updateStatuses(dt: number): void {
     const vis = m.visible && Math.hypot(m.x - player.x, m.z - player.z) < 26,
       cy = m.y + 0.6 * m.ty.scale;
     if (m.kx || m.kz) {
-      m.x += (m.kx ?? NaN) * dt;
-      m.z += (m.kz ?? NaN) * dt;
+      const mx = (m.kx ?? NaN) * dt,
+        mz = (m.kz ?? NaN) * dt,
+        wasOnLava = onLava(m);
+      m.x += mx;
+      m.z += mz;
       m.kx = (m.kx ?? NaN) * Math.exp(-dt * 6);
       m.kz = (m.kz ?? NaN) * Math.exp(-dt * 6);
       if (Math.abs(m.kx) + Math.abs(m.kz) < 0.05) {
         m.kx = 0;
         m.kz = 0;
       }
-      const ci = Math.floor(m.z / CELL) * MW + Math.floor(m.x / CELL),
-        // 溶岩は、歩けない生き物（飛ぶ物と溶岩に住む物のほか）には壁と同じ
-        lava = level().liquid[ci] === LQ_LAVA && !m.ty.flier && m.ty.habitat !== 'lava';
-      if (level().tile[ci] === TW || level().tile[ci] === TX || level().solid.has(ci) || lava) {
-        m.x -= m.kx * dt * 1.5;
-        m.z -= m.kz * dt * 1.5;
+      // 壁・通れない物に入ったか、溶岩を歩けない生き物（飛ぶ物と溶岩に住む物のほか）の体（半径 0.35×大きさ）が、このフレームに動いて溶岩にかかったら、
+      // 動いた分を戻して止まる（初めから体がかかっていた大きな生き物は、溶岩では止めない）
+      const ci = Math.floor(m.z / CELL) * MW + Math.floor(m.x / CELL);
+      if (level().tile[ci] === TW || level().tile[ci] === TX || level().solid.has(ci) || (!wasOnLava && onLava(m))) {
+        m.x -= mx;
+        m.z -= mz;
         m.kx = 0;
         m.kz = 0;
       }

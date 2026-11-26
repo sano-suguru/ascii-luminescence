@@ -16,7 +16,7 @@
 //  13. 加護の身軽な詠唱と返しの一撃は、敵の攻撃を転がってかわすと効き始める（ただ転がっただけでは効かない）
 //  14. 火口の溶岩は、生き物のいるマスにも、生き物が歩いて向かっているマスにも流れない（溶岩の上に立つ生き物がいない）。
 //      生き物が塞いだマスは、後でまた試す（流し終えた後も、引き始めるまで）ので、引き始める前に、生き物のいないマスの穴が残らない
-//  15. 吹き飛ばされた生き物は、溶岩の手前で止まる（溶岩は、歩けない生き物には壁と同じ）。止まると、行き先は今いるマスになる
+//  15. 吹き飛ばされた生き物は、溶岩の手前で止まる（溶岩は、歩けない生き物には壁と同じ。体の大きな生き物は、体が溶岩にかかる手前）。止まると、行き先は今いるマスになる
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { withBrowser, newPage, openTest, advance } from './lib.mjs';
 
@@ -470,29 +470,36 @@ async function lavaMobChecks(pg, base) {
 
 // 15：吹き飛ばされた生き物は、溶岩の手前で止まり、行き先は今いるマスになる（溶岩の西隣の床に置き、東へ吹き飛ばす）
 async function knockLavaChecks(pg, base) {
-  await openTest(pg, base, 'seed=42&realm=volcano&god=1');
-  await advance(pg, 2);
-  const r = await pg.evaluate(() => {
-    __test.clearAll();
-    const { w, h } = __test.size();
-    for (let i = w; i < w * h - w; i++) {
-      if (!__test.cell(i).floor || !__test.cell(i + 1).lava || !__test.cell(i - 1).floor) continue;
-      __test.summon('k', i);
-      __test.knock(0, 14, 0);
-      for (let q = 0; q < 30; q++) __test.advance(1 / 30);
-      const m = __test.mob(0);
-      return { i, at: m.cz * w + m.cx, to: m.tz * w + m.tx, lava: __test.cell(m.cz * w + m.cx).lava };
+  // 小さな生き物（コボルト）と体の大きな生き物（トロル）。トロルは、体（半径 0.35×大きさ）が溶岩にかかる手前で止まる
+  for (const key of ['k', 'T']) {
+    await openTest(pg, base, 'seed=42&realm=volcano&god=1');
+    await advance(pg, 2);
+    const r = await pg.evaluate((key) => {
+      __test.clearAll();
+      const { w, h } = __test.size(),
+        C = __test.cell(0).x * 2;
+      for (let i = w; i < w * h - w; i++) {
+        if (!__test.cell(i).floor || !__test.cell(i + 1).lava || !__test.cell(i - 1).floor) continue;
+        __test.summon(key, i);
+        __test.knock(0, 14, 0);
+        // 吹き飛びが止まるまで（止まった時の行き先を見る。その後は、また歩き出す）
+        for (let q = 0; q < 60 && (__test.mob(0).kx || __test.mob(0).kz); q++) __test.advance(1 / 30);
+        const m = __test.mob(0),
+          // 体の東の端と、東隣の溶岩のマスの西の縁との間（0 以上なら、体は溶岩にかかっていない）
+          gap = ((i % w) + 1) * C - (m.x + 0.35 * m.scale);
+        return { i, at: m.cz * w + m.cx, to: m.tz * w + m.tx, lava: __test.cell(m.cz * w + m.cx).lava, gap: +gap.toFixed(3) };
+      }
+      return null;
+    }, key);
+    if (!r) {
+      errs.push('15：溶岩の西隣に床が無い（テストの前提が崩れた。シードを変える）');
+      return;
     }
-    return null;
-  });
-  if (!r) {
-    errs.push('15：溶岩の西隣に床が無い（テストの前提が崩れた。シードを変える）');
-    return;
+    if (r.lava || r.at !== r.i || r.to !== r.at || !(r.gap >= 0))
+      errs.push(
+        `15：吹き飛ばされた生き物（${key}）が、溶岩の手前で止まらない（置いたマス ${r.i}・今いるマス ${r.at}・行き先 ${r.to}・溶岩か ${r.lava}・体と溶岩の間 ${r.gap}）`,
+      );
   }
-  if (r.lava || r.at !== r.i || r.to !== r.at)
-    errs.push(
-      `15：吹き飛ばされた生き物が、溶岩の手前で止まらない（置いたマス ${r.i}・今いるマス ${r.at}・行き先 ${r.to}・溶岩か ${r.lava}）`,
-    );
 }
 
 await withBrowser(async ({ browser, base }) => {

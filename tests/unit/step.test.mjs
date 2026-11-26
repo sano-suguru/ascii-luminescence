@@ -1,10 +1,6 @@
 // 詠唱と転がり・飛ぶ物と戦いの跡を進める処理・詠唱の声・剣の波を描く・火とガスと地面を進める処理・部屋の出来事と罠・神託所の手がかり
 // （src/lib/chant.ts・projs.ts・audio.ts・fx.ts・ground.ts・events.ts・legend.ts）の単体テスト。
-// 指紋の値は、移す前の古い JS（src/game/15・18・20・24・26）でも同じになる（step-cases.mjs の場合を、古い関数で数えて確かめた）。
-// ただし、特性の表（src/lib/runes.ts の TRAITS）に無い特性を読む処理（矢の特性 arrowTraits・続けて当てた矢 m_rapidCrit・小さな月など）と、
-// それを直に呼ぶ場合は消した（指紋は、消した欄と呼び出しを除けば同じ）。また、火口の噴き上がり（updateEvents の erupt）は、流れ出す・引く間も時計が
-// 進まず止まっていたのを直した（場合も、噴き上がりが最後まで進む所まで足した）。溶岩（噴き上がりと流れ）は、生き物が歩いて向かっているマスと体のかかるマスにも流さず、流せなかったマスは後で試し直すようにし、吹き飛ばしは溶岩の手前で止めるようにした。どこからも呼ばれていなかった転がった時 onRolled は消した
-// （加護の効く間は、かわした時 onDodged が始める。fight.test で見る）。
+// 指紋は、step-cases.mjs の場合の結果。動きを意図して変えた時は、変わり方を確かめてから作り直す（何が変わったかは、コミットと PR に書く）。
 // 階は Node で本物の迷宮を生成するので、迷宮の生成を変えると、この指紋も変わる（その時は generate.test.ts の指紋と一緒に作り直す）。
 // テストを .mjs で書くのは、偽の画面の部品・偽の Web Audio を、本物の型に合わせられないため。
 import { describe, expect, it } from 'vitest';
@@ -24,7 +20,7 @@ describe('移す前と同じ', () => {
       all = await stepCases(F, 8, fakeDom()),
       body = stepText(all),
       calls = all.flatMap((c) => c.calls);
-    expect([fnv(body), body.length]).toEqual(['f60418a4', 2641250]);
+    expect([fnv(body), body.length]).toEqual(['df0e0b31', 2584702]);
     // 場合が中身を通っているか：23の関数が全部呼ばれ、どれも止まらない。見た目の乱数・音の乱数・伝言・setTimeout・音の部品を使う呼び出しもある
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);
@@ -38,6 +34,11 @@ describe('移す前と同じ', () => {
     const flows = all.map((c) => c.lavaflow).filter((f) => f && f[0] !== 0);
     expect(flows.length).toBeGreaterThan(0);
     expect(flows.every(([st, left]) => st === 2 && left === 0)).toBe(true);
+    // 噴き上がりは、流れる順を並べ替えない（塞がれたマスは別の列で試し直す）。引くと、流す前の中身に戻る（水のマスは、溶岩になってから水に戻る）
+    const ran = all.filter((c) => c.orderKept !== null);
+    expect(ran.length).toBeGreaterThan(0);
+    expect(ran.every((c) => c.orderKept)).toBe(true);
+    expect(ran.every((c) => c.water[0] && c.water[1])).toBe(true);
     expect(all.every((c) => c.timers.threw === 0)).toBe(true);
     const by = (name, f) => calls.filter((c) => c.name === name && f(c)).length;
     for (const name of ['updateProjs', 'updateStatuses', 'stepFire', 'updateEvents', 'startRoll'])
