@@ -20,8 +20,11 @@ import { type Mob, adv, blaze, clock, gfx, here, keys, player, stealth, vfx } fr
 import { makeNoise } from './status.ts';
 import { CELL, LQ_LAVA, LQ_WATER, MW, NCELL, PROPHECIES, TC, TW, cpos } from './world.ts';
 
-/** 飛ばない生き物 m が、マス i にいるか、i へ歩いている途中か（溶岩はそこへ流さない。行き先へ流すと、そのまま溶岩の上に立ってしまう） */
-const onWay = (m: Mob, i: number): boolean => !m.ty.flier && (m.cz * MW + m.cx === i || m.tz * MW + m.tx === i);
+/**
+ * 溶岩を歩けない生き物 m（飛ぶ物と溶岩に住む物は除く）が、マス i にいるか、i へ歩いている途中か
+ * （溶岩はそこへ流さない。行き先へ流すと、そのまま溶岩の上に立ってしまう）
+ */
+const onWay = (m: Mob, i: number): boolean => !m.ty.flier && m.ty.habitat !== 'lava' && (m.cz * MW + m.cx === i || m.tz * MW + m.tx === i);
 /** 今の階 */
 const level = () => must(here.D, '今の階 here.D');
 
