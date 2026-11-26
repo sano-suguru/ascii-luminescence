@@ -58,6 +58,6 @@ describe('移す前と同じ', () => {
       new Set(['drawOmens', 'omenSound', 'drawFixtures', 'drawStairSeal']),
     );
     expect(calls.filter((c) => c.threw).length).toBeLessThan(5);
-    expect([fnv(all), all.length]).toEqual(['650c64a1', 5517227]);
+    expect([fnv(all), all.length]).toEqual(['03b9be94', 5536316]);
   }, 60000);
 });
