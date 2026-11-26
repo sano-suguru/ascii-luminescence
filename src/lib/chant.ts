@@ -4,7 +4,7 @@ import { lookup, must, nth } from './array.ts';
 import { aimOrigin, castPoint, handPoint, viewDir } from './aim.ts';
 import { chantStart, sChime, sWhoosh } from './audio.ts';
 import { castNow, fireBeam } from './combat.ts';
-import { type Side, atkType, bodyN, isTwo, restoreHands, turnElem, wTL } from './gear.ts';
+import { type Side, atkType, bodyN, restoreHands, turnElem, wTL } from './gear.ts';
 import { G } from './glyphs.ts';
 import { renderHotbar } from './hotbar.ts';
 import { BL } from './monsters.ts';
@@ -234,21 +234,5 @@ export function startRoll(): void {
       0.55,
       1,
     );
-  }
-}
-/**
- * 転がった時（素早い詠唱と反撃の加護の効く間を始め、かわした時の発動のルーンで放つ）。
- * 今はどこからも呼ばれていない（古い JS のまま写した）
- */
-export function onRolled(): void {
-  if (BL('quickdodge')) player.qcUntil = clock.time + (BL('quickdodge') >= 2 ? 2.5 : 1.5);
-  if (BL('counter')) player.ctrUntil = clock.time + 1.5;
-  for (const h of ['L', 'R'] as const) {
-    if (h === 'R' && isTwo()) continue;
-    const H = must(gear.hands)[h];
-    if (H.trig && H.trig.type === 'dodge' && H.atk && fight.trigCd[h] <= 0 && !gear.swapSt) {
-      fight.trigCd[h] = 1.0;
-      castNow(h);
-    }
   }
 }

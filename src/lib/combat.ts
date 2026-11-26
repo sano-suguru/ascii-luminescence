@@ -58,45 +58,36 @@ export function startRain(sp: Spec, x: number, z: number, again?: boolean): void
 }
 /** 連射（0.07 秒ごとに矢を撃つ。opt.dir があればその向きへ、ほかは照準へ。少しばらつく） */
 export function castRapid(h: string, sp: Spec, opt: { dir?: V3 | null | undefined; auto?: boolean | undefined }): void {
-  const vo = 0,
-    sd = 0,
-    hv = 0,
-    ac = TL(sp, 'accuracy'),
-    n = 3 + (sp.aff.count || 0),
-    volleys = 1;
-  for (let v = 0; v < volleys; v++)
-    for (let k = 0; k < n; k++)
-      later(k * 0.07 + v * 0.45, () => {
-        if (adv.dead) return;
-        const fr = shotFrame(h, false, 'bolt'),
-          base = opt.dir || fr.d,
-          HP = opt.dir ? handPoint(h) : fr.o,
-          spread = 0.045 * (1 - 0.16 * ac),
-          d = turnDir(base, (mr() - 0.5) * spread * 2);
-        fight.projs.push({
-          kind: 'bolt',
-          auto: !!opt.auto,
-          x: HP[0],
-          y: HP[1],
-          z: HP[2],
-          vx: d[0] * 22,
-          vy: d[1] * 22,
-          vz: d[2] * 22,
-          t: 0,
-          sp,
-          bounce: sp.aff.bounce || 0,
-          homing: (sp.aff.homing || 0) + (sd >= 2 ? 20 : sd >= 1 ? 10 : 0),
-          hit: new Set(),
-          dmg: lookup(RUNE_DEF, 'rapid').dmg,
-          dmgK: (sd >= 4 ? 1.3 : 1) * (hv >= 4 ? 1.4 : hv >= 2 ? 1.2 : 1),
-          pierce: sd >= 3 ? 1 : 0,
-          keep: true,
-          heavy: hv,
-          steady: sd,
-          boom: vo >= 5 && k === n - 1,
-        });
-        if (k % 2 === 0) sWhoosh();
+  const ac = TL(sp, 'accuracy'),
+    n = 3 + (sp.aff.count || 0);
+  for (let k = 0; k < n; k++)
+    later(k * 0.07, () => {
+      if (adv.dead) return;
+      const fr = shotFrame(h, false, 'bolt'),
+        base = opt.dir || fr.d,
+        HP = opt.dir ? handPoint(h) : fr.o,
+        spread = 0.045 * (1 - 0.16 * ac),
+        d = turnDir(base, (mr() - 0.5) * spread * 2);
+      fight.projs.push({
+        kind: 'bolt',
+        auto: !!opt.auto,
+        x: HP[0],
+        y: HP[1],
+        z: HP[2],
+        vx: d[0] * 22,
+        vy: d[1] * 22,
+        vz: d[2] * 22,
+        t: 0,
+        sp,
+        bounce: sp.aff.bounce || 0,
+        homing: sp.aff.homing || 0,
+        hit: new Set(),
+        dmg: lookup(RUNE_DEF, 'rapid').dmg,
+        pierce: 0,
+        keep: true,
       });
+      if (k % 2 === 0) sWhoosh();
+    });
 }
 /** 剣の波（武器を振った向きに、飛ぶ刃を撃つ。大剣の払いは広く短い。素手は撃たない。cut はもう当たった生き物） */
 export function fireWave(sp: Spec, dir: V3, cut?: Iterable<Mob> | null): void {
@@ -464,47 +455,38 @@ export function castNow(h: Side, opt?: CastOpt): void {
   if (sp.atk === 'gwave') {
     castSound(sp);
     makeNoise(player.x, player.z, 6, 0.4);
-    const ec = TL(sp, 'echo'),
-      n = 1 + (sp.aff.count || 0),
-      dmg = lookup(RUNE_DEF, 'gwave').dmg,
-      fire = (dK: number, big: boolean) => {
-        for (let k = 0; k < n; k++) {
-          const d = turnDir(dir, (k - (n - 1) / 2) * 0.14);
-          fight.projs.push({
-            kind: 'bolt',
-            wind: true,
-            big,
-            wave: true,
-            cw: big ? 2.6 : 1.8,
-            rad: big ? 0.74 : 0.34,
-            x: HP[0],
-            y: HP[1],
-            z: HP[2],
-            vx: d[0] * 10,
-            vy: d[1] * 10,
-            vz: d[2] * 10,
-            accel: 30,
-            vmax: 26,
-            t: 0,
-            maxT: 1.0,
-            sp,
-            bounce: 0,
-            homing: 0,
-            hit: new Set(),
-            dmg,
-            dmgK: dK,
-            pierce: ec >= 5 ? 99 : 6,
-            keep: true,
-          });
-        }
-        sWhoosh();
-      };
-    fire(1, true);
-    if (ec) {
-      const k = ec >= 4 ? 0.8 : ec >= 2 ? 0.65 : 0.5;
-      later(0.3, () => fire(k, false));
-      if (ec >= 3) later(0.6, () => fire(k, false));
+    const n = 1 + (sp.aff.count || 0),
+      dmg = lookup(RUNE_DEF, 'gwave').dmg;
+    for (let k = 0; k < n; k++) {
+      const d = turnDir(dir, (k - (n - 1) / 2) * 0.14);
+      fight.projs.push({
+        kind: 'bolt',
+        wind: true,
+        big: true,
+        wave: true,
+        cw: 2.6,
+        rad: 0.74,
+        x: HP[0],
+        y: HP[1],
+        z: HP[2],
+        vx: d[0] * 10,
+        vy: d[1] * 10,
+        vz: d[2] * 10,
+        accel: 30,
+        vmax: 26,
+        t: 0,
+        maxT: 1.0,
+        sp,
+        bounce: 0,
+        homing: 0,
+        hit: new Set(),
+        dmg,
+        dmgK: 1,
+        pierce: 6,
+        keep: true,
+      });
     }
+    sWhoosh();
     return;
   }
   if (sp.atk === 'bpower' || sp.atk === 'rshot') {
@@ -555,7 +537,6 @@ export function castNow(h: Side, opt?: CastOpt): void {
         hit: new Set(),
         dmg: lookup(RUNE_DEF, 'mshot').dmg,
         pierce: 0,
-        dust: TL(sp, 'stardust'),
       });
     }
     return;
@@ -563,9 +544,7 @@ export function castNow(h: Side, opt?: CastOpt): void {
   if (sp.atk === 'mmoon') {
     castSound(sp);
     makeNoise(player.x, player.z, 6, 0.4);
-    // @ts-expect-error -- 古い JS のまま（使っていない）
-    const ph = 0,
-      k = clamp((opt.hold || 0) / (2 * (tv(sp, 'charge') ?? NaN)), 0, 1),
+    const k = clamp((opt.hold || 0) / (2 * (tv(sp, 'charge') ?? NaN)), 0, 1),
       f = 1 + k * 2 * (tv(sp, 'size') ?? NaN),
       n = 1 + (sp.aff.count || 0);
     for (let i = 0; i < n; i++) {
@@ -586,8 +565,6 @@ export function castNow(h: Side, opt?: CastOpt): void {
         homing: 0,
         hit: new Set(),
         tide: TL(sp, 'pull'),
-        phases: 0,
-        burnT: 0,
       });
     }
     return;
@@ -850,7 +827,7 @@ export function castStar(sp: Spec, x: number, z: number): void {
   });
 }
 /**
- * 近くを切る（剣・素手・大剣の払い）：手の届く所で、照準からの角度の小さい順に、数の分だけ切る。重さで吹き飛ばし、払いの地揺れ、回転、剣の波、
+ * 近くを切る（剣・素手・大剣の払い）：手の届く所で、照準からの角度の小さい順に、数の分だけ切る。剣の波を撃ち、
  * 性質を足もとに落とす（もとは src/game/20-chant-hits.js）
  */
 export function meleeCast(sp: Spec, dir: V3): void {
@@ -860,12 +837,10 @@ export function meleeCast(sp: Spec, dir: V3): void {
   player.swingCol = elemCol(sp.elem);
   sWhoosh();
   const MD = lookup(RUNE_DEF, sp.atk === 'bare' ? 'blade' : must(sp.atk)),
-    wgt = TL(sp, 'weight'),
     [vx, vy, vz] = dir,
     [ox, oy, oz] = aimOrigin(),
-    spL = TL(sp, 'spin'),
-    reach = (MD.reach || 2.2) + (spL >= 2 ? 0.5 : 0),
-    maxT = 1 + (sp.aff.count || 0) + (spL >= 3 ? 3 : 0) + (sp.atk === 'gsweep' ? 2 : 0),
+    reach = MD.reach || 2.2,
+    maxT = 1 + (sp.aff.count || 0) + (sp.atk === 'gsweep' ? 2 : 0),
     cands: [number, Mob][] = [];
   for (const m of here.monsters) {
     if (!hittable(m)) continue;
@@ -879,120 +854,12 @@ export function meleeCast(sp: Spec, dir: V3): void {
       d = Math.hypot(ax, ay, az);
     if (Math.hypot(m.x - player.x, m.z - player.z) > reach + 0.35 * sc) continue;
     const ang = Math.acos(clamp((ax * vx + ay * vy + az * vz) / Math.max(d, 1e-3), -1, 1)),
-      tol =
-        spL >= 3 || wgt >= 5
-          ? Math.PI
-          : (MD.arc || 0.42) + (maxT > 1 ? 0.25 : 0) + (spL >= 1 ? 0.3 : 0) + Math.atan2(0.5 * sc, Math.max(d, 0.5));
+      tol = (MD.arc || 0.42) + (maxT > 1 ? 0.25 : 0) + Math.atan2(0.5 * sc, Math.max(d, 0.5));
     if (ang <= tol) cands.push([ang, m]);
   }
   cands.sort((a, b) => a[0] - b[0]);
-  const dm = sp.atk === 'bare' ? [1, 2] : MD.dmg,
-    dK = spL >= 4 ? 1.3 : 1;
-  for (const [, m] of cands.slice(0, maxT)) {
-    applyHit(m, Math.round(roll(nth(must(dm), 0), nth(must(dm), 1)) * dK), sp);
-    if (wgt && !m.dead && !m.ty.boss && m.key !== 'lord' && m.key !== 'final' && !m.ty.habitat) {
-      const ax = m.x - player.x,
-        az = m.z - player.z,
-        dd = Math.hypot(ax, az) || 1,
-        v = (wgt >= 2 ? 8 : 6) / Math.max(0.6, m.ty.scale || 1);
-      m.kx = (m.kx || 0) + (ax / dd) * v;
-      m.kz = (m.kz || 0) + (az / dd) * v;
-      m.st = m.st || {};
-      if (wgt >= 3) m.slam = { d: wgt >= 4 ? 7 : 4, until: clock.time + 0.7 };
-    }
-  }
-  const qk = TL(sp, 'quake');
-  if (qk && sp.atk === 'gsweep') {
-    const px = player.x,
-      pz = player.z,
-      R = qk >= 4 ? 4.5 : 3.2,
-      hitNow = new Set(cands.slice(0, maxT).map((c) => c[1]));
-    later(0.12, () => {
-      for (let q = 0; q < 36; q++) {
-        const a = (q / 36) * Math.PI * 2;
-        spawn(
-          px + Math.cos(a) * R * 0.9,
-          0.1,
-          pz + Math.sin(a) * R * 0.9,
-          Math.cos(a) * 2,
-          0.2,
-          Math.sin(a) * 2,
-          0.35,
-          G(mpick(['~', '-', '='])),
-          0.15,
-          1.4,
-          1.2,
-          0.9,
-          0,
-        );
-      }
-      for (const m of here.monsters) {
-        if (!hittable(m) || hitNow.has(m) || m.ty.flier) continue;
-        if (Math.hypot(m.x - px, m.z - pz) < R) {
-          m.playerT = clock.time;
-          applyHit(m, Math.max(1, Math.round(roll(nth(must(dm), 0), nth(must(dm), 1)) * (qk >= 2 ? 0.55 : 0.4))), sp, true);
-          if (qk >= 3) m.wind = 0;
-          if (qk >= 5 && !m.ty.boss) {
-            const st = m.st || (m.st = {});
-            if (clock.time >= (st.pinCd || 0)) {
-              st.pin = Math.max(st.pin || 0, 0.4);
-              st.pinCd = clock.time + 1.6;
-            }
-          }
-        }
-      }
-      vfx.shake = Math.max(vfx.shake, 0.15);
-    });
-  }
-  if (spL >= 3) {
-    for (let q = 0; q < 26; q++) {
-      const a = (q / 26) * Math.PI * 2;
-      spawn(
-        player.x + Math.cos(a) * reach * 0.8,
-        player.eye - 0.6,
-        player.z + Math.sin(a) * reach * 0.8,
-        -Math.sin(a) * 2,
-        0,
-        Math.cos(a) * 2,
-        0.25,
-        G(mpick(['-', '~', '='])),
-        0.14,
-        // oxlint-disable-next-line typescript/consistent-type-assertions -- 性質の色は3つの数（元のまま広げて渡す）
-        ...(must(elemCol(sp.elem)).map((v) => v * 2.2) as Col3),
-        0,
-      );
-    }
-  }
-  if (spL >= 5) {
-    const px = player.x,
-      pz = player.z;
-    later(0.25, () => {
-      for (let q = 0; q < 30; q++) {
-        const a = (q / 30) * Math.PI * 2;
-        spawn(
-          px + Math.cos(a) * reach,
-          0.9,
-          pz + Math.sin(a) * reach,
-          0,
-          0.2,
-          0,
-          0.45,
-          G('='),
-          0.16,
-          // oxlint-disable-next-line typescript/consistent-type-assertions -- 性質の色は3つの数（元のまま広げて渡す）
-          ...(must(elemCol(sp.elem)).map((v) => v * 2.6) as Col3),
-          0,
-        );
-      }
-      for (const m of here.monsters) {
-        if (!hittable(m)) continue;
-        if (Math.hypot(m.x - px, m.z - pz) < reach + 0.4 * m.ty.scale) {
-          m.playerT = clock.time;
-          applyHit(m, Math.max(1, Math.round(roll(nth(must(dm), 0), nth(must(dm), 1)) * 0.5)), sp, true);
-        }
-      }
-    });
-  }
+  const dm = sp.atk === 'bare' ? [1, 2] : MD.dmg;
+  for (const [, m] of cands.slice(0, maxT)) applyHit(m, Math.round(roll(nth(must(dm), 0), nth(must(dm), 1))), sp);
   fireWave(sp, dir, new Set(cands.slice(0, maxT).map((c) => c[1])));
   const wL = 0;
   if (wL) {
@@ -1056,8 +923,8 @@ export function meleeCast(sp: Spec, dir: V3): void {
   }
 }
 /**
- * 光線を撃つ（手 h から。数の分だけ少しずつずらす）：当たった生き物を焼き、屈折の特性で次の生き物へ曲がる。壁に当たると性質を落とし、
- * 跳ね返りの数だけ跳ね返る。撃ち続けるほど強くなる（集中）。焼け跡の特性で、光線の先に魔法の場を残す（もとは src/game/20-chant-hits.js）
+ * 光線を撃つ（手 h から。数の分だけ少しずつずらす）：当たった生き物を焼く。壁に当たると性質を落とし、
+ * 跳ね返りの数だけ跳ね返る。撃ち続けるほど強くなる（集中）（もとは src/game/20-chant-hits.js）
  */
 export function fireBeam(h: Side, dirIn: V3 | null, orgIn: readonly number[] | null, auto: boolean): void {
   const sp = specOf(h),
@@ -1072,18 +939,14 @@ export function fireBeam(h: Side, dirIn: V3 | null, orgIn: readonly number[] | n
   fb.last = clock.time;
   const fL = TL(sp, 'focus'),
     fMax = nth(TRAIT_V.focus, fL),
-    fK = 1 + Math.min(fMax, fb.hold * 0.35),
-    rL = TL(sp, 'refract'),
-    seL = TL(sp, 'sear');
+    fK = 1 + Math.min(fMax, fb.hold * 0.35);
   for (let k = 0; k < n; k++) {
     let d: V3 = turnDir(base, (k - (n - 1) / 2) * 0.12),
       x = must(ox),
       y = must(oy),
       z = must(oz),
       left = 12 * (tv(sp, 'length') ?? NaN),
-      bounces = sp.aff.bounce || 0,
-      bends = rL ? (rL >= 3 ? 2 : 1) : 0,
-      bent = false;
+      bounces = sp.aff.bounce || 0;
     const seg = [[x, y, z]],
       hitSet = new Set<Mob>();
     while (left > 0) {
@@ -1104,45 +967,12 @@ export function fireBeam(h: Side, dirIn: V3 | null, orgIn: readonly number[] | n
       if (hitM) {
         seg.push([nx, ny, nz]);
         hitSet.add(hitM);
-        const bsp = bent && rL >= 5 ? { ...sp, pow: sp.pow * 1.5 } : sp;
         applyHit(
           hitM,
-          Math.max(
-            1,
-            Math.round(
-              roll(nth(must(lookup(RUNE_DEF, 'beam').dmg), 0), nth(must(lookup(RUNE_DEF, 'beam').dmg), 1)) *
-                fK *
-                (bent && rL >= 4 ? 1.25 : 1),
-            ),
-          ),
-          bsp,
+          Math.max(1, Math.round(roll(nth(must(lookup(RUNE_DEF, 'beam').dmg), 0), nth(must(lookup(RUNE_DEF, 'beam').dmg), 1)) * fK)),
+          sp,
           true,
         );
-        if (bends > 0) {
-          let m2 = null,
-            bd = rL >= 2 ? 9 : 6;
-          for (const m of here.monsters) {
-            if (!hittable(m) || hitSet.has(m) || m.ty.critter) continue;
-            const cy = m.y + (m.ty.flier ? 0 : 0.6 * m.ty.scale),
-              dd = Math.hypot(m.x - nx, cy - ny, m.z - nz);
-            if (dd < bd && losClear(nx, ny, nz, m.x, cy, m.z)) {
-              bd = dd;
-              m2 = m;
-            }
-          }
-          if (m2) {
-            bends--;
-            bent = true;
-            const cy = m2.y + (m2.ty.flier ? 0 : 0.6 * m2.ty.scale),
-              L = Math.hypot(m2.x - nx, cy - ny, m2.z - nz) || 1;
-            d = [(m2.x - nx) / L, (cy - ny) / L, (m2.z - nz) / L];
-            x = nx;
-            y = ny;
-            z = nz;
-            left = L + 0.6;
-            continue;
-          }
-        }
         break;
       }
       const ci = Math.floor(nz / CELL) * MW + Math.floor(nx / CELL),
@@ -1174,10 +1004,6 @@ export function fireBeam(h: Side, dirIn: V3 | null, orgIn: readonly number[] | n
     }
     if (seg.length < 2) seg.push([x, y, z]);
     const e = nth(seg, seg.length - 1);
-    if (k === 0 && seL && clock.time - fb.sear > 0.4) {
-      fb.sear = clock.time;
-      addZone(nth(e, 0), nth(e, 2), seL >= 3 ? 1.0 : 0.7, sp, nth([0, 2.5, 3.5, 3.5, 5, 5], seL), seL >= 5);
-    }
     // oxlint-disable-next-line no-constant-condition -- 古い JS のまま（止めてある処理。tools/same-code.mjs が同じ文と見るため）
     if (false) {
       fb.burst = clock.time;
@@ -1204,16 +1030,13 @@ export function fireBeam(h: Side, dirIn: V3 | null, orgIn: readonly number[] | n
     fight.beamSegs.push({ pts: seg, col: auto ? must(elemCol(sp.elem)).map((v) => v * 0.6 + 0.4) : must(elemCol(sp.elem)), t: 0.16 });
   }
 }
-/**
- * 玉が弾ける（まわりの見通せる生き物に当て、性質ごとに火・冷気・稲妻・毒の霧を残す）。opt.proj があれば、分かれる・残る場・押しのけの特性も
- * （もとは src/game/20-chant-hits.js）
- */
+/** 玉が弾ける（まわりの見通せる生き物に当て、性質ごとに火・冷気・稲妻・毒の霧を残す。もとは src/game/20-chant-hits.js） */
 export function orbBurst(
   x: number,
   y: number,
   z: number,
   sp: Spec,
-  opt?: { dmg?: number | undefined; rad?: number | undefined; cloud?: boolean; proj?: { gen?: number; mini?: boolean } },
+  opt?: { dmg?: number | undefined; rad?: number | undefined; cloud?: boolean },
 ): void {
   opt = opt || {};
   const dK = opt.dmg || 1,
@@ -1260,56 +1083,6 @@ export function orbBurst(
   if (sp.elem === 'ice') chillArea(x, z, R);
   if (sp.elem === 'thunder') landElem(sp, x, y, z, ci);
   if (sp.elem === 'poison' && opt.cloud !== false) fight.clouds.push({ x, z, r: R * 1.1, t: 3 * (1 + (sp.aff.dur || 0) / 100), tick: 0 });
-  if (!opt.proj) return;
-  const p = opt.proj,
-    gen = p.gen || 0;
-  const sL = TL(sp, 'split');
-  if (sL && gen < (sL >= 5 ? 2 : 1)) {
-    const n = sL >= 3 ? 3 : 2,
-      spd = sL >= 2 ? 6.5 : 4.5;
-    for (let k = 0; k < n; k++) {
-      const a = mr() * 6.28;
-      fight.projs.push({
-        kind: 'orb',
-        mini: true,
-        gen: gen + 1,
-        x,
-        y: Math.max(0.5, y),
-        z,
-        vx: Math.cos(a) * spd,
-        vy: 3.8,
-        vz: Math.sin(a) * spd,
-        t: 0,
-        sp,
-        bounce: 0,
-        homing: 0,
-        hit: new Set(),
-        burstK: sL >= 4 ? 0.7 : 0.5,
-      });
-    }
-  }
-  const tL = TL(sp, 'trace');
-  if (tL && !p.mini) addZone(x, z, R * (tL >= 3 ? 1.0 : 0.7), sp, nth([0, 4, 6, 6, 8, 8], tL), tL >= 5);
-  const iL = TL(sp, 'impact');
-  if (iL && !p.mini) {
-    for (const m of here.monsters) {
-      if (!hittable(m)) continue;
-      const ax = m.x - x,
-        az = m.z - z,
-        dd = Math.hypot(ax, az) || 0.01;
-      if (dd > R + 0.5) continue;
-      if (m.ty.boss || m.key === 'lord' || m.key === 'final' || m.ty.habitat) continue;
-      const v = (iL >= 2 ? 8 : 6) / Math.max(0.6, m.ty.scale || 1);
-      m.kx = (m.kx || 0) + (ax / dd) * v;
-      m.kz = (m.kz || 0) + (az / dd) * v;
-      m.st = m.st || {};
-      if (iL >= 3) m.slam = { d: iL >= 4 ? 6 : 3, until: clock.time + 0.7 };
-      if (iL >= 5) {
-        m.wind = 0;
-        m.st.pin = Math.max(m.st.pin || 0, 0.8);
-      }
-    }
-  }
 }
 /** マス i のまわり（半径 r マス）に火をつける（壁・裂け目・水は除く。燃える物を少し足す。燃えるガスがあれば爆ぜる） */
 export function burstFire(i: number, r: number, str: number): void {
@@ -1846,8 +1619,13 @@ export declare namespace hurtPlayer {
   let mt: number | undefined;
   let mc: string | undefined;
 }
-/** 転がって攻撃をかわした時：かわした時に放つ発動のルーンで、手ごとに、かわした相手へ術を放つ（剣は近くだけ）。粒と音（もとは src/game/26-spells-hud.js） */
+/**
+ * 転がって攻撃をかわした時：加護の身軽な詠唱（quickdodge）と返しの一撃（counter）の効く間を始め、かわした時に放つ発動のルーンで、手ごとに、
+ * かわした相手へ術を放つ（剣は近くだけ）。粒と音（もとは src/game/26-spells-hud.js）。生き物の攻撃1回ごとに呼ばれる（何体も同時なら、効く間を入れ直すだけ）
+ */
 export function onDodged(m: Mob): void {
+  if (BL('quickdodge')) player.qcUntil = clock.time + (BL('quickdodge') >= 2 ? 2.5 : 1.5);
+  if (BL('counter')) player.ctrUntil = clock.time + 1.5;
   if (!gear.hands) return;
   let any = false;
   for (const h of ['L', 'R'] as const) {
