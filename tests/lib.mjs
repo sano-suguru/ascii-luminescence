@@ -2,11 +2,15 @@
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { chromium, devices } from 'playwright';
 import { build } from 'vite';
 import { serve } from '../tools/serve.mjs';
 import { findMap, originalPosition } from '../tools/sourcemap.mjs';
 
+const must = (v, what) => {
+  if (v === undefined || v === null) throw new Error(`${what}が無い`);
+  return v;
+};
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const OUT = join(ROOT, 'tests/out');
 export const arg = (k, d) => {
@@ -64,8 +68,11 @@ export async function withBrowser(fn, { prod = false } = {}) {
 // ページを作る。ページのエラーは errs に集める（ページの中の iframe のエラーも）。ポインタロックは止める。
 // still: CSS のアニメーションとトランジションを止める（実際の時間で進むので、撮るたびに画面写真が変わる。いつも終わった後の姿にする）
 // realLock: ポインタロックを止めない（ブラウザ本来の動きのまま。tests/frame.mjs のサンドボックスの iframe で使う）
-export async function newPage(browser, errs, { width = 960, height = 540, still = false, realLock = false } = {}) {
-  const pg = await browser.newPage({ viewport: { width, height } });
+// device: Playwright の端末の名前（'iPhone 13 landscape' など）。その端末の画面の大きさ・タッチ・UA で開く（width・height は使わない。tests/touch.mjs）
+export async function newPage(browser, errs, { width = 960, height = 540, still = false, realLock = false, device = null } = {}) {
+  const pg = device
+    ? await (await browser.newContext({ ...must(devices[device], `端末 ${String(device)}`) })).newPage()
+    : await browser.newPage({ viewport: { width, height } });
   pg.on('pageerror', (e) => errs.push(annotate(String(e.stack || e)).slice(0, 600)));
   pg.on('requestfailed', (r) => console.log('request failed:', r.url(), r.failure()?.errorText || ''));
   if (!realLock)

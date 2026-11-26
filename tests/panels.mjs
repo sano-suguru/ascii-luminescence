@@ -4,6 +4,8 @@
 //      （ルーン文字は、パネルと同じく <b class="rn"> の中で測る）
 //   2. 実際の画面（操作・装備・メニュー・レベルアップ・祭壇・結果）で、右の縦線が全部の行で同じ位置にあるか
 //      レベルアップと祭壇は、一覧の見出しの後ろの名前の列も揃っているか
+//   3. 十字の下：「クリックで視点操作に戻る」は、照準の先の説明があってもなくても同じ場所に出て、説明はその下に、一言（#hint）はさらにその下に、
+//      8px ずつあけて並ぶ（重ならない）。説明だけの時は十字の下 22px、説明が1行なら一言はほぼ前と同じ所（十字の下 48px から 2px 以内）に出る
 import { gameText } from '../tools/game-source.mjs';
 import { withBrowser, newPage, openTest, advance, nearAltar } from './lib.mjs';
 
@@ -20,6 +22,48 @@ await withBrowser(async ({ browser, base }) => {
   await openTest(pg, base, 'seed=202&depth=1&god=1');
   await advance(pg, 2);
   await pg.evaluate(() => document.fonts.ready);
+
+  // 3. 十字の下（ゲームを進めずに、一言と説明を直接出して測る。進めると、ゲームが説明を書き直す）
+  {
+    const m = await pg.evaluate(() => {
+      const res = document.getElementById('resume'),
+        look = document.getElementById('look'),
+        hint = document.getElementById('hint'),
+        r = (el) => el.getBoundingClientRect(),
+        keep = [res.style.display, look.innerHTML, hint.innerHTML];
+      const long = '<b>骸骨の戦士</b>眠っている<span>' + 'とても長い説明の文。'.repeat(8) + '</span>';
+      res.style.display = 'block';
+      look.innerHTML = '';
+      const alone = r(res);
+      look.innerHTML = long;
+      hint.innerHTML = '鉄格子が行く手を塞いでいる';
+      const both = { res: r(res), look: r(look), hint: r(hint) };
+      res.style.display = 'none';
+      const lookOnly = r(look);
+      look.innerHTML = '<b>骸骨の戦士</b>眠っている';
+      const oneLine = { look: r(look), hint: r(hint) };
+      [res.style.display, look.innerHTML, hint.innerHTML] = keep;
+      return { alone, both, lookOnly, oneLine, mid: innerHeight / 2 };
+    });
+    const near = (a, b) => Math.abs(a - b) < 0.5,
+      n0 = errs.length;
+    const gap = m.both.look.top - m.both.res.bottom;
+    if (!near(m.alone.top, m.both.res.top)) errs.push(`十字の下：説明が出ると、一言の場所が変わる（${m.alone.top} → ${m.both.res.top}）`);
+    if (!near(gap, 8)) errs.push(`十字の下：一言と説明の間が 8px でない（${gap}）`);
+    if (!(m.both.look.height > 30)) errs.push(`十字の下：長い説明が折り返されていない（テストの前提が崩れた。高さ ${m.both.look.height}）`);
+    if (!near(m.lookOnly.top, m.mid + 22))
+      errs.push(`十字の下：説明だけの時、十字の下 22px に出ない（${m.lookOnly.top}、真ん中 ${m.mid}）`);
+    if (!near(m.alone.top, m.mid + 22)) errs.push(`十字の下：一言が十字の下 22px に出ない（${m.alone.top}）`);
+    const hgap = m.both.hint.top - m.both.look.bottom;
+    if (!near(hgap, 8)) errs.push(`十字の下：説明と、行く手を塞がれた時などの一言の間が 8px でない（${hgap}）`);
+    if (Math.abs(m.oneLine.hint.top - (m.mid + 48)) > 2)
+      errs.push(
+        `十字の下：説明が1行の時、行く手を塞がれた時などの一言が、前の場所（十字の下 48px）から 2px より離れた（${m.oneLine.hint.top}）`,
+      );
+    console.log(
+      `${errs.length > n0 ? '✗' : '✓'} 十字の下：一言は同じ場所、説明はその下に ${gap}px、行く手を塞がれた時などの一言はさらに ${hgap}px あけて並ぶ`,
+    );
+  }
 
   // 1. 文字ごとの幅
   const bad = await pg.evaluate(async (chars) => {

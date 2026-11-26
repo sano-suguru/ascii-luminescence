@@ -16,7 +16,31 @@ html{scroll-padding-top:env(safe-area-inset-top,0px);}
 html,body{height:100%;margin:0;overflow:hidden;background:var(--void);color:var(--ink);
   font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;}
 *{box-sizing:border-box;}
-#gl{position:fixed;top:0;left:0;width:100%;height:100%;display:block;outline:none;cursor:crosshair;}
+#gl{position:fixed;top:0;left:0;width:100%;height:100%;display:block;outline:none;cursor:crosshair;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
+/* 指で遊ぶ時（body.touch。src/lib/touch.ts）：文字を選ばない・長押しの吹き出しを出さない・2回押しで拡大しない */
+body.touch{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+body.touch button{touch-action:manipulation;}
+/* タッチのボタン：タイトルでは右上に [全画面]。探索中は上の真ん中（左上の状態の表示と右上のミニマップの間）に [装備] [メニュー] */
+#touchbar{display:none;position:fixed;top:calc(8px + env(safe-area-inset-top,0px));right:calc(8px + env(safe-area-inset-right,0px));z-index:30;gap:4px;}
+body.touch #touchbar{display:flex;}
+body.started #touchbar{right:auto;left:50%;transform:translateX(-50%);}
+#touchbar button{font:inherit;font-family:"M PLUS 1 Code","BIZ UDGothic",ui-monospace,monospace;font-size:13px;color:var(--mist);background:rgba(4,3,12,.62);border:0;border-radius:4px;padding:10px 5px;cursor:pointer;text-shadow:0 0 6px #000;}
+#touchbar button:active{color:var(--ink);}
+#touchbar .play{display:none;}
+body.started:not(.over) #touchbar .play{display:block;}
+body.started #fsB{display:none;}
+/* 指の操作（src/lib/touchpad.ts）：探索中で、止まっていない時だけ。右下に [右手] [左手]、左上の状態の表示の下に [回避]。スティックは左半分に触れた所に出る */
+#tctl{display:none;}
+body.touch.started:not(.over):not(.paused) #tctl{display:block;}
+#tctl button{position:fixed;z-index:12;font:inherit;font-family:"M PLUS 1 Code","BIZ UDGothic",ui-monospace,monospace;font-size:14px;color:var(--ink);background:rgba(4,3,12,.5);border:1px solid rgba(140,134,189,.45);border-radius:10px;padding:14px 10px;text-shadow:0 0 6px #000;}
+#tctl button:active{background:rgba(60,50,110,.6);}
+#castR{right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(84px + env(safe-area-inset-bottom,0px));}
+#castL{right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));}
+/* [回避] は、左上の状態の表示（高さが決まっている）のすぐ下に、上から置く */
+#rollB{left:calc(14px + env(safe-area-inset-left,0px));top:calc(138px + env(safe-area-inset-top,0px));padding:10px 8px;font-size:13px;}
+#stick{position:fixed;z-index:11;width:96px;height:96px;margin:-48px 0 0 -48px;border:1px solid rgba(140,134,189,.5);border-radius:50%;pointer-events:none;}
+#knob{position:absolute;left:30px;top:30px;width:36px;height:36px;border-radius:50%;background:rgba(200,190,255,.35);}
+#altarp button.row.armed{color:#ffe9c8;text-shadow:0 0 8px rgba(255,170,80,.7);}
 /* every piece of UI is drawn with glyphs, like the world itself */
 #hud{position:fixed;inset:0;pointer-events:none;z-index:10;text-shadow:0 0 6px #000,0 0 2px #000;transition:opacity .4s ease;}
 .glow{text-shadow:0 0 8px currentColor,0 0 2px #000;}
@@ -30,6 +54,8 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--void);color:var(
 #help.off{opacity:0;}
 #mapwrap{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:12px;}
 #map{display:block;width:min(392px,34vw);height:auto;}
+/* 背の低い画面（スマホの横向きなど）では、ミニマップを高さでも抑える（横幅の 34% だと、縦に画面の半分を越える） */
+@media (max-height:520px){ #map{width:min(34vw,42vh);} }
 #log{position:absolute;left:18px;bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:min(640px,60vw);font-size:12.5px;line-height:1.7;}
 #log .m{transition:opacity 1.2s ease;}
 #log .m b{font-weight:800;margin-right:.6em;}
@@ -37,14 +63,16 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--void);color:var(
 #cross.chant{text-shadow:0 0 6px rgba(0,0,0,.9),0 0 6px currentColor;}
 #cross.full{text-shadow:0 0 6px rgba(0,0,0,.9),0 0 8px currentColor;animation:crossPulse 1.1s ease-in-out infinite;}
 @keyframes crossPulse{0%,100%{opacity:.78;}50%{opacity:1;}}
-#resume{position:absolute;left:50%;top:58%;transform:translateX(-50%);font-size:12px;color:var(--mist);display:none;white-space:nowrap;}
+/* 十字の下：「クリックで視点操作に戻る」（出る時は、いつも十字のすぐ下の同じ場所）、照準の先の説明、行く手を塞がれた時などの一言の順。縦に並べるので重ならない */
+#under{position:absolute;left:50%;top:calc(50% + 22px);transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;}
+#resume{font-size:12px;color:var(--mist);display:none;white-space:nowrap;}
 body.paused #resume,body.over #resume,body:not(.started) #resume{display:none!important;}
-#look{position:absolute;left:50%;top:calc(50% + 22px);transform:translateX(-50%);max-width:min(560px,80vw);font-size:12px;line-height:1.5;text-align:center;
+#look{max-width:min(560px,80vw);font-size:12px;line-height:1.5;text-align:center;
   transition:opacity .35s ease;}
 #look:empty{display:none;}
 #look b{font-weight:800;margin-right:.5em;font-size:13px;}
 #look span{color:var(--mist);margin-left:.8em;}
-#hint{position:absolute;left:50%;top:calc(50% + 48px);transform:translateX(-50%);max-width:min(560px,86vw);font-size:12.5px;line-height:1.5;text-align:center;color:#ffd9a8;}
+#hint{max-width:min(560px,86vw);font-size:12.5px;line-height:1.5;text-align:center;color:#ffd9a8;}
 #hint:empty{display:none;}
 #stratum{position:absolute;left:50%;top:22%;transform:translateX(-50%);text-align:center;white-space:pre;font-size:13px;line-height:1.6;color:var(--mist);letter-spacing:.2em;opacity:0;}
 #stratum b{display:inline-block;margin-top:8px;font-size:clamp(22px,3.4vw,40px);color:#f3efff;letter-spacing:.3em;font-weight:800;text-shadow:0 0 8px rgba(190,170,255,.9),0 0 30px rgba(120,90,255,.5);}
@@ -184,9 +212,11 @@ body:not(.started) #hud{opacity:0;}
   <div id="mapwrap"><canvas id="map"></canvas></div>
   <div id="log" aria-live="polite"></div>
   <div id="cross"></div>
-  <div id="resume">[ クリックで視点操作に戻る ]</div>
-  <div id="look" aria-live="off"></div>
-  <div id="hint" aria-live="polite"></div>
+  <div id="under">
+    <div id="resume">[ クリックで視点操作に戻る ]</div>
+    <div id="look" aria-live="off"></div>
+    <div id="hint" aria-live="polite"></div>
+  </div>
   <div id="stratum" aria-live="polite"></div>
   <pre id="death" aria-live="assertive"></pre>
   <pre id="hotbar" aria-live="polite"></pre>
@@ -198,6 +228,19 @@ body:not(.started) #hud{opacity:0;}
 </div>
 
 <pre id="gal" role="dialog" aria-label="図鑑"></pre>
+<div id="touchbar">
+  <button id="fsB" hidden>[全画面]</button>
+  <button id="packB" class="play">[装備]</button>
+  <button id="menuB" class="play">[メニュー]</button>
+</div>
+
+<div id="tctl">
+  <button id="rollB">[回避]</button>
+  <button id="castR">[右手]</button>
+  <button id="castL">[左手]</button>
+  <div id="stick" hidden><div id="knob"></div></div>
+</div>
+
 <div id="intro">
   <h1 id="title" aria-label="ASCII LUMINESCENCE"><div id="logo" aria-hidden="true"></div></h1>
   <pre id="intropanel"></pre>

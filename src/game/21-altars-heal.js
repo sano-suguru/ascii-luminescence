@@ -73,11 +73,16 @@ function renderAltar(){ const el=document.getElementById('altarp'); if(!el)retur
   el.innerHTML=boxText(rows,ALTAR_W); setAltarDetail(null);
   if(!el.dataset.bound){ el.dataset.bound='1';
     el.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('button'); if(!b||!ui.altarOpen)return; e.stopPropagation();
-      if(b.dataset.cancel){ closeAltar(true); return; } if(b.dataset.k!==undefined)chooseAltar(+b.dataset.k); });
-    el.addEventListener('mouseover',e=>{ if(!ui.altarOpen)return; const b=e.target.closest&&e.target.closest('button[data-k]'); setAltarDetail(b?altarOpts().find(o=>o.slot===+b.dataset.k):null); });
+      if(b.dataset.cancel){ closeAltar(true); return; }
+      // 指なら、1回目は選んで説明を出すだけ、2回目で決める（レベルアップの画面と同じ。18-level-player.js）
+      if(b.dataset.k!==undefined&&!confirmTap('altar'+altarOpenT+':'+b.dataset.k)){ setAltarDetail(altarOpts().find(o=>o.slot===+b.dataset.k)); el.querySelectorAll('button.armed').forEach(x=>x.classList.remove('armed')); b.classList.add('armed'); return; }
+      if(b.dataset.k!==undefined)chooseAltar(+b.dataset.k); });
+    el.addEventListener('mouseover',e=>{ if(!ui.altarOpen||ui.touch)return; const b=e.target.closest&&e.target.closest('button[data-k]'); setAltarDetail(b?altarOpts().find(o=>o.slot===+b.dataset.k):null); });
     el.addEventListener('contextmenu',e=>{ e.preventDefault(); if(ui.altarOpen)closeAltar(true); }); } }
 function setAltarDetail(o){ const el=document.getElementById('altarp'); if(!el)return; const L=altarDetail(o); el.querySelectorAll('.adet').forEach((sp,i)=>{ sp.innerHTML=padTo(clipHtml(L[i]||'',ALTAR_W-4),ALTAR_W-3); }); }
-function openAltar(){ const el=document.getElementById('altarp'); if(!el)return; ui.altarOpen=true; document.body.classList.toggle('paused',true);
+// 祭壇の画面を開いた時刻（指で選ぶ時の、開くたびに変わる鍵。confirmTap）
+let altarOpenT=0;
+function openAltar(){ const el=document.getElementById('altarp'); if(!el)return; ui.altarOpen=true; altarOpenT=performance.now(); document.body.classList.toggle('paused',true);
   if(gear.castSt){ gear.castSt=null; fight.beamSegs=[]; } if(ui.locked&&document.exitPointerLock)document.exitPointerLock(); renderAltar(); el.classList.add('show','open'); renderHotbar(); }
 function closeAltar(dismiss){ const el=document.getElementById('altarp'); ui.altarOpen=false; if(dismiss)altarDismissed=ui.altarNear; if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused());
   if(!ui.plFailed&&ui.started&&!adv.dead)tryLock(); updateResume(); }

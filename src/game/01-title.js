@@ -29,7 +29,7 @@ function buildDotLogo(el){
       rows.push(line); }
     if(li<lineRows.length-1)rows.push(''); });
   el.innerHTML=rows.join('\n'); cells.push(...el.querySelectorAll('.px'));
-  const fit=()=>{ const fs=Math.max(5,Math.min(19,(window.innerWidth*0.9)/(W*0.62),(window.innerHeight*0.3)/(11*0.62))); el.style.fontSize=fs+'px'; };
+  const fit=()=>{ const fs=Math.max(5,Math.min(19,Math.min(window.innerWidth*0.9,window.innerWidth-56)/(W*0.62),window.innerHeight*(window.innerHeight<520?0.18:0.3)/(11*0.62))); el.style.fontSize=fs+'px'; };
   fit(); window.addEventListener('resize',fit);
   if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
   // a few glyphs change now and then, and a band of light sweeps across
@@ -47,7 +47,8 @@ function buildDotLogo(el){
   TITLE_LINES.forEach((t,k)=>{ const art=LOGO_ART[t], w=Math.max(...art.map(l=>[...l].length)), pad=' '.repeat(Math.floor((W-w)/2)); art.forEach(l=>rows.push(pad+l)); if(k<TITLE_LINES.length-1)rows.push(''); });
   const face=rows.map(l=>[...l].map(c=>c==='█'?c:' ').join('')).join('\n'), shade=rows.map(l=>[...l].map(c=>c==='█'||c===' '?' ':c).join('')).join('\n');
   el.innerHTML=`<pre class="lg-shade">${shade}</pre><pre class="lg-face">${face}</pre><pre class="lg-shine">${face}</pre>`;
-  const fit=()=>{ const fs=Math.max(4,Math.min(15,(window.innerWidth*0.92)/(W*0.6),(window.innerHeight*0.26)/rows.length)); el.style.fontSize=fs+'px'; };
+  // 幅は、タイトルの画面（#intro）の左右の余白（24px ずつ）を引いた中に収める。背の低い画面（520px 未満。スマホの横向きなど）では、下の枠を見せるために小さくする
+  const fit=()=>{ const ww=Math.min(window.innerWidth*0.92,window.innerWidth-56), hh=window.innerHeight*(window.innerHeight<520?0.16:0.26); const fs=Math.max(4,Math.min(15,ww/(W*0.6),hh/rows.length)); el.style.fontSize=fs+'px'; };
   fit(); window.addEventListener('resize',fit);
 })();
 

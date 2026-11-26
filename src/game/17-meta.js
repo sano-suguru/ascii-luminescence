@@ -21,6 +21,8 @@ function buildIntroPanel(){
   const devOn=saved.DEVALL; if(!devOn)startDepth=1; const seedKeep=(document.getElementById('seedIn')||{}).value||'';
   const el=document.getElementById('intropanel'); if(!el)return; const f=t=>`<span class="f">${t}</span>`;
   if(introMode==='unlock'){ buildUnlockPanel(); return; }
+  // 指で触る端末（スマホなど）では、キーボードの操作の一覧を出さない（使えない操作で、背の低い画面ではタイトルが収まらなくなるため）
+  const coarse=!!(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches);
   const keyList=[['WASD','移動'],['マウス','視点'],['左クリック','左手'],['右クリック','右手'],['ホイール','ビルド切替'],['Space','回避'],['Shift','走る'],['Tab','装備'],['Esc','メニュー']];
   const cell=([k,v])=>{ const s=`<b>[${k}]</b> ${v}`; return s+' '.repeat(Math.max(1,24-visW(s))); };
   const keyRows=[]; for(let i=0;i<keyList.length;i+=2)keyRows.push(`${f('|')} ${cell(keyList[i])}${keyList[i+1]?cell(keyList[i+1]):''}`);
@@ -28,7 +30,7 @@ function buildIntroPanel(){
   const layerRows=devOn?[`${f('|')} 開始する層`,...layers.map(st=>`${f('|')}   <button class="sl${st.from===startDepth?' on':''}" type="button" data-d="${st.from}"><span class="mk">${st.from===startDepth?'&gt;':' '}</span> 第${st.n}層 ${st.name}</button>`),f('|')]:[];
   el.innerHTML=boxText([f('+-- 地下迷宮へ ---'),
     `${f('|')} 壁も床も天井も、そこに棲むものも、`,`${f('|')} すべてが光る文字でできた地下迷宮。`,`${f('|')} 深く潜るほど闇は濃く、溶岩の光が強くなる。`,f('|'),
-    ...keyRows,f('|'),...layerRows,
+    ...(coarse?[]:[...keyRows,f('|')]),...layerRows,
     `${f('|')} シード [<input id="seedIn" type="text" inputmode="numeric" autocomplete="off" maxlength="10" size="10" placeholder="ランダム" aria-label="シード">]`,f('|'),
     ...(UNLOCKS.some(u=>u.kind==='trial'&&unlocked(u.id))?[`${f('|')} 試練 `+UNLOCKS.filter(u=>u.kind==='trial'&&unlocked(u.id)).map(u=>`<button class="sl${(saved.META.trials||[]).includes(u.t)?' on':''}" type="button" data-trial="${u.t}"><span class="mk">${(saved.META.trials||[]).includes(u.t)?'&gt;':' '}</span> ${u.name.replace(/試練|「|」/g,'')}</button>`).join('  '),f('|')]:[]),
     `${f('|')} 伝承 <b style="color:#ffe3a0">${loreLeft()}</b> <span class="lab">（累計 ${saved.META.lore||0}）</span>  <button class="sl" id="unlockB" type="button">[ 解放 ]</button>`,f('|'),
@@ -43,6 +45,7 @@ function buildIntroPanel(){
   const si=document.getElementById('seedIn'); if(si)si.value=seedKeep;
 }
 buildIntroPanel();
+initFitIntro();
 
 // the title panel can be rebuilt, so its [迷宮に入る] is caught on the panel itself
 document.getElementById('intropanel').addEventListener('click',e=>{
@@ -97,8 +100,8 @@ function onKeyDown(e){
   if(!ui.started&&(e.code==='Enter'||e.code==='Space')){ document.getElementById('enter').click(); return; }
   if(e.code==='F2'){ e.preventDefault(); if(ui.started&&!adv.dead&&saved.DEVALL){ if(ui.menuOpen)setMenu(false); if(ui.invOpen)setInv(false); setDbg(!ui.dbgOpen); } return; }
   if(e.code==='Escape'&&ui.dbgOpen){ setDbg(false); return; }
-  if(ui.altarOpen&&(e.code==='Escape'||e.code==='Tab')){ e.preventDefault(); closeAltar(true); if(e.code==='Tab'&&ui.started&&!adv.dead)setInv(true); return; }
-  if(e.code==='Tab'){ e.preventDefault(); if(ui.started&&!adv.dead){ if(ui.menuOpen)setMenu(false); setInv(!ui.invOpen); } return; }
+  if(ui.altarOpen&&e.code==='Escape'){ e.preventDefault(); closeAltar(true); return; }
+  if(e.code==='Tab'){ e.preventDefault(); togglePack(); return; }
   if(e.code==='Escape'){ if(ui.invOpen){ setInv(false); return; } if(ui.lvlOpen)return; if(ui.started&&!adv.dead&&!ui.locked){ setMenu(!ui.menuOpen); return; } }
   if(isPaused())return;
   if(ui.started&&e.code==='KeyM'){ sndToggle(); }
@@ -109,6 +112,20 @@ function onKeyDown(e){
   if(ui.started&&e.code==='KeyJ'){ ui.chronOn=!ui.chronOn; ui.helpOn=false; ui.helpT=0; const el=document.getElementById('help'); if(el){ if(ui.chronOn)renderChron(); el.classList.toggle('off',!ui.chronOn); } }
   if(ui.started&&(e.key==='?'||e.code==='Slash')){ setHelp(!ui.helpOn); ui.helpT=0; }
 }
+// 装備の画面を開け閉めする（Tab とタッチの [装備]）。祭壇の画面が開いていれば、閉じて装備の画面を開く
+function togglePack(){
+  if(ui.altarOpen){ closeAltar(true); if(ui.started&&!adv.dead)setInv(true); return; }
+  if(ui.started&&!adv.dead){ if(ui.menuOpen)setMenu(false); setInv(!ui.invOpen); }
+}
+// タッチの [メニュー]：Esc と同じく、祭壇・装備の画面が開いていれば閉じ、そうでなければメニューを開け閉めする（レベルアップの画面では何もしない）
+function toggleMenu(){
+  if(ui.altarOpen){ closeAltar(true); return; }
+  if(ui.invOpen){ setInv(false); return; }
+  if(ui.lvlOpen||!ui.started||adv.dead)return;
+  setMenu(!ui.menuOpen);
+}
+// 診断の記録（claude.ai の Artifact の中で、持ち主が開いた時だけ。src/lib/diag.ts）
+void initDiag();
 // Esc のキーを処理している間は、マウスを捕まえにいかない（ui.escKey。Esc のキーで掛けたロックは、ブラウザがすぐ外し、外れた事件でメニューが開いてしまうため）
 window.addEventListener('keydown',e=>{ ui.escKey=e.code==='Escape'; try{ onKeyDown(e); } finally{ ui.escKey=false; } });
 window.addEventListener('keyup',e=>{ keys[e.code]=false; });
