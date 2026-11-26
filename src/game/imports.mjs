@@ -81,3 +81,5 @@ import { awardLore, graveCandidates, graveRows, loreRows, resultPlace, runLore, 
 import { T, fogCol } from '../lib/three.ts';
 import { buildWorld, setFog, updateWater } from '../lib/build.ts';
 import { DLC, DLP, SL, SND, adv, beamHold, blaze, buf, cellData, clock, fight, gear, gfx, here, hudInfo, iceT, keys, lantern, placeMem, player, saved, stealth, ui, vfx, vmKick, dust, edge, TEST } from '../lib/state.ts';
+import { initFitIntro } from '../lib/layout.ts';
+import { initTouch } from '../lib/touch.ts';
