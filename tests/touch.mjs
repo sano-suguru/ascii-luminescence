@@ -4,7 +4,8 @@
 //   2. 指で「迷宮に入る」を押すと始まり、マウスを捕まえにいかない（マウスのドラッグの案内が出ない）
 //   3. 描く画面を指で押しても、左手の詠唱が始まらない（ブラウザが後から出すマウスの事件を止めている）。
 //      iPhone（WebKit）は pointerdown の preventDefault でマウスの事件を止めないので、iPhone と同じ順番で事件を送っても確かめる
-//      （指の pointerdown → pointerup → mousedown → mouseup → click。Chromium の真似の tap では、マウスの事件は出ない）
+//      （指の pointerdown → pointerup → mousedown → mouseup → click。Chromium の真似の tap では、マウスの事件は出ない）。
+//      止める時に mousedown を取り消さないか（タイトルのシードの入力欄に入れなくなるおそれ）も見る
 //   4. タッチのボタン [装備] [メニュー] で、装備の画面とメニューを開け閉めできる。[全画面] は、全画面にできる時だけ出る
 //   5. マウスを動かすと、指の遊び方が終わり、タッチのボタンが消える
 //   6. 探索中のタッチのボタンが、左上の状態の表示とも、右上のミニマップとも重ならない（狭い横向きの端末でも）
@@ -86,6 +87,14 @@ await withBrowser(async ({ browser, base }) => {
     }));
 
   if (await shown('#touchbar')) errs.push('指で触れる前から、タッチのボタンが出ている');
+  // iPhone の順番で、指の後にタイトルのシードの入力欄へ来た mousedown を、取り消していないか（取り消すと、入力欄に入れなくなるおそれ）
+  const seedOk = await E(() => {
+    const el = document.getElementById('seedIn');
+    el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerType: 'touch', isPrimary: true }));
+    el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, pointerType: 'touch', isPrimary: true }));
+    return el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
+  });
+  if (!seedOk) errs.push('指の後にシードの入力欄へ来た mousedown を取り消している（入力欄に入れなくなるおそれ）');
   // タイトルで指で触れると、全画面にできる時だけ [全画面] が出る
   await pg.touchscreen.tap(5, 5);
   const fsOk = await E(() => document.fullscreenEnabled);

@@ -2,7 +2,7 @@
 // 指の遊び方では、マウスを捕まえない（src/lib/screens.ts の tryLock）。
 // ブラウザが指の後に出すマウスの事件（mousedown・mouseup・mousemove。描く画面では左手の詠唱を始め、装備の画面やメニューの外を押したら閉じる処理も動く）は止める。
 // Chromium は指の pointerdown の preventDefault で止まるが、iPhone（WebKit）は止まらないので、指の事件から COMPAT_MS 以内のマウスの事件も、
-// ゲームの処理に届く前（window の捕まえる段。ゲームのマウスの処理より先に登録する）で止める。click は止めない（ボタンが効くように）
+// ゲームの処理に届く前（window の捕まえる段。ゲームのマウスの処理より先に登録する）で、伝わりを止める。click と mouseover は止めない（ボタンと説明が効くように）
 // タッチのボタン（#touchbar）：[全画面]（タイトルで、全画面にできて、まだ全画面でない時だけ）・[装備]・[メニュー]（探索中だけ。CSS が出し分ける）
 import { must } from './array.ts';
 import { ui } from './state.ts';
@@ -48,8 +48,8 @@ export function initTouch(act: TouchActions): void {
       t,
       (e) => {
         if (e.timeStamp - lastTouch > COMPAT_MS) return;
+        // 伝わりだけを止める（preventDefault はしない。mousedown を取り消すと、タイトルのシードの入力欄に入れなくなるおそれがある）
         e.stopImmediatePropagation();
-        e.preventDefault();
       },
       true,
     );
