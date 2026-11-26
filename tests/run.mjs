@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ブラウザのテスト（pnpm test）をまとめて走らせる：テスト版を1回だけ組み立て（.build/test/）、9つのテスト（画面写真の比較 visual も）を同時に jobs 個ずつ走らせる。
+// ブラウザのテスト（pnpm test）をまとめて走らせる：テスト版と Artifact 版を1回だけ組み立て（.build/test/・.build/artifact/）、10のテスト（画面写真の比較 visual も）を同時に jobs 個ずつ走らせる。
 // どのテストも、自分のブラウザと、空いているポートの配信を使うので、互いにぶつからない（組み立ては、ここで済ませたことを AL_PREBUILT で伝える）。
 // 出力は、テストが終わるたびにまとめて出す（混ざらないように）。1つのテストが LIMIT_MIN 分を越えたら止めて、それまでの出力と「時間切れ」を出す。
 // どれかが失敗したら（時間切れ・シグナルで止められた時も）、終わりのコードを 1 にする。
@@ -34,7 +34,9 @@ if (unknown.length) stop(`知らないテストの名前：${unknown.join(' ')}�
 const list = named.length ? ALL.filter((n) => named.includes(n)) : ALL;
 
 const t0 = Date.now();
-await build({ configFile: join(ROOT, 'vite.config.mjs'), mode: 'test', logLevel: 'warn' });
+// Artifact 版を読むのは frame だけ
+for (const mode of list.includes('frame') ? ['test', 'artifact'] : ['test'])
+  await build({ configFile: join(ROOT, 'vite.config.mjs'), mode, logLevel: 'warn' });
 const run = (name) =>
   new Promise((ok) => {
     const t = Date.now(),
