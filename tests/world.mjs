@@ -16,6 +16,7 @@
 //  13. 加護の身軽な詠唱と返しの一撃は、敵の攻撃を転がってかわすと効き始める（ただ転がっただけでは効かない）
 //  14. 火口の溶岩は、生き物のいるマスにも、生き物が歩いて向かっているマスにも流れない（溶岩の上に立つ生き物がいない）。
 //      生き物が塞いだマスは、後でまた試す（流し終えた後も、引き始めるまで）ので、引き始める前に、生き物のいないマスの穴が残らない
+//  15. 吹き飛ばされた生き物は、溶岩の手前で止まる（溶岩は、歩けない生き物には壁と同じ）。止まると、行き先は今いるマスになる
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { withBrowser, newPage, openTest, advance } from './lib.mjs';
 
@@ -467,6 +468,33 @@ async function lavaMobChecks(pg, base) {
     errs.push(`14：引き始める前に、流れの中に溶岩でないマスが残っている（火口ごとの [マス, 数]：${JSON.stringify(r.holes)}）`);
 }
 
+// 15：吹き飛ばされた生き物は、溶岩の手前で止まり、行き先は今いるマスになる（溶岩の西隣の床に置き、東へ吹き飛ばす）
+async function knockLavaChecks(pg, base) {
+  await openTest(pg, base, 'seed=42&realm=volcano&god=1');
+  await advance(pg, 2);
+  const r = await pg.evaluate(() => {
+    __test.clearAll();
+    const { w, h } = __test.size();
+    for (let i = w; i < w * h - w; i++) {
+      if (!__test.cell(i).floor || !__test.cell(i + 1).lava || !__test.cell(i - 1).floor) continue;
+      __test.summon('k', i);
+      __test.knock(0, 14, 0);
+      for (let q = 0; q < 30; q++) __test.advance(1 / 30);
+      const m = __test.mob(0);
+      return { i, at: m.cz * w + m.cx, to: m.tz * w + m.tx, lava: __test.cell(m.cz * w + m.cx).lava };
+    }
+    return null;
+  });
+  if (!r) {
+    errs.push('15：溶岩の西隣に床が無い（テストの前提が崩れた。シードを変える）');
+    return;
+  }
+  if (r.lava || r.at !== r.i || r.to !== r.at)
+    errs.push(
+      `15：吹き飛ばされた生き物が、溶岩の手前で止まらない（置いたマス ${r.i}・今いるマス ${r.at}・行き先 ${r.to}・溶岩か ${r.lava}）`,
+    );
+}
+
 await withBrowser(async ({ browser, base }) => {
   const pg = await newPage(browser, errs);
   await doorChecks(pg, base);
@@ -478,6 +506,7 @@ await withBrowser(async ({ browser, base }) => {
   await eruptChecks(pg, base);
   await dodgeChecks(pg, base);
   await lavaMobChecks(pg, base);
+  await knockLavaChecks(pg, base);
 });
 console.log('page errors:', errs.length ? errs : 'none');
 process.exit(errs.length ? 1 : 0);

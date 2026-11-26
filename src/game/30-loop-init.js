@@ -204,6 +204,8 @@ if(TEST)window.__test={
     return {draws:n,statues}; },
   // remove every creature (lords too), so a check is not upset by one that happens to be near
   clearAll(){ const n=here.monsters.length; here.monsters=[]; return n; },
+  // knock creature n (counted from 0, as in state().monsters) back with speed kx kz, as a hit's knockback does
+  knock(n,kx,kz){ const m=here.monsters[n]; if(!m)return false; m.st=m.st||{}; m.kx=kx; m.kz=kz; return true; },
   // creature n's cell, the cell it walks to and its body scale
   mob(n){ const m=here.monsters[n]; return m?{cx:m.cx,cz:m.cz,tx:m.tx,tz:m.tz,scale:m.ty.scale,x:m.x,z:m.z}:null; },
   // every place a run can visit, for generation checks

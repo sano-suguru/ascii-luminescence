@@ -13,7 +13,7 @@ import { spawn } from './particles.ts';
 import { mpick, mr, roll } from './random.ts';
 import { RES, RUNE_DEF, TL, TRAIT_V, elemCol } from './runes.ts';
 import { type Mob, type Proj, TEST, blaze, clock, fight, here, player, saved, vfx } from './state.ts';
-import { CELL, MH, MW, NCELL, TC, TW, TX } from './world.ts';
+import { CELL, LQ_LAVA, MH, MW, NCELL, TC, TW, TX } from './world.ts';
 
 /** 今の階 */
 const level = () => must(here.D, '今の階 here.D');
@@ -117,12 +117,19 @@ export function updateStatuses(dt: number): void {
         m.kx = 0;
         m.kz = 0;
       }
-      const ci = Math.floor(m.z / CELL) * MW + Math.floor(m.x / CELL);
-      if (level().tile[ci] === TW || level().tile[ci] === TX || level().solid.has(ci)) {
+      const ci = Math.floor(m.z / CELL) * MW + Math.floor(m.x / CELL),
+        // 溶岩は、歩けない生き物（飛ぶ物と溶岩に住む物のほか）には壁と同じ
+        lava = level().liquid[ci] === LQ_LAVA && !m.ty.flier && m.ty.habitat !== 'lava';
+      if (level().tile[ci] === TW || level().tile[ci] === TX || level().solid.has(ci) || lava) {
         m.x -= m.kx * dt * 1.5;
         m.z -= m.kz * dt * 1.5;
         m.kx = 0;
         m.kz = 0;
+      }
+      // 止まったら、行き先を今いるマスにする（吹き飛ばされる前の行き先へ、ほかのマスを横切って歩かない）
+      if (!m.kx && !m.kz) {
+        m.tx = Math.floor(m.x / CELL);
+        m.tz = Math.floor(m.z / CELL);
       }
       m.cx = Math.floor(m.x / CELL);
       m.cz = Math.floor(m.z / CELL);
