@@ -12,7 +12,7 @@ import { msg } from './log.ts';
 import { spawn } from './particles.ts';
 import { mr } from './random.ts';
 import { clamp } from './rng.ts';
-import { blaze, clock, edge, gfx, here, keys, player, stealth, ui, vfx, adv } from './state.ts';
+import { adv, blaze, clock, edge, gfx, here, keys, thumb, player, stealth, ui, vfx } from './state.ts';
 import { showHint } from './status.ts';
 import { CELL, EYE, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MH, MW, PR, SF_ICE, SF_MUD, TC, TP, TW, TX } from './world.ts';
 
@@ -92,9 +92,11 @@ export function updatePlayer(dt: number): void {
   if (!ui.started) {
     player.yaw += dt * 0.07;
   } else {
-    const k = keys;
-    const fw = (k.KeyW || k['ArrowUp'] ? 1 : 0) - (k.KeyS || k['ArrowDown'] ? 1 : 0),
-      st = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0);
+    const k = keys,
+      sk = thumb.stick;
+    // 指のアナログのスティック（thumb.stick）があれば、倒した向きと倒し具合で動く（倒し具合は、下の速さにも掛ける）
+    const fw = sk ? -sk[1] : (k.KeyW || k['ArrowUp'] ? 1 : 0) - (k.KeyS || k['ArrowDown'] ? 1 : 0),
+      st = sk ? sk[0] : (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0);
     if (k['ArrowLeft']) player.yaw += dt * 2.0;
     if (k['ArrowRight']) player.yaw -= dt * 2.0;
     const sy = Math.sin(player.yaw),
@@ -127,7 +129,7 @@ export function updatePlayer(dt: number): void {
     const ix = -sy * fw + cy * st,
       iz = -cy * fw - sy * st,
       len = Math.hypot(ix, iz),
-      sp = ((k['ShiftLeft'] || k['ShiftRight']) && !stealth.sneak ? 5.6 : stealth.sneak ? 2.3 : 3.2) * wade;
+      sp = ((k['ShiftLeft'] || k['ShiftRight']) && !stealth.sneak ? 5.6 : stealth.sneak ? 2.3 : 3.2) * wade * (sk ? Math.min(1, len) : 1);
     if (wade < 1 && len) {
       player.splash = (player.splash || 0) + dt * Math.hypot(player.vx, player.vz) * 1.4;
       while (player.splash > 1) {
