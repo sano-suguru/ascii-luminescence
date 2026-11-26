@@ -622,6 +622,11 @@ await withBrowser(async ({ browser, base }) => {
           if (!ev(k, v)) errs.push(`診断の記録：できごと ${k}=${v} が無い（${JSON.stringify(d.events).slice(0, 300)}）`);
         if (!d.events.some((e) => e.k === 'press' && String(e.v).startsWith('packB'))) errs.push('診断の記録：[装備] を押したことが無い');
         if (!(d.fps.length >= 1 && d.fps[0].avg > 0)) errs.push(`診断の記録：速さが無い（${JSON.stringify(d.fps)}）`);
+        else {
+          // 探索の始めの階（本道）にいる。場所は placeKey の形（探索のシード:m:深さ）
+          const want = await p.evaluate(() => `${__test.state().seed}:m:${__test.state().depth}`);
+          if (d.fps.at(-1).place !== want) errs.push(`診断の記録：速さの行の場所が ${want} でない（${JSON.stringify(d.fps.at(-1))}）`);
+        }
         console.log(`診断の記録：${sets.length} 回書いた。できごと ${d.events.length}、速さ ${JSON.stringify(d.fps[0])}`);
         // 書き込みの途中に、ページが隠れた（書くよう頼まれた）時：途中の分が終わってから、隠れたことも書く
         await p.evaluate(() => {

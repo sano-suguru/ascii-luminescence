@@ -112,9 +112,9 @@ const worldPrint0 = () =>
       .map((c) => {
         const g = c.mesh.geometry;
         return [
-          c.mesh.count,
-          hashArr(c.mesh.instanceMatrix.array),
+          c.count,
           ...Object.keys(g.attributes).map((k) => `${k}:${hashArr(g.attributes[k].array)}`),
+          `index:${hashArr(g.index.array)}`,
           c.sphere.center.x,
           c.sphere.center.y,
           c.sphere.center.z,
