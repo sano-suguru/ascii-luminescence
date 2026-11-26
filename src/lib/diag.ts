@@ -3,6 +3,7 @@
 // window.claude.use が無い所（ふつうの公開用の版・テスト）や、持ち主でない人が開いた時は、何もしない。乱数は使わない（ゲームの動きを変えない）。
 // 記録は、開くたびに1件（diag/<開いた時刻>）。書き込みは、変わった時だけ、10秒に1回まで（ページを離れる時も1回）。
 // 公開する時は、capabilities に db（diag は持ち主だけが読み書き）と user を渡す（CLAUDE.md の「Artifact に公開する」）。
+import { placeKey } from './levels.ts';
 import { adv, fight, gear, ui } from './state.ts';
 
 interface ClaudeLike {
@@ -144,7 +145,8 @@ export async function initDiag(): Promise<void> {
   );
   window.addEventListener('unhandledrejection', (e) => push(rec.errors, KEEP.errors, { k: 'rejection', v: String(e.reason) }));
 
-  // 速さ：描くたびの間を数え、SPAN ごとに平均と、一番遅かった1回を記録する
+  // 速さ：描くたびの間を数え、SPAN ごとに平均と、一番遅かった1回を記録する。その時にいる場所（placeKey）も書く（前の行と違えば、その間に場所を移った。
+  // できごとの一覧は数が限られ、ボタンを押すとすぐ流れるので、場所はこちらに書く）
   let frames = 0,
     worst = 0,
     prev = performance.now(),
@@ -158,6 +160,7 @@ export async function initDiag(): Promise<void> {
     if (now - from >= SPAN) {
       push(rec.fps, KEEP.fps, {
         phase: phase(),
+        place: placeKey(),
         avg: Math.round((frames * 10_000) / (now - from)) / 10,
         min: worst > 0 ? Math.round(10_000 / worst) / 10 : null,
       });
