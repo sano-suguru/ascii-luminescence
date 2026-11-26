@@ -6,6 +6,8 @@
 //      レベルアップと祭壇は、一覧の見出しの後ろの名前の列も揃っているか
 //   3. 十字の下：「クリックで視点操作に戻る」は、照準の先の説明があってもなくても同じ場所に出て、説明はその下に、一言（#hint）はさらにその下に、
 //      8px ずつあけて並ぶ（重ならない）。説明だけの時は十字の下 22px、説明が1行なら一言はほぼ前と同じ所（十字の下 48px から 2px 以内）に出る
+//   4. 十字の下の一言（#hint）が消える時：表示・音量・ビルドの持ち替えの一言は、塞がれていない間も自分の時計まで残り、時計の後に消える。
+//      後から別の一言が出たら、前の一言の時計はそれを消さない。行く手を塞がれた時の一言は、塞がれなくなってから 0.9 秒ほどで消える
 import { gameText } from '../tools/game-source.mjs';
 import { withBrowser, newPage, openTest, advance, nearAltar } from './lib.mjs';
 
@@ -246,6 +248,97 @@ await withBrowser(async ({ browser, base }) => {
   pgSwap(p2);
   await check('結果（死んだ時）', 'death');
   await p2.close();
+
+  // 4. 十字の下の一言が消える時（立ったまま、行く手を塞がれていない間）
+  {
+    const n0 = errs.length;
+    p2 = await open('seed=202&depth=1&god=1');
+    await p2.evaluate(() => __test.clearAll());
+    const hint = () => p2.evaluate(() => document.getElementById('hint').textContent);
+    // 今の一言に want が入っているか（want が '' なら、消えているか）
+    const expect = async (what, want) => {
+      const h = await hint();
+      if (want ? !h.includes(want) : h !== '') errs.push(`十字の下の一言：${what}（「${h}」）`);
+    };
+    await advance(p2, 1.2); // 塞がれていない秒（edge.idle）を 0.9 より長くする
+    // 表示の切り替え（1.2 秒）
+    await p2.keyboard.press('KeyH');
+    await advance(p2, 0.1);
+    await expect('表示を切り替えて 0.1 秒で、一言が出ていない', '表示：最小');
+    await advance(p2, 1.0);
+    await expect('表示を切り替えて 1.1 秒で、一言が消えている', '表示：最小');
+    await advance(p2, 0.2);
+    await expect('表示を切り替えて 1.3 秒たっても、一言が消えない', '');
+    for (let i = 0; i < 2; i++) await p2.keyboard.press('KeyH'); // なし → 通常に戻す
+    await advance(p2, 1.3);
+    // 音量（1.2 秒）の 0.6 秒後に表示を出すと、音量の時計は表示の一言を消さない
+    await p2.keyboard.press('KeyM');
+    await advance(p2, 0.1);
+    await expect('音量を変えて 0.1 秒で、一言が出ていない', '音量：');
+    await advance(p2, 0.5);
+    await p2.keyboard.press('KeyH');
+    await advance(p2, 0.7);
+    await expect('音量の一言の時計が、後から出た表示の一言を消した', '表示：最小');
+    await advance(p2, 0.6);
+    await expect('表示を切り替えて 1.3 秒たっても、一言が消えない', '');
+    for (let i = 0; i < 2; i++) await p2.keyboard.press('KeyH');
+    await advance(p2, 1.3);
+    // ビルドの持ち替え（0.9 秒）：違う手でビルドを2つ保存して、ホイールで持ち替える
+    const save = async (k) => {
+      await p2.keyboard.press('Tab');
+      await advance(p2, 0.1);
+      await p2.click(`#pack button[data-save="${k}"]`);
+      await p2.keyboard.press('Tab');
+      await advance(p2, 0.1);
+    };
+    await save(0);
+    await p2.evaluate(() => __test.equip('L', 'bolt'));
+    await save(1);
+    await advance(p2, 2); // 付け替えの詠唱と、塞がれていない秒
+    await p2.evaluate(() => document.getElementById('gl').dispatchEvent(new WheelEvent('wheel', { deltaY: 100, cancelable: true })));
+    await advance(p2, 0.1);
+    await expect('ビルドを持ち替えて 0.1 秒で、一言が出ていない', 'ビルド');
+    await advance(p2, 0.6);
+    await expect('ビルドを持ち替えて 0.7 秒で、一言が消えている', 'ビルド');
+    await advance(p2, 0.3);
+    await expect('ビルドを持ち替えて 1.0 秒たっても、一言が消えない', '');
+    await p2.close();
+
+    // 行く手を塞がれた時：溶岩の隣のマスから、溶岩へ歩き続ける。離して 0.5 秒ではまだ出ていて、1.2 秒では消えている
+    p2 = await open('seed=7&realm=volcano&god=1');
+    await p2.evaluate(() => __test.clearAll());
+    const at = await p2.evaluate(() => {
+      const { w, h } = __test.size();
+      for (let i = w; i < w * (h - 1); i++) {
+        if (!__test.cell(i).lava) continue;
+        for (const j of [i - 1, i + 1, i - w, i + w]) {
+          const a = __test.cell(j);
+          if (!a.floor) continue;
+          const b = __test.cell(i);
+          dbg.step(a.x, a.z);
+          dbg.look(b.x, 1, b.z);
+          return [i, j];
+        }
+      }
+      return null;
+    });
+    if (!at) errs.push('十字の下の一言：溶岩の隣の床が無い（テストの前提が崩れた。シードを変える）');
+    else {
+      await p2.keyboard.down('KeyW');
+      await advance(p2, 0.8);
+      await p2.keyboard.up('KeyW');
+      await advance(p2, 0.1);
+      await expect('溶岩へ歩き続けても、塞がれた時の一言が出ない', '溶岩');
+      await advance(p2, 0.4);
+      await expect('塞がれなくなって 0.5 秒で、塞がれた時の一言が消えている', '溶岩');
+      await advance(p2, 0.7);
+      await expect('塞がれなくなって 1.2 秒たっても、塞がれた時の一言が消えない', '');
+    }
+    await p2.close();
+    console.log(
+      `${errs.length > n0 ? '✗' : '✓'} 十字の下の一言：自分の時計まで残り、時計の後に消える（塞がれた時の一言は、塞がれなくなって 0.9 秒ほどで消える）`,
+    );
+  }
 });
 if (errs.length) console.log('page errors:', errs);
 process.exit(fails || errs.length ? 1 : 0);

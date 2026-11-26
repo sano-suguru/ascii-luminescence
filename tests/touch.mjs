@@ -494,7 +494,7 @@ await withBrowser(async ({ browser, base }) => {
     if (!(await E(() => getComputedStyle(document.getElementById('swapB')).display !== 'none' && !document.getElementById('swapB').hidden)))
       errs.push('狭い画面：ビルドを2つ保存しても、[持ち替え] が出ない');
     else {
-      // 持ち替えると、付け替えの詠唱が始まる（下の HUD に出る。十字の下の一言「ビルド1」は、次のフレームで消えるので見ない）
+      // 持ち替えると、付け替えの詠唱が始まる（下の HUD に出る。十字の下の一言「ビルド1」は tests/panels.mjs が見る）
       await tap('#swapB');
       t = await text('#hotbar');
       if (!t.includes('付け替え')) errs.push(`狭い画面：[持ち替え] を押しても、持ち替えない（下の HUD「${t}」）`);
