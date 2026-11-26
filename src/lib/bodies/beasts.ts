@@ -297,43 +297,64 @@ export function golemForm2(ty: BodyType): Body {
     ell(...a);
     if (ex) for (let i = n0; i < pts.length; i++) Object.assign(nth(pts, i), ex);
   };
-  // 切り出した石の段：断面は角の丸い四角（|x/rx|^4 + |z/rz|^4 = 1）。段と段の間は、すき間（継ぎ目）を空ける
-  const slab = (
-    y0: number,
-    y1: number,
-    rxAt: (f: number) => number,
-    rzAt: (f: number, back: boolean) => number,
-    zAt: (f: number) => number,
-    col: Color,
-    part: string,
-  ): void => {
-    for (let y = y0; y <= y1 + 1e-6; y += S * 0.85) {
-      const f = (y - y0) / Math.max(1e-6, y1 - y0),
-        rx = rxAt(f),
-        z0 = zAt(f),
-        // 上と下の縁は、面を少し上・下へ向けて、段の角を見せる
-        ny = f > 0.8 ? 0.6 : f < 0.12 ? -0.5 : 0.05,
-        n = Math.max(8, Math.round((2 * Math.PI * Math.max(rx, rzAt(f, false))) / (S * 0.85)));
+  // 切り出した石の段：断面は角の丸い四角（|x/rx|^4 + |z/rz|^4 = 1）。段と段の間は、すき間（継ぎ目）を空ける。
+  // 行は下の端 y0 から上の端 y1 まで等しい間隔で置く（最後の行が y1 に来る）。cap が真なら、上の面も張る
+  type Slab = {
+    y0: number;
+    y1: number;
+    rxAt: (f: number) => number;
+    rzAt: (f: number, back: boolean) => number;
+    zAt: (f: number) => number;
+  };
+  const slab = (d: Slab, col: Color, part: string, cap: boolean): void => {
+    const st = S * 0.85,
+      nr = Math.max(1, Math.round((d.y1 - d.y0) / st));
+    for (let j = 0; j <= nr; j++) {
+      const f = j / nr,
+        y = d.y0 + (d.y1 - d.y0) * f,
+        rx = d.rxAt(f),
+        z0 = d.zAt(f),
+        // 上と下の縁の行は、面を斜め上・斜め下へ向けて、段の角を見せる（横の向きを長さ 1 にしてから、縦を混ぜる）
+        tilt = j === nr ? 0.55 : j === 0 ? -0.6 : 0.05,
+        n = Math.max(8, Math.round((2 * Math.PI * Math.max(rx, d.rzAt(f, false))) / st));
       for (let k = 0; k < n; k++) {
         const a = (k / n) * Math.PI * 2,
           c = Math.cos(a),
           sn = Math.sin(a),
-          rz = rzAt(f, sn < 0),
+          rz = d.rzAt(f, sn < 0),
           x = Math.sign(c) * Math.sqrt(Math.abs(c)) * rx,
-          z = Math.sign(sn) * Math.sqrt(Math.abs(sn)) * rz;
+          z = Math.sign(sn) * Math.sqrt(Math.abs(sn)) * rz,
+          hx = (Math.sign(x) * Math.pow(Math.abs(x / rx), 3)) / rx,
+          hz = (Math.sign(z) * Math.pow(Math.abs(z / rz), 3)) / rz,
+          hl = Math.hypot(hx, hz) || 1,
+          side = Math.sqrt(1 - tilt * tilt);
+        put(x, y, z + z0, (hx / hl) * side, tilt, (hz / hl) * side, ROCK, col, part);
+      }
+    }
+    if (!cap) return;
+    // 上の面：上の端の断面を、内へ小さくした輪で埋める（上から見て、中が透けないように）。面は真ん中ほど高い丸い屋根にする（平らだと、目の高さから見た時に点が1本の線に重なって、明るい縞になる）
+    const rx = d.rxAt(1),
+      z0 = d.zAt(1);
+    for (let q = 1 - (st * 1.2) / rx; q > 0.05; q -= (st * 1.2) / rx) {
+      const n = Math.max(4, Math.round((2 * Math.PI * rx * q) / (st * 1.2)));
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * Math.PI * 2 + q * 3,
+          c = Math.cos(a),
+          sn = Math.sin(a);
         put(
-          x,
-          y,
-          z + z0,
-          (Math.sign(x) * Math.pow(Math.abs(x / rx), 3)) / rx,
-          ny,
-          (Math.sign(z) * Math.pow(Math.abs(z / rz), 3)) / rz,
+          Math.sign(c) * Math.sqrt(Math.abs(c)) * rx * q,
+          d.y1 + 0.1 * (1 - q * q),
+          Math.sign(sn) * Math.sqrt(Math.abs(sn)) * d.rzAt(1, sn < 0) * q + z0,
+          c * q * 0.9,
+          1,
+          sn * q * 0.9,
           ROCK,
           col,
           part,
         );
       }
     }
+    put(0, d.y1 + 0.1, z0, 0, 1, 0, ROCK, col, part);
   };
   // 脚：短く太い。四角い足
   for (const sd of [-1, 1]) {
@@ -344,44 +365,24 @@ export function golemForm2(ty: BodyType): Body {
       for (let z = -0.08; z <= 0.24 + 1e-6; z += S * 0.8) put(sd * 0.25 + x, 0.07, z, 0, 1, 0.3, ROCK, ST, part, HIP);
   }
   // 腰の石
-  slab(
-    0.56,
-    0.7,
-    () => 0.26,
-    () => 0.19,
-    () => 0,
-    ST,
-    'body',
-  );
+  slab({ y0: 0.56, y1: 0.7, rxAt: () => 0.26, rzAt: () => 0.19, zAt: () => 0 }, ST, 'body', false);
   // 胴：下は細く、上へ行くほど広い（逆三角）。少し前へ屈み、背は盛り上がる。腹と胸の2段
   slab(
-    0.78,
-    1.02,
-    (f) => 0.28 + 0.06 * f,
-    (_f, back) => (back ? 0.25 : 0.23),
-    (f) => 0.02 + 0.02 * f,
+    { y0: 0.78, y1: 1.02, rxAt: (f) => 0.28 + 0.06 * f, rzAt: (_f, back) => (back ? 0.25 : 0.23), zAt: (f) => 0.02 + 0.02 * f },
     ST,
     'body',
+    false,
   );
-  slab(
-    1.1,
-    1.42,
-    (f) => 0.36 + 0.12 * Math.sin(f * Math.PI * 0.6),
-    (f, back) => (back ? 0.3 + 0.07 * Math.sin(f * Math.PI) : 0.28),
-    (f) => 0.05 + 0.04 * f,
-    ST,
-    'body',
-  );
+  const CHEST: Slab = {
+    y0: 1.1,
+    y1: 1.42,
+    rxAt: (f) => 0.36 + 0.12 * Math.sin(f * Math.PI * 0.6),
+    rzAt: (f, back) => (back ? 0.3 + 0.07 * Math.sin(f * Math.PI) : 0.28),
+    zAt: (f) => 0.05 + 0.04 * f,
+  };
+  slab(CHEST, ST, 'body', true);
   // 頭：肩の間に沈み、前へ出る。張り出した眉の下に目
-  slab(
-    1.46,
-    1.72,
-    (f) => 0.19 - 0.03 * f,
-    () => 0.15,
-    () => 0.24,
-    BLUE,
-    'head',
-  );
+  slab({ y0: 1.46, y1: 1.72, rxAt: (f) => 0.19 - 0.03 * f, rzAt: () => 0.15, zAt: () => 0.24 }, BLUE, 'head', true);
   for (let x = -0.17; x <= 0.17 + 1e-6; x += S * 0.7) lit(x, 1.66, 0.41, '=', 1.1, 1.3, BLUE, 'head');
   for (const sd of [-1, 1]) for (const o of [-0.025, 0.025]) lit(sd * 0.075 + o, 1.6, 0.41, '-', 0.9, 1.8, GLOW, 'head');
   for (let x = -0.08; x <= 0.08 + 1e-6; x += S * 0.7) lit(x, 1.52, 0.4, '-', 0.9, 0.7, BLUE, 'head');
@@ -419,18 +420,21 @@ export function golemForm2(ty: BodyType): Body {
         SHOULDER,
       );
     }
-    // ひじの光るひび
-    lit(sd * 0.85, 0.89, 0.22, sd < 0 ? '/' : '\\', 1, 1.6, GLOW, part, SHOULDER);
+    // ひじの光るひび（前腕の付け根の外側の表面）
+    lit(sd * 0.93, 0.87, 0.18, sd < 0 ? '/' : '\\', 1, 1.6, GLOW, part, SHOULDER);
   }
   // 背中の苔
+  // 背中の苔：胸の段の上の方の、背中の面の少し外に置く
   for (let i = 0; i < 24; i++) {
-    const x = (mr() - 0.5) * 0.8,
-      y = 1.2 + mr() * 0.24;
-    lit(x, y, -0.34 - 0.06 * Math.sin(((y - 1.1) / 0.32) * Math.PI), mpick(['%', '"', '&', ',']), 1.1, 1.3, MOSS);
+    const f = 0.3 + mr() * 0.7,
+      rx = CHEST.rxAt(f),
+      x = (mr() - 0.5) * 1.6 * rx,
+      back = CHEST.rzAt(f, true) * Math.pow(1 - Math.pow(Math.abs(x / rx), 4), 0.25);
+    lit(x, CHEST.y0 + (CHEST.y1 - CHEST.y0) * f, CHEST.zAt(f) - back - 0.03, mpick(['%', '"', '&', ',']), 1.1, 1.3, MOSS);
   }
   for (let i = 0; i < 8; i++) lit((mr() - 0.5) * 0.26, 1.73, 0.22 + (mr() - 0.5) * 0.22, mpick(['"', '%']), 1, 1.3, MOSS, 'head');
   // 胸の真ん中の光る石と、そこから走るひび
-  lit(0, 1.22, 0.37, '*', 1.1, 2.2, GLOW);
+  lit(0, 1.22, 0.37, '*', 1.1, 1.8, GLOW);
   for (const [dx, dy] of [
     [-1, 1],
     [1, 0.6],
