@@ -204,14 +204,21 @@ describe('音を鳴らす所が、見た目の乱数を引かない（src/ を�
           'function f(dt,i){ sDrip(1,2,0.2+mr()*0.1);', // 1：引数
           '  if(mr()<0.3)sBubble(1,2,0.3,true);', // 2：if の条件で、中身は音だけ
           '  if(mr()<dt){ found=true; sChime(1,2,0.2); msg("罠を見つけた"); }', // 音のほかのこともするので、見逃す
-          '  if(clock.time>t0){ t0=clock.time+6+mr()*5; omen(); sPing(1); } }', // 4：次に鳴らす時刻
+          '  if(clock.time>t0){ t0=clock.time+6+mr()*5; sPing(1); } }', // 4：次に鳴らす時刻
           'const sPop=(x,z)=>{ if(!sndReady())return; sTone(0,"sine",shuffle([1,2],mr)[0],0,1,null); };', // 矢印関数の音の関数。3：mr を値として渡す
           'function g(){ if(roll(1,3)>2)sPop(1,2); sChime(1,2,roll(1,2)*0.1);', // 2：矢印関数の音の関数を呼ぶ。1：roll
           '  if(performance.now()>nextT){ nextT=performance.now()+Math.random()*9; sPop(1,2); } }', // 4：performance.now の時刻
           'function k(){ if(clock.time>o.next.t){ o.next={t:clock.time+4+mr()*6}; sChime(1,2,0.1); } }', // 4：オブジェクトの欄の中の時刻
           'function n(m){ if(go){ m.nextMove=clock.time+2+mr(); sChime(1,2,0.1); } }', // 見逃す：音を鳴らすかを決めない時刻（ゲームの時刻）
           'function u(){ if(mr()<0.3)sBubble(1,2,0.3,true); else spawnBat();', // 見逃す：else でゲームのことをする
-          '  if(mr()<0.3)sBubble(1,2,0.3,true); else if(on)sDrip(1,2,0.1); }', // 2：else も音だけ
+          '  if(mr()<0.3)sBubble(1,2,0.3,true); else if(on)sDrip(1,2,0.1);', // 2：else も音だけ
+          '  if(mr()<0.3){ if(trySpawn())sDrip(1,2,0.1); } }', // 見逃す：中の if の条件でゲームの処理を呼ぶ
+          'function w(o){ if(clock.time<o.t)return; o.t=clock.time+mr()*3; sDrip(1,2,0.1); }', // 4：if(…)return の後ろ
+          'function y(m){ const due=clock.time>m.dripT; if(due){ m.dripT=clock.time+mr()*3; sDrip(1,2,0.1); } }', // 4：比べた結果を変数に入れてから
+          'function z(m){ if(clock.time>m.atkT){ m.atkT=clock.time+1+mr(); hurtPlayer(3); sDrip(1,2,0.1); } }', // 見逃す：攻撃の待ち時間（ゲームのことも決める）
+          'function a1(){ let t=0; if(clock.time>t)sDrip(1,2,0.1); }', // 名前 t の比べる所は、この関数の t だけ
+          'function b1(){ let t; if(go){ t=clock.time+mr()*3; sDrip(1,2,0.1); } use(t); }', // 見逃す：別の関数の、同じ名前の変数
+          'function c1(m){ if(clock.time>m.hissT&&sndReady()){ m.hissT=clock.time+mr(); const t0=now(); sDrip(1,2,t0); } }', // 4：sndReady の条件の中（3 でも出る）
         ].join('\n'),
       },
       { name: 'lib/b.ts', text: 'export function g(): void { if (on && sndReady()) { const v = mr(); sDrip(0, 0, v); } }' }, // 3：sndReady の中
@@ -236,6 +243,10 @@ describe('音を鳴らす所が、見た目の乱数を引かない（src/ を�
       'game/01-a.js:8 次に鳴らす時刻',
       'game/01-a.js:9 次に鳴らす時刻',
       'game/01-a.js:12 if の条件で、音を鳴らすか',
+      'game/01-a.js:14 次に鳴らす時刻',
+      'game/01-a.js:15 次に鳴らす時刻',
+      'game/01-a.js:19 sndReady の中',
+      'game/01-a.js:19 次に鳴らす時刻',
       'lib/b.ts:1 sndReady の中',
     ]);
   });
