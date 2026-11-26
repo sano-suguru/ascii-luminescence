@@ -803,17 +803,20 @@ export async function viewCases(F, seeds) {
         run('look', [], 2);
         run('drawMonster', [m, clock.time]);
       } else if (scene === 'relic') {
-        // 鉄格子の奥の部屋の遺品（年代記の王の物）
-        const room = pick(D.rooms.filter((ro) => ro.cells.length)),
-          c = pick(room.cells),
-          [x, z] = cpos(c);
-        room.kindMsg = '鉄格子の奥に、何かが光っている';
-        D.gate = D.gate || { cell: c, lever: c, ld: [1, 0], open: false, o: 1, axis: 0 };
-        D.gate.heir = chance(0.8) ? '王の冠' : undefined;
-        here.fixtures.push({ type: 'relic', x, z, col: [1, 0.8, 0.4], li: 99999, acc: 0, ph: 0 });
-        Object.assign(player, { x: x + 3, z });
-        aimAt(x, 1.2, z, 2);
-        run('look', [], 2);
+        // 鉄格子の奥の部屋の遺品（年代記の王の物）。床のある部屋が無い階では、この場面を飛ばす
+        const rooms = D.rooms.filter((ro) => ro.cells.length);
+        if (rooms.length) {
+          const room = pick(rooms),
+            c = pick(room.cells),
+            [x, z] = cpos(c);
+          room.kindMsg = '鉄格子の奥に、何かが光っている';
+          D.gate = D.gate || { cell: c, lever: c, ld: [1, 0], open: false, o: 1, axis: 0 };
+          D.gate.heir = chance(0.8) ? '王の冠' : undefined;
+          here.fixtures.push({ type: 'relic', x, z, col: [1, 0.8, 0.4], li: 99999, acc: 0, ph: 0 });
+          Object.assign(player, { x: x + 3, z });
+          aimAt(x, 1.2, z, 2);
+          run('look', [], 2);
+        }
       } else if (scene === 'gate') {
         // 鉄格子（奥に宝が残っていない時も）
         if (!D.gate) D.gate = { cell: c0, lever: c0, ld: [1, 0], open: false, o: 0, axis: 0 };
