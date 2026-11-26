@@ -114,7 +114,14 @@ const QUAD_POS = [-0.5, 0.5, 0, 0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, -0.5, 0],
   QUAD_IDX = [0, 2, 1, 2, 3, 1];
 /** 文字ごとの値 src の from から size 個を、dst の a 番目の文字の4つの頂点に写す */
 function toQuad(dst: Float32Array, a: number, size: number, src: Float32Array, from: number): void {
-  for (let v = 0; v < 4; v++) for (let i = 0; i < size; i++) dst[(a * 4 + v) * size + i] = nth(src, from + i);
+  const o = a * 4 * size;
+  for (let i = 0; i < size; i++) {
+    const v = nth(src, from + i);
+    dst[o + i] = v;
+    dst[o + size + i] = v;
+    dst[o + 2 * size + i] = v;
+    dst[o + 3 * size + i] = v;
+  }
 }
 /**
  * 階の文字を組み立てる（壁の面・洞窟の岩肌と天井・床と液体・橋・茂み・結晶・大きな茸・部屋の仕掛け・宝物庫・柱）。文字は区切りごとに1つの
