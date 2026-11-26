@@ -1,20 +1,19 @@
 // ---------------------------------------------------------------- renderer & post
 const canvas=document.getElementById('gl');
-let renderer;
-try{ renderer=new T.WebGLRenderer({canvas,antialias:false,powerPreference:'high-performance',stencil:false}); }
+try{ gfx.renderer=new T.WebGLRenderer({canvas,antialias:false,powerPreference:'high-performance',stencil:false}); }
 catch(e){ errEl.textContent='WebG Lを初期化できませんでした。ハードウェアアクセラレーションを有効にしてください。'.replace('WebG L','WebGL'); return; }
-const isGL2=renderer.capabilities.isWebGL2;
+const isGL2=gfx.renderer.capabilities.isWebGL2;
 let pixelRatio=Math.min(window.devicePixelRatio||1,1.5);
-renderer.setPixelRatio(pixelRatio);
-renderer.setSize(window.innerWidth,window.innerHeight,false);
-const scene=new T.Scene();
+gfx.renderer.setPixelRatio(pixelRatio);
+gfx.renderer.setSize(window.innerWidth,window.innerHeight,false);
+// scene は src/lib/three.ts（src/game/imports.mjs で読む）
 gfx.camera=new T.PerspectiveCamera(74,window.innerWidth/window.innerHeight,0.05,110);
 gfx.camera.rotation.order='YXZ';
-const fogCol=new T.Vector3(...FOGS[0]);
-renderer.setClearColor(new T.Color(fogCol.x,fogCol.y,fogCol.z),1);
+// fogCol は src/lib/three.ts（src/game/imports.mjs で読む）
+gfx.renderer.setClearColor(new T.Color(fogCol.x,fogCol.y,fogCol.z),1);
 
 const rt=new T.WebGLRenderTarget(window.innerWidth*pixelRatio,window.innerHeight*pixelRatio,{type:T.HalfFloatType,samples:isGL2?4:0});
-const composer=new T.EffectComposer(renderer,rt);
+const composer=new T.EffectComposer(gfx.renderer,rt);
 composer.setPixelRatio(pixelRatio);
 composer.setSize(window.innerWidth,window.innerHeight);
 composer.addPass(new T.RenderPass(scene,gfx.camera));
@@ -49,8 +48,8 @@ const FinalShader={
       gl_FragColor=vec4(col*uFade,1.0);
     }`
 };
-const finalPass=new T.ShaderPass(FinalShader);
-composer.addPass(finalPass);
+gfx.finalPass=new T.ShaderPass(FinalShader);
+composer.addPass(gfx.finalPass);
 
 // GLSL_COMMON（古い JS は使わない）・STATIC_VS・WATER_VS・WATER_FS・GLYPH_FS・DYN_VS・PT_VS・PT_FS は src/lib/shaders.ts（src/game/imports.mjs で読む）
 
@@ -58,13 +57,13 @@ composer.addPass(finalPass);
 // 灯りを描画に渡す配列 SL・DLP・DLC と、マスの絵の中身 cellData は src/lib/state.ts（src/game/imports.mjs で読む。マスの絵 gfx.cellTex はここでその場で入れる）
 gfx.cellTex=new T.DataTexture(cellData,MW,MH,T.RGBAFormat,T.UnsignedByteType);
 gfx.cellTex.magFilter=T.LinearFilter; gfx.cellTex.minFilter=T.LinearFilter; gfx.cellTex.needsUpdate=true;
-const U={
+gfx.U={
   uCell:{value:gfx.cellTex}, uCollT:{value:-100},
   uAtlas:{value:null}, uTime:{value:0}, uSL:{value:SL}, uDLP:{value:DLP}, uDLC:{value:DLC},
   uCamP:{value:new T.Vector3()}, uCutP:{value:new T.Vector3()}, uCut:{value:0},
   uFogDen:{value:0.05}, uFogColor:{value:fogCol}, uScale:{value:600}, uRamp:{value:new Float32Array([...RAMP_CH].map(c=>c.charCodeAt(0)-32))}, uAmb:{value:1}
 };
-let staticMat, dynMat, ptMat, occMat;
+let dynMat, ptMat;
 
 // ---------------------------------------------------------------- glyph atlas
 function buildAtlas(){
@@ -78,7 +77,7 @@ function buildAtlas(){
   for(let k=0;k<RUNE_CHARS.length;k++){ const cx=(k+0.5)*AC, cy=6.5*AC+AC*0.02; x.fillText(RUNE_CHARS[k],cx,cy); x.strokeText(RUNE_CHARS[k],cx,cy); }
   const tex=new T.CanvasTexture(c);
   tex.generateMipmaps=true; tex.minFilter=T.LinearMipmapLinearFilter; tex.magFilter=T.LinearFilter;
-  tex.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy()); tex.needsUpdate=true;
+  tex.anisotropy=Math.min(8,gfx.renderer.capabilities.getMaxAnisotropy()); tex.needsUpdate=true;
   return tex;
 }
 

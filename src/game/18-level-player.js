@@ -2,7 +2,7 @@
 let expo=1.1;
 adv.runSeed=(Math.random()*1e9)>>>0;
 // levelSeed は src/lib/levels.ts（src/game/imports.mjs で読む）
-function setFog(){ const k=here.D.prof.fogDark, f=(here.D.stratum.fog?here.D.stratum.fog:here.D.stratum.k==='magma'?[0.016,0.004,0.003]:here.D.stratum.k==='abyss'?[0.007,0.003,0.014]:FOGS[(here.depth-1)%FOGS.length]).map(v=>v*k); fogCol.set(f[0],f[1],f[2]); renderer.setClearColor(new T.Color(f[0],f[1],f[2]),1); fogBase=0.05+Math.min(here.depth-1,6)*0.002; U.uFogDen.value=fogBase; }
+// setFog は src/lib/build.ts（src/game/imports.mjs で読む）
 // showStratum は src/lib/levels.ts（src/game/imports.mjs で読む）
 // settleSlotPick は src/lib/levels.ts（src/game/imports.mjs で読む）
 function newLevel(seedOverride){
@@ -12,7 +12,7 @@ function newLevel(seedOverride){
   if(here.depth===FINAL_DEPTH&&!here.branch&&!here.realm)here.D.finalVault=true;
   blaze.frozen=new Map();
   placeRunesForLevel(); fight.projs=[]; fight.beamSegs=[]; fight.clouds=[]; fight.zones=[]; fight.laters=[]; fight.rains=[]; fight.marks=[]; fight.beamRun=null; fight.boltFx=[]; fight.zapQueue=[]; vfx.zapFlash=null; gear.castSt=null;
-  U.uAmb.value=here.D.prof.ambient;
+  gfx.U.uAmb.value=here.D.prof.ambient;
   hudInfo.explored=0;
   buildWorld(); updateWater();
   here.fixtures=here.D.fixtures;

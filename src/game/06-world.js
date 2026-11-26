@@ -1,6 +1,5 @@
 // ---------------------------------------------------------------- world state
-let staticMesh=null, occMesh=null;
-let fogBase=0.05;
+let staticMesh=null;
 // player は src/lib/state.ts（src/game/imports.mjs で読む。丸ごと入れ替えないので、名前はそのまま）
 // edge は src/lib/state.ts（src/game/imports.mjs で読む）
 // 画面の下の一言 showHint は src/lib/status.ts（src/game/imports.mjs で読む）
@@ -11,34 +10,22 @@ let fogBase=0.05;
 // sstep は src/lib/math.ts（src/game/imports.mjs で読む）
 // CHUNK・CXN・CZN は src/lib/world.ts（src/game/imports.mjs で読む）
 
-let chunks=[];
-let waterMesh=null, waterTex=null, waterLTex=null;
+let waterMesh=null;
 function makeWater(){
-  waterTex=new T.DataTexture(new Float32Array(NCELL*4),MW,MH,T.RGBAFormat,T.FloatType); waterTex.magFilter=waterTex.minFilter=T.NearestFilter;
-  waterLTex=new T.DataTexture(new Float32Array(NCELL*4),MW,MH,T.RGBAFormat,T.FloatType); waterLTex.magFilter=waterLTex.minFilter=T.NearestFilter;
-  const mat=new T.ShaderMaterial({uniforms:{uAtlas:U.uAtlas,uTime:U.uTime,uSL:U.uSL,uDLP:U.uDLP,uDLC:U.uDLC,uFogDen:U.uFogDen,uFogColor:U.uFogColor,uWater:{value:waterTex},uWaterL:{value:waterLTex}},
+  gfx.waterTex=new T.DataTexture(new Float32Array(NCELL*4),MW,MH,T.RGBAFormat,T.FloatType); gfx.waterTex.magFilter=gfx.waterTex.minFilter=T.NearestFilter;
+  gfx.waterLTex=new T.DataTexture(new Float32Array(NCELL*4),MW,MH,T.RGBAFormat,T.FloatType); gfx.waterLTex.magFilter=gfx.waterLTex.minFilter=T.NearestFilter;
+  const mat=new T.ShaderMaterial({uniforms:{uAtlas:gfx.U.uAtlas,uTime:gfx.U.uTime,uSL:gfx.U.uSL,uDLP:gfx.U.uDLP,uDLC:gfx.U.uDLC,uFogDen:gfx.U.uFogDen,uFogColor:gfx.U.uFogColor,uWater:{value:gfx.waterTex},uWaterL:{value:gfx.waterLTex}},
     vertexShader:WATER_VS,fragmentShader:WATER_FS,side:T.DoubleSide,alphaToCoverage:true,extensions:{derivatives:true}});
   const geo=new T.PlaneGeometry(MW*CELL,MH*CELL); geo.rotateX(-Math.PI/2);
   waterMesh=new T.Mesh(geo,mat); waterMesh.position.set(MW*CELL/2,0.06,MH*CELL/2); waterMesh.frustumCulled=false; scene.add(waterMesh);
 }
-function updateWater(){
-  const W2=waterTex.image.data, L2=waterLTex.image.data, oI=new Float32Array(3), oW=new Float32Array(3);
-  for(let i=0;i<NCELL;i++){
-    const lq=here.D.liquid[i], o=i*4; W2[o]=W2[o+1]=W2[o+2]=W2[o+3]=0; L2[o]=L2[o+1]=L2[o+2]=L2[o+3]=0;
-    if(lq!==LQ_WATER&&lq!==LQ_DEEP)continue;
-    const r=here.D.roomOf[i]>=0?here.D.rooms[here.D.roomOf[i]]:null, lake=(r&&r.theme&&r.theme.k==='lake')||here.D.stratum.k==='cavern';
-    W2[o]=lq===LQ_DEEP?1:0.5; W2[o+1]=here.D.flow[i]?flowW(here.D.flow[i]):0; W2[o+2]=lake?1:0; W2[o+3]=here.D.algae&&here.D.algae[i]?1:0;
-    topLights(here.D.lights,(i%MW+0.5)*CELL,0.1,(((i/MW)|0)+0.5)*CELL,0,1,0,i,oI,oW,0);
-    L2[o]=oI[0]>=0?oI[0]+1:0; L2[o+1]=oW[0]; L2[o+2]=oI[1]>=0?oI[1]+1:0; L2[o+3]=oW[1];
-  }
-  waterTex.needsUpdate=true; waterLTex.needsUpdate=true;
-}
+// updateWater は src/lib/build.ts（src/game/imports.mjs で読む）
 
 // flowW は src/lib/math.ts（src/game/imports.mjs で読む）
 function buildWorld(){
-  for(const c of chunks){ scene.remove(c.mesh); c.mesh.geometry.dispose(); }
-  chunks=[];
-  if(occMesh){ scene.remove(occMesh); occMesh.geometry.dispose(); }
+  for(const c of gfx.chunks){ scene.remove(c.mesh); c.mesh.geometry.dispose(); }
+  gfx.chunks=[];
+  if(gfx.occMesh){ scene.remove(gfx.occMesh); gfx.occMesh.geometry.dispose(); }
   const {tile,liquid,surface,roomOf,rooms,lights,ceil}=here.D;
   setNoiseSeed(here.D.noiseSeed);
   const cap=360000;
@@ -547,22 +534,22 @@ function buildWorld(){
     geo.setAttribute('iEmit',new T.InstancedBufferAttribute(em,4));
     geo.setAttribute('iLI',new T.InstancedBufferAttribute(li,3));
     geo.setAttribute('iLW',new T.InstancedBufferAttribute(lw,3));
-    const mesh=new T.InstancedMesh(geo,staticMat,cnt);
+    const mesh=new T.InstancedMesh(geo,gfx.staticMat,cnt);
     mesh.instanceMatrix.array.set(mm); mesh.instanceMatrix.needsUpdate=true;
     mesh.frustumCulled=false; scene.add(mesh);
     const cxw=((c%CXN)+0.5)*CHUNK*CELL, czw=(((c/CXN)|0)+0.5)*CHUNK*CELL, cyw=(ymin+ymax)/2;
     const rad=Math.hypot(CHUNK*CELL*0.5+0.6,CHUNK*CELL*0.5+0.6,(ymax-ymin)/2+0.6);
-    chunks.push({mesh,sphere:new T.Sphere(new T.Vector3(cxw,cyw,czw),rad)});
+    gfx.chunks.push({mesh,sphere:new T.Sphere(new T.Vector3(cxw,cyw,czw),rad)});
   }
   const og=new T.BufferGeometry(); og.setAttribute('position',new T.Float32BufferAttribute(occ,3));
-  occMesh=new T.Mesh(og,occMat); occMesh.renderOrder=-10; occMesh.frustumCulled=false; scene.add(occMesh);
+  gfx.occMesh=new T.Mesh(og,gfx.occMat); gfx.occMesh.renderOrder=-10; gfx.occMesh.frustumCulled=false; scene.add(gfx.occMesh);
   hudInfo.glyphCount=n;
 }
 const _frus=new T.Frustum(), _pm=new T.Matrix4();
 function cullChunks(){
   gfx.camera.updateMatrixWorld();
   _pm.multiplyMatrices(gfx.camera.projectionMatrix,gfx.camera.matrixWorldInverse); _frus.setFromProjectionMatrix(_pm);
-  const maxD=2.4/U.uFogDen.value; hudInfo.chunksDrawn=0;
-  for(const c of chunks){ const d=c.sphere.center.distanceTo(gfx.camera.position)-c.sphere.radius; c.mesh.visible=d<maxD&&_frus.intersectsSphere(c.sphere); if(c.mesh.visible)hudInfo.chunksDrawn+=c.mesh.count; }
+  const maxD=2.4/gfx.U.uFogDen.value; hudInfo.chunksDrawn=0;
+  for(const c of gfx.chunks){ const d=c.sphere.center.distanceTo(gfx.camera.position)-c.sphere.radius; c.mesh.visible=d<maxD&&_frus.intersectsSphere(c.sphere); if(c.mesh.visible)hudInfo.chunksDrawn+=c.mesh.count; }
 }
 

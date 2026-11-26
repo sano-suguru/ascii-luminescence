@@ -104,7 +104,7 @@ function updateEvents(dt,t){
         ev.t+=dt; vfx.shake=Math.max(vfx.shake,0.18+ev.t*0.15);
         if(mr()<dt*30){ const c=ev.cells[Math.floor(mr()*ev.cells.length)], [x,z]=cpos(c); spawn(x+(mr()-0.5)*1.8,here.D.ceil[c]-0.1,z+(mr()-0.5)*1.8,0,-1.5,0,1.5,G(mpick(['.',',','\''])),0.12,0.4,0.38,0.45,1); }
         if(ev.t>1.4){
-          ev.state=2; here.D.collapsed=true; sBoom(0.7); makeNoise(player.x,player.z,22,1.2); U.uCollT.value=t;
+          ev.state=2; here.D.collapsed=true; sBoom(0.7); makeNoise(player.x,player.z,22,1.2); gfx.U.uCollT.value=t;
           for(const c of ev.cells){ blaze.cellFlag[c]=200; here.D.tile[c]=TC; here.D.pit[c]=1; const [x,z]=cpos(c);
             for(let q=0;q<10;q++)spawn(x+(mr()-0.5)*1.8,0.1,z+(mr()-0.5)*1.8,(mr()-0.5)*0.6,-0.5-mr()*2,(mr()-0.5)*0.6,1.6,G(mpick(['.','#',':','%'])),0.2,0.6,0.55,0.6,1); }
           for(const m of here.monsters){ if(here.D.pit[m.cz*MW+m.cx]&&!m.ty.flier){ m.dead=true; } }

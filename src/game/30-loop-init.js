@@ -2,11 +2,11 @@
 function applySize(){
   frame.stillDrawn=false;
   const w=window.innerWidth, h=window.innerHeight;
-  renderer.setPixelRatio(pixelRatio); renderer.setSize(w,h,false);
+  gfx.renderer.setPixelRatio(pixelRatio); gfx.renderer.setSize(w,h,false);
   composer.setPixelRatio(pixelRatio); composer.setSize(w,h);
   gfx.camera.aspect=w/h; gfx.camera.updateProjectionMatrix();
-  U.uScale.value=(h*pixelRatio)/(2*Math.tan(gfx.camera.fov*Math.PI/360));
-  finalPass.uniforms.uRes.value.set(w*pixelRatio,h*pixelRatio);
+  gfx.U.uScale.value=(h*pixelRatio)/(2*Math.tan(gfx.camera.fov*Math.PI/360));
+  gfx.finalPass.uniforms.uRes.value.set(w*pixelRatio,h*pixelRatio);
 }
 window.addEventListener('resize',()=>{ applySize(); sizeMap(); });
 
@@ -23,7 +23,7 @@ function testTick(draw){ TESTCLK.advance(TEST_STEP*1000); tick(TEST_STEP,draw); 
 function tick(raw,draw){
   if(isPaused()&&ui.started){ if(frame.stillDrawn)return; frame.stillDrawn=true; } else frame.stillDrawn=false; const dt=isPaused()?0:clamp(raw,0,0.05)*timeScale();
   clock.time+=dt; const t=clock.time;
-  U.uTime.value=t;
+  gfx.U.uTime.value=t;
   if(here.trans){
     here.trans.t+=dt;
     if(here.trans.phase==='out'){ here.fade=1-here.trans.t/0.8; if(here.trans.t>=0.8){ if(here.trans.regen)adv.runSeed=(Math.random()*1e9)>>>0; else advance(here.trans.go); newLevel(); here.trans={phase:'in',t:0}; here.fade=0; } }
@@ -43,7 +43,7 @@ function tick(raw,draw){
   fovT+=dt; if(fovT>0.1){ fovT=0; computeFOV(); checkEvents(false); look(); stepGas(); stepFire(); }
   mapT+=dt; if(mapT>0.11){ mapT=0; if(ui.uiMode===0)drawMap(); }
   if(ui.helpT>0){ ui.helpT-=dt; if(ui.helpT<=0&&ui.helpOn)setHelp(false); }
-  finalPass.uniforms.uTime.value=t; finalPass.uniforms.uFade.value=clamp(here.fade,0,1); finalPass.uniforms.uHurt.value=vfx.hurtFlash+(player.hp<adv.PLAYER_MAX*0.25&&!adv.dead?0.18+0.08*Math.sin(t*4):0);
+  gfx.finalPass.uniforms.uTime.value=t; gfx.finalPass.uniforms.uFade.value=clamp(here.fade,0,1); gfx.finalPass.uniforms.uHurt.value=vfx.hurtFlash+(player.hp<adv.PLAYER_MAX*0.25&&!adv.dead?0.18+0.08*Math.sin(t*4):0);
   if(ui.started&&!here.trans&&!adv.dead&&!isPaused())pickupItems();
   if(gear.hands)updateCast(dt);
   updateFinal(dt); updateGallery(dt); trackSeen(dt); updateFrozen(dt); cloudsMeetFire();
@@ -182,12 +182,12 @@ if(TEST)window.__test={
 // ---------------------------------------------------------------- init
 async function init(){
   try{ if(document.fonts&&document.fonts.load)await Promise.race([Promise.all([document.fonts.load('800 96px "JetBrains Mono"'),document.fonts.load('500 96px "Noto Sans Runic"','ᚦᛏᛜᛞᚲᛁᛊᚾᚱᚺ'),document.fonts.load('400 14px "BIZ UDGothic"','←→！：？［］')]),new Promise(r=>(TEST?TESTCLK.realTimeout:setTimeout)(r,2500))]); }catch(e){}
-  U.uAtlas.value=buildAtlas();
-  staticMat=new T.ShaderMaterial({uniforms:{uAtlas:U.uAtlas,uTime:U.uTime,uSL:U.uSL,uDLP:U.uDLP,uDLC:U.uDLC,uFogDen:U.uFogDen,uFogColor:U.uFogColor,uRamp:U.uRamp,uAmb:U.uAmb,uCell:U.uCell,uCollT:U.uCollT,uCamP:U.uCamP,uCutP:U.uCutP,uCut:U.uCut},
+  gfx.U.uAtlas.value=buildAtlas();
+  gfx.staticMat=new T.ShaderMaterial({uniforms:{uAtlas:gfx.U.uAtlas,uTime:gfx.U.uTime,uSL:gfx.U.uSL,uDLP:gfx.U.uDLP,uDLC:gfx.U.uDLC,uFogDen:gfx.U.uFogDen,uFogColor:gfx.U.uFogColor,uRamp:gfx.U.uRamp,uAmb:gfx.U.uAmb,uCell:gfx.U.uCell,uCollT:gfx.U.uCollT,uCamP:gfx.U.uCamP,uCutP:gfx.U.uCutP,uCut:gfx.U.uCut},
     vertexShader:STATIC_VS,fragmentShader:GLYPH_FS,side:T.DoubleSide,alphaToCoverage:true});
-  dynMat=new T.ShaderMaterial({uniforms:{uAtlas:U.uAtlas,uFogDen:U.uFogDen,uFogColor:U.uFogColor},vertexShader:DYN_VS,fragmentShader:GLYPH_FS,side:T.DoubleSide,alphaToCoverage:true});
-  ptMat=new T.ShaderMaterial({uniforms:{uAtlas:U.uAtlas,uScale:U.uScale,uFogDen:U.uFogDen},vertexShader:PT_VS,fragmentShader:PT_FS,transparent:true,depthWrite:false,blending:T.AdditiveBlending});
-  occMat=new T.ShaderMaterial({uniforms:{uCamP:U.uCamP,uCutP:U.uCutP,uCut:U.uCut},colorWrite:false,side:T.DoubleSide,
+  dynMat=new T.ShaderMaterial({uniforms:{uAtlas:gfx.U.uAtlas,uFogDen:gfx.U.uFogDen,uFogColor:gfx.U.uFogColor},vertexShader:DYN_VS,fragmentShader:GLYPH_FS,side:T.DoubleSide,alphaToCoverage:true});
+  ptMat=new T.ShaderMaterial({uniforms:{uAtlas:gfx.U.uAtlas,uScale:gfx.U.uScale,uFogDen:gfx.U.uFogDen},vertexShader:PT_VS,fragmentShader:PT_FS,transparent:true,depthWrite:false,blending:T.AdditiveBlending});
+  gfx.occMat=new T.ShaderMaterial({uniforms:{uCamP:gfx.U.uCamP,uCutP:gfx.U.uCutP,uCut:gfx.U.uCut},colorWrite:false,side:T.DoubleSide,
     vertexShader:`varying vec3 vW; void main(){ vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
     fragmentShader:`uniform vec3 uCamP; uniform vec3 uCutP; uniform float uCut; varying vec3 vW;
       void main(){ if(uCut>0.5){ vec3 seg=uCutP-uCamP; float L2=max(dot(seg,seg),1e-4); float tc=clamp(dot(vW-uCamP,seg)/L2,0.0,1.0); if(tc<0.97&&length(vW-(uCamP+seg*tc))<mix(2.6,0.9,tc)+0.15) discard; } gl_FragColor=vec4(0.0); }`});

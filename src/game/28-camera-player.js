@@ -16,7 +16,7 @@ function placeThirdPerson(dt,sk){
   const k=Math.min(1,dt*14); ui.camPos[0]+=(tx-ui.camPos[0])*k; ui.camPos[1]+=(ty-ui.camPos[1])*k; ui.camPos[2]+=(tz-ui.camPos[2])*k;
   gfx.camera.position.set(ui.camPos[0]+(mr()-0.5)*sk,ui.camPos[1]+(mr()-0.5)*sk,ui.camPos[2]);
   gfx.camera.rotation.set(player.pitch,player.yaw,0);
-  U.uCamP.value.set(ui.camPos[0],ui.camPos[1],ui.camPos[2]); U.uCutP.value.set(h[0],h[1]-0.25,h[2]); U.uCut.value=1;
+  gfx.U.uCamP.value.set(ui.camPos[0],ui.camPos[1],ui.camPos[2]); gfx.U.uCutP.value.set(h[0],h[1]-0.25,h[2]); gfx.U.uCut.value=1;
 }
 function updateAvatar(dt){
   if(!avatar)avatar={ty:AVATAR_TY,form:buildForm(AVATAR_TY),x:0,z:0,y:0,yaw:0,walk:0,moving:0,ph:1.3,glow:1.1,surf:0};
@@ -75,7 +75,7 @@ function updatePlayer(dt){
     if(len&&blocked&&blocked!=='wall'){
       edge.t+=dt; edge.k=blocked; edge.idle=0;
       if(blocked==='chasm'){ showHint(`裂け目の縁だ。このまま進み続けると飛び降りる <b>[${'#'.repeat(Math.min(5,Math.floor(edge.t/0.24)))}${'-'.repeat(5-Math.min(5,Math.floor(edge.t/0.24)))}]</b>`); if(edge.t>1.2&&!here.trans){ here.trans={phase:'out',t:0,regen:false}; player.fall=true; sRumble(0.5,1.4); msg('<b style="color:#9a7cff">:</b>裂け目へ身を投じ、闇の中を下の階層へと落ちていく……'); } }
-      else if(blocked==='lava'){ showHint('溶岩の熱が行く手を阻んでいる。これ以上は近づけない'); finalPass.uniforms.uHeat.value=Math.min(1.4,finalPass.uniforms.uHeat.value+dt*2); }
+      else if(blocked==='lava'){ showHint('溶岩の熱が行く手を阻んでいる。これ以上は近づけない'); gfx.finalPass.uniforms.uHeat.value=Math.min(1.4,gfx.finalPass.uniforms.uHeat.value+dt*2); }
       else if(blocked==='gate')showHint('鉄格子が行く手を塞いでいる。どこかに開ける仕掛けがあるはずだ');
       else if(blocked==='xtal')showHint('結晶に行く手を塞がれている。光は通るが、体は通れない');
     } else { edge.idle+=dt; if(edge.idle>0.15)edge.t=0; if(edge.idle>0.9)showHint(''); }
@@ -90,7 +90,7 @@ function updatePlayer(dt){
   const sk=vfx.shake*0.08; vfx.shake=Math.max(0,vfx.shake-dt*1.2);
   { const pci=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL), deep=here.D.liquid[pci]===LQ_DEEP&&!here.D.bridge[pci]; player.eye+=((deep?0.62:EYE)-player.eye)*Math.min(1,dt*3); }
   if(ui.camMode==='tps'){ placeThirdPerson(dt,sk); return; }
-  U.uCut.value=0;
+  gfx.U.uCut.value=0;
   gfx.camera.position.set(player.x+(mr()-0.5)*sk,(mr()-0.5)*sk+player.eye-(player.roll?Math.sin(Math.PI*player.roll.t/0.32)*0.55:0)+Math.sin(player.bob*2)*0.035*spd*(player.eye<1?0.3:1)+(player.eye<1?Math.sin(clock.time*1.8)*0.04:0),player.z);
   gfx.camera.rotation.set(player.pitch,player.yaw,Math.sin(player.bob)*0.004*spd);
 }
@@ -98,17 +98,17 @@ function updatePlayer(dt){
 function updateAtmosphere(dt){
   const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL), ri=here.D.roomOf[pc];
   const inCave=ri>=0&&here.D.rooms[ri].cave;
-  const fogT=inCave?(here.D.stratum.k==='cavern'?0.032:0.03):(here.D.stratum.k==='ruins'?0.04:fogBase);
-  U.uFogDen.value+=(fogT-U.uFogDen.value)*(1-Math.exp(-dt*0.9));
+  const fogT=inCave?(here.D.stratum.k==='cavern'?0.032:0.03):(here.D.stratum.k==='ruins'?0.04:gfx.fogBase);
+  gfx.U.uFogDen.value+=(fogT-gfx.U.uFogDen.value)*(1-Math.exp(-dt*0.9));
   const l=cellLight(player.x,player.z); let B=0.3*l[0]+0.55*l[1]+0.15*l[2];
   for(const m of here.monsters){ const d=Math.hypot(m.x-player.x,m.z-player.z); if(d<5)B+=(1-d/5)**2*0.7; }
   for(const f of here.fixtures){ const d=Math.hypot(f.x-player.x,f.z-player.z); if(d<3)B+=(1-d/3)**2*0.8; }
   const target=clamp(1.25/(1+B*0.6),0.55,1.25);
   expo+=(target-expo)*(1-Math.exp(-dt*(target<expo?2.5:1.0)));
   vfx.flash=Math.max(0,vfx.flash-dt*2.5);
-  finalPass.uniforms.uExposure.value=expo*(1+vfx.flash*1.6);
+  gfx.finalPass.uniforms.uExposure.value=expo*(1+vfx.flash*1.6);
   let heat=0; for(const f of here.fixtures){ if(f.type!=='lava'&&!(f.type==='crater'&&f.active))continue; heat=Math.max(heat,1-Math.hypot(f.x-player.x,f.z-player.z)/10); }
-  const hu=finalPass.uniforms.uHeat; hu.value+=(heat-hu.value)*Math.min(1,dt*2);
-  finalPass.uniforms.uSwim.value=ui.camMode==='tps'?0:clamp((EYE-player.eye)/(EYE-0.62),0,1);
+  const hu=gfx.finalPass.uniforms.uHeat; hu.value+=(heat-hu.value)*Math.min(1,dt*2);
+  gfx.finalPass.uniforms.uSwim.value=ui.camMode==='tps'?0:clamp((EYE-player.eye)/(EYE-0.62),0,1);
 }
 

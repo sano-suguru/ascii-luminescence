@@ -10,6 +10,8 @@ import type { HandsSnap } from './gear.ts';
 import type { LoreResult } from './results.ts';
 import type { Body, Glyph } from './bodies/kit.ts';
 import { type Rune } from './runes.ts';
+import type { DataTexture, InstancedMesh, Mesh, ShaderMaterial, Sphere, Texture, Vector3, WebGLRenderer } from 'three';
+import type { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { DUST_N } from './shaders.ts';
 import { NCELL, NDL, NSL } from './world.ts';
 
@@ -946,8 +948,58 @@ export interface Gfx {
   camera: CameraView;
   cellTex: CellTex;
   drawBodyOnly: boolean;
+  /** ここから下は、05-renderer.js・30-loop-init.js・06-world.js がその場で入れる three.js の物（入れるまでは null・undefined か空）。
+   * 描画する部品（WebGL を使えない時は作れず、ゲームは始まらない） */
+  renderer: WebGLRenderer | undefined;
+  /** 描画の全部の部品が分け合う値（シェーダーの uniform） */
+  U: Uniforms | null;
+  /** 階の文字の部品（30-loop-init.js の init が作る）と、壁の向こうを隠す板の部品 */
+  staticMat: ShaderMaterial | undefined;
+  occMat: ShaderMaterial | undefined;
+  /** 画面の最後の後処理（露出・熱のゆらぎ・水中・傷の赤み・詠唱の間の色） */
+  finalPass: ShaderPass | null;
+  /** 階の文字を区切りごとにまとめた物（区切りを包む球で、見えない区切りを描かない）と、壁の向こうを隠す板（src/lib/build.ts の buildWorld が作る） */
+  chunks: { mesh: InstancedMesh; sphere: Sphere }[];
+  occMesh: Mesh | null;
+  /** 水面の絵（マスごとの水の深さ・流れ・湖か・藻と、灯りの番号と重み。06-world.js の makeWater が作り、src/lib/build.ts の updateWater が書く） */
+  waterTex: DataTexture | null;
+  waterLTex: DataTexture | null;
+  /** その階の霧の濃さの基 */
+  fogBase: number;
 }
-export const gfx: Gfx = { camera: { position: { x: 0, y: 0, z: 0 } }, cellTex: { needsUpdate: false }, drawBodyOnly: false };
+/** 描画の部品が分け合う値（シェーダーの uniform。05-renderer.js が作る） */
+export interface Uniforms {
+  uCell: { value: unknown };
+  uCollT: { value: number };
+  uAtlas: { value: Texture | null };
+  uTime: { value: number };
+  uSL: { value: Float32Array };
+  uDLP: { value: Float32Array };
+  uDLC: { value: Float32Array };
+  uCamP: { value: Vector3 };
+  uCutP: { value: Vector3 };
+  uCut: { value: number };
+  uFogDen: { value: number };
+  uFogColor: { value: Vector3 };
+  uScale: { value: number };
+  uRamp: { value: Float32Array };
+  uAmb: { value: number };
+}
+export const gfx: Gfx = {
+  camera: { position: { x: 0, y: 0, z: 0 } },
+  cellTex: { needsUpdate: false },
+  drawBodyOnly: false,
+  renderer: undefined,
+  U: null,
+  staticMat: undefined,
+  occMat: undefined,
+  finalPass: null,
+  chunks: [],
+  occMesh: null,
+  waterTex: null,
+  waterLTex: null,
+  fogBase: 0.05,
+};
 /** マスの絵 gfx.cellTex の中身（マス1つに4つ：火の明かり・火の強さ・灰か・変わり方の種類。src/lib/ground.ts の uploadCells が書く）。丸ごと入れ替えない */
 export const cellData = new Uint8Array(NCELL * 4);
 /** 薄い氷のマスに乗っていた秒（マス → 秒。src/lib/ground.ts の crackIce。18-level-player.js の newLevel が階ごとに空にする）。丸ごと入れ替えない */

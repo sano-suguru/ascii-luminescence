@@ -43,7 +43,7 @@ function drawArrows(){ if(!arrowCtx)return; const W=Math.round(arrowCv.clientWid
 let ambK=1;
 function updateSectionAir(dt){ if(!here.D||!here.D.prof)return; const pc=((player.z/CELL)|0)*MW+((player.x/CELL)|0); let k=1;
   if(here.D.hub&&here.D.roomOf[pc]===here.D.hub.ri)k=1.25; else if(here.D.dS&&here.D.pathL>0&&here.D.dS[pc]>here.D.pathL*0.7)k=0.85;
-  ambK+=(k-ambK)*Math.min(1,dt*1.2); U.uAmb.value=here.D.prof.ambient*ambK; }
+  ambK+=(k-ambK)*Math.min(1,dt*1.2); gfx.U.uAmb.value=here.D.prof.ambient*ambK; }
 // 墓を描く drawGraves は src/lib/fixtures.ts（src/game/imports.mjs で読む）
 function drawRunesWorld(t){
   drawZones(t);
@@ -132,8 +132,8 @@ function drawCastFx(t){
 // aimTarget は src/lib/aim.ts（src/game/imports.mjs で読む）
 function updateCross(dt){
   const el=document.getElementById('cross'); if(!el)return;
-  slowFx+=((gear.castSt?1:0)-slowFx)*Math.min(1,(dt||0.016)*8); finalPass.uniforms.uSlow.value=slowFx;
-  if(gear.castSt){ const c=elemCol(gear.hands[gear.castSt.h].elem?gear.hands[gear.castSt.h].elem.type:null); finalPass.uniforms.uTint.value.set(c[0],c[1],c[2]); }
+  slowFx+=((gear.castSt?1:0)-slowFx)*Math.min(1,(dt||0.016)*8); gfx.finalPass.uniforms.uSlow.value=slowFx;
+  if(gear.castSt){ const c=elemCol(gear.hands[gear.castSt.h].elem?gear.hands[gear.castSt.h].elem.type:null); gfx.finalPass.uniforms.uTint.value.set(c[0],c[1],c[2]); }
   const tg=ui.started&&!adv.dead&&!isPaused()?aimTarget():null;
   // the sight: a small dot; it is flanked when it holds a creature; while chanting, the runes of that hand close in on it and, when the chant is full, rest beside it and pulse
   let txt='·', col='rgba(225,215,255,.55)', cls='';

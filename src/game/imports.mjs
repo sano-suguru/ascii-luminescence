@@ -27,7 +27,7 @@ import { VM_K, VM_MIRROR, VM_ST, vmGlyph, vmGlyphS } from '../lib/hands.ts';
 import {
   SPECIALS, STRATA, } from '../lib/strata.ts';
 import { setNoiseSeed, vnoise } from '../lib/noise.ts';
-import { VAULTS } from '../lib/vaults.ts';
+import { ARTS, VAULTS } from '../lib/vaults.ts';
 import { generateLevel } from '../lib/generate.ts';
 import { LOGO_ART, TITLE_LINES } from '../lib/title.ts';
 import { DUST_N, DYN_VS, GAS_N, GLYPH_FS, P0, PT_FS, PT_TOTAL, PT_VS, STATIC_VS, WATER_FS, WATER_VS } from '../lib/shaders.ts';
@@ -71,11 +71,7 @@ import {
   addZone, castRapid, coldSnap, dropRune, fireWave, gainExp, hitFeedback, hitReact, inWater, later, lordFell, nearestFoe, rallyOnHit, startRain, zapLine,
 } from '../lib/combat.ts';
 import { awardLore, graveCandidates, graveRows, loreRows, resultPlace, runLore, saveGrave, victory } from '../lib/results.ts';
-// three.js（r147）。npm の three から読んで、組み立てに入れる（CDN からは読まない）。
-// 光のにじみの4つの部品（examples/jsm の EffectComposer・RenderPass・ShaderPass・UnrealBloomPass）は、古い JS が T.EffectComposer などで使うので、00-test-mode.js で T に一緒に入れる
-import * as THREE from 'three';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+// three.js（r147）と光のにじみなどの部品 T、場面 scene、霧の色 fogCol
+import { T, fogCol, scene } from '../lib/three.ts';
+import { setFog, updateWater } from '../lib/build.ts';
 import { DLC, DLP, SL, SND, adv, beamHold, blaze, buf, cellData, clock, fight, gear, gfx, here, hudInfo, iceT, keys, lantern, placeMem, player, saved, stealth, ui, vfx, vmKick, dust, edge } from '../lib/state.ts';
