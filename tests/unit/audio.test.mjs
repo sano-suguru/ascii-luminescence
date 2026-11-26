@@ -219,6 +219,14 @@ describe('音を鳴らす所が、見た目の乱数を引かない（src/ を�
           'function a1(){ let t=0; if(clock.time>t)sDrip(1,2,0.1); }', // 名前 t の比べる所は、この関数の t だけ
           'function b1(){ let t; if(go){ t=clock.time+mr()*3; sDrip(1,2,0.1); } use(t); }', // 見逃す：別の関数の、同じ名前の変数
           'function c1(m){ if(clock.time>m.hissT&&sndReady()){ m.hissT=clock.time+mr(); const t0=now(); sDrip(1,2,t0); } }', // 4：sndReady の条件の中（3 でも出る）
+          'function d1(m){ if(clock.time<m.t){ hide(m); } else { m.t=clock.time+mr()*3; sDrip(1,2,0.1); } }', // 4：else の中
+          'function e1(m){ const due=m.dT; if(clock.time>due){ m.dT=clock.time+mr()*3; sDrip(1,2,0.1); } }', // 4：入れる先を変数に入れてから比べる
+          'function f1(m){ if(clock.time>m.dripT)dripNow(m); }', // 4：呼ぶ所で比べる（次の行）
+          'function dripNow(m){ m.dripT=clock.time+mr()*3; sDrip(1,2,0.1); }',
+          'function g1(m){ if(clock.time>m.nextMove)moveNow(m); }', // 見逃す：呼ぶ関数がゲームのこともする（次の行）
+          'function moveNow(m){ m.nextMove=clock.time+mr(); step(m); sDrip(1,2,0.1); }',
+          'function h1(m){ if(clock.time>m.t){ const d=mr()*3; m.t=clock.time+d; sDrip(1,2,0.1); } }', // 4：入れる先への代入にだけ使う変数の宣言
+          'function i1(m){ if(clock.time>m.t){ const q=mr(); spawn(q,0,0); m.t=clock.time+mr(); sDrip(1,2,0.1); } }', // 見逃す：ゲームに使う変数の宣言がある
         ].join('\n'),
       },
       { name: 'lib/b.ts', text: 'export function g(): void { if (on && sndReady()) { const v = mr(); sDrip(0, 0, v); } }' }, // 3：sndReady の中
@@ -247,6 +255,10 @@ describe('音を鳴らす所が、見た目の乱数を引かない（src/ を�
       'game/01-a.js:15 次に鳴らす時刻',
       'game/01-a.js:19 sndReady の中',
       'game/01-a.js:19 次に鳴らす時刻',
+      'game/01-a.js:20 次に鳴らす時刻',
+      'game/01-a.js:21 次に鳴らす時刻',
+      'game/01-a.js:23 次に鳴らす時刻',
+      'game/01-a.js:26 変数 d を経て 次に鳴らす時刻',
       'lib/b.ts:1 sndReady の中',
     ]);
   });
