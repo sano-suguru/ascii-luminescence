@@ -10,7 +10,7 @@ import * as PT from '../../src/lib/particles.ts';
 import * as SC from '../../src/lib/screens.ts';
 import * as ST from '../../src/lib/status.ts';
 import { G } from '../../src/lib/glyphs.ts';
-import { msgs, ui } from '../../src/lib/state.ts';
+import { adv, msgs, ui } from '../../src/lib/state.ts';
 import { fakeScreen, particleCases, screenCases } from './screens-cases.mjs';
 
 const fnv = (s) => {
@@ -111,5 +111,41 @@ describe('マウスを捕まえるのに失敗した時（lockFailed）', () => 
     const before = [...msgs];
     await run('reject', false);
     expect([msgs, 'document' in globalThis]).toEqual([before, false]);
+  });
+  it('「クリックで視点操作に戻る」は、捕まえる遊び方で探索中なのにマウスが外れている時だけ出す', () => {
+    const page = fakeScreen(),
+      hadDoc = 'document' in globalThis,
+      doc = globalThis.document,
+      keep = { started: ui.started, lockedOnce: ui.lockedOnce, plFailed: ui.plFailed, locked: ui.locked, dead: adv.dead };
+    globalThis.document = page.document;
+    try {
+      const shown = (st) => {
+        Object.assign(ui, { started: true, lockedOnce: true, plFailed: false, locked: false, ...st });
+        adv.dead = st.dead ?? false;
+        SC.updateResume();
+        const last = page.log.filter((e) => e[1] === 'resume').at(-1);
+        return [SC.lockLost(), last && last[3]];
+      };
+      expect([
+        shown({}),
+        shown({ locked: true }),
+        shown({ plFailed: true }),
+        shown({ lockedOnce: false }),
+        shown({ started: false }),
+        shown({ dead: true }),
+      ]).toEqual([
+        [true, 'block'],
+        [false, 'none'],
+        [false, 'none'],
+        [false, 'none'],
+        [false, 'none'],
+        [false, 'none'],
+      ]);
+    } finally {
+      if (hadDoc) globalThis.document = doc;
+      else delete globalThis.document;
+      Object.assign(ui, { started: keep.started, lockedOnce: keep.lockedOnce, plFailed: keep.plFailed, locked: keep.locked });
+      adv.dead = keep.dead;
+    }
   });
 });

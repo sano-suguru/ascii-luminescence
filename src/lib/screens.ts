@@ -3,12 +3,19 @@
 import { must, nth } from './array.ts';
 import { msg } from './log.ts';
 import { SND_LV, SND_NAME } from './sound.ts';
-import { SND, ui } from './state.ts';
+import { SND, adv, ui } from './state.ts';
 import { showHint } from './status.ts';
 
-/** 「クリックで視点操作に戻る」の一言（#resume）。今はいつも隠す */
+/**
+ * 捕まえる遊び方（一度でも捕まえていて、捕まえられないと決めていない）で、探索中なのにマウスが外れているか
+ * （祭壇・装備の画面を Esc で閉じた後や、外した直後に掛け直して断られた後）。この時は「クリックで視点操作に戻る」を出し、
+ * 描く画面のクリックは捕まえ直すだけにする（攻撃しない）
+ */
+export const lockLost = (): boolean => ui.started && !adv.dead && ui.lockedOnce && !ui.plFailed && !ui.locked;
+
+/** 「クリックで視点操作に戻る」の一言（#resume）を、lockLost の時だけ出す。止まっている間・死んだ時・タイトルでは CSS が隠す（src/index.html） */
 export function updateResume(): void {
-  must(document.getElementById('resume'), '#resume').style.display = 'none';
+  must(document.getElementById('resume'), '#resume').style.display = lockLost() ? 'block' : 'none';
 }
 
 /**
