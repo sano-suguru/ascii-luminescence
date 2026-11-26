@@ -87,7 +87,7 @@ tools/same-code.mjs  移した関数が、移す前の古い関数と「同じ�
 tools/where.mjs      組み立てた JS の場所 → src/game/ のどのファイルの何行目か（ソースマップで戻す）
 tools/map.mjs        ゲーム本体の地図（ファイルごとの行の数と見出し）
 tools/serve.mjs      静的ファイルの小さなサーバー（テストでは CORS の見出しを付ける。サンドボックスの iframe は起源が null になり、付けないと JS・CSS・フォントを読めない）
-tools/shots.mjs      図鑑の生き物を、見やすい角度で写す（pnpm shots。向き・寄る引く・見下ろす角度は形ごとの表。写真は tests/out/shots/）
+tools/shots.mjs      図鑑の生き物を、見やすい角度で写す（pnpm shots。向き・寄る引く・見下ろす角度は形ごとの表。--views で、生き物ごとに角度の一揃い（正面・斜め前・横・後ろ・上から・歩く姿・遠くの7枚）。写真は tests/out/shots/）
 tools/feel.mjs       手触りの試し打ち（node tools/feel.mjs [aim|walk]。人の指のくせを仮に置いた自動の操作で、750×312 のスマホの真似で課題をやらせ、設定ごとの成績を比べる。
                      狙う：見回す速さ（--look）ごとの、向きを合わせるまでの時間・行き過ぎ・持ち替え。歩く：8方向とアナログのスティックの、道なりに着くまでの時間・壁に押し当てた割合・
                      道からのずれ。指のくせの値はファイルの頭の HAND。比べ合いにだけ使い、気持ちよさは本物の指で確かめる。CI には入れない。結果は tests/out/feel/summary.json）
@@ -204,7 +204,8 @@ pnpm map [語]         # ゲーム本体の地図。語を付けると、見出�
 pnpm where index-D0mETEmY.js:4321:12   # 組み立てた JS のその場所が、src/game/ のどこか（行だけも可。--test でテスト版）
 pnpm test             # スモーク・タイトル・サンドボックスの iframe・画面写真の比較・図鑑・世界とのやり取り・指で遊ぶ時・装備の画面・全部の階・同じ結果・枠（tests/run.mjs が同時に3つずつ走らせる。オフラインで動く。2分ほど。1つだけは node tests/smoke.mjs など）
 pnpm test:visual      # 画面写真の比較だけ（1分ほど）。違えば tests/out/visual/ に違いの画像
-pnpm shots [名前…]    # 図鑑の生き物を見やすい角度で写す（既定は竜・主たちの12枚（tools/shots.mjs の PICK）。--all で全部、--bare で図鑑の枠を隠す、--out で置き場所）
+pnpm shots [名前…]    # 図鑑の生き物を見やすい角度で写す（既定は竜・主たちの12枚（tools/shots.mjs の PICK）。--all で全部、--bare で図鑑の枠を隠す、--out で置き場所、
+                      #   --views で生き物ごとに角度の一揃いの7枚（枠を隠し、真ん中の 540×540。形や色を直す時に。例：pnpm shots トロル --views））
 node tools/feel.mjs [aim|walk]   # 手触りの試し打ち（見回す速さ・8方向とアナログのスティックを比べる。4分ほど。--look・--trials・--routes）
 pnpm lords [場所…]    # 主たちを本当にいる場所で、目の高さから写し、大きさと眩しさを数で出す（crypt・lair・sunken・nest・snake・final。--dist で距離（既定 8））
 node tests/visual.mjs --update [--only 場面]   # 基準の画像を作り直す（見た目を意図して変えた時だけ）
