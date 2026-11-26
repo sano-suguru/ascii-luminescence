@@ -6,19 +6,45 @@
 //   node tests/run.mjs              全部（同時に3つまで）
 //   node tests/run.mjs --jobs 2     同時に走らせる数（1 以上の整数）
 //   node tests/run.mjs smoke world  名前を挙げた物だけ（ほかの指定 --prod・--update などは受け付けない。1つずつ node tests/smoke.mjs --prod のように走らせる）
+//   node tests/run.mjs --shard 1/2  n 組に分けた i 組目だけ（CI が2台のランナーで分けて走らせる）。分け方は SEC のおよその秒で、組ごとの合計が近くなるように決める
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { build } from 'vite';
 import { ROOT } from './lib.mjs';
 
-// 長くかかる物から始める（短い物が後ろで隙間を埋める）
-const ALL = ['smoke', 'title', 'frame', 'visual', 'gallery', 'world', 'touch', 'inventory', 'levels', 'determinism', 'panels'];
+// テストと、速い CI のランナーでかかるおよその秒（組に分ける時と、走らせる順番に使う。長くかかる物から始め、短い物が後ろで隙間を埋める）
+const SEC = {
+  smoke: 114,
+  visual: 86,
+  frame: 84,
+  gallery: 74,
+  title: 52,
+  touch: 40,
+  determinism: 30,
+  world: 27,
+  inventory: 18,
+  levels: 14,
+  panels: 11,
+};
+const ALL = Object.keys(SEC).sort((a, b) => (SEC[b] ?? 0) - (SEC[a] ?? 0));
+// n 組に分ける：長い物から順に、その時の合計が一番小さい組へ入れる
+const shardOf = (n) => {
+  const sum = Array.from({ length: n }, () => 0),
+    of = {};
+  for (const name of ALL) {
+    const k = sum.indexOf(Math.min(...sum));
+    of[name] = k + 1;
+    sum[k] += SEC[name] ?? 0;
+  }
+  return of;
+};
 const LIMIT_MIN = 10;
 const stop = (m) => {
   console.error(m);
   process.exit(2);
 };
-let jobs = 3;
+let jobs = 3,
+  shard = null;
 const named = [];
 for (let i = 2; i < process.argv.length; i++) {
   const a = process.argv[i] ?? '';
@@ -26,12 +52,19 @@ for (let i = 2; i < process.argv.length; i++) {
     const v = process.argv[++i];
     if (!v || !/^[1-9]\d*$/.test(v)) stop(`--jobs には 1 以上の整数を書く（${v ?? '値が無い'}）`);
     jobs = Number(v);
-  } else if (a.startsWith('-')) stop(`知らない指定：${a}（使えるのは --jobs と、テストの名前だけ）`);
+  } else if (a === '--shard') {
+    const v = process.argv[++i],
+      m = v?.match(/^([1-9]\d*)\/([1-9]\d*)$/);
+    if (!m || Number(m[1]) > Number(m[2])) stop(`--shard には i/n（i は 1 から n まで）を書く（${v ?? '値が無い'}）`);
+    shard = { i: Number(m?.[1]), n: Number(m?.[2]) };
+  } else if (a.startsWith('-')) stop(`知らない指定：${a}（使えるのは --jobs・--shard と、テストの名前だけ）`);
   else if (!named.includes(a)) named.push(a);
 }
 const unknown = named.filter((n) => !ALL.includes(n));
 if (unknown.length) stop(`知らないテストの名前：${unknown.join(' ')}（${ALL.join('・')}）`);
-const list = named.length ? ALL.filter((n) => named.includes(n)) : ALL;
+const of = shard ? shardOf(shard.n) : null;
+const list = ALL.filter((n) => (!named.length || named.includes(n)) && (!shard || of?.[n] === shard.i));
+if (shard) console.log(`組 ${shard.i}/${shard.n}：${list.join('・') || '（無し）'}`);
 
 const t0 = Date.now();
 // Artifact 版を読むのは frame だけ
