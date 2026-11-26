@@ -490,8 +490,8 @@ export interface Zone {
   z: number;
   r: number;
   r0: number;
-  /** 術の中身。型は、詠唱の処理を移す時に作る */
-  sp: unknown;
+  /** 術の中身 */
+  sp: Spec;
   el: string | null;
   t: number;
   tick: number;
@@ -512,8 +512,8 @@ export interface Rain {
   left: number;
   iv: number;
   tick: number;
-  /** 術の中身。型は、詠唱の処理を移す時に作る */
-  sp: unknown;
+  /** 術の中身 */
+  sp: Spec;
   follow: boolean;
   elemK: number;
   again: boolean;
@@ -534,7 +534,7 @@ export interface BeamRun {
   t: number;
   tick: number;
   auto: boolean;
-  dir: readonly number[] | null;
+  dir: readonly [number, number, number] | null;
 }
 /** 稲妻の見た目（a から b へ、ぎざぎざの線 pts） */
 export interface Bolt {
@@ -550,10 +550,69 @@ export interface Bolt {
   re: number;
   pts: (readonly [number, number, number])[];
 }
+/**
+ * 飛ぶ物（矢 bolt・玉 orb。src/lib/combat.ts の撃ち方が作り、src/lib/projs.ts の updateProjs が動かす）。
+ * 位置と速さ・経った秒 t・術 sp・跳ね返る数 bounce・追う強さ homing・当たった生き物 hit は必ずある。ほかは撃ち方ごとの欄
+ */
+export interface Proj {
+  kind: 'bolt' | 'orb';
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  t: number;
+  sp: Spec;
+  bounce: number;
+  homing: number;
+  hit: Set<Mob>;
+  /** 消えるまでの秒（無ければ 4） */
+  maxT?: number;
+  /** 自動で撃った物（発動のルーン） */
+  auto?: boolean;
+  /** 風の刃（剣の波・突き）・大きい・波の形・突きの形・幅・当たりの太さ */
+  wind?: boolean;
+  big?: boolean;
+  wave?: boolean;
+  thrust?: boolean;
+  cw?: number;
+  rad?: number;
+  /** 加速と最高の速さ */
+  accel?: number;
+  vmax?: number;
+  /** ダメージの幅と倍率、貫く残りの数と、貫いても弱らないか、壁を抜ける残りの数と、壁を抜けている途中か */
+  dmg?: readonly number[] | undefined;
+  dmgK?: number;
+  pierce?: number;
+  keep?: boolean;
+  wallPass?: number;
+  passing?: boolean;
+  /** 連射の特性：重さ・続けて当てる・最後の矢が弾ける */
+  heavy?: number;
+  steady?: number;
+  boom?: boolean;
+  /** 光の弾の星屑・跡に場を残す */
+  dust?: number;
+  trail?: boolean;
+  /** 光の月：大きさ・引き寄せ・満ち欠けの段・焼く間の溜め・引き寄せた生き物、重さが効かない */
+  moon?: number;
+  tide?: number;
+  phases?: number;
+  burnT?: number;
+  pulled?: Set<Mob>;
+  noGrav?: boolean;
+  /** 分かれた小さな物・何代目か・弾ける強さ */
+  mini?: boolean;
+  gen?: number;
+  burstK?: number;
+  /** 消える印 */
+  dead?: boolean;
+}
 /** 戦い：飛ぶ物・光線・毒の霧・魔法の場・遅れて起きること・雨・床の目印・ヒットストップ・発動の待ち・稲妻 */
 export interface Fight {
-  /** 飛ぶ物（矢・術の弾など）。種類が多いので、型は飛ぶ物の処理を移す時に作る */
-  projs: unknown[];
+  /** 飛ぶ物（矢・術の弾など） */
+  projs: Proj[];
   beamSegs: BeamSeg[];
   clouds: Cloud[];
   zones: Zone[];
@@ -753,14 +812,19 @@ export interface Monster {
   blades?: { a: number; x: number; y: number; z: number }[];
   /** 驚いて逃げている残りの秒（小さな生き物） */
   flee?: number;
-  /** 動いている速さ（照準の先読みに使う。生き物の処理が入れる） */
+  /** 動いている速さ（照準の先読みに使う。src/lib/projs.ts の updateStatuses が、前のフレームの位置 plx・plz から入れる） */
   vlx?: number;
   vlz?: number;
+  plx?: number;
+  plz?: number;
+  /** 続けて当てた矢の数と、最後に当たったゲームの時刻（連射の特性 steady） */
+  rapidN?: number;
+  rapidT?: number;
   /** 最後に受けた攻撃の種類と、その吹き飛ばしの強さ（src/lib/combat.ts の hitReact が読む） */
   lastAtk?: string | undefined;
   lastKnock?: number | undefined;
   /** 叩きつけ（ぶつかった時の傷 d と、終わるゲームの時刻 until） */
-  slam?: { d: number; until: number };
+  slam?: { d: number; until: number } | null;
   /** 性質の跡を最後に残したゲームの時刻（火・冷気・稲妻・連鎖。0.5 秒あける） */
   fireT2?: number;
   iceT?: number;
@@ -842,8 +906,8 @@ export interface Mob extends Monster {
   tracked?: boolean;
   /** 剣を操る者：剣が回り始めた伝言を出したか */
   bladeMsg?: boolean;
-  /** 状態異常（残りの秒など） */
-  st?: MonStatus;
+  /** 状態異常（残りの秒など。死ぬと null） */
+  st?: MonStatus | null;
 }
 /** 生き物の状態異常（燃える burn・冷える chill・毒 poison・痺れ shock・動けない pin の残りの秒、次に動けなくなれるゲームの時刻 pinCd、
  * 焦がしの加護が効いたか scorched、毒と燃えの傷の溜め pt・bt） */

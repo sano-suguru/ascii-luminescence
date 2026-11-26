@@ -1,16 +1,19 @@
 // 火と術の跡を描く（もとは src/game/15-sound-fire.js の drawFire、26-spells-hud.js の drawFrozen、24-goal.js の addBolt・sparkCrown・drawBoltFx、
-// 20-chant-hits.js の drawZones）：燃えているマスの炎と投げた火花、凍らせた水、たどれる稲妻（ぎざぎざの線がちらつき、遅れて落ちる稲妻を順に起こす）、
-// 当たった生き物の頭の火花の輪、床の目印と魔法の場。毎フレーム、世界の中に文字を置き（dyn）、粒子を出す（spawn）。
+// 20-chant-hits.js の drawZones・drawWave）：燃えているマスの炎と投げた火花、凍らせた水、たどれる稲妻（ぎざぎざの線がちらつき、遅れて落ちる稲妻を順に起こす）、
+// 当たった生き物の頭の火花の輪、床の目印と魔法の場、剣が飛ばす風の刃。毎フレーム、世界の中に文字を置き（dyn）、粒子を出す（spawn）。
 // 状態の入れ物 blaze（火）・fight（稲妻・目印）・vfx（稲妻の光り）・player に頼る。呼ぶのは古い JS の描画（30-loop-init.js の tick と
 // 22-world-hints.js の drawRunesWorld）と、稲妻を出す処理（20-chant-hits.js・26-spells-hud.js）。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
 import { must, nth } from './array.ts';
+import { handUp } from './aim.ts';
 import { G } from './glyphs.ts';
+import { vmGlyph } from './hands.ts';
 import { jagged } from './math.ts';
 import { dyn, spawn } from './particles.ts';
 import { mpick, mr } from './random.ts';
+import { clamp } from './rng.ts';
 import { elemCol } from './runes.ts';
-import { type Monster, blaze, fight, player, vfx } from './state.ts';
+import { type Monster, type Proj, blaze, fight, player, vfx } from './state.ts';
 import { CELL, MW, cpos } from './world.ts';
 
 /** 燃えているマスの炎（34 より遠いマスは描かない。ときどき火の粉を出す）と、投げた火花 */
@@ -216,6 +219,80 @@ export function drawZones(t: number): void {
         0,
         0,
       );
+    }
+  }
+}
+/**
+ * 剣が飛ばす風の刃（剣は短く、大剣の払いは幅広く）。刃が振った面に沿って傾き（剣は右手なら右上から左下、左手なら逆、大剣の払いはほぼ水平）、
+ * 前へ弓なりに反って両端が手前に流れる。真ん中は太く明るく、端は細い。飛ぶほど広がり、薄い尾を引き、終わりに薄れる。突きは細い線
+ */
+export function drawWave(p: Proj): void {
+  const c = elemCol(p.sp.elem),
+    v = Math.hypot(p.vx, p.vz) || 1,
+    dx = p.vx / v,
+    dz = p.vz / v,
+    px = -dz,
+    pz = dx,
+    life = clamp(1 - p.t / (p.maxT || 1), 0, 1),
+    fade = Math.min(1, life * 2.2),
+    b = (0.75 + 0.55 * fade) * fade;
+  if (p.thrust) {
+    for (let i = 0; i < 6; i++) {
+      const k = i * 0.16;
+      dyn(
+        p.x - dx * k,
+        p.y - (p.vy / v) * k,
+        p.z - dz * k,
+        G(i === 0 ? '>' : '-'),
+        0.16 - i * 0.015,
+        nth(must(c), 0) * 2.4 * b * (1 - i / 7),
+        nth(must(c), 1) * 2.4 * b * (1 - i / 7),
+        nth(must(c), 2) * 2.4 * b * (1 - i / 7),
+      );
+    }
+    return;
+  }
+  // @ts-expect-error -- 古い JS のまま（前の向き cf は使っていない）
+  const [cf, cr, cu] = handUp(),
+    grow = 1 + 0.5 * (1 - life),
+    W = (p.cw || 1.2) * grow,
+    half = W / 2,
+    bow = 0.28 * W,
+    ang = (p.big ? 0.14 : 0.61) * (p.sp.h === 'L' ? -1 : 1),
+    ca = Math.cos(ang),
+    sa = Math.sin(ang);
+  const S: [number, number, number] = [px * ca, sa, pz * ca],
+    n = Math.max(11, Math.round(W * 9));
+  const pt = (s: number, back: number): [number, number, number] => {
+    const f = -bow * s * s - back;
+    return [p.x + S[0] * s * half + dx * f, p.y + S[1] * s * half, p.z + S[2] * s * half + dz * f];
+  };
+  for (const [trail, tb] of [
+    [0, 1],
+    [0.22, 0.35],
+  ] as const) {
+    const ox = -dx * trail * v * 0.04 * 6,
+      oz = -dz * trail * v * 0.04 * 6;
+    for (let i = 0; i < n; i++) {
+      const s = (i / (n - 1)) * 2 - 1,
+        core = 1 - s * s,
+        rows = trail ? 1 : Math.max(1, Math.round(1 + core * 2.2));
+      const T: [number, number, number] = [S[0] * half + dx * (-2 * bow * s), S[1] * half, S[2] * half + dz * (-2 * bow * s)],
+        g = vmGlyph(T[0] * cr[0] + T[2] * cr[2], T[0] * cu[0] + T[1] * cu[1] + T[2] * cu[2]);
+      for (let k = 0; k < rows; k++) {
+        const q = pt(s, k * 0.07),
+          bb = b * tb * (0.45 + 0.75 * core) * (1 - k * 0.22);
+        dyn(
+          q[0] + ox,
+          q[1],
+          q[2] + oz,
+          G(g),
+          (p.big ? 0.2 : 0.16) * (0.7 + 0.45 * core),
+          nth(must(c), 0) * 2.3 * bb,
+          nth(must(c), 1) * 2.3 * bb,
+          nth(must(c), 2) * 2.3 * bb,
+        );
+      }
     }
   }
 }
