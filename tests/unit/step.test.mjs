@@ -1,7 +1,7 @@
 // 詠唱と転がり・飛ぶ物と戦いの跡を進める処理・詠唱の声・剣の波を描く・火とガスと地面を進める処理・部屋の出来事と罠・神託所の手がかり
 // （src/lib/chant.ts・projs.ts・audio.ts・fx.ts・ground.ts・events.ts・legend.ts）の単体テスト。
 // 指紋の値は、移す前の古い JS（src/game/15・18・20・24・26）でも同じになる（step-cases.mjs の場合を、古い関数で数えて確かめた）。
-// ただし、生き物の形（m.form）の指紋も入るので、移した後で変えたトロルの色の分は、古い JS と違う。
+// ただし、移した後でトロルの形を作り直したので、トロルのいる場合は古い JS と違う（形の指紋のほか、形を作る時に引く見た目の乱数の数が変わり、その後に決める初めの値と、後の結果も変わる）。
 // 階は Node で本物の迷宮を生成するので、迷宮の生成を変えると、この指紋も変わる（その時は generate.test.ts の指紋と一緒に作り直す）。
 // テストを .mjs で書くのは、偽の画面の部品・偽の Web Audio を、本物の型に合わせられないため。
 import { describe, expect, it } from 'vitest';
@@ -21,7 +21,7 @@ describe('移す前と同じ', () => {
       all = await stepCases(F, 8, fakeDom()),
       body = stepText(all),
       calls = all.flatMap((c) => c.calls);
-    expect([fnv(body), body.length]).toEqual(['8cbf7b18', 2645891]);
+    expect([fnv(body), body.length]).toEqual(['00304540', 2650575]);
     // 場合が中身を通っているか：26の関数が全部呼ばれ、どれも止まらない。見た目の乱数・音の乱数・伝言・setTimeout・音の部品を使う呼び出しもある
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);

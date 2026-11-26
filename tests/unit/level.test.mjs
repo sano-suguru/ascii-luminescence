@@ -1,6 +1,6 @@
 // 階を移る処理と世界の組み立て（src/lib/levels.ts・build.ts と、ground.ts の initFire・particles.ts の initDust・respawnDust）の単体テスト。
 // 指紋の値は、移す前の古い JS（src/game/02・04・06・15・16・17・18・24）でも同じになる（level-cases.mjs の場合を、古い関数で数えて確かめた）。
-// ただし、生き物の形（m.form）の指紋も入るので、移した後で変えたトロルの色の分は、古い JS と違う。
+// ただし、移した後でトロルの形を作り直したので、トロルのいる場合は古い JS と違う（形の指紋のほか、形を作る時に引く見た目の乱数の数が変わり、その後に決める初めの値と、後の結果も変わる）。
 // 階は Node で本物の迷宮を生成するので、迷宮の生成を変えると、この指紋も変わる（その時は generate.test.ts の指紋と一緒に作り直す）。
 // テストを .mjs で書くのは、偽の画面の部品・偽の描画の部品を、本物の型に合わせられないため。
 import { describe, expect, it } from 'vitest';
@@ -24,7 +24,7 @@ describe('移す前と同じ', () => {
     const all = await levelCases({ ...LEVELS, ...BUILD, ...GROUND, ...PART, updatePlayer, hurtPlayer }, 5, fakeDom()),
       body = levelText(all),
       calls = all.flatMap((c) => c.calls);
-    expect([fnv(body), body.length]).toEqual(['66afa224', 196749]);
+    expect([fnv(body), body.length]).toEqual(['3da06609', 196749]);
     expect(new Set(calls.map((c) => c.name).filter((n) => NAMES.includes(n)))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);
     expect(all.every((c) => c.timers.threw === 0)).toBe(true);

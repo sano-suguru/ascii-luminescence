@@ -86,8 +86,8 @@ describe('生き物の形', () => {
       const b = seeded(() => lords.beastForm(spec));
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
-    expect(all.length).toBe(2817416);
-    expect(fnv(all)).toBe('60b1ae22'); // 移す前の実装で出した値。ただし、トロル（trollForm2）の色は移した後で変えた（王の影の一つ目の姿は、作り直したので下の別のテスト）
+    expect(all.length).toBe(2934388);
+    expect(fnv(all)).toBe('189c2d1a'); // 移す前の実装で出した値。ただし、トロル（trollForm2）は移した後で作り直した（王の影の一つ目の姿は、作り直したので下の別のテスト）
   });
   it('主と大きな生き物の形：TypeScript に移す前と、同じ乱数で同じ形になる', () => {
     let all = '';

@@ -190,57 +190,83 @@ export function salamanderForm(ty: BodyType): Body {
 }
 
 export function trollForm2(ty: BodyType): Body {
-  const { S, pts, lit, stroke, ell, tube } = q3(ty),
+  const { S, pts, put, lit, stroke, ell, tube } = q3(ty),
     SK: Color = [0.4, 0.48, 0.36],
-    BELLY: Color = [0.6, 0.62, 0.5],
-    ARM: Color = [0.32, 0.4, 0.3],
+    BELLY: Color = [0.62, 0.6, 0.46],
+    ARM: Color = [0.34, 0.42, 0.31],
     MOSS: Color = [0.45, 0.88, 0.32],
+    CLOTH: Color = [0.55, 0.38, 0.22],
+    WOOD: Color = [0.5, 0.36, 0.22],
     ST: Color = [0.62, 0.62, 0.6],
-    EYE: Color = [1, 0.85, 0.3];
+    EYE: Color = [1, 0.85, 0.3],
+    IVORY: Color = [0.95, 0.92, 0.8];
+  // 腕の一部の楕円（ell は回す軸を受け取らないので、作った点に腕の軸を入れる。入れないと、歩く時に床の高さを軸に回って腕から離れる）
+  const armEll: typeof ell = (...a) => {
+    const n0 = pts.length;
+    ell(...a);
+    for (let i = n0; i < pts.length; i++) nth(pts, i).piv = 1.42;
+  };
+  // 脚：短く太く、がに股
   for (const sd of [-1, 1]) {
-    const part = sd < 0 ? 'legL' : 'legR';
-    tube([sd * 0.16, 0.62, 0], [sd * 0.18, 0.05, 0.04], 0.12, 0.1, SKINR, SK, part, { piv: 0.62, pz: 0 }, 0.2);
+    const part = sd < 0 ? 'legL' : 'legR',
+      ex = { piv: 0.62, pz: 0 };
+    tube([sd * 0.18, 0.62, -0.04], [sd * 0.3, 0.32, 0.06], 0.14, 0.11, SKINR, SK, part, ex, 0.15);
+    tube([sd * 0.3, 0.32, 0.06], [sd * 0.26, 0.06, 0.04], 0.11, 0.1, SKINR, SK, part, ex, 0.1);
+    for (let c = 0; c < 3; c++) lit(sd * 0.26 + (c - 1) * 0.06, 0.03, 0.16, 'm', 1, 1.1, SK, part, ex);
   }
-  for (let y = 0.6; y <= 1.45; y += S * 0.85) {
-    const f = (y - 0.6) / 0.85,
-      rx = 0.28 + 0.08 * f,
-      rz = 0.22,
-      lean = 0.3 * f,
+  // 胴：腰は細く、肩は広く盛り上がり、背は丸く前に屈む。腹は少し出る
+  for (let y = 0.6; y <= 1.56; y += S * 0.85) {
+    const f = (y - 0.6) / 0.96,
+      rx = 0.24 + 0.2 * Math.sin(Math.min(1, f / 0.82) * Math.PI * 0.5) - (f > 0.82 ? (f - 0.82) * 1.1 : 0),
+      lean = 0.38 * f * f,
       n = Math.max(6, Math.round((2 * Math.PI * rx) / (S * 0.85)));
     for (let k = 0; k < n; k++) {
       const a = (k / n) * Math.PI * 2,
-        // 苔は背中と、肩の上（前の側を除く）。腹と胸は明るい肌
-        moss = (Math.sin(a) < -0.4 && f > 0.4) || (f > 0.85 && Math.sin(a) < 0.5),
-        belly = !moss && Math.sin(a) > 0.45;
-      lit(
-        Math.cos(a) * rx,
-        y,
-        Math.sin(a) * rz + lean,
-        moss ? mpick([',', '"']) : mpick(['o', '%', ':']),
-        1,
-        moss ? 1.2 : 1.0,
-        moss ? MOSS : belly ? BELLY : SK,
-      );
+        sn = Math.sin(a),
+        // 背中のこぶと、出た腹
+        rz = sn < 0 ? 0.22 + 0.1 * Math.sin(f * Math.PI) : 0.2 + 0.07 * Math.max(0, Math.sin(((f - 0.05) / 0.5) * Math.PI)),
+        moss = (sn < -0.3 && f > 0.35) || (f > 0.8 && sn < 0.6),
+        belly = !moss && sn > 0.45 && f < 0.75;
+      // 肌は面の向き（前に屈む分、上を向く）で明るさと文字を決める。苔は、光の当たらない背中でも見えるように明るさを決めて置く
+      if (moss) lit(Math.cos(a) * rx, y, sn * rz + lean, mpick(['%', '"', '&']), 1.2, 1.4, MOSS);
+      else put(Math.cos(a) * rx, y, sn * rz + lean, Math.cos(a) / rx, 0.25 + f * 0.5, sn / rz, SKINR, belly ? BELLY : SK);
     }
   }
+  // 腰布：腰のまわりと、前と後ろに垂れる布
+  for (let k = 0; k < 14; k++) {
+    const a = (k / 14) * Math.PI * 2;
+    lit(Math.cos(a) * 0.27, 0.6, Math.sin(a) * 0.23, '=', 1, 1.1, CLOTH);
+  }
+  for (let y = 0.54; y >= 0.36; y -= S * 0.8) for (const x of [-0.07, 0, 0.07]) lit(x, y, 0.26 + (0.6 - y) * 0.15, '#', 1, 0.9, CLOTH);
+  // 腕：太く長い。前腕がふくらみ、拳は地面の近く
   for (const sd of [-1, 1]) {
     const part = sd < 0 ? 'armL' : 'armR',
-      ex = { piv: 1.4, pz: 0 };
-    tube([sd * 0.4, 1.38, 0.3], [sd * 0.5, 0.8, 0.45], 0.09, 0.08, SKINR, ARM, part, ex, 0.2);
-    tube([sd * 0.5, 0.8, 0.45], [sd * 0.48, 0.2, 0.55], 0.08, 0.07, SKINR, ARM, part, ex, 0.1);
-    for (let c = 0; c < 4; c++) lit(sd * 0.48 + (c - 1.5) * 0.04, 0.1, 0.6, 'v', 1, 1.3, ARM, part, ex);
+      ex = { piv: 1.42, pz: 0 };
+    tube([sd * 0.44, 1.42, 0.38], [sd * 0.66, 0.98, 0.46], 0.12, 0.09, SKINR, ARM, part, ex, 0.2);
+    tube([sd * 0.66, 0.98, 0.46], [sd * 0.5, 0.42, 0.7], 0.09, 0.12, SKINR, ARM, part, ex, 0.3);
+    armEll([sd * 0.48, 0.32, 0.74], 0.1, 0.09, 0.1, SKINR, () => ARM, part);
+    for (let c = 0; c < 4; c++) lit(sd * 0.48 + (c - 1.5) * 0.045, 0.22, 0.82, 'v', 1, 1.3, ARM, part, ex);
   }
-  ell([0, 1.38, 0.55], 0.15, 0.14, 0.15, SKINR, (_x, ny) => (ny > 0.45 ? MOSS : SK), 'head');
-  lit(0, 1.33, 0.73, '(', 1.3, 1.5, SK, 'head');
-  lit(0.02, 1.33, 0.73, ')', 1.3, 1.5, SK, 'head');
+  // 頭：肩より低く、前へ突き出る。頭の上には苔
+  ell([0, 1.44, 0.68], 0.16, 0.14, 0.15, SKINR, (_x, ny, nz) => (ny > 0.5 ? MOSS : nz > 0.45 ? BELLY : SK), 'head');
+  // 大きな下あごと、上に向いた牙
+  ell([0, 1.33, 0.74], 0.14, 0.06, 0.1, SKINR, () => BELLY, 'head');
   for (const sd of [-1, 1]) {
-    lit(sd * 0.06, 1.42, 0.68, '.', 0.8, 3.2, EYE, 'head');
-    lit(sd * 0.08, 1.22, 0.68, '^', 1, 2.2, [0.95, 0.92, 0.82], 'head');
+    lit(sd * 0.09, 1.41, 0.86, '^', 1.4, 1.3, IVORY, 'head');
+    // 眉の張り出しの下の目
+    lit(sd * 0.06, 1.51, 0.81, '-', 1, 0.8, SK, 'head');
+    lit(sd * 0.06, 1.48, 0.83, '.', 0.7, 1.8, EYE, 'head');
+    // とがった耳
+    lit(sd * 0.21, 1.5, 0.62, sd < 0 ? '<' : '>', 1.4, 1.3, SK, 'head');
   }
-  stroke([0.48, 0.2, 0.55], [0.4, 0.04, 1.2], [0.55, 0.45, 0.3], 1.1, 1, 'armR', { piv: 1.4, pz: 0 });
-  for (let q = 0; q < 6; q++)
-    lit(0.4 + (mr() - 0.5) * 0.15, 0.08 + (mr() - 0.2) * 0.1, 1.25 + (mr() - 0.5) * 0.15, mpick(['#', '%']), 1.1, 1.2, ST, 'armR', {
-      piv: 1.4,
+  // 長い鼻
+  stroke([0, 1.48, 0.83], [0, 1.4, 0.91], SK, 1.4, 1.2, 'head');
+  // 棍棒：右手に握り、先を前の床につける
+  tube([0.48, 0.34, 0.76], [0.46, 0.16, 1.18], 0.035, 0.05, STONE, WOOD, 'armR', { piv: 1.42, pz: 0 });
+  armEll([0.46, 0.17, 1.32], 0.16, 0.15, 0.17, STONE, () => WOOD, 'armR');
+  for (let q = 0; q < 8; q++)
+    lit(0.46 + (mr() - 0.5) * 0.38, 0.17 + (mr() - 0.5) * 0.3, 1.32 + (mr() - 0.5) * 0.38, mpick(['#', '%']), 1.1, 1.2, ST, 'armR', {
+      piv: 1.42,
       pz: 0,
     });
   return pts;
