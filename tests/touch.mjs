@@ -68,6 +68,15 @@ await withBrowser(async ({ browser, base }) => {
       return out;
     });
     if (r.length) errs.push(`${device}：探索中のボタンが重なる（${r.join('、')}）`);
+    // 左下の伝言と下の HUD も重ならない（伝言は、始めの伝言と、初めて指で入った時の一言）
+    const lh = await pg.evaluate(() => {
+      const a = document.getElementById('log').getBoundingClientRect(),
+        o = document.getElementById('hotbar').getBoundingClientRect();
+      return a.left < o.right && o.left < a.right && a.top < o.bottom && o.top < a.bottom
+        ? `伝言 ${a.left | 0}〜${a.right | 0}、HUD ${o.left | 0}〜`
+        : '';
+    });
+    if (lh) errs.push(`${device}：左下の伝言と下の HUD が重なる（${lh}）`);
     await pg.context().close();
   }
 
@@ -375,6 +384,190 @@ await withBrowser(async ({ browser, base }) => {
     await pg.context().close();
   }
 
+  // ---------------------------------------------------------------- 9. 狭い画面（本物の大きさ 750×312）：パネル・指の時の文言・[持ち替え]・始めの一言
+  {
+    const pg = await (await browser.newContext({ viewport: { width: 750, height: 312 }, hasTouch: true, isMobile: true })).newPage();
+    pg.on('pageerror', (e) => errs.push(String(e.stack || e).slice(0, 600)));
+    await openTest(pg, base, 'seed=202');
+    const E = (f, a) => pg.evaluate(f, a);
+    // 押す物が見える所まで送ってから押す（装備の画面などは、中を送る）
+    const tap = async (sel) => {
+      await pg.locator(sel).first().scrollIntoViewIfNeeded();
+      const b = await pg.locator(sel).first().boundingBox();
+      if (!b) throw new Error(`${sel} が見えない`);
+      await pg.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+      await advance(pg, 0.1);
+    };
+    const text = (sel) => E((s) => document.querySelector(s).innerText, sel);
+    // パネル sel が画面に収まるか（上の [装備] [メニュー] が出ていれば、その下に）。送れるか（中身の高さ・見える高さ）も返す
+    const fit = (sel) =>
+      E((s) => {
+        const el = document.querySelector(s),
+          r = el.getBoundingClientRect(),
+          bar = document.getElementById('touchbar').getBoundingClientRect(),
+          top = bar.height > 0 ? bar.bottom : 0,
+          out = r.top < top - 0.5 || r.bottom > innerHeight + 0.5 || r.left < -0.5 || r.right > innerWidth + 0.5;
+        return {
+          out,
+          box: [r.left | 0, r.top | 0, r.right | 0, r.bottom | 0],
+          top: top | 0,
+          zoom: Number(el.style.zoom) || 1,
+          sh: el.scrollHeight,
+          ch: el.clientHeight,
+          bar: bar.height > 0,
+        };
+      }, sel);
+    const fits = async (sel, what) => {
+      const f = await fit(sel);
+      if (f.out) errs.push(`狭い画面：${what}が画面に収まらない（${JSON.stringify(f)}）`);
+      if (f.zoom < FIT_MIN - 1e-6) errs.push(`狭い画面：${what}を ${FIT_MIN} 倍より小さく縮めた（${f.zoom}）`);
+      return f;
+    };
+    await tapEnter(pg);
+    await advance(pg, 2);
+    if (!(await text('#log')).includes('左半分で動く')) errs.push('狭い画面：初めて指で入った時の一言が出ない');
+
+    // メニューと、メニューの中に開く操作の案内（[戻る] で一覧に戻る）
+    await tap('#menuB');
+    await fits('#menu', 'メニュー');
+    await tap('#menu button[data-k="help"]');
+    await fits('#menu', 'メニューの中の操作の案内');
+    let t = await text('#menu');
+    if (!t.includes('スティック') || !t.includes('[持ち替え]') || t.includes('WASD'))
+      errs.push(`狭い画面：操作の案内が、指の操作の説明でない（${t.slice(0, 120)}）`);
+    await tap('#menu button[data-k="back"]');
+    if (!(await text('#menu')).includes('探索を続ける')) errs.push('狭い画面：操作の案内の [戻る] で、メニューの一覧に戻らない');
+    await tap('#menu button[data-k="book"]');
+    if (!(await text('#menu')).includes('魔導書')) errs.push('狭い画面：メニューの「魔導書」が、メニューの中に開かない');
+    await tap('#menuB');
+    if (await E(() => document.getElementById('menu').classList.contains('show'))) errs.push('狭い画面：[メニュー] でメニューが閉じない');
+
+    // 装備の画面：収まらない分は中を送れる。袋のルーンを選ぶと、はめられる枠が見える所まで送る
+    await E(() => dbg.give('runes'));
+    await tap('#packB');
+    let f = await fits('#pack', '装備の画面');
+    if (!(f.sh > f.ch)) errs.push(`狭い画面：装備の画面が送れない（テストの前提が崩れた。${JSON.stringify(f)}）`);
+    if (!(await text('#pack')).includes('続けて2回押すと自動ではめる')) errs.push('狭い画面：装備の画面の案内が、指の言い方でない');
+    // 手のルーンの枠にはめられる、袋のルーン（押して、光る枠ができる物）を探す
+    const bags = await E(() => [...document.querySelectorAll('#pack button[data-b]')].map((b) => b.dataset.b));
+    let can = null;
+    const slotSeen = () =>
+      E(() => {
+        const p = document.getElementById('pack').getBoundingClientRect(),
+          r = document.querySelector('#pack button.rs.can')?.getBoundingClientRect();
+        return !!r && r.top >= p.top && r.bottom <= p.bottom;
+      });
+    for (const u of bags) {
+      // 一番下まで送ってから、そのルーンが見える所まで戻して押す（手の枠は画面の外）
+      await E(() => (document.getElementById('pack').scrollTop = 1e4));
+      await tap(`#pack button[data-b="${u}"]`);
+      if (!(await E(() => !!document.querySelector('#pack button.rs.can')))) continue;
+      can = u;
+      if (await slotSeen()) errs.push('狭い画面：袋のルーンを押した時に、手の枠がもう見えている（テストの前提が崩れた）');
+      await advance(pg, 1); // 続けて2回押すのを待つ間（0.65 秒）の後に送る
+      break;
+    }
+    if (!can) errs.push('狭い画面：はめられる袋のルーンが無い（テストの前提が崩れた）');
+    else {
+      if (!(await slotSeen())) errs.push('狭い画面：袋のルーンを選んでも、はめられる枠が見える所まで送らない');
+    }
+    // ビルドを2つ（違う手で）保存すると、[持ち替え] が出て、押すと持ち替える
+    if (await E(() => !document.getElementById('swapB').hidden)) errs.push('狭い画面：ビルドを保存する前から [持ち替え] が出ている');
+    const save = (k) => tap(`#pack button[data-save="${k}"]`);
+    await save(0);
+    // 中身を書き直しても（ビルドを保存すると、装備の画面を作り直す）、送った所は一番上へ戻らない
+    const sc = await E(() => document.getElementById('pack').scrollTop);
+    if (!(sc > 0)) errs.push(`狭い画面：装備の画面でボタンを押すと、送った所が一番上へ戻る（${sc}）`);
+    if (can) {
+      // 2回続けて押すと、自動ではめる（手が変わる）
+      await pg.locator(`#pack button[data-b="${can}"]`).scrollIntoViewIfNeeded();
+      const b = await pg.locator(`#pack button[data-b="${can}"]`).boundingBox();
+      if (b) {
+        await pg.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+        await pg.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+        await advance(pg, 0.1);
+      }
+    }
+    await save(1);
+    await tap('#packB');
+    await advance(pg, 2); // 付け替えの詠唱が終わるまで
+    if (!(await E(() => getComputedStyle(document.getElementById('swapB')).display !== 'none' && !document.getElementById('swapB').hidden)))
+      errs.push('狭い画面：ビルドを2つ保存しても、[持ち替え] が出ない');
+    else {
+      // 持ち替えると、付け替えの詠唱が始まる（下の HUD に出る。十字の下の一言「ビルド1」は、次のフレームで消えるので見ない）
+      await tap('#swapB');
+      t = await text('#hotbar');
+      if (!t.includes('付け替え')) errs.push(`狭い画面：[持ち替え] を押しても、持ち替えない（下の HUD「${t}」）`);
+      const ov = await E(() => {
+        const q = (s) => document.querySelector(s).getBoundingClientRect(),
+          hit = (a, o) => a.left < o.right && o.left < a.right && a.top < o.bottom && o.top < a.bottom;
+        return ['#castR', '#castL', '#rollB', '#hotbar', '#mapwrap', '#status', '#touchbar'].filter((s) => hit(q('#swapB'), q(s)));
+      });
+      if (ov.length) errs.push(`狭い画面：[持ち替え] が ${ov.join('・')} と重なる`);
+      // [右手] を押して溜めている間に、別の指で [持ち替え] を押しても、持ち替えない（溜めが散って、押している指だけが残るため）
+      await advance(pg, 2);
+      const cdp = await pg.context().newCDPSession(pg);
+      const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y, id]) => ({ x, y, id })) });
+      const mid = async (sel) => {
+        const b = await pg.locator(sel).boundingBox();
+        return [b.x + b.width / 2, b.y + b.height / 2];
+      };
+      const [rx, ry] = await mid('#castR'),
+        [sx, sy] = await mid('#swapB');
+      await touch('touchStart', [[rx, ry, 1]]);
+      await advance(pg, 0.2);
+      // 2本目の指で [持ち替え] を押す（押した時に持ち替える。離すのは、両方まとめて後で）
+      await touch('touchStart', [
+        [rx, ry, 1],
+        [sx, sy, 2],
+      ]);
+      await advance(pg, 0.1);
+      const held = await E(() => __test.state().cast?.h);
+      t = await text('#hotbar');
+      if (held !== 'R' || t.includes('付け替え'))
+        errs.push(`狭い画面：溜めている間に [持ち替え] を押すと、持ち替える（溜め ${held}、下の HUD「${t}」）`);
+      await touch('touchEnd', []);
+      await advance(pg, 0.5);
+    }
+
+    // レベルアップの画面：収まり、[装備] [メニュー] は隠れ、案内は指の言い方
+    await advance(pg, 2);
+    await E(() => dbg.exp(400));
+    await advance(pg, 0.6);
+    f = await fits('#altarp', 'レベルアップの画面');
+    if (f.bar) errs.push('狭い画面：レベルアップの画面の間も、[装備] [メニュー] が出ている');
+    if (!(await text('#altarp')).includes('1回押すと説明が出る')) errs.push('狭い画面：レベルアップの画面の案内が、指の言い方でない');
+    for (let i = 0; i < 20 && (await E(() => document.getElementById('altarp').classList.contains('open'))); i++) {
+      await advance(pg, 0.6);
+      await tap('#altarp button[data-lk="0"]');
+      await tap('#altarp button[data-lk="0"]');
+      await advance(pg, 0.3);
+    }
+
+    // 祭壇の画面：同じ。[やめる] で閉じると、[装備] [メニュー] がまた出る
+    await E(() => dbg.go(3));
+    await advance(pg, 2);
+    await nearAltar(pg);
+    await advance(pg, 0.5);
+    if (!(await E(() => document.getElementById('altarp').classList.contains('open'))))
+      errs.push('狭い画面：祭壇の画面が開かない（テストの前提が崩れた）');
+    else {
+      f = await fits('#altarp', '祭壇の画面');
+      if (f.bar) errs.push('狭い画面：祭壇の画面の間も、[装備] [メニュー] が出ている');
+      if (!(await text('#altarp')).includes('1回押すと説明、もう1回で決まる')) errs.push('狭い画面：祭壇の画面の案内が、指の言い方でない');
+      await tap('#altarp button[data-cancel]');
+      if (!(await fit('#altarp')).bar) errs.push('狭い画面：祭壇の画面を閉じても、[装備] [メニュー] が出ない');
+    }
+
+    // 結果の画面
+    await E(() => dbg.hurt(9999));
+    await advance(pg, 3);
+    if (!(await E(() => document.getElementById('death').classList.contains('show'))))
+      errs.push('狭い画面：結果の画面が出ない（テストの前提が崩れた）');
+    else await fits('#death', '結果の画面');
+    await pg.context().close();
+  }
+
   // ---------------------------------------------------------------- 7. 診断の記録
   // 偽の window.claude：user は持ち主か（owner）を答え、db は書き込まれた物を window.__sets に貯める。
   // window.__hold が true の間は、書き込みを終わらせない（window.__release() で終わる。書き込みの途中を作るため）
@@ -429,6 +622,11 @@ await withBrowser(async ({ browser, base }) => {
           if (!ev(k, v)) errs.push(`診断の記録：できごと ${k}=${v} が無い（${JSON.stringify(d.events).slice(0, 300)}）`);
         if (!d.events.some((e) => e.k === 'press' && String(e.v).startsWith('packB'))) errs.push('診断の記録：[装備] を押したことが無い');
         if (!(d.fps.length >= 1 && d.fps[0].avg > 0)) errs.push(`診断の記録：速さが無い（${JSON.stringify(d.fps)}）`);
+        else {
+          // 探索の始めの階（本道）にいる。場所は placeKey の形（探索のシード:m:深さ）
+          const want = await p.evaluate(() => `${__test.state().seed}:m:${__test.state().depth}`);
+          if (d.fps.at(-1).place !== want) errs.push(`診断の記録：速さの行の場所が ${want} でない（${JSON.stringify(d.fps.at(-1))}）`);
+        }
         console.log(`診断の記録：${sets.length} 回書いた。できごと ${d.events.length}、速さ ${JSON.stringify(d.fps[0])}`);
         // 書き込みの途中に、ページが隠れた（書くよう頼まれた）時：途中の分が終わってから、隠れたことも書く
         await p.evaluate(() => {

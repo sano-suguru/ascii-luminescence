@@ -67,8 +67,8 @@ function renderAltar(){ const el=document.getElementById('altarp'); if(!el)retur
   for(const o of opts)rows.push(`${f('|')}  <button class="row ao" data-k="${o.slot}">${clipHtml(altarLine(o),ALTAR_W-6)}</button>`);
   rows.push(f('|'));
   for(let i=0;i<5;i++)rows.push(`${f('|')} <span class="adet">${padTo('',ALTAR_W-3)}</span>`);
-  rows.push(f('|'),`${f('|')} <span class="lab">クリックで選ぶ　Esc・右クリックでやめる</span>　<button class="row" data-cancel="1">[やめる]</button>`);
-  if(opts[0].opt!=='open'&&!opts[0].forge)rows.push(`${f('|')} <span class="lab">ルーンは袋に入る。祭壇のそばでは、Tab の付け替えに詠唱はいらない</span>`);
+  rows.push(f('|'),`${f('|')} <span class="lab">${byInput('クリックで選ぶ　Esc・右クリックでやめる','1回押すと説明、もう1回で決まる')}</span>　<button class="row" data-cancel="1">[やめる]</button>`);
+  if(opts[0].opt!=='open'&&!opts[0].forge)rows.push(`${f('|')} <span class="lab">ルーンは袋に入る。祭壇のそばでは、${byInput('Tab','[装備]')} の付け替えに詠唱はいらない</span>`);
   rows.push(f('+---'));
   el.innerHTML=boxText(rows,ALTAR_W); setAltarDetail(null);
   if(!el.dataset.bound){ el.dataset.bound='1';
@@ -82,9 +82,9 @@ function renderAltar(){ const el=document.getElementById('altarp'); if(!el)retur
 function setAltarDetail(o){ const el=document.getElementById('altarp'); if(!el)return; const L=altarDetail(o); el.querySelectorAll('.adet').forEach((sp,i)=>{ sp.innerHTML=padTo(clipHtml(L[i]||'',ALTAR_W-4),ALTAR_W-3); }); }
 // 祭壇の画面を開いた時刻（指で選ぶ時の、開くたびに変わる鍵。confirmTap）
 let altarOpenT=0;
-function openAltar(){ const el=document.getElementById('altarp'); if(!el)return; ui.altarOpen=true; altarOpenT=performance.now(); document.body.classList.toggle('paused',true);
+function openAltar(){ const el=document.getElementById('altarp'); if(!el)return; ui.altarOpen=true; altarOpenT=performance.now(); document.body.classList.toggle('paused',true); document.body.classList.add('choosing');
   if(gear.castSt){ gear.castSt=null; fight.beamSegs=[]; } if(ui.locked&&document.exitPointerLock)document.exitPointerLock(); renderAltar(); el.classList.add('show','open'); renderHotbar(); }
-function closeAltar(dismiss){ const el=document.getElementById('altarp'); ui.altarOpen=false; if(dismiss)altarDismissed=ui.altarNear; if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused());
+function closeAltar(dismiss){ const el=document.getElementById('altarp'); ui.altarOpen=false; if(dismiss)altarDismissed=ui.altarNear; if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused()); document.body.classList.toggle('choosing',ui.lvlOpen);
   if(!ui.plFailed&&ui.started&&!adv.dead)tryLock(); updateResume(); }
 function updateAltarPanel(){ const el=document.getElementById('altarp'); if(!el)return; if(ui.lvlOpen)return; if(adv.lvl.pending>0&&ui.started&&!adv.dead&&!isPaused()){ openLevelUp(); return; }
   if(ui.altarOpen){ if(!here.D||!ui.started||adv.dead||!altarOpts().length)closeAltar(false); return; }

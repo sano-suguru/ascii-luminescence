@@ -23,12 +23,24 @@ describe('移す前と同じ', () => {
     const all = await levelCases({ ...LEVELS, ...BUILD, ...GROUND, ...PART, updatePlayer, hurtPlayer }, 5, fakeDom()),
       body = levelText(all),
       calls = all.flatMap((c) => c.calls);
-    expect([fnv(body), body.length]).toEqual(['2912fb1f', 196749]);
+    expect([fnv(body), body.length]).toEqual(['dc7a5e67', 196749]);
     expect(new Set(calls.map((c) => c.name).filter((n) => NAMES.includes(n)))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);
     expect(all.every((c) => c.timers.threw === 0)).toBe(true);
     const by = (name, f) => calls.filter((c) => c.name === name && f(c)).length;
     for (const name of ['newLevel', 'checkEvents']) expect(by(name, (c) => c.msg > 0 || c.timers > 0)).toBeGreaterThan(0);
     expect(by('newLevel', (c) => c.mr > 0)).toBeGreaterThan(0);
+  });
+});
+
+describe('区切りの文字の四角', () => {
+  it('頂点の番号は、一番大きい番号が 65535 以上なら32ビット（16ビットの 65535 は WebGL2 で線を切る印になる）', () => {
+    const at = (cnt) => BUILD.quadIndex(cnt),
+      max = (a) => a.reduce((m, v) => Math.max(m, v), 0);
+    expect(at(16383)).toBeInstanceOf(Uint16Array);
+    expect(max(at(16383))).toBe(65531);
+    expect(at(16384)).toBeInstanceOf(Uint32Array);
+    expect(max(at(16384))).toBe(65535);
+    expect([...at(2)]).toEqual([0, 2, 1, 2, 3, 1, 4, 6, 5, 6, 7, 5]);
   });
 });

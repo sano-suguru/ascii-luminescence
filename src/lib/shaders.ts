@@ -7,11 +7,14 @@ export const GLSL_COMMON = `
 float hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
 vec2 glyphUV(float g, vec2 uv){ uv=uv*0.94+0.03; float cx=mod(g,16.0); float cy=floor(g/16.0); return vec2((cx+uv.x)/16.0, 1.0-(cy+1.0-uv.y)/7.0); }
 `;
-/** 迷宮の動かない文字（壁・床・備品など）の頂点シェーダー */
+/**
+ * 迷宮の動かない文字（壁・床・備品など）の頂点シェーダー。文字1つは四角1枚（頂点4つ）で、i で始まる値は文字ごとの値（4つの頂点に同じ値。
+ * iM0・iM1・iM2・iM3 は文字の置き方の行列の列。src/lib/build.ts の buildWorld が写す）
+ */
 export const STATIC_VS = `
 #define NSL ${NSL}
 #define NDL ${NDL}
-attribute float iGlyph; attribute vec3 iColor; attribute vec4 iEmit; attribute vec3 iLI; attribute vec3 iLW;
+attribute float iGlyph; attribute vec3 iColor; attribute vec4 iEmit; attribute vec3 iLI; attribute vec3 iLW; attribute vec3 iM0; attribute vec3 iM1; attribute vec3 iM2; attribute vec3 iM3;
 uniform float uTime; uniform vec3 uSL[NSL]; uniform vec4 uDLP[NDL]; uniform vec3 uDLC[NDL]; uniform float uFogDen; uniform float uRamp[16]; uniform float uAmb; uniform sampler2D uCell; uniform float uCollT; uniform vec3 uCamP; uniform vec3 uCutP; uniform float uCut;
 varying vec2 vUv; varying vec3 vCol; varying float vFog;
 ${GLSL_COMMON}
@@ -20,9 +23,10 @@ void main(){
   vec3 pos=position;
   if(kind>4.5&&kind<5.5) pos.x+=sin(uTime*1.4+ph*40.0)*0.16*(pos.y+0.5);
   if(kind>12.5&&kind<13.5) pos.x+=sin(uTime*1.1+ph*40.0)*0.08*(pos.y+0.5);
-  vec4 wp=modelMatrix*instanceMatrix*vec4(pos,1.0);
-  vec3 ctr=(modelMatrix*instanceMatrix*vec4(0.0,0.0,0.0,1.0)).xyz;
-  vec3 n=normalize(mat3(modelMatrix)*mat3(instanceMatrix)*vec3(0.0,0.0,1.0));
+  mat4 glyphM=mat4(vec4(iM0,0.0),vec4(iM1,0.0),vec4(iM2,0.0),vec4(iM3,1.0));
+  vec4 wp=modelMatrix*glyphM*vec4(pos,1.0);
+  vec3 ctr=(modelMatrix*glyphM*vec4(0.0,0.0,0.0,1.0)).xyz;
+  vec3 n=normalize(mat3(modelMatrix)*mat3(glyphM)*vec3(0.0,0.0,1.0));
   float cutG=0.0;
   if(uCut>0.5){ vec3 seg=uCutP-uCamP; float L2=max(dot(seg,seg),1e-4); float tc=clamp(dot(ctr-uCamP,seg)/L2,0.0,1.0);
     float rc=mix(2.6,0.9,tc), dc=length(ctr-(uCamP+seg*tc));
