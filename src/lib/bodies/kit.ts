@@ -46,6 +46,8 @@ export interface Glyph {
   hy?: number;
   hz?: number;
   cf?: number;
+  /** 回る物（orbit）の位相のずれ */
+  da?: number;
 }
 /** 点に足す値（Object.assign で上書きする） */
 export type Extra = Partial<

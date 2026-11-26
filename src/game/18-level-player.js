@@ -27,8 +27,9 @@ function newLevel(seedOverride){
   if(here.branch&&adv.runState.lordsDone&&adv.runState.lordsDone.has(here.branch.key))here.monsters=here.monsters.filter(m=>m.key!=='lord');
   here.finalSt=null; if(isFinal())setupFinal();
   for(const m of here.monsters)if(!m.isLead)m.leader=here.monsters.find(o=>o.g===m.g&&o.isLead)||null;
-  for(const m of here.monsters)if(m.ty.beast||(m.ty.dragon&&Math.random()<0.9))m.sleep=true;
-  { const asleep=new Set(); for(const m of here.monsters)if(m.isLead&&m.g>=0&&m.ty.form!=='eel'&&Math.random()<0.10)asleep.add(m.g); for(const m of here.monsters)if(asleep.has(m.g))m.sleep=true; }
+  // who sleeps: its own random from the level's seed (keyedRand), not the look random (mr)
+  { const sr=keyedRand('sleep',levelSeed()); for(const m of here.monsters)if(m.ty.beast||(m.ty.dragon&&sr()<0.9))m.sleep=true;
+  const asleep=new Set(); for(const m of here.monsters)if(m.isLead&&m.g>=0&&m.ty.form!=='eel'&&sr()<0.10)asleep.add(m.g); for(const m of here.monsters)if(asleep.has(m.g))m.sleep=true; }
   ui.noticeMsgT={}; stealth.hudKey='';
   here.explored=new Uint8Array(NCELL); here.mem=new Float32Array(NCELL*3); here.fovVis=new Uint32Array(NCELL); here.fovStamp=1;
   { const pm=placeMem.get(placeKey()); if(pm){ here.explored.set(pm.explored); here.mem.set(pm.mem); } }
@@ -112,29 +113,14 @@ function updateTraps(dt){
   if(G2&&!G2.open){ const [lx,lz]=cpos(G2.lever); if(Math.hypot(player.x-lx-G2.ld[0]*0.6,player.z-lz-G2.ld[1]*0.6)<1.1){ G2.open=true; G2.pulled=clock.time; sCreak(lx,lz); const [gx,gz]=cpos(G2.cell); setTimeout(()=>sRumble(0.25,1.6),500); msg('<b style="color:#ffd48a">/</b>壁のレバーを引いた。どこか遠くで、鉄格子が軋みながら上がっていく音がした。'); } }
   if(G2)G2.o+=((G2.open?1:0)-G2.o)*Math.min(1,dt*0.8);
 }
-function drawTraps(t){
-  for(const tr of (here.D.traps||[])){ if(tr.hidden)continue; const [x,z]=cpos(tr.i); if(Math.hypot(x-player.x,z-player.z)>30)continue;
-    const col=TRAP_INFO[tr.type][1], c=[parseInt(col.slice(1,3),16)/255,parseInt(col.slice(3,5),16)/255,parseInt(col.slice(5,7),16)/255], k=tr.used?0.35:1.2+0.5*Math.sin(t*2.5+tr.i);
-    dyn(x,0.05,z,G('^'),0.7,c[0]*k,c[1]*k,c[2]*k,1,0);
-    for(let q=0;q<8;q++){ const a=q/8*Math.PI*2+t*0.4; dyn(x+Math.cos(a)*0.55,0.04,z+Math.sin(a)*0.55,G('.'),0.18,c[0]*k*0.7,c[1]*k*0.7,c[2]*k*0.7,1,a); } }
-  const G2=here.D.gate; if(G2){ const [gx,gz]=cpos(G2.cell);
-    if(Math.hypot(gx-player.x,gz-player.z)<36){ const lift=G2.o*2.7;
-      for(let k=0;k<7;k++){ const u=(k+0.5)/7*CELL-CELL/2, bx=G2.axis===0?gx:gx+u, bz=G2.axis===0?gz+u:gz;
-        for(let y=0.15+lift;y<3.0;y+=0.3)dyn(bx,y,bz,G('|'),0.3,0.75,0.72,0.8); }
-      for(const yy of [0.9+lift,1.9+lift])if(yy<3.0)for(let k=0;k<7;k++){ const u=(k+0.5)/7*CELL-CELL/2; dyn(G2.axis===0?gx:gx+u,yy,G2.axis===0?gz+u:gz,G('='),0.28,0.75,0.72,0.8); } }
-    const [lx,lz]=cpos(G2.lever), wx=lx+G2.ld[0]*0.93, wz=lz+G2.ld[1]*0.93;
-    dyn(wx,1.3,wz,G('#'),0.4,0.6,0.55,0.5); dyn(wx-G2.ld[0]*0.08,1.45,wz-G2.ld[1]*0.08,G(G2.open?'\\':'/'),0.42,1.4,1.1,0.5); }
-  if(player.netT>0&&ui.camMode==='tps'){ for(let k=0;k<16;k++){ const a=k/16*Math.PI*2+clock.time*0.3; for(let y=0.3;y<1.9;y+=0.32)dyn(player.x+Math.cos(a)*0.55,y,player.z+Math.sin(a)*0.55,G(k%2?'+':'#'),0.16,0.6,0.55,0.65); } }
-  else if(player.netT>0){ const fx=-Math.sin(player.yaw), fz=-Math.cos(player.yaw), rx=Math.cos(player.yaw), rz=-Math.sin(player.yaw), cy=camera.position.y;
-    for(let a=-3;a<=3;a++)for(let b=-2;b<=2;b++)dyn(camera.position.x+fx*0.7+rx*a*0.16,cy+b*0.16,camera.position.z+fz*0.7+rz*a*0.16,G('+'),0.1,0.55,0.5,0.6); }
-}
+// 罠と鉄格子を描く drawTraps は src/lib/fixtures.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- life and death, and plain real-time melee
 // 生き物の強さ statOf は src/lib/monsters.ts（src/game/imports.mjs で読む）。強さの表 MSTAT は src/lib/creatures.ts（statOf だけが読む）
 // WEAPON・SLEEP_MULT は src/lib/runes.ts（src/game/imports.mjs で読む）
 // roll は src/lib/random.ts（src/game/imports.mjs で読む）
 const hostile=m=>!m.ty.critter&&!m.ty.peaceful&&!m.ty.watcher&&m.ty.form!=='bloat'&&!m.dead;
-const hittable=m=>!m.dead&&!m.ty.peaceful;
+// 攻撃が当たる生き物か hittable は src/lib/aim.ts（src/game/imports.mjs で読む）
 const foe=m=>hittable(m)&&(hostile(m)||m.ty.watcher||m.ty.form==='bloat'||m.ty.form==='shroom'||(m.ty.critter==='mimic'&&!m.hidden));
 // angDiff は src/lib/math.ts（古い JS は使わない。src/lib/ の生成などが使う）
 // expNeed・expOf は src/lib/progress.ts（src/game/imports.mjs で読む）
@@ -149,11 +135,12 @@ function coldSnap(x,z,r){ chillArea(x,z,r); for(const m of here.monsters){ if(m.
   for(let q=0;q<28;q++){ const a=q/28*Math.PI*2; spawn(x+Math.cos(a)*r*0.9,0.15,z+Math.sin(a)*r*0.9,Math.cos(a)*0.6,0.4,Math.sin(a)*0.6,0.6,G(mpick(['*','.','+'])),0.14,1.2,1.7,2.2,0); } }
 function gainExp(e){ if(!(e>0)||adv.dead)return; adv.lvl.exp+=e; let up=0; while(adv.lvl.exp>=expNeed(adv.lvl.n)){ adv.lvl.exp-=expNeed(adv.lvl.n); adv.lvl.n++; adv.lvl.pending++; up++; }
   renderStatus(); if(up){ sChime(player.x,player.z,0.6); setTimeout(()=>sChime(player.x,player.z,0.45),180); for(let q=0;q<40;q++){ const a=mr()*6.28, r=1.6+mr(); spawn(player.x+Math.cos(a)*r,0.4+mr()*1.6,player.z+Math.sin(a)*r,-Math.cos(a)*r*2.2,0.2,-Math.sin(a)*r*2.2,0.45,G(mpick(['*','+','.'])),0.14,2.6,2.3,1.5,0); } } }
-function levelChoices(){ const BEHAVE=['quickdodge','counter','momentum','devour','shatter','charge','swapedge','branch']; let pool=Object.keys(BLESS).filter(k=>BL(k)<2&&!lockedOf('bless',k)), out=[];
+// the choices come from their own random, made from the run's seed and which level this is (keyedRand), not the look random (mr): same seed, same choices. r is for tests
+function levelChoices(r=keyedRand('levelup',adv.runSeed,adv.lvl.n-adv.lvl.pending+1)){ const BEHAVE=['quickdodge','counter','momentum','devour','shatter','charge','swapedge','branch']; let pool=Object.keys(BLESS).filter(k=>BL(k)<2&&!lockedOf('bless',k)), out=[];
   if(!adv.lvl.firstDone){ const b=pool.filter(k=>BEHAVE.includes(k)); if(b.length>=2)pool=b; adv.lvl.firstDone=true; }
-  for(let i=0;i<2&&pool.length;i++){ const k=pool.splice(Math.floor(mr()*pool.length),1)[0]; out.push({kind:'bless',k}); }
-  const useCharm=(adv.runState.bodyOpen||0)>0&&mr()<0.3, t=useCharm?RUNE_TYPES.body[Math.floor(mr()*RUNE_TYPES.body.length)]:randomRuneType(mr,{elem:0.45,trig:0.15,mod:0.4,body:0});
-  out.push({kind:'rune',ru:RUNE_DEF[t].cat==='mod'&&mr()<0.1?makeStrong(t):makeRune(t)}); return shuffle(out,mr); }
+  for(let i=0;i<2&&pool.length;i++){ const k=pool.splice(Math.floor(r()*pool.length),1)[0]; out.push({kind:'bless',k}); }
+  const useCharm=(adv.runState.bodyOpen||0)>0&&r()<0.3, t=useCharm?RUNE_TYPES.body[Math.floor(r()*RUNE_TYPES.body.length)]:randomRuneType(r,{elem:0.45,trig:0.15,mod:0.4,body:0});
+  out.push({kind:'rune',ru:RUNE_DEF[t].cat==='mod'&&r()<0.1?makeStrong(t):makeRune(t)}); return shuffle(out,r); }
 function lvlLine(o){ const K=t=>t+' '.repeat(Math.max(2,14-visW(t))); // the label column is 14 wide (the longest, 恩恵（代償）, is 12)
   if(o.kind==='bless'){ const B=BLESS[o.k], l=BL(o.k)+1; return `${K(B.cost?'恩恵（代償）':'恩恵')}<span style="color:${B.cost?'#ff9a8a':'#ffe3a0'}">${B.name}${l>1?' II':''}</span>`; }
   const d=RUNE_DEF[o.ru.type], br=CAT_BR[d.cat]||['','']; return `${K(d.cat==='body'?'護符':'ルーン')}${br[0]}<b class="rn" style="color:${css(runeCol(o.ru))}">${d.ch}</b> ${runeName(o.ru)}${br[1]}　<span class="lab">${CAT_NAME[d.cat]}</span>`; }

@@ -1,7 +1,8 @@
 // src/lib/random.ts と src/lib/glyphs.ts の単体テスト
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { nth } from '../../src/lib/array.ts';
 import { G, RUNE_CHARS } from '../../src/lib/glyphs.ts';
-import { R, RI, mpick, mr, pick, rand, setRand, setSoundRand, shuffle, sndRand } from '../../src/lib/random.ts';
+import { R, RI, keyedRand, mpick, mr, pick, rand, setRand, setSoundRand, shuffle, sndRand } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 
 const random = Math.random;
@@ -137,5 +138,58 @@ describe('shuffle（混ぜる）', () => {
     }
     expect(count.size).toBe(24);
     for (const c of count.values()) expect(Math.abs(c - 1000)).toBeLessThan(150);
+  });
+});
+
+describe('keyedRand（出来事ごとの乱数）', () => {
+  it('鍵が同じなら同じ並び、Math.random は呼ばない', () => {
+    Math.random = () => {
+      throw new Error('使わないはず');
+    };
+    const a = keyedRand('altar', 12345, 678),
+      b = keyedRand('altar', 12345, 678);
+    for (let i = 0; i < 100; i++) expect(a()).toBe(b());
+  });
+  it('今の並びを残す（変わると、同じシードで祭壇・レベルアップ・眠る生き物などが変わる）', () => {
+    const out: string[] = [];
+    for (const [w, k] of [
+      ['altar', [123456789, 1234]],
+      ['lordaltar', [5, 6]],
+      ['levelup', [42, 7]],
+      ['slot', [1, 2]],
+      ['vault', [3, 4]],
+      ['sleep', [99]],
+    ] as const) {
+      const r = keyedRand(w, ...k);
+      out.push(w, ...Array.from({ length: 3 }, () => r().toFixed(6)));
+    }
+    expect(out.join(' ')).toBe(
+      'altar 0.702675 0.430698 0.914484 lordaltar 0.083914 0.494912 0.733143 levelup 0.518361 0.800761 0.944213 ' +
+        'slot 0.105956 0.997003 0.508263 vault 0.023905 0.765351 0.270437 sleep 0.572020 0.684500 0.065073',
+    );
+  });
+  it('名前か鍵が1つでも違えば、初めの値から違う（名前と鍵の境目も見る）', () => {
+    const vals = [
+      keyedRand('altar', 1, 2)(),
+      keyedRand('altar', 1, 3)(),
+      keyedRand('altar', 2, 2)(),
+      keyedRand('altar', 2, 1)(),
+      keyedRand('levelup', 1, 2)(),
+      keyedRand('A')(),
+      keyedRand('', 65)(),
+      keyedRand('', 65, 0x10000)(),
+      keyedRand('A', 0x10000)(),
+      keyedRand('ab')(),
+      keyedRand('a', 98)(),
+    ];
+    expect(new Set(vals).size).toBe(vals.length);
+  });
+  it('並んだ鍵（隣のマス・次のレベル）でも、初めの値はほぼ同じ割合で散らばる', () => {
+    const buckets = Array.from({ length: 10 }, () => 0);
+    for (let i = 0; i < 20000; i++) {
+      const k = Math.floor(keyedRand('levelup', 777, i)() * 10);
+      buckets[k] = nth(buckets, k) + 1;
+    }
+    for (const c of buckets) expect(Math.abs(c - 2000)).toBeLessThan(150);
   });
 });

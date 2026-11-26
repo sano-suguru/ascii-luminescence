@@ -5,7 +5,7 @@ import { clamp, mulberry32 } from '../lib/rng.ts';
 import { boxText, clipHtml, padTo, visW, wrapPlain } from '../lib/text.ts';
 import { makeHistory } from '../lib/history.ts';
 import { G, RAMP_CH, RUNESET, RUNE_CHARS, SWAPSET, WG } from '../lib/glyphs.ts';
-import { R, RI, mpick, mr, pick, rand, roll, setSoundRand, shuffle, sndRand } from '../lib/random.ts';
+import { R, RI, keyedRand, mpick, mr, pick, rand, roll, setSoundRand, shuffle, sndRand } from '../lib/random.ts';
 import { dragonSleepForm } from '../lib/bodies/beasts.ts';
 import { beastSamples, beastSleep, SHADOW_KING_SC, shadowKingScale } from '../lib/bodies/lords.ts';
 import {
@@ -49,8 +49,8 @@ import {
   cycleUi, drawMark, flyOpen, isPaused, makeNoise, onNoticed, placeLabel, renderBook, renderChron, renderHelp, renderStatus, setHelp, showHint, updateSearch, updateStealth,
 } from '../lib/status.ts';
 import { descentSealed, drawLegendWorld, getLegend, legendAll, legendOfBranch } from '../lib/legend.ts';
-import { ceilAt, cellLight } from '../lib/lightmap.ts';
-import { drawDoors, drawFixtures, drawGraves, drawSprings, drawWebs, webTouch } from '../lib/fixtures.ts';
+import { ceilAt, cellLight, updateLights } from '../lib/lightmap.ts';
+import { drawDoors, drawFixtures, drawGraves, drawSprings, drawTraps, drawWebs, webTouch } from '../lib/fixtures.ts';
 import { addBolt, drawBoltFx, drawFire, drawFrozen, drawZones, sparkCrown } from '../lib/fx.ts';
 import { BRANCH_OMEN, REALM_OMEN, SPECIAL_OMEN, STRATUM_OMEN, drawOmens, drawStairSeal, omenOf, stairsGuarded } from '../lib/omens.ts';
 import { loadBeasts, recordBeast, saveMeta, saveSet } from '../lib/save.ts';
@@ -59,6 +59,9 @@ import { setCamMode, sndToggle, tryLock, updateResume } from '../lib/screens.ts'
 import { addLooks, buildForm } from '../lib/bodies/build.ts';
 import { bogAura, dragonAura, drawMorph, houndAura, krakenAura, lichAura, nagaAura, salamanderAura, shadowAura, spiderAura, transformShadow } from '../lib/bodies/auras.ts';
 import { P, dCol, dPar, dPos, dyn, killP, spawn } from '../lib/particles.ts';
+import { drawMonster, drawMonster0, drawTentacles } from '../lib/bodies/draw.ts';
+import { look } from '../lib/look.ts';
+import { aimOrigin, aimPoint, castPoint, drawSwing, handPoint, handUp, headPos, hittable, viewDir } from '../lib/aim.ts';
 // three.js（r147）。npm の three から読んで、組み立てに入れる（CDN からは読まない）。
 // 光のにじみの4つの部品（examples/jsm の EffectComposer・RenderPass・ShaderPass・UnrealBloomPass）は、古い JS が T.EffectComposer などで使うので、00-test-mode.js で T に一緒に入れる
 import * as THREE from 'three';
@@ -66,4 +69,4 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { SND, adv, blaze, buf, clock, fight, gear, here, hudInfo, keys, lantern, placeMem, player, saved, stealth, ui, vfx } from '../lib/state.ts';
+import { DLC, DLP, SL, SND, adv, blaze, buf, clock, fight, gear, gfx, here, hudInfo, keys, lantern, placeMem, player, saved, stealth, ui, vfx } from '../lib/state.ts';

@@ -9,7 +9,7 @@ import { type History } from './history.ts';
 import type { HandsSnap } from './gear.ts';
 import type { Body, Glyph } from './bodies/kit.ts';
 import { type Rune } from './runes.ts';
-import { NCELL } from './world.ts';
+import { NCELL, NDL, NSL } from './world.ts';
 
 /** 稲妻の光り（灯りの1つとして描く。t は残りの秒。900 より大きいと消えない） */
 export interface ZapFlash {
@@ -96,6 +96,13 @@ export interface Ui {
   camPos: number[] | null;
   /** 装備の画面を開けた時の両手（handsKey の key と、写し snap）。閉じた時に変わっていれば、付け替えの詠唱をする。閉じている間は null */
   packSnap: { key: string; snap: HandsSnap } | null;
+  /** 照準の先の生き物（src/lib/look.ts の look が毎フレーム入れ直す。src/lib/bodies/draw.ts の drawMonster1 が、明るく描いて輪を足す）。無ければ null */
+  aimMon: Monster | null;
+  /** 見た時の説明：今見ている物の説明（変わった時刻 lookPendT から0.5秒見続けると出す）と、出している説明 lookHTML、出す所 lookEl（30-loop-init.js より前、29-look.js で document から読む） */
+  lookPend: string;
+  lookPendT: number;
+  lookHTML: string;
+  lookEl: HTMLElement | null;
 }
 export const ui: Ui = {
   started: false,
@@ -125,6 +132,11 @@ export const ui: Ui = {
   plFailed: false,
   camPos: null,
   packSnap: null,
+  aimMon: null,
+  lookPend: '',
+  lookPendT: 0,
+  lookHTML: '',
+  lookEl: null,
 };
 
 /** レベルと経験（n：レベル、exp：経験、pending：まだ選んでいない加護の数、bless：加護ごとの段、strata：入った層）。後から足される欄は、使う処理を移す時に型を足す */
@@ -201,6 +213,14 @@ export interface Player {
   /** 立ち止まっている秒と、最後に辺りを調べたマス（立ち止まると、隠された罠や化けた生き物が見つかる） */
   stillT: number;
   searchedAt: number;
+  /** 転がり（経った秒 t と向き dx・dz。26-spells-hud.js の startRoll が作り、終わると null） */
+  roll?: { t: number; dx: number; dz: number } | null;
+  /** 武器を振った残りの秒（0.22 から減る）と、振りの線の色（無ければ決まった色）、波を撃つ途中か（その間は振りの線を描かない） */
+  swing?: number;
+  swingCol?: readonly number[] | undefined;
+  swingWave?: boolean;
+  /** 網に掛かった残りの秒（18-level-player.js の罠） */
+  netT?: number;
 }
 export const player: Player = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, pitch: -0.04, bob: 0, eye: 1.62, hp: 40, stillT: 0, searchedAt: -1 };
 
@@ -460,6 +480,8 @@ export interface LevelExtra {
   steles?: { i: number; g: string }[];
   /** 床が崩れたか（部屋の出来事。15-sound-fire.js の initEvents が false にする） */
   collapsed?: boolean;
+  /** 床が崩れて開いた穴のマス（1 が穴。15-sound-fire.js の initEvents が作り、床が崩れる出来事が入れる） */
+  pit?: Uint8Array;
   /** マス → クモの巣（15-sound-fire.js の initFire が作る） */
   webAt?: Map<number, Web>;
   /** 先にある物の手がかり（はじめて読んだ時に作る。src/lib/omens.ts の omenOf） */
@@ -543,6 +565,30 @@ export interface Monster {
   /** 体の明るさ（生き物の処理が入れる）と、心臓を見せるか（王の影。24-goal.js の spawnFinalBoss） */
   glow?: number;
   heartOn?: boolean;
+  /** ここから下は、描く処理（src/lib/bodies/draw.ts）と見た時の説明（src/lib/look.ts）・灯り（src/lib/lightmap.ts の updateLights）が読む欄。
+   * 生き物の表の鍵（'final' は王の影）と、揺れの位相 ph・歩きの位相 walk・警戒 alert（11-monster-move.js の makeMonster が入れる） */
+  key?: string;
+  ph?: number;
+  walk?: number;
+  alert?: number;
+  /** 深みの主の、水から出ている度合い（0 なら触手を描かない） */
+  rise?: number;
+  /** 近接の攻撃の溜めの残りの秒（頭の上に ! を出す） */
+  wind?: number;
+  /** __test.hideMonster：しばらく描かない（灯りは残る） */
+  drawHide?: boolean;
+  /** 当たってひるむのが終わるゲームの時刻（それまで体が震える） */
+  flinchUntil?: number;
+  /** 眠っている姿（竜と忘れられた獣。初めて描く時に作る）と、前に描いた時に眠っていたか、今描く姿（眠っている時は眠っている姿、ほかは null） */
+  formSleep?: Body;
+  wasSleep?: boolean;
+  drawForm?: Body | null;
+  /** 強い個体（足もとに輪を描く） */
+  elite?: boolean;
+  /** 剣を操る者のまわりの剣 */
+  blades?: { a: number; x: number; y: number; z: number }[];
+  /** 驚いて逃げている残りの秒（小さな生き物） */
+  flee?: number;
 }
 /** 今いる場所と、階の中身。深さ・支道・異界・特別な階、生き物、灯りの備品、階を移る途中、着いた所 */
 export interface Here {
@@ -736,5 +782,21 @@ export interface Buf {
   pN: number;
 }
 export const buf: Buf = { dn: 0, pN: 0 };
+/** three.js のカメラのうち、TypeScript が読む欄だけ（本物は 05-renderer.js が作る PerspectiveCamera。TypeScript からは書き換えない） */
+export interface CameraView {
+  readonly position: { readonly x: number; readonly y: number; readonly z: number };
+}
+/** 描画の部品（three.js の物）と描き方の切り替え：カメラ camera（本当の値は 05-renderer.js がその場で入れる。ここの値は仮）と、
+ * 生き物の体だけを描くか drawBodyOnly（まわりの飾り・強い個体の輪・頭の上の印を描かない。__test.monsterView だけが入れる） */
+export interface Gfx {
+  camera: CameraView;
+  drawBodyOnly: boolean;
+}
+export const gfx: Gfx = { camera: { position: { x: 0, y: 0, z: 0 } }, drawBodyOnly: false };
+/** 灯りを描画に渡す配列（src/lib/lightmap.ts の updateLights が毎フレーム書き、05-renderer.js の U が描画に渡す）。丸ごと入れ替えない。
+ * SL：階の灯りの色と強さ（灯り1つに3つ）、DLP：動く灯りの位置と届く距離（1つに4つ。0番は手元の灯り、最後は稲妻か火花）、DLC：動く灯りの色（1つに3つ） */
+export const SL = new Float32Array(NSL * 3),
+  DLP = new Float32Array(NDL * 4),
+  DLC = new Float32Array(NDL * 3);
 /** 押しているキー（キーの code → 押しているか）。丸ごと入れ替えない */
 export const keys: Record<string, boolean> = {};
