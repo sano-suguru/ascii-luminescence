@@ -58,6 +58,14 @@ export interface Ui {
   helpOn: boolean;
   /** マウスを捕まえているか（ポインタロック） */
   locked: boolean;
+  /** このページで一度でもマウスを捕まえられたか（それからは、続けて3回失敗するまで、捕まえられないとは決めない） */
+  lockedOnce: boolean;
+  /** 最後に捕まえてから、捕まえようとした回数（捕まえると0に戻る。外れてから1.5秒の間の分は数えない） */
+  lockTries: number;
+  /** マウスが最後に外れた時刻（performance.now の値） */
+  unlockedAt: number;
+  /** Esc のキーを処理している間か（その間は tryLock が捕まえにいかない） */
+  escKey: boolean;
   /** 1人称（'fps'）か3人称 */
   camMode: string;
   /** レベルアップの画面 */
@@ -94,7 +102,7 @@ export interface Ui {
   perfOn: boolean;
   /** 図鑑の獣を見ている間・試しの間の状態（どちらでもなければ null） */
   gallery: Gallery | null;
-  /** マウスを捕まえられなかったか（捕まえられない時は、ドラッグで視点を動かし、Esc でメニューを開く） */
+  /** マウスを捕まえられないと決めたか（決めた後は捕まえようとしない。捕まえていない時は、ドラッグで視点を動かし、Esc でメニューを開く） */
   plFailed: boolean;
   /** 3人称のカメラの位置（x・y・z。少しずつ狙う位置へ寄せる。視点を変えた時と始めは null で、狙う位置から始める） */
   camPos: number[] | null;
@@ -129,6 +137,10 @@ export const ui: Ui = {
   menuOpen: false,
   helpOn: false,
   locked: false,
+  lockedOnce: false,
+  lockTries: 0,
+  unlockedAt: -1e9,
+  escKey: false,
   camMode: 'fps',
   lvlOpen: false,
   altarOpen: false,
