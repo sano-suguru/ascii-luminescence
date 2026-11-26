@@ -1,4 +1,4 @@
-// 洞窟の形と宝物庫の絵（もとは src/game/03-vaults-history.js）。迷宮の乱数（rand）を使う。
+// 洞窟の形と宝物庫の絵と、壁に刻む絵 ARTS（もとは src/game/03-vaults-history.js）。洞窟の形は迷宮の乱数（rand）を使う。
 import { nth } from './array.ts';
 import { rand } from './random.ts';
 import { D4 } from './world.ts';

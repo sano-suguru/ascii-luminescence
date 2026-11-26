@@ -1,7 +1,7 @@
 // 地面と小さな生き物（もとは src/game/13-creatures.js の updateCritter・machineWork・splash、15-sound-fire.js の ignite・uploadCells、
-// 18-level-player.js の crackIce・tallAt・trample・brimFlare、26-spells-hud.js の chillArea・updateFrozen）：
+// 18-level-player.js の crackIce・tallAt・trample・brimFlare、26-spells-hud.js の chillArea・updateFrozen、15-sound-fire.js の initFire）：
 // 小さな生き物（魚・草を食べる物・叫ぶ物・化けた巻物・掃除機・修復機）の動き、水しぶき、火をつける、マスの絵を描画に渡す、
-// 薄い氷が割れる、背の高い茂みを踏み分ける、硫黄が燃え上がる、冷気で火を消して水を凍らせる・溶ける。
+// 薄い氷が割れる、背の高い茂みを踏み分ける、硫黄が燃え上がる、冷気で火を消して水を凍らせる・溶ける、階に入った時の燃える物のマス。
 // 状態の入れ物 here（今の階と生き物）・blaze（火と地面のマス）・player・clock・ui（伝言の時刻と旗）・stealth（忍び足）・vfx（揺れ）・SND（音）と、
 // マスの絵 gfx.cellTex・その中身 cellData・薄い氷に乗っていた秒 iceT に頼る。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う動きと見た目になるので、順番を変えないこと。

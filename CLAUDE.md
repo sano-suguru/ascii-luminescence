@@ -160,7 +160,7 @@ docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 ## 組み立て・実行・テスト（Node 26・pnpm 12）
 ```
 pnpm install --frozen-lockfile   # 依存を入れる（クラウドのセッションでは SessionStart hook が Node・pnpm ごと自動で行う）
-pnpm check            # 構文 + lint（エラーだけ。型の情報も使う） + 型（tsc） + 整形の確かめ + 単体テスト（Vite の組み立ても試す） + 使う文字 + 組み立て。数秒。編集のたびにこれ
+pnpm check            # 構文 + lint（エラーだけ。型の情報も使う） + 型（tsc） + 整形の確かめ + 単体テスト（Vite の組み立ても試す） + 使う文字 + 組み立て。50秒ほど（単体テストの階の比べ合わせ level.test.mjs が長い）。編集のたびにこれ
 pnpm lint             # 警告も含めて lint を見る（src/game/ はつないで調べる）
 pnpm fmt              # 整形する（Oxfmt。src/game/ の古い JS と index.html 以外）
 pnpm typecheck        # 型を確かめる（TypeScript 7 の tsc。src/lib/ と tests/unit/*.ts。1秒かからない）

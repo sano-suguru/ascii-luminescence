@@ -1,6 +1,6 @@
 // 生き物の処理と加護の段（もとは src/game/18-level-player.js の statOf・BL・hostile・foe・initMonsterLife、11-monster-move.js の makeMonster・fireAt・fireNear・canStep・chooseNext、
-// 13-creatures.js の critterStep・houndScent、15-sound-fire.js の summon）：生き物を作る、歩いて行けるか、次に向かうマス、敵か。
-// 状態の入れ物 adv（選んでいる試練・加護の段）・here（今の階と生き物）・blaze（火と匂い）・player・clock・ui（伝言の時刻）・stealth（忍び足）に頼る。
+// 13-creatures.js の critterStep・houndScent・updateMonster、15-sound-fire.js の summon）：生き物を作る、歩いて行けるか、次に向かうマス、敵か、生き物の動き。
+// 状態の入れ物 adv（選んでいる試練・加護の段・年代記）・here（今の階と生き物）・blaze（火と匂い）・player・clock・ui（伝言の時刻）・stealth（忍び足）・vfx（揺れ）に頼る。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う動きになるので、順番を変えないこと。
 import { lookup, must, nth } from './array.ts';
 import { hittable } from './aim.ts';

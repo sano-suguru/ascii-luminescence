@@ -1,4 +1,5 @@
-// 手と持ち物の処理（もとは src/game/19-hands-runes.js）。状態の入れ物 gear（両手・持ち物）に頼る物。
+// 手と持ち物の処理（もとは src/game/19-hands-runes.js。枠を開ける applyOpen は 24-goal.js）。状態の入れ物 gear（両手・持ち物）に頼る物。
+// 探索の始めの手に戻す resetRunes は、fight・ui・adv・saved・here も戻す。
 // 表だけに頼る物（ルーンの名前・色・付けられるか）は src/lib/runes.ts。
 import { lookup, must, nth } from './array.ts';
 import { renderHotbar } from './hotbar.ts';
@@ -304,7 +305,10 @@ export function specOf(h: Side): Spec {
   if (tr.accuracy) aff.homing = (aff.homing || 0) + tr.accuracy * 4;
   return { h, atk: atkType(h), elem: el, aff, tr, pow: el ? ELEM_POW[Math.min(4, elemCount(H, el))] || 1 : 1 };
 }
-/** 探索の始めの手と持ち物に戻す（右手は杖・左手は剣、袋は空。ビルド・祭壇の記録・伝説の物・最深部の状態も。もとは src/game/19-hands-runes.js） */
+/**
+ * 探索の始めの手と持ち物に戻す（右手は杖・左手は剣、袋は空。ビルド・祭壇の記録・伝説の物・最深部の状態も。もとは src/game/19-hands-runes.js）。
+ * 探索を始める時だけ、ページを読み終えた後に呼ぶ（見たルーン saved.RSEEN は 25-gallery.js が al_runes から読む。それより前は空の仮の物）
+ */
 export function resetRunes(): void {
   fight.trigCd = { L: 0, R: 0 };
   fight.hitSrcPoint = null;

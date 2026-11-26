@@ -54,7 +54,6 @@ function updateTraps(dt){
 // (two blessings - strengths tied to actions and elements, some with a price - and one rune or charm). Max health does not grow with level: it grows by 4 on entering each new stratum.
 let lvlOpenT=0, lvlOpts=[];
 // BLESS は src/lib/progress.ts、加護の段 BL は src/lib/monsters.ts（src/game/imports.mjs で読む）
-// a cold snap: the creatures around are chilled (and fire goes out, water freezes)
 // coldSnap は src/lib/combat.ts（src/game/imports.mjs で読む）
 // gainExp は src/lib/combat.ts（src/game/imports.mjs で読む）
 // the choices come from their own random, made from the run's seed and which level this is (keyedRand), not the look random (mr): same seed, same choices. r is for tests
@@ -84,14 +83,12 @@ function chooseLevel(i){ const o=lvlOpts[i]; if(!o)return;
   adv.lvl.pending=Math.max(0,adv.lvl.pending-1); renderStatus(); renderHotbar();
   if(adv.lvl.pending>0){ lvlOpenT=performance.now(); lvlOpts=levelChoices(); renderLevelUp(); return; }
   ui.lvlOpen=false; const el=document.getElementById('altarp'); if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused()); if(!ui.plFailed&&ui.started&&!adv.dead)tryLock(); updateResume(); }
-// a new stratum strengthens the body
 // strataGrowth は src/lib/levels.ts（src/game/imports.mjs で読む）
 // hurtPlayer は src/lib/combat.ts（src/game/imports.mjs で読む）
 // resultPlace は src/lib/results.ts（src/game/imports.mjs で読む）
 // runLore は src/lib/results.ts（src/game/imports.mjs で読む）
 // awardLore は src/lib/results.ts（src/game/imports.mjs で読む）
 // loreRows は src/lib/results.ts（src/game/imports.mjs で読む）
-// the grave: what the fallen player leaves (one thing, chosen on the results screen)
 // 墓のルーンを作る graveRune は src/lib/gear.ts（祭壇などを置く src/lib/altars.ts が使う）
 // graveCandidates は src/lib/results.ts（src/game/imports.mjs で読む）
 // saveGrave は src/lib/results.ts（src/game/imports.mjs で読む）

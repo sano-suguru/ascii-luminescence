@@ -101,7 +101,6 @@ const ELEM_OF={l:'fire',Zf:'fire',D:'fire',Zi:'ice',L:'ice',K:'ice',Zl:'thunder'
 try{ saved.BOOK=new Set(JSON.parse(localStorage.getItem('al_book')||'[]')); }catch(e){}
 // ルーンの種類を選ぶ randomRuneType は src/lib/gear.ts（src/game/imports.mjs で読む）
 // 幅に合わせて HTML を切る clipHtml は src/lib/text.ts（src/game/imports.mjs で読む）
-// called only when a run starts, after the page has loaded (saved.RSEEN is filled from al_runes in 25-gallery.js; before that it is an empty placeholder)
 // resetRunes は src/lib/gear.ts（src/game/imports.mjs で読む）
 // specOf は src/lib/gear.ts（src/game/imports.mjs で読む）
 

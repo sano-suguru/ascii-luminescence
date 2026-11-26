@@ -1,4 +1,4 @@
-// 音を鳴らす（Web Audio。もとは src/game/15-sound-fire.js）。状態の入れ物 SND（音）・player（聞く位置と向き）・here・blaze（まわりの様子）に頼る物。
+// 音を鳴らす（Web Audio。もとは src/game/15-sound-fire.js。術を放つ音 castSound は 22-world-hints.js）。状態の入れ物 SND（音）・player（聞く位置と向き）・here・blaze（まわりの様子）に頼る物。
 // 音の表と小さな道具（SND_LV・sEnv など）は src/lib/sound.ts。
 import { must, nth } from './array.ts';
 import { sndRand } from './random.ts';

@@ -31,10 +31,8 @@ function updateCast(dt){
 }
 // castNow は src/lib/combat.ts（src/game/imports.mjs で読む）
 // turnDir は src/lib/math.ts（src/game/imports.mjs で読む）
-// the rapier: a dash that cuts through
 // dashCast は src/lib/combat.ts（src/game/imports.mjs で読む）
 // dashCuts は src/lib/combat.ts（src/game/imports.mjs で読む）
-// the longbow: a rain of arrows over the aimed place
 // startRain は src/lib/combat.ts（src/game/imports.mjs で読む）
 function updateRains(dt){ for(const rn of fight.rains){ rn.tick-=dt;
     if(rn.follow){ let best=null, bd=4; for(const m of here.monsters){ if(!foe(m))continue; const dd=Math.hypot(m.x-rn.x,m.z-rn.z); if(dd<bd){ bd=dd; best=m; } } if(best){ const k=Math.min(1,dt*2/Math.max(0.1,bd)); rn.x+=(best.x-rn.x)*k; rn.z+=(best.z-rn.z)*k; } }
@@ -45,9 +43,7 @@ function updateRains(dt){ for(const rn of fight.rains){ rn.tick-=dt;
         if(sp.elem&&mr()<eK){ const ci=Math.floor(pz/CELL)*MW+Math.floor(px/CELL); if(ci>=0&&ci<NCELL)landElem(sp,px,0.1,pz,ci); } }); }
     if(rn.left<=0&&!rn.done){ rn.done=true; } }
   fight.rains=fight.rains.filter(rn=>!rn.done); for(const mk of fight.marks)mk.t-=dt; fight.marks=fight.marks.filter(mk=>mk.t>0); }
-// the crossbow: bolts in quick succession
 // castRapid は src/lib/combat.ts（src/game/imports.mjs で読む）
-// the star staff: a pillar of light falls on the aimed place after a moment
 // castStar は src/lib/combat.ts（src/game/imports.mjs で読む）
 // the wind blade a sword sends forward: short for the short sword, wide for the greatsword's sweep
 // the slash lies in the plane the blade swept: slanted like the swing (a sword: right-up to left-down from the right hand, mirrored from the left; a greatsword's sweep near level);
@@ -63,7 +59,6 @@ function drawWave(p){ const c=elemCol(p.sp.elem), v=Math.hypot(p.vx,p.vz)||1, dx
       for(let k=0;k<rows;k++){ const q=pt(s,k*0.07), bb=b*tb*(0.45+0.75*core)*(1-k*0.22); dyn(q[0]+ox,q[1],q[2]+oz,G(g),(p.big?0.2:0.16)*(0.7+0.45*core),c[0]*2.3*bb,c[1]*2.3*bb,c[2]*2.3*bb); } } } }
 // fireWave は src/lib/combat.ts（src/game/imports.mjs で読む）
 // meleeCast は src/lib/combat.ts（src/game/imports.mjs で読む）
-// the light beam: a ray each tick, reflecting off walls when it has bounces
 // beamHold は src/lib/state.ts（src/game/imports.mjs で読む）
 // fireBeam は src/lib/combat.ts（src/game/imports.mjs で読む）
 // reflectDir は src/lib/aim.ts（src/game/imports.mjs で読む）
@@ -161,7 +156,6 @@ function updateZones(dt){ updateRains(dt); for(const L of fight.laters)if(clock.
     if(zn.tick<=0&&zn.el){ zn.tick=0.5; for(const m of here.monsters){ if(!hittable(m)||m.ty.critter)continue; if(Math.hypot(m.x-zn.x,m.z-zn.z)<zn.r+0.3*m.ty.scale){ m.playerT=clock.time; applyElem(m,zn.el,zn.sp,1); } } } }
   fight.zones=fight.zones.filter(zn=>zn.t>0); }
 // 床の目印と魔法の場を描く drawZones は src/lib/fx.ts（src/game/imports.mjs で読む）
-// a hit somewhere in the world from other code
 // burstFire は src/lib/combat.ts（src/game/imports.mjs で読む）
 // 見ている向き viewDir は src/lib/aim.ts（src/game/imports.mjs で読む）
 // groundPoint は src/lib/aim.ts（src/game/imports.mjs で読む）

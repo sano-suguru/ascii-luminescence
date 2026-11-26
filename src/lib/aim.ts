@@ -1,7 +1,8 @@
-// 照準（もとは src/game/28-camera-player.js の headPos・aimOrigin、20-chant-hits.js の viewDir、18-level-player.js の hittable、
-// 22-world-hints.js の handUp・aimPoint・centerPoint・castPoint・handPoint、19-hands-runes.js の drawSwing）：
-// 目の位置と見ている向き、攻撃や投げた物が出る所、照準の先の点、手の前の点、詠唱の円の位置、武器を振った線。
-// 状態の入れ物 player・ui（1人称か3人称か）・gfx（カメラの位置。読むだけ）・here（今の階）に頼る。呼ぶのは古い JS の詠唱・攻撃・飛ぶ物・描画。
+// 照準と線（もとは src/game/28-camera-player.js の headPos・aimOrigin、20-chant-hits.js の viewDir・groundPoint・reflectDir、18-level-player.js の hittable、
+// 22-world-hints.js の handUp・aimPoint・centerPoint・castPoint・handPoint・aimTarget・assistPoint・shotFrame、19-hands-runes.js の drawSwing、
+// 26-spells-hud.js の doorBlock・losClear・beamFrame）：目の位置と見ている向き、攻撃や投げた物が出る所、照準の先の点と生き物、狙いを助ける点、撃つ所と向き、
+// 手の前の点、詠唱の円の位置、武器を振った線、閉じた扉・見通し・地面に落とす所・跳ね返る向き。
+// 状態の入れ物 player・ui（1人称か3人称か。照準の先を探した時刻 aimT と生き物 crossMon は読み書きする）・gfx（カメラの位置。読むだけ）・here（今の階）・clock に頼る。
 import { must, nth } from './array.ts';
 import { G } from './glyphs.ts';
 import { dyn } from './particles.ts';

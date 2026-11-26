@@ -5,7 +5,6 @@
 // 伝説の物の読み方（legendOfBranch・legendAll・descentSealed）は src/lib/legend.ts（src/game/imports.mjs で読む）
 // 最深部か isFinal は src/lib/levels.ts、最深部の状態 here.finalSt は src/lib/state.ts（src/game/imports.mjs で読む）
 
-// a lord falls: its legendary thing (if it holds one) or a golden rune
 // lordFell は src/lib/combat.ts（src/game/imports.mjs で読む）
 let slotPickN=0;
 // applyOpen は src/lib/gear.ts（src/game/imports.mjs で読む）
@@ -57,7 +56,6 @@ function spawnFinalBoss(){
   setTimeout(()=>msg(`<b style="color:#a98cff">&amp;</b><b style="color:#c9b8ff">${last.title}${last.name}の影</b>が立ち上がった。`),1400);
 }
 // 伝説の物を世界の中に描く drawLegendWorld は src/lib/legend.ts（src/game/imports.mjs で読む）
-// the end: a screen like the one for death, but light
 // victory は src/lib/results.ts（src/game/imports.mjs で読む）
 
 // 稲妻の見た目 addBolt・sparkCrown・drawBoltFx は src/lib/fx.ts（src/game/imports.mjs で読む）

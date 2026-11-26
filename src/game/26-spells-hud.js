@@ -1,14 +1,11 @@
 // ---------------------------------------------------------------- spells meet the world: doors stop them, sight lines matter, ice freezes water and puts out fire, thunder runs through water, fire lights poison mist
-// doorAt is the door number of each cell (-1 where there is no door), as generate() made it
 // doorBlock は src/lib/aim.ts（src/game/imports.mjs で読む）
 // losClear は src/lib/aim.ts（src/game/imports.mjs で読む）
 // mCenter は src/lib/math.ts（src/game/imports.mjs で読む）
 // beamFrame は src/lib/aim.ts（src/game/imports.mjs で読む）
 // 冷気 chillArea と、凍らせた水が溶ける updateFrozen は src/lib/ground.ts（src/game/imports.mjs で読む）
 // 凍らせた水を描く drawFrozen は src/lib/fx.ts（src/game/imports.mjs で読む）
-// thunder runs through water: everything standing in the same water near the hit takes a share
 // conductWater は src/lib/combat.ts（src/game/imports.mjs で読む）
-// what an element does where it lands (walls, doors, floor, water)
 // landElem は src/lib/combat.ts（src/game/imports.mjs で読む）
 // fire reaching a poison mist sets the whole mist off
 function cloudsMeetFire(){ for(const c of fight.clouds){ if(c.t<=0)continue; const cx=Math.floor(c.x/CELL), cz=Math.floor(c.z/CELL), rr=Math.ceil(c.r/CELL); let lit=false;
@@ -18,7 +15,6 @@ function cloudsMeetFire(){ for(const c of fight.clouds){ if(c.t<=0)continue; con
     for(const o of here.monsters){ if(!foe(o)||Math.hypot(o.x-c.x,o.z-c.z)>R)continue; if(!losClear(c.x,0.6,c.z,...mCenter(o)))continue; damageMonster(o,roll(5,9),'fire'); }
     if(Math.hypot(player.x-c.x,player.z-c.z)<R*0.8)hurtPlayer(roll(1,3),'爆炎'); burstFire(cz*MW+cx,c.r/CELL+0.5,1.0); sBoom(0.4); vfx.shake=Math.max(vfx.shake,0.25); vfx.flash=Math.max(vfx.flash,0.3);
     if(!saved.BOOK.has('blast')){ saved.BOOK.add('blast'); try{ localStorage.setItem('al_book',JSON.stringify([...saved.BOOK])); }catch(e){} } } }
-// a perfect dodge: the dodge rune answers only when an attack was actually evaded
 // onDodged は src/lib/combat.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- the chant as a voice: whispered syllables that swell into a choir; each syllable lights one rune of the circle
