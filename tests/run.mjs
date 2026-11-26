@@ -12,7 +12,7 @@ import { build } from 'vite';
 import { ROOT } from './lib.mjs';
 
 // 長くかかる物から始める（短い物が後ろで隙間を埋める）
-const ALL = ['smoke', 'title', 'visual', 'gallery', 'world', 'inventory', 'levels', 'determinism', 'panels'];
+const ALL = ['smoke', 'title', 'frame', 'visual', 'gallery', 'world', 'inventory', 'levels', 'determinism', 'panels'];
 const LIMIT_MIN = 10;
 const stop = (m) => {
   console.error(m);

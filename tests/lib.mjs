@@ -47,7 +47,8 @@ export async function withBrowser(fn, { prod = false } = {}) {
   if (prod || process.env.AL_PREBUILT !== '1') await build({ configFile: join(ROOT, 'vite.config.mjs'), mode, logLevel: 'warn' });
   else console.log('組み立ては済んでいるので、組み立てない（AL_PREBUILT=1。1つだけ走らせる時は、この環境変数を消すこと）');
   mapDir = join(ROOT, '.build/maps', mode);
-  const srv = await serve(dir);
+  // サンドボックスの iframe（tests/frame.mjs）から読めるように、CORS の見出しを付ける
+  const srv = await serve(dir, 0, { cors: true });
   // システムのフォントを見せない（tests/fonts.conf）。テスト版は日本語も同梱のフォントで描くので、どのマシンでも同じ文字になる。
   // 公開用の版（prod）は、JetBrains Mono を指定した所の日本語をシステムのフォントで描くので、FONTCONFIG_FILE を替えない（システムのフォントも見せる）。
   const env = prod ? process.env : { ...process.env, FONTCONFIG_FILE: join(ROOT, 'tests/fonts.conf') };
@@ -60,15 +61,17 @@ export async function withBrowser(fn, { prod = false } = {}) {
   }
 }
 
-// ページを作る。ページのエラーは errs に集める。ポインタロックは止める。
+// ページを作る。ページのエラーは errs に集める（ページの中の iframe のエラーも）。ポインタロックは止める。
 // still: CSS のアニメーションとトランジションを止める（実際の時間で進むので、撮るたびに画面写真が変わる。いつも終わった後の姿にする）
-export async function newPage(browser, errs, { width = 960, height = 540, still = false } = {}) {
+// realLock: ポインタロックを止めない（ブラウザ本来の動きのまま。tests/frame.mjs のサンドボックスの iframe で使う）
+export async function newPage(browser, errs, { width = 960, height = 540, still = false, realLock = false } = {}) {
   const pg = await browser.newPage({ viewport: { width, height } });
   pg.on('pageerror', (e) => errs.push(annotate(String(e.stack || e)).slice(0, 600)));
   pg.on('requestfailed', (r) => console.log('request failed:', r.url(), r.failure()?.errorText || ''));
-  await pg.addInitScript(() => {
-    HTMLCanvasElement.prototype.requestPointerLock = () => Promise.reject(new Error('no'));
-  });
+  if (!realLock)
+    await pg.addInitScript(() => {
+      HTMLCanvasElement.prototype.requestPointerLock = () => Promise.reject(new Error('no'));
+    });
   if (still)
     await pg.addInitScript(() => {
       document.addEventListener('DOMContentLoaded', () => {

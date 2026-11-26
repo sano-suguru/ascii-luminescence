@@ -58,7 +58,7 @@ import { BRANCH_OMEN, REALM_OMEN, SPECIAL_OMEN, STRATUM_OMEN, drawOmens, drawSta
 import { loadBeasts, recordBeast, saveMeta, saveSet } from '../lib/save.ts';
 import { BL, canStep, chooseNext, fireNear, foe, hostile, makeMonster, statOf, summon, updateMonster } from '../lib/monsters.ts';
 import { brimFlare, chillArea, crackIce, ignite, initFire, splash, tallAt, trample, updateCritter, updateFrozen, uploadCells } from '../lib/ground.ts';
-import { setCamMode, sndToggle, tryLock, updateResume } from '../lib/screens.ts';
+import { lockFailed, menuOnUnlock, relockClick, setCamMode, sndToggle, tryLock, updateResume } from '../lib/screens.ts';
 import { addLooks, buildForm } from '../lib/bodies/build.ts';
 import { bogAura, dragonAura, drawMorph, houndAura, krakenAura, lichAura, nagaAura, salamanderAura, shadowAura, spiderAura, transformShadow } from '../lib/bodies/auras.ts';
 import { P, dCol, dPar, dPos, dyn, initDust, killP, respawnDust, spawn } from '../lib/particles.ts';
