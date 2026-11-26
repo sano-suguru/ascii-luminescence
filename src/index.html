@@ -16,7 +16,19 @@ html{scroll-padding-top:env(safe-area-inset-top,0px);}
 html,body{height:100%;margin:0;overflow:hidden;background:var(--void);color:var(--ink);
   font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;}
 *{box-sizing:border-box;}
-#gl{position:fixed;top:0;left:0;width:100%;height:100%;display:block;outline:none;cursor:crosshair;}
+#gl{position:fixed;top:0;left:0;width:100%;height:100%;display:block;outline:none;cursor:crosshair;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
+/* 指で遊ぶ時（body.touch。src/lib/touch.ts）：文字を選ばない・長押しの吹き出しを出さない・2回押しで拡大しない */
+body.touch{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+body.touch button{touch-action:manipulation;}
+/* タッチのボタン：タイトルでは右上に [全画面]。探索中は上の真ん中（左上の状態の表示と右上のミニマップの間）に [装備] [メニュー] */
+#touchbar{display:none;position:fixed;top:calc(8px + env(safe-area-inset-top,0px));right:calc(8px + env(safe-area-inset-right,0px));z-index:30;gap:4px;}
+body.touch #touchbar{display:flex;}
+body.started #touchbar{right:auto;left:50%;transform:translateX(-50%);}
+#touchbar button{font:inherit;font-family:"M PLUS 1 Code","BIZ UDGothic",ui-monospace,monospace;font-size:13px;color:var(--mist);background:rgba(4,3,12,.62);border:0;border-radius:4px;padding:10px 5px;cursor:pointer;text-shadow:0 0 6px #000;}
+#touchbar button:active{color:var(--ink);}
+#touchbar .play{display:none;}
+body.started:not(.over) #touchbar .play{display:block;}
+body.started #fsB{display:none;}
 /* every piece of UI is drawn with glyphs, like the world itself */
 #hud{position:fixed;inset:0;pointer-events:none;z-index:10;text-shadow:0 0 6px #000,0 0 2px #000;transition:opacity .4s ease;}
 .glow{text-shadow:0 0 8px currentColor,0 0 2px #000;}
@@ -30,6 +42,8 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--void);color:var(
 #help.off{opacity:0;}
 #mapwrap{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:12px;}
 #map{display:block;width:min(392px,34vw);height:auto;}
+/* 背の低い画面（スマホの横向きなど）では、ミニマップを高さでも抑える（横幅の 34% だと、縦に画面の半分を越える） */
+@media (max-height:520px){ #map{width:min(34vw,42vh);} }
 #log{position:absolute;left:18px;bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:min(640px,60vw);font-size:12.5px;line-height:1.7;}
 #log .m{transition:opacity 1.2s ease;}
 #log .m b{font-weight:800;margin-right:.6em;}
@@ -202,6 +216,12 @@ body:not(.started) #hud{opacity:0;}
 </div>
 
 <pre id="gal" role="dialog" aria-label="図鑑"></pre>
+<div id="touchbar">
+  <button id="fsB" hidden>[全画面]</button>
+  <button id="packB" class="play">[装備]</button>
+  <button id="menuB" class="play">[メニュー]</button>
+</div>
+
 <div id="intro">
   <h1 id="title" aria-label="ASCII LUMINESCENCE"><div id="logo" aria-hidden="true"></div></h1>
   <pre id="intropanel"></pre>

@@ -48,10 +48,11 @@ export function lockFailed(): void {
 /**
  * マウスを捕まえる（描く画面 #gl で）。失敗したら lockFailed。捕まえられないと決めた後（ui.plFailed）は、捕まえようとしない。
  * Esc のキーを処理している間（ui.escKey）も捕まえにいかない（Esc のキーで掛けたロックは、ブラウザがすぐ外すため。次のクリックで捕まえる）
+ * 指で遊んでいる間（ui.touch）も捕まえにいかない（指で見回すので要らない。失敗を数えると、マウスのドラッグの案内が出てしまう）
  */
 export function tryLock(): void {
   const canvas = must(document.getElementById('gl'), '#gl');
-  if (ui.plFailed || ui.escKey) return;
+  if (ui.plFailed || ui.escKey || ui.touch) return;
   // 外れてから1.5秒の間はブラウザが断ることがあるので、その間の分は数えない
   if (performance.now() - ui.unlockedAt > 1500) ui.lockTries++;
   // requestPointerLock が無いブラウザ（iPhone の Safari など。型には必ずある）

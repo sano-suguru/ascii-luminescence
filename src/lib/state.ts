@@ -77,6 +77,8 @@ export interface Ui {
   unlockedAt: number;
   /** Esc のキーを処理している間か（その間は tryLock が捕まえにいかない） */
   escKey: boolean;
+  /** 指で遊んでいるか（指で触れたら true、マウスを動かしたら false。src/lib/touch.ts。この間は tryLock が捕まえにいかない） */
+  touch: boolean;
   /** 1人称（'fps'）か3人称 */
   camMode: string;
   /** レベルアップの画面 */
@@ -152,6 +154,7 @@ export const ui: Ui = {
   lockTries: 0,
   unlockedAt: -1e9,
   escKey: false,
+  touch: false,
   camMode: 'fps',
   lvlOpen: false,
   altarOpen: false,

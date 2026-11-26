@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ブラウザのテスト（pnpm test）をまとめて走らせる：テスト版と Artifact 版を1回だけ組み立て（.build/test/・.build/artifact/）、10のテスト（画面写真の比較 visual も）を同時に jobs 個ずつ走らせる。
+// ブラウザのテスト（pnpm test）をまとめて走らせる：テスト版と Artifact 版を1回だけ組み立て（.build/test/・.build/artifact/）、11のテスト（画面写真の比較 visual も）を同時に jobs 個ずつ走らせる。
 // どのテストも、自分のブラウザと、空いているポートの配信を使うので、互いにぶつからない（組み立ては、ここで済ませたことを AL_PREBUILT で伝える）。
 // 出力は、テストが終わるたびにまとめて出す（混ざらないように）。1つのテストが LIMIT_MIN 分を越えたら止めて、それまでの出力と「時間切れ」を出す。
 // どれかが失敗したら（時間切れ・シグナルで止められた時も）、終わりのコードを 1 にする。
@@ -12,7 +12,7 @@ import { build } from 'vite';
 import { ROOT } from './lib.mjs';
 
 // 長くかかる物から始める（短い物が後ろで隙間を埋める）
-const ALL = ['smoke', 'title', 'frame', 'visual', 'gallery', 'world', 'inventory', 'levels', 'determinism', 'panels'];
+const ALL = ['smoke', 'title', 'frame', 'visual', 'gallery', 'world', 'touch', 'inventory', 'levels', 'determinism', 'panels'];
 const LIMIT_MIN = 10;
 const stop = (m) => {
   console.error(m);
