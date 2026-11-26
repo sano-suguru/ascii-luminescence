@@ -61,7 +61,7 @@ const HEAL = (): AltarOpt => ({ opt: 'heal', rune: { uid: -1, type: 'mend' } });
 /**
  * 祭壇の組 grp の3つの選択肢を決める（まだ決めていなければ）。ルーンの祭壇は、新しいルーン（空いた枠の種類に寄せる）・
  * まれに武器・体力が最大の85%より少なければ癒し。主の祭壇は強い選択肢（武器・鍛える）と、体力が最大の85%より少なければ癒し。鍛えの祭壇は、持っている武器の鍛え方を3つ。
- * 乱数は、階のシードと祭壇のマスから作る（keyedRand）。見た目の乱数は引かないので、同じ階の同じ祭壇は、手と体力が同じなら、いつ近づいても同じ中身になる。
+ * 乱数は、階のシードと祭壇のマスから作る（keyedRand。主の祭壇は別の名前）。見た目の乱数は引かないので、同じ階の同じ祭壇は、手と体力が同じなら、いつ近づいても同じ中身になる。
  * r はテストが渡す（選び方が、見た目の乱数で選んでいた時と同じかを確かめるため）
  */
 export function altarFill(grp: string, r?: () => number): void {
@@ -69,7 +69,7 @@ export function altarFill(grp: string, r?: () => number): void {
     its = D.items.filter((o) => o.grp === grp && o.altar),
     first = its[0];
   if (!first || first.rune) return;
-  const rr = r ?? keyedRand('altar', levelSeed(), first.i);
+  const rr = r ?? keyedRand(first.lord ? 'lordaltar' : 'altar', levelSeed(), first.i); // 主の祭壇は、取り終えた祭壇と同じマスに置かれうるので、名前を分ける
   const lord = first.lord;
   if (first.forge) {
     const fo = forgeOptions(3, rr);

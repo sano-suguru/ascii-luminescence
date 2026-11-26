@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // 同じ結果になるかのテスト：同じシードで2回、同じ手順を踏み、ゲームの状態（__test.state）が一致するか。
 // 違うシードでは違う結果になることも確かめる（何も動いていないのに「一致」するのを防ぐ）。
-// もう1つ：見た目の乱数（Math.random）を余分に進めても、遊びの中身（階に入った時に眠っている生き物・祭壇の中身・レベルアップの選択肢）は変わらないか。
+// もう1つ：見た目の乱数（Math.random）を余分に進めても、遊びの中身（階に入った時に眠っている生き物・祭壇の中身・レベルアップの選択肢・
+// 開ける枠が無い時の代わりのルーン・宝物庫の番人の場所）は変わらないか。
 // これらは出来事ごとの乱数（keyedRand）で決めるので、粒子を1つ足すような見た目だけの変更では変わらないはず。
 import { withBrowser, newPage, openTest, advance, nearAltar } from './lib.mjs';
 
@@ -50,7 +51,36 @@ const contents = async (pg, extra) => {
   await pg.evaluate(() => dbg.exp(60)); // レベルを上げる（選択肢を決める）
   await advance(pg, 0.3);
   const levelup = await pg.evaluate(() => document.getElementById('altarp').textContent.replace(/\s+/g, ' '));
-  return { sleep, altar, levelup };
+  await burn(pg, extra);
+  // 枠を全部開けてから空の枠を拾う（代わりのルーンになる）。伝言の、姿を変えた後の文を見る
+  const slot = await pg.evaluate(() => {
+    for (let k = 0; k < 2; k++) for (const t of ['slotL', 'slotR', 'body']) __test.open(t);
+    dbg.give('slot');
+    const log = document.getElementById('log').textContent;
+    return log.includes('姿を変えた。') ? log.slice(log.lastIndexOf('姿を変えた。')) : '';
+  });
+  return { sleep, altar, levelup, slot };
+};
+// 宝物庫の褒美を取って、目を覚ました番人のマスを集める（シード 208 の深さ3の宝物庫は、番人が目を覚ます）。番人は生き物の一覧の後ろに足される
+const vaultGuards = async (pg, extra) => {
+  await advance(pg, 2);
+  await burn(pg, extra);
+  const n0 = await pg.evaluate(() => {
+    const v = dbg.items().find((o) => o.vault);
+    if (!v) return -1;
+    dbg.step(v.pos[0], v.pos[1]);
+    return __test.state().monsters.length;
+  });
+  await advance(pg, 1 / 30); // 1フレームだけ（番人がマスの真ん中から動き出す前）
+  return pg.evaluate((n0) => {
+    const ms = __test.state().monsters;
+    return n0 < 0 || ms.length !== n0 + 2
+      ? ''
+      : ms
+          .slice(n0)
+          .map((m) => `${m[0]}@${Math.floor(m[1] / 2)},${Math.floor(m[2] / 2)}`)
+          .join(' ');
+  }, n0);
 };
 const errs = [];
 const [runs, looks] = await withBrowser(async ({ browser, base }) => {
@@ -65,8 +95,13 @@ const [runs, looks] = await withBrowser(async ({ browser, base }) => {
   for (const extra of [0, 37]) {
     const pg = await newPage(browser, errs, { width: 320, height: 180 });
     await openTest(pg, base, 'seed=202&depth=4&god=1');
-    looks.push(await contents(pg, extra));
+    const got = await contents(pg, extra);
     await pg.close();
+    const pv = await newPage(browser, errs, { width: 320, height: 180 });
+    await openTest(pv, base, 'seed=208&depth=3&god=1');
+    got.vault = await vaultGuards(pv, extra);
+    await pv.close();
+    looks.push(got);
   }
   return [out, looks];
 });
@@ -91,7 +126,11 @@ if (!runs[0].monsters.length) {
 {
   const [A, B] = looks,
     empty = Object.keys(A).filter(
-      (k) => !A[k] || (k === 'altar' && !A[k].includes(':rune:')) || (k === 'levelup' && !A[k].includes('レベルが上がった')),
+      (k) =>
+        !A[k] ||
+        (k === 'sleep' && !A[k].split(' ').some((m) => m.endsWith('1'))) || // 眠っている生き物が1体もいなければ、比べても確かめにならない
+        (k === 'altar' && !A[k].includes(':rune:')) ||
+        (k === 'levelup' && !A[k].includes('レベルが上がった')),
     );
   if (empty.length) {
     fail = true;
@@ -104,7 +143,7 @@ if (!runs[0].monsters.length) {
       console.log(`✗ 見た目の乱数を進めたら変わった：${k}\n  そのまま ${A[k].slice(0, 300)}\n  進めた後 ${B[k].slice(0, 300)}`);
   } else if (!empty.length)
     console.log(
-      `✓ 見た目の乱数を進めても、眠っている生き物（${A.sleep.split(' ').filter((m) => m.endsWith('1')).length} 体）・祭壇の中身・レベルアップの選択肢は同じ`,
+      `✓ 見た目の乱数を進めても、眠っている生き物（${A.sleep.split(' ').filter((m) => m.endsWith('1')).length} 体）・祭壇の中身・レベルアップの選択肢・代わりのルーン・宝物庫の番人の場所は同じ`,
     );
 }
 if (errs.length) console.log('page errors:', errs);

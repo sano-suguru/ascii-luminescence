@@ -9,7 +9,9 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { legacyValues } from '../../tools/legacy-eval.mjs';
 import { altarFill, placeAltar } from '../../src/lib/altars.ts';
 import { makeRune } from '../../src/lib/gear.ts';
+import { levelSeed } from '../../src/lib/levels.ts';
 import { BLESS, UNLOCKS } from '../../src/lib/progress.ts';
+import { keyedRand } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 import { rollTraits } from '../../src/lib/runes.ts';
 import { adv, gear, here, player, saved } from '../../src/lib/state.ts';
@@ -182,5 +184,22 @@ describe('祭壇の中身', () => {
       if (showAltar('a') === a) sameDepth++;
     }
     expect([sameCell < 20, sameDepth < 20]).toEqual([true, true]);
+  });
+  it('主の祭壇は別の名前で乱数を作る（取り終えた祭壇と同じマスに置かれても、同じ並びを引かない）', () => {
+    let sameAsPlain = 0;
+    for (let s = 1; s <= 200; s++) {
+      altarScene(s);
+      altarFill('lord');
+      altarFill('a');
+      const got = [showAltar('lord'), showAltar('a')];
+      altarScene(s);
+      altarFill('lord', keyedRand('lordaltar', levelSeed(), 303));
+      altarFill('a', keyedRand('altar', levelSeed(), 101));
+      expect([showAltar('lord'), showAltar('a')]).toEqual(got);
+      altarScene(s);
+      altarFill('lord', keyedRand('altar', levelSeed(), 303));
+      if (showAltar('lord') === got[0]) sameAsPlain++;
+    }
+    expect(sameAsPlain).toBeLessThan(20);
   });
 });

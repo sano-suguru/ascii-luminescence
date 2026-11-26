@@ -46,10 +46,11 @@ export const shuffle = <T>(a: T[], r: () => number = rand): T[] => {
 };
 
 /**
- * 出来事ごとの乱数を作る。鍵（何の出来事か・階のシード・マスなど）を混ぜたシードで、新しい並びを作る。
- * 鍵が同じなら、いつも同じ並びになり、見た目の乱数も、ほかの出来事の順番も関わらない。祭壇の中身・レベルアップの選択肢など、遊びの中身を選ぶ所で使う
+ * 出来事ごとの乱数を作る。何の出来事か what（'altar' など）と鍵 keys（階のシード・マス・何レベル目かなど）を混ぜたシードで、新しい並びを作る。
+ * 鍵が同じなら、いつも同じ並びになり、見た目の乱数も、ほかの出来事の順番も関わらない。祭壇の中身・レベルアップの選択肢など、遊びの中身を選ぶ所で使う。
+ * 鍵は 32bit の整数にする（>>> 0 で読むので、小数は切り捨てられ、2^32 以上は下の 32bit だけになる。時刻などの小数は鍵にしない）
  */
-export const keyedRand = (...keys: readonly (string | number)[]): (() => number) => {
+export const keyedRand = (what: string, ...keys: readonly number[]): (() => number) => {
   let h = 0x811c9dc5;
   const mix = (v: number): void => {
     h = Math.imul(h ^ v, 0x85ebca6b);
@@ -57,12 +58,9 @@ export const keyedRand = (...keys: readonly (string | number)[]): (() => number)
     h = Math.imul(h, 0xc2b2ae35);
     h ^= h >>> 16;
   };
-  for (const k of keys)
-    if (typeof k === 'number') mix(k >>> 0);
-    else {
-      for (let i = 0; i < k.length; i++) mix(k.charCodeAt(i));
-      mix(0x10000); // 文字列の終わり（文字の番号より大きい数）。'ab' と 'a','b' を分ける
-    }
+  for (let i = 0; i < what.length; i++) mix(what.charCodeAt(i));
+  mix(0x10000); // 出来事の名前の終わり（文字の番号より大きい数）。名前と鍵の境目が1つに決まるので、違う名前と鍵の組が同じシードにならない
+  for (const k of keys) mix(k >>> 0);
   return mulberry32(h >>> 0);
 };
 

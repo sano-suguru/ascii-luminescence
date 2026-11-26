@@ -150,18 +150,37 @@ describe('keyedRand（出来事ごとの乱数）', () => {
       b = keyedRand('altar', 12345, 678);
     for (let i = 0; i < 100; i++) expect(a()).toBe(b());
   });
-  it('鍵が1つでも違えば、初めの値から違う（文字列の区切りも見る）', () => {
-    const first = (...k: (string | number)[]): number => keyedRand(...k)();
+  it('今の並びを残す（変わると、同じシードで祭壇・レベルアップ・眠る生き物などが変わる）', () => {
+    const out: string[] = [];
+    for (const [w, k] of [
+      ['altar', [123456789, 1234]],
+      ['lordaltar', [5, 6]],
+      ['levelup', [42, 7]],
+      ['slot', [1, 2]],
+      ['vault', [3, 4]],
+      ['sleep', [99]],
+    ] as const) {
+      const r = keyedRand(w, ...k);
+      out.push(w, ...Array.from({ length: 3 }, () => r().toFixed(6)));
+    }
+    expect(out.join(' ')).toBe(
+      'altar 0.702675 0.430698 0.914484 lordaltar 0.083914 0.494912 0.733143 levelup 0.518361 0.800761 0.944213 ' +
+        'slot 0.105956 0.997003 0.508263 vault 0.023905 0.765351 0.270437 sleep 0.572020 0.684500 0.065073',
+    );
+  });
+  it('名前か鍵が1つでも違えば、初めの値から違う（名前と鍵の境目も見る）', () => {
     const vals = [
-      first('altar', 1, 2),
-      first('altar', 1, 3),
-      first('altar', 2, 2),
-      first('levelup', 1, 2),
-      first('ab', 'c'),
-      first('a', 'bc'),
-      first('abc'),
-      first(1, 2),
-      first(2, 1),
+      keyedRand('altar', 1, 2)(),
+      keyedRand('altar', 1, 3)(),
+      keyedRand('altar', 2, 2)(),
+      keyedRand('altar', 2, 1)(),
+      keyedRand('levelup', 1, 2)(),
+      keyedRand('A')(),
+      keyedRand('', 65)(),
+      keyedRand('', 65, 0x10000)(),
+      keyedRand('A', 0x10000)(),
+      keyedRand('ab')(),
+      keyedRand('a', 98)(),
     ];
     expect(new Set(vals).size).toBe(vals.length);
   });
