@@ -40,7 +40,7 @@ import {
 import { T, fogCol } from '../../src/lib/three.ts';
 import { BRANCHES, CELL, FINAL_DEPTH, MH, MW, NCELL, REALMS, SF_HAY, TF, TP } from '../../src/lib/world.ts';
 import { fakeAudioClass } from './fake-audio.mjs';
-import { fakeCamera, fakeDom, fakeTimers, fakeUniforms } from './fight-cases.mjs';
+import { fakeCamera, fakeDom, fakeTimers, fakeUniforms, hashArr } from './fight-cases.mjs';
 import { swapGlobals } from './ui-cases.mjs';
 
 /** 移した関数の名前（場合が全部を呼ぶか、level.test.mjs が確かめる） */
@@ -73,34 +73,6 @@ const FN_FIELDS = [
   ['hurtPlayer', 'mc'],
 ];
 
-const hashArr0 = (a, from = 0, to = a.length) => {
-  // 配列は写さずに読む（NaN がある時だけ、写して1つの並びにそろえる。呼ぶ数が多く、写すとテストの時間の多くを占めるため）
-  a = a.subarray(from, Math.max(from, to));
-  if (a instanceof Float32Array || a instanceof Float64Array)
-    for (let i = 0; i < a.length; i++)
-      if (Number.isNaN(a[i])) {
-        a = a.map((x) => (Number.isNaN(x) ? NaN : x));
-        break;
-      }
-  const b = new Uint8Array(a.buffer, a.byteOffset, a.length * a.BYTES_PER_ELEMENT);
-  let h = 0x811c9dc5;
-  for (let i = 0; i < b.length; i++) h = Math.imul(h ^ b[i], 0x01000193);
-  return (h >>> 0).toString(16).padStart(8, '0');
-};
-/**
- * hashArr0 を、前と同じ中身なら数え直さない（同じ配列・同じ範囲で、前に数えた時の中身の写しとバイトごとに同じなら、前の指紋を返す。
- * 火と地面のマスなどの大きな配列は、呼ぶたびに数えるが、たいてい変わっていないため。比べるのは Buffer の equals で、指紋を数えるより速い）
- */
-const lastHash = new WeakMap();
-const hashArr = (a, from = 0, to = a.length) => {
-  const v = a.subarray(from, Math.max(from, to)),
-    b = Buffer.from(v.buffer, v.byteOffset, v.length * v.BYTES_PER_ELEMENT),
-    m = lastHash.get(a);
-  if (m && m.from === from && m.to === to && m.copy.equals(b)) return m.h;
-  const h = hashArr0(a, from, to);
-  lastHash.set(a, { from, to, copy: Buffer.from(b), h });
-  return h;
-};
 const fnv = (s) => {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
@@ -156,24 +128,27 @@ const worldPrint0 = () =>
       gfx.scene.children.length,
   );
 /**
- * worldPrint0 を、部品が作り直された時だけ数え直す（buildWorld は区切りの配列 gfx.chunks と隠す板 gfx.occMesh を作り直し、ほかの所は部品を書き換えない。
- * 呼ぶたびに全部の配列の指紋を取ると、テストの時間の半分以上になるため）
+ * worldPrint0 を、部品が作り直された時だけ数え直す（呼ぶたびに全部の配列の指紋を取ると、テストの時間の半分以上になるため）。
+ * 作り直したかは、区切りの配列・各区切りの Mesh と幾何・隠す板とその幾何・場面の子の数が、前と同じ物かで見る（buildWorld は毎回これらを新しく作り、ほかの所は書き換えない）。
+ * buildWorld を、これらを使い回して中身だけ書き換える形に変えたら、この見分け方も変えること（変えないと、違いを見逃す）
  */
-let lastWorld = { chunks: null, occ: null, n: -1, kids: -1, print: '' };
+const worldKey = () => [
+  gfx.chunks,
+  gfx.occMesh,
+  gfx.occMesh && gfx.occMesh.geometry,
+  gfx.scene.children.length,
+  ...gfx.chunks.flatMap((c) => [c.mesh, c.mesh.geometry]),
+];
+let lastWorld = { key: [], print: '' };
 const worldPrint = () => {
-  if (
-    lastWorld.chunks !== gfx.chunks ||
-    lastWorld.occ !== gfx.occMesh ||
-    lastWorld.n !== gfx.chunks.length ||
-    lastWorld.kids !== gfx.scene.children.length
-  )
-    lastWorld = { chunks: gfx.chunks, occ: gfx.occMesh, n: gfx.chunks.length, kids: gfx.scene.children.length, print: worldPrint0() };
+  const key = worldKey();
+  if (key.length !== lastWorld.key.length || key.some((k, i) => k !== lastWorld.key[i])) lastWorld = { key, print: worldPrint0() };
   return lastWorld.print;
 };
-
 /** seeds：場合の数。page：fakeDom() の偽の画面 */
 export async function levelCases(F, seeds, page) {
   const out = [];
+  lastWorld = { key: [], print: '' };
   const keep = {
     here: { ...here },
     adv: { ...adv },
@@ -661,6 +636,8 @@ export async function levelCases(F, seeds, page) {
       out.push({ s, calls, dom: fnv(text(page.log)), audio: fnv(text(alog)), stored: fnv(text(stored)), timers: { ...timers.st } });
     }
   } finally {
+    // 終わった階の部品を持ち続けない
+    lastWorld = { key: [], print: '' };
     restoreGlobals();
     delete msgs.push;
     for (const [k, fields] of keptTypes)

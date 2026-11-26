@@ -136,7 +136,7 @@ const ELEMS = [null, ...RUNE_TYPES.elem];
 const BLESS_KEYS = ['charge', 'counter', 'swapedge', 'reckless', 'momentum', 'kindle', 'scorch', 'branch', 'devour', 'shatter'];
 const SUBS = ['gsweep', 'gwave', 'bpower', 'rshot', 'mshot', 'mmoon'];
 
-/** 配列の中身の指紋（NaN は1つの並びにそろえる。monsters-cases.mjs と同じ） */
+/** 配列の中身の指紋（NaN は1つの並びにそろえる。指紋は monsters-cases.mjs と同じ。level-cases.mjs も使う） */
 const hashArr0 = (a, from = 0, to = a.length) => {
   // 配列は写さずに読む（NaN がある時だけ、写して1つの並びにそろえる。呼ぶ数が多く、写すとテストの時間の多くを占めるため）
   a = a.subarray(from, Math.max(from, to));
@@ -156,7 +156,7 @@ const hashArr0 = (a, from = 0, to = a.length) => {
  * 火と地面のマスなどの大きな配列は、呼ぶたびに数えるが、たいてい変わっていないため。比べるのは Buffer の equals で、指紋を数えるより速い）
  */
 const lastHash = new WeakMap();
-const hashArr = (a, from = 0, to = a.length) => {
+export const hashArr = (a, from = 0, to = a.length) => {
   const v = a.subarray(from, Math.max(from, to)),
     b = Buffer.from(v.buffer, v.byteOffset, v.length * v.BYTES_PER_ELEMENT),
     m = lastHash.get(a);
