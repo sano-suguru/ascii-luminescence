@@ -307,21 +307,31 @@ await withBrowser(async ({ browser, base }) => {
     // 行く手を塞がれた時：溶岩の隣のマスから、溶岩へ歩き続ける。離して 0.5 秒ではまだ出ていて、1.2 秒では消えている
     p2 = await open('seed=7&realm=volcano&god=1');
     await p2.evaluate(() => __test.clearAll());
+    // 火口の噴き上がりが流れるマス（とその隣）は、溶岩が引いたり広がったりするので選ばない
     const at = await p2.evaluate(() => {
-      const { w, h } = __test.size();
+      const { w, h } = __test.size(),
+        flow = new Set();
+      for (const e of __test.events().list)
+        for (const c of [e.src, ...(e.order || [])]) if (c !== null) for (const d of [0, -1, 1, -w, w]) flow.add(c + d);
       for (let i = w; i < w * (h - 1); i++) {
-        if (!__test.cell(i).lava) continue;
+        if (!__test.cell(i).lava || flow.has(i)) continue;
         for (const j of [i - 1, i + 1, i - w, i + w]) {
+          if (!__test.cell(j).floor || flow.has(j)) continue;
           const a = __test.cell(j);
-          if (!a.floor) continue;
-          const b = __test.cell(i);
           dbg.step(a.x, a.z);
-          dbg.look(b.x, 1, b.z);
           return [i, j];
         }
       }
       return null;
     });
+    if (at) {
+      // dbg.look はカメラの位置から向きを決めるので、カメラが新しい場所に動いた次のフレームで向ける
+      await advance(p2, 1 / 30);
+      await p2.evaluate(([i]) => {
+        const b = __test.cell(i);
+        dbg.look(b.x, 1, b.z);
+      }, at);
+    }
     if (!at) errs.push('十字の下の一言：溶岩の隣の床が無い（テストの前提が崩れた。シードを変える）');
     else {
       await p2.keyboard.down('KeyW');
