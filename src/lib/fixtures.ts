@@ -1,7 +1,7 @@
 // 階に置いてある物を描く（もとは src/game/14-lights-fixtures.js の drawFixtures・drawDoors、21-altars-heal.js の drawSprings、
 // 22-world-hints.js の drawGraves、13-creatures.js の drawWebs・webTouch）：灯りの備品（火鉢・水晶・たいまつ・階段など）、扉（近づくと開く）、
-// 泉、墓、クモの巣（触れると震え、燃えると落ちる）。毎フレーム、世界の中に文字を置き（dyn）、粒子を出す（spawn）。
-// 状態の入れ物 here（今の階）・player・blaze（火）・clock に頼る。呼ぶのは古い JS の描画（30-loop-init.js の tick と 22-world-hints.js の drawRunesWorld）と、
+// 泉、墓、クモの巣（触れると震え、燃えると落ちる）、罠と鉄格子（18-level-player.js の drawTraps）。毎フレーム、世界の中に文字を置き（dyn）、粒子を出す（spawn）。
+// 状態の入れ物 here（今の階）・player・blaze（火）・clock・ui（1人称か3人称か）・gfx（カメラの位置。読むだけ）に頼る。呼ぶのは古い JS の描画（30-loop-init.js の tick と 22-world-hints.js の drawRunesWorld）と、
 // プレイヤーの動き（28-camera-player.js の updatePlayer が webTouch）。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
 import { lookup, must, nth } from './array.ts';
@@ -13,7 +13,8 @@ import { dyn, spawn } from './particles.ts';
 import { clamp } from './rng.ts';
 import { mpick, mr } from './random.ts';
 import { RUNE_DEF, runeCol } from './runes.ts';
-import { blaze, clock, here, player } from './state.ts';
+import { TRAP_INFO } from './names.ts';
+import { blaze, clock, gfx, here, player, ui } from './state.ts';
 import { makeNoise } from './status.ts';
 import { CELL, CH_D, LQ_LAVA, MW, NCELL, cpos } from './world.ts';
 
@@ -1421,4 +1422,84 @@ export function webTouch(i: number): boolean {
     }
   }
   return true;
+}
+
+/**
+ * 罠と鉄格子を描く（もとは src/game/18-level-player.js の drawTraps）：見つかった罠（30 より遠い物は描かない。作動した物は暗い）、
+ * 鉄格子の宝物庫の格子（開くほど上がる）と壁のレバー、網に掛かっている間の網（3人称では体のまわり、1人称では目の前）
+ */
+export function drawTraps(t: number): void {
+  for (const tr of level().traps || []) {
+    if (tr.hidden) continue;
+    const [x, z] = cpos(tr.i);
+    if (Math.hypot(x - player.x, z - player.z) > 30) continue;
+    const col = nth(lookup(TRAP_INFO, tr.type), 1),
+      c = [parseInt(col.slice(1, 3), 16) / 255, parseInt(col.slice(3, 5), 16) / 255, parseInt(col.slice(5, 7), 16) / 255],
+      k = tr.used ? 0.35 : 1.2 + 0.5 * Math.sin(t * 2.5 + tr.i);
+    dyn(x, 0.05, z, G('^'), 0.7, nth(c, 0) * k, nth(c, 1) * k, nth(c, 2) * k, 1, 0);
+    for (let q = 0; q < 8; q++) {
+      const a = (q / 8) * Math.PI * 2 + t * 0.4;
+      dyn(
+        x + Math.cos(a) * 0.55,
+        0.04,
+        z + Math.sin(a) * 0.55,
+        G('.'),
+        0.18,
+        nth(c, 0) * k * 0.7,
+        nth(c, 1) * k * 0.7,
+        nth(c, 2) * k * 0.7,
+        1,
+        a,
+      );
+    }
+  }
+  const G2 = level().gate;
+  if (G2) {
+    const [gx, gz] = cpos(G2.cell);
+    if (Math.hypot(gx - player.x, gz - player.z) < 36) {
+      const lift = G2.o * 2.7;
+      for (let k = 0; k < 7; k++) {
+        const u = ((k + 0.5) / 7) * CELL - CELL / 2,
+          bx = G2.axis === 0 ? gx : gx + u,
+          bz = G2.axis === 0 ? gz + u : gz;
+        for (let y = 0.15 + lift; y < 3.0; y += 0.3) dyn(bx, y, bz, G('|'), 0.3, 0.75, 0.72, 0.8);
+      }
+      for (const yy of [0.9 + lift, 1.9 + lift])
+        if (yy < 3.0)
+          for (let k = 0; k < 7; k++) {
+            const u = ((k + 0.5) / 7) * CELL - CELL / 2;
+            dyn(G2.axis === 0 ? gx : gx + u, yy, G2.axis === 0 ? gz + u : gz, G('='), 0.28, 0.75, 0.72, 0.8);
+          }
+    }
+    const [lx, lz] = cpos(G2.lever),
+      wx = lx + G2.ld[0] * 0.93,
+      wz = lz + G2.ld[1] * 0.93;
+    dyn(wx, 1.3, wz, G('#'), 0.4, 0.6, 0.55, 0.5);
+    dyn(wx - G2.ld[0] * 0.08, 1.45, wz - G2.ld[1] * 0.08, G(G2.open ? '\\' : '/'), 0.42, 1.4, 1.1, 0.5);
+  }
+  if ((player.netT ?? NaN) > 0 && ui.camMode === 'tps') {
+    for (let k = 0; k < 16; k++) {
+      const a = (k / 16) * Math.PI * 2 + clock.time * 0.3;
+      for (let y = 0.3; y < 1.9; y += 0.32)
+        dyn(player.x + Math.cos(a) * 0.55, y, player.z + Math.sin(a) * 0.55, G(k % 2 ? '+' : '#'), 0.16, 0.6, 0.55, 0.65);
+    }
+  } else if ((player.netT ?? NaN) > 0) {
+    const fx = -Math.sin(player.yaw),
+      fz = -Math.cos(player.yaw),
+      rx = Math.cos(player.yaw),
+      rz = -Math.sin(player.yaw),
+      cy = gfx.camera.position.y;
+    for (let a = -3; a <= 3; a++)
+      for (let b = -2; b <= 2; b++)
+        dyn(
+          gfx.camera.position.x + fx * 0.7 + rx * a * 0.16,
+          cy + b * 0.16,
+          gfx.camera.position.z + fz * 0.7 + rz * a * 0.16,
+          G('+'),
+          0.1,
+          0.55,
+          0.5,
+          0.6,
+        );
+  }
 }

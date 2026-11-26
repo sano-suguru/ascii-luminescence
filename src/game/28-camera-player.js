@@ -2,9 +2,7 @@
 try{ ui.camMode=localStorage.getItem('al_cam')||'fps'; }catch(e){}
 // AVATAR_TY は src/lib/names.ts（src/game/imports.mjs で読む）
 let avatar=null;
-function headPos(){ return [player.x,player.eye+0.05-(player.roll?Math.sin(Math.PI*player.roll.t/0.32)*0.55:0),player.z]; }
-// where attacks and thrown things start: the eye in first person, the head of the avatar in third person
-function aimOrigin(){ return ui.camMode==='tps'?headPos():[camera.position.x,camera.position.y,camera.position.z]; }
+// 頭の位置 headPos と、攻撃や投げた物が出る所 aimOrigin は src/lib/aim.ts（src/game/imports.mjs で読む）
 function camBlocked(x,y,z){
   for(const [ox,oz] of [[0,0],[0.22,0],[-0.22,0],[0,0.22],[0,-0.22]]){ const cx=Math.floor((x+ox)/CELL), cz=Math.floor((z+oz)/CELL); if(cx<0||cz<0||cx>=MW||cz>=MH)return true;
     const i=cz*MW+cx, tt=here.D.tile[i]; if(tt===TW||tt===TX)return true; if(y>here.D.ceil[i]-0.25)return true; if(tt!==TC&&y<0.3)return true;
@@ -16,8 +14,8 @@ function placeThirdPerson(dt,sk){
   const tx=h[0]-dx*4.0+rx*0.5, ty=Math.max(0.4,h[1]-dy*4.0+0.5), tz=h[2]-dz*4.0+rz*0.5;
   if(!ui.camPos)ui.camPos=[tx,ty,tz];
   const k=Math.min(1,dt*14); ui.camPos[0]+=(tx-ui.camPos[0])*k; ui.camPos[1]+=(ty-ui.camPos[1])*k; ui.camPos[2]+=(tz-ui.camPos[2])*k;
-  camera.position.set(ui.camPos[0]+(mr()-0.5)*sk,ui.camPos[1]+(mr()-0.5)*sk,ui.camPos[2]);
-  camera.rotation.set(player.pitch,player.yaw,0);
+  gfx.camera.position.set(ui.camPos[0]+(mr()-0.5)*sk,ui.camPos[1]+(mr()-0.5)*sk,ui.camPos[2]);
+  gfx.camera.rotation.set(player.pitch,player.yaw,0);
   U.uCamP.value.set(ui.camPos[0],ui.camPos[1],ui.camPos[2]); U.uCutP.value.set(h[0],h[1]-0.25,h[2]); U.uCut.value=1;
 }
 function updateAvatar(dt){
@@ -93,8 +91,8 @@ function updatePlayer(dt){
   { const pci=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL), deep=here.D.liquid[pci]===LQ_DEEP&&!here.D.bridge[pci]; player.eye+=((deep?0.62:EYE)-player.eye)*Math.min(1,dt*3); }
   if(ui.camMode==='tps'){ placeThirdPerson(dt,sk); return; }
   U.uCut.value=0;
-  camera.position.set(player.x+(mr()-0.5)*sk,(mr()-0.5)*sk+player.eye-(player.roll?Math.sin(Math.PI*player.roll.t/0.32)*0.55:0)+Math.sin(player.bob*2)*0.035*spd*(player.eye<1?0.3:1)+(player.eye<1?Math.sin(clock.time*1.8)*0.04:0),player.z);
-  camera.rotation.set(player.pitch,player.yaw,Math.sin(player.bob)*0.004*spd);
+  gfx.camera.position.set(player.x+(mr()-0.5)*sk,(mr()-0.5)*sk+player.eye-(player.roll?Math.sin(Math.PI*player.roll.t/0.32)*0.55:0)+Math.sin(player.bob*2)*0.035*spd*(player.eye<1?0.3:1)+(player.eye<1?Math.sin(clock.time*1.8)*0.04:0),player.z);
+  gfx.camera.rotation.set(player.pitch,player.yaw,Math.sin(player.bob)*0.004*spd);
 }
 // eye adaptation and atmosphere: open caverns thin the fog, bright surroundings lower the exposure
 function updateAtmosphere(dt){

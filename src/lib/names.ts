@@ -1,16 +1,18 @@
 // 名前と説明の表（もとは src/game/12・18・24・25・28・29）：見た時の説明、罠・伝説の物・主の名前、試しの間の的、3人称の時の自分の姿。
-import { css, cssOf } from './color.ts';
+import { cssOf } from './color.ts';
 
-type RGB = readonly [number, number, number];
-
-/** 見た時の説明の1行（文字 ch を色 col で、名前 name と説明 desc） */
-export const lookLine = (ch: string, col: RGB, name: string, desc: string): string =>
-  `<b style="color:${css(col)}">${ch}</b>${name}<span>${desc}</span>`;
+/** 見た時の説明の1行（文字 ch を色 col で、名前 name と説明 desc。色は3つの数。無い・足りない時は止まる。文字・名前・説明が無い時は undefined と書く） */
+export const lookLine = (
+  ch: string | undefined,
+  col: readonly number[] | undefined,
+  name: string | undefined,
+  desc: string | undefined,
+): string => `<b style="color:${cssOf(col)}">${ch}</b>${name}<span>${desc}</span>`;
 /** 生き物の名前（色付き、文字を添えて） */
 export const mname = (m: { ty: { col: readonly number[]; name: string; ch: string } }): string =>
   `<span style="color:${cssOf(m.ty.col)}">${m.ty.name}（${m.ty.ch}）</span>`;
 /** 備品の、見た時の説明（[文字, 名前, 説明]） */
-export const FIX_NAMES = {
+export const FIX_NAMES: Readonly<Record<string, readonly [string, string, string]>> = {
   brazier: ['*', '火鉢', '炎が揺れ、壁に火影を落としている'],
   crystal: ['*', '浮遊する水晶', 'ゆっくり回転しながら、脈打つ光を放っている'],
   rune: ['0', '魔法陣', '刻まれた紋様が絶えず入れ替わりながら回っている'],
@@ -35,7 +37,7 @@ export const FIX_NAMES = {
   torch: ['#', '壁掛け松明', '壁に据えられた松明が、琥珀色の光を投げかけている'],
 };
 /** 床の飾りの、見た時の説明（飾りの文字ごと。[文字, 名前, 説明]） */
-export const DECO_NAMES = {
+export const DECO_NAMES: Readonly<Record<string, readonly [string, string, string]>> = {
   '&': ['&', '彫像', '石を刻んだ人影が、部屋の中央を見つめている'],
   '+': ['+', '墓石', 'R.I.P. と刻まれている'],
   '=': ['=', '朽ちた寝袋', '誰かがここで眠った跡'],
@@ -43,7 +45,7 @@ export const DECO_NAMES = {
   '[': ['[', '書架', '読めない文字の背表紙がぎっしりと並んでいる'],
 };
 /** 部屋の飾りの、見た時の説明（飾りの種類ごと。[文字, 名前, 説明]） */
-export const DECO_K = {
+export const DECO_K: Readonly<Record<string, readonly [string, string, string]>> = {
   table: ['=', '石の食卓', '埃をかぶった皿と杯が、並んだままになっている'],
   anvil: ['T', '金床', '冷えきった鉄の塊。無数の槌の跡が残る'],
   colossus: ['&', '巨像', '石を刻んだ巨大な像。その眼だけが、まだ光を宿している'],
@@ -51,7 +53,7 @@ export const DECO_K = {
   blood: ['~', '血だまり', '乾ききらない、暗い赤'],
 };
 /** 隠れた罠の名前・色・説明（[名前, 色, 説明]） */
-export const TRAP_INFO = {
+export const TRAP_INFO: Readonly<Record<string, readonly [string, string, string]>> = {
   alarm: ['警報の', '#ff6a4a', '踏むと鐘が鳴り響き、辺りの獣が集まってくる'],
   trapdoor: ['落とし戸の', '#c9b8ff', '踏むと床が抜け、下の階へ落ちる'],
   net: ['網の', '#d8c8ff', '踏むと網が降ってきて、しばらく動けなくなる'],

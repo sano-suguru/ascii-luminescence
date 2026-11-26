@@ -91,23 +91,12 @@ function castSound(sp,x,z){ if(!sndReady())return; const t=SND.ctx.currentTime, 
   else if(el==='thunder'){ sEnv(sNoise(t,0.3,'highpass',3000,0.7,o),t,0.002,0.28); sEnv(sTone(t,'square',90,40,0.25,o),t,0.003,0.22,0.4); }
   else if(el==='poison'){ for(let k=0;k<4;k++)setTimeout(()=>sBubble(player.x,player.z,0.4,k%2===0),k*60); }
   else sWhoosh(); }
-function handUp(){ const [fx,fy,fz]=viewDir(), rx=Math.cos(player.yaw), rz=-Math.sin(player.yaw); let ux=-rz*fy, uy=rz*fx-rx*fz, uz=rx*fy; if(uy<0){ ux=-ux; uy=-uy; uz=-uz; } const l=Math.hypot(ux,uy,uz)||1; return [[fx,fy,fz],[rx,0,rz],[ux/l,uy/l,uz/l]]; }
-// what the crosshair points at: the first wall, floor or creature along the line of sight
-function aimPoint(){ const [ox,oy,oz]=aimOrigin(), [dx,dy,dz]=viewDir(); let x=ox, y=oy, z=oz;
-  const near=here.monsters.filter(m=>hittable(m)&&Math.hypot(m.x-ox,m.z-oz)<42);
-  for(let s=0;s<160;s++){ x+=dx*0.25; y+=dy*0.25; z+=dz*0.25; const ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL); if(ci<0||ci>=NCELL)break;
-    if(here.D.tile[ci]===TW||here.D.tile[ci]===TX||y<0.02||y>here.D.ceil[ci])return [x,y,z];
-    for(const m of near){ if(m.ty.habitat==='deep'&&(m.rise||0)<0.3)continue; const cy=m.hidden?m.y+1.3:m.y+(m.ty.flier?0:0.6*m.ty.scale); if(Math.hypot(m.x-x,cy-y,m.z-z)<0.42+0.35*m.ty.scale)return [x,y,z]; } }
-  return [x,y,z]; }
-function centerPoint(){ const [o0,o1,o2]=aimOrigin(), [f]=handUp(); return [o0+f[0]*0.95,o1+f[1]*0.95,o2+f[2]*0.95]; }
-// the chant circle: born at the hand, drawn to the crosshair as the chant fills
-function castPoint(h,k){ const a=handPoint(h), b=centerPoint(), e=1-Math.pow(1-clamp(k,0,1),2.2); return [a[0]+(b[0]-a[0])*e,a[1]+(b[1]-a[1])*e,a[2]+(b[2]-a[2])*e]; }
+// 照準の小さな関数（handUp・aimPoint・centerPoint・castPoint・handPoint）は src/lib/aim.ts（src/game/imports.mjs で読む）
 function shotFrame(h,chanted,kind){ const o=chanted?(()=>{ const c=castPoint(h,1), u=handUp()[2]; return [c[0]-u[0]*0.14,c[1]-u[1]*0.14,c[2]-u[2]*0.14]; })():handPoint(h), a=assistPoint(o,kind)||aimPoint(), dx=a[0]-o[0], dy=a[1]-o[1], dz=a[2]-o[2], l=Math.hypot(dx,dy,dz);
   return {o,d:l>1?[dx/l,dy/l,dz/l]:viewDir()}; }
 function assistPoint(o,kind){ if(kind!=='bolt'&&kind!=='beam')return null; const m=aimTarget(); if(!m||m.dead)return null;
   const c=[m.x,m.y+(m.ty.flier?0:0.6*m.ty.scale),m.z]; if(kind==='beam')return c;
   const t=Math.hypot(c[0]-o[0],c[1]-o[1],c[2]-o[2])/20; return [c[0]+(m.vlx||0)*t,c[1],c[2]+(m.vlz||0)*t]; }
-function handPoint(h){ const [o0,o1,o2]=aimOrigin(), [f,r,u]=handUp(), s=h==='L'?-1:1; return [o0+f[0]*0.95+r[0]*s*0.38-u[0]*0.27,o1+f[1]*0.95-u[1]*0.27,o2+f[2]*0.95+r[2]*s*0.38-u[2]*0.27]; }
 // where the spell will go: straight (arrows, beams) or an arc (orbs), with bounces; the first creature in the way
 function simPath(sp){
   const fr=sp.atk==='beam'?beamFrame(sp.h):shotFrame(sp.h,true,sp.atk), [ox,oy,oz]=fr.o, d0=fr.d, pts=[]; let hitM=null;

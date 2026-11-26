@@ -4,8 +4,8 @@ function applySize(){
   const w=window.innerWidth, h=window.innerHeight;
   renderer.setPixelRatio(pixelRatio); renderer.setSize(w,h,false);
   composer.setPixelRatio(pixelRatio); composer.setSize(w,h);
-  camera.aspect=w/h; camera.updateProjectionMatrix();
-  U.uScale.value=(h*pixelRatio)/(2*Math.tan(camera.fov*Math.PI/360));
+  gfx.camera.aspect=w/h; gfx.camera.updateProjectionMatrix();
+  U.uScale.value=(h*pixelRatio)/(2*Math.tan(gfx.camera.fov*Math.PI/360));
   finalPass.uniforms.uRes.value.set(w*pixelRatio,h*pixelRatio);
 }
 window.addEventListener('resize',()=>{ applySize(); sizeMap(); });
@@ -139,11 +139,11 @@ if(TEST)window.__test={
       for(let j=0;j<4;j++)if(!Number.isFinite(dPar[k*4+j]))ok=false; if(!ok)bad++; }
     for(let k=p0;k<p1;k++)if(['x','y','z','vx','vy','vz','life','gl','sz','r','g','b'].some(a=>!Number.isFinite(P[a][k])))bad++;
     const f=v=>+v.toFixed(2), n=d1-d0;
-    const cp=camera.position;
+    const cp=gfx.camera.position;
     // turn: the creature's angle from facing the camera (radians, -pi to pi), so a check can see it turn or hold still
     const turn=Math.atan2(Math.sin(m.yaw-player.yaw),Math.cos(m.yaw-player.yaw));
     return {name:m.ty.name,turn:+turn.toFixed(4),glyphs:n,sparks,bad,box:n?{w:f(hi[0]-lo[0]),d:f(hi[2]-lo[2]),y0:f(lo[1]),y1:f(hi[1])}:null,
-      camera:{dist:+Math.hypot(cp.x-m.x,cp.z-m.z).toFixed(3),height:+cp.y.toFixed(3),pitch:+camera.rotation.x.toFixed(3),
+      camera:{dist:+Math.hypot(cp.x-m.x,cp.z-m.z).toFixed(3),height:+cp.y.toFixed(3),pitch:+gfx.camera.rotation.x.toFixed(3),
         aimY:+(ui.gallery.aimY??0).toFixed(3),aimed:+Math.hypot(cp.x-m.x,cp.y-(ui.gallery.aimY??0),cp.z-m.z).toFixed(3),ceil:+ceilAt(cp.x,cp.z).toFixed(3),roomR:+(ui.gallery.room.far-0.8).toFixed(3),
         bodyR:(ui.gallery.fix||ui.gallery.view)?.bodyR!==undefined?+(ui.gallery.fix||ui.gallery.view).bodyR.toFixed(3):null}}; },
   // where a creature's body is drawn (the first one alive with this key, e.g. 'lord' or 'final'; only the body and the deep lord's tentacles, not its aura or the sign
@@ -151,11 +151,11 @@ if(TEST)window.__test={
   // kept to the screen), and the share of glyphs that fall outside the screen (cut)
   monsterView(key){ const m=here.monsters.find(m=>m.key===key&&!m.dead); if(!m)return null;
     const d0=buf.dn, p0=buf.pN; let d1=d0; const pts=[];
-    try{ drawBodyOnly=true; if(m.ty.habitat==='deep')drawTentacles(m,clock.time); drawMonster0(m,clock.time); d1=buf.dn; for(let k=d0;k<d1;k++)pts.push([dPos[k*3],dPos[k*3+1],dPos[k*3+2]]); }
-    finally{ drawBodyOnly=false; buf.dn=d0; buf.pN=p0; }
+    try{ gfx.drawBodyOnly=true; if(m.ty.habitat==='deep')drawTentacles(m,clock.time); drawMonster0(m,clock.time); d1=buf.dn; for(let k=d0;k<d1;k++)pts.push([dPos[k*3],dPos[k*3+1],dPos[k*3+2]]); }
+    finally{ gfx.drawBodyOnly=false; buf.dn=d0; buf.pN=p0; }
     if(!pts.length)return {key,x:m.x,z:m.z,glyphs:0};
-    camera.updateMatrixWorld(); const W=canvas.clientWidth, H=canvas.clientHeight, v=new T.Vector3(); let out=0, y0=1e9, y1=-1e9; const sb=[1e9,1e9,-1e9,-1e9];
-    for(const [x,y,z] of pts){ y0=Math.min(y0,y); y1=Math.max(y1,y); v.set(x,y,z).project(camera); const sx=(v.x+1)/2*W, sy=(1-v.y)/2*H;
+    gfx.camera.updateMatrixWorld(); const W=canvas.clientWidth, H=canvas.clientHeight, v=new T.Vector3(); let out=0, y0=1e9, y1=-1e9; const sb=[1e9,1e9,-1e9,-1e9];
+    for(const [x,y,z] of pts){ y0=Math.min(y0,y); y1=Math.max(y1,y); v.set(x,y,z).project(gfx.camera); const sx=(v.x+1)/2*W, sy=(1-v.y)/2*H;
       if(v.z>1||sx<0||sx>W||sy<0||sy>H){ out++; if(v.z>1)continue; } sb[0]=Math.min(sb[0],sx); sb[1]=Math.min(sb[1],sy); sb[2]=Math.max(sb[2],sx); sb[3]=Math.max(sb[3],sy); }
     const c=(a,lo,hi)=>Math.round(Math.max(lo,Math.min(hi,a)));
     return {key,name:m.ty.name,form:m.ty.form,scale:m.ty.scale,x:m.x,z:m.z,glyphs:pts.length,world:{y0:+y0.toFixed(2),y1:+y1.toFixed(2)},ceil:+ceilAt(m.x,m.z).toFixed(2),
