@@ -4,7 +4,7 @@ import type { Color } from '../color.ts';
 import { G } from '../glyphs.ts';
 import { clamp } from '../rng.ts';
 import { mpick, mr } from '../random.ts';
-import { type Body, type BodyType, type Extra, type Vec3, FUR, MUD, SCALE, SKINR, STONE, q2, q3 } from './kit.ts';
+import { type Body, type BodyType, type Extra, type Ramp, type Vec3, FUR, MUD, SCALE, SKINR, STONE, q2, q3 } from './kit.ts';
 
 type Leg = readonly [number, number, string];
 
@@ -282,29 +282,167 @@ export function trollForm2(ty: BodyType): Body {
 }
 
 export function golemForm2(ty: BodyType): Body {
-  const { S, pts, lit, box } = q3(ty),
-    ST: Color = [0.66, 0.66, 0.68],
-    MOSS: Color = [0.42, 0.68, 0.36],
-    GLOW: Color = [0.6, 0.85, 1.0];
-  for (const sd of [-1, 1]) box([sd * 0.2, 0.3, 0], 0.13, 0.3, 0.14, STONE, ST, sd < 0 ? 'legL' : 'legR', { piv: 0.6, pz: 0 });
-  box([0, 0.95, 0], 0.38, 0.32, 0.24, STONE, ST);
-  box([0, 0.58, 0], 0.26, 0.08, 0.18, STONE, ST);
+  const { S, pts, put, lit, ell, tube } = q3(ty),
+    ST: Color = [0.58, 0.52, 0.44],
+    BLUE: Color = [0.42, 0.48, 0.6],
+    MOSS: Color = [0.45, 0.82, 0.34],
+    GLOW: Color = [0.45, 0.85, 1.0],
+    ROCK: Ramp = ['.', ':', '=', '%', '#'];
+  // 腕は肩（高さ 1.34・奥行き 0.06）を、脚は腰（高さ 0.62）を軸に回る
+  const SHOULDER = { piv: 1.34, pz: 0.06 },
+    HIP = { piv: 0.62, pz: 0 };
+  // 楕円の点に回す軸を入れる（ell は軸を受け取らないので、作った点に入れる）
+  const ellAt = (ex: Extra | null, ...a: Parameters<typeof ell>): void => {
+    const n0 = pts.length;
+    ell(...a);
+    if (ex) for (let i = n0; i < pts.length; i++) Object.assign(nth(pts, i), ex);
+  };
+  // 切り出した石の段：断面は角の丸い四角（|x/rx|^4 + |z/rz|^4 = 1）。段と段の間は、すき間（継ぎ目）を空ける
+  const slab = (
+    y0: number,
+    y1: number,
+    rxAt: (f: number) => number,
+    rzAt: (f: number, back: boolean) => number,
+    zAt: (f: number) => number,
+    col: Color,
+    part: string,
+  ): void => {
+    for (let y = y0; y <= y1 + 1e-6; y += S * 0.85) {
+      const f = (y - y0) / Math.max(1e-6, y1 - y0),
+        rx = rxAt(f),
+        z0 = zAt(f),
+        // 上と下の縁は、面を少し上・下へ向けて、段の角を見せる
+        ny = f > 0.8 ? 0.6 : f < 0.12 ? -0.5 : 0.05,
+        n = Math.max(8, Math.round((2 * Math.PI * Math.max(rx, rzAt(f, false))) / (S * 0.85)));
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * Math.PI * 2,
+          c = Math.cos(a),
+          sn = Math.sin(a),
+          rz = rzAt(f, sn < 0),
+          x = Math.sign(c) * Math.sqrt(Math.abs(c)) * rx,
+          z = Math.sign(sn) * Math.sqrt(Math.abs(sn)) * rz;
+        put(
+          x,
+          y,
+          z + z0,
+          (Math.sign(x) * Math.pow(Math.abs(x / rx), 3)) / rx,
+          ny,
+          (Math.sign(z) * Math.pow(Math.abs(z / rz), 3)) / rz,
+          ROCK,
+          col,
+          part,
+        );
+      }
+    }
+  };
+  // 脚：短く太い。四角い足
   for (const sd of [-1, 1]) {
-    const part = sd < 0 ? 'armL' : 'armR',
-      ex = { piv: 1.2, pz: 0 };
-    box([sd * 0.55, 1.15, 0], 0.15, 0.12, 0.16, STONE, ST, part, ex);
-    box([sd * 0.58, 0.75, 0.04], 0.12, 0.25, 0.12, STONE, ST, part, ex);
-    box([sd * 0.58, 0.4, 0.08], 0.13, 0.1, 0.13, STONE, ST, part, ex);
+    const part = sd < 0 ? 'legL' : 'legR';
+    tube([sd * 0.2, 0.6, 0], [sd * 0.25, 0.32, 0.02], 0.15, 0.13, ROCK, ST, part, HIP, 0.1);
+    tube([sd * 0.25, 0.32, 0.02], [sd * 0.25, 0.12, 0.03], 0.13, 0.15, ROCK, ST, part, HIP);
+    for (let x = -0.12; x <= 0.12 + 1e-6; x += S * 0.8)
+      for (let z = -0.08; z <= 0.24 + 1e-6; z += S * 0.8) put(sd * 0.25 + x, 0.07, z, 0, 1, 0.3, ROCK, ST, part, HIP);
   }
-  box([0, 1.42, 0.04], 0.12, 0.12, 0.12, STONE, ST, 'head');
-  for (const sd of [-1, 1]) lit(sd * 0.05, 1.44, 0.17, '.', 0.8, 3.4, GLOW, 'head');
-  for (let k = 0; k < 9; k++) {
-    const a = (k / 9) * Math.PI * 2;
-    lit(Math.cos(a) * 0.14, 0.98 + Math.sin(a) * 0.14, 0.25, '*', 0.9, 2.8, GLOW);
+  // 腰の石
+  slab(
+    0.56,
+    0.7,
+    () => 0.26,
+    () => 0.19,
+    () => 0,
+    ST,
+    'body',
+  );
+  // 胴：下は細く、上へ行くほど広い（逆三角）。少し前へ屈み、背は盛り上がる。腹と胸の2段
+  slab(
+    0.78,
+    1.02,
+    (f) => 0.28 + 0.06 * f,
+    (_f, back) => (back ? 0.25 : 0.23),
+    (f) => 0.02 + 0.02 * f,
+    ST,
+    'body',
+  );
+  slab(
+    1.1,
+    1.42,
+    (f) => 0.36 + 0.12 * Math.sin(f * Math.PI * 0.6),
+    (f, back) => (back ? 0.3 + 0.07 * Math.sin(f * Math.PI) : 0.28),
+    (f) => 0.05 + 0.04 * f,
+    ST,
+    'body',
+  );
+  // 頭：肩の間に沈み、前へ出る。張り出した眉の下に目
+  slab(
+    1.46,
+    1.72,
+    (f) => 0.19 - 0.03 * f,
+    () => 0.15,
+    () => 0.24,
+    BLUE,
+    'head',
+  );
+  for (let x = -0.17; x <= 0.17 + 1e-6; x += S * 0.7) lit(x, 1.66, 0.41, '=', 1.1, 1.3, BLUE, 'head');
+  for (const sd of [-1, 1]) for (const o of [-0.025, 0.025]) lit(sd * 0.075 + o, 1.6, 0.41, '-', 0.9, 1.8, GLOW, 'head');
+  for (let x = -0.08; x <= 0.08 + 1e-6; x += S * 0.7) lit(x, 1.52, 0.4, '-', 0.9, 0.7, BLUE, 'head');
+  // 腕：肩に大岩、長い腕、大きな拳は地面の近く
+  for (const sd of [-1, 1]) {
+    const part = sd < 0 ? 'armL' : 'armR';
+    ellAt(
+      SHOULDER,
+      [sd * 0.58, 1.42, 0.06],
+      0.25,
+      0.2,
+      0.24,
+      ROCK,
+      () => BLUE,
+      part,
+      null,
+      (_nx, ny) => ny > 0.6,
+    );
+    tube([sd * 0.64, 1.24, 0.06], [sd * 0.8, 0.9, 0.16], 0.12, 0.1, ROCK, ST, part, SHOULDER);
+    tube([sd * 0.8, 0.88, 0.16], [sd * 0.7, 0.54, 0.32], 0.12, 0.17, ROCK, ST, part, SHOULDER, 0.1);
+    ellAt(SHOULDER, [sd * 0.68, 0.36, 0.36], 0.22, 0.19, 0.22, ROCK, () => BLUE, part);
+    // 肩の上の苔（光の当たらない後ろからも見えるように、明るさを決めて置く）
+    for (let i = 0; i < 14; i++) {
+      const a = i * 2.39996,
+        r = 0.2 * Math.sqrt((i + 0.5) / 14);
+      lit(
+        sd * 0.58 + Math.cos(a) * r,
+        1.58 + 0.02 * Math.sin(a * 3),
+        0.04 + Math.sin(a) * r,
+        mpick(['%', '"', '&']),
+        1.1,
+        1.35,
+        MOSS,
+        part,
+        SHOULDER,
+      );
+    }
+    // ひじの光るひび
+    lit(sd * 0.85, 0.89, 0.22, sd < 0 ? '/' : '\\', 1, 1.6, GLOW, part, SHOULDER);
   }
-  lit(0, 0.98, 0.26, '+', 1.2, 3.4, GLOW);
-  for (const y of [0.62, 1.28]) for (let x = -0.36; x <= 0.36; x += S) lit(x, y, 0.245, '-', 0.8, 2.0, GLOW);
-  for (let k = 0; k < 10; k++) lit((mr() - 0.5) * 0.7, 1.0 + mr() * 0.3, -0.25, mpick([',', '"']), 1, 1.2, MOSS);
+  // 背中の苔
+  for (let i = 0; i < 24; i++) {
+    const x = (mr() - 0.5) * 0.8,
+      y = 1.2 + mr() * 0.24;
+    lit(x, y, -0.34 - 0.06 * Math.sin(((y - 1.1) / 0.32) * Math.PI), mpick(['%', '"', '&', ',']), 1.1, 1.3, MOSS);
+  }
+  for (let i = 0; i < 8; i++) lit((mr() - 0.5) * 0.26, 1.73, 0.22 + (mr() - 0.5) * 0.22, mpick(['"', '%']), 1, 1.3, MOSS, 'head');
+  // 胸の真ん中の光る石と、そこから走るひび
+  lit(0, 1.22, 0.37, '*', 1.1, 2.2, GLOW);
+  for (const [dx, dy] of [
+    [-1, 1],
+    [1, 0.6],
+    [-0.7, -1],
+    [0.5, -1],
+  ] as const) {
+    for (let k = 1; k <= 3; k++) {
+      const x = dx * 0.06 * k + (k % 2 ? 0.02 : -0.02),
+        y = 1.22 + dy * 0.05 * k;
+      lit(x, y, 0.36, Math.abs(dy) > Math.abs(dx) ? '|' : dx * dy > 0 ? '/' : '\\', 0.9, 1.5 - 0.15 * k, GLOW);
+    }
+  }
   return pts;
 }
 
