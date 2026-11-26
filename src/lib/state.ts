@@ -10,7 +10,7 @@ import type { HandsSnap, Spec } from './gear.ts';
 import type { LoreResult } from './results.ts';
 import type { Body, Glyph } from './bodies/kit.ts';
 import { type Rune } from './runes.ts';
-import type { DataTexture, InstancedMesh, Mesh, Scene, ShaderMaterial, Sphere, Texture, Vector3, WebGLRenderer } from 'three';
+import type { DataTexture, Mesh, Scene, ShaderMaterial, Sphere, Texture, Vector3, WebGLRenderer } from 'three';
 import type { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { DUST_N } from './shaders.ts';
 import { NCELL, NDL, NSL } from './world.ts';
@@ -1193,8 +1193,8 @@ export interface Gfx {
   occMat: ShaderMaterial | undefined;
   /** 画面の最後の後処理（露出・熱のゆらぎ・水中・傷の赤み・詠唱の間の色） */
   finalPass: ShaderPass | null;
-  /** 階の文字を区切りごとにまとめた物（区切りを包む球で、見えない区切りを描かない）と、壁の向こうを隠す板（src/lib/build.ts の buildWorld が作る） */
-  chunks: { mesh: InstancedMesh; sphere: Sphere }[];
+  /** 階の文字を区切りごとにまとめた物（区切りの文字の数 count と、区切りを包む球 sphere。球で、見えない区切りを描かない）と、壁の向こうを隠す板（src/lib/build.ts の buildWorld が作る） */
+  chunks: { mesh: Mesh; count: number; sphere: Sphere }[];
   occMesh: Mesh | null;
   /** 水面の絵（マスごとの水の深さ・流れ・湖か・藻と、灯りの番号と重み。06-world.js の makeWater が作り、src/lib/build.ts の updateWater が書く） */
   waterTex: DataTexture | null;
