@@ -22,36 +22,47 @@ const TESTQ={n:0,done:null};
 function testTick(draw){ TESTCLK.advance(TEST_STEP*1000); stepTick(TEST_STEP,draw); }
 // one step of the game. While the bestiary shows a creature, the visual random (mr) reads the creature's own sequence (showBeast in 25-gallery.js)
 function stepTick(raw,draw){ const g=ui.gallery, r=g&&g.mode==='beast'&&g.m?g.rnd:null; if(r)withVisualRand(r,()=>tick(raw,draw)); else tick(raw,draw); }
+// tick の段ごとの見た目の乱数：tick を段（プレイヤー・世界・灯り・描く物の種類ごと・粒子・火の広がり・飛ぶ物…）に分け、段ごとに、何の段か・探索のシード・
+// 何回目の tick か（clock.frame）を鍵にした新しい並びを読む（keyedRand）。生き物は1体ずつ、動きと描画を、階のシード・階で何体目か（m.seq）・何回目の tick か を鍵にした並びで読む。
+// なので、ある段で見た目の乱数を引く回数が変わっても、ほかの段・ほかの生き物と、次の tick からは変わらない（見た目だけの変更で、生き物の動き・戦い・火の広がりがずれない）。
+// 同じ段の中では、その tick の後の物がずれる。図鑑で生き物を出している間は、段に分けず、これまでどおり生き物の並びで tick を包む（stepTick）。
+// tick の外（マウスやキーの処理・setTimeout）は、Math.random の並びのまま（tick の中では引かないので、tick の中の変更ではずれない）。
+// テスト用モードの __test.tickNoise(n) は、どの段も終わりに見た目の乱数を n 回余分に引く（段を分けていれば、何も変わらないことを確かめる。tests/determinism.mjs）
+const tickNoise={n:0};
+const keyedPhase=(r,fn)=>withVisualRand(r,()=>{ const v=fn(); for(let i=0;i<tickNoise.n;i++)mr(); return v; });
+const tickRandOn=()=>{ const g=ui.gallery; return !(g&&g.mode==='beast'&&g.m); };
+const inPhase=(name,fn)=>tickRandOn()?keyedPhase(keyedRand('tick '+name,adv.runSeed,clock.frame),fn):fn();
+const inMobPhase=(name,m,fn)=>tickRandOn()?keyedPhase(keyedRand('tick '+name,levelSeed(),m.seq,clock.frame),fn):fn();
 function tick(raw,draw){
-  if(isPaused()&&ui.started){ if(frame.stillDrawn)return; frame.stillDrawn=true; } else frame.stillDrawn=false; const dt=isPaused()?0:clamp(raw,0,0.05)*timeScale();
+  if(isPaused()&&ui.started){ if(frame.stillDrawn)return; frame.stillDrawn=true; } else frame.stillDrawn=false; clock.frame++; const dt=isPaused()?0:clamp(raw,0,0.05)*timeScale();
   clock.time+=dt; const t=clock.time;
   gfx.U.uTime.value=t;
-  if(here.trans){
+  inPhase('trans',()=>{ if(here.trans){
     here.trans.t+=dt;
     if(here.trans.phase==='out'){ here.fade=1-here.trans.t/0.8; if(here.trans.t>=0.8){ if(here.trans.regen)adv.runSeed=(Math.random()*1e9)>>>0; else advance(here.trans.go); newLevel(); here.trans={phase:'in',t:0}; here.fade=0; } }
     else { here.fade=here.trans.t/1.3; if(here.trans.t>=1.3){ here.trans=null; here.fade=1; } }
-  } else here.fade=Math.min(1,here.fade+dt*0.8);
-  updatePlayer(dt);
-  updateStealth(dt);
-  updateStatuses(dt);
-  for(const m of here.monsters)if(!m.galShow&&!m.ty.dummy)updateMonster(m,dt*monTimeK(m),t);
+  } else here.fade=Math.min(1,here.fade+dt*0.8); });
+  inPhase('player',()=>{ updatePlayer(dt); updateStealth(dt); updateStatuses(dt); });
+  for(const m of here.monsters)if(!m.galShow&&!m.ty.dummy)inMobPhase('mob',m,()=>updateMonster(m,dt*monTimeK(m),t));
   if(here.monsters.some(m=>m.dead))here.monsters=here.monsters.filter(m=>!m.dead);
   hudInfo.pfFrames++; hudInfo.pfT+=raw; if(hudInfo.pfT>=0.5){ hudInfo.pfFps=Math.round(hudInfo.pfFrames/hudInfo.pfT); hudInfo.pfFrames=0; hudInfo.pfT=0; if(ui.perfOn)renderStatus(); }
-  regrow(); brimRecover(dt); if(!adv.dead){ updateTraps(dt); updateSearch(dt); } updateLife(dt);
-  updateLights(t);
-  updateAtmosphere(dt);
-  buf.dn=0; drawFixtures(t,dt); drawDoors(t,dt); drawFire(t,dt); drawWebs(t); drawTraps(t); drawSwing(); drawViewWeapons(t); drawOmens(t,dt); drawRunesWorld(t); updateAltarPanel(); drawArrows(); drawLegendWorld(t); drawBoltFx(t,dt); drawGallery(t); drawFrozen(t); drawCastFx(t); if(ui.camMode==='tps'&&here.D&&!ui.gallery){ updateAvatar(dt); drawMonster0(avatar,t); drawSection(); } for(const m of here.monsters)drawMonster(m,t); flushDyn();
-  updateParticles(dt,t);
-  fovT+=dt; if(fovT>0.1){ fovT=0; computeFOV(); checkEvents(false); look(); stepGas(); stepFire(); }
-  mapT+=dt; if(mapT>0.11){ mapT=0; if(ui.uiMode===0)drawMap(); }
+  inPhase('world',()=>{ regrow(); brimRecover(dt); if(!adv.dead){ updateTraps(dt); updateSearch(dt); } updateLife(dt); });
+  inPhase('lights',()=>{ updateLights(t); updateAtmosphere(dt); });
+  buf.dn=0; inPhase('fixtures',()=>drawFixtures(t,dt)); inPhase('doors',()=>drawDoors(t,dt)); inPhase('fire',()=>drawFire(t,dt)); inPhase('webs',()=>drawWebs(t)); inPhase('traps',()=>drawTraps(t));
+  inPhase('swing',()=>drawSwing()); inPhase('hands',()=>drawViewWeapons(t)); inPhase('omens',()=>drawOmens(t,dt)); inPhase('runes',()=>{ drawRunesWorld(t); updateAltarPanel(); drawArrows(); drawLegendWorld(t); });
+  inPhase('bolt',()=>drawBoltFx(t,dt)); inPhase('gallery',()=>drawGallery(t)); inPhase('frozen',()=>drawFrozen(t)); inPhase('castfx',()=>drawCastFx(t));
+  inPhase('avatar',()=>{ if(ui.camMode==='tps'&&here.D&&!ui.gallery){ updateAvatar(dt); drawMonster0(avatar,t); drawSection(); } }); for(const m of here.monsters)inMobPhase('mob draw',m,()=>drawMonster(m,t)); flushDyn();
+  inPhase('particles',()=>updateParticles(dt,t));
+  fovT+=dt; if(fovT>0.1){ fovT=0; inPhase('fov',()=>{ computeFOV(); checkEvents(false); look(); }); inPhase('gas',()=>stepGas()); inPhase('spread',()=>stepFire()); }
+  mapT+=dt; if(mapT>0.11){ mapT=0; if(ui.uiMode===0)inPhase('map',()=>drawMap()); }
   if(ui.helpT>0){ ui.helpT-=dt; if(ui.helpT<=0&&ui.helpOn)setHelp(false); }
   gfx.finalPass.uniforms.uTime.value=t; gfx.finalPass.uniforms.uFade.value=clamp(here.fade,0,1); gfx.finalPass.uniforms.uHurt.value=vfx.hurtFlash+(player.hp<adv.PLAYER_MAX*0.25&&!adv.dead?0.18+0.08*Math.sin(t*4):0);
-  if(ui.started&&!here.trans&&!adv.dead&&!isPaused())pickupItems();
-  if(gear.hands)updateCast(dt);
-  updateFinal(dt); updateGallery(dt); trackSeen(dt); updateFrozen(dt); cloudsMeetFire();
-  updateCross(raw);
-  updateProjs(dt);
-  sndUpdate(dt); updateEvents(dt,t);
+  inPhase('pickup',()=>{ if(ui.started&&!here.trans&&!adv.dead&&!isPaused())pickupItems(); });
+  inPhase('cast',()=>{ if(gear.hands)updateCast(dt); });
+  inPhase('final',()=>updateFinal(dt)); inPhase('galstep',()=>updateGallery(dt)); inPhase('seen',()=>trackSeen(dt)); inPhase('thaw',()=>{ updateFrozen(dt); cloudsMeetFire(); });
+  inPhase('cross',()=>updateCross(raw));
+  inPhase('projs',()=>updateProjs(dt));
+  inPhase('sound',()=>sndUpdate(dt)); inPhase('events',()=>updateEvents(dt,t));
   cullChunks();
   if(draw)composer.render(dt);
   if(TEST)return; // keep the resolution fixed in tests
@@ -74,6 +85,8 @@ if(TEST)window.__test={
   bless(n=1){ for(const k in BLESS)adv.lvl.bless[k]=n; return Object.keys(BLESS).length; },
   // how many columns the panels count for a piece of text (visW)
   width(text){ return visW(text); },
+  // every phase of tick draws the visual random n more times at its end (each phase reads its own keyed sequence, so nothing should change)
+  tickNoise(n){ tickNoise.n=Math.max(0,n|0); return tickNoise.n; },
   // a plain copy of what matters, to compare runs
   state(){ const f=v=>+(+v||0).toFixed(3);
     return {time:f(clock.time),seed:adv.runSeed,place:placeLabel(),depth:here.depth,started:ui.started,dead:adv.dead,hp:f(player.hp),pos:[f(player.x),f(player.z)],yaw:f(player.yaw),lvl:adv.lvl.n,

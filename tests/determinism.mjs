@@ -5,7 +5,11 @@
 // 開ける枠が無い時の代わりのルーン・宝物庫の番人の場所）と、生き物の形と初めの値（階の生き物・途中で呼び出した生き物・宝物庫の番人）は変わらないか。
 // これらは出来事ごとの乱数（keyedRand）や、生き物ごとの見た目の乱数の並び（makeMonster）で決めるので、粒子を1つ足すような見た目だけの変更では変わらないはず。
 // それと、世界を組み立てる間（buildWorld。像の形を作る所も）は、見た目の乱数 mr() を引かないか（__test.worldDraws）。
-import { withBrowser, newPage, openTest, advance, nearAltar } from './lib.mjs';
+// もう1つ：tick の段の終わりごとに見た目の乱数を余分に引いても（__test.tickNoise）、tick の外で余分に引いても、戦いと生き物の動き・伝言・画面写真が変わらないか。
+// tick は段ごと・生き物ごとに、鍵の並び（keyedRand）を読むので、ある段で引く回数が変わっても、後の段と次の tick は変わらないはず（src/game/30-loop-init.js の inPhase）。
+import pixelmatch from 'pixelmatch';
+import { PNG } from 'pngjs';
+import { withBrowser, newPage, openTest, advance, frames, nearAltar } from './lib.mjs';
 
 const steps = async (pg) => {
   await advance(pg, 3);
@@ -106,8 +110,26 @@ const vaultGuards = async (pg, extra) => {
           __test.mobLooks(n0).join(' '); // 番人の形と初めの値も
   }, n0);
 };
+// 段の終わりごとに見た目の乱数を noise 回、tick の外で extra 回余分に引いて、杖を溜めて撃ち、近くの敵と戦う。状態・伝言・画面写真を返す
+const noisy = async (browser, base, noise, extra) => {
+  const pg = await newPage(browser, errs, { width: 640, height: 360, still: true });
+  await openTest(pg, base, 'seed=202&depth=4&god=1');
+  await pg.evaluate((n) => __test.tickNoise(n), noise);
+  await burn(pg, extra);
+  await advance(pg, 2);
+  await pg.evaluate(() => __test.press('R'));
+  await advance(pg, 1.8);
+  await pg.evaluate(() => __test.release('R'));
+  await burn(pg, extra);
+  const state = await steps(pg);
+  await frames(pg, 1);
+  const shot = PNG.sync.read(await pg.screenshot({ timeout: 90000 }));
+  const log = await pg.evaluate(() => document.getElementById('log').innerText);
+  await pg.close();
+  return { state, log, shot };
+};
 const errs = [];
-const [runs, looks] = await withBrowser(async ({ browser, base }) => {
+const [runs, looks, noise] = await withBrowser(async ({ browser, base }) => {
   const out = [],
     looks = [];
   for (const seed of [202, 202, 203]) {
@@ -127,7 +149,8 @@ const [runs, looks] = await withBrowser(async ({ browser, base }) => {
     await pv.close();
     looks.push(got);
   }
-  return [out, looks];
+  const noise = [await noisy(browser, base, 0, 0), await noisy(browser, base, 3, 37)];
+  return [out, looks, noise];
 });
 const [a, b, c] = runs.map((s) => JSON.stringify(s));
 let fail = false;
@@ -184,6 +207,30 @@ if (!runs[0].monsters.length) {
   } else if (!empty.length)
     console.log(
       `✓ 見た目の乱数を進めても、眠っている生き物（${A.sleep.split(' ').filter((m) => m.endsWith('1')).length} 体）・祭壇の中身・レベルアップの選択肢・代わりのルーン・宝物庫の番人の場所と、生き物の形と初めの値（階の ${A.mobs.split(' ').length} 体・呼び出した2体・番人）は同じ`,
+    );
+}
+{
+  const [A, B] = noise,
+    { width: W, height: H } = A.shot,
+    px = pixelmatch(A.shot.data, B.shot.data, null, W, H, { threshold: 0 }),
+    sa = JSON.stringify(A.state),
+    sb = JSON.stringify(B.state);
+  if (sa !== sb || A.log !== B.log || px) {
+    fail = true;
+    console.log('✗ tick の段の終わりごとに見た目の乱数を余分に引いたら変わった：');
+    for (const k in A.state)
+      if (JSON.stringify(A.state[k]) !== JSON.stringify(B.state[k]))
+        console.log(
+          `  ${k}\n    そのまま ${JSON.stringify(A.state[k]).slice(0, 300)}\n    引いた後 ${JSON.stringify(B.state[k]).slice(0, 300)}`,
+        );
+    if (A.log !== B.log) console.log(`  伝言\n    そのまま ${A.log.slice(-300)}\n    引いた後 ${B.log.slice(-300)}`);
+    if (px) console.log(`  画面写真：${px} 画素が違う`);
+  } else if (!A.state.monsters.length) {
+    fail = true;
+    console.log('✗ tick の段の確かめに、敵がいない');
+  } else
+    console.log(
+      `✓ tick の段の終わりごとに見た目の乱数を余分に引いても、戦いと生き物の動き（${A.state.monsters.length} 体）・伝言・画面写真は同じ`,
     );
 }
 if (errs.length) console.log('page errors:', errs);

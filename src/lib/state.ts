@@ -29,8 +29,10 @@ export interface ZapFlash {
 export interface Clock {
   /** ゲームが始まってからの秒（30-loop-init.js の tick が進める） */
   time: number;
+  /** tick が進んだ回数（止めている間に描き直さない時は数えない）。tick の段ごとの見た目の乱数の鍵にする（30-loop-init.js の inPhase・inMobPhase） */
+  frame: number;
 }
-export const clock: Clock = { time: 0 };
+export const clock: Clock = { time: 0, frame: 0 };
 
 /** 揺れと光り（画面の揺れ、画面の光り、ダメージを受けた時と回復した時の光り、稲妻の光り） */
 export interface Vfx {
@@ -794,6 +796,8 @@ export interface Mob extends Monster {
   fy: number;
   flitT: number;
   rnd: () => number;
+  /** 階で何体目か（here.mobSeq から。makeMonster が並び rnd を作った時だけ。渡された時は -1）。tick で、この生き物の動きと描画の見た目の乱数の鍵にする */
+  seq: number;
   /** 次に近接の攻撃をするまでの秒（src/lib/monsters.ts の initMonsterLife が入れる） */
   atkCd?: number;
   /** 掃除機・修復機：している仕事（灰や火のマス、作り直す扉の番号。無ければ -1）・仕事をした秒・最後に仕事を探したゲームの時刻 */
