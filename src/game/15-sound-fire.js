@@ -72,7 +72,7 @@ function throwSpark(){
   if(sparks<=0){ showHint('火花を使い切った。少し待てば、また溜まる'); sparkCD=0.6; return; }
   sparks--; sparkRegen=0; updateSparkHud(); sWhoosh();
   const cp=Math.cos(player.pitch), dx=-Math.sin(player.yaw)*cp, dy=Math.sin(player.pitch), dz=-Math.cos(player.yaw)*cp;
-  blaze.spark={x:camera.position.x+dx*0.4,y:camera.position.y-0.15+dy*0.4,z:camera.position.z+dz*0.4,vx:dx*13,vy:dy*13+2.2,vz:dz*13,t:0};
+  blaze.spark={x:gfx.camera.position.x+dx*0.4,y:gfx.camera.position.y-0.15+dy*0.4,z:gfx.camera.position.z+dz*0.4,vx:dx*13,vy:dy*13+2.2,vz:dz*13,t:0};
   sparkCD=0.6;
 }
 function updateSpark(dt){

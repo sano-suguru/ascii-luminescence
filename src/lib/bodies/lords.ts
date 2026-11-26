@@ -703,13 +703,13 @@ export function beastAcc(col: Color): Color {
   return [Math.min(1, col[2] * 0.9 + 0.25), Math.min(1, col[0] * 0.9 + 0.15), Math.min(1, col[1] * 0.9 + 0.2)];
 }
 /** 眠っている獣の形（体を低く、脚を畳み、翼を閉じる） */
-export function beastSleep(form: readonly Glyph[], ty: { spec: { plan: string } }): Glyph[] {
+export function beastSleep(form: readonly Glyph[], ty: { spec?: { plan: string } | undefined }): Glyph[] {
   const out: Glyph[] = [];
   for (const p of form) {
     const q = { ...p };
-    if (ty.spec.plan === 'moth') {
+    if (must(ty.spec, '獣の体の作り spec').plan === 'moth') {
       if (p.part === 'wing') q.r = (p.r || 0) * 0.35;
-    } else if (ty.spec.plan !== 'serpent') {
+    } else if (must(ty.spec, '獣の体の作り spec').plan !== 'serpent') {
       if (p.part === 'legL' || p.part === 'legR') {
         q.y = p.y * 0.35;
         q.piv = (p.piv || 0) * 0.35;

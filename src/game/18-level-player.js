@@ -113,29 +113,14 @@ function updateTraps(dt){
   if(G2&&!G2.open){ const [lx,lz]=cpos(G2.lever); if(Math.hypot(player.x-lx-G2.ld[0]*0.6,player.z-lz-G2.ld[1]*0.6)<1.1){ G2.open=true; G2.pulled=clock.time; sCreak(lx,lz); const [gx,gz]=cpos(G2.cell); setTimeout(()=>sRumble(0.25,1.6),500); msg('<b style="color:#ffd48a">/</b>壁のレバーを引いた。どこか遠くで、鉄格子が軋みながら上がっていく音がした。'); } }
   if(G2)G2.o+=((G2.open?1:0)-G2.o)*Math.min(1,dt*0.8);
 }
-function drawTraps(t){
-  for(const tr of (here.D.traps||[])){ if(tr.hidden)continue; const [x,z]=cpos(tr.i); if(Math.hypot(x-player.x,z-player.z)>30)continue;
-    const col=TRAP_INFO[tr.type][1], c=[parseInt(col.slice(1,3),16)/255,parseInt(col.slice(3,5),16)/255,parseInt(col.slice(5,7),16)/255], k=tr.used?0.35:1.2+0.5*Math.sin(t*2.5+tr.i);
-    dyn(x,0.05,z,G('^'),0.7,c[0]*k,c[1]*k,c[2]*k,1,0);
-    for(let q=0;q<8;q++){ const a=q/8*Math.PI*2+t*0.4; dyn(x+Math.cos(a)*0.55,0.04,z+Math.sin(a)*0.55,G('.'),0.18,c[0]*k*0.7,c[1]*k*0.7,c[2]*k*0.7,1,a); } }
-  const G2=here.D.gate; if(G2){ const [gx,gz]=cpos(G2.cell);
-    if(Math.hypot(gx-player.x,gz-player.z)<36){ const lift=G2.o*2.7;
-      for(let k=0;k<7;k++){ const u=(k+0.5)/7*CELL-CELL/2, bx=G2.axis===0?gx:gx+u, bz=G2.axis===0?gz+u:gz;
-        for(let y=0.15+lift;y<3.0;y+=0.3)dyn(bx,y,bz,G('|'),0.3,0.75,0.72,0.8); }
-      for(const yy of [0.9+lift,1.9+lift])if(yy<3.0)for(let k=0;k<7;k++){ const u=(k+0.5)/7*CELL-CELL/2; dyn(G2.axis===0?gx:gx+u,yy,G2.axis===0?gz+u:gz,G('='),0.28,0.75,0.72,0.8); } }
-    const [lx,lz]=cpos(G2.lever), wx=lx+G2.ld[0]*0.93, wz=lz+G2.ld[1]*0.93;
-    dyn(wx,1.3,wz,G('#'),0.4,0.6,0.55,0.5); dyn(wx-G2.ld[0]*0.08,1.45,wz-G2.ld[1]*0.08,G(G2.open?'\\':'/'),0.42,1.4,1.1,0.5); }
-  if(player.netT>0&&ui.camMode==='tps'){ for(let k=0;k<16;k++){ const a=k/16*Math.PI*2+clock.time*0.3; for(let y=0.3;y<1.9;y+=0.32)dyn(player.x+Math.cos(a)*0.55,y,player.z+Math.sin(a)*0.55,G(k%2?'+':'#'),0.16,0.6,0.55,0.65); } }
-  else if(player.netT>0){ const fx=-Math.sin(player.yaw), fz=-Math.cos(player.yaw), rx=Math.cos(player.yaw), rz=-Math.sin(player.yaw), cy=camera.position.y;
-    for(let a=-3;a<=3;a++)for(let b=-2;b<=2;b++)dyn(camera.position.x+fx*0.7+rx*a*0.16,cy+b*0.16,camera.position.z+fz*0.7+rz*a*0.16,G('+'),0.1,0.55,0.5,0.6); }
-}
+// 罠と鉄格子を描く drawTraps は src/lib/fixtures.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- life and death, and plain real-time melee
 // 生き物の強さ statOf は src/lib/monsters.ts（src/game/imports.mjs で読む）。強さの表 MSTAT は src/lib/creatures.ts（statOf だけが読む）
 // WEAPON・SLEEP_MULT は src/lib/runes.ts（src/game/imports.mjs で読む）
 // roll は src/lib/random.ts（src/game/imports.mjs で読む）
 const hostile=m=>!m.ty.critter&&!m.ty.peaceful&&!m.ty.watcher&&m.ty.form!=='bloat'&&!m.dead;
-const hittable=m=>!m.dead&&!m.ty.peaceful;
+// 攻撃が当たる生き物か hittable は src/lib/aim.ts（src/game/imports.mjs で読む）
 const foe=m=>hittable(m)&&(hostile(m)||m.ty.watcher||m.ty.form==='bloat'||m.ty.form==='shroom'||(m.ty.critter==='mimic'&&!m.hidden));
 // angDiff は src/lib/math.ts（古い JS は使わない。src/lib/ の生成などが使う）
 // expNeed・expOf は src/lib/progress.ts（src/game/imports.mjs で読む）

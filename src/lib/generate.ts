@@ -104,7 +104,9 @@ export interface GenInput {
   weapons: readonly string[];
 }
 /** 壁の彫刻（年代記の出来事。2マスにまたがる物は、2つ目のマスに skip を置く） */
-export type Engraving = (HistoryEvent & { wide?: boolean; pi?: number }) | { skip: true; mi: number; art: Art };
+export type Engraving =
+  | (HistoryEvent & { wide?: boolean; pi?: number; skip?: undefined })
+  | { skip: true; mi: number; art: Art; text?: undefined };
 /** 上下左右の向き（D4 の1つ） */
 type Dir = (typeof D4)[number];
 /** 生き物の種類（src/lib/creatures.ts） */

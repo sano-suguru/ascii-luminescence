@@ -327,7 +327,7 @@ function burstFire(i,r,str){
   for(let dz=-rr;dz<=rr;dz++)for(let dx=-rr;dx<=rr;dx++){ if(Math.hypot(dx,dz)>r)continue; const x=cx+dx, z=cz+dz; if(x<0||z<0||x>=MW||z>=MH)continue; const j=z*MW+x; const tt=here.D.tile[j]; if(tt===TW||tt===TC||here.D.liquid[j]===LQ_WATER||here.D.liquid[j]===LQ_DEEP)continue;
     blaze.fuel[j]=Math.max(blaze.fuel[j],0.5); ignite(j,str,false); if(here.D.gas[j]>0.1)boom(j); }
 }
-function viewDir(){ const cp=Math.cos(player.pitch); return [-Math.sin(player.yaw)*cp,Math.sin(player.pitch),-Math.cos(player.yaw)*cp]; }
+// 見ている向き viewDir は src/lib/aim.ts（src/game/imports.mjs で読む）
 function groundPoint(o,d,maxD){ let x=o[0], y=o[1], z=o[2], px=x, pz=z; for(let s2=0;s2<(maxD||22);s2+=0.3){ x+=d[0]*0.3; y+=d[1]*0.3; z+=d[2]*0.3;
     for(const m of here.monsters){ if(!foe(m))continue; const cy=m.y+0.6*m.ty.scale; if(Math.hypot(m.x-x,cy-y,m.z-z)<0.6+0.35*m.ty.scale)return [m.x,m.z]; }
     const ci=Math.floor(z/CELL)*MW+Math.floor(x/CELL); if(ci<0||ci>=NCELL||here.D.tile[ci]===TW||here.D.tile[ci]===TX||doorBlock(ci))return [px,pz]; if(y<=0.05)return [x,z]; px=x; pz=z; }
