@@ -165,13 +165,13 @@ export const hashArr = (a, from = 0, to = a.length) => {
   lastHash.set(a, { from, to, copy: Buffer.from(b), h });
   return h;
 };
-const fnv = (s) => {
+export const fnv = (s) => {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
   return (h >>> 0).toString(16).padStart(8, '0');
 };
 /** 値を1つの文字列にする（NaN・Infinity・undefined も見分ける。生き物は並びの番号、種類は名前、形は点の指紋、配列の型は指紋、関数は fn） */
-const text = (v) =>
+export const text = (v) =>
   JSON.stringify(v, (k, x) =>
     x === undefined
       ? 'undefined'
