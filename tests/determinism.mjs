@@ -50,7 +50,11 @@ const contents = async (pg, extra) => {
   await advance(pg, 0.3);
   await pg.evaluate(() => dbg.exp(60)); // レベルを上げる（選択肢を決める）
   await advance(pg, 0.3);
-  const levelup = await pg.evaluate(() => document.getElementById('altarp').textContent.replace(/\s+/g, ' '));
+  // 選択肢のボタンの文字だけ（説明の欄は比べない：この小さな画面では1つ目の選択肢が左上のマウスの位置にかぶり、
+  // Chromium が実時間の間合いで mouseover を出すので、説明が出ているかどうかが揺れる）
+  const levelup = await pg.evaluate(() =>
+    [...document.querySelectorAll('#altarp button[data-lk]')].map((b) => b.textContent.replace(/\s+/g, ' ').trim()).join(' / '),
+  );
   await burn(pg, extra);
   // 枠を全部開けてから空の枠を拾う（代わりのルーンになる）。伝言の、姿を変えた後の文を見る
   const slot = await pg.evaluate(() => {
@@ -130,7 +134,7 @@ if (!runs[0].monsters.length) {
         !A[k] ||
         (k === 'sleep' && !A[k].split(' ').some((m) => m.endsWith('1'))) || // 眠っている生き物が1体もいなければ、比べても確かめにならない
         (k === 'altar' && !A[k].includes(':rune:')) ||
-        (k === 'levelup' && !A[k].includes('レベルが上がった')),
+        (k === 'levelup' && A[k].split(' / ').length !== 3),
     );
   if (empty.length) {
     fail = true;
