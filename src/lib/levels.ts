@@ -3,19 +3,51 @@
 // 状態の入れ物 adv（探索）・here（今いる場所）・player・ui に頼る物。
 import { lookup, must, nth } from './array.ts';
 import { MTYPES } from './creatures.ts';
-import { makeRune, applyOpen } from './gear.ts';
+import { makeRune, applyOpen, resetRunes } from './gear.ts';
 import { type Level, generateLevel } from './generate.ts';
-import { tallAt } from './ground.ts';
+import { tallAt, initFire } from './ground.ts';
 import { makeHistory } from './history.ts';
-import { legendAll } from './legend.ts';
+import { legendAll, descentSealed } from './legend.ts';
 import { msg } from './log.ts';
-import { mr } from './random.ts';
+import { mr, keyedRand, roll } from './random.ts';
 import { rollTraits } from './runes.ts';
-import { adv, here, placeMem, player, ui } from './state.ts';
-import { renderStatus } from './status.ts';
+import {
+  adv,
+  here,
+  placeMem,
+  player,
+  ui,
+  blaze,
+  buf,
+  edge,
+  fight,
+  gear,
+  gfx,
+  hudInfo,
+  iceT,
+  keys,
+  lantern,
+  saved,
+  stealth,
+  vfx,
+  clock,
+} from './state.ts';
+import { renderStatus, renderHelp, showHint } from './status.ts';
 import { SPECIALS } from './strata.ts';
-import { weaponPool } from './unlocks.ts';
-import { BRANCHES, CELL, FINAL_DEPTH, MH, MW, NCELL, TF, TP, TW } from './world.ts';
+import { weaponPool, unlocked } from './unlocks.ts';
+import { BRANCHES, CELL, FINAL_DEPTH, MH, MW, NCELL, TF, TP, TW, LQ_DEEP, LQ_WATER, REALMS } from './world.ts';
+import { MACHINE_INFO } from './names.ts';
+import { awardLore, graveCandidates, graveRows, loreRows, resultPlace, saveGrave } from './results.ts';
+import { boxText } from './text.ts';
+import { buildWorld, setFog, updateWater } from './build.ts';
+import { hurtPlayer } from './combat.ts';
+import { initDust } from './particles.ts';
+import { makeMonster } from './monsters.ts';
+import { placeRunesForLevel } from './altars.ts';
+import { sRumble } from './audio.ts';
+import { stairsGuarded } from './omens.ts';
+import { updatePlayer } from './player.ts';
+import { css } from './color.ts';
 
 /** 今の階 */
 const level = () => must(here.D, '今の階 here.D');
@@ -287,4 +319,343 @@ export function computeFOV(): void {
       if (di >= 0 && i !== pcF && !nth(level().doors, di).gone && nth(level().doors, di).o < 0.35 && s > 0.3) break; // a door in the cell you stand in does not hide what is around you
     }
   }
+}
+/**
+ * 階の中の出来事を調べる（first なら着いた時の伝言）：初めて入った部屋・壁の彫刻・下り階段を見つけた・上り階段と支道と異界の門と崩れた穴と下り階段を
+ * 踏んだ（封じられた階段は伝言だけ）・見た所の割合（もとは src/game/18-level-player.js）
+ */
+export function checkEvents(first?: boolean): void {
+  const pc = Math.floor(player.z / CELL) * MW + Math.floor(player.x / CELL);
+  const ri = nth(level().roomOf, pc);
+  if (first)
+    msg(
+      here.depth === 1
+        ? '<b style="color:#c9b8ff">@</b>石の迷宮に降り立った。闇の奥で、何かが息づいている。'
+        : `<b style="color:#ffcf7a">&gt;</b>深度 ${here.depth}。光はより鮮やかに、闇はより深くなった。`,
+    );
+  if (ri >= 0 && !here.visitedRooms.has(ri)) {
+    here.visitedRooms.add(ri);
+    const th = must(nth(level().rooms, ri).theme);
+    msg(`<b style="color:${css(th.col)}">${nth(level().rooms, ri).cave ? '~' : '*'}</b>${th.msg}`);
+    const km = nth(level().rooms, ri).kindMsg;
+    if (km) msg(`<b style="color:${css(th.col)}">=</b>${km}`);
+    const mc = nth(level().rooms, ri).machine;
+    if (mc) {
+      const mi = lookup(MACHINE_INFO, mc);
+      msg(`<b style="color:${css(mi.col)}">${mi.ch}</b>${mi.msg}`);
+    }
+  }
+  if (!level().engrSeen && level().engr.size) {
+    for (const k of level().engr.keys()) {
+      const i = k >> 2;
+      if (
+        here.fovVis[i] === here.fovStamp &&
+        Math.hypot(((i % MW) + 0.5) * CELL - player.x, (((i / MW) | 0) + 0.5) * CELL - player.z) < 7
+      ) {
+        level().engrSeen = true;
+        msg('<b style="color:#ffdca0">#</b>壁に彫刻が刻まれている。見つめれば、そこに描かれた出来事が読み取れる。');
+        break;
+      }
+    }
+  }
+  if (!here.stairsSeen && here.fovVis[level().stairs] === here.fovStamp) {
+    here.stairsSeen = true;
+    msg('<b style="color:#ffcf7a">&gt;</b>金色に輝く下り階段を見つけた。踏み込めば、さらに深い階層へ。');
+  }
+  if (here.lockCell >= 0) {
+    const lx = ((here.lockCell % MW) + 0.5) * CELL,
+      lz = (((here.lockCell / MW) | 0) + 0.5) * CELL;
+    if (Math.hypot(player.x - lx, player.z - lz) > 1.6) here.lockCell = -1;
+  }
+  if (ui.started && !here.trans && level().upstairs >= 0 && here.lockCell !== level().upstairs) {
+    const ux = ((level().upstairs % MW) + 0.5) * CELL,
+      uz = (((level().upstairs / MW) | 0) + 0.5) * CELL;
+    if (Math.hypot(player.x - ux, player.z - uz) < 0.95) {
+      here.trans = { phase: 'out', t: 0, regen: false, go: 'up' };
+      msg('<b style="color:#c9b8ff">&lt;</b>上り階段を上り、来た道を引き返す……');
+    }
+  }
+  if (ui.started && !here.trans && level().bstairs && here.lockCell !== must(level().bstairs).cell) {
+    const bx = ((must(level().bstairs).cell % MW) + 0.5) * CELL,
+      bz = (((must(level().bstairs).cell / MW) | 0) + 0.5) * CELL;
+    if (Math.hypot(player.x - bx, player.z - bz) < 0.95) {
+      here.trans = { phase: 'out', t: 0, regen: false, go: 'branch' };
+      msg(
+        `<b style="color:${css(lookup(BRANCHES, must(level().bstairs).key).col)}">&gt;</b>本道を外れ、${lookup(BRANCHES, must(level().bstairs).key).name}へ続く脇道を下りていく……`,
+      );
+    }
+  }
+  if (ui.started && !here.trans && level().portal && here.lockCell !== must(level().portal).cell) {
+    const px2 = ((must(level().portal).cell % MW) + 0.5) * CELL,
+      pz2 = (((must(level().portal).cell / MW) | 0) + 0.5) * CELL;
+    if (Math.hypot(player.x - px2, player.z - pz2) < 1.0) {
+      here.trans = { phase: 'out', t: 0, regen: false, go: 'realm' };
+      msg(`<b style="color:${css(lookup(REALMS, must(level().portal).key).col)}">0</b>揺らめく門をくぐった……`);
+    }
+  }
+  const sx = ((level().stairs % MW) + 0.5) * CELL,
+    sz = (((level().stairs / MW) | 0) + 0.5) * CELL;
+  if (ui.started && !here.trans && level().pit && must(level().pit)[pc]) {
+    here.trans = { phase: 'out', t: 0, regen: false };
+    player.fall = true;
+    msg('<b style="color:#ffa060">:</b>崩れた穴へ身を投じ、下の階層へと落ちていく……');
+  }
+  if (ui.started && !here.trans && here.lockCell !== level().stairs && Math.hypot(player.x - sx, player.z - sz) < 0.95 && !isFinal()) {
+    if (stairsGuarded()) {
+      if (clock.time - (updatePlayer.sealT || -99) > 6) {
+        updatePlayer.sealT = clock.time;
+        msg('<b style="color:#ff8a8a">=</b>階段は、見えない封に閉ざされている。控えの間に潜むものを退ければ、解けるだろう。');
+      }
+    } else if (descentSealed()) {
+      if (clock.time - (updatePlayer.sealT || -99) > 9) {
+        updatePlayer.sealT = clock.time;
+        msg('<b style="color:#a98cff">.</b>階段の先は、底の見えない闇に塞がれている。三つの窪みが、何かを待つように淡く光っている。');
+      }
+    } else {
+      here.trans = { phase: 'out', t: 0, regen: false };
+      msg(
+        legendAll() && here.depth === FINAL_DEPTH - 1
+          ? '<b style="color:#ffe9b0">*</b>三つの光が闇を押し分けた。最後の階段を、底へと降りていく……'
+          : '<b style="color:#ffcf7a">&gt;</b>光の螺旋に身を委ね、さらに深くへ降りていく。',
+      );
+    }
+  }
+  let ex = 0;
+  for (let i = 0; i < NCELL; i++) {
+    const tt = level().tile[i];
+    if (here.explored[i] && (tt === TF || tt === TP)) ex++;
+  }
+  const exP = Math.min(100, Math.round((ex / level().floorCount) * 100));
+  if (exP !== hudInfo.explored) {
+    hudInfo.explored = exP;
+    if (ui.helpOn) renderHelp();
+  }
+}
+/**
+ * 新しい階に入る（seedOverride があればそのシードで作る）：階を作り、祭壇とルーンを置き、世界を組み立て、生き物を作り（眠る物は階のシードから）、
+ * 見えた所の覚えを戻し、体を少し休め、着いた所（階段・門）のそばに立ち、火と出来事と霧と塵を用意して、見えるマスと出来事を調べる。
+ * 層が変わったら層の名前を出す（もとは src/game/18-level-player.js）
+ */
+export function newLevel(seedOverride?: number): void {
+  settleSlotPick();
+  if (advance.bounced) {
+    advance.bounced = false;
+    setTimeout(() => msg('<b style="color:#a98cff">.</b>闇の底に触れた途端、何かに押し返された。まだ、降りることは許されていない。'), 1200);
+  }
+  here.D = generate(seedOverride !== undefined ? seedOverride : levelSeed(), here.depth);
+  if (here.depth === FINAL_DEPTH && !here.branch && !here.realm) here.D.finalVault = true;
+  blaze.frozen = new Map();
+  placeRunesForLevel();
+  fight.projs = [];
+  fight.beamSegs = [];
+  fight.clouds = [];
+  fight.zones = [];
+  fight.laters = [];
+  fight.rains = [];
+  fight.marks = [];
+  fight.beamRun = null;
+  fight.boltFx = [];
+  fight.zapQueue = [];
+  vfx.zapFlash = null;
+  gear.castSt = null;
+  must(gfx.U).uAmb.value = level().prof.ambient;
+  hudInfo.explored = 0;
+  buildWorld();
+  updateWater();
+  here.fixtures = level().fixtures;
+  here.monsters = level().spawns.map(makeMonster);
+  if (here.branch && adv.runState.lordsDone && adv.runState.lordsDone.has(here.branch.key))
+    here.monsters = here.monsters.filter((m) => m.key !== 'lord');
+  here.finalSt = null;
+  if (isFinal()) setupFinal();
+  for (const m of here.monsters) if (!m.isLead) m.leader = here.monsters.find((o) => o.g === m.g && o.isLead) || null;
+  // who sleeps: its own random from the level's seed (keyedRand), not the look random (mr)
+  {
+    const sr = keyedRand('sleep', levelSeed());
+    for (const m of here.monsters) if (m.ty.beast || (m.ty.dragon && sr() < 0.9)) m.sleep = true;
+    const asleep = new Set();
+    for (const m of here.monsters) if (m.isLead && (m.g ?? NaN) >= 0 && m.ty.form !== 'eel' && sr() < 0.1) asleep.add(m.g);
+    for (const m of here.monsters) if (asleep.has(m.g)) m.sleep = true;
+  }
+  ui.noticeMsgT = {};
+  stealth.hudKey = '';
+  here.explored = new Uint8Array(NCELL);
+  here.mem = new Float32Array(NCELL * 3);
+  here.fovVis = new Uint32Array(NCELL);
+  here.fovStamp = 1;
+  {
+    const pm = placeMem.get(placeKey());
+    if (pm) {
+      here.explored.set(pm.explored);
+      here.mem.set(pm.mem);
+    }
+  }
+  here.visitedRooms = new Set();
+  here.stairsSeen = false;
+  player.rally = 0;
+  fight.rallyMotes = [];
+  if (adv.runStats && !ui.gallery) adv.runStats.maxDepth = Math.max(adv.runStats.maxDepth || 0, here.depth);
+  setTimeout(strataGrowth, 50);
+  if (ui.started && !ui.gallery && !adv.dead && !here.arrive) {
+    const sp = here.inter ? lookup(SPECIALS, here.inter.key) : null;
+    if (sp && (sp.k === 'town' || sp.k === 'oracle')) {
+      player.hp = adv.PLAYER_MAX;
+      setTimeout(() => msg('<b style="color:#ffd9a0">+</b>静かな場所だ。張りつめていた体が、すっかりほどけた。'), 1600);
+    } else if (player.hp < adv.PLAYER_MAX) {
+      player.hp = Math.min(adv.PLAYER_MAX, player.hp + adv.PLAYER_MAX * 0.2);
+      setTimeout(() => msg('<span class="lab">階段を降りると、少し息が整った。</span>'), 1600);
+    }
+  }
+  player.x = ((level().start % MW) + 0.5) * CELL;
+  player.z = (((level().start / MW) | 0) + 0.5) * CELL;
+  player.vx = player.vz = 0;
+  player.yaw = level().startYaw;
+  player.pitch = -0.04;
+  here.lockCell = -1;
+  {
+    const tc =
+      here.arrive === 'portal' && level().portal
+        ? must(level().portal).cell
+        : here.arrive === 'bstairs' && level().bstairs
+          ? must(level().bstairs).cell
+          : here.arrive === 'stairs'
+            ? level().stairs
+            : -1;
+    if (tc >= 0) {
+      const nb =
+        [1, -1, MW, -MW, MW + 1, MW - 1, -MW + 1, -MW - 1]
+          .map((o) => tc + o)
+          .find((j) => j >= 0 && j < NCELL && level().tile[j] === TF && !level().liquid[j] && !level().solid.has(j)) ?? tc;
+      player.x = ((nb % MW) + 0.5) * CELL;
+      player.z = (((nb / MW) | 0) + 0.5) * CELL;
+      player.yaw = Math.atan2(-((tc % MW) - (nb % MW)), -(((tc / MW) | 0) - ((nb / MW) | 0))) + Math.PI;
+      here.lockCell = tc;
+    }
+    here.arrive = null;
+  }
+  stealth.sneak = false;
+  lantern.r = 8.2;
+  lantern.k = 1;
+  here.riverCells = [];
+  for (let i = 0; i < NCELL; i++)
+    if (level().flow[i] && (level().liquid[i] === LQ_WATER || level().liquid[i] === LQ_DEEP)) here.riverCells.push(i);
+  blaze.trampled = [];
+  iceT.clear();
+  ui.tallMsg = false;
+  here.brimMsg = false;
+  player.lastCell = -1;
+  player.netT = 0;
+  blaze.scent = new Float32Array(NCELL);
+  here.webMsg = false;
+  here.webBurnMsg = false;
+  here.repairMsg = false;
+  buf.pN = 0;
+  blaze.gasAny = false;
+  initFire();
+  initEvents();
+  blaze.spark = null;
+  fight.projs = [];
+  showHint('');
+  edge.t = 0;
+  setFog();
+  initDust();
+  renderStatus();
+  if (ui.helpOn) renderHelp();
+  computeFOV();
+  checkEvents(true);
+  if (player.fall) {
+    player.fall = false;
+    setTimeout(() => {
+      hurtPlayer(roll(2, 4), '落下の衝撃');
+    }, 300);
+  }
+  if (level().stratum !== here.lastStratum) {
+    if (here.lastStratum !== null) {
+      showStratum(level().stratum);
+      if (level().stratum.msg) msg(`<b style="color:#c9b8ff">=</b>${level().stratum.msg}`);
+    }
+    here.lastStratum = level().stratum;
+  }
+}
+/**
+ * 死んだ時（勝った後は何もしない）：動きを止め、伝承を受け取り、墓に遺せる物を選ぶ結果の画面を出す（選び直すと描き直す。［新しい探索へ］で次の探索。
+ * もとは src/game/18-level-player.js）
+ */
+export function die(cause: string): void {
+  if (adv.won) return;
+  adv.dead = true;
+  keys.KeyW = keys.KeyA = keys.KeyS = keys.KeyD = false;
+  const el = document.getElementById('death');
+  if (!el) return;
+  const secs = Math.floor(clock.time - adv.runStats.t0),
+    mm = Math.floor(secs / 60),
+    ss = String(secs % 60).padStart(2, '0');
+  const f = (t: string) => `<span class="f">${t}</span>`;
+  adv.runStats.cause = cause;
+  const R = awardLore(false);
+  ui.graveCands = ui.gallery ? [] : graveCandidates();
+  ui.graveSel = 0;
+  if (ui.locked && document.exitPointerLock) document.exitPointerLock();
+  const draw = () => {
+    el.innerHTML = boxText(
+      [
+        f('+-- あ な た は 死 ん だ ---'),
+        f('|'),
+        `${f('|')}  死因      ${cause}`,
+        `${f('|')}  場所      ${resultPlace()}`,
+        `${f('|')}  Lv${adv.lvl.n}　倒した敵 ${adv.runStats.kills}　時間 ${mm}:${ss}`,
+        f('|'),
+        ...loreRows(R, f),
+        f('|'),
+        ...(ui.graveCands.length ? [...graveRows(f), f('|')] : []),
+        `${f('|')}  ${adv.HIST ? adv.HIST.civ.name + 'の地に、またひとつ灯りが消えた。' : ''}`,
+        f('|'),
+        `${f('|')}  <button class="row" id="newRunB"><b>[Enter]</b> 新しい探索へ</button>`,
+        f('+---'),
+      ],
+      64,
+    );
+  };
+  document.body.classList.add('over');
+  draw();
+  el.onclick = (e) => {
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品（元の読み方のまま）
+    const b = (e.target as Element).closest && (e.target as Element).closest('button');
+    if (!b) return;
+    if (b.dataset['gv'] !== undefined) {
+      ui.graveSel = +b.dataset['gv'];
+      draw();
+    } else if (b.id === 'newRunB') newRun();
+  };
+  el.classList.add('show');
+  sRumble(0.6, 2.5);
+}
+/** 新しい探索を始める（墓を記録し、結果の画面を閉じ、探索のシード・深さ・体力・レベル・記録・手と持ち物を戻して、1つ目の階に入る。もとは src/game/18-level-player.js） */
+export function newRun(): void {
+  saveGrave();
+  document.body.classList.remove('over');
+  const el = document.getElementById('death');
+  if (el) el.classList.remove('show', 'won');
+  adv.dead = false;
+  adv.runSeed = (Math.random() * 1e9) >>> 0;
+  here.depth = 1;
+  here.branch = null;
+  here.realm = null;
+  here.inter = null;
+  placeMem.clear();
+  here.arrive = null;
+  here.trans = null;
+  player.fall = false;
+  ui.gallery = null;
+  {
+    const gp = document.getElementById('gal');
+    if (gp) gp.classList.remove('show');
+  }
+  adv.PLAYER_MAX = 40;
+  adv.lvl = { n: 1, exp: 0, pending: 0, bless: {}, strata: new Set() };
+  adv.runTrials = (saved.META.trials || []).filter((k) => unlocked('t_' + k));
+  player.hp = adv.PLAYER_MAX;
+  adv.runStats = { kills: 0, t0: clock.time, maxDepth: here.depth, book0: saved.BOOK.size, beastsNew: 0 };
+  resetRunes();
+  newLevel();
 }

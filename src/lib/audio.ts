@@ -456,7 +456,7 @@ export function sAlarm(x: number | undefined, z: number | undefined): void {
   }
 }
 /** 術を放つ音（性質ごと：火はこもった音とぱちぱち、氷は高い澄んだ音、雷は鋭い音と低いうなり、毒は泡、ほかは風切り。もとは src/game/22-world-hints.js） */
-export function castSound(sp: { elem: string | null }, x: number, z: number): void {
+export function castSound(sp: { elem: string | null }, x?: number, z?: number): void {
   if (!sndReady()) return;
   const t = must(SND.ctx).currentTime,
     o = sOut(x, z, 0.32),

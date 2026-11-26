@@ -42,7 +42,7 @@ import {
 } from '../lib/altars.ts';
 import { lockedOf, loreLeft, unlocked, weaponPool } from '../lib/unlocks.ts';
 import {
-  advance, computeFOV, generate, initEvents, interAfter, interAt, isFinal, levelSeed, placeKey, settleSlotPick, setupFinal, showStratum, strataGrowth,
+  advance, checkEvents, computeFOV, die, generate, initEvents, newLevel, newRun, interAfter, interAt, isFinal, levelSeed, placeKey, settleSlotPick, setupFinal, showStratum, strataGrowth,
 } from '../lib/levels.ts';
 import { msg, renderLog } from '../lib/log.ts';
 import { renderHotbar } from '../lib/hotbar.ts';
@@ -56,7 +56,7 @@ import { drawDoors, drawFixtures, drawGraves, drawSprings, drawTraps, drawWebs, 
 import { addBolt, drawBoltFx, drawFire, drawFrozen, drawZones, sparkCrown } from '../lib/fx.ts';
 import { BRANCH_OMEN, REALM_OMEN, SPECIAL_OMEN, STRATUM_OMEN, drawOmens, drawStairSeal, omenOf, stairsGuarded } from '../lib/omens.ts';
 import { loadBeasts, recordBeast, saveMeta, saveSet } from '../lib/save.ts';
-import { BL, canStep, chooseNext, fireNear, foe, hostile, makeMonster, statOf, summon } from '../lib/monsters.ts';
+import { BL, canStep, chooseNext, fireNear, foe, hostile, makeMonster, statOf, summon, updateMonster } from '../lib/monsters.ts';
 import { brimFlare, chillArea, crackIce, ignite, initFire, splash, tallAt, trample, updateCritter, updateFrozen, uploadCells } from '../lib/ground.ts';
 import { setCamMode, sndToggle, tryLock, updateResume } from '../lib/screens.ts';
 import { addLooks, buildForm } from '../lib/bodies/build.ts';
@@ -68,10 +68,13 @@ import {
   aimOrigin, aimPoint, aimTarget, assistPoint, beamFrame, castPoint, doorBlock, drawSwing, groundPoint, handPoint, handUp, headPos, hittable, losClear, reflectDir, shotFrame, viewDir,
 } from '../lib/aim.ts';
 import {
-  addZone, castRapid, coldSnap, dropRune, fireWave, gainExp, hitFeedback, hitReact, inWater, later, lordFell, nearestFoe, rallyOnHit, startRain, zapLine,
+  addZone, applyElem, applyHit, boom, burstFire, castNow, castRapid, castStar, chainLightning, coldSnap, conductWater, damageMonster, dashCast, dashCuts, dropRune,
+  fireBeam, fireWave, gainExp, hitFeedback, hitReact, hurtPlayer, inWater, landElem, later, lordFell, meleeCast, monsterStrike, nearestFoe, onDodged, onKilledBy,
+  orbBurst, rallyOnHit, react, startRain, zapLine,
 } from '../lib/combat.ts';
+import { placeThirdPerson, solidAt, updatePlayer } from '../lib/player.ts';
 import { awardLore, graveCandidates, graveRows, loreRows, resultPlace, runLore, saveGrave, victory } from '../lib/results.ts';
-// three.js（r147）と光のにじみなどの部品 T、場面 scene、霧の色 fogCol
-import { T, fogCol, scene } from '../lib/three.ts';
+// three.js（r147）と光のにじみなどの部品 T、霧の色 fogCol
+import { T, fogCol } from '../lib/three.ts';
 import { buildWorld, setFog, updateWater } from '../lib/build.ts';
 import { DLC, DLP, SL, SND, adv, beamHold, blaze, buf, cellData, clock, fight, gear, gfx, here, hudInfo, iceT, keys, lantern, placeMem, player, saved, stealth, ui, vfx, vmKick, dust, edge } from '../lib/state.ts';

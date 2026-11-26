@@ -6,19 +6,11 @@
 // ---------------------------------------------------------------- swamp gas
 let gasTmp=new Float32Array(NCELL);
 // ---------------------------------------------------------------- fire (after Brogue: spreads through flammable terrain, ignites gas)
-let lastBoom=-10, sparkCD=0;
+let sparkCD=0;
 // FIRE_TYPES は src/lib/world.ts（src/game/imports.mjs で読む）
 // initFire は src/lib/ground.ts（src/game/imports.mjs で読む）
 // 火をつける ignite は src/lib/ground.ts（src/game/imports.mjs で読む）
-function boom(i){
-  const x=(i%MW+0.5)*CELL, z=(((i/MW)|0)+0.5)*CELL, dd=Math.hypot(x-player.x,z-player.z);
-  if(clock.time-(boom.last||-9)>0.35){ boom.last=clock.time; sBoom(clamp(1-dd/34,0.05,1)); makeNoise(x,z,20,1.3); }
-  if(dd<30){ for(let q=0;q<10;q++){ const a=mr()*6.28, e2=mr(); spawn(x,0.6+mr(),z,Math.cos(a)*3*e2,0.5+mr()*2.5,Math.sin(a)*3*e2,0.6+mr()*0.6,G(mpick(['*','#','^','%'])),0.3+mr()*0.2,3.2,1.6,0.5,0); } }
-  vfx.flash=Math.max(vfx.flash,clamp(1-dd/26,0,1)); vfx.shake=Math.max(vfx.shake,clamp(1-dd/22,0,1)*0.6);
-  if(dd<3.6)hurtPlayer(Math.round(12*(1-dd/3.6))+2,'爆発');
-  for(const m of here.monsters){ if(m.dead||m.ty.critter)continue; const dm=Math.hypot(m.x-x,m.z-z); if(dm<3.6)damageMonster(m,Math.round(16*(1-dm/3.6))+3,'fire'); }
-  if(clock.time-lastBoom>3&&dd<34){ lastBoom=clock.time; msg('<b style="color:#ffb347">*</b>沼のガスに火が回り、轟音とともに爆ぜた！'); }
-}
+// boom は src/lib/combat.ts（src/game/imports.mjs で読む）
 function stepFire(){
   const g=here.D.gas;
   // open flames (braziers, torches, lava) ignite gas that drifts into them

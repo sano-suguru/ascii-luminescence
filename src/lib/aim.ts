@@ -136,10 +136,11 @@ export function drawSwing(): void {
     );
   }
 }
-/** マスに閉じた扉があるか（燃え尽きた扉と、半分より開いた扉は通す。もとは src/game/26-spells-hud.js） */
+/** マスに閉じた扉があるか（燃え尽きた扉と、半分より開いた扉は通す。マップの外のマスは扉が無い。もとは src/game/26-spells-hud.js） */
 export function doorBlock(ci: number): boolean {
-  const di = nth(level().doorAt, ci),
-    d = di >= 0 ? nth(level().doors, di) : null;
+  // マップの外のマスも渡される（光線がマップの端で止まった所など）。その時は扉が無い（元のまま。範囲の外の読みは undefined で、比べると false）
+  const di = level().doorAt[ci],
+    d = (di ?? NaN) >= 0 ? nth(level().doors, must(di)) : null;
   return !!d && !d.gone && d.o < 0.5;
 }
 /** 2つの点の間を、壁・閉じた扉・天井に遮られずに見通せるか（0.3 ごとに調べる。マップの外に出たら見通せない。もとは src/game/26-spells-hud.js） */
@@ -186,7 +187,7 @@ export function groundPoint(o: readonly number[], d: readonly number[], maxD?: n
   return [x, z];
 }
 /** 跳ね返る向き：少し先が床か天井なら上下を、壁なら当たった向きを反す（角なら両方。もとは src/game/20-chant-hits.js） */
-export function reflectDir(x: number, y: number, z: number, d: readonly number[]): number[] {
+export function reflectDir(x: number, y: number, z: number, d: readonly number[]): V3 {
   const s = 0.25,
     cx = Math.floor((x + nth(d, 0) * s) / CELL),
     cz = Math.floor((z + nth(d, 2) * s) / CELL),
@@ -194,7 +195,7 @@ export function reflectDir(x: number, y: number, z: number, d: readonly number[]
     oz = Math.floor(z / CELL);
   const solidAt = (a: number, b: number): boolean =>
     a < 0 || b < 0 || a >= MW || b >= MH || level().tile[b * MW + a] === TW || level().tile[b * MW + a] === TX;
-  let r = [nth(d, 0), nth(d, 1), nth(d, 2)];
+  let r: V3 = [nth(d, 0), nth(d, 1), nth(d, 2)];
   const ci = Math.floor(z / CELL) * MW + Math.floor(x / CELL);
   if (y + nth(d, 1) * s < 0.02 || y + nth(d, 1) * s > (level().ceil[ci] ?? NaN)) {
     r[1] = -nth(r, 1);
@@ -244,7 +245,7 @@ export function aimTarget(): Mob | null {
   return ui.crossMon;
 }
 /** 狙いを助ける点：撃つ物が bolt か beam で、照準の先に生き物がいれば、その体（bolt は、動いている向きに飛ぶ時間の分だけ先）。ほかは null（もとは src/game/22-world-hints.js） */
-export function assistPoint(o: readonly number[], kind: string): V3 | null {
+export function assistPoint(o: readonly number[], kind: string | undefined): V3 | null {
   if (kind !== 'bolt' && kind !== 'beam') return null;
   const m = aimTarget();
   if (!m || m.dead) return null;
@@ -254,7 +255,7 @@ export function assistPoint(o: readonly number[], kind: string): V3 | null {
   return [c[0] + (m.vlx || 0) * t, c[1], c[2] + (m.vlz || 0) * t];
 }
 /** 撃つ所 o と向き d（長さ1）：詠唱した時は詠唱の円の少し下から、ほかは手の前から、狙いを助ける点か照準の先の点へ（近すぎる時は見ている向き。もとは src/game/22-world-hints.js） */
-export function shotFrame(h: string, chanted: boolean, kind: string): { o: V3; d: V3 } {
+export function shotFrame(h: string, chanted: boolean, kind: string | undefined): { o: V3; d: V3 } {
   const o: V3 = chanted
       ? (() => {
           const c = castPoint(h, 1),

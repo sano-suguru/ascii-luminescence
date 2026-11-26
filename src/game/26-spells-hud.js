@@ -7,15 +7,9 @@
 // 冷気 chillArea と、凍らせた水が溶ける updateFrozen は src/lib/ground.ts（src/game/imports.mjs で読む）
 // 凍らせた水を描く drawFrozen は src/lib/fx.ts（src/game/imports.mjs で読む）
 // thunder runs through water: everything standing in the same water near the hit takes a share
-function conductWater(m,base){ if(!inWater(m))return; let n=0;
-  for(const o of here.monsters){ if(o===m||!foe(o)||!inWater(o))continue; if(Math.hypot(o.x-m.x,o.z-m.z)>6)continue; if(n++>5)break;
-    addBolt([m.x,0.15,m.z],[o.x,0.15,o.z],RUNE_DEF.thunder.col,'thunder'); const r=(RES[o.key]||{}).thunder, k=r===undefined?1:r, d2=Math.round(Math.max(1,base*0.5)*k*1.5);
-    if(d2>0)damageMonster(o,d2,'thunder'); if(!o.dead){ const s2=o.st||(o.st={}); s2.shock=Math.max(s2.shock||0,0.3); o.wind=0; } sparkCrown(o,RUNE_DEF.thunder.col); } }
+// conductWater は src/lib/combat.ts（src/game/imports.mjs で読む）
 // what an element does where it lands (walls, doors, floor, water)
-function landElem(sp,x,y,z,ci){ if(!sp.elem||ci<0||ci>=NCELL)return; const areaK=1+(sp.aff.area||0)/100;
-  if(sp.elem==='fire'){ if(doorBlock(ci)||(here.D.tile[ci]!==TW&&here.D.tile[ci]!==TX&&!here.D.liquid[ci]))burstFire(ci,0.5*areaK,0.9); }
-  else if(sp.elem==='ice')chillArea(x,z,1.2*areaK);
-  else if(sp.elem==='thunder'){ const lq=here.D.liquid[ci]; if(lq===LQ_WATER||lq===LQ_DEEP){ for(const o of here.monsters){ if(!foe(o)||!inWater(o)||Math.hypot(o.x-x,o.z-z)>5)continue; addBolt([x,0.15,z],[o.x,0.15,o.z],RUNE_DEF.thunder.col,'thunder'); damageMonster(o,2,'thunder'); } } } }
+// landElem は src/lib/combat.ts（src/game/imports.mjs で読む）
 // fire reaching a poison mist sets the whole mist off
 function cloudsMeetFire(){ for(const c of fight.clouds){ if(c.t<=0)continue; const cx=Math.floor(c.x/CELL), cz=Math.floor(c.z/CELL), rr=Math.ceil(c.r/CELL); let lit=false;
     for(let dz=-rr;dz<=rr&&!lit;dz++)for(let dx=-rr;dx<=rr;dx++){ if(cx+dx<0||cx+dx>=MW||cz+dz<0||cz+dz>=MH)continue; const i=(cz+dz)*MW+cx+dx; if(blaze.fire[i]>0.1){ lit=true; break; } }
@@ -25,13 +19,7 @@ function cloudsMeetFire(){ for(const c of fight.clouds){ if(c.t<=0)continue; con
     if(Math.hypot(player.x-c.x,player.z-c.z)<R*0.8)hurtPlayer(roll(1,3),'爆炎'); burstFire(cz*MW+cx,c.r/CELL+0.5,1.0); sBoom(0.4); vfx.shake=Math.max(vfx.shake,0.25); vfx.flash=Math.max(vfx.flash,0.3);
     if(!saved.BOOK.has('blast')){ saved.BOOK.add('blast'); try{ localStorage.setItem('al_book',JSON.stringify([...saved.BOOK])); }catch(e){} } } }
 // a perfect dodge: the dodge rune answers only when an attack was actually evaded
-function onDodged(m){ if(!gear.hands)return; let any=false;
-  for(const h of ['L','R']){ const H=gear.hands[h]; if(!(H.trig&&H.trig.type==='dodge'&&H.atk)||fight.trigCd[h]>0||gear.swapSt)continue;
-    if(((atkType(h)==='blade'||atkType(h)==='gsweep')&&Math.hypot(m.x-player.x,m.z-player.z)>2.9)||(atkType(h)==='dash'&&Math.hypot(m.x-player.x,m.z-player.z)>4.5))continue;
-    const [ox,oy,oz]=handPoint(h), c=mCenter(m), d=Math.hypot(c[0]-ox,c[1]-oy,c[2]-oz)||1; fight.trigCd[h]=0.6; any=true;
-    castNow(h,{dir:[(c[0]-ox)/d,(c[1]-oy)/d,(c[2]-oz)/d],auto:true}); }
-  for(let q=0;q<16;q++){ const a=mr()*6.28; spawn(player.x+Math.cos(a)*0.6,1.0+mr(),player.z+Math.sin(a)*0.6,Math.cos(a)*1.5,0.3,Math.sin(a)*1.5,0.4,G(mpick(['~','\'','.'])),0.12,1.6,2.2,2.6,0); }
-  if(any&&sndReady()){ const t=SND.ctx.currentTime; sEnv(sTone(t,'sine',1320,1980,0.18,sOut(undefined,undefined,0.12)),t,0.003,0.16); } }
+// onDodged は src/lib/combat.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- the chant as a voice: whispered syllables that swell into a choir; each syllable lights one rune of the circle
 // VOWELS・CHANT_STEPS は src/lib/sound.ts（src/game/imports.mjs で読む）

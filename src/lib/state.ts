@@ -6,11 +6,11 @@ import { type MonsterType } from './creatures.ts';
 import { type BranchPlace, type Fixture, type InterPlace, type Level, type RealmPlace, type Web } from './generate.ts';
 import { META_DEF, type Meta } from './progress.ts';
 import { type History } from './history.ts';
-import type { HandsSnap } from './gear.ts';
+import type { HandsSnap, Spec } from './gear.ts';
 import type { LoreResult } from './results.ts';
 import type { Body, Glyph } from './bodies/kit.ts';
 import { type Rune } from './runes.ts';
-import type { DataTexture, InstancedMesh, Mesh, ShaderMaterial, Sphere, Texture, Vector3, WebGLRenderer } from 'three';
+import type { DataTexture, InstancedMesh, Mesh, Scene, ShaderMaterial, Sphere, Texture, Vector3, WebGLRenderer } from 'three';
 import type { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { DUST_N } from './shaders.ts';
 import { NCELL, NDL, NSL } from './world.ts';
@@ -256,8 +256,60 @@ export interface Player {
   swingWave?: boolean;
   /** 網に掛かった残りの秒（18-level-player.js の罠） */
   netT?: number;
+  /** 最後に通れなかった物（'wall'・'chasm'・'lava'・'gate'・'xtal'。src/lib/player.ts の solidAt が入れる） */
+  blockType: string;
+  /** 取り戻せる体力が戻る速さ（1秒あたり） */
+  rallyRate?: number;
+  /** 最後にダメージを受けたゲームの時刻 */
+  lastHurt?: number;
+  /** 攻撃の後の立ち直りの残りの秒（その間は次の攻撃ができない） */
+  recover?: number;
+  /** ダメージを受けないゲームの時刻（それまで）と、次にそうなれるゲームの時刻 */
+  invulT?: number;
+  invCd?: number;
+  /** 加護の効く間：反撃（ctrUntil）・持ち替えの直後（swapEdgeUntil）・倒した勢い（momUntil）・素早い詠唱（qcUntil）のゲームの時刻 */
+  ctrUntil?: number;
+  swapEdgeUntil?: number;
+  momUntil?: number;
+  qcUntil?: number;
+  /** 突進（経った秒 t・かかる秒 dur・向き dx・dz・速さ sp と、突進の間に切る物 cut） */
+  lunge?: Lunge | null;
+  /** 振った手 */
+  swingH?: string;
+  /** 次に転がれるまでの秒 */
+  rollCd?: number;
+  /** 水を歩いた時の水しぶきの溜め */
+  splash?: number;
+  /** 落ちて次の階へ行く途中（着いた時に落下のダメージ） */
+  fall?: boolean;
+  /** 炎の上にいた秒（0.5 秒ごとにダメージ） */
+  fireT?: number;
+  /** 最後にいたマス（マスが変わった時だけ、茂みと硫黄を調べる） */
+  lastCell?: number;
 }
-export const player: Player = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, pitch: -0.04, bob: 0, eye: 1.62, hp: 40, stillT: 0, searchedAt: -1 };
+/** 突進（経った秒 t・かかる秒 dur・向き dx・dz・速さ sp と、突進の間に切る物 cut：術 sp・当たった物 hit・幅 w・ダメージの倍率 dK・切った時に立ち直るか link） */
+export interface Lunge {
+  t: number;
+  dur: number;
+  dx: number;
+  dz: number;
+  sp: number;
+  cut?: { sp: Spec; hit: Set<Mob>; w: number; dK: number; link: boolean };
+}
+export const player: Player = {
+  x: 0,
+  z: 0,
+  vx: 0,
+  vz: 0,
+  yaw: 0,
+  pitch: -0.04,
+  bob: 0,
+  eye: 1.62,
+  hp: 40,
+  stillT: 0,
+  searchedAt: -1,
+  blockType: '',
+};
 
 /** 片手（L・R）の状態：武器のルーン atk と、付けたルーンの枠 slots（枠の数 slotN）。elem・trig は、その手の性質と発動のルーン。後から足される欄は、使う処理を移す時に型を足す。
  * runes.ts の Hand（handRunes などが読む、枠だけの形）とは別の物 */
@@ -356,6 +408,8 @@ export interface Blaze {
   trampled: [number, number][];
   /** 火の備品（松明・焚き火など）のマス（燃えるガスがここに触れると燃え上がる。src/lib/ground.ts の initFire が作る） */
   fireSrc: number[];
+  /** 沼のガスが爆ぜた伝言を最後に出したゲームの時刻（3秒あける） */
+  lastBoom: number;
 }
 export const blaze: Blaze = {
   fire: new Float32Array(NCELL),
@@ -370,6 +424,7 @@ export const blaze: Blaze = {
   frozen: new Map(),
   trampled: [],
   fireSrc: [],
+  lastBoom: -10,
 };
 
 /** 光線の一切れ（点の並び・色・残りの秒） */
@@ -547,6 +602,10 @@ export interface LevelExtra {
   /** 封じられた階段のうなり声を、次に鳴らせるゲームの時刻と、封が解けた伝言を出したか（src/lib/omens.ts の drawStairSeal） */
   sealSnd?: number;
   sealOpenMsg?: boolean;
+  /** 壁の彫刻を見つけた伝言・深い水に入った伝言・氷の上の伝言を出したか（その階で一度だけ） */
+  engrSeen?: boolean;
+  swimMsg?: boolean;
+  iceMsg?: boolean;
 }
 /** 先にある物の手がかり（src/lib/omens.ts の computeOmen）：下り階段から漏れる物（特別な階・層の変わり目・支道の奥）、支道の入口、異界の門、
  * 支道の入口と奥の階段のまわりの跡、場所ごとに次に音を鳴らせるゲームの時刻 */
@@ -651,8 +710,22 @@ export interface Monster {
   vlx?: number;
   vlz?: number;
   /** 最後に受けた攻撃の種類と、その吹き飛ばしの強さ（src/lib/combat.ts の hitReact が読む） */
-  lastAtk?: string;
-  lastKnock?: number;
+  lastAtk?: string | undefined;
+  lastKnock?: number | undefined;
+  /** 叩きつけ（ぶつかった時の傷 d と、終わるゲームの時刻 until） */
+  slam?: { d: number; until: number };
+  /** 性質の跡を最後に残したゲームの時刻（火・冷気・稲妻・連鎖。0.5 秒あける） */
+  fireT2?: number;
+  iceT?: number;
+  chainT?: number;
+  chainT2?: number;
+  /** 沼と深みの物が姿を現した伝言を出したか・ノームが最後に話したゲームの時刻・重い足音の溜め */
+  riseMsg?: boolean;
+  talkT?: number;
+  stepT?: number;
+  /** 試しの間の的：受けた傷の合計と、それを出しておく残りの秒 */
+  dsum?: number;
+  dT?: number;
   /** 吹き飛ばされている速さ */
   kx?: number;
   kz?: number;
@@ -721,8 +794,21 @@ export interface Mob extends Monster {
   tracked?: boolean;
   /** 剣を操る者：剣が回り始めた伝言を出したか */
   bladeMsg?: boolean;
-  /** 状態異常（TypeScript が読み書きするのは、冷え chill の残りの秒だけ） */
-  st?: { chill?: number };
+  /** 状態異常（残りの秒など） */
+  st?: MonStatus;
+}
+/** 生き物の状態異常（燃える burn・冷える chill・毒 poison・痺れ shock・動けない pin の残りの秒、次に動けなくなれるゲームの時刻 pinCd、
+ * 焦がしの加護が効いたか scorched、毒と燃えの傷の溜め pt・bt） */
+export interface MonStatus {
+  burn?: number;
+  chill?: number;
+  poison?: number;
+  shock?: number;
+  pin?: number;
+  pinCd?: number;
+  scorched?: boolean;
+  pt?: number;
+  bt?: number;
 }
 /** 今いる場所と、階の中身。深さ・支道・異界・特別な階、生き物、灯りの備品、階を移る途中、着いた所 */
 export interface Here {
@@ -934,9 +1020,10 @@ export interface Buf {
   pN: number;
 }
 export const buf: Buf = { dn: 0, pN: 0 };
-/** three.js のカメラのうち、TypeScript が読む欄だけ（本物は 05-renderer.js が作る PerspectiveCamera。TypeScript からは書き換えない） */
+/** three.js のカメラのうち、TypeScript が使う欄だけ（本物は 05-renderer.js が作る PerspectiveCamera。位置と向きは src/lib/player.ts が set で書く） */
 export interface CameraView {
-  readonly position: { readonly x: number; readonly y: number; readonly z: number };
+  readonly position: { readonly x: number; readonly y: number; readonly z: number; set(x: number, y: number, z: number): unknown };
+  readonly rotation: { set(x: number, y: number, z: number): unknown };
 }
 /** three.js の、マスの火・灰・変わり方を描画に渡す絵（DataTexture）のうち、TypeScript が書く欄だけ（本物は 05-renderer.js が作る。中身は cellData） */
 export interface CellTex {
@@ -951,6 +1038,8 @@ export interface Gfx {
   /** ここから下は、05-renderer.js・30-loop-init.js・06-world.js がその場で入れる three.js の物（入れるまでは null・undefined か空）。
    * 描画する部品（WebGL を使えない時は作れず、ゲームは始まらない） */
   renderer: WebGLRenderer | undefined;
+  /** 描く物を入れる場面（05-renderer.js が作る。three.js は物を作る時に Math.random を引くので、テスト用モードの乱数の入れ替えの後に作る） */
+  scene: Scene | null;
   /** 描画の全部の部品が分け合う値（シェーダーの uniform） */
   U: Uniforms | null;
   /** 階の文字の部品（30-loop-init.js の init が作る）と、壁の向こうを隠す板の部品 */
@@ -986,10 +1075,11 @@ export interface Uniforms {
   uAmb: { value: number };
 }
 export const gfx: Gfx = {
-  camera: { position: { x: 0, y: 0, z: 0 } },
+  camera: { position: { x: 0, y: 0, z: 0, set: () => undefined }, rotation: { set: () => undefined } },
   cellTex: { needsUpdate: false },
   drawBodyOnly: false,
   renderer: undefined,
+  scene: null,
   U: null,
   staticMat: undefined,
   occMat: undefined,

@@ -94,20 +94,7 @@ function drawMap(){
 setInterval(renderLog,1000);
 
 // ---------------------------------------------------------------- collisions
-let blockType='';
-function solidAt(x,z,r){
-  const x0=Math.floor((x-r)/CELL), x1=Math.floor((x+r)/CELL), z0=Math.floor((z-r)/CELL), z1=Math.floor((z+r)/CELL);
-  for(let cz=z0;cz<=z1;cz++)for(let cx=x0;cx<=x1;cx++){
-    if(cx<0||cz<0||cx>=MW||cz>=MH){ blockType='wall'; return true; }
-    if(here.D.gate&&here.D.gate.o<0.7&&cz*MW+cx===here.D.gate.cell){ const nx=clamp(x,cx*CELL,(cx+1)*CELL), nz=clamp(z,cz*CELL,(cz+1)*CELL); if((x-nx)**2+(z-nz)**2<r*r){ blockType='gate'; return true; } }
-    const tt=here.D.tile[cz*MW+cx];
-    const lqc=here.D.liquid[cz*MW+cx];
-    if(tt===TW||(tt===TC&&!(here.D.pit&&here.D.pit[cz*MW+cx]))||tt===TX||lqc===LQ_LAVA){ const nx=clamp(x,cx*CELL,(cx+1)*CELL), nz=clamp(z,cz*CELL,(cz+1)*CELL); if((x-nx)**2+(z-nz)**2<r*r){ blockType=tt===TC?'chasm':tt===TX?'xtal':lqc===LQ_LAVA?'lava':'wall'; return true; } }
-    else if(tt===TP){ if(Math.hypot(x-(cx+0.5)*CELL,z-(cz+0.5)*CELL)<0.55+r){ blockType='wall'; return true; } }
-    else { const sr=here.D.solid.get(cz*MW+cx); if(sr&&Math.hypot(x-(cx+0.5)*CELL,z-(cz+0.5)*CELL)<sr+r){ blockType='wall'; return true; } }
-  }
-  return false;
-}
+// solidAt は src/lib/player.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- input
 // keys は src/lib/state.ts（src/game/imports.mjs で読む。丸ごと入れ替えないので、名前はそのまま）

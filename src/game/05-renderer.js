@@ -6,7 +6,7 @@ const isGL2=gfx.renderer.capabilities.isWebGL2;
 let pixelRatio=Math.min(window.devicePixelRatio||1,1.5);
 gfx.renderer.setPixelRatio(pixelRatio);
 gfx.renderer.setSize(window.innerWidth,window.innerHeight,false);
-// scene は src/lib/three.ts（src/game/imports.mjs で読む）
+gfx.scene=new T.Scene();
 gfx.camera=new T.PerspectiveCamera(74,window.innerWidth/window.innerHeight,0.05,110);
 gfx.camera.rotation.order='YXZ';
 // fogCol は src/lib/three.ts（src/game/imports.mjs で読む）
@@ -16,7 +16,7 @@ const rt=new T.WebGLRenderTarget(window.innerWidth*pixelRatio,window.innerHeight
 const composer=new T.EffectComposer(gfx.renderer,rt);
 composer.setPixelRatio(pixelRatio);
 composer.setSize(window.innerWidth,window.innerHeight);
-composer.addPass(new T.RenderPass(scene,gfx.camera));
+composer.addPass(new T.RenderPass(gfx.scene,gfx.camera));
 const bloom=new T.UnrealBloomPass(new T.Vector2(window.innerWidth,window.innerHeight),0.8,0.55,0.76);
 [bloom.renderTargetBright,...bloom.renderTargetsHorizontal,...bloom.renderTargetsVertical].forEach(t=>{ if(t)t.texture.type=T.HalfFloatType; });
 composer.addPass(bloom);

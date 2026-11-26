@@ -17,7 +17,7 @@ function makeWater(){
   const mat=new T.ShaderMaterial({uniforms:{uAtlas:gfx.U.uAtlas,uTime:gfx.U.uTime,uSL:gfx.U.uSL,uDLP:gfx.U.uDLP,uDLC:gfx.U.uDLC,uFogDen:gfx.U.uFogDen,uFogColor:gfx.U.uFogColor,uWater:{value:gfx.waterTex},uWaterL:{value:gfx.waterLTex}},
     vertexShader:WATER_VS,fragmentShader:WATER_FS,side:T.DoubleSide,alphaToCoverage:true,extensions:{derivatives:true}});
   const geo=new T.PlaneGeometry(MW*CELL,MH*CELL); geo.rotateX(-Math.PI/2);
-  waterMesh=new T.Mesh(geo,mat); waterMesh.position.set(MW*CELL/2,0.06,MH*CELL/2); waterMesh.frustumCulled=false; scene.add(waterMesh);
+  waterMesh=new T.Mesh(geo,mat); waterMesh.position.set(MW*CELL/2,0.06,MH*CELL/2); waterMesh.frustumCulled=false; gfx.scene.add(waterMesh);
 }
 // updateWater は src/lib/build.ts（src/game/imports.mjs で読む）
 

@@ -5,63 +5,8 @@ adv.runSeed=(Math.random()*1e9)>>>0;
 // setFog は src/lib/build.ts（src/game/imports.mjs で読む）
 // showStratum は src/lib/levels.ts（src/game/imports.mjs で読む）
 // settleSlotPick は src/lib/levels.ts（src/game/imports.mjs で読む）
-function newLevel(seedOverride){
-  settleSlotPick();
-  if(advance.bounced){ advance.bounced=false; setTimeout(()=>msg('<b style="color:#a98cff">.</b>闇の底に触れた途端、何かに押し返された。まだ、降りることは許されていない。'),1200); }
-  here.D=generate(seedOverride!==undefined?seedOverride:levelSeed(),here.depth);
-  if(here.depth===FINAL_DEPTH&&!here.branch&&!here.realm)here.D.finalVault=true;
-  blaze.frozen=new Map();
-  placeRunesForLevel(); fight.projs=[]; fight.beamSegs=[]; fight.clouds=[]; fight.zones=[]; fight.laters=[]; fight.rains=[]; fight.marks=[]; fight.beamRun=null; fight.boltFx=[]; fight.zapQueue=[]; vfx.zapFlash=null; gear.castSt=null;
-  gfx.U.uAmb.value=here.D.prof.ambient;
-  hudInfo.explored=0;
-  buildWorld(); updateWater();
-  here.fixtures=here.D.fixtures;
-  here.monsters=here.D.spawns.map(makeMonster);
-  if(here.branch&&adv.runState.lordsDone&&adv.runState.lordsDone.has(here.branch.key))here.monsters=here.monsters.filter(m=>m.key!=='lord');
-  here.finalSt=null; if(isFinal())setupFinal();
-  for(const m of here.monsters)if(!m.isLead)m.leader=here.monsters.find(o=>o.g===m.g&&o.isLead)||null;
-  // who sleeps: its own random from the level's seed (keyedRand), not the look random (mr)
-  { const sr=keyedRand('sleep',levelSeed()); for(const m of here.monsters)if(m.ty.beast||(m.ty.dragon&&sr()<0.9))m.sleep=true;
-  const asleep=new Set(); for(const m of here.monsters)if(m.isLead&&m.g>=0&&m.ty.form!=='eel'&&sr()<0.10)asleep.add(m.g); for(const m of here.monsters)if(asleep.has(m.g))m.sleep=true; }
-  ui.noticeMsgT={}; stealth.hudKey='';
-  here.explored=new Uint8Array(NCELL); here.mem=new Float32Array(NCELL*3); here.fovVis=new Uint32Array(NCELL); here.fovStamp=1;
-  { const pm=placeMem.get(placeKey()); if(pm){ here.explored.set(pm.explored); here.mem.set(pm.mem); } }
-  here.visitedRooms=new Set(); here.stairsSeen=false; player.rally=0; fight.rallyMotes=[]; if(adv.runStats&&!ui.gallery)adv.runStats.maxDepth=Math.max(adv.runStats.maxDepth||0,here.depth); setTimeout(strataGrowth,50);
-  if(ui.started&&!ui.gallery&&!adv.dead&&!here.arrive){ const sp=here.inter?SPECIALS[here.inter.key]:null; if(sp&&(sp.k==='town'||sp.k==='oracle')){ player.hp=adv.PLAYER_MAX; setTimeout(()=>msg('<b style="color:#ffd9a0">+</b>静かな場所だ。張りつめていた体が、すっかりほどけた。'),1600); } else if(player.hp<adv.PLAYER_MAX){ player.hp=Math.min(adv.PLAYER_MAX,player.hp+adv.PLAYER_MAX*0.2); setTimeout(()=>msg('<span class="lab">階段を降りると、少し息が整った。</span>'),1600); } }
-  player.x=(here.D.start%MW+0.5)*CELL; player.z=(((here.D.start/MW)|0)+0.5)*CELL; player.vx=player.vz=0; player.yaw=here.D.startYaw; player.pitch=-0.04; here.lockCell=-1;
-  { const tc=here.arrive==='portal'&&here.D.portal?here.D.portal.cell:here.arrive==='bstairs'&&here.D.bstairs?here.D.bstairs.cell:here.arrive==='stairs'?here.D.stairs:-1;
-    if(tc>=0){ const nb=[1,-1,MW,-MW,MW+1,MW-1,-MW+1,-MW-1].map(o=>tc+o).find(j=>j>=0&&j<NCELL&&here.D.tile[j]===TF&&!here.D.liquid[j]&&!here.D.solid.has(j))??tc;
-      player.x=(nb%MW+0.5)*CELL; player.z=(((nb/MW)|0)+0.5)*CELL; player.yaw=Math.atan2(-((tc%MW)-(nb%MW)),-(((tc/MW)|0)-((nb/MW)|0)))+Math.PI; here.lockCell=tc; } here.arrive=null; }
-  stealth.sneak=false; lantern.r=8.2; lantern.k=1;
-  here.riverCells=[]; for(let i=0;i<NCELL;i++)if(here.D.flow[i]&&(here.D.liquid[i]===LQ_WATER||here.D.liquid[i]===LQ_DEEP))here.riverCells.push(i);
-  blaze.trampled=[]; iceT.clear(); ui.tallMsg=false; here.brimMsg=false; player.lastCell=-1; player.netT=0;
-  blaze.scent=new Float32Array(NCELL); here.webMsg=false; here.webBurnMsg=false; here.repairMsg=false;
-  buf.pN=0; blaze.gasAny=false; initFire(); initEvents(); blaze.spark=null; fight.projs=[]; showHint(''); edge.t=0; setFog(); initDust();
-  renderStatus(); if(ui.helpOn)renderHelp();
-  computeFOV(); checkEvents(true);
-  if(player.fall){ player.fall=false; setTimeout(()=>{ hurtPlayer(roll(2,4),'落下の衝撃'); },300); }
-  if(here.D.stratum!==here.lastStratum){ if(here.lastStratum!==null){ showStratum(here.D.stratum); if(here.D.stratum.msg)msg(`<b style="color:#c9b8ff">=</b>${here.D.stratum.msg}`); } here.lastStratum=here.D.stratum; }
-}
-function checkEvents(first){
-  const pc=Math.floor(player.z/CELL)*MW+Math.floor(player.x/CELL);
-  const ri=here.D.roomOf[pc];
-  if(first)msg(here.depth===1?'<b style="color:#c9b8ff">@</b>石の迷宮に降り立った。闇の奥で、何かが息づいている。':`<b style="color:#ffcf7a">&gt;</b>深度 ${here.depth}。光はより鮮やかに、闇はより深くなった。`);
-  if(ri>=0&&!here.visitedRooms.has(ri)){ here.visitedRooms.add(ri); const th=here.D.rooms[ri].theme; msg(`<b style="color:${css(th.col)}">${here.D.rooms[ri].cave?'~':'*'}</b>${th.msg}`); const km=here.D.rooms[ri].kindMsg; if(km)msg(`<b style="color:${css(th.col)}">=</b>${km}`); const mc=here.D.rooms[ri].machine; if(mc){ const mi=MACHINE_INFO[mc]; msg(`<b style="color:${css(mi.col)}">${mi.ch}</b>${mi.msg}`); } }
-  if(!here.D.engrSeen&&here.D.engr.size){ for(const k of here.D.engr.keys()){ const i=k>>2; if(here.fovVis[i]===here.fovStamp&&Math.hypot((i%MW+0.5)*CELL-player.x,(((i/MW)|0)+0.5)*CELL-player.z)<7){ here.D.engrSeen=true; msg('<b style="color:#ffdca0">#</b>壁に彫刻が刻まれている。見つめれば、そこに描かれた出来事が読み取れる。'); break; } } }
-  if(!here.stairsSeen&&here.fovVis[here.D.stairs]===here.fovStamp){ here.stairsSeen=true; msg('<b style="color:#ffcf7a">&gt;</b>金色に輝く下り階段を見つけた。踏み込めば、さらに深い階層へ。'); }
-  if(here.lockCell>=0){ const lx=(here.lockCell%MW+0.5)*CELL, lz=(((here.lockCell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-lx,player.z-lz)>1.6)here.lockCell=-1; }
-  if(ui.started&&!here.trans&&here.D.upstairs>=0&&here.lockCell!==here.D.upstairs){ const ux=(here.D.upstairs%MW+0.5)*CELL, uz=(((here.D.upstairs/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-ux,player.z-uz)<0.95){ here.trans={phase:'out',t:0,regen:false,go:'up'}; msg('<b style="color:#c9b8ff">&lt;</b>上り階段を上り、来た道を引き返す……'); } }
-  if(ui.started&&!here.trans&&here.D.bstairs&&here.lockCell!==here.D.bstairs.cell){ const bx=(here.D.bstairs.cell%MW+0.5)*CELL, bz=(((here.D.bstairs.cell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-bx,player.z-bz)<0.95){ here.trans={phase:'out',t:0,regen:false,go:'branch'}; msg(`<b style="color:${css(BRANCHES[here.D.bstairs.key].col)}">&gt;</b>本道を外れ、${BRANCHES[here.D.bstairs.key].name}へ続く脇道を下りていく……`); } }
-  if(ui.started&&!here.trans&&here.D.portal&&here.lockCell!==here.D.portal.cell){ const px2=(here.D.portal.cell%MW+0.5)*CELL, pz2=(((here.D.portal.cell/MW)|0)+0.5)*CELL; if(Math.hypot(player.x-px2,player.z-pz2)<1.0){ here.trans={phase:'out',t:0,regen:false,go:'realm'}; msg(`<b style="color:${css(REALMS[here.D.portal.key].col)}">0</b>揺らめく門をくぐった……`); } }
-  const sx=(here.D.stairs%MW+0.5)*CELL, sz=(((here.D.stairs/MW)|0)+0.5)*CELL;
-  if(ui.started&&!here.trans&&here.D.pit&&here.D.pit[pc]){ here.trans={phase:'out',t:0,regen:false}; player.fall=true; msg('<b style="color:#ffa060">:</b>崩れた穴へ身を投じ、下の階層へと落ちていく……'); }
-  if(ui.started&&!here.trans&&here.lockCell!==here.D.stairs&&Math.hypot(player.x-sx,player.z-sz)<0.95&&!isFinal()){
-    if(stairsGuarded()){ if(clock.time-(updatePlayer.sealT||-99)>6){ updatePlayer.sealT=clock.time; msg('<b style="color:#ff8a8a">=</b>階段は、見えない封に閉ざされている。控えの間に潜むものを退ければ、解けるだろう。'); } }
-    else if(descentSealed()){ if(clock.time-(updatePlayer.sealT||-99)>9){ updatePlayer.sealT=clock.time; msg('<b style="color:#a98cff">.</b>階段の先は、底の見えない闇に塞がれている。三つの窪みが、何かを待つように淡く光っている。'); } }
-    else { here.trans={phase:'out',t:0,regen:false}; msg(legendAll()&&here.depth===FINAL_DEPTH-1?'<b style="color:#ffe9b0">*</b>三つの光が闇を押し分けた。最後の階段を、底へと降りていく……':'<b style="color:#ffcf7a">&gt;</b>光の螺旋に身を委ね、さらに深くへ降りていく。'); } }
-  let ex=0; for(let i=0;i<NCELL;i++){ const tt=here.D.tile[i]; if(here.explored[i]&&(tt===TF||tt===TP))ex++; }
-  const exP=Math.min(100,Math.round(ex/here.D.floorCount*100)); if(exP!==hudInfo.explored){ hudInfo.explored=exP; if(ui.helpOn)renderHelp(); }
-}
+// newLevel は src/lib/levels.ts（src/game/imports.mjs で読む）
+// checkEvents は src/lib/levels.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- player
 // 薄い氷に乗っていた秒 iceT は src/lib/state.ts、氷が割れる crackIce・背の高い茂みか tallAt・踏み分ける trample・硫黄が燃え上がる brimFlare は src/lib/ground.ts（src/game/imports.mjs で読む）
@@ -141,17 +86,7 @@ function chooseLevel(i){ const o=lvlOpts[i]; if(!o)return;
   ui.lvlOpen=false; const el=document.getElementById('altarp'); if(el)el.classList.remove('show','open'); document.body.classList.toggle('paused',isPaused()); if(!ui.plFailed&&ui.started&&!adv.dead)tryLock(); updateResume(); }
 // a new stratum strengthens the body
 // strataGrowth は src/lib/levels.ts（src/game/imports.mjs で読む）
-function hurtPlayer(n,cause){
-  if(ui.godMode)return; if((player.invulT||0)>clock.time)return; if(BL('reckless'))n*=BL('reckless')>=2?1.35:1.25;
-  n*=Math.max(0.4,1-0.15*bodyN('ward'));
-  if(adv.dead||!ui.started||ui.gallery||n<=0)return;
-  player.hp-=n; player.lastHurt=clock.time; { const mn=bodyN('mend'); player.rally=Math.min(Math.max(0,adv.PLAYER_MAX-player.hp),(player.rally||0)+n*0.6); player.rallyRate=player.rally/Math.max(1,4*(1+0.5*mn)-0.6); } vfx.hurtFlash=Math.min(1.2,vfx.hurtFlash+0.35+n*0.05); vfx.shake=Math.max(vfx.shake,Math.min(0.5,0.12+n*0.03));
-  if(sndReady()){ const t=SND.ctx.currentTime; sEnv(sTone(t,'sine',140,60,0.25,sOut(undefined,undefined,0.35)),t,0.01,0.22); }
-  if(clock.time-(hurtPlayer.mt||-9)>0.8||hurtPlayer.mc!==cause){ hurtPlayer.mt=clock.time; hurtPlayer.mc=cause; msg(`<b style="color:#ff5a4a">-</b>${cause}で ${n} のダメージを受けた。`); }
-  if(player.hp<=0)player.hp=0;
-  renderStatus();
-  if(player.hp<=0)die(cause);
-}
+// hurtPlayer は src/lib/combat.ts（src/game/imports.mjs で読む）
 // resultPlace は src/lib/results.ts（src/game/imports.mjs で読む）
 // runLore は src/lib/results.ts（src/game/imports.mjs で読む）
 // awardLore は src/lib/results.ts（src/game/imports.mjs で読む）
@@ -161,45 +96,10 @@ function hurtPlayer(n,cause){
 // graveCandidates は src/lib/results.ts（src/game/imports.mjs で読む）
 // saveGrave は src/lib/results.ts（src/game/imports.mjs で読む）
 // graveRows は src/lib/results.ts（src/game/imports.mjs で読む）
-function die(cause){
-  if(adv.won)return;
-  adv.dead=true; keys.KeyW=keys.KeyA=keys.KeyS=keys.KeyD=false;
-  const el=document.getElementById('death'); if(!el)return;
-  const secs=Math.floor(clock.time-adv.runStats.t0), mm=Math.floor(secs/60), ss=String(secs%60).padStart(2,'0');
-  const f=t=>`<span class="f">${t}</span>`;
-  adv.runStats.cause=cause; const R=awardLore(false); ui.graveCands=ui.gallery?[]:graveCandidates(); ui.graveSel=0; if(ui.locked&&document.exitPointerLock)document.exitPointerLock();
-  const draw=()=>{ el.innerHTML=boxText([f('+-- あ な た は 死 ん だ ---'),f('|'),`${f('|')}  死因      ${cause}`,`${f('|')}  場所      ${resultPlace()}`,
-    `${f('|')}  Lv${adv.lvl.n}　倒した敵 ${adv.runStats.kills}　時間 ${mm}:${ss}`,f('|'),...loreRows(R,f),f('|'),...(ui.graveCands.length?[...graveRows(f),f('|')]:[]),`${f('|')}  ${adv.HIST?adv.HIST.civ.name+'の地に、またひとつ灯りが消えた。':''}`,f('|'),`${f('|')}  <button class="row" id="newRunB"><b>[Enter]</b> 新しい探索へ</button>`,f('+---')],64); };
-  document.body.classList.add('over'); draw(); el.onclick=e=>{ const b=e.target.closest&&e.target.closest('button'); if(!b)return; if(b.dataset.gv!==undefined){ ui.graveSel=+b.dataset.gv; draw(); } else if(b.id==='newRunB')newRun(); };
-  el.classList.add('show'); sRumble(0.6,2.5);
-}
-function newRun(){
-  saveGrave(); document.body.classList.remove('over');
-  const el=document.getElementById('death'); if(el)el.classList.remove('show','won');
-  adv.dead=false; adv.runSeed=(Math.random()*1e9)>>>0; here.depth=1; here.branch=null; here.realm=null; here.inter=null; placeMem.clear(); here.arrive=null;
-  here.trans=null; player.fall=false; ui.gallery=null; { const gp=document.getElementById('gal'); if(gp)gp.classList.remove('show'); }
-  adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(saved.META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:clock.time,maxDepth:here.depth,book0:saved.BOOK.size,beastsNew:0}; resetRunes(); newLevel();
-}
+// die は src/lib/levels.ts（src/game/imports.mjs で読む）
+// newRun は src/lib/levels.ts（src/game/imports.mjs で読む）
 // hitReact は src/lib/combat.ts（src/game/imports.mjs で読む）
-function damageMonster(m,n,how){
-  if(m.dead||n<=0)return;
-  if(m.key==='final'&&m.invulnT>0){ if(how!=='env')hitFeedback(m,0,null,false); return; }
-  if(m.sleep&&how!=='env'){ n*=SLEEP_MULT;
-    // a hit on a sleeper: a bright gold burst and a deep strike sound instead of words
-    for(let q=0;q<22;q++){ const a=mr()*6.28, e=mr()*1.2; spawn(m.x,m.y+0.6*m.ty.scale,m.z,Math.cos(a)*2.4,0.8+e*1.6,Math.sin(a)*2.4,0.6+mr()*0.5,G(mpick(['*','+','\''])),0.2,3.4,2.6,1.0,0); }
-    vfx.shake=Math.max(vfx.shake,0.18);
-    if(sndReady()){ const t=SND.ctx.currentTime; sEnv(sTone(t,'square',180,60,0.18,sOut(m.x,m.z,0.35)),t,0.005,0.25); } }
-  if(m.ty.dummy){ m.dsum=(m.dsum||0)+n; m.dT=2; }
-  m.hp-=n; m.hitT=0.22; m.sleep=false; if(m.hidden)m.revealNow=true; rallyOnHit(m,n,how); if(how!=='env'&&clock.time-(m.playerT||-99)<0.05)hitReact(m,n);
-  if(!m.noticed&&hostile(m)){ m.aware=1.25; onNoticed(m); }
-  for(let q=0;q<10;q++){ const a=mr()*6.28; spawn(m.x,m.y+0.6*m.ty.scale+mr()*0.4,m.z,Math.cos(a)*1.4,0.6+mr()*1.2,Math.sin(a)*1.4,0.5+mr()*0.3,G(mpick(['*','+','.'])),0.14,2.2,1.9,1.6,0); }
-  if(m.hp<=0){ m.dead=true; adv.runStats.kills++; lordFell(m); if(m.key==='final')setTimeout(victory,1800); if(how!=='env'){ dropRune(m); onKilledBy(m); }
-    if(clock.time-(m.playerT||-99)<6)gainExp(expOf(m)); if(BL('momentum')&&clock.time-(m.playerT||-99)<1)player.momUntil=clock.time+3; if(BL('shatter')&&m.st&&m.st.chill>0&&clock.time-(m.playerT||-99)<0.1)coldSnap(m.x,m.z,BL('shatter')>=2?3.5:2.5);
-    for(const p of m.form){ if(mr()<0.6)continue; const a=mr()*6.28; spawn(m.x+p.x*m.ty.scale,m.y+p.y*m.ty.scale,m.z+p.z*m.ty.scale,Math.cos(a)*1.2,0.3+mr()*1.5,Math.sin(a)*1.2,0.8+mr()*0.8,p.g,0.18,m.ty.col[0]*1.6,m.ty.col[1]*1.6,m.ty.col[2]*1.6,0); }
-    if(sndReady()){ const t=SND.ctx.currentTime; sEnv(sTone(t,'triangle',300,90,0.4,sOut(m.x,m.z,0.3)),t,0.01,0.35); }
-    msg(`<b style="color:${css(m.ty.col)}">${m.ty.ch}</b>${mname(m)}を倒した。${how==='fire'?'炎に巻かれて崩れ落ちた。':''}`);
-  }
-}
+// damageMonster は src/lib/combat.ts（src/game/imports.mjs で読む）
 function playerAttack(){
   if(adv.dead||!ui.started||here.trans||(player.atkCd||0)>0||player.netT>0)return;
   player.atkCd=WEAPON.cd; player.swing=0.22; sWhoosh();
@@ -223,12 +123,5 @@ function updateLife(dt){
   player.fireT=(player.fireT||0)+dt; if(player.fireT>0.5){ player.fireT=0; if(blaze.fire[pc]>0.1)hurtPlayer(2,'炎');
     for(const m of here.monsters){ if(m.dead||m.ty.critter||m.ty.habitat==='lava')continue; const ci=m.cz*MW+m.cx; if(blaze.fire[ci]>0.1&&!m.ty.flier)damageMonster(m,3,'fire'); } }
 }
-function monsterStrike(m,dt,dp){
-  if(!hostile(m)||!m.noticed||m.sleep||adv.dead)return;
-  if(m.ty.form==='eel'&&!(m.surf>0))return; if((m.ty.habitat==='deep'||m.ty.habitat==='bog')&&(m.rise||0)<0.5)return;
-  const st=statOf(m), reach=(m.ty.habitat==='deep'?3.2:0.95+0.45*m.ty.scale);
-  m.atkCd-=dt;
-  if(m.wind>0){ m.wind-=dt; if(m.wind<=0){ m.atkCd=st[3]; if(dp<reach+0.35){ if(player.roll){ onDodged(m); if(clock.time-(monsterStrike.mt||-9)>2){ monsterStrike.mt=clock.time; msg(`<b style="color:#9fe0ff">~</b>転がって${mname(m)}の攻撃をかわした！`); } } else hurtPlayer(roll(st[1],st[2]),m.ty.name); } } }
-  else if(dp<reach&&m.atkCd<=0&&st[2]>0){ m.wind=0.55; }
-}
+// monsterStrike は src/lib/combat.ts（src/game/imports.mjs で読む）
 // the blade swing in front of the camera

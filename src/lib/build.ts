@@ -11,7 +11,7 @@ import { setNoiseSeed, vnoise } from './noise.ts';
 import { R, RI, pick, rand } from './random.ts';
 import { clamp } from './rng.ts';
 import { gfx, here, hudInfo } from './state.ts';
-import { T, fogCol, scene } from './three.ts';
+import { T, fogCol } from './three.ts';
 import { ARTS, VAULTS } from './vaults.ts';
 import {
   BASE_H,
@@ -102,12 +102,12 @@ export function updateWater(): void {
  */
 export function buildWorld(): void {
   for (const c of gfx.chunks) {
-    scene.remove(c.mesh);
+    must(gfx.scene).remove(c.mesh);
     c.mesh.geometry.dispose();
   }
   gfx.chunks = [];
   if (gfx.occMesh) {
-    scene.remove(gfx.occMesh);
+    must(gfx.scene).remove(gfx.occMesh);
     gfx.occMesh.geometry.dispose();
   }
   const { tile, liquid, surface, roomOf, rooms, lights, ceil } = level();
@@ -2532,7 +2532,7 @@ export function buildWorld(): void {
     (mesh.instanceMatrix.array as Float32Array).set(mm);
     mesh.instanceMatrix.needsUpdate = true;
     mesh.frustumCulled = false;
-    scene.add(mesh);
+    must(gfx.scene).add(mesh);
     const cxw = ((c % CXN) + 0.5) * CHUNK * CELL,
       czw = (((c / CXN) | 0) + 0.5) * CHUNK * CELL,
       cyw = (ymin + ymax) / 2;
@@ -2544,6 +2544,6 @@ export function buildWorld(): void {
   gfx.occMesh = new T.Mesh(og, gfx.occMat);
   gfx.occMesh.renderOrder = -10;
   gfx.occMesh.frustumCulled = false;
-  scene.add(gfx.occMesh);
+  must(gfx.scene).add(gfx.occMesh);
   hudInfo.glyphCount = n;
 }
