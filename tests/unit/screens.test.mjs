@@ -10,6 +10,7 @@ import * as PT from '../../src/lib/particles.ts';
 import * as SC from '../../src/lib/screens.ts';
 import * as ST from '../../src/lib/status.ts';
 import { G } from '../../src/lib/glyphs.ts';
+import { msgs, ui } from '../../src/lib/state.ts';
 import { fakeScreen, particleCases, screenCases } from './screens-cases.mjs';
 
 const fnv = (s) => {
@@ -56,5 +57,45 @@ describe('移す前と同じ', () => {
       cases.some((c) => c.calls.some((x) => x.grew === 16) && c.log.some((e) => e[1] === 'start')),
     ]).toEqual([true, true, true, true]);
     expect([fnv(all), all.length]).toEqual(['03a1666c', 762511]);
+  });
+});
+
+describe('マウスを捕まえるのに失敗した時（lockFailed）', () => {
+  // 失敗の返し方ごとに tryLock を2回呼び、捕まえられないと決めたかと、案内の伝言の数を見る。lockedOnce は、このページで一度でも捕まえたか
+  const run = async (lock, lockedOnce) => {
+    const page = fakeScreen(),
+      doc = globalThis.document,
+      keep = { plFailed: ui.plFailed, lockedOnce: ui.lockedOnce },
+      n0 = msgs.length;
+    globalThis.document = page.document;
+    try {
+      msgs.length = 0;
+      Object.assign(ui, { plFailed: false, lockedOnce });
+      page.st.lock = lock;
+      for (let i = 0; i < 2; i++) {
+        SC.tryLock();
+        await new Promise((res) => setImmediate(res));
+      }
+      // Promise の reject と pointerlockerror の両方が来るブラウザ（Chromium）の分
+      SC.lockFailed();
+      return {
+        plFailed: ui.plFailed,
+        hints: msgs.filter((m) => m.html.includes('ドラッグして視点')).length,
+        calls: page.log.filter((e) => e[0] === 'rpl').length,
+      };
+    } finally {
+      globalThis.document = doc;
+      Object.assign(ui, keep);
+      msgs.length = Math.min(msgs.length, n0);
+    }
+  };
+  it('一度も捕まえていなければ、捕まえられないと決め、案内は1回だけ。それからは捕まえようとしない', async () => {
+    expect(await run('reject', false)).toEqual({ plFailed: true, hints: 1, calls: 1 });
+    expect(await run('throw', false)).toEqual({ plFailed: true, hints: 1, calls: 1 });
+    expect(await run('none', false)).toEqual({ plFailed: true, hints: 1, calls: 0 });
+  });
+  it('一度でも捕まえていれば、失敗しても決めず、次もまた捕まえようとする（Esc で外した直後に断られる時）', async () => {
+    expect(await run('reject', true)).toEqual({ plFailed: false, hints: 0, calls: 2 });
+    expect(await run('throw', true)).toEqual({ plFailed: false, hints: 0, calls: 2 });
   });
 });
