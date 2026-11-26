@@ -236,7 +236,7 @@ await withBrowser(async ({ browser, base }) => {
     b = await st();
     if (dist(a, b) > 0.05) errs.push(`指の操作：スティックを離しても止まらない（${dist(a, b).toFixed(2)}）`);
 
-    // 見回す：右半分を 50px 右へ → 0.25 ラジアン（LOOK_K 0.005）右を向く（yaw が減る）
+    // 見回す：右半分を 50px 右へ → 0.25 ラジアン（TUNE.look 0.005）右を向く（yaw が減る）
     a = await st();
     await touch('touchStart', [[560, 150, 2]]);
     await touch('touchMove', [[610, 150, 2]]);
