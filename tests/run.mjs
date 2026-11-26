@@ -34,7 +34,9 @@ if (unknown.length) stop(`知らないテストの名前：${unknown.join(' ')}�
 const list = named.length ? ALL.filter((n) => named.includes(n)) : ALL;
 
 const t0 = Date.now();
-for (const mode of ['test', 'artifact']) await build({ configFile: join(ROOT, 'vite.config.mjs'), mode, logLevel: 'warn' });
+// Artifact 版を読むのは frame だけ
+for (const mode of list.includes('frame') ? ['test', 'artifact'] : ['test'])
+  await build({ configFile: join(ROOT, 'vite.config.mjs'), mode, logLevel: 'warn' });
 const run = (name) =>
   new Promise((ok) => {
     const t = Date.now(),

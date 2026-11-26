@@ -192,22 +192,27 @@ export function inlineAll() {
         delete bundle[`${file}.map`];
         return f.type === 'chunk' ? f.code : String(f.source);
       };
-      // 中に書くと、文の中の </script や </style が、その場で要素を閉じてしまう
+      // 中に書くと、文の中の </script や </style が、その場で要素を閉じてしまう。script の中の <!-- は、後に <script があると
+      // パーサーの読み方を変え（double escaped）、本当の </script> で閉じなくなるので、これも止める
       const body = (code, tag) => {
         if (new RegExp(`</${tag}`, 'i').test(code)) throw new Error(`中に書く文に </${tag} がある`);
+        if (tag === 'script' && code.includes('<!--')) throw new Error('中に書く script に <!-- がある');
         return code;
       };
+      // まず読む所を印に替え、ほかのファイルを読む所が残っていないかを、中に書く前の HTML で確かめる（中に書いた JS の文字列は調べない）
+      const parts = [];
+      const mark = (code) => `\0${parts.push(code) - 1}\0`;
       html = html
-        .replace(
-          /<script type="module" crossorigin src="\.\/([^"]+)"><\/script>/g,
-          (_m, f) => `<script type="module">\n${body(take(f), 'script')}</script>`,
+        .replace(/<script type="module" crossorigin src="\.\/([^"]+)"><\/script>/g, (_m, f) =>
+          mark(`<script type="module">\n${body(take(f), 'script')}</script>`),
         )
-        .replace(/<link rel="stylesheet" crossorigin href="\.\/([^"]+)">/g, (_m, f) => `<style>\n${body(take(f), 'style')}</style>`);
+        .replace(/<link rel="stylesheet" crossorigin href="\.\/([^"]+)">/g, (_m, f) => mark(`<style>\n${body(take(f), 'style')}</style>`));
+      if (/\s(?:src|href)="\.\//.test(html)) throw new Error('index.html に、ほかのファイルを読む所が残っている');
+      html = html.replace(/\0(\d+)\0/g, (_m, i) => parts[Number(i)] ?? '');
       // ソースマップ（.map）は、中に書いた後は行が合わないので出さない
       for (const f of Object.keys(bundle)) if (f.endsWith('.map')) delete bundle[f];
       const left = Object.keys(bundle).filter((f) => f !== 'index.html');
       if (left.length) throw new Error(`HTML の中に入れられなかったファイルがある：${left.join(' ')}`);
-      if (/\s(?:src|href)="\.\//.test(html)) throw new Error('index.html に、ほかのファイルを読む所が残っている');
       const size = Buffer.byteLength(html);
       if (size > ARTIFACT_MAX) throw new Error(`Artifact 版の HTML が大きすぎる：${size} バイト（${ARTIFACT_MAX} まで）`);
       page.source = html;

@@ -1,13 +1,16 @@
 #!/usr/bin/env node
-// サンドボックス付きの iframe の中（allow-scripts だけ。allow-pointer-lock も allow-same-origin も無い。claude.ai の Artifact など）で、止まらずに最後まで遊べるか。
+// サンドボックス付きの iframe の中（allow-scripts だけ。allow-pointer-lock も allow-same-origin も無い。claude.ai の Artifact より厳しい。
+// Artifact では、マウスを捕まえられ、保存も残る）で、止まらずに最後まで遊べるか。
 // 外のページ（about:blank）に iframe を置き、テスト用モードのページを開く。起源が null になるので、localStorage にさわると SecurityError になり、
 // ポインタロックは断られる（Chromium は Promise の reject と pointerlockerror の両方）。ポインタロックは差し替えない（newPage の realLock）。
 //   1. 本物のサンドボックス：タイトル → 探索（ドラッグの案内が1回）→ ドラッグで見回す → Esc でメニュー → 続ける → レベルアップ（Esc では何もしない）→ 祭壇を Esc で閉じる
 //      → Esc でメニュー → 死 → 始め直し → タイトル → 図鑑 → もう一度探索
-//      同じ流れを、Artifact 版（.build/artifact/index.html。JS・CSS・フォントを全部入れた HTML 1つ）でも通す。Artifact 版は、ほかのファイルを読まないことも確かめる
+//      同じ流れを、Artifact 版（.build/artifact/index.html。JS・CSS・フォントを全部入れた HTML 1つ）でも通す。Artifact 版は、ほかのファイルを読まないことも確かめる。
+//      本物の Artifact には URL の指定が届かず、いつもテスト用モードでない形で動くので、Artifact 版はテスト用モードでなくてもタイトルが出ることも確かめる
 //   2. ほかのブラウザ（初めに動く台本で作る）：requestPointerLock が無い（iPhone の Safari など）・呼んでも何も起きない・音の部品を作れない。
 //      どれも Esc でメニューが開き、ドラッグで見回せる
 // iframe の中のキー入力は、iframe の中を一度クリックしてから届く（タイトルのボタンを押すので届く）。ページのエラーは iframe の中の物も errs に集まる（最後に確かめる）。
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { build } from 'vite';
 import { serve } from '../tools/serve.mjs';
@@ -66,6 +69,8 @@ async function escMenu(pg, E, label) {
 
 // Artifact 版：まとめて走らせる時（tests/run.mjs）は組み立て済み（AL_PREBUILT）
 if (process.env.AL_PREBUILT !== '1') await build({ configFile: join(ROOT, 'vite.config.mjs'), mode: 'artifact', logLevel: 'warn' });
+if (!existsSync(join(ROOT, '.build/artifact/index.html')))
+  throw new Error('Artifact 版（.build/artifact/index.html）が無い。AL_PREBUILT を消すか、pnpm build:artifact で組み立てる');
 const artSrv = await serve(join(ROOT, '.build/artifact'), 0, { cors: true });
 const artBase = `http://127.0.0.1:${artSrv.port}/index.html`;
 
@@ -194,6 +199,32 @@ await withBrowser(async ({ browser, base }) => {
       if (other.length) errs.push(`${label}：ほかのファイルを読んでいる（${other.slice(0, 5).join(' ')}）`);
     } else if (!reqs.some((u) => u.endsWith('.woff2'))) errs.push(`${label}：読んだ物を集められていない（テストの前提が崩れた）`);
     await pg.close();
+  }
+
+  // ---------------------------------------------------------------- 1'. Artifact 版を、テスト用モードでなく開く（本物の Artifact と同じ）。
+  // ゲームを止めて進められないので、タイトルが出て、背景の迷宮を描いたフレームが2つ進むまでだけ待つ（tests/title.mjs と同じ）
+  {
+    const label = "1'・Artifact 版（テスト用モードでない）";
+    const pg = await newPage(browser, errs, { width: W, height: H, realLock: true });
+    await pg.setContent(
+      `<body style="margin:0"><iframe sandbox="allow-scripts" style="width:${W}px;height:${H}px;border:0;display:block" src="${artBase}"></iframe></body>`,
+    );
+    const fr = await (await pg.waitForSelector('iframe')).contentFrame();
+    await fr.waitForSelector('#enter', { timeout: 90000 });
+    const st = await fr.evaluate(
+      () =>
+        new Promise((ok) => {
+          let n = 0;
+          const f = () =>
+            ++n >= 2
+              ? ok({ test: typeof window.__test, title: document.getElementById('intropanel')?.innerText ?? '' })
+              : requestAnimationFrame(f);
+          requestAnimationFrame(f);
+        }),
+    );
+    if (st.test !== 'undefined') errs.push(`${label}：テスト用モードになっている（テストの前提が崩れた）`);
+    if (!st.title.includes('シード')) errs.push(`${label}：タイトルの画面が出ない（${st.title.slice(0, 80)}）`);
+    await pg.close(); // テスト用モードでないので、開いたままだと描き続けて重い
   }
 
   // ---------------------------------------------------------------- 2. ほかのブラウザ
