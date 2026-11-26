@@ -10,6 +10,21 @@ import { ui } from './state.ts';
 /** 指の事件の後、これだけの間（ミリ秒）に来たマウスの事件は、ブラウザが指の後に出した物とみなして止める */
 export const COMPAT_MS = 1000;
 
+/**
+ * パネル（祭壇・レベルアップ）の選択肢を押した時、今決めるか。マウスなら、いつも今決める。
+ * 指なら、1回目は選ぶだけ（呼ぶ側が説明を出す）で、同じ選択肢（key）の2回目で決める。
+ * key には、パネルを開いた時刻など、開くたびに変わる物を入れる（前に開いた時の1回目が残っていても、決まらないように）
+ */
+export function confirmTap(key: string): boolean {
+  if (!ui.touch) return true;
+  if (ui.tapArm === key) {
+    ui.tapArm = '';
+    return true;
+  }
+  ui.tapArm = key;
+  return false;
+}
+
 /** 指の遊び方にする・戻す */
 export function setTouch(on: boolean): void {
   if (ui.touch === on) return;
@@ -70,6 +85,7 @@ export function initTouch(act: TouchActions): void {
   must(document.getElementById('gl'), '#gl').addEventListener('pointerdown', stopCompat);
   const bar = must(document.getElementById('touchbar'), '#touchbar');
   bar.addEventListener('pointerdown', stopCompat);
+  must(document.getElementById('tctl'), '#tctl').addEventListener('pointerdown', stopCompat);
   must(document.getElementById('packB'), '#packB').addEventListener('click', act.pack);
   must(document.getElementById('menuB'), '#menuB').addEventListener('click', act.menu);
   must(document.getElementById('fsB'), '#fsB').addEventListener('click', () => {

@@ -3,7 +3,7 @@
 // window.claude.use が無い所（ふつうの公開用の版・テスト）や、持ち主でない人が開いた時は、何もしない。乱数は使わない（ゲームの動きを変えない）。
 // 記録は、開くたびに1件（diag/<開いた時刻>）。書き込みは、変わった時だけ、10秒に1回まで（ページを離れる時も1回）。
 // 公開する時は、capabilities に db（diag は持ち主だけが読み書き）と user を渡す（CLAUDE.md の「Artifact に公開する」）。
-import { adv, ui } from './state.ts';
+import { adv, fight, gear, ui } from './state.ts';
 
 interface ClaudeLike {
   use(name: string): Promise<unknown>;
@@ -105,8 +105,9 @@ export async function initDiag(): Promise<void> {
       });
   };
 
-  // できごと：開け閉めの旗が変わった時（ゲームのコードには手を入れず、1秒ごとに見る）と、ボタンを押した時
-  const flags = (): Record<string, boolean> => ({
+  // できごと：旗が変わった時（ゲームのコードには手を入れず、0.25秒ごとに見る。飛ぶ物は1秒もたたずに消えることがあるため）と、ボタンや描く画面を押した時。
+  // cast は溜めている手（無ければ ''）、projs は飛ぶ物があるか（攻撃が出たかの手がかり）
+  const flags = (): Record<string, unknown> => ({
     touch: ui.touch,
     started: ui.started,
     dead: adv.dead,
@@ -115,18 +116,22 @@ export async function initDiag(): Promise<void> {
     altar: ui.altarOpen,
     levelup: ui.lvlOpen,
     locked: ui.locked,
+    cast: gear.castSt?.h ?? '',
+    projs: fight.projs.length > 0,
   });
   let last = flags();
   setInterval(() => {
     const now = flags();
     for (const [k, v] of Object.entries(now)) if (last[k] !== v) event(k, v);
     last = now;
-  }, 1000);
+  }, 250);
   window.addEventListener(
     'pointerdown',
     (e) => {
       const b = e.target instanceof Element ? e.target.closest('button') : null;
       if (b) event('press', `${b.id || b.textContent?.trim().slice(0, 20) || 'button'} (${e.pointerType})`);
+      else if (e.target instanceof Element && e.target.id === 'gl')
+        event('tap', `${e.clientX < innerWidth / 2 ? 'left' : 'right'} (${e.pointerType})`);
     },
     true,
   );

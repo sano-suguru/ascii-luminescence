@@ -8,11 +8,15 @@
 //      止める時に mousedown を取り消さないか（タイトルのシードの入力欄に入れなくなるおそれ）も見る
 //   4. タッチのボタン [装備] [メニュー] で、装備の画面とメニューを開け閉めできる。[全画面] は、全画面にできる時だけ出る
 //   5. マウスを動かすと、指の遊び方が終わり、タッチのボタンが消える
-//   6. 探索中のタッチのボタンが、左上の状態の表示とも、右上のミニマップとも重ならない（狭い横向きの端末でも）
+//   6. 探索中のタッチのボタンと指の操作のボタンが、左上の状態の表示・右上のミニマップ・下の HUD・互いと重ならない
+//      （狭い横向きの端末と、claude.ai のアプリの中で測った本物の大きさ 750×312）
+//   8. 指の操作（src/lib/touchpad.ts。CDP の Input.dispatchTouchEvent で、2本の指を同時に動かす）：左半分のスティックで進む（離すと止まる）・右半分のドラッグで見回す・
+//      両方を同時に・[右手] を押して溜め、指をずらすと見回し、離すと溜めが終わる・指を取り逃した時（touchCancel）も溜めが終わる・[回避]・
+//      メニューを開いている間は、スティックで動かない・レベルアップと祭壇の画面は、1回目のタップで選んで説明を出し、2回目で決める
 //   7. 診断の記録（src/lib/diag.ts）：偽の window.claude（Artifact の中の真似）で、持ち主なら端末・できごと・速さを db に書き、持ち主でなければ書かない。
 //      書き込みの途中に頼まれた分（ページが隠れた時）も、途中の分が終わってから書く
 import { FIT_MIN } from '../src/lib/layout.ts';
-import { withBrowser, newPage, openTest, advance } from './lib.mjs';
+import { withBrowser, newPage, openTest, advance, nearAltar } from './lib.mjs';
 
 const errs = [];
 const HINT = 'マウスをドラッグして視点を動かせます';
@@ -43,19 +47,27 @@ await withBrowser(async ({ browser, base }) => {
   }
 
   // ---------------------------------------------------------------- 6. 探索中のタッチのボタンの場所
-  for (const device of ['iPhone SE landscape', 'iPhone 13 landscape', 'Pixel 7 landscape']) {
-    const pg = await newPage(browser, errs, { device });
+  for (const device of ['iPhone SE landscape', 'iPhone 13 landscape', 'Pixel 7 landscape', '750x312']) {
+    const pg =
+      device === '750x312'
+        ? await (await browser.newContext({ viewport: { width: 750, height: 312 }, hasTouch: true, isMobile: true })).newPage()
+        : await newPage(browser, errs, { device });
     await openTest(pg, base, 'seed=202');
     await tapEnter(pg);
     await advance(pg, 3);
     const r = await pg.evaluate(() => {
       const q = (s) => document.querySelector(s).getBoundingClientRect();
-      const bar = q('#touchbar'),
-        hit = (o) => bar.left < o.right && o.left < bar.right && bar.top < o.bottom && o.top < bar.bottom;
-      return { status: hit(q('#status')), map: hit(q('#mapwrap')), w: bar.width };
+      const hit = (a, o) => a.left < o.right && o.left < a.right && a.top < o.bottom && o.top < a.bottom;
+      const btn = ['#touchbar', '#rollB', '#castR', '#castL'],
+        hud = ['#status', '#mapwrap', '#hotbar'],
+        out = [];
+      btn.forEach((b, i) => {
+        if (!(q(b).width > 0)) out.push(`${b} が出ていない`);
+        for (const h of [...hud, ...btn.slice(i + 1)]) if (hit(q(b), q(h))) out.push(`${b} と ${h}`);
+      });
+      return out;
     });
-    if (r.status || r.map) errs.push(`${device}：探索中のタッチのボタンが重なる（状態の表示 ${r.status}、ミニマップ ${r.map}）`);
-    if (!(r.w > 0)) errs.push(`${device}：探索中のタッチのボタンが出ていない`);
+    if (r.length) errs.push(`${device}：探索中のボタンが重なる（${r.join('、')}）`);
     await pg.context().close();
   }
 
@@ -189,6 +201,179 @@ await withBrowser(async ({ browser, base }) => {
   if (v.touch) errs.push('マウスを動かしても、指の遊び方が終わらない');
   if (await shown('#touchbar')) errs.push('マウスを動かしても、タッチのボタンが消えない');
   await pg.context().close();
+
+  // ---------------------------------------------------------------- 8. 指の操作
+  {
+    const pg = await newPage(browser, errs, { device: 'iPhone 13 landscape' });
+    await openTest(pg, base, 'seed=202');
+    const E = (f, a) => pg.evaluate(f, a);
+    const cdp = await pg.context().newCDPSession(pg);
+    // pts：今触れている指の全部（[x, y, 指の番号]）。touchEnd・touchCancel は、残る指を渡す
+    const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y, id]) => ({ x, y, id })) });
+    const st = () => E(() => __test.state());
+    const mid = async (sel) => {
+      const b = await pg.locator(sel).boundingBox();
+      if (!b) throw new Error(`${sel} が見えない`);
+      return [b.x + b.width / 2, b.y + b.height / 2];
+    };
+    const dist = (a, b) => Math.hypot(a.pos[0] - b.pos[0], a.pos[1] - b.pos[1]);
+    await tapEnter(pg);
+    await advance(pg, 2);
+    if (!(await E(() => getComputedStyle(document.getElementById('castR')).display !== 'none')))
+      errs.push('指の操作：探索中に [右手] のボタンが出ていない');
+
+    // スティック：上に倒すと進み、離すと止まる
+    let a = await st();
+    await touch('touchStart', [[150, 250, 1]]);
+    await touch('touchMove', [[150, 190, 1]]);
+    await advance(pg, 0.6);
+    let b = await st();
+    if (!(dist(a, b) > 1)) errs.push(`指の操作：スティックを倒しても進まない（${dist(a, b).toFixed(2)}）`);
+    await touch('touchEnd', []);
+    await advance(pg, 0.5); // 離した後の惰性が収まるまで
+    a = await st();
+    await advance(pg, 0.5);
+    b = await st();
+    if (dist(a, b) > 0.05) errs.push(`指の操作：スティックを離しても止まらない（${dist(a, b).toFixed(2)}）`);
+
+    // 見回す：右半分を 50px 右へ → 0.25 ラジアン（LOOK_K 0.005）右を向く（yaw が減る）
+    a = await st();
+    await touch('touchStart', [[560, 150, 2]]);
+    await touch('touchMove', [[610, 150, 2]]);
+    await touch('touchEnd', []);
+    b = await st();
+    if (Math.abs(a.yaw - b.yaw - 0.25) > 0.01) errs.push(`指の操作：右半分のドラッグで見回せない（${a.yaw} → ${b.yaw}）`);
+
+    // 両方を同時に
+    a = await st();
+    await touch('touchStart', [[150, 250, 1]]);
+    await touch('touchStart', [
+      [150, 250, 1],
+      [560, 150, 2],
+    ]);
+    await touch('touchMove', [
+      [150, 190, 1],
+      [600, 150, 2],
+    ]);
+    await advance(pg, 0.6);
+    b = await st();
+    if (!(dist(a, b) > 1) || Math.abs(a.yaw - b.yaw - 0.2) > 0.01)
+      errs.push(`指の操作：移動と見回しを同時にできない（進んだ ${dist(a, b).toFixed(2)}、向き ${a.yaw} → ${b.yaw}）`);
+    if ((await E(() => visualViewport.scale)) !== 1) errs.push('指の操作：2本の指を動かすと、画面が拡大された');
+    await touch('touchEnd', []);
+    // 描く画面の上で指を動かした直後でも、タッチのボタンのタップが効く（touch-action: none だと、Chromium は直後のタップを click にしない）
+    await touch('touchStart', [[560, 150, 2]]);
+    await touch('touchMove', [[600, 150, 2]]);
+    await touch('touchEnd', []);
+    await pg.touchscreen.tap(...(await mid('#menuB')));
+    await advance(pg, 0.1);
+    if (!(await st()).paused) errs.push('指の操作：見回した直後に [メニュー] を押しても、メニューが開かない');
+    await pg.touchscreen.tap(...(await mid('#menuB')));
+    await advance(pg, 0.1);
+
+    // [右手]（樫の杖）：押すと溜め、指をずらすと見回し、離すと溜めが終わる
+    const [rx, ry] = await mid('#castR');
+    a = await st();
+    await touch('touchStart', [[rx, ry, 3]]);
+    await advance(pg, 0.3);
+    b = await st();
+    if (b.cast?.h !== 'R') errs.push(`指の操作：[右手] を押しても溜めない（${JSON.stringify(b.cast)}）`);
+    await touch('touchMove', [[rx - 40, ry, 3]]);
+    const c = await st();
+    if (Math.abs(c.yaw - b.yaw - 0.2) > 0.01) errs.push(`指の操作：[右手] を押したまま指をずらしても見回せない（${b.yaw} → ${c.yaw}）`);
+    await touch('touchEnd', []);
+    await advance(pg, 0.2);
+    if ((await st()).cast) errs.push('指の操作：[右手] から指を離しても、溜めが終わらない（ボタンの外で離した）');
+
+    // 指を取り逃した時（touchCancel）も、溜めが終わる
+    await advance(pg, 1);
+    await touch('touchStart', [[rx, ry, 4]]);
+    await advance(pg, 0.2);
+    const held = (await st()).cast?.h;
+    await touch('touchCancel', []);
+    await advance(pg, 0.2);
+    if (held !== 'R' || (await st()).cast) errs.push(`指の操作：指を取り逃しても、溜めが終わらない（押した時 ${held}）`);
+
+    // [回避]：押すと動く（押している向きが無ければ、見ている向きへ）
+    await advance(pg, 2);
+    const [vx, vy] = await mid('#rollB');
+    a = await st();
+    await touch('touchStart', [[vx, vy, 5]]);
+    await touch('touchEnd', []);
+    await advance(pg, 0.4);
+    b = await st();
+    if (!(dist(a, b) > 0.5)) errs.push(`指の操作：[回避] を押しても動かない（${dist(a, b).toFixed(2)}）`);
+    await advance(pg, 2); // 回避の勢いが収まるまで
+
+    // メニューを開いている間は、スティックで動かない（閉じた後も、そのまま動き出さない）
+    await pg.touchscreen.tap(...(await mid('#menuB')));
+    await advance(pg, 0.1);
+    a = await st();
+    await touch('touchStart', [[40, 290, 6]]);
+    await touch('touchMove', [[40, 230, 6]]);
+    await touch('touchEnd', []);
+    await pg.touchscreen.tap(...(await mid('#menuB')));
+    await advance(pg, 0.6);
+    b = await st();
+    if (!a.paused || dist(a, b) > 0.05)
+      errs.push(`指の操作：メニューを開いている間に、スティックで動いた（止まっていた ${a.paused}、${dist(a, b).toFixed(2)}）`);
+
+    // レベルアップ：1回目のタップで選んで説明を出し、2回目で決める
+    await E(() => dbg.exp(400));
+    await advance(pg, 0.6);
+    const lv = () =>
+      E(() => ({
+        open: document.getElementById('altarp').classList.contains('open'),
+        armed: document.querySelectorAll('#altarp button.armed').length,
+      }));
+    if (!(await lv()).open) errs.push('指の操作：レベルアップの画面が開かない（テストの前提が崩れた）');
+    const opt = '#altarp button[data-lk="0"]';
+    await pg.touchscreen.tap(...(await mid(opt)));
+    await advance(pg, 0.1);
+    let v = await lv();
+    if (!v.open || v.armed !== 1)
+      errs.push(`指の操作：レベルアップの選択肢を1回押すと、選ぶだけでなく決まる（開いている ${v.open}、選んだ ${v.armed}）`);
+    await pg.touchscreen.tap(...(await mid(opt)));
+    await advance(pg, 0.3);
+    // dbg.exp(400) は何レベルか上がるので、決めると次のレベルアップの画面が開く（選んだ印が消える）。2回ずつ押して、最後に閉じる
+    v = await lv();
+    if (v.open && v.armed) errs.push('指の操作：レベルアップの選択肢を2回押しても決まらない');
+    for (let i = 0; i < 20 && (await lv()).open; i++) {
+      await advance(pg, 0.6);
+      await pg.touchscreen.tap(...(await mid(opt)));
+      await pg.touchscreen.tap(...(await mid(opt)));
+      await advance(pg, 0.3);
+    }
+    if ((await lv()).open) errs.push('指の操作：レベルアップの選択肢を2回ずつ押しても、画面が閉じない');
+
+    // 祭壇：同じく、1回目で選び、2回目で決める（seed=202 の3階には祭壇がある）
+    await E(() => dbg.go(3));
+    await advance(pg, 2);
+    await nearAltar(pg);
+    await advance(pg, 0.5);
+    const al = () =>
+      E(() => ({
+        open: document.getElementById('altarp').classList.contains('open'),
+        armed: document.querySelectorAll('#altarp button.armed').length,
+        n: document.querySelectorAll('#altarp button[data-k]').length,
+      }));
+    let w = await al();
+    if (!w.open || !w.n) errs.push(`指の操作：祭壇の画面が開かない（テストの前提が崩れた。${JSON.stringify(w)}）`);
+    else {
+      const k = await E(() => document.querySelector('#altarp button[data-k]').dataset.k);
+      const sel = `#altarp button[data-k="${k}"]`;
+      await pg.touchscreen.tap(...(await mid(sel)));
+      await advance(pg, 0.1);
+      w = await al();
+      if (!w.open || w.armed !== 1) errs.push(`指の操作：祭壇の選択肢を1回押すと、選ぶだけでなく決まる（${JSON.stringify(w)}）`);
+      const n0 = w.n;
+      await pg.touchscreen.tap(...(await mid(sel)));
+      await advance(pg, 0.3);
+      w = await al();
+      if (w.open && w.n === n0) errs.push(`指の操作：祭壇の選択肢を2回押しても決まらない（${JSON.stringify(w)}）`);
+    }
+    await pg.context().close();
+  }
 
   // ---------------------------------------------------------------- 7. 診断の記録
   // 偽の window.claude：user は持ち主か（owner）を答え、db は書き込まれた物を window.__sets に貯める。
