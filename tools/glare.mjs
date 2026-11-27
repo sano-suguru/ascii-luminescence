@@ -4,30 +4,32 @@
 //   pnpm glare ゴブリン ヘビ       図鑑の名前（表の鍵でもよい）で選ぶ
 //   --weapons blade,bolt           使う武器（RUNE_DEF の攻撃の鍵）
 //   --scene 1:202                  写す階（深さ:シード）
+//   --hide hands,swing             tick の段（src/game/30-loop-init.js の inPhase の名前。生き物の体は 'mob draw'、剣の波は飛ぶ物の 'projs'）を止めた時も撃って写し、
+//                                  止めない時と並べて出す（何が光っているかを切り分ける時に。__test.skipPhase）
 //   --out <ディレクトリ>           置き場所（既定 tests/out/glare/）
-// 写す物：生き物をプレイヤーの前に置いて照準を合わせ（照準の先は明るく描く）、当てる前の1枚を写す。それから右手で撃ち、体力が減った（当たった）次のフレームから
-// AFTER フレームの間、1フレームずつ写す。写真ごとに、当てる前の体の範囲（__test.monsterView の画面の範囲）の中で、
+// 写す物：生き物をプレイヤーの前に置いて照準を合わせ（照準の先は明るく描く。tests/lib.mjs の aimAt）、当てる前の1枚を写す。それから右手で撃ち（strike）、
+// 体力が減った（当たった）次のフレームから、光り終わる（当たって光る残りの秒 hitT が 0 になる）まで1フレームずつ写す（0 になったフレームが最後の1枚）。写真ごとに、当てる前の体の範囲（__test.monsterView の画面の範囲）の中で、
 //   白飛び：3つの色がどれも 245 以上の画素の割合（ほぼ真っ白。形も色も読めない所）
 //   眩しさ：明るさ（輝度）200 以上の画素の割合（pnpm lords と同じ境）
 //   明るさ：範囲の中の明るさの平均（0〜255）
 //   画面：画面全体で、明るさ 200 以上の画素の割合（目の前に描く振った線の光や、光のにじみが画面に広がった分も入る）
 // と、写した時の体の明るさの元（当たって光る残りの秒 hitT・倍率 glow・照準の先か）を出し、summary.json に書く。
-// 写真は <名前>-<武器>-<before|hit0…>.png（画面全体）と、行が生き物と武器の組、列が当てる前・当たった次のフレーム・その後のフレームの、
-// 体のまわりを切り抜いて並べた1枚 glare.png。画面全体の霞は、切り抜きでは見えないので、元の写真を1枚ずつ見る。
+// 写真は <名前>-<武器>[-hide-<段>]-<before|hit0…>.png（画面全体）と、行が生き物と武器の組（--hide なら、止めない時と止めた時の2行）、
+// 列が当てる前・当たった次のフレーム・その後のフレームの、体のまわりを切り抜いて並べた1枚 glare.png。画面全体の霞は、切り抜きでは見えないので、元の写真を1枚ずつ見る。
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { PNG } from 'pngjs';
-import { withBrowser, newPage, openTest, advance, frames, arg, OUT } from '../tests/lib.mjs';
+import { withBrowser, newPage, openTest, advance, frames, aimAt, strike, arg, OUT } from '../tests/lib.mjs';
 import { cropRect, writeSheet } from './sheet.mjs';
 
 const W = 960,
   H = 540,
   CLIP = { x: 0, y: 0, width: W, height: H },
-  AFTER = 8, // 当たった後に写すフレームの数（1フレーム＝ゲームの1/30秒。当たった時の明るさ hitT は 0.22〜0.35 秒）
+  AFTER_MAX = 30, // 当たった後に写すフレームの数の上限（1フレーム＝ゲームの1/30秒。当たって光る hitT は 0.22〜0.35 秒なので、ふつうは 7〜11 枚で光り終わる）
   GLARE_PICK = ['ゴブリン', 'トロル', 'レイス'];
 const argv = process.argv.slice(2);
 const usage = (why) => {
-  console.log(`${why}\n使い方：pnpm glare [名前…] [--weapons blade,bolt] [--scene 1:202] [--out <ディレクトリ>]`);
+  console.log(`${why}\n使い方：pnpm glare [名前…] [--weapons blade,bolt] [--scene 1:202] [--hide 段,…] [--out <ディレクトリ>]`);
   process.exit(1);
 };
 const opt = (k) => {
@@ -39,7 +41,8 @@ const outDir = resolve(opt('--out') ?? join(OUT, 'glare'));
 const weapons = (opt('--weapons') ?? 'blade,bolt').split(',');
 const [depth, seed] = (opt('--scene') ?? '1:202').split(':').map(Number);
 if (!(depth >= 1 && depth <= 13 && seed >= 0)) usage('--scene は 深さ:シード（深さは 1 から 13）');
-const VALUED = new Set(['--out', '--weapons', '--scene']);
+const hide = opt('--hide')?.split(',').filter(Boolean) ?? [];
+const VALUED = new Set(['--out', '--weapons', '--scene', '--hide']);
 const picked = argv.filter((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1] ?? ''));
 const names = picked.length ? picked : GLARE_PICK;
 mkdirSync(outDir, { recursive: true });
@@ -70,11 +73,18 @@ function measure(file, box) {
   return { ...count(png, box), screen: count(png, { x0: 0, y0: 0, x1: png.width, y1: png.height }).bright };
 }
 
-/** 1つの生き物を1つの武器で撃って写す。写真と数の一覧を返す */
-async function shoot(browser, base, key, weapon, prefix, errs) {
+/** 1つの生き物を1つの武器で撃って写す（skip：止める tick の段）。写真と数の一覧を返す */
+async function shoot(browser, base, key, weapon, prefix, errs, skip = []) {
   const pageErrs = [];
   const pg = await newPage(browser, pageErrs, { width: W, height: H, still: true });
+  const fail = async (why) => {
+    errs.push(`${prefix}：${why}`);
+    await pg.close();
+    return null;
+  };
   await openTest(pg, base, `seed=${seed}&depth=${depth}&god=1`);
+  const skipped = await pg.evaluate((s) => __test.skipPhase(s), skip);
+  if (skipped.join() !== skip.join()) return fail(`止められない段がある（${skip.join('・')} → ${skipped.join('・')}）`);
   await advance(pg, 2); // 階に入ると、約1.25秒かけて明るくなる
   // 置く所：見えている床で、近接なら 1.8 マス、飛ぶ物なら 4 マスほど先の物
   const want = weapon === 'blade' ? 1.8 : 4;
@@ -100,21 +110,7 @@ async function shoot(browser, base, key, weapon, prefix, errs) {
     },
     [key, weapon, want],
   );
-  if (r.err) {
-    errs.push(`${prefix}：${r.err}`);
-    await pg.close();
-    return null;
-  }
-  // 照準を体の高さの真ん中に合わせる（毎回。生き物は動く）
-  const aim = () =>
-    pg.evaluate((key) => {
-      const m = __test.state().monsters.find((m) => m[0] === key);
-      if (!m) return null;
-      const v = __test.monsterView(key),
-        y = v && v.world ? (v.world.y0 + v.world.y1) / 2 : 0.5;
-      dbg.look(m[1], y, m[2]);
-      return m[3]; // 体力
-    }, key);
+  if (r.err) return fail(r.err);
   const shots = [];
   const snap = async (tag) => {
     const file = `${prefix}-${tag}.png`;
@@ -130,64 +126,30 @@ async function shoot(browser, base, key, weapon, prefix, errs) {
       aimed: !!mob?.aimed,
     });
   };
-  // 照準の先の生き物は 0.1 秒ごとに探し直すので、照準の先になるまで進める
-  let aimed = false;
-  for (let k = 0; k < 12 && !aimed; k++) {
-    await aim();
-    await advance(pg, 1 / 30);
-    aimed = await pg.evaluate(() => !!__test.mob(0)?.aimed);
+  // 照準の先にしてから（照準の先は明るく描くので、当てる前もそうしておく）、当てる前を写す
+  try {
+    await aimAt(pg, key);
+  } catch (e) {
+    return fail(`${e.message}（当てる前の明るさを比べられない）`);
   }
-  if (!aimed) {
-    errs.push(`${prefix}：照準の先にならない（当てる前の明るさを比べられない）`);
-    await pg.close();
-    return null;
-  }
-  const hp0 = await aim();
   await frames(pg, 1);
-  const box = await pg.evaluate((key) => {
-    const v = __test.monsterView(key);
-    return v && v.screen ? v.screen : null;
-  }, key);
-  if (!box || hp0 === null) {
-    errs.push(`${prefix}：生き物が描かれていない`);
-    await pg.close();
-    return null;
-  }
+  const box = await pg.evaluate((key) => __test.monsterView(key)?.screen ?? null, key);
+  if (!box) return fail('生き物が描かれていない');
   await snap('before');
-  // 撃つ：押して、当たる（体力が減る）まで描かずに1フレームずつ進める。近接は押した時に当たる。飛ぶ物は溜めきってから離す（早く離すと散る）
-  // （当たって光るのは 0.22〜0.35 秒なので、溜めている間に当たりを逃さないよう、毎フレーム見る）
-  const hpNow = () =>
-    pg.evaluate((key) => {
-      const m = __test.state().monsters.find((m) => m[0] === key);
-      return m ? m[3] : -1;
-    }, key);
-  await pg.evaluate(() => __test.press('R'));
-  let hit = -1,
-    released = false;
-  for (let k = 0; k < 150; k++) {
-    if ((await hpNow()) < hp0) {
-      hit = k;
-      break;
-    }
-    if (!released && (await pg.evaluate(() => __test.state().cast?.full))) {
-      await aim();
-      await pg.evaluate(() => __test.release('R'));
-      released = true;
-    }
-    await advance(pg, 1 / 30);
+  // 撃つ：近接は押した時に当たる。飛ぶ物は溜めきってから離す（tests/lib.mjs の strike）
+  try {
+    await strike(pg, 'R', key);
+  } catch (e) {
+    return fail(e.message);
   }
-  if (!released) await pg.evaluate(() => __test.release('R'));
-  if (hit < 0) {
-    errs.push(`${prefix}：当たらなかった`);
-    await pg.close();
-    return null;
-  }
+  // 当たった次のフレームから、光り終わる（hitT が 0 になる）まで写す
   await frames(pg, 1);
   await snap('hit0');
-  for (let k = 1; k <= AFTER; k++) {
+  for (let k = 1; k <= AFTER_MAX && shots.at(-1).hitT > 0; k++) {
     await frames(pg, 1);
     await snap(`hit${k}`);
   }
+  if (shots.at(-1).hitT > 0) errs.push(`${prefix}：${AFTER_MAX} フレーム写しても光り終わらない`);
   if (pageErrs.length) errs.push(`${prefix}：${pageErrs.join(' / ')}`);
   await pg.close();
   return { box, shots: shots.map((s) => ({ ...s, ...measure(s.file, box) })) };
@@ -209,30 +171,32 @@ await withBrowser(async ({ browser, base }) => {
       errs.push(`図鑑に無い名前：${want}`);
       continue;
     }
-    for (const weapon of weapons) {
-      const prefix = join(outDir, `${e.name.replace(/[\\/:*?"<>|（）\s]/g, '_')}-${weapon}`);
-      const got = await shoot(browser, base, e.key, weapon, prefix, errs);
-      if (!got) continue;
-      rows.push({ name: e.name, key: e.key, weapon, ...got });
-      const rect = cropRect([got.box], CLIP);
-      sheetRows.push(got.shots.map((s) => ({ file: s.file, rect })));
-      const pct = (v) => `${(v * 100).toFixed(1).padStart(5)}%`;
-      console.log(`${e.name}（${weapon}）`);
-      for (const s of got.shots)
-        console.log(
-          `  ${s.tag.padEnd(6)} 白飛び ${pct(s.white)}  眩しさ ${pct(s.bright)}  明るさ ${String(s.mean).padStart(5)}  画面 ${pct(s.screen)}  hitT ${s.hitT.toFixed(2)}  glow ${s.glow}${s.aimed ? '  照準' : ''}`,
-        );
-    }
+    for (const weapon of weapons)
+      for (const skip of hide.length ? [[], hide] : [[]]) {
+        const tail = skip.length ? `-hide-${skip.join('_').replace(/\s/g, '-')}` : '',
+          prefix = join(outDir, `${e.name.replace(/[\\/:*?"<>|（）\s]/g, '_')}-${weapon}${tail}`);
+        const got = await shoot(browser, base, e.key, weapon, prefix, errs, skip);
+        if (!got) continue;
+        rows.push({ name: e.name, key: e.key, weapon, hide: skip, ...got });
+        const rect = cropRect([got.box], CLIP);
+        sheetRows.push(got.shots.map((s) => ({ file: s.file, rect })));
+        const pct = (v) => `${(v * 100).toFixed(1).padStart(5)}%`;
+        console.log(`${e.name}（${weapon}${skip.length ? `・止めた段：${skip.join('・')}` : ''}）`);
+        for (const s of got.shots)
+          console.log(
+            `  ${s.tag.padEnd(6)} 白飛び ${pct(s.white)}  眩しさ ${pct(s.bright)}  明るさ ${String(s.mean).padStart(5)}  画面 ${pct(s.screen)}  hitT ${s.hitT.toFixed(2)}  glow ${s.glow}${s.aimed ? '  照準' : ''}`,
+          );
+      }
   }
 });
 if (sheetRows.length) {
   const file = join(outDir, 'glare.png');
   writeSheet(sheetRows, file, 200);
   console.log(
-    `${file}（行：${rows.map((r) => `${r.name}・${r.weapon}`).join(' / ')}。列：当てる前・当たったフレーム・その後の ${AFTER} フレーム）`,
+    `${file}（行：${rows.map((r) => `${r.name}・${r.weapon}${r.hide.length ? `・止めた段 ${r.hide.join('・')}` : ''}`).join(' / ')}。列：当てる前・当たったフレーム・光り終わるまでのフレーム）`,
   );
 }
-writeFileSync(join(outDir, 'summary.json'), JSON.stringify({ depth, seed, rows }, null, 2) + '\n');
+writeFileSync(join(outDir, 'summary.json'), JSON.stringify({ depth, seed, hide, rows }, null, 2) + '\n');
 if (errs.length) {
   console.log('うまくいかなかった物：', errs);
   process.exitCode = 1;

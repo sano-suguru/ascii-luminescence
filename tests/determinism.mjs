@@ -7,6 +7,8 @@
 // それと、世界を組み立てる間（buildWorld。像の形を作る所も）は、見た目の乱数 mr() を引かないか（__test.worldDraws）。
 // もう1つ：tick の段の終わりごとに見た目の乱数を余分に引いても（__test.tickNoise）、tick の外で余分に引いても、戦いと生き物の動き・伝言・画面写真が変わらないか。
 // tick は段ごと・生き物ごとに、鍵の並び（keyedRand）を読むので、ある段で引く回数が変わっても、後の段と次の tick は変わらないはず（src/game/30-loop-init.js の inPhase）。
+// もう1つ：描くだけの段（手元の武器 hands・振った線 swing・生き物の描画 mob draw）を止めても（__test.skipPhase）、戦いと生き物の動き・伝言が変わらないか
+// （画面写真は、止めた物が描かれないので比べない）。止めた段の分の乱数を引かなくなっても、ほかの段は自分の並びを読むので、変わらないはず。
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 import { withBrowser, newPage, openTest, advance, frames, nearAltar } from './lib.mjs';
@@ -111,10 +113,14 @@ const vaultGuards = async (pg, extra) => {
   }, n0);
 };
 // 段の終わりごとに見た目の乱数を noise 回、tick の外で extra 回余分に引いて、杖を溜めて撃ち、近くの敵と戦う。状態・伝言・画面写真を返す
-const noisy = async (browser, base, noise, extra) => {
+// skip：止める段の名前（__test.skipPhase）
+const SKIP = ['hands', 'swing', 'mob draw'];
+const noisy = async (browser, base, noise, extra, skip = []) => {
   const pg = await newPage(browser, errs, { width: 640, height: 360, still: true });
   await openTest(pg, base, 'seed=202&depth=4&god=1');
   await pg.evaluate((n) => __test.tickNoise(n), noise);
+  const skipped = await pg.evaluate((s) => __test.skipPhase(s), skip);
+  if (skipped.join() !== skip.join()) errs.push(`止めた段が違う：${skipped.join('・')}（止めたかった段：${skip.join('・')}）`);
   await burn(pg, extra);
   await advance(pg, 2);
   await pg.evaluate(() => __test.press('R'));
@@ -149,7 +155,7 @@ const [runs, looks, noise] = await withBrowser(async ({ browser, base }) => {
     await pv.close();
     looks.push(got);
   }
-  const noise = [await noisy(browser, base, 0, 0), await noisy(browser, base, 3, 37)];
+  const noise = [await noisy(browser, base, 0, 0), await noisy(browser, base, 3, 37), await noisy(browser, base, 0, 0, SKIP)];
   return [out, looks, noise];
 });
 const [a, b, c] = runs.map((s) => JSON.stringify(s));
@@ -231,6 +237,27 @@ if (!runs[0].monsters.length) {
   } else
     console.log(
       `✓ tick の段の終わりごとに見た目の乱数を余分に引いても、戦いと生き物の動き（${A.state.monsters.length} 体）・伝言・画面写真は同じ`,
+    );
+}
+{
+  const [A, , C] = noise,
+    sa = JSON.stringify(A.state),
+    sc = JSON.stringify(C.state);
+  if (sa !== sc || A.log !== C.log) {
+    fail = true;
+    console.log(`✗ 段（${SKIP.join('・')}）を止めたら、ほかの段の結果が変わった：`);
+    for (const k in A.state)
+      if (JSON.stringify(A.state[k]) !== JSON.stringify(C.state[k]))
+        console.log(
+          `  ${k}\n    そのまま ${JSON.stringify(A.state[k]).slice(0, 300)}\n    止めた後 ${JSON.stringify(C.state[k]).slice(0, 300)}`,
+        );
+    if (A.log !== C.log) console.log(`  伝言\n    そのまま ${A.log.slice(-300)}\n    止めた後 ${C.log.slice(-300)}`);
+  } else if (!pixelmatch(A.shot.data, C.shot.data, null, A.shot.width, A.shot.height, { threshold: 0 })) {
+    fail = true;
+    console.log(`✗ 段（${SKIP.join('・')}）を止めても、画面写真が同じ（止まっていない恐れ）`);
+  } else
+    console.log(
+      `✓ 段（${SKIP.join('・')}）を止めても、戦いと生き物の動き（${A.state.monsters.length} 体）・伝言は同じ（画面写真は止めた分だけ違う）`,
     );
 }
 if (errs.length) console.log('page errors:', errs);
