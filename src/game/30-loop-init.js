@@ -280,4 +280,5 @@ async function init(){
   requestAnimationFrame(frame);
 }
 if(TEST)init().then(()=>{ dbgUrl(); testBoot=true; }).catch(e=>{ console.error(e); testBoot='error: '+e; });
-else { init(); setTimeout(()=>{ try{ dbgUrl(); }catch(e){ console.error(e); } },400); }
+else { init().then(()=>initAuto({ toStairs:()=>dbg.to('stairs'), clear:()=>{ dbg.clear(); }, hurt:n=>{ dbg.hurt(n); }, summon:(k,i)=>{ summon(k,i); } })).catch(e=>console.error(e));
+  setTimeout(()=>{ try{ dbgUrl(); }catch(e){ console.error(e); } },400); }

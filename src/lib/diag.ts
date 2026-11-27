@@ -6,6 +6,7 @@
 // 公開する時は、capabilities に db（diag は持ち主だけが読み書き）と user を渡す（CLAUDE.md の「Artifact に公開する」）。
 import { nth } from './array.ts';
 import { sndState } from './audio.ts';
+import { autoSt } from './auto.ts';
 import { placeKey } from './levels.ts';
 import { adv, fight, gear, ui } from './state.ts';
 import { setTookSink } from './took.ts';
@@ -28,11 +29,23 @@ const isUser = (v: unknown): v is UserLike => hasFn(v, 'isOwner');
 const isDb = (v: unknown): v is DbLike => hasFn(v, 'collection');
 
 /** 速さの記録の数・できごとの数・エラーの数・かかった時間の数・遅いフレームの数の上限（遅いフレームは短い物から、ほかは古い物から捨てる） */
-const KEEP = { fps: 60, events: 50, errors: 20, took: 40, slow: 40 };
+const KEEP = { fps: 60, events: 50, errors: 20, took: 40, slow: 40, menu: 100 };
 /** これより長くかかった1フレームを、遅いフレームとして1つずつ書く（ミリ秒） */
 const SLOW_MS = 100;
 /** 速さをまとめる間（ミリ秒）と、書き込みの間 */
 const SPAN = 10_000;
+
+/** 自動で遊んだ記録（src/lib/auto.ts。欄 auto に書く） */
+const autoRec = (): Record<string, unknown> => ({
+  laps: autoSt.laps,
+  quick: autoSt.quick,
+  lap: autoSt.lap,
+  step: autoSt.step,
+  done: autoSt.done,
+  stop: autoSt.stop,
+  wakeLock: autoSt.wakeLock,
+  steps: autoSt.steps,
+});
 
 /** 今の場所（タイトル・探索中・止まっている・死んだ） */
 const phase = (): string =>
@@ -73,7 +86,9 @@ export async function initDiag(): Promise<void> {
   type Row = Record<string, unknown>;
   // took：場面が切り替わる時の処理にかかった時間（src/lib/took.ts）。slow：SLOW_MS より長くかかった1フレーム。
   // どちらも、できごとの一覧とは別に持つ（できごとは押すたびに増え、すぐ押し出されるため）
-  const rec: { t0: string; device: Row; fps: Row[]; events: Row[]; errors: Row[]; took: Row[]; slow: Row[] } = {
+  // menu：メニューの項目を押した（項目 k・その前に押した項目 prev と、それからの秒 dt。メニューを開いて初めての1回は prev も dt も null）。
+  // 押し間違いの目安を見るため（tools/diag-report.mjs が、すぐ押し直した回数を数える）。人の指の事件（isTrusted）だけ
+  const rec: { t0: string; device: Row; fps: Row[]; events: Row[]; errors: Row[]; took: Row[]; slow: Row[]; menu: Row[] } = {
     t0: new Date(t0).toISOString(),
     device: device(),
     fps: [],
@@ -81,6 +96,7 @@ export async function initDiag(): Promise<void> {
     errors: [],
     took: [],
     slow: [],
+    menu: [],
   };
   // busy：書き込みの途中。again：その途中に、また書くよう頼まれた（終わったらもう一度書く。ページを離れる時の分が抜けないように）
   let dirty = true,
@@ -117,7 +133,7 @@ export async function initDiag(): Promise<void> {
     dirty = false;
     busy = true;
     doc
-      .set({ ...rec, saved: since() })
+      .set({ ...rec, ...(autoSt.on ? { auto: autoRec() } : {}), saved: since() })
       .catch((e: unknown) => {
         // 書けなかった時は、次の機会にもう一度（書けない理由は、エラーとして残す）
         dirty = true;
@@ -146,8 +162,18 @@ export async function initDiag(): Promise<void> {
     cast: gear.castSt?.h ?? '',
     projs: fight.projs.length > 0,
     audio: sndState(),
+    // 自動で遊んでいる段（src/lib/auto.ts。遅いフレームの「近く」に段の名前が出る）
+    ...(autoSt.on ? { auto: autoSt.step } : {}),
   });
   let last = flags();
+  // メニューを開いてから最後に押した項目と時刻（メニューが閉じたら null。閉じたことは、#menu の show が外れたのを見て知る。
+  // 0.25秒ごとの見回りで知ると、すぐ開き直した時に前の項目が残るため）
+  let menuLast: { k: string; at: number } | null = null;
+  const menuEl = document.getElementById('menu');
+  if (menuEl)
+    new MutationObserver(() => {
+      if (!menuEl.classList.contains('show')) menuLast = null;
+    }).observe(menuEl, { attributes: true, attributeFilter: ['class'] });
   // 音の部品の、記録を始めた時の状態（その後は、変わった時だけ書く。押す前に動いていないかを、後から確かめられるように）
   event('audio', last['audio']);
   setInterval(() => {
@@ -160,7 +186,16 @@ export async function initDiag(): Promise<void> {
     (e) => {
       const b = e.target instanceof Element ? e.target.closest('button') : null;
       if (b) event('press', `${b.id || b.textContent?.trim().slice(0, 20) || 'button'} (${e.pointerType})`);
-      else if (e.target instanceof Element && e.target.id === 'gl')
+      const k = b instanceof HTMLElement && b.closest('#menu') ? b.dataset['k'] : undefined;
+      if (k && e.isTrusted) {
+        const at = performance.now();
+        push(rec.menu, KEEP.menu, {
+          k,
+          prev: menuLast?.k ?? null,
+          dt: menuLast ? Math.round((at - menuLast.at) / 100) / 10 : null,
+        });
+        menuLast = { k, at };
+      } else if (e.target instanceof Element && e.target.id === 'gl')
         event('tap', `${e.clientX < innerWidth / 2 ? 'left' : 'right'} (${e.pointerType})`);
     },
     true,
