@@ -74,15 +74,15 @@ document.getElementById('intropanel').addEventListener('click',e=>{
   adv.dead=false; { const de=document.getElementById('death'); if(de)de.classList.remove('show','won'); }
   adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(saved.META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:clock.time,maxDepth:here.depth,book0:saved.BOOK.size,beastsNew:0}; resetRunes();
   if(regen)newLevel();
-  ui.started=true; document.body.classList.add('started'); if(here.D)showStratum(here.D.stratum); if(ui.touch)touchTip(); else { setHelp(true); ui.helpT=25; } ui.introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume(); took('start',t0);
+  ui.started=true; document.body.classList.add('started'); if(here.D)showStratum(here.D.stratum); if(ui.touch)touchTip(); else { setHelp(true); ui.helpT=25; } ui.introEl.classList.add('gone'); gfx.canvas.focus(); tryLock(); updateResume(); took('start',t0);
 });
 // 指で遊ぶ時は、始めに操作の案内（キーボードの説明）を出さず、初めて指で迷宮に入った時だけ、左下の伝言に一言を出す（記録 META の touchTip で1回だけ。
 // 階に入った時の伝言の後に出るよう、1.5秒待つ）
 function touchTip(){ if(saved.META.touchTip)return; saved.META.touchTip=true; saveMeta(); setTimeout(()=>msg('<b style="color:#bfe4ff">?</b>左半分で動く・右半分で見回す。くわしくはメニューの「操作の案内」'),1500); }
-canvas.addEventListener('contextmenu',e=>e.preventDefault());
+gfx.canvas.addEventListener('contextmenu',e=>e.preventDefault());
 // the bestiary: the wheel moves in and out, a drag with the left button turns the creature and moves the camera up and down (galleryWheel, galleryDrag)
-canvas.addEventListener('wheel',e=>{ if(!(ui.gallery&&ui.gallery.mode==='beast'))return; e.preventDefault(); galleryWheel(e.deltaY*(e.deltaMode===1?33:e.deltaMode===2?400:1)); },{passive:false});
-canvas.addEventListener('mousedown',e=>{ if(!(ui.gallery&&ui.gallery.mode==='beast')||e.button!==0)return; ui.gallery.drag={x:e.clientX,y:e.clientY}; galleryView(); });
+gfx.canvas.addEventListener('wheel',e=>{ if(!(ui.gallery&&ui.gallery.mode==='beast'))return; e.preventDefault(); galleryWheel(e.deltaY*(e.deltaMode===1?33:e.deltaMode===2?400:1)); },{passive:false});
+gfx.canvas.addEventListener('mousedown',e=>{ if(!(ui.gallery&&ui.gallery.mode==='beast')||e.button!==0)return; ui.gallery.drag={x:e.clientX,y:e.clientY}; galleryView(); });
 // the left button let go where no mouseup reaches (another window took the focus): the drag ends
 window.addEventListener('mousemove',e=>{ const g=ui.gallery; if(!g||!g.drag)return; if(!(e.buttons&1)){ g.drag=null; galleryView(); return; } galleryDrag(e.clientX-g.drag.x,e.clientY-g.drag.y); g.drag.x=e.clientX; g.drag.y=e.clientY; });
 window.addEventListener('mouseup',e=>{ const g=ui.gallery; if(!g||!g.drag||e.button!==0)return; g.drag=null; galleryView(); });
@@ -96,12 +96,12 @@ window.addEventListener('mousedown',e=>{
   if(ui.menuOpen){ setMenu(false); if(!ui.plFailed)tryLock(); }
   if(ui.invOpen)setInv(false);
 },true);
-canvas.addEventListener('wheel',e=>{ if(!ui.started||isPaused()||!gear.hands)return; e.preventDefault(); nextBuild(); },{passive:false});
+gfx.canvas.addEventListener('wheel',e=>{ if(!ui.started||isPaused()||!gear.hands)return; e.preventDefault(); nextBuild(); },{passive:false});
 // 次のビルドに持ち替える（ホイールと、指の操作の [持ち替え]。続けて回した時は 0.35 秒あける）。buildsHave は src/lib/hotbar.ts
-function nextBuild(){ if(!ui.started||isPaused()||!gear.hands)return; const have=buildsHave(); if(!have.length||clock.time-(canvas.wheelT||-9)<0.35)return; canvas.wheelT=clock.time;
+function nextBuild(){ if(!ui.started||isPaused()||!gear.hands)return; const have=buildsHave(); if(!have.length||clock.time-(gfx.canvas.wheelT||-9)<0.35)return; gfx.canvas.wheelT=clock.time;
   const pos=Math.max(0,have.indexOf(gear.buildIdx)), next=have[(pos+1)%have.length]; const prev=snapHands(); if(applyBuild(next)){ startSwap(prev); flashHint(`ビルド${next+1}`,900); } renderHotbar(); }
 let downAt=null;
-canvas.addEventListener('mousedown',e=>{ if(!ui.started||isPaused())return; if(relockClick()){ canvas.focus(); return; } if(e.button===2){ beginCast('R'); return; } if(ui.locked&&e.button===0){ beginCast('L'); return; } if(e.button===0){ downAt=[e.clientX,e.clientY]; beginCast('L'); } dragging=true; lmx=e.clientX; lmy=e.clientY; if(!ui.locked)tryLock(); canvas.focus(); updateResume(); });
+gfx.canvas.addEventListener('mousedown',e=>{ if(!ui.started||isPaused())return; if(relockClick()){ gfx.canvas.focus(); return; } if(e.button===2){ beginCast('R'); return; } if(ui.locked&&e.button===0){ beginCast('L'); return; } if(e.button===0){ downAt=[e.clientX,e.clientY]; beginCast('L'); } dragging=true; lmx=e.clientX; lmy=e.clientY; if(!ui.locked)tryLock(); gfx.canvas.focus(); updateResume(); });
 window.addEventListener('mouseup',e=>{ if(gear.hands){ if(e.button===0)releaseCast('L'); if(e.button===2)releaseCast('R'); } downAt=null; dragging=false; updateResume(); });
 window.addEventListener('mousemove',e=>{
   if(!ui.started)return;

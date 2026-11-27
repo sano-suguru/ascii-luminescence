@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------- renderer & post
-const canvas=document.getElementById('gl');
-try{ gfx.renderer=new T.WebGLRenderer({canvas,antialias:false,powerPreference:'high-performance',stencil:false}); }
+gfx.canvas=document.getElementById('gl');
+try{ gfx.renderer=new T.WebGLRenderer({canvas:gfx.canvas,antialias:false,powerPreference:'high-performance',stencil:false}); }
 catch(e){ errEl.textContent='WebG Lを初期化できませんでした。ハードウェアアクセラレーションを有効にしてください。'.replace('WebG L','WebGL'); return; }
 const isGL2=gfx.renderer.capabilities.isWebGL2;
 let pixelRatio=Math.min(window.devicePixelRatio||1,1.5);

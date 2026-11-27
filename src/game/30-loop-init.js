@@ -28,7 +28,7 @@ function frame(nowMs){
 }
 const TESTQ={n:0,done:null};
 function testTick(draw){ TESTCLK.advance(TEST_STEP*1000); stepTick(TEST_STEP,draw); }
-// one step of the game. While the bestiary shows a creature, the visual random (mr) reads the creature's own sequence (showBeast in 25-gallery.js)
+// one step of the game. While the bestiary shows a creature, the visual random (mr) reads the creature's own sequence (showBeast in src/lib/gallery.ts)
 function stepTick(raw,draw){ const g=ui.gallery, r=g&&g.mode==='beast'&&g.m?g.rnd:null; if(r)withVisualRand(r,()=>tick(raw,draw)); else tick(raw,draw); }
 // tick の段ごとの見た目の乱数：tick を段（プレイヤー・世界・灯り・描く物の種類ごと・粒子・火の広がり・飛ぶ物…）に分け、段ごとに、何の段か・探索のシード・
 // 何回目の tick か（clock.frame）を鍵にした新しい並びを読む（keyedRand）。生き物は1体ずつ、動きと描画を、階のシード・階で何体目か（m.seq）・何回目の tick か を鍵にした並びで読む。
@@ -252,7 +252,7 @@ if(TEST)window.__test={
     finally{ gfx.drawBodyOnly=false; buf.dn=d0; buf.pN=p0; }
     if(!pts.length)return {key,x:m.x,z:m.z,glyphs:0};
     // 画面の範囲は、描いたカメラ（__test.cam で置いていれば、そのカメラ）で数える
-    const W=canvas.clientWidth, H=canvas.clientHeight, v=new T.Vector3(); let out=0, y0=1e9, y1=-1e9; const sb=[1e9,1e9,-1e9,-1e9];
+    const W=gfx.canvas.clientWidth, H=gfx.canvas.clientHeight, v=new T.Vector3(); let out=0, y0=1e9, y1=-1e9; const sb=[1e9,1e9,-1e9,-1e9];
     withTestCam(()=>{ gfx.camera.updateMatrixWorld(); for(const [x,y,z] of pts){ y0=Math.min(y0,y); y1=Math.max(y1,y); v.set(x,y,z).project(gfx.camera); const sx=(v.x+1)/2*W, sy=(1-v.y)/2*H;
       if(v.z>1||sx<0||sx>W||sy<0||sy>H){ out++; if(v.z>1)continue; } sb[0]=Math.min(sb[0],sx); sb[1]=Math.min(sb[1],sy); sb[2]=Math.max(sb[2],sx); sb[3]=Math.max(sb[3],sy); } });
     const c=(a,lo,hi)=>Math.round(Math.max(lo,Math.min(hi,a)));

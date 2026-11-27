@@ -7,6 +7,7 @@ import { makeHistory } from '../lib/history.ts';
 import { G, RAMP_CH, RUNESET, RUNE_CHARS, SWAPSET, WG } from '../lib/glyphs.ts';
 import { R, RI, keyedRand, mpick, mr, pick, rand, roll, setSoundRand, shuffle, sndRand, withVisualRand } from '../lib/random.ts';
 import { dragonSleepForm } from '../lib/bodies/beasts.ts';
+import { drawGallery, galleryDrag, galleryHold, galleryReset, galleryView, galleryWheel, galleryZoom, openBestiary, openRange, renderGallery, showBeast, trackSeen, updateGallery } from '../lib/gallery.ts';
 import { beastSamples, beastSleep, SHADOW_KING_SC, shadowKingScale } from '../lib/bodies/lords.ts';
 import {
   BASE_H, BRANCHES, CELL, CH_D, CHUNK, CXN, CZN, D4, FOGS, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MH, MW, NCELL, NDL, NSL, PR, PROPHECIES,
@@ -59,7 +60,7 @@ import { drawArrows } from '../lib/arrows.ts';
 import { drawCastFx, updateCross } from '../lib/chantfx.ts';
 import { addBolt, drawBoltFx, drawFire, drawFrozen, drawWave, drawZones, sparkCrown } from '../lib/fx.ts';
 import { BRANCH_OMEN, REALM_OMEN, SPECIAL_OMEN, STRATUM_OMEN, drawOmens, drawStairSeal, omenOf, stairsGuarded } from '../lib/omens.ts';
-import { loadBeasts, recordBeast, saveMeta, saveSet } from '../lib/save.ts';
+import { loadBeasts, loadSet, recordBeast, saveMeta, saveSet } from '../lib/save.ts';
 import { BL, canStep, chooseNext, fireNear, foe, hostile, makeMonster, statOf, summon, updateMonster } from '../lib/monsters.ts';
 import { brimFlare, brimRecover, chillArea, crackIce, ignite, initFire, regrow, splash, stepFire, stepGas, tallAt, trample, updateCritter, updateFrozen, uploadCells } from '../lib/ground.ts';
 import { updateEvents, updateTraps } from '../lib/events.ts';
