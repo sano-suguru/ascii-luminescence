@@ -114,7 +114,7 @@ function onKeyDown(e){
   if(adv.dead&&(e.code==='Enter'||e.code==='KeyR')){ newRun(); return; }
   if(ui.started&&e.code==='Space'){ startRoll(); }
   if(ui.started&&e.code==='KeyP'){ ui.perfOn=!ui.perfOn; renderStatus(); }
-  if(ui.started&&e.code==='KeyJ'){ ui.chronOn=!ui.chronOn; ui.helpOn=false; ui.helpT=0; const el=document.getElementById('help'); if(el){ if(ui.chronOn)renderChron(); el.classList.toggle('off',!ui.chronOn); } }
+  if(ui.started&&e.code==='KeyJ'){ ui.chronOn=!ui.chronOn; ui.helpOn=false; ui.bookOn=false; ui.helpT=0; const el=document.getElementById('help'); if(el){ if(ui.chronOn)renderChron(); el.classList.toggle('off',!ui.chronOn); } }
   if(ui.started&&(e.key==='?'||e.code==='Slash')){ setHelp(!ui.helpOn); ui.helpT=0; }
 }
 // 装備の画面を開け閉めする（Tab とタッチの [装備]）。祭壇の画面が開いていれば、閉じて装備の画面を開く

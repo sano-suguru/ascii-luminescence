@@ -69,7 +69,7 @@ export function renderLevelUp(): void {
     rows = [f(`+-- レベルが上がった（Lv${adv.lvl.n - adv.lvl.pending + 1}） ---`), f('|')];
   ui.lvlOpts.forEach((o, i) => rows.push(`${f('|')}  <button class="row ao" data-lk="${i}">${clipHtml(lvlLine(o), ALTAR_W - 6)}</button>`));
   rows.push(f('|'));
-  for (let i = 0; i < 4; i++) rows.push(`${f('|')} <span class="ldet">${padTo('', ALTAR_W - 3)}</span>`);
+  for (let i = 0; i < 5; i++) rows.push(`${f('|')} <span class="ldet">${padTo('', ALTAR_W - 3)}</span>`);
   rows.push(
     f('|'),
     `${f('|')} <span class="lab">${byInput('マウスを乗せると説明が出る。クリックで選ぶ', '1回押すと説明が出る。もう1回押すと決まる')}</span>`,
@@ -108,16 +108,16 @@ export function setLevelDetail(o: LevelOpt | null | undefined): void {
   const el = document.getElementById('altarp');
   if (!el) return;
   let L: string[];
-  if (!o) L = [`<span class="lab">${byInput('選択肢にマウスを乗せると', '選択肢を押すと')}、ここに説明が出る</span>`, '', '', ''];
+  if (!o) L = [`<span class="lab">${byInput('選択肢にマウスを乗せると', '選択肢を押すと')}、ここに説明が出る</span>`, '', '', '', ''];
   else if (o.kind === 'bless') {
     const B = lookup(BLESS, o.k),
       l = BL(o.k) + 1,
       w = wrapPlain(B.d(l), ALTAR_W - 10);
     L = [
       `<span style="color:${B.cost ? '#ff9a8a' : '#ffe3a0'}">${B.name}${l > 1 ? ' II（2回目で強まる）' : ''}</span>　<span class="lab">（恩恵${B.cost ? '・代償あり' : ''}）</span>`,
-      ...w.slice(0, 3).map((t) => `    <span class="lab">${t}</span>`),
+      ...w.slice(0, 4).map((t) => `    <span class="lab">${t}</span>`),
     ];
-  } else L = detailLines(o.ru).slice(0, 4);
+  } else L = detailLines(o.ru);
   el.querySelectorAll('.ldet').forEach((sp, i) => {
     sp.innerHTML = padTo(clipHtml(L[i] || '', ALTAR_W - 4), ALTAR_W - 3);
   });
@@ -323,8 +323,6 @@ export function chooseAltar(n: number): boolean {
   const [x, z] = cpos(it.i);
   if (!it.opt || it.opt === 'rune') grabItem(it, k, x + ((it.slot ?? NaN) - 1) * 0.55, z, 'bag');
   else grabItem(it, k, x + ((it.slot ?? NaN) - 1) * 0.55, z);
-  ui.altarSel = null;
-  ui.altarPanelKey = '';
   if (ui.altarOpen) closeAltar(false);
   return true;
 }
