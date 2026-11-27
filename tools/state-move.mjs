@@ -103,8 +103,6 @@ export function stateMove({ dir = GAME_DIR, box, names, dry = false }) {
     // TypeScript のモジュールは古い JS より先に読まれるので、移すと値を作る時と順番が変わる（テスト用モードの乱数の入れ替えより前に引く、など）
     const keep = d.init ? !fixed(d.init) : false;
     // 宣言は、全部の名前を見てから、宣言ごとにまとめて消す（並んだ宣言の名前をいくつも移すと、消す範囲が重なるため）
-    if (keep && decl.declarations.length !== 1)
-      throw new Error(`${name} の初めの値は決まった値ではないので、その場に残したいが、並んだ宣言の中にある（先に宣言を分ける）`);
     (moved.get(decl) ?? moved.set(decl, new Map()).get(decl)).set(d, keep);
     // ゲームの状態を指す所を書き換える（宣言の初めの値への書き込みは除く。宣言ごと消すので）
     const files = {};
@@ -136,6 +134,17 @@ export function stateMove({ dir = GAME_DIR, box, names, dry = false }) {
   // （残る宣言子の初めの値の中の書き換えと重ならないように）。全部を移すなら宣言ごと消し、1行それだけならその行ごと消す
   for (const [decl, ds] of moved) {
     const all = decl.declarations;
+    // 並んだ宣言の中にその場に残す物があるなら、並んだ全部を移して、全部をその場に残す時だけ書ける（「入れ物.a=…; 入れ物.b=…;」）
+    if (all.length > 1 && [...ds.values()].some(Boolean)) {
+      const name = all.find((d) => ds.get(d))?.id.name;
+      if (!all.every((d) => ds.get(d)))
+        throw new Error(
+          `${name} の初めの値は決まった値ではないので、その場に残したいが、並んだ宣言の中にある（並んだ全部を、その場に残す物として移すか、先に宣言を分ける）`,
+        );
+      edit(decl.start, all[0].id.end, `${box}.${all[0].id.name}`);
+      for (let k = 1; k < all.length; k++) edit(all[k - 1].end, all[k].id.end, `; ${box}.${all[k].id.name}`);
+      continue;
+    }
     if (all.length === 1 && ds.get(all[0])) {
       // その場に残す：「let 名前」だけを「入れ物.名前」にする。「=」から後ろは元の文のまま（外側のかっこも残る。
       // 初めの値の中の、ほかの移す名前の書き換えとも重ならない）

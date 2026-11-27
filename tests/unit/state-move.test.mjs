@@ -97,6 +97,23 @@ describe('状態を入れ物に移す（tools/state-move.mjs）', () => {
     expect(read('00-a.js')).toBe('adv.seed=f(adv.base);\nfunction g(){ return adv.seed; }\n');
   });
 
+  it('並んだ宣言を全部その場に残す物として移すなら、文ごとの代入にする。並んだ中に移さない物か、入れ物に移す物があれば止める', () => {
+    make({ '00-a.js': "const el=document.getElementById('m'), cx=el.getContext('2d');\nfunction d(){ cx.fill(); return el; }\n" });
+    stateMove({ dir, box: 'ui', names: ['el', 'cx'] });
+    expect(read('00-a.js')).toBe(
+      "ui.el=document.getElementById('m'); ui.cx=ui.el.getContext('2d');\nfunction d(){ ui.cx.fill(); return ui.el; }\n",
+    );
+    for (const [src, names] of [
+      ['let el=f(), cx=g();\nfunction d(){ return el+cx; }\n', ['el']],
+      ['let el=f(), n=0;\nfunction d(){ return el+n; }\n', ['el', 'n']],
+    ]) {
+      rmSync(dir, { recursive: true, force: true });
+      make({ '00-a.js': src });
+      expect(() => stateMove({ dir, box: 'ui', names })).toThrow(/並んだ宣言の中にある/);
+      expect(read('00-a.js')).toBe(src);
+    }
+  });
+
   it('dry なら書き換えない', () => {
     const src = 'let shake=0;\nfunction s(){ return shake; }\n';
     make({ '00-a.js': src });
