@@ -113,6 +113,7 @@ describe('生き物の形', () => {
       ...TYS.flatMap((ty) => [seeded(() => beasts.dragonForm(ty)), seeded(() => beasts.ogreForm({ ...ty, ch: 'O' }))]),
       ...SPECS.map((s) => seeded(() => lords.beastForm(s))),
       ...TYS.map((ty) => seeded(() => beasts.conjurerForm(ty))),
+      ...TYS.flatMap((ty) => [false, true].map((sentry) => seeded(() => beasts.snapjawForm(ty, sentry)))),
     ];
     for (const b of bodies) {
       expect(b.length).toBeGreaterThan(5);
@@ -237,6 +238,46 @@ describe('生き物の形', () => {
         expect(out(p)).toBeLessThan(0.05);
       }
     }
+  });
+  it('スナップジョー：腕の点（爪・棍棒・槍も）はどれも肩を、脚の点は腰を軸に回る。明るさ b は 1.8 まで。目は頭の表面のすぐ外、たてがみの根もとは背の表面のすぐ外。槍は見張りだけ', () => {
+    const T = beasts.SNAP_TORSO,
+      H = beasts.SNAP_HEAD,
+      C = beasts.SNAP_COL;
+    // 胴の表面からの距離（外が正。体を作ったのと同じ式 snapTorsoAt で、点の高さと向きの所の表面と比べる）
+    const out = (p: { x: number; y: number; z: number }): number => {
+      const f = (p.y - T.y0) / (T.y1 - T.y0),
+        zc = T.z(f),
+        a = Math.atan2((p.z - zc) / T.rz(f, p.z < zc), p.x / T.rx(f)),
+        s = beasts.snapTorsoAt(f, a);
+      return Math.hypot(p.x, p.z - zc) - Math.hypot(s.x, s.z - zc);
+    };
+    for (const ty of TYS)
+      for (const sentry of [false, true]) {
+        const b = seeded(() => beasts.snapjawForm(ty, sentry)),
+          axis = (part: string) => new Set(b.filter((p) => p.part === part).map((p) => `${p.piv},${p.pz}`));
+        expect([axis('armL'), axis('armR')]).toEqual([new Set(['1.2,0.22']), new Set(['1.2,0.22'])]);
+        expect([axis('legL'), axis('legR')]).toEqual([new Set(['0.72,0']), new Set(['0.72,0'])]);
+        for (const p of b) expect(p.b).toBeLessThanOrEqual(1.8);
+        expect(new Set(b.map((p) => p.part))).toEqual(new Set(['body', 'head', 'armL', 'armR', 'legL', 'legR', 'tail']));
+        const eyes = b.filter((p) => p.col === C.eye);
+        expect(eyes.length).toBe(2);
+        for (const p of eyes) {
+          const k = Math.hypot((p.x - H.c[0]) / H.r[0], (p.y - H.c[1]) / H.r[1], (p.z - H.c[2]) / H.r[2]);
+          expect(k).toBeGreaterThan(1.03);
+          expect(k).toBeLessThan(1.2);
+        }
+        // たてがみの根もと（胴の高さにある、背の真ん中の暗い #）
+        const mane = b.filter((p) => p.part === 'body' && p.col === C.dark && p.g === G('#') && p.y < T.y1);
+        expect(mane.length).toBeGreaterThanOrEqual(4);
+        for (const p of mane) {
+          expect(out(p)).toBeGreaterThan(0.005);
+          expect(out(p)).toBeLessThan(0.05);
+        }
+        // 槍（石の穂）は見張りだけ。頭より上に出る
+        const spear = b.filter((p) => p.col === C.stone);
+        expect(spear.length).toBe(sentry ? 2 : 0);
+        for (const p of spear) expect(p.y).toBeGreaterThan(H.c[1] + H.r[1]);
+      }
   });
   it('クラーケン：水面より下に点が無く、目と斑点は頭の表面のすぐ外（埋もれず、浮かない）。明るさ b は 1.8 まで。腕は揺れる触手（tent）だけ', () => {
     const H = beasts.krakenHead,
