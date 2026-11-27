@@ -16,7 +16,7 @@ import { CELL, EYE, MH, MW, TC, TW, TX } from './world.ts';
 const level = () => must(here.D, '今の階 here.D');
 
 // eye adaptation and atmosphere: open caverns thin the fog, bright surroundings lower the exposure
-/** 霧と目の慣れ（毎フレーム）：洞窟の部屋・遺跡では霧の濃さを変え、まわりの明るさ（灯り・近くの生き物と備品）で露出をゆっくり合わせる。溶岩の近くの熱のゆらぎと、水中の見え方も */
+/** 霧と目の慣れ（毎フレーム）：洞窟の部屋・遺跡では霧の濃さを変え、まわりの明るさ（灯り・近くの見える生き物と備品）で露出をゆっくり合わせる。溶岩の近くの熱のゆらぎと、水中の見え方も */
 export function updateAtmosphere(dt: number): void {
   const pc = Math.floor(player.z / CELL) * MW + Math.floor(player.x / CELL),
     ri = nth(level().roomOf, pc);
@@ -26,6 +26,8 @@ export function updateAtmosphere(dt: number): void {
   const l = cellLight(player.x, player.z);
   let B = 0.3 * l[0] + 0.55 * l[1] + 0.15 * l[2];
   for (const m of here.monsters) {
+    // 見えない生き物・化けている生き物・水に潜ったうなぎは、目に入る明るさに数えない（近づいたのが暗さで分からないように）
+    if (m.ty.invisible || m.hidden || (m.ty.form === 'eel' && !((m.surf ?? 0) > 0))) continue;
     const d = Math.hypot(m.x - player.x, m.z - player.z);
     if (d < 5) B += (1 - d / 5) ** 2 * 0.7;
   }
