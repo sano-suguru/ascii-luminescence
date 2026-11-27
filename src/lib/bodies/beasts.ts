@@ -2540,7 +2540,7 @@ export function snapjawForm(ty: BodyType, sentry: boolean): Body {
     const a = (k / 14) * Math.PI * 2;
     lit(Math.cos(a) * 0.15, 1.27 + 0.03 * Math.sin(a), 0.31 + Math.sin(a) * 0.12, '%', 1.1, 1.0, C.dark, 'head');
   }
-  // 頭：幅の広い頭と、長く太い暗い鼻づら（先は焦げ茶）。下あごは開いて垂れ、牙が見える
+  // 頭：幅の広い頭と、長く太い暗い鼻づら（暗い色 C.dark）。下あごは開いて垂れ、牙が見える
   ell(H.c, H.r[0], H.r[1], H.r[2], HAIR, () => FURC, 'head');
   tube([0, hy - 0.01, hz + 0.1], [0, hy - 0.07, hz + 0.3], 0.08, 0.055, HAIR, C.dark, 'head');
   tube([0, hy - 0.07, hz + 0.3], [0, hy - 0.08, hz + 0.38], 0.055, 0.045, HAIR, C.dark, 'head');
@@ -2591,8 +2591,14 @@ export function snapjawForm(ty: BodyType, sentry: boolean): Body {
       p = snapTorsoAt(0.05, a);
     lit(p.x * 1.12, p.y, p.z * 1.12, '=', 1, 1.0, C.cloth);
   }
-  for (let y = 0.62; y >= 0.44; y -= S * 0.7)
-    for (const x of [-0.06, 0, 0.06]) lit(x, y, T.rz(0, false) + 0.03 + (0.66 - y) * 0.2, '#', 1, 0.9, C.cloth);
+  // 前に垂れる布：行の数を決めて、0.62 から 0.44 まで等しい間隔で置く（最後の行が下の端に来る）
+  {
+    const nr = Math.max(1, Math.round((0.62 - 0.44) / (S * 0.7)));
+    for (let j = 0; j <= nr; j++) {
+      const y = 0.62 - (0.18 * j) / nr;
+      for (const x of [-0.06, 0, 0.06]) lit(x, y, T.rz(0, false) + 0.03 + (0.66 - y) * 0.2, '#', 1, 0.9, C.cloth);
+    }
+  }
   // 短い尾（毛の房）
   for (let k = 0; k < 4; k++) {
     const f = k / 3;
@@ -2607,7 +2613,7 @@ export function snapjawForm(ty: BodyType, sentry: boolean): Body {
     for (const o of [-1, 0, 1]) lit(sd * 0.35 + o * 0.03, 0.58, 0.47, '|', 0.7, 0.85, C.bone, part, SHOULDER);
   }
   if (!sentry) {
-    // 木の棍棒：右手に握り、先は前の下へ（焦げ茶。明るい色だと、体より棒が目立つ）
+    // 木の棍棒：右手に握り、先は前の下へ（暗い色 C.dark。明るい色だと、体より棒が目立つ）
     tube([0.35, 0.68, 0.46], [0.38, 0.34, 0.74], 0.03, 0.035, HAIR, C.dark, 'armR', SHOULDER);
     ellAt(SHOULDER, [0.385, 0.3, 0.77], 0.07, 0.06, 0.07, HAIR, () => C.dark, 'armR');
   } else {
