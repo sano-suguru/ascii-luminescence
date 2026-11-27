@@ -868,6 +868,12 @@ export async function stepCases(F, seeds, page) {
         here.events.push({ type: 'erupt', src: src2, order: cells1.slice(0, 4), state: 0, t: 0.1, k: 0 });
         if (chance(0.5)) here.fovVis[cells1[1]] = here.fovStamp;
         if (chance(0.5)) saved.LEGEND = null;
+        // 場合の前提：溶岩の流れる道（噴き上がりと部屋の出来事の流れ）に、通れない所が無い（迷宮の生成と同じ。通れない所に流れると、引いても残ることがある）。
+        // 崩れていたら、たまたま通る・落ちるのを待たず、ここで止める
+        const solidWay = here.events
+          .filter((e) => e.type === 'erupt' || e.type === 'lavaflow')
+          .flatMap((e) => e.order.filter((i) => D.solid.has(i)));
+        if (solidWay.length) throw new Error(`場合の前提が崩れた：溶岩の流れる道に通れないマス ${solidWay.join(',')}（seed ${s}）`);
         const erupts = here.events.filter((e) => e.type === 'erupt'),
           seen = new Map(erupts.map((e) => [e, new Set([e.state])]));
         // 流れる順の写し（噴き上がりの後も、並びが変わらないか）と、水のマスを1つ（引いた後に水へ戻るか）

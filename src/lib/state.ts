@@ -11,7 +11,19 @@ import type { LoreResult } from './results.ts';
 import type { Debris } from './debris.ts';
 import type { Body, Glyph } from './bodies/kit.ts';
 import { type Rune } from './runes.ts';
-import type { DataTexture, Mesh, Scene, ShaderMaterial, Sphere, Texture, Vector3, WebGLRenderer } from 'three';
+import type { AVATAR_TY } from './names.ts';
+import type {
+  BufferAttribute,
+  BufferGeometry,
+  DataTexture,
+  Mesh,
+  Scene,
+  ShaderMaterial,
+  Sphere,
+  Texture,
+  Vector3,
+  WebGLRenderer,
+} from 'three';
 import type { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { DUST_N } from './shaders.ts';
 import { NCELL, NDL, NSL } from './world.ts';
@@ -44,19 +56,36 @@ export interface Clock {
 }
 export const clock: Clock = { time: 0, frame: 0 };
 
-/** 揺れと光り（画面の揺れ、画面の光り、ダメージを受けた時と回復した時の光り、稲妻の光り） */
+/** 揺れと光り（画面の揺れ、画面の光り、ダメージを受けた時と回復した時の光り、稲妻の光り）と、目の慣れ expo（画面の明るさに掛ける。src/lib/camera.ts の updateAtmosphere が、まわりの明るさに合わせてゆっくり変える） */
 export interface Vfx {
   shake: number;
   flash: number;
   hurtFlash: number;
   hpFlash: number;
   zapFlash: ZapFlash | null;
+  expo: number;
 }
-export const vfx: Vfx = { shake: 0, flash: 0, hurtFlash: 0, hpFlash: 0, zapFlash: null };
+export const vfx: Vfx = { shake: 0, flash: 0, hurtFlash: 0, hpFlash: 0, zapFlash: null, expo: 1.1 };
 
-/** 図鑑の獣を見ている間（'beast'）か、試しの間（'range'）の状態（今は mode だけ型を付ける。ほかの欄は、図鑑と試しの間の処理を移す時に足す） */
+/** 図鑑の獣を見ている間（'beast'）か、試しの間（'range'）の状態（今は mode と settle だけ型を付ける。ほかの欄は、図鑑と試しの間の処理を移す時に足す） */
 export interface Gallery {
   mode: 'beast' | 'range';
+  /** 生き物を出した後、目の慣れと霧をすぐ合わせるまでの段（1：カメラを置くのを待つ、2：次の一歩で src/lib/camera.ts の updateAtmosphere が合わせて 0 にする） */
+  settle?: number;
+}
+/** 3人称の時の自分の姿（src/lib/camera.ts の updateAvatar が作って動かし、30-loop-init.js が drawMonster0 で描く） */
+export interface Avatar {
+  ty: typeof AVATAR_TY;
+  form: Body;
+  x: number;
+  z: number;
+  y: number;
+  yaw: number;
+  walk: number;
+  moving: number;
+  ph: number;
+  glow: number;
+  surf: number;
 }
 /** レベルアップの選択肢の1つ（恩恵 k か、ルーン ru） */
 export type LevelOpt = { kind: 'bless'; k: string } | { kind: 'rune'; ru: Rune };
@@ -146,6 +175,8 @@ export interface Ui {
   plFailed: boolean;
   /** 3人称のカメラの位置（x・y・z。少しずつ狙う位置へ寄せる。視点を変えた時と始めは null で、狙う位置から始める） */
   camPos: number[] | null;
+  /** 3人称の時の自分の姿（初めて3人称で描く時に作る） */
+  avatar: Avatar | null;
   /** 装備の画面を開けた時の両手（handsKey の key と、写し snap）。閉じた時に変わっていれば、付け替えの詠唱をする。閉じている間は null */
   packSnap: { key: string; snap: HandsSnap } | null;
   /** 照準の先の生き物（src/lib/look.ts の look が毎フレーム入れ直す。src/lib/bodies/draw.ts の drawMonster1 が、明るく描いて輪を足す）。無ければ null */
@@ -216,6 +247,7 @@ export const ui: Ui = {
   gallery: null,
   plFailed: false,
   camPos: null,
+  avatar: null,
   packSnap: null,
   aimMon: null,
   lookPend: '',
@@ -1255,6 +1287,13 @@ export interface Gfx {
   waterLTex: DataTexture | null;
   /** その階の霧の濃さの基 */
   fogBase: number;
+  /** 粒子（塵・ガス・そのほか）を描く形と、その位置・色・大きさ・文字の属性（中身は src/lib/particles.ts の ptPos・ptCol・ptSize・ptGly。
+   * 05-renderer.js が作り、src/lib/motes.ts の updateParticles が描く数を書く） */
+  ptGeo: BufferGeometry | null;
+  bpPos: BufferAttribute | null;
+  bpCol: BufferAttribute | null;
+  bpSize: BufferAttribute | null;
+  bpGly: BufferAttribute | null;
 }
 /** 描画の部品が分け合う値（シェーダーの uniform。05-renderer.js が作る） */
 export interface Uniforms {
@@ -1289,6 +1328,11 @@ export const gfx: Gfx = {
   waterTex: null,
   waterLTex: null,
   fogBase: 0.05,
+  ptGeo: null,
+  bpPos: null,
+  bpCol: null,
+  bpSize: null,
+  bpGly: null,
 };
 /** マスの絵 gfx.cellTex の中身（マス1つに4つ：火の明かり・火の強さ・灰か・変わり方の種類。src/lib/ground.ts の uploadCells が書く）。丸ごと入れ替えない */
 export const cellData = new Uint8Array(NCELL * 4);
@@ -1305,7 +1349,7 @@ export const keys: { KeyW?: boolean; KeyA?: boolean; KeyS?: boolean; KeyD?: bool
 export const vmKick = { L: -9, R: -9 };
 /** 光線を撃ち続けている間の、手ごとの記録（続けた秒 hold・最後に撃った時刻 last）。丸ごと入れ替えない */
 export const beamHold = { L: { hold: 0, last: -9 }, R: { hold: 0, last: -9 } };
-/** 漂う塵の粒（位置 x・y・z、揺れの位相 ph、文字 g、大きさ s。src/lib/particles.ts の initDust・respawnDust が置き、15-sound-fire.js が動かす）。丸ごと入れ替えない */
+/** 漂う塵の粒（位置 x・y・z、揺れの位相 ph、文字 g、大きさ s。src/lib/particles.ts の initDust・respawnDust が置き、src/lib/motes.ts の updateParticles が動かす）。丸ごと入れ替えない */
 export const dust = {
   x: new Float32Array(DUST_N),
   y: new Float32Array(DUST_N),
