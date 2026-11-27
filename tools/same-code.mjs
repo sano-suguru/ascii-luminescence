@@ -405,7 +405,8 @@ const TS_ONLY = new Set(['abstract', 'override', 'implements', 'superTypeArgumen
 /** 比べる時に落とす欄か（canon と diff が同じ決まりで落とす） */
 function dropped(n, k) {
   const v = n[k];
-  if (SKIP.has(k) || v === undefined || (v === null && k !== 'value')) return true;
+  // value の null は、数などの値（null の値）と見分けるために残す。ただし TS の残りの引数（...a: T[]）は、型の欄と一緒に value: null を持つ（JS には無い）ので落とす
+  if (SKIP.has(k) || v === undefined || (v === null && (k !== 'value' || n.type === 'RestElement'))) return true;
   // TS だけが付ける欄（クラスの abstract・override・implements など）は、空なら JS と同じ
   if (TS_ONLY.has(k) && (v === false || (Array.isArray(v) && !v.length))) return true;
   // 名前の optional は TS の ? だけ（a?.b の optional は残す）
