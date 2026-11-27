@@ -61,6 +61,7 @@ const TY_FORMS: ((ty: BodyType) => Body)[] = [
   lords.cleanerForm,
   lords.repairerForm,
   lords.watcherForm,
+  beasts.goblinForm,
 ];
 const PLAIN_FORMS: (() => Body)[] = [lords.golemForm, small.spiderForm, small.robotForm, small.bogForm, small.krakenForm];
 // 引数の無い形（古いトロルと、主）
@@ -92,8 +93,8 @@ describe('生き物の形', () => {
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
     caseOut('bodies-1', all);
-    expect(all.length).toBe(5288696);
-    expect(fnv(all)).toBe('6ec42029'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
+    expect(all.length).toBe(5946780);
+    expect(fnv(all)).toBe('feeada5'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
   });
   it('主と大きな生き物の形の指紋（形と、形を作る時に見た目の乱数を引く順番が、思わず変わっていない）', () => {
     let all = '';
@@ -115,6 +116,7 @@ describe('生き物の形', () => {
       ...TYS.flatMap((ty) => [seeded(() => beasts.dragonForm(ty)), seeded(() => beasts.ogreForm({ ...ty, ch: 'O' }))]),
       ...SPECS.map((s) => seeded(() => lords.beastForm(s))),
       ...TYS.map((ty) => seeded(() => beasts.conjurerForm(ty))),
+      ...TYS.map((ty) => seeded(() => beasts.goblinForm(ty))),
       ...TYS.flatMap((ty) => [false, true].map((sentry) => seeded(() => beasts.snapjawForm(ty, sentry)))),
     ];
     for (const b of bodies) {
@@ -381,6 +383,48 @@ describe('生き物の形', () => {
         expect(out(p)).toBeGreaterThan(0.005);
         expect(out(p)).toBeLessThan(0.05);
       }
+    }
+  });
+  it('ゴブリン：腕の点（手・爪・短刀も）はどれも肩を、脚の点（足も）は腰を軸に回る。明るさ b は 1.8 まで。目は頭の表面のすぐ外で、目のくぼみは表面と目の間。帯・襟巻きは胴の表面のすぐ外', () => {
+    const H = beasts.GOB_HEAD,
+      T = beasts.GOB_TORSO,
+      C = beasts.GOB_COL;
+    // 頭の楕円の何倍の所か（表面で 1）
+    const onHead = (p: { x: number; y: number; z: number }): number =>
+      Math.hypot((p.x - H.c[0]) / H.r[0], (p.y - H.c[1]) / H.r[1], (p.z - H.c[2]) / H.r[2]);
+    // 胴の表面からの距離（外が正。体を作ったのと同じ式 gobTorsoAt で、点の高さと向きの所の表面と比べる）
+    const out = (p: { x: number; y: number; z: number }): number => {
+      const f = Math.min(1, Math.max(0, (p.y - T.y0) / (T.y1 - T.y0))),
+        zc = T.z(f),
+        a = Math.atan2((p.z - zc) / T.rz(f, p.z < zc), p.x / T.rx(f)),
+        s = beasts.gobTorsoAt(f, a);
+      return Math.hypot(p.x, p.z - zc) - Math.hypot(s.x, s.z - zc);
+    };
+    for (const ty of TYS) {
+      const b = seeded(() => beasts.goblinForm(ty)),
+        axis = (part: string) => new Set(b.filter((p) => p.part === part).map((p) => `${p.piv},${p.pz}`));
+      expect([axis('armL'), axis('armR')]).toEqual([new Set(['0.96,0.18']), new Set(['0.96,0.18'])]);
+      expect([axis('legL'), axis('legR')]).toEqual([new Set(['0.6,0']), new Set(['0.6,0'])]);
+      for (const p of b) expect(p.b).toBeLessThanOrEqual(1.8);
+      expect(new Set(b.map((p) => p.part))).toEqual(new Set(['body', 'head', 'armL', 'armR', 'legL', 'legR']));
+      const eyes = b.filter((p) => p.col === C.eye);
+      expect(eyes.length).toBe(2);
+      for (const p of eyes) expect(onHead(p)).toBeCloseTo(1.08, 9);
+      const sockets = b.filter((p) => p.col === C.shade && p.y > H.c[1]);
+      expect(sockets.length).toBe(12);
+      for (const p of sockets) expect(onHead(p)).toBeCloseTo(1.04, 9);
+      // 帯（縄）・襟巻きの輪と背中の端：胴の表面のすぐ外（埋もれず、浮かない）。裾は胴の下の端より下にある
+      const rope = b.filter((p) => p.col === C.rope && p.g === G('~')),
+        hem = b.filter((p) => p.col === C.hide && p.y < T.y0 - 0.001),
+        tails = b.filter((p) => p.col === C.rag && p.g !== G('#')),
+        collar = b.filter((p) => p.col === C.rag && p.g === G('#'));
+      expect([rope.length > 6, hem.length > 10, tails.length, collar.length]).toEqual([true, true, 6, 16]);
+      for (const p of [...rope, ...tails, ...collar]) {
+        expect(out(p)).toBeGreaterThan(0.005);
+        expect(out(p)).toBeLessThan(0.05);
+      }
+      // 耳：頭の横から外へ、頭の横の半径の 2.5 倍を越えて広がる
+      expect(Math.max(...b.filter((p) => p.part === 'head').map((p) => Math.abs(p.x)))).toBeGreaterThan(H.r[0] * 2.5);
     }
   });
   it('スナップジョー：腕の点（爪・棍棒・槍も）はどれも肩を、脚の点は腰を軸に回る。明るさ b は 1.8 まで。目は頭の表面のすぐ外、たてがみの根もとは背の表面のすぐ外。槍は見張りだけ', () => {
