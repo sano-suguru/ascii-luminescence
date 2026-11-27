@@ -100,7 +100,9 @@ export function look(): void {
       continue;
     }
     if (!m.visible) continue;
-    sph(m.x, must(m.y, '足もとの高さ y') + (m.ty.fl || m.ty.flier || m.ty.form === 'eel' ? 0.3 : 0.9 * s), m.z, 0.6 * s, { k: 'm', m });
+    // 飛ぶ物（吸血コウモリ）は、体の真ん中（m.y）を中心に、攻撃が当たる球（aim.ts の aimPoint）と同じ大きさにする（広げた翼の先まで、当たる所なら説明も出る）
+    if (m.ty.flier) sph(m.x, must(m.y, '足もとの高さ y'), m.z, 0.42 + 0.35 * s, { k: 'm', m });
+    else sph(m.x, must(m.y, '足もとの高さ y') + (m.ty.fl || m.ty.form === 'eel' ? 0.3 : 0.9 * s), m.z, 0.6 * s, { k: 'm', m });
   }
   for (const f of here.fixtures) {
     if (!FIX_NAMES[f.type] && f.type !== 'bstairs' && f.type !== 'portal') continue;
