@@ -1559,7 +1559,7 @@ export function conjRobeAt(f: number, a: number): { x: number; y: number; z: num
 export function conjurerForm(ty: BodyType): Body {
   // 小さな体なので、点を細かくする（大きさは種類の scale ではなく、この値で決める）
   const { S, pts, put, lit, stroke, ell, tube } = q3({ scale: Math.max(ty.scale, 1.25) }),
-    ROBE: Color = [0.38, 0.22, 0.62],
+    ROBE: Color = [0.52, 0.27, 0.88],
     ROBE_IN: Color = [0.24, 0.16, 0.36],
     TRIM: Color = [0.88, 0.72, 0.42],
     EDGE: Color = [0.68, 0.55, 0.9],
@@ -1755,8 +1755,8 @@ export function conjurerForm(ty: BodyType): Body {
   }
   ellAt(SHOULDER, LH, 0.055, 0.05, 0.05, SKINR, () => SKN, 'armL');
   for (const dx of [-0.05, 0, 0.05])
-    stroke([LH[0] + dx * 0.6, LH[1] + 0.04, LH[2] + 0.02], [LH[0] + dx, LH[1] + 0.13, LH[2] + 0.05], SKN, 1.2, 0.7, 'armL', SHOULDER);
-  lit(LH[0], LH[1] + 0.24, LH[2] + 0.06, 'o', 0.75, 1.7, GLOW, 'armL', SHOULDER);
+    stroke([LH[0] + dx * 0.6, LH[1] + 0.04, LH[2] + 0.02], [LH[0] + dx, LH[1] + 0.13, LH[2] + 0.05], SKN, 1.0, 0.7, 'armL', SHOULDER);
+  lit(LH[0], LH[1] + 0.24, LH[2] + 0.06, 'o', 0.75, 1.4, GLOW, 'armL', SHOULDER);
   // 足：裾の前から、とがった爪先がのぞく
   for (const sd of [-1, 1]) {
     const part = sd < 0 ? 'legL' : 'legR';
