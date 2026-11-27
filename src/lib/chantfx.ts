@@ -247,7 +247,6 @@ export function drawCastFx(t: number): void {
   }
 }
 
-// the crosshair is a glyph: it closes from ( + ) to [+] as the chant fills; it warms when a creature is in the line
 /**
  * 照準の文字（#cross。毎フレーム。中身が変わった時だけ書く）：ふだんは小さな点、生き物を捉えると ‹·›、溜めている間は性質のルーンが点を挟み、溜まるほど寄る。
  * 詠唱している間に画面をゆっくりにする見た目 uSlow と、画面の色 uTint（性質の色）も合わせる。dt は実時間の秒

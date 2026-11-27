@@ -1,4 +1,4 @@
-// ---------------------------------------------------------------- drawing: runes on the floor, pedestals, altars, steles, beams, a ring while swapping, the chant at your hands
+// ---------------------------------------------------------------- 世界の中の手がかりと詠唱の見た目：方向の矢印のキャンバスと下の HUD を ui に入れる所だけ（描く処理は src/lib）
 // 先にある物の手がかり（表 STRATUM_OMEN など・computeOmen・omenOf・omenSound・drawOmens）と階段の封（stairsGuarded・drawStairSeal）は src/lib/omens.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- direction arrows
@@ -11,7 +11,7 @@ if(ui.hotbarWatch){ new ResizeObserver(()=>{ ui.hotbarTop=null; }).observe(ui.ho
 // 階の場所ごとの空気 updateSectionAir は src/lib/camera.ts（呼ぶのは drawRunesWorld）
 // 墓を描く drawGraves と、床のルーン・台・祭壇・石碑と術の跡を描く drawRunesWorld は src/lib/fixtures.ts（src/game/imports.mjs で読む）
 
-// ---------------------------------------------------------------- the feel of a chant: a circle of runes at the hand, light gathering, the screen taking the element's colour
+// ---------------------------------------------------------------- 詠唱の見た目
 // 詠唱の声 humNode は src/lib/state.ts の gear（src/game/imports.mjs で読む）
 // castSound は src/lib/audio.ts（src/game/imports.mjs で読む）
 // 照準の小さな関数（handUp・aimPoint・centerPoint・castPoint・handPoint）は src/lib/aim.ts（src/game/imports.mjs で読む）
