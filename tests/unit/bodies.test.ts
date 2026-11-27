@@ -86,8 +86,8 @@ describe('生き物の形', () => {
       const b = seeded(() => lords.beastForm(spec));
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
-    expect(all.length).toBe(3232884);
-    expect(fnv(all)).toBe('cb490558'); // トロル・ゴーレム・クラーケン（trollForm2・golemForm2・krakenForm2）を除き、移す前の実装で出した値と同じ（この3つは移した後で作り直した。作り直した王の影の一つ目の姿は、下の別のテスト）
+    expect(all.length).toBe(3547318);
+    expect(fnv(all)).toBe('48b0d9a9'); // トロル・ゴーレム・クラーケン・ギタイムシ（trollForm2・golemForm2・krakenForm2・crabForm）を除き、移す前の実装で出した値と同じ（この4つは移した後で作り直した。作り直した王の影の一つ目の姿は、下の別のテスト）
   });
   it('主と大きな生き物の形：TypeScript に移す前と、同じ乱数で同じ形になる', () => {
     let all = '';
@@ -128,6 +128,28 @@ describe('生き物の形', () => {
         axis = (part: string) => new Set(b.filter((p) => p.part === part).map((p) => `${p.piv},${p.pz}`));
       expect([axis('armL'), axis('armR')]).toEqual([new Set(['1.42,0.4']), new Set(['1.42,0.4'])]);
       expect([axis('legL'), axis('legR')]).toEqual([new Set(['0.62,0']), new Set(['0.62,0'])]);
+    }
+  });
+  it('ギタイムシ：脚の点はどれも、その脚の付け根（高さ 0.28・奥行きは脚ごと）を軸に回り、左右で互い違い（3本ずつ）に動く（軸がずれると、歩く時に体から離れる）', () => {
+    for (const ty of TYS) {
+      const b = seeded(() => small.crabForm(ty)),
+        legs = b.filter((p) => p.part === 'legL' || p.part === 'legR');
+      // 脚ごと（付け根の奥行きと左右）に分ける。付け根の点（線の初めの点）は、軸と同じ高さと奥行きにある
+      const byLeg = new Map<string, Set<string>>();
+      for (const p of legs) {
+        const k = `${Math.sign(p.x)},${p.pz}`;
+        byLeg.set(k, (byLeg.get(k) ?? new Set()).add(p.part));
+        expect(p.piv).toBe(0.28);
+      }
+      expect([...byLeg.keys()].sort()).toEqual(['-1,0.18', '-1,0.24', '-1,0.3', '1,0.18', '1,0.24', '1,0.3']);
+      for (const parts of byLeg.values()) expect(parts.size).toBe(1);
+      for (const k of byLeg.keys()) {
+        const root = legs.find((p) => `${Math.sign(p.x)},${p.pz}` === k && Math.abs(p.y - p.piv) < 1e-9 && Math.abs(p.z - p.pz) < 1e-9);
+        expect(root).toBeDefined();
+      }
+      expect(legs.filter((p) => p.part === 'legL').length).toBe(legs.filter((p) => p.part === 'legR').length);
+      // 脚のほかに、回る部位は無い（腕は無い）
+      expect(b.some((p) => p.part === 'armL' || p.part === 'armR')).toBe(false);
     }
   });
   it('ゴーレム：腕の点（肩の大岩と拳も）はどれも肩を、脚の点（足も）は腰を軸に回る（軸がずれると、歩く時に体から離れる）', () => {

@@ -1,6 +1,7 @@
 // 小さな生き物の形（もとは src/game/09-bodies-creatures.js の初めと、13-creatures.js の古い形。古いトロルは 07-bodies-lords.js）。
 import { mpick, mr } from '../random.ts';
-import { type Body, type BodyType, adder, cpt } from './kit.ts';
+import type { Color } from '../color.ts';
+import { type Body, type BodyType, type Vec3, adder, cpt, q3 } from './kit.ts';
 
 export function jellyForm(ty: BodyType): Body {
   const pts: Body = [],
@@ -162,27 +163,97 @@ export function shroomForm(ty: BodyType): Body {
   return pts;
 }
 
+// ギタイムシ：巻物に化ける虫。背中に、開いた巻物（両側に巻いた軸・字の並ぶ紙）を背負う。
+// 頭は前に低く、長い触角が前へ伸びる。6本の脚は、ひざが背の高さまで上がってから床へ下りる
 export function crabForm(ty: BodyType): Body {
-  const pts: Body = [],
-    S = 0.22 / ty.scale,
-    C = ty.col;
-  for (let k = 0; k < 14; k++) {
-    const a = (k / 14) * Math.PI * 2;
-    cpt(pts, Math.cos(a) * 0.32, 0.22, Math.sin(a) * 0.24, Math.abs(Math.sin(a)) > 0.7 ? '=' : '(', S, 1.1, C, 'body');
-  }
-  for (let k = 0; k < 5; k++)
-    cpt(pts, (k - 2) * 0.1, 0.26, (k % 2) * 0.06 - 0.03, k === 2 ? '?' : '~', S, k === 2 ? 2.2 : 1.1, [0.95, 0.88, 0.6], 'body');
-  for (const sd of [-1, 1])
-    for (let l = 0; l < 3; l++) {
-      const z = 0.14 - l * 0.14,
-        part = (l % 2 === 0) === sd > 0 ? 'legL' : 'legR';
-      cpt(pts, sd * 0.4, 0.14, z, sd < 0 ? '\\' : '/', S, 1.0, C, part, { piv: 0.22, pz: z });
-      cpt(pts, sd * 0.48, 0.04, z, '|', S * 0.9, 0.9, C, part, { piv: 0.22, pz: z });
+  const { S, pts, put, lit, stroke, ell } = q3({ scale: ty.scale * 1.5 }),
+    SHELL: Color = [0.42, 0.28, 0.17],
+    LEG: Color = [0.5, 0.33, 0.2],
+    PAPER: Color = [0.9, 0.82, 0.6],
+    INK: Color = [0.55, 0.24, 0.16],
+    EYE: Color = [1.0, 0.45, 0.3];
+  // 腹：前後に長い丸い胴の、横と下の殻（上は巻物の紙が覆う）。行の数を決め、後ろの端 Z0 から前の端 Z1 まで等しい間隔で置く
+  const Z0 = -0.62,
+    Z1 = 0.1,
+    YC = 0.32,
+    st = S * 0.85,
+    nr = Math.max(2, Math.round((Z1 - Z0) / st));
+  for (let j = 0; j <= nr; j++) {
+    const f = j / nr,
+      z = Z0 + (Z1 - Z0) * f,
+      w = Math.sqrt(Math.max(0, 1 - Math.pow(2 * f - 1, 2) * 0.82)),
+      rx = 0.3 * w,
+      ry = 0.17 * w,
+      n = Math.max(6, Math.round((2 * Math.PI * Math.max(rx, ry)) / st));
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2,
+        c = Math.cos(a),
+        sn = Math.sin(a);
+      if (sn <= 0.25) put(c * rx, YC + sn * ry, z, c, sn, (2 * f - 1) * 0.6, ['.', ':', '%', '#', '#'], SHELL);
     }
-  for (const sd of [-1, 1]) {
-    cpt(pts, sd * 0.1, 0.32, 0.22, '|', S * 0.7, 1.0, C, 'head');
-    cpt(pts, sd * 0.1, 0.38, 0.22, '.', S * 0.9, 2.6, [1, 1, 0.9], 'head');
   }
+  // 巻物の紙：両側の軸の間に張った四角い紙。真ん中ほど少し高い（平らだと、目の高さから見た時に点が1本の線に重なり、明るい縞になる）。
+  // 明るさは決めて置く（面の向きで決めると、上を向いた紙がどれも明るくなり、にじんで白い塊になる）。紙の行と、字の行（~）を交互に並べる
+  const PW = 0.24,
+    paperY = (x: number): number => YC + 0.1 + 0.05 * (1 - (x / PW) * (x / PW)),
+    nrow = Math.max(3, Math.round((Z1 - Z0 - 0.08) / (st * 0.6))),
+    ncol = Math.max(3, Math.round((2 * PW) / (st * 0.7)));
+  for (let j = 0; j <= nrow; j++) {
+    const z = Z0 + 0.04 + ((Z1 - Z0 - 0.08) * j) / nrow,
+      ink = j % 2 === 1 && j < nrow;
+    for (let i = 0; i <= ncol; i++) {
+      const x = -PW + (2 * PW * i) / ncol;
+      if (ink && Math.abs(x) < PW * 0.8) lit(x, paperY(x) + 0.01, z, '~', 1, 1.0, INK);
+      else lit(x, paperY(x), z, '=', 1, 0.75 + 0.15 * (x / PW), PAPER);
+    }
+  }
+  // 巻物の両側の巻いた軸と、その端の渦（@）
+  // （軸も明るさを決めて置く。上の点ほど少し明るく、下は暗い）
+  const RX = 0.29,
+    RY = YC + 0.08,
+    RR = 0.07,
+    nz = Math.max(2, Math.round((Z1 - Z0 - 0.1) / (st * 0.5)));
+  for (const sd of [-1, 1]) {
+    for (let j = 0; j <= nz; j++) {
+      const z = Z0 + 0.05 + ((Z1 - Z0 - 0.1) * j) / nz;
+      for (let k = 0; k < 3; k++) {
+        const a = (k / 3) * Math.PI * 2 + j * 1.1,
+          sn = Math.sin(a);
+        lit(sd * RX + Math.cos(a) * RR, RY + sn * RR, z, '=', 1, 0.7 + 0.2 * sn, PAPER);
+      }
+    }
+    for (const z of [Z0 + 0.01, Z1 - 0.01]) lit(sd * RX, RY, z, '@', 1, 1.0, PAPER);
+  }
+  // 胸：背中の前の小さな殻
+  ell([0, 0.3, 0.24], 0.15, 0.11, 0.12, ['.', ':', '%', '#', '#'], () => SHELL);
+  // 頭：前に低く。赤い小さな目と、前へ伸びる大あご
+  ell([0, 0.27, 0.44], 0.13, 0.1, 0.1, ['.', ':', '%', '#', '#'], () => SHELL, 'head');
+  for (const sd of [-1, 1]) {
+    lit(sd * 0.09, 0.31, 0.51, 'o', 0.8, 1.4, EYE, 'head');
+    lit(sd * 0.05, 0.2, 0.56, sd < 0 ? '(' : ')', 0.8, 1.1, LEG, 'head');
+    // 触角：上へ立ち上がってから前へ
+    stroke([sd * 0.05, 0.35, 0.5], [sd * 0.16, 0.56, 0.66], LEG, 1.1, 0.8, 'head', undefined, S * 0.5);
+    stroke([sd * 0.16, 0.56, 0.66], [sd * 0.3, 0.6, 0.92], LEG, 1.1, 0.8, 'head', undefined, S * 0.5);
+  }
+  // 脚：胸の横から3対。ひざは背の高さまで上がり、足先は外へ広がる。前の脚は前へ、後ろの脚は後ろへ。
+  // 歩く時は、それぞれの付け根（高さ HIP_Y・奥行き hz）を軸に回る。左右で互い違い（3本ずつ）に動く
+  // 脚ごとに、付け根の奥行き hz・ひざの横 kx と奥行き kz・足先の横 fx と奥行き fz
+  const HIP_Y = 0.28,
+    LEGS: readonly (readonly [number, number, number, number, number])[] = [
+      [0.3, 0.34, 0.46, 0.56, 0.7],
+      [0.24, 0.4, 0.22, 0.68, 0.2],
+      [0.18, 0.36, -0.1, 0.62, -0.42],
+    ];
+  for (const sd of [-1, 1])
+    LEGS.forEach(([hz, kx, kz, fx, fz], l) => {
+      const part = (l % 2 === 0) === sd > 0 ? 'legL' : 'legR',
+        ex = { piv: HIP_Y, pz: hz },
+        hip: Vec3 = [sd * 0.13, HIP_Y, hz],
+        knee: Vec3 = [sd * kx, 0.42, kz],
+        foot: Vec3 = [sd * fx, 0.02, fz];
+      stroke(hip, knee, LEG, 1.2, 0.85, part, ex, S * 0.6);
+      stroke(knee, foot, LEG, 1.2, 0.85, part, ex, S * 0.6);
+    });
   return pts;
 }
 
