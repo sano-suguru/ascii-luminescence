@@ -130,7 +130,6 @@ export function lookCases(F) {
     'jackal',
     'grazer',
     'houndF',
-    'houndI',
     'houndL',
     'salamander',
     'nope',

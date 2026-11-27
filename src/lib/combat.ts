@@ -1535,7 +1535,9 @@ export function damageMonster(m: Mob, n: number, how: string): void {
       coldSnap(m.x, m.z, BL('shatter') >= 2 ? 3.5 : 2.5);
     for (const p of m.form) {
       if (mr() < 0.6) continue;
-      const a = mr() * 6.28;
+      // 色を持つ点は、その色で砕ける（無い点は生き物の色）
+      const a = mr() * 6.28,
+        pc = p.col || m.ty.col;
       spawn(
         m.x + p.x * m.ty.scale,
         m.y + p.y * m.ty.scale,
@@ -1546,9 +1548,9 @@ export function damageMonster(m: Mob, n: number, how: string): void {
         0.8 + mr() * 0.8,
         p.g,
         0.18,
-        m.ty.col[0] * 1.6,
-        m.ty.col[1] * 1.6,
-        m.ty.col[2] * 1.6,
+        pc[0] * 1.6,
+        pc[1] * 1.6,
+        pc[2] * 1.6,
         0,
       );
     }

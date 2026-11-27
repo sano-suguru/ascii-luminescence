@@ -285,7 +285,7 @@ export function addLooks(): void {
   lookup(MTYPES, 'Rc').form = 'cleaner';
   lookup(MTYPES, 'Re').form = 'repairer';
   lookup(MTYPES, 'Rw').form = 'watcher';
-  // 火と氷の猟犬：体を暗くして、炎と氷を目立たせる（氷の猟犬の形 iceHoundForm は点ごとに色を持つので、この色は倒れた時の粒子などに使う）。灯りは元の色のまま
+  // 火と氷の猟犬：体を暗くして、炎と氷を目立たせる（氷の猟犬の形 iceHoundForm は点ごとに色を持つので、体には使わない）。灯りは元の色のまま
   const Zf = lookup(MTYPES, 'Zf'),
     Zi = lookup(MTYPES, 'Zi'),
     Zl = lookup(MTYPES, 'Zl');

@@ -55,7 +55,7 @@ describe('移す前と同じ', () => {
           .map((l) => l.split(' ')[1]?.split(':')[1]),
       ).size,
     ).toBe(7);
-    expect(fp(all)).toEqual(['7d2a5afd', 528]);
+    expect(fp(all)).toEqual(['7ad9d73d', 497]);
   });
   it('図鑑の見本の獣', () => {
     expect(fp(JSON.stringify(beastSamples()))).toEqual(['1039558f', 1402]);
