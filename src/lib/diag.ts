@@ -5,8 +5,9 @@
 // 記録は、開くたびに1件（diag/<開いた時刻>）。書き込みは、変わった時だけ、10秒に1回まで（ページを離れる時も1回）。
 // 公開する時は、capabilities に db（diag は持ち主だけが読み書き）と user を渡す（CLAUDE.md の「Artifact に公開する」）。
 import { nth } from './array.ts';
+import { sndState } from './audio.ts';
 import { placeKey } from './levels.ts';
-import { SND, adv, fight, gear, ui } from './state.ts';
+import { adv, fight, gear, ui } from './state.ts';
 import { setTookSink } from './took.ts';
 
 interface ClaudeLike {
@@ -90,15 +91,17 @@ export async function initDiag(): Promise<void> {
     if (list.length > max) list.splice(0, list.length - max);
     dirty = true;
   };
-  // 最後のできごとかかかった時間の名前と時刻（遅いフレームの近くで、何があったかを添える）
+  // 最後のできごとかかかった時間の名前と時刻（遅いフレームの近くで、何があったかを添える）。溜めている手・飛ぶ物・音の部品の旗の変化は数えない
+  // （戦っている間は何度も変わり、本当の原因（階を作った時など）を上書きするため）
   let lastK = '',
     lastAt = -1e9;
   const mark = (k: string): void => {
     lastK = k;
     lastAt = performance.now();
   };
+  const NOT_NEAR = new Set(['cast', 'projs', 'audio']);
   const event = (k: string, v?: unknown): void => {
-    mark(k);
+    if (!NOT_NEAR.has(k)) mark(k);
     push(rec.events, KEEP.events, v === undefined ? { k } : { k, v });
   };
   setTookSink((k, ms, v) => {
@@ -142,9 +145,11 @@ export async function initDiag(): Promise<void> {
     locked: ui.locked,
     cast: gear.castSt?.h ?? '',
     projs: fight.projs.length > 0,
-    audio: SND.ctx?.state ?? '',
+    audio: sndState(),
   });
   let last = flags();
+  // 音の部品の、記録を始めた時の状態（その後は、変わった時だけ書く。押す前に動いていないかを、後から確かめられるように）
+  event('audio', last['audio']);
   setInterval(() => {
     const now = flags();
     for (const [k, v] of Object.entries(now)) if (last[k] !== v) event(k, v);

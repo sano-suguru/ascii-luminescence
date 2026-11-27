@@ -10,7 +10,6 @@ import { makeHistory } from './history.ts';
 import { legendAll, descentSealed } from './legend.ts';
 import { msg } from './log.ts';
 import { mr, mpick, keyedRand, roll } from './random.ts';
-import { clamp } from './rng.ts';
 import { took } from './took.ts';
 import { rollTraits } from './runes.ts';
 import {
@@ -39,7 +38,7 @@ import { SPECIALS } from './strata.ts';
 import { weaponPool, unlocked } from './unlocks.ts';
 import { BRANCHES, CELL, FINAL_DEPTH, MH, MW, NCELL, TF, TP, TW, LQ_DEEP, LQ_WATER, REALMS } from './world.ts';
 import { MACHINE_INFO } from './names.ts';
-import { awardLore, graveCandidates, graveRows, loreRows, resultPlace, saveGrave } from './results.ts';
+import { awardLore, graveCandidates, graveRows, loreRows, resultPlace, saveGrave, startNewRun } from './results.ts';
 import { boxText } from './text.ts';
 import { buildWorld, setFog, updateWater } from './build.ts';
 import { hurtPlayer } from './combat.ts';
@@ -776,14 +775,4 @@ export function newRun(): void {
   resetRunes();
   newLevel();
   took('newRun', t0);
-}
-/**
- * 結果の画面から新しい探索へ（［新しい探索へ］・Enter・R）：結果の画面を消し、暗くして、真っ暗になった時に newRun する（src/game/30-loop-init.js の tick）。
- * 新しい階を作るのは重く、スマホでは何百ミリ秒も止まるので、止まるのを真っ暗な間にする。階を移る途中なら、今の暗さから続けて暗くする
- */
-export function startNewRun(): void {
-  if (here.trans?.run) return;
-  const el = document.getElementById('death');
-  if (el) el.classList.remove('show', 'won');
-  here.trans = { phase: 'out', t: clamp((1 - here.fade) * 0.8, 0, 0.8), run: true };
 }

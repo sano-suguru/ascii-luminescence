@@ -42,7 +42,7 @@ import {
 } from '../lib/altars.ts';
 import { lockedOf, loreLeft, unlocked, weaponPool } from '../lib/unlocks.ts';
 import {
-  advance, checkEvents, computeFOV, die, generate, initEvents, newLevel, newRun, startNewRun, interAfter, interAt, isFinal, levelSeed, placeKey, settleSlotPick, setupFinal, showStratum, strataGrowth, updateFinal,
+  advance, checkEvents, computeFOV, die, generate, initEvents, newLevel, newRun, interAfter, interAt, isFinal, levelSeed, placeKey, settleSlotPick, setupFinal, showStratum, strataGrowth, updateFinal,
 } from '../lib/levels.ts';
 import { grabItem, openSlot, pickupItems, updateRockfall } from '../lib/pickup.ts';
 import { msg, renderLog } from '../lib/log.ts';
@@ -77,7 +77,7 @@ import {
 import { placeThirdPerson, solidAt, updatePlayer } from '../lib/player.ts';
 import { beginCast, releaseCast, startRoll, timeScale, updateCast } from '../lib/chant.ts';
 import { cloudsMeetFire, monTimeK, updateProjs, updateStatuses } from '../lib/projs.ts';
-import { awardLore, graveCandidates, graveRows, loreRows, resultPlace, runLore, saveGrave, victory } from '../lib/results.ts';
+import { awardLore, graveCandidates, graveRows, loreRows, resultPlace, runLore, saveGrave, startNewRun, victory } from '../lib/results.ts';
 // three.js（r147）と光のにじみなどの部品 T、霧の色 fogCol
 import { T, fogCol } from '../lib/three.ts';
 import { buildWorld, setFog, updateWater } from '../lib/build.ts';

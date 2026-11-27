@@ -79,10 +79,12 @@ try {
     }
     // 3. 死んで、［新しい探索へ］（暗くしてから、真っ暗な間に新しい探索を始める）
     console.log(`x${rate}：死ぬ：${JSON.stringify(await pg.evaluate(() => dbg.hurt(9999)))}`);
-    await until(pg, () => document.getElementById('death')?.classList.contains('show'), 30, '結果の画面が出ること');
-    await tap('#newRunB');
-    await until(pg, () => dbg.info().depth === 1 && !document.body.classList.contains('over'), 30, '新しい探索が始まること');
-    await sleep(3000);
+    // 結果の画面が出なければ（失敗として記録して）、新しい探索は飛ばし、残りを続ける
+    if (await until(pg, () => document.getElementById('death')?.classList.contains('show'), 30, '結果の画面が出ること')) {
+      await tap('#newRunB');
+      await until(pg, () => dbg.info().depth === 1 && !document.body.classList.contains('over'), 30, '新しい探索が始まること');
+      await sleep(3000);
+    }
     // 4. 画面の向きを変えて戻す。間に、同じ大きさの resize を1つ出す（作り直さないはず）
     await pg.setViewportSize({ width: 312, height: 750 });
     await sleep(1500);

@@ -174,11 +174,13 @@ function growWork(w: GlyphWork, n: number): GlyphWork {
 }
 /**
  * 文字を置く間の作業用の配列。階を組み立てるたびには作らず、使い回す（上限の大きさで毎回作ると約46MB になり、0 で埋める時間とごみ集めで、
- * 階を移る時に止まる時間が長くなるため）。初めは小さく作り、それまでで一番文字の多かった階に合わせて伸ばす。
+ * 階を移る時に止まる時間が長くなるため）。持ち続けるのは 13万字分（約17MB）の baseWork だけ。それより文字の多い階では、組み立ての間だけ
+ * 倍の大きさに伸ばし（growWork）、組み立てが終わったら手放す（スマホのメモリを、大きい階の分まで持ち続けないため）。
  * 文字ごとの値は push が全部書き、読むのは書いた n 個だけなので、前の階の値が残っていても使わない
  */
-let glyphWork = makeWork(1 << 17);
-/** 作業用の配列を、入る文字の数 cap で作り直す（単体テストで、伸ばす処理を通すため。level-cases.mjs） */
+const baseWork = makeWork(1 << 17);
+let glyphWork = baseWork;
+/** 次の組み立てだけ、作業用の配列を、入る文字の数 cap の物にする（単体テストで、伸ばす処理を通すため。level-cases.mjs） */
 export function resetGlyphWork(cap: number): void {
   glyphWork = makeWork(cap);
 }
@@ -2654,4 +2656,5 @@ export function buildWorld(): void {
   gfx.occMesh.frustumCulled = false;
   must(gfx.scene).add(gfx.occMesh);
   hudInfo.glyphCount = n;
+  glyphWork = baseWork;
 }

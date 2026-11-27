@@ -69,7 +69,11 @@ await withBrowser(
     await snd.waitForTimeout(1500); // 診断の記録が始まり（持ち主かを確かめる）、できごとを 0.25 秒ごとに見るまで
     const before = await readDiag(snd);
     if (!before) errs.push('音の部品：診断の記録が書かれない（テストの前提が崩れた）');
-    else if (before.events.some((e) => e.k === 'audio')) errs.push(`音の部品：押す前に動いている（${JSON.stringify(before.events)}）`);
+    else if (
+      !before.events.some((e) => e.k === 'audio' && e.v === 'suspended') ||
+      before.events.some((e) => e.k === 'audio' && e.v === 'running')
+    )
+      errs.push(`音の部品：押す前に、先に作った部品が止まっていない（${JSON.stringify(before.events)}）`);
     await snd.click('#enter');
     let after = null;
     for (let i = 0; i < 20 && !after?.events.some((e) => e.k === 'audio' && e.v === 'running'); i++) {

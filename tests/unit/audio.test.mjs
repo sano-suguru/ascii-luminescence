@@ -64,8 +64,22 @@ describe('音の土台', () => {
     try {
       fresh();
       const log = [];
-      globalThis.window = { AudioContext: fakeAudioClass(log) };
+      // 止める関数を持つ部品（偽の Web Audio には無いので足す）。先に作った部品は、押すまで止めておく
+      globalThis.window = {
+        AudioContext: function SuspendableAudioContext() {
+          const c = fakeAudio(log);
+          c.suspend = () => {
+            log.push(['suspend']);
+            c.state = 'suspended';
+            return Promise.resolve();
+          };
+          return c;
+        },
+      };
+      expect(A.sndState()).toBe('');
       A.sndPrep();
+      expect(log).toContainEqual(['suspend']);
+      expect(A.sndState()).toBe('suspended');
       expect([SND.ctx, SND.master, Object.keys(SND.L)]).toEqual([null, null, []]);
       expect(log.filter((l) => l[2] === 'setTargetAtTime' || l[0] === 'resume')).toEqual([]);
       expect(A.sndReady()).toBe(null);

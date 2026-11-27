@@ -116,15 +116,24 @@ function makeSound(): SoundParts | null {
 let prepared: SoundParts | null = null;
 /**
  * 音の部品を先に作っておく（タイトルを出した時に1回）。迷宮に入る時（sndInit）に重い処理をしないため。
- * SND には入れないので、sndInit までは音を鳴らさない（ブラウザが音の部品をすぐ動かしても、音量は 0）。
- * 操作の前に作った部品は、ふつう止まっている（ブラウザの決まり）。sndInit が、押した時に動かす
+ * SND には入れないので、sndInit までは音を鳴らさない。作った部品は止めておき（操作の前に作った部品は、ふつうブラウザの決まりでも止まっている）、
+ * sndInit が、押した時に動かす
  */
 export function sndPrep(): void {
   if (SND.ctx || prepared) return;
   const t0 = performance.now();
   prepared = makeSound();
+  // 自動再生を許すブラウザでは、作った部品がすぐ動く。音量は 0 だが、タイトルの間も鳴り続ける音を作る処理が動くので、押すまで止めておく
+  if (prepared)
+    try {
+      prepared.ctx.suspend().catch(() => {});
+    } catch {
+      // 止める関数が無い古いブラウザでは、動いたままにする（音量は 0）
+    }
   took('sndPrep', t0);
 }
+/** 音の部品の状態（鳴らし始めた部品か、先に作った部品の state。どちらも無ければ ''。診断の記録 src/lib/diag.ts が見る） */
+export const sndState = (): string => SND.ctx?.state ?? prepared?.ctx.state ?? '';
 /**
  * 音を鳴らし始める（はじめてのクリックで呼ぶ）。先に作った部品があればそれを使って動かし、無ければここで作る。作れなければ音は鳴らない
  * （次のクリックで、はじめから作り直す）。2回目からは、止まっていたのを動かすだけ（動かせなくても、部品はそのまま使う）
