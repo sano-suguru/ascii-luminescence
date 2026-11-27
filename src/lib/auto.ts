@@ -12,7 +12,7 @@
 //   - 指の事件は合成した物（isTrusted が false）。順番や間は本物の指と違いうるので、手触りは確かめない。音は鳴らない（自動再生の決まり）ので確かめない
 //   - テスト用モード（?test=1）では動かない（時計が止まっているため）
 import { must } from './array.ts';
-import { TEST, adv, here, player, ui } from './state.ts';
+import { TEST, adv, clock, here, player, ui } from './state.ts';
 import { CELL, MW, TF } from './world.ts';
 
 /** 1周目の探索のシード */
@@ -129,13 +129,18 @@ let stopAsked = false;
 /** 縦向きか隠れていた（段に書く） */
 let waitedWhy = '';
 
-/** 縦向き・隠れている間は時計を数えずに待つ。sec 秒（その間を除く）たつか、cond が真になったら終わる。cond が真で終われば true */
-function until(cond: () => boolean, sec: number): Promise<boolean> {
+/**
+ * 縦向き・隠れている間は時計を数えずに待つ。sec 秒（その間を除く）たつか、cond が真になったら終わる。cond が真で終われば true。
+ * game なら、ゲームの時刻（clock.time）で数える（遅い端末では1フレームで進むゲームの時間に上限があり、ゲームが本当の時間より遅く進むので、
+ * ゲームの中で歩いて着くのを待つ時は、ゲームの時刻で待つ）
+ */
+function until(cond: () => boolean, sec: number, game = false): Promise<boolean> {
+  const read = (): number => (game ? clock.time * 1000 : performance.now());
   return new Promise((ok, ng) => {
     let left = sec * 1000,
-      last = performance.now();
+      last = read();
     waiters.push(() => {
-      const now = performance.now();
+      const now = read();
       if (stopAsked) {
         ng(new Stopped());
         return true;
@@ -215,13 +220,13 @@ async function drag(f: ReturnType<typeof finger>, x0: number, y0: number, dx: nu
 
 // ---------------------------------------------------------------- 台本
 const canPlay = (): boolean => ui.started && !adv.dead && !here.trans;
-/** 左のスティックを前へ倒して sec 秒（side で斜め：-1 左・1 右）。cond が真になったら早く終わる */
-async function walk(sec: number, side = 0, cond: () => boolean = () => false): Promise<boolean> {
+/** 左のスティックを前へ倒して sec 秒（side で斜め：-1 左・1 右）。cond があれば、真になったら早く終わり、ゲームの時刻で sec 秒待つ（短い台本でも縮めない） */
+async function walk(sec: number, side = 0, cond?: () => boolean): Promise<boolean> {
   const x = innerWidth * 0.2,
     y = innerHeight * 0.65,
     f = finger(el('#gl'), x, y);
   f.move(x + side * 25, y - 40);
-  const hit = await until(cond, autoSt.quick ? sec * 0.4 : sec);
+  const hit = cond ? await until(cond, sec, true) : await until(() => false, autoSt.quick ? sec * 0.4 : sec);
   f.up();
   return hit;
 }
@@ -340,10 +345,10 @@ export const AUTO_STEPS: Step[] = [
         for (let tries = 0; tries < 3 && !down; tries++) {
           if (!h.toStairs()) return `${k + 1}回目：階段が無い`;
           h.clear();
-          down = await walk(12, 0, () => here.depth !== d0 || !!here.trans);
+          down = await walk(8, 0, () => here.depth !== d0 || !!here.trans);
         }
         if (!down) return `${k + 1}回目：階段で下りられない`;
-        await until(() => !here.trans, 30);
+        await until(() => !here.trans, 10, true);
         await wait(2);
       }
       return '';
@@ -380,7 +385,7 @@ export const AUTO_STEPS: Step[] = [
       if (!(await until(() => !!document.querySelector('#death.show #newRunB'), 20))) return '結果の画面が出ない';
       await wait(2);
       tap('#newRunB');
-      if (!(await until(() => canPlay() && here.depth === 1, 30))) return '新しい探索が始まらない';
+      if (!(await until(() => canPlay() && here.depth === 1, 10, true))) return '新しい探索が始まらない';
       ui.godMode = true;
       await wait(2);
       return '';
