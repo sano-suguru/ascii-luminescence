@@ -31,7 +31,16 @@ describe('移す前と同じ', () => {
     expect(new Set(by('updateCross').map((c) => c.cross[1]))).toEqual(new Set(['', 'chant', 'full']));
     expect(new Set(by('simPath').map((c) => JSON.parse(c.ret).hitM !== null))).toEqual(new Set([true, false]));
     expect(calls.filter((c) => c.threw).length).toBeLessThan(60);
+    // 床のルーンを描いても、場所ごとの空気（uAmb）は変わらない（空気は tick の段 'lights' が updateSectionAir で合わせる）
+    for (const l of lines) {
+      let amb = 1;
+      for (const c of JSON.parse(l).calls) {
+        if (c.name === 'drawRunesWorld') expect(c.uni[1]).toBe(amb);
+        amb = c.uni[1];
+      }
+    }
+    expect(by('updateSectionAir').filter((c) => c.uni[1] !== 1).length).toBeGreaterThan(50);
     caseOut('hints', all);
-    expect([fnv(all), all.length]).toEqual(['08b30710', 5693499]);
+    expect([fnv(all), all.length]).toEqual(['3dfc8d0e', 5673147]);
   }, 60000);
 });

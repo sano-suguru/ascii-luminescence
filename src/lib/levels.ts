@@ -567,6 +567,8 @@ export function newLevel(seedOverride?: number): void {
   fight.zapQueue = [];
   vfx.zapFlash = null;
   gear.castSt = null;
+  // 階の場所ごとの空気は、前の階の物を持ち越さずに 1 から始める（src/lib/camera.ts の updateSectionAir）
+  vfx.ambK = 1;
   must(gfx.U).uAmb.value = level().prof.ambient;
   hudInfo.explored = 0;
   const tBuild = performance.now();

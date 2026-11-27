@@ -2,7 +2,7 @@
 // 手へ集まる光、術が飛ぶ道（まっすぐか弧。跳ね返りも）と落ちる所、道の先の生き物を挟む括弧、照準の文字（溜めると性質のルーンが寄り、生き物を捉えると ‹·› になる）と、
 // 詠唱している間に画面をゆっくりにする見た目。
 // 状態の入れ物 gear（溜めている手）・here（今の階と生き物）・player・ui・vfx・gfx（後処理の uniform）・clock に頼る。
-// 呼ぶのは古い JS（30-loop-init.js の tick の段 'castfx' で drawCastFx、段 'cross' で updateCross）。照準の文字は document の #cross に書く。
+// 呼ぶのは古い JS（30-loop-init.js の tick の段 'castfx' で drawCastFx、段 'cross' で updateCross）。照準の文字は #cross（22-world-hints.js が ui.crossEl に入れる）に書く。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
 import { lookup, must, nth } from './array.ts';
 import { aimOrigin, aimTarget, beamFrame, castPoint, handUp, reflectDir, shotFrame } from './aim.ts';
@@ -252,7 +252,7 @@ export function drawCastFx(t: number): void {
  * 詠唱している間に画面をゆっくりにする見た目 uSlow と、画面の色 uTint（性質の色）も合わせる。dt は実時間の秒
  */
 export function updateCross(dt: number): void {
-  const el = document.getElementById('cross');
+  const el = ui.crossEl;
   if (!el) return;
   vfx.slowFx += ((gear.castSt ? 1 : 0) - vfx.slowFx) * Math.min(1, (dt || 0.016) * 8);
   must(finalPass().uniforms['uSlow']).value = vfx.slowFx;
@@ -271,9 +271,8 @@ export function updateCross(dt: number): void {
       c0 = must(elemCol(H.elem ? H.elem.type : null), '性質の色'),
       c = c0.map((v) => v * 0.72 + 0.25),
       gap = gear.castSt.full ? 0 : Math.max(0, 3 - Math.round(k * 3));
-    const E = H.elem ? must(lookup(RUNE_DEF, H.elem.type).ch, 'ルーンの文字') : '·',
-      A = E;
-    txt = `${A}${' '.repeat(gap + 1)}·${' '.repeat(gap + 1)}${E}`;
+    const E = H.elem ? must(lookup(RUNE_DEF, H.elem.type).ch, 'ルーンの文字') : '·';
+    txt = `${E}${' '.repeat(gap + 1)}·${' '.repeat(gap + 1)}${E}`;
     col = cssOf(c);
     cls = gear.castSt.full ? 'full' : 'chant';
   } else if (tg) {
