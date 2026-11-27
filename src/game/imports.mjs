@@ -42,8 +42,9 @@ import {
 } from '../lib/altars.ts';
 import { lockedOf, loreLeft, unlocked, weaponPool } from '../lib/unlocks.ts';
 import {
-  advance, checkEvents, computeFOV, die, generate, initEvents, newLevel, newRun, interAfter, interAt, isFinal, levelSeed, placeKey, settleSlotPick, setupFinal, showStratum, strataGrowth,
+  advance, checkEvents, computeFOV, die, generate, initEvents, newLevel, newRun, interAfter, interAt, isFinal, levelSeed, placeKey, settleSlotPick, setupFinal, showStratum, strataGrowth, updateFinal,
 } from '../lib/levels.ts';
+import { grabItem, openSlot, pickupItems, updateRockfall } from '../lib/pickup.ts';
 import { msg, renderLog } from '../lib/log.ts';
 import { buildsHave, renderHotbar } from '../lib/hotbar.ts';
 import { applyBuild, renderInv, setInv, startSwap } from '../lib/inventory.ts';
@@ -71,7 +72,7 @@ import {
 import {
   addZone, applyElem, applyHit, burstFire, castNow, castRapid, castStar, chainLightning, coldSnap, conductWater, damageMonster, dashCast, dashCuts, dropRune,
   fireBeam, fireWave, gainExp, hitFeedback, hitReact, hurtPlayer, inWater, landElem, later, lordFell, meleeCast, monsterStrike, nearestFoe, onDodged, onKilledBy,
-  orbBurst, rallyOnHit, react, startRain, zapLine,
+  orbBurst, rallyOnHit, react, startRain, updateRally, zapLine,
 } from '../lib/combat.ts';
 import { placeThirdPerson, solidAt, updatePlayer } from '../lib/player.ts';
 import { beginCast, releaseCast, startRoll, timeScale, updateCast } from '../lib/chant.ts';

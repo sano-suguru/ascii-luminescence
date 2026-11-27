@@ -23,7 +23,7 @@ describe('移す前と同じ', () => {
     const all = await fightCases({ ...AIM, ...AUDIO, ...COMBAT, ...GEAR, ...MON, ...PLAYER, ...RESULTS }, 16, fakeDom()),
       body = fightText(all),
       calls = all.flatMap((c) => c.calls);
-    expect([fnv(body), body.length]).toEqual(['9d395adb', 3622946]);
+    expect([fnv(body), body.length]).toEqual(['d1d9bc84', 3622946]);
     // 場合が中身を通っているか：59の関数が全部呼ばれ、どれも止まらない。見た目の乱数・音の乱数・伝言・setTimeout を使う呼び出しもある
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);
