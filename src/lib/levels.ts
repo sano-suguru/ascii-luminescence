@@ -1,5 +1,5 @@
 // 階のシード（もとは src/game/18-level-player.js）と、最深部か（もとは 24-goal.js）、特別な階の場所（もとは 02-constants.js）と、
-// 階を移る処理の部品（場所の名前・次の場所へ進む・階を作る・最深部の支度・層の名前・部屋の出来事・見えるマス）。
+// 階を移る処理の部品（場所の名前・次の場所へ進む・階を作る・最深部の支度と、最深部を進める updateFinal・王の影を立ち上がらせる spawnFinalBoss（もとは 24-goal.js）・層の名前・部屋の出来事・見えるマス）。
 // 状態の入れ物 adv（探索）・here（今いる場所）・player・ui に頼る物。
 import { lookup, must, nth } from './array.ts';
 import { MTYPES } from './creatures.ts';
@@ -9,7 +9,7 @@ import { tallAt, initFire } from './ground.ts';
 import { makeHistory } from './history.ts';
 import { legendAll, descentSealed } from './legend.ts';
 import { msg } from './log.ts';
-import { mr, keyedRand, roll } from './random.ts';
+import { mr, mpick, keyedRand, roll } from './random.ts';
 import { rollTraits } from './runes.ts';
 import {
   adv,
@@ -41,13 +41,16 @@ import { awardLore, graveCandidates, graveRows, loreRows, resultPlace, saveGrave
 import { boxText } from './text.ts';
 import { buildWorld, setFog, updateWater } from './build.ts';
 import { hurtPlayer } from './combat.ts';
-import { initDust } from './particles.ts';
+import { initDust, spawn } from './particles.ts';
 import { makeMonster } from './monsters.ts';
 import { placeRunesForLevel } from './altars.ts';
 import { sRumble } from './audio.ts';
 import { stairsGuarded } from './omens.ts';
 import { updatePlayer } from './player.ts';
 import { css } from './color.ts';
+import { G } from './glyphs.ts';
+import { transformShadow } from './bodies/auras.ts';
+import { shadowKingScale } from './bodies/lords.ts';
 
 /** 今の階 */
 const level = () => must(here.D, '今の階 here.D');
@@ -228,6 +231,108 @@ export function setupFinal(): void {
   }
   here.monsters = here.monsters.filter((m) => m.ty.critter);
   here.finalSt = { c0, boss: null, bossT: -1, summonT: 12, said: false };
+}
+/**
+ * 最深部を dt 秒進める：着いた時の一言、伝説の物が3つそろっていれば少し後に王の影が立ち上がる。影は体力が半分を切ると二つ目の姿になり、
+ * 生きている間は、亡霊が4体より少なければ、14秒ごとに2体呼び出す
+ */
+export function updateFinal(dt: number): void {
+  if (!here.finalSt || !isFinal() || adv.dead) return;
+  if (!here.finalSt.said && ui.started) {
+    here.finalSt.said = true;
+    setTimeout(() => msg('<b style="color:#bfe4ff">.</b>底に着いた。光の届かない、静かな闇だ。手の中で、三つの光が震えている。'), 1600);
+  }
+  // with the three legendary things in hand, the shadow rises a little after you arrive
+  if (!here.finalSt.boss && here.finalSt.bossT < 0 && legendAll()) here.finalSt.bossT = 3.2;
+  if (here.finalSt.bossT > 0) {
+    here.finalSt.bossT -= dt;
+    if (here.finalSt.bossT <= 0) spawnFinalBoss();
+  }
+  const b = here.finalSt.boss;
+  if (b && !b.dead && !b.phase2 && (b.hp ?? NaN) < (b.maxHp ?? NaN) * 0.5) transformShadow(b);
+  if (b && (b.invulnT ?? NaN) > 0) b.invulnT = (b.invulnT ?? NaN) - dt;
+  if (b && !b.dead) {
+    here.finalSt.summonT -= dt;
+    if (here.finalSt.summonT <= 0) {
+      here.finalSt.summonT = 14;
+      const n = here.monsters.filter((m) => !m.dead && m.key === 'W').length;
+      if (n < 4) {
+        for (let k = 0; k < 2; k++) {
+          const a = mr() * 6.28,
+            cx = Math.floor((b.x + Math.cos(a) * 2.5) / CELL),
+            cz = Math.floor((b.z + Math.sin(a) * 2.5) / CELL),
+            c = cz * MW + cx;
+          if (level().tile[c] !== TF) continue;
+          const s = makeMonster({ key: 'W', cx, cz, g: -1, lead: true });
+          s.sleep = false;
+          s.aware = 1.25;
+          s.noticed = true;
+          here.monsters.push(s);
+          for (let q = 0; q < 16; q++) {
+            const an = mr() * 6.28;
+            spawn(s.x, 0.6, s.z, Math.cos(an), 0.4 + mr(), Math.sin(an), 0.8, G('.'), 0.14, 0.6, 0.4, 1.2, 0);
+          }
+        }
+        msg(`<b style="color:#a98cff">W</b>影が身をよじり、闇の中から亡霊を呼び出した。`);
+      }
+    }
+  }
+}
+/** 王の影を立ち上がらせる（最後の王の名前の影。背の高さは、立つ所の天井に合わせる） */
+export function spawnFinalBoss(): void {
+  const R = must(adv.HIST).rulers,
+    last = nth(R, R.length - 1),
+    cx = must(here.finalSt).c0 % MW,
+    cz = (must(here.finalSt).c0 / MW) | 0;
+  const ceilH = level().ceil[must(here.finalSt).c0] || 6;
+  MTYPES['final'] = {
+    ...lookup(MTYPES, 'L'),
+    ch: '&',
+    look: null,
+    form: 'shadowking',
+    sk: 'final',
+    name: `${last.name}王の影`,
+    scale: shadowKingScale(ceilH),
+    col: [0.62, 0.48, 1.0],
+    boss: true,
+    lich: false,
+    light: 6,
+    verb: '黒い太陽を頭に浮かべ、長い剣を手に、底の闇から立ち上がった',
+  };
+  const b = makeMonster({ key: 'final', cx, cz, g: -1, lead: true });
+  b.sleep = false;
+  b.aware = 1.25;
+  b.noticed = true;
+  b.heartOn = true;
+  here.monsters.push(b);
+  must(here.finalSt).boss = b;
+  sRumble(0.9, 3);
+  vfx.shake = Math.max(vfx.shake, 0.6);
+  vfx.flash = Math.max(vfx.flash, 0.3);
+  for (let q = 0; q < 90; q++) {
+    const a = mr() * 6.28,
+      e = mr();
+    spawn(
+      b.x + Math.cos(a) * e * 2,
+      0.2,
+      b.z + Math.sin(a) * e * 2,
+      Math.cos(a) * 0.6,
+      1 + mr() * 3,
+      Math.sin(a) * 0.6,
+      1.6 + mr(),
+      G(mpick(['%', '#', '.', '&'])),
+      0.24,
+      0.5,
+      0.35,
+      0.9,
+      0,
+    );
+  }
+  msg(`<b style="color:#a98cff">&amp;</b>三つの光に照らされて、底の闇がひとところに集まっていく……`);
+  setTimeout(
+    () => msg(`<b style="color:#a98cff">&amp;</b><b style="color:#c9b8ff">${last.title}${last.name}の影</b>が立ち上がった。`),
+    1400,
+  );
 }
 /** 新しい層に入ると体が強くなる（本道の4つの層で一度ずつ。最大体力 +4。もとは src/game/18-level-player.js） */
 export function strataGrowth(): void {
@@ -496,6 +601,7 @@ export function newLevel(seedOverride?: number): void {
   here.stairsSeen = false;
   player.rally = 0;
   fight.rallyMotes = [];
+  fight.rockfall = null;
   if (adv.runStats && !ui.gallery) adv.runStats.maxDepth = Math.max(adv.runStats.maxDepth || 0, here.depth);
   setTimeout(strataGrowth, 50);
   if (ui.started && !ui.gallery && !adv.dead && !here.arrive) {
@@ -555,7 +661,6 @@ export function newLevel(seedOverride?: number): void {
   blaze.gasAny = false;
   initFire();
   initEvents();
-  blaze.spark = null;
   fight.projs = [];
   showHint('');
   edge.t = 0;

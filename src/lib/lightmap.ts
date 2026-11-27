@@ -1,5 +1,5 @@
 // マスの明るさ（もとは src/game/14-lights-fixtures.js）と天井の高さ（もとは 06-world.js）、灯りの揺らぎ flicker と、灯りを描画に渡す配列を書き直す updateLights（もとは 14-lights-fixtures.js）。
-// 状態の入れ物 here（今の階の灯りと天井・生き物）・blaze（火の明かりと投げた火花）・player・ui（1人称か3人称か）・gfx（カメラの位置。読むだけ）・gear（詠唱）・vfx（稲妻の光り）・
+// 状態の入れ物 here（今の階の灯りと天井・生き物）・blaze（火の明かり）・player・ui（1人称か3人称か）・gfx（カメラの位置。読むだけ）・gear（詠唱）・vfx（稲妻の光り）・
 // lantern（手元の灯り）と、灯りを描画に渡す配列 SL・DLP・DLC に頼る物。灯りの計算そのもの（迷宮の生成も使う）は src/lib/light.ts。
 // updateLights を呼ぶのは古い JS の描画（30-loop-init.js の tick）。flicker はランプの時に見た目の乱数 mr() を引く。
 import { must, nth } from './array.ts';
@@ -118,7 +118,7 @@ export function flicker(L: LevelLight, t: number): number {
 }
 /**
  * 灯りを描画に渡す配列（SL・DLP・DLC）を書き直す（もとは src/game/14-lights-fixtures.js）：階の灯りの明るさ（揺らぎ・影の獣・眠る竜・不死の王の冷たい光）、
- * 手元の灯り（詠唱の間は性質の色に寄る）、稲妻の光りか投げた火花、灯りを持つ生き物（近い順）
+ * 手元の灯り（詠唱の間は性質の色に寄る）、稲妻の光り、灯りを持つ生き物（近い順）
  */
 export function updateLights(t: number): void {
   SL.fill(0);
@@ -191,17 +191,8 @@ export function updateLights(t: number): void {
     DLC[s5 * 3] = nth(must(vfx.zapFlash, '稲妻の光り').col, 0) * 3 * k5;
     DLC[s5 * 3 + 1] = nth(must(vfx.zapFlash, '稲妻の光り').col, 1) * 3 * k5;
     DLC[s5 * 3 + 2] = nth(must(vfx.zapFlash, '稲妻の光り').col, 2) * 3 * k5;
-  } else if (blaze.spark) {
-    const s5 = NDL - 1;
-    DLP[s5 * 4] = blaze.spark.x;
-    DLP[s5 * 4 + 1] = blaze.spark.y;
-    DLP[s5 * 4 + 2] = blaze.spark.z;
-    DLP[s5 * 4 + 3] = 5;
-    DLC[s5 * 3] = 2.4;
-    DLC[s5 * 3 + 1] = 1.3;
-    DLC[s5 * 3 + 2] = 0.4;
   }
-  for (let k = 0; k < NDL - (blaze.spark || flOn ? 2 : 1) && k < list.length; k++) {
+  for (let k = 0; k < NDL - (flOn ? 2 : 1) && k < list.length; k++) {
     const m = nth(list, k)[1],
       s = k + 1,
       ty = m.ty;

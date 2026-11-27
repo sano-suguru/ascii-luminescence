@@ -65,7 +65,7 @@ export async function statusCases(F, seeds) {
     hudInfo: { ...hudInfo },
     ui: { ...ui },
     vfx: { ...vfx },
-    blaze: { spark: blaze.spark, fireLight: blaze.fireLight },
+    blaze: { fireLight: blaze.fireLight },
     saved: { LEGEND: saved.LEGEND, BOOK: saved.BOOK },
     gear: { hands: gear.hands, runeUid: gear.runeUid },
     shift: Object.getOwnPropertyDescriptor(keys, 'ShiftLeft'),
@@ -175,7 +175,6 @@ export async function statusCases(F, seeds) {
       Object.assign(ui, { invOpen: r() < 0.2, menuOpen: r() < 0.2, dbgOpen: r() < 0.1, altarOpen: r() < 0.1, lvlOpen: r() < 0.1 });
       Object.assign(vfx, { hpFlash: r() < 0.2 ? 0.3 : 0, shake: r() * 0.3 });
       keys['ShiftLeft'] = r() < 0.3;
-      blaze.spark = r() < 0.3 ? { x: player.x + (r() - 0.5) * 6, y: 1, z: player.z + (r() - 0.5) * 6, vx: 0, vy: 0, vz: 0, t: 0 } : null;
       blaze.fireLight = new Float32Array(NCELL);
       for (let k = 0; k < 40; k++) blaze.fireLight[pick(floors)] = r() * 2;
       saved.BOOK = new Set(['steam', 'blast', 'overload', 'nope'].filter(() => r() < 0.5));

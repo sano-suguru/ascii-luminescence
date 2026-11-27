@@ -142,6 +142,7 @@ const LIQUIDS = [0, 0, 0, LQ_DEEP, LQ_BOG, LQ_LAVA, LQ_WATER];
 const SCENES = [
   'spring',
   'vault',
+  'grave',
   'peaceful',
   'hidden',
   'critter',
@@ -497,7 +498,6 @@ export async function viewCases(F, seeds) {
       vfx.zapFlash = chance(0.4)
         ? null
         : { x: px, y: 1, z: pz, col: [r(), r(), r()], t: pick([999, 0, -0.1, r()]), r: chance(0.5) ? 8 : 0 };
-      blaze.spark = chance(0.3) ? { x: px + r() * 4, y: 1 + r(), z: pz + r() * 4, vx: 0, vy: 0, vz: 0, t: 0 } : null;
       // カメラ（TypeScript が読む位置だけ）と、見た時の説明を出す所
       gfx.camera = { position: { x: px, y: 1.6, z: pz } };
       const lookEl = { innerHTML: '' };
@@ -793,6 +793,18 @@ export async function viewCases(F, seeds) {
           vault: true,
           ev: pick(['guard', 'collapse']),
           rune: { uid: 5, type: pick(RUNE_TYPES.atk) },
+        });
+        aimAt(x, 0.55, z, 1.5);
+        run('look', [], 2);
+      } else if (scene === 'grave') {
+        const i = floorAt(() => chance(0.1)),
+          [x, z] = cpos(i);
+        D.items.push({
+          i,
+          kind: 'grave',
+          taken: false,
+          g: chance(0.7) ? { k: 'x', depth: Math.floor(r() * 12), cause: chance(0.6) ? '大蛇' : '', item: null } : undefined,
+          rune: { uid: 6, type: pick(RUNE_TYPES.atk) },
         });
         aimAt(x, 0.55, z, 1.5);
         run('look', [], 2);

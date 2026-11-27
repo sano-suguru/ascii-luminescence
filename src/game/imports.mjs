@@ -35,20 +35,21 @@ import { ALTAR_W, MARK_H, MCH, MCW, MMC, MMR, MPAD, tone } from '../lib/hud.ts';
 import { AVATAR_TY, BRANCH_HINT, DECO_K, DECO_NAMES, DUMMY_KINDS, FIX_NAMES, GALLERY_SLEEP, LEGEND_KINDS, LEGEND_ORDER, LORD_GAL, MACHINE_INFO, TRAP_INFO, lookLine, mname } from '../lib/names.ts';
 import { CHANT_STEPS, SND_NAME, VOWELS, sEnv } from '../lib/sound.ts';
 import {
-  castSound, sAlarm, sBoom, sBubble, sChime, sCrackleBurst, sCreak, sDist, sHiss, sHowl, sndInit, sndReady, sndUpdate, sNoise, sOut, sRumble, sSplash, sSqueak, sTone, sWhoosh,
+  castSound, sAlarm, sBoom, sBubble, sChime, sCreak, sDist, sHiss, sHowl, sndInit, sndReady, sndUpdate, sNoise, sOut, sRumble, sSplash, sSqueak, sTone, sWhoosh,
 } from '../lib/audio.ts';
 import {
   altarDetail, altarFill, altarLine, altarOpts, guardedNow, placeAltar, placeChosen, placeRunesForLevel, takeRune, vaultArea,
 } from '../lib/altars.ts';
 import { lockedOf, loreLeft, unlocked, weaponPool } from '../lib/unlocks.ts';
 import {
-  advance, checkEvents, computeFOV, die, generate, initEvents, newLevel, newRun, interAfter, interAt, isFinal, levelSeed, placeKey, settleSlotPick, setupFinal, showStratum, strataGrowth,
+  advance, checkEvents, computeFOV, die, generate, initEvents, newLevel, newRun, interAfter, interAt, isFinal, levelSeed, placeKey, settleSlotPick, setupFinal, showStratum, strataGrowth, updateFinal,
 } from '../lib/levels.ts';
+import { grabItem, openSlot, pickupItems, updateRockfall } from '../lib/pickup.ts';
 import { msg, renderLog } from '../lib/log.ts';
 import { buildsHave, renderHotbar } from '../lib/hotbar.ts';
 import { applyBuild, renderInv, setInv, startSwap } from '../lib/inventory.ts';
 import {
-  bookRows, chronRows, cycleUi, drawMark, flyOpen, helpRows, isPaused, makeNoise, onNoticed, placeLabel, renderBook, renderChron, renderHelp, renderStatus, setHelp, flashHint, showHint, updateSearch, updateStealth,
+  bookRows, chronRows, cycleUi, drawMark, flyOpen, helpRows, isPaused, onNoticed, placeLabel, renderBook, renderChron, renderHelp, renderStatus, setHelp, flashHint, showHint, updateSearch, updateStealth,
 } from '../lib/status.ts';
 import { descentSealed, drawLegendWorld, getLegend, legendAll, legendOfBranch } from '../lib/legend.ts';
 import { ceilAt, cellLight, updateLights } from '../lib/lightmap.ts';
@@ -69,9 +70,9 @@ import {
   aimOrigin, aimPoint, aimTarget, assistPoint, beamFrame, castPoint, doorBlock, drawSwing, groundPoint, handPoint, handUp, headPos, hittable, losClear, reflectDir, shotFrame, viewDir,
 } from '../lib/aim.ts';
 import {
-  addZone, applyElem, applyHit, boom, burstFire, castNow, castRapid, castStar, chainLightning, coldSnap, conductWater, damageMonster, dashCast, dashCuts, dropRune,
+  addZone, applyElem, applyHit, burstFire, castNow, castRapid, castStar, chainLightning, coldSnap, conductWater, damageMonster, dashCast, dashCuts, dropRune,
   fireBeam, fireWave, gainExp, hitFeedback, hitReact, hurtPlayer, inWater, landElem, later, lordFell, meleeCast, monsterStrike, nearestFoe, onDodged, onKilledBy,
-  orbBurst, rallyOnHit, react, startRain, zapLine,
+  orbBurst, rallyOnHit, react, startRain, updateRally, zapLine,
 } from '../lib/combat.ts';
 import { placeThirdPerson, solidAt, updatePlayer } from '../lib/player.ts';
 import { beginCast, releaseCast, startRoll, timeScale, updateCast } from '../lib/chant.ts';
