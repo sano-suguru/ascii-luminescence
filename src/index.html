@@ -20,6 +20,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--void);color:var(
 /* 指で遊ぶ時（body.touch。src/lib/touch.ts）：文字を選ばない・長押しの吹き出しを出さない・2回押しで拡大しない */
 body.touch{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 body.touch button{touch-action:manipulation;}
+/* 画面の端の表示（状態・案内・ミニマップ・伝言・下の HUD）は、iPhone の横向きの切り欠きとホームの棒の分（safe-area-inset）を避ける（viewport-fit=cover なので、ページは画面の端まで広がる） */
 /* タッチのボタン：タイトルでは右上に [全画面]。探索中は上の真ん中（左上の状態の表示と右上のミニマップの間）に [装備] [メニュー] */
 #touchbar{display:none;position:fixed;top:calc(8px + env(safe-area-inset-top,0px));right:calc(8px + env(safe-area-inset-right,0px));z-index:30;gap:4px;}
 body.touch #touchbar{display:flex;}
@@ -27,6 +28,10 @@ body.started #touchbar{right:auto;left:50%;transform:translateX(-50%);}
 #touchbar button{font:inherit;font-family:"M PLUS 1 Code","BIZ UDGothic",ui-monospace,monospace;font-size:13px;color:var(--mist);background:rgba(4,3,12,.62);border:0;border-radius:4px;padding:10px 5px;cursor:pointer;text-shadow:0 0 6px #000;}
 #touchbar button:active{color:var(--ink);}
 #touchbar .play{display:none;}
+/* 指で遊んでいて縦向きの間の、横にする案内（src/lib/touch.ts の updatePortrait。探索中だけ。その間は止まっている） */
+#turn{display:none;position:fixed;inset:0;z-index:40;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(3,2,9,.9);color:var(--ink);font-family:"M PLUS 1 Code","BIZ UDGothic",ui-monospace,monospace;font-size:16px;}
+#turn span{font-size:12px;color:var(--mist);}
+body.portrait.started:not(.over) #turn{display:flex;}
 body.started:not(.over) #touchbar .play{display:block;}
 body.started #fsB{display:none;}
 /* レベルアップと祭壇の画面の間は、[装備] [メニュー] を隠す（画面の見出しに重なる。どちらも画面の中のボタンで閉じる。body.choosing は src/lib/panels.ts） */
@@ -43,7 +48,7 @@ body.touch.started:not(.over):not(.paused) #tctl{display:block;}
 /* [持ち替え] は [右手] の左に並べる（右手の親指で届き、右上のミニマップと下の HUD に重ならない） */
 #swapB{right:calc(104px + env(safe-area-inset-right,0px));bottom:calc(84px + env(safe-area-inset-bottom,0px));padding:10px 8px;font-size:13px;}
 /* 指で遊ぶ時は、左下の伝言を新しい物から2つだけ出し、横向きなら下の HUD の左端の手前までにする（狭い画面で重なるため。縦向きは幅が足りないので、幅は変えない） */
-@media (orientation:landscape){ body.touch #log{max-width:calc(50vw - 170px)!important;} }
+@media (orientation:landscape){ body.touch #log{max-width:calc(50vw - 170px - env(safe-area-inset-left,0px))!important;} }
 body.touch #log .m:nth-last-child(n+3){display:none;}
 /* 指で遊ぶ時のパネル（装備・メニュー・祭壇とレベルアップ・結果）：画面に入るまで縮め、入らない分は中を送る（src/lib/layout.ts の fitPanels） */
 body.touch #pack,body.touch #menu,body.touch #altarp.open,body.touch #death{overflow-y:auto;overscroll-behavior:contain;}
@@ -53,19 +58,19 @@ body.touch #pack,body.touch #menu,body.touch #altarp.open,body.touch #death{over
 /* every piece of UI is drawn with glyphs, like the world itself */
 #hud{position:fixed;inset:0;pointer-events:none;z-index:10;text-shadow:0 0 6px #000,0 0 2px #000;transition:opacity .4s ease;}
 .glow{text-shadow:0 0 8px currentColor,0 0 2px #000;}
-#status{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));left:18px;font-size:13px;line-height:1.75;white-space:pre;}
+#status{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));left:calc(18px + env(safe-area-inset-left,0px));font-size:13px;line-height:1.75;white-space:pre;}
 #status .dim{color:var(--shade);}
 #status .lab{color:var(--mist);font-size:11px;}
-#help{position:absolute;top:calc(98px + env(safe-area-inset-top,0px));left:8px;margin:0;padding:6px 40px 6px 10px;background:linear-gradient(90deg,rgba(3,2,10,.6),rgba(3,2,10,.35) 70%,rgba(3,2,10,0));font:inherit;font-size:12px;line-height:1.65;color:var(--mist);
+#help{position:absolute;top:calc(98px + env(safe-area-inset-top,0px));left:calc(8px + env(safe-area-inset-left,0px));margin:0;padding:6px 40px 6px 10px;background:linear-gradient(90deg,rgba(3,2,10,.6),rgba(3,2,10,.35) 70%,rgba(3,2,10,0));font:inherit;font-size:12px;line-height:1.65;color:var(--mist);
   white-space:pre;transition:opacity 1.2s ease;}
 #help b{color:var(--ink);font-weight:700;}
 #help .f{color:var(--shade);}
 #help.off{opacity:0;}
-#mapwrap{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:12px;}
+#mapwrap{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));}
 #map{display:block;width:min(392px,34vw);height:auto;}
 /* 背の低い画面（スマホの横向きなど）では、ミニマップを高さでも抑える（横幅の 34% だと、縦に画面の半分を越える） */
 @media (max-height:520px){ #map{width:min(34vw,42vh);} }
-#log{position:absolute;left:18px;bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:min(640px,60vw);font-size:12.5px;line-height:1.7;}
+#log{position:absolute;left:calc(18px + env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:min(640px,60vw);font-size:12.5px;line-height:1.7;}
 #log .m{transition:opacity 1.2s ease;}
 #log .m b{font-weight:800;margin-right:.6em;}
 #cross{position:absolute;left:50%;top:50%;transform:translate(-50%,-52%);white-space:pre;font-size:15px;line-height:1;color:rgba(225,215,255,.6);text-shadow:0 0 6px rgba(0,0,0,.9),0 0 10px currentColor;pointer-events:none;}
@@ -93,7 +98,7 @@ body.over::after{content:'';position:fixed;inset:0;background:rgba(0,0,0,.55);po
 #death{z-index:6;}
 #death button.row{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;cursor:pointer;text-align:left;}
 #death button.row:hover{color:#fff3c8;}
-#hotbar{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);margin:0;white-space:pre;font:inherit;font-size:13px;line-height:1.7;text-align:center;color:var(--mist);pointer-events:none;}
+#hotbar{position:absolute;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);margin:0;white-space:pre;font:inherit;font-size:13px;line-height:1.7;text-align:center;color:var(--mist);pointer-events:none;}
 #hotbar .on{color:var(--ink);text-shadow:0 0 8px rgba(255,220,160,.6);}
 #pack,#menu{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;padding:16px 20px;white-space:pre;font:inherit;font-size:14px;line-height:1.7;color:var(--ink);background:radial-gradient(ellipse at center,rgba(8,6,20,.94),rgba(6,4,14,.82) 70%,transparent);display:none;}
 #pack.show,#menu.show{display:block;pointer-events:auto;}
@@ -106,6 +111,8 @@ body.paused #help{opacity:0;}
 #gal{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:25;margin:0;white-space:pre;font-family:"M PLUS 1 Code","BIZ UDGothic","JetBrains Mono",ui-monospace,monospace;font-size:13px;line-height:1.7;color:var(--ink);background:rgba(4,3,12,.9);padding:2px 6px;display:none;pointer-events:auto;}
 #gal.show{display:block;}
 #gal .f{color:var(--shade);}
+/* 指で遊ぶ背の低い画面（スマホの横向き）：図鑑の枠を小さくして下に寄せる（生き物の体の下半分が、枠に隠れていた） */
+@media (max-height:520px){ body.touch #gal{bottom:calc(4px + env(safe-area-inset-bottom,0px));font-size:12px;line-height:1.4;} }
 #arrows{position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none;z-index:15;}
 #altarp{display:none;position:fixed;left:50%;bottom:86px;transform:translateX(-50%);z-index:22;margin:0;white-space:pre;font-family:"M PLUS 1 Code","BIZ UDGothic",ui-monospace,monospace;font-size:13px;line-height:1.55;color:#e4dcf6;background:rgba(8,6,16,.82);padding:6px 12px;border-radius:4px;pointer-events:none;}
 #altarp.show{display:block;}
@@ -237,6 +244,7 @@ body:not(.started) #hud{opacity:0;}
 </div>
 
 <pre id="gal" role="dialog" aria-label="図鑑"></pre>
+<div id="turn">画面を横にしてください<span>横にすると、続きから遊べます</span></div>
 <div id="touchbar">
   <button id="fsB" hidden>[全画面]</button>
   <button id="packB" class="play">[装備]</button>

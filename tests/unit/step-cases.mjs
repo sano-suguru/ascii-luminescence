@@ -819,10 +819,12 @@ export async function stepCases(F, seeds, page) {
       }
       // ---- 場面：部屋の出来事（本物の階の出来事と、種類ごとに作った物）
       initEvents();
+      // 部屋の床のマス。通れない所（目覚める前の像など）は外す（迷宮の生成と同じく、溶岩の流れる道は通れない所を通らない。
+      // 像のマスに溶岩が流れると、像が目覚めた時にマスの印が書き換わり、引いても溶岩が残る）
       const rooms = D.rooms,
         roomCells = (ri) => {
           const out2 = [];
-          for (let i = 0; i < NCELL; i++) if (D.roomOf[i] === ri && D.tile[i] === TF) out2.push(i);
+          for (let i = 0; i < NCELL; i++) if (D.roomOf[i] === ri && D.tile[i] === TF && !D.solid.has(i)) out2.push(i);
           return out2;
         };
       const goto = (i, dx = 0) => {

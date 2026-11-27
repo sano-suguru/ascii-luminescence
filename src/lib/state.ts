@@ -81,6 +81,8 @@ export interface Ui {
   escKey: boolean;
   /** 指で遊んでいるか（指で触れたら true、マウスを動かしたら false。src/lib/touch.ts。この間は tryLock が捕まえにいかない） */
   touch: boolean;
+  /** 指で遊んでいて、画面が縦向きか（探索中は止めて、横にする案内を出す。src/lib/touch.ts の updatePortrait） */
+  portrait: boolean;
   /** 指でパネルの選択肢を1回押して、選んだだけの物（2回目で決める。src/lib/touch.ts の confirmTap。無ければ ''） */
   tapArm: string;
   /** 1人称（'fps'）か3人称 */
@@ -179,6 +181,7 @@ export const ui: Ui = {
   unlockedAt: -1e9,
   escKey: false,
   touch: false,
+  portrait: false,
   tapArm: '',
   camMode: 'fps',
   lvlOpen: false,

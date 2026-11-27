@@ -59,7 +59,7 @@ describe('移す前と同じ', () => {
       cases.some((c) => c.calls.some((x) => x.grew === 16) && c.log.some((e) => e[1] === 'start')),
     ]).toEqual([true, true, true, true]);
     caseOut('screens-2', all);
-    expect([fnv(all), all.length]).toEqual(['7254ffee', 763699]);
+    expect([fnv(all), all.length]).toEqual(['1d67ac7b', 763699]);
   });
 });
 

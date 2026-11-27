@@ -20,5 +20,5 @@ ui.introEl=document.getElementById('intro');
 document.addEventListener('pointerlockchange',()=>{ const was=ui.locked; ui.locked=document.pointerLockElement===canvas; if(ui.locked){ ui.lockedOnce=true; ui.lockTries=0; } else if(was)ui.unlockedAt=performance.now(); if(ui.locked&&ui.menuOpen)setMenu(false); if(menuOnUnlock(was))setMenu(true); updateResume(); });
 document.addEventListener('pointerlockerror',lockFailed);
 // 指で遊ぶ時の土台（src/lib/touch.ts）。指の後に出るマウスの事件を止めるので、ゲームのマウスの処理（17-meta.js）より先に用意する。togglePack・toggleMenu は 17-meta.js
-initTouch({pack:togglePack,menu:toggleMenu});
-initTouchpad({build:nextBuild});
+initTouch({pack:togglePack,menu:toggleMenu,changed:()=>{ if(ui.gallery&&ui.gallery.mode==='beast')renderGallery(); }});
+initTouchpad({build:nextBuild,gallery:{on:()=>!!(ui.gallery&&ui.gallery.mode==='beast'),drag:galleryDrag,zoom:galleryZoom,hold:galleryHold}});

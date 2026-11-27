@@ -46,7 +46,7 @@ describe('移す前と同じ', () => {
       body = viewText(all),
       calls = all.flatMap((c) => c.calls);
     caseOut('view', body);
-    expect([fnv(body), body.length]).toEqual(['72ecf02c', 59838033]);
+    expect([fnv(body), body.length]).toEqual(['9b1e7edd', 59837942]);
     // 場合が中身を通っているか：18の関数が全部呼ばれ、文字を置き、粒子を出し、どれも止まらない
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.dn > 0).length).toBeGreaterThan(2000);

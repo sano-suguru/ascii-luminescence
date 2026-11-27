@@ -72,8 +72,12 @@ function tick(raw,draw){
   cullChunks();
   if(draw)composer.render(dt);
   if(TEST)return; // keep the resolution fixed in tests
-  warm+=raw; if(warm>3&&!document.hidden){ perfAcc+=raw; perfN++; perfT+=raw;
-    if(perfT>2.5){ const avg=perfAcc/perfN; if(avg>1/48&&pixelRatio>0.75){ pixelRatio=Math.max(0.75,pixelRatio-0.2); applySize('auto'); } perfT=perfAcc=perfN=0; } }
+  // 速さに合わせて画質を下げる（src/lib/quality.ts）。数えるのは探索中だけ（階を移る途中・止まっている間・タイトルと図鑑は数えない。
+  // 階を作る一瞬の遅れで下がらないように）。数えないフレームが来たら、そこから3秒は様子を見てから数え直す
+  if(!ui.started||here.trans||isPaused()||document.hidden){ warm=perfT=perfAcc=perfN=0; return; }
+  warm+=raw; if(warm>3){ perfAcc+=raw; perfN++; perfT+=raw;
+    if(perfT>QUALITY.span){ const q=nextQuality(perfAcc/perfN,{pr:pixelRatio,bloom:bloom.enabled}); perfT=perfAcc=perfN=0;
+      if(q){ const pr0=pixelRatio; pixelRatio=q.pr; bloom.enabled=q.bloom; if(q.pr!==pr0)applySize('auto'); else took('quality',performance.now(),{bloom:q.bloom}); } } }
 }
 
 // ---------------------------------------------------------------- test hooks (only with ?test=1; see the test mode block at the top)
@@ -90,6 +94,8 @@ if(TEST)window.__test={
   // give every blessing at level n (default 1), so a level-up offers their next level (shown with II)
   // 指の操作の、試して合わせる値を変える（{look, analog}。src/lib/touchpad.ts の TUNE。tools/feel.mjs が使う）
   touchTune(o){ Object.assign(TUNE,o||{}); return {...TUNE}; },
+  // the quality the frame loop lowers on a slow device (src/lib/quality.ts; tests keep it fixed): pr is the pixel ratio, bloom whether the glow is drawn. Returns what it is now
+  quality(q){ if(q){ if(q.pr!==undefined)pixelRatio=q.pr; if(q.bloom!==undefined)bloom.enabled=q.bloom; applySize('auto'); } return {pr:pixelRatio,bloom:bloom.enabled}; },
   bless(n=1){ for(const k in BLESS)adv.lvl.bless[k]=n; return Object.keys(BLESS).length; },
   // how many columns the panels count for a piece of text (visW)
   width(text){ return visW(text); },
