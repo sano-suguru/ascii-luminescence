@@ -14,6 +14,7 @@ import { MTYPES } from '../../src/lib/creatures.ts';
 import { makeRune } from '../../src/lib/gear.ts';
 import { makeHistory } from '../../src/lib/history.ts';
 import { makeBeastType } from '../../src/lib/bodies/lords.ts';
+import { DEBRIS_MAX } from '../../src/lib/debris.ts';
 import { makeMonster } from '../../src/lib/monsters.ts';
 import { P } from '../../src/lib/particles.ts';
 import { setSoundRand } from '../../src/lib/random.ts';
@@ -149,19 +150,35 @@ const BLESS_KEYS = [
 ];
 const SUBS = ['gsweep', 'gwave', 'bpower', 'rshot', 'mshot', 'mmoon'];
 
-/** 配列の中身の指紋（NaN は1つの並びにそろえる。指紋は monsters-cases.mjs と同じ。level-cases.mjs も使う） */
+/** Float32Array に NaN を入れた時の並び（Float32Array の NaN を、指紋ではこれにそろえる） */
+const NAN32 = new Uint32Array(new Float32Array([NaN]).buffer)[0] ?? 0;
+/**
+ * 配列の中身の指紋（NaN は1つの並びにそろえる。level・pickup・step の場合も使う）。
+ * FNV-1a の形で、4バイトを1つの数として混ぜる（1バイトずつ混ぜると、掛け算が前の結果を待つので、大きな配列で遅い。
+ * 混ぜる1歩は元に戻せる変換なので、どこか1つの数が変われば、指紋は必ず変わる）。4バイトに足りない終わりは1バイトずつ混ぜる
+ */
 const hashArr0 = (a, from = 0, to = a.length) => {
-  // 配列は写さずに読む（NaN がある時だけ、写して1つの並びにそろえる。呼ぶ数が多く、写すとテストの時間の多くを占めるため）
+  // 配列は写さずに読む（Float64Array に NaN がある時と、4バイトの区切りに揃っていない時だけ写す。呼ぶ数が多く、写すとテストの時間の多くを占めるため）
   a = a.subarray(from, Math.max(from, to));
-  if (a instanceof Float32Array || a instanceof Float64Array)
+  if (a instanceof Float64Array)
     for (let i = 0; i < a.length; i++)
       if (Number.isNaN(a[i])) {
         a = a.map((x) => (Number.isNaN(x) ? NaN : x));
         break;
       }
-  const b = new Uint8Array(a.buffer, a.byteOffset, a.length * a.BYTES_PER_ELEMENT);
+  if (a.byteOffset % 4) a = a.slice();
+  const n = a.length * a.BYTES_PER_ELEMENT,
+    w = new Uint32Array(a.buffer, a.byteOffset, n >>> 2),
+    b = new Uint8Array(a.buffer, a.byteOffset, n);
   let h = 0x811c9dc5;
-  for (let i = 0; i < b.length; i++) h = Math.imul(h ^ b[i], 0x01000193);
+  // Float32Array の NaN は、混ぜながら1つの並びに置き換える（指数が全部1で、仮数が0でない数。NaN を探すために配列をもう一度読まない）
+  if (a instanceof Float32Array)
+    for (let i = 0; i < w.length; i++) {
+      const x = w[i];
+      h = Math.imul(h ^ ((x & 0x7f800000) === 0x7f800000 && x & 0x7fffff ? NAN32 : x), 0x01000193);
+    }
+  else for (let i = 0; i < w.length; i++) h = Math.imul(h ^ w[i], 0x01000193);
+  for (let i = w.length * 4; i < n; i++) h = Math.imul(h ^ b[i], 0x01000193);
   return (h >>> 0).toString(16).padStart(8, '0');
 };
 /**
@@ -461,6 +478,7 @@ export async function fightCases(F, seeds, page) {
         boltFx: [],
         zapQueue: [],
         rallyMotes: [],
+        debris: [],
       });
       Object.assign(vmKick, { L: -9, R: -9 });
       for (const h of ['L', 'R']) Object.assign(beamHold[h], { hold: 0, last: -9 });
@@ -661,6 +679,10 @@ export async function fightCases(F, seeds, page) {
         });
         return ret;
       };
+      // 場面の初めに、たまっていく飛ぶ物・稲妻の跡・崩れた体を片付ける。場合の中では入れるだけで、読む物が無く
+      // （動かす updateProjs・drawBoltFx・updateDebris は呼ばない）、残すと、呼ぶたびに取る状態の指紋が大きくなって遅いため。
+      // 崩れた体の上限（crumble が数える）は、上限を越えるまで続けて倒す場面で通す
+      const tidy = () => Object.assign(fight, { projs: [], boltFx: [], debris: [] });
       // ゲームの時計を進め、遅れて起きることと setTimeout を流す
       const tick = (dt) => {
         clock.time += dt;
@@ -718,6 +740,7 @@ export async function fightCases(F, seeds, page) {
         ...(chance(0.2) ? { powK: 1.3 } : {}),
       });
       // ---- 場面：詠唱（両手の武器と、武器の種類ごとの撃ち方）
+      tidy();
       for (const h of ['L', 'R']) {
         call('specOf', h);
         for (let k = 0; k < 2; k++) {
@@ -782,6 +805,7 @@ export async function fightCases(F, seeds, page) {
         for (let q = 0; q < 6; q++) tick(pick([0.1, 0.3]));
       }
       // ---- 場面：当たりと性質と反応（状態をそろえて、反応ごとに）
+      tidy();
       const REACT = [
         ['fire', { chill: 1 }],
         ['fire', { poison: 1 }],
@@ -845,6 +869,7 @@ export async function fightCases(F, seeds, page) {
         tick(pick([0.1, 0.2]));
       }
       // ---- 場面：ダメージと倒す（眠り・的・王の影・主・まわりの物）
+      tidy();
       for (let k = 0; k < 8; k++) {
         const fs = foes();
         if (!fs.length) break;
@@ -887,7 +912,22 @@ export async function fightCases(F, seeds, page) {
       call('later', r(), () => (player.hp += 0));
       call('addZone', player.x, player.z, 1, sp0('orb', pick(ELEMS)), 2, chance(0.5));
       call('addZone', player.x + 0.1, player.z, 1, sp0('orb', 'fire'), 3, false);
+      // ---- 場面：崩れた体の上限（上限より多く続けて倒し、古い体を早く消す印が付くか）
+      tidy();
+      const fallen = [];
+      for (let k = 0; k < DEBRIS_MAX + 3; k++) {
+        const i = nearFloor(6),
+          m = makeMonster({ key: pick(kinds), cx: i % MW, cz: (i / MW) | 0, g: 1 });
+        here.monsters.push(m);
+        fallen.push(m);
+        m.playerT = clock.time;
+        call('damageMonster', m, 9999, pick(['blade', 'fire', 'magic', 'thunder']));
+        tick(0.1);
+      }
+      const cap = { bodies: fight.debris.length, hurried: fight.debris.filter((d) => d.hurry !== Infinity).length };
+      here.monsters = here.monsters.filter((m) => !fallen.includes(m));
       // ---- 場面：照準と線
+      tidy();
       for (let k = 0; k < 6; k++) {
         gfx.camera.position.set(player.x, player.eye, player.z);
         const i = near(10);
@@ -916,6 +956,7 @@ export async function fightCases(F, seeds, page) {
         }
       }
       // ---- 場面：近接の攻撃（溜め・かわす・当たる）
+      tidy();
       for (let k = 0; k < 6; k++) {
         const fs = foes();
         if (!fs.length) break;
@@ -926,6 +967,7 @@ export async function fightCases(F, seeds, page) {
         tick(0.1);
       }
       // ---- 場面：プレイヤーの傷（神のモード・加護・死）
+      tidy();
       for (let k = 0; k < 4; k++) {
         ui.godMode = chance(0.2);
         if (chance(0.25)) player.hp = 2;
@@ -938,6 +980,7 @@ export async function fightCases(F, seeds, page) {
       }
       ui.godMode = false;
       // ---- 場面：術の音・手と持ち物
+      tidy();
       for (const el of ELEMS) if (chance(0.5)) call('castSound', { elem: el }, chance(0.5) ? player.x : undefined, player.z);
       tick(0.5);
       for (const t of ['slotL', 'slotR', 'body', 'none'])
@@ -946,6 +989,7 @@ export async function fightCases(F, seeds, page) {
           call('applyOpen', t);
         }
       // ---- 場面：結果の画面
+      tidy();
       {
         const md = adv.runStats.maxDepth,
           meta = saved.META,
@@ -980,6 +1024,7 @@ export async function fightCases(F, seeds, page) {
       adv.dead = false;
       call('resetRunes');
       // ---- 場面：分かれ道ごと（加護の効く間・効かない当たり・吹き飛び・立ち直り・発動のルーンの届く所・魔法の場の数・音が鳴らない・保存できない・画面の部品が無い）
+      tidy();
       {
         const fs = foes();
         if (fs.length) {
@@ -1141,6 +1186,7 @@ export async function fightCases(F, seeds, page) {
         D.webAt = new Map();
       }
       // ---- 場面：プレイヤーの動き（キー・水・氷・泥・網・突進・転がり・通れない所・生き物に押される・3人称）
+      tidy();
       ui.camMode = chance(0.4) ? 'tps' : 'fps';
       for (let st = 0; st < 30; st++) {
         for (const k of ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft'])
@@ -1198,6 +1244,7 @@ export async function fightCases(F, seeds, page) {
         call('updatePlayer', 0.5);
       }
       // ---- 場面：生き物の動き（全部の生き物を、何歩か）
+      tidy();
       const kinds2 = Object.keys(MTYPES).filter((k) => MTYPES[k].col && !MTYPES[k].dummy);
       for (const key of [...kinds2, 'X'].filter((k) => MTYPES[k] && chance(0.5))) {
         const i = nearFloor(chance(0.5) ? 3 : 12),
@@ -1305,6 +1352,7 @@ export async function fightCases(F, seeds, page) {
         s,
         place: `${place.depth}${place.branch?.key ?? ''}${place.realm?.key ?? ''}${place.inter?.key ?? ''}`,
         calls,
+        cap,
         dom: fnv(text(page.log)),
         audio: fnv(text(alog)),
         stored: fnv(text(stored)),
@@ -1351,4 +1399,4 @@ export async function fightCases(F, seeds, page) {
 }
 /** 場合の記録を1つの文字列にする */
 export const fightText = (all) =>
-  all.map((c) => `${c.s} ${c.place} ${c.dom} ${c.audio} ${c.stored} ${text(c.timers)}\n${text(c.calls)}`).join('\n');
+  all.map((c) => `${c.s} ${c.place} ${c.dom} ${c.audio} ${c.stored} ${text(c.timers)} ${text(c.cap)}\n${text(c.calls)}`).join('\n');

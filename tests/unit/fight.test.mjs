@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import * as AIM from '../../src/lib/aim.ts';
 import * as AUDIO from '../../src/lib/audio.ts';
 import * as COMBAT from '../../src/lib/combat.ts';
+import { DEBRIS_MAX } from '../../src/lib/debris.ts';
 import * as GEAR from '../../src/lib/gear.ts';
 import * as MON from '../../src/lib/monsters.ts';
 import * as PLAYER from '../../src/lib/player.ts';
@@ -25,11 +26,13 @@ describe('移す前と同じ', () => {
       body = fightText(all),
       calls = all.flatMap((c) => c.calls);
     caseOut('fight', body);
-    expect([fnv(body), body.length]).toEqual(['cf3d2169', 3722021]);
+    expect([fnv(body), body.length]).toEqual(['40c7120e', 3886840]);
     // 場合が中身を通っているか：59の関数が全部呼ばれ、どれも止まらない。見た目の乱数・音の乱数・伝言・setTimeout を使う呼び出しもある
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);
     expect(all.every((c) => c.timers.threw === 0)).toBe(true);
+    // 崩れた体の上限：上限より多く続けて倒すと、どの場合でも古い体に早く消す印が付く
+    expect(all.every((c) => c.cap.bodies > DEBRIS_MAX && c.cap.hurried > 0)).toBe(true);
     const by = (name, f) => calls.filter((c) => c.name === name && f(c)).length;
     for (const name of ['castNow', 'damageMonster', 'react', 'updateMonster', 'updatePlayer'])
       expect(by(name, (c) => c.mr > 0)).toBeGreaterThan(0);
