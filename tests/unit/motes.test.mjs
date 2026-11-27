@@ -32,7 +32,8 @@ describe('移す前と同じ', () => {
 
 describe('ガスの粒', () => {
   it('濃い沼で GAS_N に届いても、プレイヤーのまわりは近い所から埋まる（足元と南側も描く）', async () => {
-    const keep = { D: here.D, gasAny: blaze.gasAny, x: player.x, z: player.z };
+    const keep = { D: here.D, gasAny: blaze.gasAny, x: player.x, z: player.z },
+      arrays = [A.ptPos, A.ptCol, A.ptSize, A.ptGly].map((a) => [a, a.slice()]);
     try {
       const D = gen(await loadEnv(), 4321, PLACES[0]).level;
       here.D = D;
@@ -64,6 +65,7 @@ describe('ガスの粒', () => {
       blaze.gasAny = keep.gasAny;
       player.x = keep.x;
       player.z = keep.z;
+      for (const [a, copy] of arrays) a.set(copy);
     }
   });
 });

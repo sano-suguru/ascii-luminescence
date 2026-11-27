@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { MTYPES } from '../../src/lib/creatures.ts';
 import { gfx, here, player, ui, vfx } from '../../src/lib/state.ts';
-import { CELL, MW, TF } from '../../src/lib/world.ts';
+import { CELL, MW, SF_FOLIAGE, TF } from '../../src/lib/world.ts';
 import { PLACES, gen, loadEnv } from './gen-places.ts';
 import * as F from '../../src/lib/camera.ts';
 import { cameraCases } from './camera-cases.mjs';
@@ -32,7 +32,7 @@ describe('移す前と同じ', () => {
 });
 
 describe('目の慣れ', () => {
-  it('見えない生き物・化けている生き物・水に潜ったうなぎは、近くにいても明るさに数えない（見える生き物は数える）', async () => {
+  it('見えない生き物・化けている生き物・水に潜ったうなぎ・沼に沈んだ生き物・3 より遠い茂みの中の生き物は、近くにいても明るさに数えない（見える生き物は数える）', async () => {
     const keep = {
       D: here.D,
       monsters: here.monsters,
@@ -49,8 +49,9 @@ describe('目の慣れ', () => {
     };
     try {
       const D = gen(await loadEnv(), 99, PLACES[0]).level;
+      // 東へ 5 マス続く床の、西の端に立つ（茂みを東に置くため）
       let pc = 0;
-      while (D.tile[pc] !== TF) pc++;
+      while ([0, 1, 2, 3, 4, 5].some((k) => D.tile[pc + k] !== TF)) pc++;
       Object.assign(here, { D, fixtures: [] });
       player.x = ((pc % MW) + 0.5) * CELL;
       player.z = (Math.floor(pc / MW) + 0.5) * CELL;
@@ -66,14 +67,31 @@ describe('目の慣れ', () => {
         F.updateAtmosphere(0.1);
         return vfx.expo;
       };
-      const near = (ty, extra = {}) => ({ x: player.x + 1, z: player.z, ty, ...extra });
+      // 生き物を、プレイヤーから東へ dx の所に置く（マス cx・cz も）
+      const near = (ty, extra = {}, dx = 1) => {
+        const x = player.x + dx;
+        return { x, z: player.z, cx: Math.floor(x / CELL), cz: Math.floor(player.z / CELL), ty, ...extra };
+      };
       const none = expoWith([]);
       expect(expoWith([near(MTYPES['P'])])).toBe(none);
       expect(expoWith([near(MTYPES['r'], { hidden: true })])).toBe(none);
       const eel = Object.values(MTYPES).find((t) => t.form === 'eel');
       expect(expoWith([near(eel, { surf: 0 })])).toBe(none);
+      expect(expoWith([near(eel, { surf: 0.05 })])).toBe(none);
       expect(expoWith([near(eel, { surf: 0.5 })])).not.toBe(none);
+      // 沼に沈んだ生き物（浮かび上がる途中の 0.25 まで）は数えず、姿を現したら数える
+      expect(MTYPES['B'].habitat).toBe('bog');
+      expect(expoWith([near(MTYPES['B'], { rise: 0.2 })])).toBe(none);
+      expect(expoWith([near(MTYPES['B'], { rise: 0.6 })])).not.toBe(none);
       expect(expoWith([near(MTYPES['r'])])).not.toBe(none);
+      // 茂みの中の生き物：3 より遠いと数えず、3 以内なら数える
+      const grassAt = (dx) => {
+        const c = near(MTYPES['r'], {}, dx);
+        D.surface[c.cz * MW + c.cx] = SF_FOLIAGE;
+        return c;
+      };
+      expect(expoWith([grassAt(4)])).toBe(none);
+      expect(expoWith([grassAt(2.5)])).not.toBe(none);
     } finally {
       Object.assign(here, { D: keep.D, monsters: keep.monsters, fixtures: keep.fixtures });
       Object.assign(player, { x: keep.x, z: keep.z, eye: keep.eye });
