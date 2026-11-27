@@ -93,4 +93,4 @@ import { initDiag } from '../lib/diag.ts';
 import { took } from '../lib/took.ts';
 import { closeAltar, updateAltarPanel } from '../lib/panels.ts';
 import { returnToTitle, setMenu } from '../lib/menu.ts';
-import { QUALITY, nextQuality } from '../lib/quality.ts';
+import { QUALITY, holdQuality, stepQuality } from '../lib/quality.ts';
