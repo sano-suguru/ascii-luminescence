@@ -115,7 +115,7 @@ export function formCases(F, types, reps) {
 
 /**
  * 見た目の特徴を直接足す：古い人型（見た目なし）の形に lookHumanoid と shapeHumanoid を、古い四つ足の形に lookQuad を、見た目ごとに呼ぶ
- * （人型の7つの見た目は、buildForm からは humanoid2・ogreForm・conjurerForm へ行くので、ここで直接確かめる）
+ * （人型の7つの見た目は、buildForm からは humanoid2・ogreForm・conjurerForm・snapjawForm へ行くので、ここで直接確かめる）
  */
 export function lookCases(F) {
   const LOOKS = [

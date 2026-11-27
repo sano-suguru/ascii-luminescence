@@ -229,6 +229,8 @@ export async function levelCases(F, seeds, page) {
       gfx.camera = fakeCamera();
       gfx.U = { ...fakeUniforms(), uFogDen: { value: 0.05 } };
       gfx.cellTex = { needsUpdate: false };
+      // 前の階の場所ごとの空気（分かれ道の明るさ・階段へ向かう道の暗さ）が残っている時も（新しい階は 1 から始める。場合の乱数を引かないように、場合の番号で選ぶ）
+      vfx.ambK = [1, 1.25, 0.85][s % 3];
       Object.assign(ui, {
         started: chance(0.9),
         gallery: null,
@@ -297,7 +299,7 @@ export async function levelCases(F, seeds, page) {
           },
           dust: Object.values(dust).map((a) => hashArr(a)),
           water: [hashArr(gfx.waterTex.image.data), hashArr(gfx.waterLTex.image.data)],
-          fog: [fogCol.x, fogCol.y, fogCol.z, gfx.fogBase, gfx.U.uFogDen.value, gfx.U.uAmb.value],
+          fog: [fogCol.x, fogCol.y, fogCol.z, gfx.fogBase, gfx.U.uFogDen.value, gfx.U.uAmb.value, vfx.ambK],
           rlog,
           world: gfx.chunks.length ? worldPrint() : '',
           glyphs: hudInfo.glyphCount,
