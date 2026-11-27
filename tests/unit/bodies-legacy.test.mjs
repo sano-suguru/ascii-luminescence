@@ -37,7 +37,7 @@ afterAll(() => {
     }
 });
 
-describe('移す前と同じ', () => {
+describe('指紋（思わず変わっていないか）', () => {
   it('表に書き足した見た目（全部の種類の look と、機械の形・猟犬の尾と色）', () => {
     const touched = Object.entries(MTYPES).map(([k, t]) => [k, t.look]),
       robots = ['Rc', 'Re', 'Rw'].map((k) => MTYPES[k]?.form),

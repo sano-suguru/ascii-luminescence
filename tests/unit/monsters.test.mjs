@@ -15,7 +15,7 @@ const fnv = (s) => {
   return (h >>> 0).toString(16).padStart(8, '0');
 };
 
-describe('移す前と同じ', () => {
+describe('指紋（思わず変わっていないか）', () => {
   it('生き物の動きと地面の処理（40の場合、23の関数）の指紋', { timeout: 60000 }, async () => {
     const all = await monsterCases({ ...MON, ...GROUND, sShriek }, 40),
       body = monsterText(all),
