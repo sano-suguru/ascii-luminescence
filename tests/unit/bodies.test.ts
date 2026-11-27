@@ -92,8 +92,8 @@ describe('生き物の形', () => {
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
     caseOut('bodies-1', all);
-    expect(all.length).toBe(4985436);
-    expect(fnv(all)).toBe('b0b268ec'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
+    expect(all.length).toBe(5288696);
+    expect(fnv(all)).toBe('6ec42029'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
   });
   it('主と大きな生き物の形の指紋（形と、形を作る時に見た目の乱数を引く順番が、思わず変わっていない）', () => {
     let all = '';
@@ -137,6 +137,46 @@ describe('生き物の形', () => {
         axis = (part: string) => new Set(b.filter((p) => p.part === part).map((p) => `${p.piv},${p.pz}`));
       expect([axis('armL'), axis('armR')]).toEqual([new Set(['1.42,0.4']), new Set(['1.42,0.4'])]);
       expect([axis('legL'), axis('legR')]).toEqual([new Set(['0.62,0']), new Set(['0.62,0'])]);
+    }
+  });
+  it('サラマンダー：前脚の点は肩を、後脚の点は腰を軸に回る。尾の点と尾の先の炎は、尾の付け根からの距離を piv に持つ。目と背の斑点は体の表面のすぐ外。明るさ b は 1.8 まで', () => {
+    const B = beasts.salaBody,
+      C = beasts.SALA;
+    // 体の表面からの割合（体を作ったのと同じ式。1 が表面）
+    const bodyK = (p: { x: number; y: number; z: number }): number => {
+      const r = B.at(p.z);
+      return Math.hypot(p.x / r.rx, (p.y - r.cy) / r.ry);
+    };
+    for (const ty of TYS) {
+      const b = seeded(() => beasts.salamanderForm(ty));
+      for (const p of b) {
+        expect(p.b).toBeLessThanOrEqual(1.8);
+        expect(['body', 'head', 'tailw', 'flame', 'legL', 'legR']).toContain(p.part);
+      }
+      // 脚：前（z > 0）の点は肩の軸、後ろの点は腰の軸。前の左と後ろの右が同じ part（同じ向きに振れる）
+      const legs = b.filter((q) => q.part === 'legL' || q.part === 'legR');
+      expect(legs.length).toBeGreaterThan(0);
+      for (const p of legs) {
+        const ax = p.z > 0 ? beasts.SALA_SHOULDER : beasts.SALA_HIP;
+        expect([p.piv, p.pz]).toEqual([ax.piv, ax.pz]);
+        expect(p.part).toBe(p.z > 0 === p.x < 0 ? 'legL' : 'legR');
+      }
+      // 尾：付け根より後ろの点だけで、piv は付け根からの距離（付け根で 0、振れが付け根で体から離れない）。炎は尾の先の距離
+      for (const p of b.filter((q) => q.part === 'tailw')) {
+        expect(p.z).toBeLessThan(B.tailZ);
+        expect(p.piv).toBeCloseTo(B.tailZ - p.z, 9);
+      }
+      expect(b.filter((p) => p.part === 'body' || p.part === 'head').every((p) => p.z >= B.tailZ)).toBe(true);
+      for (const p of b.filter((q) => q.part === 'flame')) expect(p.piv).toBeCloseTo(B.tailZ - B.z0, 9);
+      // 目と背の斑点：体の表面のすぐ外（埋もれず、浮かない）
+      const eyes = b.filter((p) => p.col === C.eye),
+        spots = b.filter((p) => p.col === C.spot);
+      expect(eyes.length).toBe(2);
+      expect(spots.length).toBeGreaterThan(10);
+      for (const p of [...eyes, ...spots]) {
+        expect(bodyK(p)).toBeGreaterThan(1.03);
+        expect(bodyK(p)).toBeLessThan(1.2);
+      }
     }
   });
   it('ギタイムシ：脚の点はどれも、その脚の付け根（高さ 0.28・奥行きは脚ごと）を軸に回り、左右で互い違い（3本ずつ）に動く（軸がずれると、歩く時に体から離れる）', () => {

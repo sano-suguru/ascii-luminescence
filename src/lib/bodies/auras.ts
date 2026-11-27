@@ -16,6 +16,7 @@ import { type Monster, SND, adv, clock, here, player, ui, vfx } from '../state.t
 import { BASE_H, CELL, MW } from '../world.ts';
 import { buildForm } from './build.ts';
 import type { Body } from './kit.ts';
+import { salaBody, tailSwish } from './beasts.ts';
 import { shadowSerpentScale } from './bosses.ts';
 import { KRAKEN_T } from './lords.ts';
 
@@ -538,17 +539,19 @@ export function houndAura(m: Mon & { form: Body }, _t: number): void {
   }
 }
 
-/** サラマンダー：尾の先から、ときどき火の粉 */
-export function salamanderAura(m: Mon, _t: number): void {
+/** サラマンダー：尾の先の炎から、ときどき火の粉（尾と一緒に振れる） */
+export function salamanderAura(m: Mon, t: number): void {
   if (toPlayer(m) > 24 || mr() > 0.08) return;
   const sc = m.ty.scale || 1,
     cy = Math.cos(m.yaw),
     sy = Math.sin(m.yaw),
-    lz = -1.3 * sc;
+    lz = salaBody.z0 * sc,
+    lx = tailSwish(m, t, salaBody.tailZ - salaBody.z0) * sc;
   spawn(
-    m.x + lz * sy,
-    0.12,
-    m.z + lz * cy,
+    m.x + lx * cy + lz * sy,
+    // 歩く時は、炎と一緒に上下する（drawMonster0 の bob と同じ）
+    0.12 + Math.abs(Math.sin(m.walk ?? 0)) * 0.04 * (m.moving || 0) * sc,
+    m.z - lx * sy + lz * cy,
     (mr() - 0.5) * 0.2,
     -0.1,
     (mr() - 0.5) * 0.2,
