@@ -83,6 +83,13 @@ function endHold(id: number): void {
   if (gear.hands) releaseCast(f.h);
 }
 
+/** 触れている指を全部、離したことにする（ページが隠れた時。隠れている間に離した指の知らせは届かないことがあるため）。図鑑の指は、図鑑が自分で始め直す */
+export function releaseTouch(): void {
+  if (stickF) endStick();
+  lookF = null;
+  for (const id of holds.keys()) endHold(id);
+}
+
 /** ボタンを押した時にすること（ビルドの持ち替えは、古い JS のホイールと同じ処理を渡す） */
 export interface PadActions {
   build: () => void;

@@ -12,7 +12,7 @@
 //      （狭い横向きの端末と、claude.ai のアプリの中で測った本物の大きさ 750×312）
 //   8. 指の操作（src/lib/touchpad.ts。CDP の Input.dispatchTouchEvent で、2本の指を同時に動かす）：左半分のスティックで進む（離すと止まる）・右半分のドラッグで見回す・
 //      両方を同時に・[右手] を押して溜め、指をずらすと見回し、離すと溜めが終わる・指を取り逃した時（touchCancel）も溜めが終わる・[回避]・
-//      メニューを開いている間は、スティックで動かない・レベルアップと祭壇の画面は、1回目のタップで選んで説明を出し、2回目で決める
+//      ページが隠れると（アプリの切り替え）メニューが開いて止まり、触れている指は離したことになる・メニューを開いている間は、スティックで動かない・レベルアップと祭壇の画面は、1回目のタップで選んで説明を出し、2回目で決める
 //  10. 図鑑を指で動かす：案内が指の時の文言か（マウスで開いた後に指で触った時も）・離れた知らせを取り逃した指が残っても回せるか・枠が画面の上半分に掛からないか・1本指のドラッグで回り、触れている間はひとりでに回らない・2本指で広げると寄り、[向きを戻す] で戻る
 //  11. 縦向き：探索中だけ、止めて横にする案内を出し、横に戻すと続く・縦のまま死んでも結果の画面から新しい探索へ進める（タイトルと、マウスで遊んでいる時は出さない）
 //  12. ホーム画面に置く案内：iPhone の Safari で、ホーム画面から開いていない時だけタイトルに出る（指で触れない端末では出ない）
@@ -284,6 +284,50 @@ await withBrowser(async ({ browser, base }) => {
     if (!(await st()).paused) errs.push('指の操作：見回した直後に [メニュー] を押しても、メニューが開かない');
     await pg.touchscreen.tap(...(await mid('#menuB')));
     await advance(pg, 0.1);
+
+    // ページが隠れると（アプリの切り替え）、メニューが開いて止まり、触れている指は離したことになる（隠れている間に離した指の知らせは、届かないことがある）。
+    // 戻ってメニューを閉じると、また進む
+    {
+      const setHidden = (h) =>
+        E((h) => {
+          Object.defineProperty(document, 'hidden', { configurable: true, get: () => h });
+          document.dispatchEvent(new Event('visibilitychange'));
+        }, h);
+      const [hx, hy] = await mid('#castR');
+      await touch('touchStart', [[150, 250, 1]]);
+      await touch('touchMove', [[150, 190, 1]]);
+      await touch('touchStart', [
+        [150, 190, 1],
+        [hx, hy, 3],
+      ]);
+      await advance(pg, 0.3);
+      if (!(await st()).cast) errs.push('隠れた時：[右手] を押しても溜めない（テストの前提が崩れた）');
+      await setHidden(true);
+      a = await st();
+      await advance(pg, 1);
+      b = await st();
+      const held = await E(() => ({
+        stick: !document.getElementById('stick').hidden,
+        menu: document.getElementById('menu').classList.contains('show'),
+      }));
+      if (!a.paused || !held.menu || b.time !== a.time)
+        errs.push(
+          `隠れた時：ページが隠れても、メニューが開いて止まらない（止まる ${a.paused}、メニュー ${held.menu}、時刻 ${a.time} → ${b.time}）`,
+        );
+      if (a.cast || held.stick)
+        errs.push(`隠れた時：触れていた指を離したことにしない（溜め ${JSON.stringify(a.cast)}、スティック ${held.stick}）`);
+      await touch('touchCancel', []);
+      await setHidden(false);
+      if (held.menu) await pg.touchscreen.tap(...(await mid('#menuB')));
+      await advance(pg, 0.5); // 離した後の惰性が収まるまで
+      a = await st();
+      await advance(pg, 0.5);
+      b = await st();
+      if (a.paused || !(b.time > a.time) || dist(a, b) > 0.05)
+        errs.push(
+          `隠れた時：戻ってメニューを閉じても続かないか、ひとりでに動く（止まる ${a.paused}、時刻 ${a.time} → ${b.time}、動いた ${dist(a, b).toFixed(2)}）`,
+        );
+    }
 
     // [右手]（樫の杖）：押すと溜め、指をずらすと見回し、離すと溜めが終わる
     const [rx, ry] = await mid('#castR');
