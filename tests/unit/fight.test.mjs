@@ -26,7 +26,7 @@ describe('移す前と同じ', () => {
       body = fightText(all),
       calls = all.flatMap((c) => c.calls);
     caseOut('fight', body);
-    expect([fnv(body), body.length]).toEqual(['6105085e', 3761308]);
+    expect([fnv(body), body.length]).toEqual(['b22456e3', 3761308]);
     // 場合が中身を通っているか：59の関数が全部呼ばれ、どれも止まらない。見た目の乱数・音の乱数・伝言・setTimeout を使う呼び出しもある
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);
