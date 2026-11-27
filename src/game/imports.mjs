@@ -32,6 +32,7 @@ import { generateLevel } from '../lib/generate.ts';
 import { LOGO_ART, TITLE_LINES } from '../lib/title.ts';
 import { DUST_N, DYN_VS, GAS_N, GLYPH_FS, P0, PT_FS, PT_TOTAL, PT_VS, STATIC_VS, WATER_FS, WATER_VS } from '../lib/shaders.ts';
 import { ALTAR_W, MARK_H, MCH, MCW, MMC, MMR, MPAD, tone } from '../lib/hud.ts';
+import { drawMap, sizeMap } from '../lib/minimap.ts';
 import { AVATAR_TY, BRANCH_HINT, DECO_K, DECO_NAMES, DUMMY_KINDS, FIX_NAMES, GALLERY_SLEEP, LEGEND_KINDS, LEGEND_ORDER, LORD_GAL, MACHINE_INFO, TRAP_INFO, lookLine, mname } from '../lib/names.ts';
 import { CHANT_STEPS, SND_NAME, VOWELS, sEnv } from '../lib/sound.ts';
 import {
