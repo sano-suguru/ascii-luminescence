@@ -4,13 +4,14 @@
 // 始め方は2つ：
 //   - タイトルの［自動で試す］：claude.ai の Artifact の中で、持ち主が開いた時だけ、［開発用モード］の下に出す（診断の記録が書かれる時。src/lib/diag.ts の initDiag が ui.owner を入れる）。AUTO_LAPS 周。
 //     claude.ai は、Artifact のリンクに付けた ?auto をゲームのページに渡さないので、iPhone ではこちらで始める
-//   - URL の ?auto=<n>：n 周（1 から 9。3周でおよそ5分）。?auto=quick：短い1周（各段を短くし、階段は1回）。tests/auto.mjs と tools/auto-run.mjs が使う
+//   - URL の ?auto=<n>：n 周（1 から 9。3周でおよそ5分）。?auto=quick：短い1周（各段を短くし、撃つのと階段は1回）。tests/auto.mjs と tools/auto-run.mjs が使う
 // 決まり：
 //   - 自動で試している間は、ゲームの保存（al_ で始まる名前）を localStorage に書かない（autoGuard。伝承・解放・見た生き物・墓・視点・音量などを、
 //     ふだん遊ぶ時の記録に残さないため。ほかの名前は書く。同じページのほかの仕組みを止めないように）。
 //     開発用モードはオンにしない（?dev=1 は al_dev を書き残す）。生き物を置く・階段の前へ移る・体力を減らすのは、古い JS の dbg の中身を直に呼ぶ（AutoHooks）
 //   - 探索のシードは、1周目だけ AUTO_SEED（毎回同じ迷宮で、前の結果と比べるため）。死んで［新しい探索へ］を押した後は、ゲームが選ぶ
 //   - 生き物に倒されないように、死ぬ段の前までは開発用の不死（ui.godMode）にする
+//   - ゲームの中で着くのを待つ所と撃つ段は、ゲームの時刻とゲームの状態（溜めきった・戻りが終わった など）で待つ（遅い端末では、1フレームで進むゲームの時間に上限があるため）
 //   - 縦向きの間（探索が止まる）と、ページが隠れている間は待ち、その段の数を数えない。戻った時に、止まって開いたメニューを閉じる
 //   - レベルアップの画面は1つ目を選び、祭壇の画面は閉じる（開いている間はゲームが止まり、ゲームの時刻で待つ所が終わらないため。閉じた回数を段の shut に書く）
 //   - 止めた時・段の中で例外が起きた時も、台本が置いた指は全部離す（離さないと、スティックが倒れたままで歩き続け、本物の指のスティックも出ない）
@@ -19,7 +20,7 @@
 //   - テスト用モード（?test=1）では動かない（時計が止まっているため）
 import { must } from './array.ts';
 import { chooseLevel, closeAltar } from './panels.ts';
-import { type Mob, TEST, adv, clock, here, player, saved, ui } from './state.ts';
+import { type Mob, TEST, adv, clock, fight, gear, here, player, saved, ui } from './state.ts';
 import { CELL, MW, TF } from './world.ts';
 
 /** タイトルの［自動で試す］で流す周の数（およそ5分） */
@@ -319,6 +320,8 @@ function faceNearest(list: readonly Mob[] = here.monsters): void {
   }
 }
 
+/** 次の一撃を始められる（前の一撃の戻りと、転がりが終わった）。撃つ段は、本物の時計でなく、ゲームの時刻とこれで待つ */
+const ready = (): boolean => !((player.recover ?? 0) > 0) && !player.roll && !gear.castSt;
 type Step = [string, (h: AutoHooks) => Promise<string>];
 /** 台本の段（1周ぶん。名前・すること。返した文は、うまくいかなかったこと（うまくいけば ''）） */
 export const AUTO_STEPS: Step[] = [
@@ -366,31 +369,40 @@ export const AUTO_STEPS: Step[] = [
       for (const [k, i] of cellsAhead(3).entries()) h.summon(['r', 'j', 'S'][k % 3] ?? 'r', i);
       const foes = here.monsters.slice(n0),
         hp0 = foes.map((m) => m.hp ?? 0);
-      for (let k = 0; k < 3; k++) {
+      let shotR = 0,
+        shotL = 0;
+      // 溜めと戻りをゲームの時刻で待つので、遅い端末ではフレームが多く要る。短い台本は1回だけ
+      for (let k = 0; k < (autoSt.quick ? 1 : 3); k++) {
         faceNearest(foes);
-        // 右手で溜めて放つ
+        // 右手で溜めて、溜めきったら、向き直して放つ
+        await until(ready, 2, true);
         const r = el('#castR'),
           [rx, ry] = mid(r),
           f = finger(r, rx, ry);
-        await wait(1);
+        if (await until(() => !!gear.castSt?.full, 3, true)) shotR++;
+        faceNearest(foes);
         f.up();
-        await wait(0.5);
-        // 左手を続けて押す
+        // 左手を続けて押す（前の一撃の戻りが終わってから）
         for (let j = 0; j < 5; j++) {
+          const can = await until(ready, 2, true);
           faceNearest(foes);
           const l = el('#castL'),
             [lx, ly] = mid(l),
             g = finger(l, lx, ly);
+          if (can && (player.recover ?? 0) > 0) shotL++;
           await wait(0.12);
           g.up();
-          await wait(0.2);
         }
         tap('#rollB');
-        await wait(1);
+        await until(() => !player.roll, 2, true);
       }
+      // 飛んでいる物と、遅れて起きる当たりが済んでから数える
+      await until(() => !fight.projs.length && !fight.laters.length, 2, true);
       h.clear();
       // 置いた生き物のどれにも当たらなければ、うまくいかなかったと書く（狙いや指の事件が効いていない）
       if (!foes.length) return '生き物を置けない';
+      if (!shotR) return '右手で放てない';
+      if (!shotL) return '左手で撃てない';
       return foes.some((m, i) => m.dead || (m.hp ?? 0) < (hp0[i] ?? 0)) ? '' : '攻撃が当たらない';
     },
   ],
