@@ -11,6 +11,7 @@ import * as PART from '../../src/lib/particles.ts';
 import { updatePlayer } from '../../src/lib/player.ts';
 import { fakeDom } from './fight-cases.mjs';
 import { NAMES, levelCases, levelText } from './level-cases.mjs';
+import { caseOut } from './case-out.mjs';
 
 const fnv = (s) => {
   let h = 0x811c9dc5;
@@ -23,6 +24,7 @@ describe('移す前と同じ', () => {
     const all = await levelCases({ ...LEVELS, ...BUILD, ...GROUND, ...PART, updatePlayer, hurtPlayer }, 5, fakeDom()),
       body = levelText(all),
       calls = all.flatMap((c) => c.calls);
+    caseOut('level', body);
     expect([fnv(body), body.length]).toEqual(['96048beb', 197069]);
     expect(new Set(calls.map((c) => c.name).filter((n) => NAMES.includes(n)))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);

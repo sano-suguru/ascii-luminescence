@@ -13,6 +13,7 @@ import * as RU from '../../src/lib/runes.ts';
 import * as SV from '../../src/lib/save.ts';
 import { gear, msgs, saved, ui } from '../../src/lib/state.ts';
 import { fakePage, swapGlobals, uiCases } from './ui-cases.mjs';
+import { caseOut } from './case-out.mjs';
 
 const fnv = (s) => {
   let h = 0x811c9dc5;
@@ -121,6 +122,7 @@ describe('移す前と同じ', () => {
       lines.filter((l) => /"hotbar":"<span/.test(l)).length > 100,
       lines.filter((l) => /"stored":\[\[/.test(l)).length > 100,
     ]).toEqual([800, 18, true, true]);
+    caseOut('ui', all);
     expect([fnv(all), all.length]).toEqual(['ee346472', 937701]);
   });
 });

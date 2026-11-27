@@ -28,6 +28,7 @@ import { fakeAudioClass } from './fake-audio.mjs';
 import { fakeCamera, fakeTimers, fakeUniforms, fnv, hashArr, text } from './fight-cases.mjs';
 import { PLACES, gen, loadEnv } from './gen-places.ts';
 import { swapGlobals } from './ui-cases.mjs';
+import { stateFp } from './case-out.mjs';
 
 /** 移した関数の名前（場合が全部を呼ぶか、pickup.test.mjs が確かめる） */
 export const NAMES = [
@@ -276,7 +277,7 @@ export async function pickupCases(makeF, seeds, page) {
           msg: msgN - g0,
           timers: timers.st.n - t0,
           audio: fnv(JSON.stringify(alog.slice(a0))),
-          state: fnv(state()),
+          state: stateFp(state(), fnv),
           msgs: msgs.map((m) => m.html).join('|'),
         });
         return ret;

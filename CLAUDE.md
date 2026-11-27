@@ -91,7 +91,11 @@ tools/same-code.mjs  移した関数が、移す前の古い関数と「同じ�
 tools/where.mjs      組み立てた JS の場所 → src/game/ のどのファイルの何行目か（ソースマップで戻す）
 tools/map.mjs        ゲーム本体の地図（ファイルごとの行の数と見出し）
 tools/serve.mjs      静的ファイルの小さなサーバー（テストでは CORS の見出しを付ける。サンドボックスの iframe は起源が null になり、付けないと JS・CSS・フォントを読めない）
-tools/shots.mjs      図鑑の生き物を、見やすい角度で写す（pnpm shots。向き・寄る引く・見下ろす角度は形ごとの表。--views で、生き物ごとに角度の一揃い（正面・斜め前・横・後ろ・上から・歩く姿・遠くの7枚）。写真は tests/out/shots/）
+tools/shots.mjs      図鑑の生き物を、見やすい角度で写す（pnpm shots。向き・寄る引く・見下ろす角度は形ごとの表。--views で、生き物ごとに角度の一揃い（正面・斜め前・横・後ろ・上から・歩く姿・遠くの7枚）と、
+                     7枚を体のまわりで切り抜いて大きくし横に並べた1枚。--compare で、前に写した物と同じ枠で上下に並べた1枚。写真は tests/out/shots/）
+tools/case-diff.mjs  指紋を取る単体テストの「場合の書き出し」を、前の版（--rev、既定 origin/main）の src/ と今の src/ で比べ、どのテストの、どの呼び出し・どの生き物の・どの欄が違うかと、
+                     行ごとの最初の違いをまとめる（指紋を作り直す前に、違いがねらった所とそれに続く物だけかを確かめる。テストは書き出しの道具 tests/unit/case-out.mjs を使う。
+                     まとめは tests/out/case-diff/summary.txt。2分ほど）。単体テストは tests/unit/case-diff.test.mjs
 tools/feel.mjs       手触りの試し打ち（node tools/feel.mjs [aim|walk]。人の指のくせを仮に置いた自動の操作で、750×312 のスマホの真似で課題をやらせ、設定ごとの成績を比べる。
                      狙う：見回す速さ（--look）ごとの、向きを合わせるまでの時間・行き過ぎ・持ち替え。歩く：8方向とアナログのスティックの、道なりに着くまでの時間・壁に押し当てた割合・
                      道からのずれ。指のくせの値はファイルの頭の HAND。比べ合いにだけ使い、気持ちよさは本物の指で確かめる。CI には入れない。結果は tests/out/feel/summary.json）
@@ -176,6 +180,8 @@ tests/unit/level.test.mjs  階を移る処理（newLevel・advance・checkEvents
                      （探索を始め、進む向きと場所と着く所を変えて階を移り、階段・門・穴・封じられた階段を踏み、死んで結果の画面のボタンを押す。three.js の物は Node でも本物を作り、
                      描画する部品だけ偽物。迷宮の生成を変えると、この指紋も変わる。単独で15秒ほど、ほかのテストと同時なら25秒ほど。ほとんどは本物の newLevel・buildWorld の時間）を使う
 tests/unit/traits.test.mjs  特性を名前で読む所（TL・tv・wTL）が、どれも特性の表（src/lib/runes.ts の TRAITS）にある名前か（src/lib/*.ts と src/game/*.js を構文の木で調べる）
+tests/unit/case-out.mjs  指紋の元の文を書き出す caseOut と、状態の指紋 stateFp（環境変数 AL_CASES_OUT がある時だけ、書き出し、状態を欄ごと・生き物ごとの指紋にする。tools/case-diff.mjs が使う）。
+                     指紋を取るテストを足す時は、指紋を比べる行の前に caseOut('名前', 文) を置く
 tests/unit/same-code.test.mjs  tools/same-code.mjs の単体テスト（規則ごとに同じと言う物・違うと言う物、抜けた文・係数・比べ方・乱数を引く順番の違いを見つけるか）
 tests/unit/view.test.mjs  カメラから見て描く・調べる処理（生き物を描く・罠と鉄格子を描く・見た時の説明・灯りの揺らぎと灯りの配列・照準）の単体テスト。たくさんの場合を作る view-cases.mjs
                      （Node で本物の迷宮を生成し、全部の種類の生き物・罠・床の物・灯りの種類を足し、偽のカメラ（位置だけ）を物へ向ける。説明の分かれ道ごとの場面も通す。
@@ -230,7 +236,9 @@ pnpm where index-D0mETEmY.js:4321:12   # 組み立てた JS のその場所が�
 pnpm test             # スモーク・タイトル・サンドボックスの iframe・画面写真の比較・図鑑・世界とのやり取り・指で遊ぶ時・装備の画面・全部の階・同じ結果・枠（tests/run.mjs が同時に3つずつ走らせる。オフラインで動く。2分ほど。1つだけは node tests/smoke.mjs など）
 pnpm test:visual      # 画面写真の比較だけ（1分ほど）。違えば tests/out/visual/ に違いの画像
 pnpm shots [名前…]    # 図鑑の生き物を見やすい角度で写す（既定は竜・主たちの12枚（tools/shots.mjs の PICK）。--all で全部、--bare で図鑑の枠を隠す、--out で置き場所、
-                      #   --views で生き物ごとに角度の一揃いの7枚（枠を隠し、真ん中の 540×540。形や色を直す時に。例：pnpm shots トロル --views））
+                      #   --views で生き物ごとに角度の一揃いの7枚（枠を隠し、真ん中の 540×540。形や色を直す時に。例：pnpm shots トロル --views）と、体のまわりを大きくして並べた1枚
+                      #   -views.png。--compare <前に --views で写した置き場所> で、前と今を同じ枠で上下に並べた -compare.png）
+node tools/case-diff.mjs [テストの名前…] [--rev 版]   # 指紋のテストの書き出しを、前の版の src/ と今の src/ で比べてまとめる（指紋を作り直す前に。2分ほど）
 node tools/feel.mjs [aim|walk]   # 手触りの試し打ち（見回す速さ・8方向とアナログのスティックを比べる。4分ほど。--look・--trials・--routes）
 pnpm lords [場所…]    # 主たちを本当にいる場所で、目の高さから写し、大きさと眩しさを数で出す（crypt・lair・sunken・nest・snake・final。--dist で距離（既定 8））
 node tools/transitions.mjs [--rate 1,4]   # 場面が切り替わる時の確かめ（Artifact 版を本物の時計で通し、診断の記録を表にする。1つの速さで3分ほど）
@@ -311,6 +319,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
    迷宮の生成は Node とブラウザで同じ迷宮になる（混ぜるのは shuffle）。生成に関わる変更は、Node の単体テストの指紋（generate.test.ts。欄の並びによらない）で、
    前の版と作り比べる。意図して迷宮を変えた時は、ブラウザの `__test.gen` でも Node と同じ指紋になることを確かめてから、指紋を作り直す
    （生成した迷宮を使う place.test.ts・status.test.mjs・draw.test.mjs の指紋も変わるので、一緒に作り直す）。
+   指紋を作り直す前に、`node tools/case-diff.mjs` で前の版と書き出しを比べ、違いがねらった所とそれに続く物だけかを確かめる（生き物の見た目を直した時も同じ）。
 4. `pnpm fmt`・`pnpm check`・`pnpm test`（画面写真の比較も含む。画素まで同じはず）。
 - 型を外すだけで組み立てる（Vite）。enum・中身のある namespace など、型を外すだけでは動かない書き方は使わない（`erasableSyntaxOnly`）。
   型だけの `declare namespace`（組み立てで消える）は、関数に覚えさせる欄の型を付ける時だけ使ってよい（monsters.ts の `houndScent.msgT`）。
