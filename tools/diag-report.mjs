@@ -56,7 +56,7 @@ export function qualitySteps(took = []) {
 export function autoRows(a) {
   if (!a) return [];
   const out = [
-    `自動で試した：${a.lap}/${a.laps}周${a.quick ? '（短い台本）' : ''}・${a.done ? '終わった' : `途中（${a.step}）`}${a.stop ? `・${a.stop}` : ''}・Wake Lock ${a.wakeLock || '-'}`,
+    `自動で試した：${a.lap}/${a.laps}周${a.quick ? '（短い台本）' : ''}・${a.done ? '終わった' : `途中（${a.step}）`}${a.stop ? `・${a.stop}` : ''}・Wake Lock ${a.wakeLock || '-'}${a.dev ? `・開発用モード（始めた深さ ${a.depth}）` : ''}`,
     `  ${pad('周', 4)}${pad('段', 8)}${pad('秒', 7)}${pad('フレーム', 9)}${pad('平均fps', 9)}${pad('最長ms', 8)}${pad('遅い', 6)}ほか`,
   ];
   for (const s of a.steps || [])

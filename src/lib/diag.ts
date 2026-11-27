@@ -8,7 +8,7 @@ import { nth } from './array.ts';
 import { sndState } from './audio.ts';
 import { autoSt } from './auto.ts';
 import { placeKey } from './levels.ts';
-import { adv, fight, gear, saved, ui } from './state.ts';
+import { adv, fight, gear, ui } from './state.ts';
 import { setTookSink } from './took.ts';
 
 interface ClaudeLike {
@@ -44,6 +44,8 @@ const autoRec = (): Record<string, unknown> => ({
   done: autoSt.done,
   stop: autoSt.stop,
   wakeLock: autoSt.wakeLock,
+  dev: autoSt.dev,
+  depth: autoSt.depth,
   steps: autoSt.steps,
 });
 
@@ -71,8 +73,6 @@ function device(): Record<string, unknown> {
     pointerLock: typeof Reflect.get(el, 'requestPointerLock') === 'function',
     // ページの URL に付いた物（Artifact のリンクに付けた物が、ゲームのページまで届くかを見るため）
     query: location.search + location.hash,
-    // 開いた時に開発用モードがオンだったか（オンだと全部が解放済みになり、自動で試す台本の中身が変わるため）
-    dev: saved.DEVALL,
   };
 }
 
@@ -86,7 +86,12 @@ export async function initDiag(onOwner: () => void): Promise<void> {
   if (!isDb(db)) return;
   // 記録が書けるので、タイトルに［開発用モード］と［自動で試す］を出す（タイトルを描き直すのは、呼んだ src/game/17-meta.js）
   ui.owner = true;
-  onOwner();
+  try {
+    onOwner();
+  } catch (e) {
+    // タイトルを描き直せなくても、記録は始める
+    console.error(e);
+  }
   const t0 = Date.now(),
     since = (): number => Math.round((Date.now() - t0) / 100) / 10;
   const doc = db.collection('diag').doc(new Date(t0).toISOString().replace(/[:.]/g, '-'));

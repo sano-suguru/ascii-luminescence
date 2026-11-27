@@ -19,7 +19,7 @@
 //   - テスト用モード（?test=1）では動かない（時計が止まっているため）
 import { must } from './array.ts';
 import { chooseLevel, closeAltar } from './panels.ts';
-import { TEST, adv, clock, here, player, ui } from './state.ts';
+import { TEST, adv, clock, here, player, saved, ui } from './state.ts';
 import { CELL, MW, TF } from './world.ts';
 
 /** タイトルの［自動で試す］で流す周の数（およそ5分） */
@@ -39,6 +39,8 @@ export interface AutoHooks {
   hurt: (n: number) => void;
   /** 生き物を置く */
   summon: (key: string, cell: number) => void;
+  /** タイトルを描き直す（［自動で試す］を出す・隠す。src/game/17-meta.js の buildIntroPanel） */
+  title: () => void;
 }
 
 /** 1つの段の数 */
@@ -70,6 +72,8 @@ export const autoSt: {
   done: boolean;
   stop: string;
   wakeLock: string;
+  dev: boolean;
+  depth: number;
   steps: AutoStep[];
 } = {
   on: false,
@@ -83,6 +87,9 @@ export const autoSt: {
   stop: '',
   /** Wake Lock：'ok'・断られた理由・'none'（無い） */
   wakeLock: '',
+  /** 始めた時に開発用モードがオンだったか（オンだと全部が解放済みになり、同じシードでも迷宮と祭壇の中身が変わる）と、タイトルで選んだ始める深さ */
+  dev: false,
+  depth: 1,
   steps: [],
 };
 
@@ -520,32 +527,41 @@ function resumeIfPaused(): void {
   if (ui.menuOpen && document.querySelector('#menu button[data-k="resume"]')) tap('#menu button[data-k="resume"]');
 }
 
-/** 古い JS から受け取った処理（initAuto が入れる。入るまではタイトルのボタンを押しても始めない） */
+/** 古い JS から受け取った処理（initAuto が入れる。入るまではタイトルに［自動で試す］を出さない） */
 let hooks: AutoHooks | null = null;
 
 /** ゲームの用意ができた時に1回（src/game/30-loop-init.js が呼ぶ）。?auto があれば、そのまま流す */
 export async function initAuto(h: AutoHooks): Promise<void> {
   hooks = h;
+  // 持ち主と分かった方が先なら、ここで［自動で試す］を出す
+  if (canOfferAuto()) h.title();
   const m = autoMode(location.search);
   if (TEST || !m.laps || !autoSt.on) return;
   await runAuto(h, m);
 }
 
-/** タイトルに［自動で試す］を出すか（持ち主が Artifact を開き、診断の記録が書ける時。テスト用モードと、もう流している時は出さない） */
+/**
+ * タイトルに［自動で試す］を出すか（持ち主が Artifact を開き、診断の記録が書ける時。ゲームの用意ができてから（initAuto の後）。
+ * テスト用モードと、もう流している時は出さない）
+ */
 export function canOfferAuto(): boolean {
-  return ui.owner && !TEST && !autoSt.on;
+  return ui.owner && !TEST && !autoSt.on && hooks !== null;
 }
 /** タイトルの［自動で試す］を押した時（src/game/17-meta.js）。ゲームの保存を止めて AUTO_LAPS 周流す */
 export function startAuto(): void {
   if (!hooks || !canOfferAuto() || ui.started) return;
   guardSaves();
   void runAuto(hooks, { laps: AUTO_LAPS, quick: false });
+  // ［自動で試す］と［開発用モード］を隠す（流している間に開発用モードを変えると、台本の中身が変わるため）
+  hooks.title();
 }
 
 /** 台本を流す */
 async function runAuto(h: AutoHooks, m: { laps: number; quick: boolean }): Promise<void> {
   autoSt.laps = m.laps;
   autoSt.quick = m.quick;
+  autoSt.dev = saved.DEVALL;
+  autoSt.depth = ui.startDepth;
   requestAnimationFrame(tickFrame);
   document.addEventListener('visibilitychange', () => {
     // 隠れている間はフレームが来ないので、戻った最初のフレームの間に隠れていた間が入る。数え直す

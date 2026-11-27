@@ -94,6 +94,9 @@ await withBrowser(async ({ browser, base }) => {
   await st.waitForSelector('#intropanel #autoB', { timeout: 90000 });
   if (!(await st.evaluate(() => !!document.getElementById('galDev')))) errs.push('持ち主なのに、［開発用モード］が出ない');
   await st.click('#autoB');
+  // 押すと、［自動で試す］と［開発用モード］は隠れる（流している間に開発用モードを変えると、台本の中身が変わるため）
+  const left = await st.evaluate(() => ['autoB', 'galDev'].filter((id) => document.getElementById(id)));
+  if (left.length) errs.push(`［自動で試す］を押した後も、開発用の物が出ている（${left.join('・')}）`);
   await st.waitForFunction(() => document.getElementById('autobar')?.textContent?.includes('・walk'), null, {
     timeout: 300000,
     polling: 100,
@@ -109,6 +112,8 @@ await withBrowser(async ({ browser, base }) => {
   if (!stopped.stick) errs.push('［止める］の後も、台本のスティックが出たまま（指が離れていない）');
   if (sr?.stop !== '止めた') errs.push(`［止める］の記録が ${sr?.stop}`);
   if (sr?.laps !== 3 || sr?.quick) errs.push(`［自動で試す］の周の数が ${sr?.laps}（3 のはず）`);
+  if (sr?.dev !== false || sr?.depth !== 1)
+    errs.push(`［自動で試す］の記録の開発用モードと始める深さが ${sr?.dev}・${sr?.depth}（false・1 のはず）`);
   await st.close();
 
   // 共有された Artifact を持ち主でない人が開いた時は、［自動で試す］も［開発用モード］も出ない（遊ぶ人に開発用の物を見せない）

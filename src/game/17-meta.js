@@ -21,9 +21,11 @@ function buildIntroPanel(){
   const devOn=saved.DEVALL; if(!devOn)ui.startDepth=1; const seedEl=document.getElementById('seedIn'), seedKeep=(seedEl||{}).value||'', seedFocus=!!seedEl&&document.activeElement===seedEl;
   // 開発用の物（［開発用モード］・［自動で試す］）は、遊ぶ人には出さない。［開発用モード］は、このページで一度でも開発用モードがオンだった時（?dev=1・al_dev が残っている）か、
   // Artifact の持ち主の時だけ（Artifact では ?dev=1 が届かない）。［自動で試す］は持ち主の時だけ（src/lib/auto.ts の canOfferAuto）
-  if(devOn)ui.devSeen=true; const devBtn=ui.devSeen||ui.owner, autoBtn=canOfferAuto();
+  // 自動で試している間は、どちらも出さない（開発用モードを変えると、台本の中身が変わるため）
+  if(devOn)ui.devSeen=true; const devBtn=(ui.devSeen||ui.owner)&&!autoSt.on, autoBtn=canOfferAuto();
   const el=document.getElementById('intropanel'); if(!el)return; const f=t=>`<span class="f">${t}</span>`;
   if(introMode==='unlock'){ buildUnlockPanel(); return; }
+  const galRow=`${f('|')} <button class="sl" id="galB" type="button">[ 図鑑 ]</button>  <button class="sl" id="galR" type="button">[ 試しの間 ]</button>   `;
   // 指で触る端末（スマホなど）では、キーボードの操作の一覧を出さない（使えない操作で、背の低い画面ではタイトルが収まらなくなるため）
   const coarse=!!(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches);
   const keyList=[['WASD','移動'],['マウス','視点'],['左クリック','左手'],['右クリック','右手'],['ホイール','ビルド切替'],['Space','回避'],['Shift','走る'],['Tab','装備'],['Esc','メニュー']];
@@ -40,9 +42,9 @@ function buildIntroPanel(){
     ...(UNLOCKS.some(u=>u.kind==='trial'&&unlocked(u.id))?[`${f('|')} 試練 `+UNLOCKS.filter(u=>u.kind==='trial'&&unlocked(u.id)).map(u=>`<button class="sl${(saved.META.trials||[]).includes(u.t)?' on':''}" type="button" data-trial="${u.t}"><span class="mk">${(saved.META.trials||[]).includes(u.t)?'&gt;':' '}</span> ${u.name.replace(/試練|「|」/g,'')}</button>`).join('  '),f('|')]:[]),
     `${f('|')} 伝承 <b style="color:#ffe3a0">${loreLeft()}</b> <span class="lab">（累計 ${saved.META.lore||0}）</span>  <button class="sl" id="unlockB" type="button">[ 解放 ]</button>`,f('|'),
     `${f('|')}               <button id="enter" type="button">[ 迷宮に入る ]</button>`,f('|'),
-    `${f('|')} <button class="sl" id="galB" type="button">[ 図鑑 ]</button>  <button class="sl" id="galR" type="button">[ 試しの間 ]</button>${devBtn?`   <button class="sl" id="galDev" type="button">[開発用モード：${devOn?'オン':'オフ'}]</button>`:''}`,
+    galRow+(devBtn?`<button class="sl" id="galDev" type="button">[開発用モード：${devOn?'オン':'オフ'}]</button>`:''),
     // ［自動で試す］は［開発用モード］の真下に並べる
-    ...(autoBtn?[`${f('|')}${' '.repeat(visW(' [ 図鑑 ]  [ 試しの間 ]   '))}<button class="sl" id="autoB" type="button">[ 自動で試す ]</button>`]:[]),f('+---')]);
+    ...(autoBtn?[`${f('|')}${' '.repeat(visW(galRow)-1)}<button class="sl" id="autoB" type="button">[ 自動で試す ]</button>`]:[]),f('+---')]);
   document.getElementById('galB').addEventListener('click',()=>{ sndInit(); openBestiary(); });
   document.getElementById('unlockB').addEventListener('click',()=>{ introMode='unlock'; buildIntroPanel(); });
   for(const b of el.querySelectorAll('button[data-trial]'))b.addEventListener('click',()=>{ const k=b.dataset.trial, T=new Set(saved.META.trials||[]); if(T.has(k))T.delete(k); else T.add(k); saved.META.trials=[...T]; saveMeta(); buildIntroPanel(); });
