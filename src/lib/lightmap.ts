@@ -1,5 +1,5 @@
 // マスの明るさ（もとは src/game/14-lights-fixtures.js）と天井の高さ（もとは 06-world.js）、灯りの揺らぎ flicker と、灯りを描画に渡す配列を書き直す updateLights（もとは 14-lights-fixtures.js）。
-// 状態の入れ物 here（今の階の灯りと天井・生き物）・blaze（火の明かり）・player・ui（1人称か3人称か）・gfx（カメラの位置。読むだけ）・gear（詠唱）・vfx（稲妻の光り）・
+// 状態の入れ物 here（今の階の灯りと天井・生き物）・blaze（火の明かり）・player・ui・gfx（カメラの位置。読むだけ）・gear（詠唱）・vfx（稲妻の光り）・
 // lantern（手元の灯り）と、灯りを描画に渡す配列 SL・DLP・DLC に頼る物。灯りの計算そのもの（迷宮の生成も使う）は src/lib/light.ts。
 // updateLights を呼ぶのは古い JS の描画（30-loop-init.js の tick）。flicker はランプの時に見た目の乱数 mr() を引く。
 import { must, nth } from './array.ts';
@@ -8,7 +8,7 @@ import type { LevelLight } from './generate.ts';
 import { LANTERN } from './light.ts';
 import { mr } from './random.ts';
 import { elemCol } from './runes.ts';
-import { DLC, DLP, type Monster, SL, blaze, clock, gear, gfx, here, lantern, player, ui, vfx } from './state.ts';
+import { DLC, DLP, type Monster, SL, blaze, clock, gear, gfx, here, lantern, player, vfx } from './state.ts';
 import { BASE_H, CELL, MH, MW, NDL } from './world.ts';
 
 /** cellLight が返す色（毎回同じ配列を書き直して返す。持っておく時は写すこと） */
@@ -157,15 +157,9 @@ export function updateLights(t: number): void {
   DLP.fill(0);
   DLC.fill(0);
   const lf = 0.96 + 0.03 * Math.sin(t * 7.1) + 0.02 * Math.sin(t * 13.3);
-  if (ui.camMode === 'tps') {
-    DLP[0] = player.x;
-    DLP[1] = player.eye + 0.15;
-    DLP[2] = player.z;
-  } else {
-    DLP[0] = gfx.camera.position.x - Math.sin(player.yaw) * 0.25;
-    DLP[1] = gfx.camera.position.y - 0.2;
-    DLP[2] = gfx.camera.position.z - Math.cos(player.yaw) * 0.25;
-  }
+  DLP[0] = gfx.camera.position.x - Math.sin(player.yaw) * 0.25;
+  DLP[1] = gfx.camera.position.y - 0.2;
+  DLP[2] = gfx.camera.position.z - Math.cos(player.yaw) * 0.25;
   DLP[3] = lantern.r * (1 + 0.35 * bodyN('lamp'));
   DLC[0] = nth(LANTERN, 0) * lf * lantern.k;
   DLC[1] = nth(LANTERN, 1) * lf * lantern.k;

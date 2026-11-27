@@ -41,6 +41,6 @@ describe('移す前と同じ', () => {
     }
     expect(by('updateSectionAir').filter((c) => c.uni[1] !== 1).length).toBeGreaterThan(50);
     caseOut('hints', all);
-    expect([fnv(all), all.length]).toEqual(['7cfca33d', 5673147]);
+    expect([fnv(all), all.length]).toEqual(['0d2314b7', 5416588]);
   }, 60000);
 });

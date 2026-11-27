@@ -63,12 +63,12 @@ import { loadBeasts, recordBeast, saveMeta, saveSet } from '../lib/save.ts';
 import { BL, canStep, chooseNext, fireNear, foe, hostile, makeMonster, statOf, summon, updateMonster } from '../lib/monsters.ts';
 import { brimFlare, brimRecover, chillArea, crackIce, ignite, initFire, regrow, splash, stepFire, stepGas, tallAt, trample, updateCritter, updateFrozen, uploadCells } from '../lib/ground.ts';
 import { updateEvents, updateTraps } from '../lib/events.ts';
-import { loadSndLevel, lockFailed, menuOnHide, menuOnUnlock, relockClick, setCamMode, sndToggle, tryLock, updateResume } from '../lib/screens.ts';
+import { loadSndLevel, lockFailed, menuOnHide, menuOnUnlock, relockClick, sndToggle, tryLock, updateResume } from '../lib/screens.ts';
 import { addLooks } from '../lib/bodies/build.ts';
 import { bogAura, dragonAura, drawMorph, houndAura, krakenAura, lichAura, nagaAura, salamanderAura, shadowAura, spiderAura, transformShadow } from '../lib/bodies/auras.ts';
 import { P, dCol, dPar, dPos, dyn, initDust, ptCol, ptGly, ptPos, ptSize, spawn } from '../lib/particles.ts';
 import { updateParticles } from '../lib/motes.ts';
-import { drawSection, rockAt, updateAtmosphere, updateAvatar, updateSectionAir } from '../lib/camera.ts';
+import { rockAt, updateAtmosphere, updateSectionAir } from '../lib/camera.ts';
 import { crumble, debrisInfo, updateDebris } from '../lib/debris.ts';
 import { drawMonster, drawMonster0, drawTentacles } from '../lib/bodies/draw.ts';
 import { look } from '../lib/look.ts';
@@ -80,7 +80,7 @@ import {
   fireBeam, fireWave, gainExp, hitFeedback, hitReact, hurtPlayer, inWater, landElem, later, lordFell, meleeCast, monsterStrike, nearestFoe, onDodged, onKilledBy,
   orbBurst, rallyOnHit, react, startRain, updateLife, updateRally, zapLine,
 } from '../lib/combat.ts';
-import { placeThirdPerson, solidAt, updatePlayer } from '../lib/player.ts';
+import { solidAt, updatePlayer } from '../lib/player.ts';
 import { beginCast, releaseCast, startRoll, timeScale, updateCast } from '../lib/chant.ts';
 import { cloudsMeetFire, monTimeK, updateProjs, updateStatuses } from '../lib/projs.ts';
 import { awardLore, graveCandidates, graveRows, loreRows, resultPlace, runLore, saveGrave, startNewRun, victory } from '../lib/results.ts';

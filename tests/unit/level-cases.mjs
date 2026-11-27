@@ -238,7 +238,6 @@ export async function levelCases(F, seeds, page) {
         helpOn: chance(0.3),
         locked: chance(0.5),
         invOpen: false,
-        camMode: 'fps',
         hintSeq: 0,
       });
       edge.hint = 0;

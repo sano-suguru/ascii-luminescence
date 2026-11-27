@@ -1,4 +1,4 @@
-// マウスを捕まえる（ポインタロック）・視点・音量（もとは src/game/16-view-input.js・28-camera-player.js・15-sound-fire.js）。状態の入れ物 ui・SND に頼る。
+// マウスを捕まえる（ポインタロック）・音量（もとは src/game/16-view-input.js・15-sound-fire.js）。状態の入れ物 ui・SND に頼る。
 // ポインタロックの変わり目（pointerlockchange・pointerlockerror）を受け取る登録は、古い JS（16-view-input.js）にある。
 import { must, nth } from './array.ts';
 import { msg } from './log.ts';
@@ -74,17 +74,6 @@ export function tryLock(): void {
     if (typeof p === 'object' && p !== null && 'catch' in p && typeof p.catch === 'function') p.catch(lockFailed);
   } catch {
     lockFailed();
-  }
-}
-
-/** 視点を変える（'fps' は1人称、'tps' は3人称）。3人称のカメラは、狙う位置から始め直す。選んだ視点は保存する（保存できなくても続ける） */
-export function setCamMode(m: string): void {
-  ui.camMode = m;
-  ui.camPos = null;
-  try {
-    localStorage.setItem('al_cam', m);
-  } catch {
-    // 保存できない時（プライベートモードなど）は、保存しないだけ
   }
 }
 

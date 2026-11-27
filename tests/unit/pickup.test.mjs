@@ -29,7 +29,7 @@ describe('移す前と同じ', () => {
       body = pickupText(all),
       calls = all.flatMap((c) => c.calls);
     caseOut('pickup', body);
-    expect([fnv(body), body.length]).toEqual(['b5e4629c', 2358936]);
+    expect([fnv(body), body.length]).toEqual(['3312ed7c', 2430078]);
     // 場合が中身を通っているか：9の関数が全部呼ばれ、どれも止まらず、待たせた処理も止まらない
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);

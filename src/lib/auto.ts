@@ -6,7 +6,7 @@
 //     claude.ai は、Artifact のリンクに付けた ?auto をゲームのページに渡さないので、iPhone ではこちらで始める
 //   - URL の ?auto=<n>：n 周（1 から 9。3周でおよそ5分）。?auto=quick：短い1周（各段を短くし、撃つのと階段は1回）。tests/auto.mjs と tools/auto-run.mjs が使う
 // 決まり：
-//   - 自動で試している間は、ゲームの保存（al_ で始まる名前）を localStorage に書かない（autoGuard。伝承・解放・見た生き物・墓・視点・音量などを、
+//   - 自動で試している間は、ゲームの保存（al_ で始まる名前）を localStorage に書かない（autoGuard。伝承・解放・見た生き物・墓・音量などを、
 //     ふだん遊ぶ時の記録に残さないため。ほかの名前は書く。同じページのほかの仕組みを止めないように）。
 //     開発用モードはオンにしない（?dev=1 は al_dev を書き残す）。生き物を置く・階段の前へ移る・体力を減らすのは、古い JS の dbg の中身を直に呼ぶ（AutoHooks）
 //   - 探索のシードは、1周目だけ AUTO_SEED（毎回同じ迷宮で、前の結果と比べるため）。死んで［新しい探索へ］を押した後は、ゲームが選ぶ
@@ -431,7 +431,8 @@ export const AUTO_STEPS: Step[] = [
     async () => {
       tap('#menuB');
       await wait(0.8);
-      for (const k of ['ui', 'ui', 'cam', 'cam']) {
+      // 音量は押すたびに al_snd に書こうとする（autoGuard が止めるのを tests/auto.mjs が確かめる）。4段なので4回で元に戻る
+      for (const k of ['ui', 'ui', 'snd', 'snd', 'snd', 'snd']) {
         tap(`#menu button[data-k="${k}"]`);
         await wait(0.8);
       }
