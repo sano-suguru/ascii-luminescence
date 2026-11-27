@@ -229,7 +229,6 @@ export async function pickupCases(makeF, seeds, page) {
             m.aware,
             m.noticed,
             m.alert,
-            m.guardian,
             m.phase2,
             m.invulnT,
             m.heartOn,

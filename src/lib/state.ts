@@ -795,8 +795,6 @@ export interface Monster {
   /** 体の明るさ（生き物の処理が入れる）と、心臓を見せるか（王の影。src/lib/levels.ts の spawnFinalBoss） */
   glow?: number;
   heartOn?: boolean;
-  /** 宝物庫の番人（褒美を取った時に目を覚ました物。src/lib/pickup.ts の vaultSprung が入れる。今はどこも読まない） */
-  guardian?: boolean;
   /** ここから下は、描く処理（src/lib/bodies/draw.ts）と見た時の説明（src/lib/look.ts）・灯り（src/lib/lightmap.ts の updateLights）が読む欄。
    * 生き物の表の鍵（'final' は王の影）と、揺れの位相 ph・歩きの位相 walk・警戒 alert（src/lib/monsters.ts の makeMonster が入れる） */
   key?: string;
