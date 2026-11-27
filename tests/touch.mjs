@@ -13,9 +13,9 @@
 //   8. 指の操作（src/lib/touchpad.ts。CDP の Input.dispatchTouchEvent で、2本の指を同時に動かす）：左半分のスティックで進む（離すと止まる）・右半分のドラッグで見回す・
 //      両方を同時に・[右手] を押して溜め、指をずらすと見回し、離すと溜めが終わる・指を取り逃した時（touchCancel）も溜めが終わる・[回避]・
 //      メニューを開いている間は、スティックで動かない・レベルアップと祭壇の画面は、1回目のタップで選んで説明を出し、2回目で決める
-//  10. 図鑑を指で動かす：案内が指の時の文言か・枠が画面の上半分に掛からないか・1本指のドラッグで回り、触れている間はひとりでに回らない・2本指で広げると寄り、[向きを戻す] で戻る
-//  11. 縦向き：探索中だけ、止めて横にする案内を出し、横に戻すと続く（タイトルと、マウスで遊んでいる時は出さない）
-//  12. ホーム画面に置く案内：iPhone の Safari で、ホーム画面から開いていない時だけタイトルに出る
+//  10. 図鑑を指で動かす：案内が指の時の文言か（マウスで開いた後に指で触った時も）・離れた知らせを取り逃した指が残っても回せるか・枠が画面の上半分に掛からないか・1本指のドラッグで回り、触れている間はひとりでに回らない・2本指で広げると寄り、[向きを戻す] で戻る
+//  11. 縦向き：探索中だけ、止めて横にする案内を出し、横に戻すと続く・縦のまま死んでも結果の画面から新しい探索へ進める（タイトルと、マウスで遊んでいる時は出さない）
+//  12. ホーム画面に置く案内：iPhone の Safari で、ホーム画面から開いていない時だけタイトルに出る（指で触れない端末では出ない）
 //  13. iPhone の横向きの切り欠きとホームの棒（safe-area-inset の真似）：端の表示とボタンが、その分を避けるか
 //   7. 診断の記録（src/lib/diag.ts）：偽の window.claude（Artifact の中の真似）で、持ち主なら端末・できごと・速さ・かかった時間・遅いフレームを db に書き、持ち主でなければ書かない。
 //      書き込みの途中に頼まれた分（ページが隠れた時）も、途中の分が終わってから書く
@@ -645,7 +645,45 @@ await withBrowser(async ({ browser, base }) => {
       if (!(Math.abs(r.camera.dist - a.camera.dist) < 0.05))
         errs.push(`図鑑を指で：[向きを戻す] で距離が戻らない（${a.camera.dist} → ${b.camera.dist} → ${r.camera.dist}）`);
     }
+    // 離れた知らせを取り逃した指が残っていても、次の最初の指（isPrimary）は回す動きになる（つまむ動きにならない）
+    a = await draw();
+    await E(
+      ([x, y]) => {
+        const gl = document.getElementById('gl'),
+          ev = (t, id, cx, primary) =>
+            gl.dispatchEvent(
+              new PointerEvent(t, { pointerType: 'touch', pointerId: id, isPrimary: primary, clientX: cx, clientY: y, bubbles: true }),
+            );
+        ev('pointerdown', 901, x, true); // この指の pointerup は送らない（取り逃した）
+        ev('pointerdown', 902, x + 100, true);
+        ev('pointermove', 902, x + 160, true);
+        ev('pointerup', 902, x + 160, true);
+      },
+      [X, Y],
+    );
+    b = await draw();
+    const t2 = Math.abs(Math.atan2(Math.sin(b.turn - a.turn), Math.cos(b.turn - a.turn)));
+    if (!(Math.abs(t2 - 0.6) < 0.05)) errs.push(`図鑑を指で：取り逃した指が残ると、次の指で回らない（${a.turn} → ${b.turn}）`);
     console.log(`図鑑を指で：回る ${turned.toFixed(2)}、距離 ${a.camera.dist} → ${b.camera.dist}`);
+    await pg.context().close();
+  }
+
+  // 10'. マウスで図鑑を開いた後に指で触ると、案内が指の時の文言に変わり、[向きを戻す] が出る
+  {
+    const pg = await newPage(browser, errs, { device: 'iPhone 13 landscape' });
+    await openTest(pg, base, 'seed=202');
+    await pg.mouse.move(100, 100);
+    await pg.mouse.move(120, 110);
+    await pg.evaluate(() => __test.gallery());
+    await advance(pg, 1);
+    const before = await pg.evaluate(() => document.getElementById('gal').innerText);
+    await pg.touchscreen.tap(600, 40);
+    await advance(pg, 0.1);
+    const after = await pg.evaluate(() => document.getElementById('gal').innerText);
+    if (!before.includes('ホイール') || !after.includes('つまんで寄る') || !after.includes('[向きを戻す]'))
+      errs.push(
+        `図鑑を指で：マウスから指に持ち替えても、案内が変わらない（前 ${before.includes('ホイール')}、後 ${after.replace(/\s+/g, ' ').slice(-60)}）`,
+      );
     await pg.context().close();
   }
 
@@ -686,6 +724,19 @@ await withBrowser(async ({ browser, base }) => {
     b = await E(() => __test.state());
     if ((await turnShown()) || a.paused || !(b.time > a.time))
       errs.push(`縦向き：横に戻しても続かない（案内 ${await turnShown()}、止まる ${a.paused}、時刻 ${a.time} → ${b.time}）`);
+    // 縦向きのまま死に、結果の画面の［新しい探索へ］を押すと、新しい探索が始まって（止まらずに暗くなって）から、止まって案内が出る
+    await resize(PORT);
+    await E(() => dbg.hurt(9999));
+    await advance(pg, 3);
+    if (!(await E(() => __test.state().dead))) errs.push('縦向き：死なない（テストの前提が崩れた）');
+    await E(() => document.getElementById('newRunB').click());
+    await advance(pg, 2);
+    a = await E(() => __test.state());
+    if (a.dead || !a.paused || !(await turnShown()))
+      errs.push(
+        `縦向き：結果の画面から新しい探索へ進まないか、進んだ後に止まって案内が出ない（死んだまま ${a.dead}、止まる ${a.paused}、案内 ${await turnShown()}）`,
+      );
+    await resize(LAND);
     // マウスで遊んでいる時は、縦長の窓でも止めない
     await pg.mouse.move(300, 100);
     await pg.mouse.move(310, 110);
@@ -696,10 +747,11 @@ await withBrowser(async ({ browser, base }) => {
   }
 
   // ---------------------------------------------------------------- 12. ホーム画面に置く案内（iPhone の Safari で、ホーム画面から開いていない時だけ）
-  for (const [standalone, want] of [
-    [false, true],
-    [true, false],
-    [undefined, false],
+  for (const [standalone, want, touchless] of [
+    [false, true, false],
+    [true, false, false],
+    [undefined, false, false],
+    [false, false, true], // 指で触れない端末（Mac の Safari の真似。navigator.maxTouchPoints が 0）
   ]) {
     const pg = await newPage(browser, errs, { device: 'iPhone 13 landscape' });
     // navigator.standalone は iPhone・iPad の Safari にだけある（ホーム画面から開くと true）。無い時は Chromium のまま
@@ -708,9 +760,14 @@ await withBrowser(async ({ browser, base }) => {
         (v) => Object.defineProperty(Navigator.prototype, 'standalone', { configurable: true, get: () => v }),
         standalone,
       );
+    if (touchless)
+      await pg.addInitScript(() => Object.defineProperty(Navigator.prototype, 'maxTouchPoints', { configurable: true, get: () => 0 }));
     await openTest(pg, base, 'seed=202');
     const has = await pg.evaluate(() => document.getElementById('intropanel').innerText.includes('ホーム画面に追加'));
-    if (has !== want) errs.push(`ホーム画面の案内：navigator.standalone が ${standalone} の時に、案内が${has ? '出た' : '出ない'}`);
+    if (has !== want)
+      errs.push(
+        `ホーム画面の案内：navigator.standalone が ${standalone}${touchless ? '・指で触れない端末' : ''}の時に、案内が${has ? '出た' : '出ない'}`,
+      );
     await pg.context().close();
   }
 

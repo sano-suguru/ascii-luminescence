@@ -121,6 +121,8 @@ export function initTouchpad(act: PadActions): void {
   gl.addEventListener('pointerdown', (e) => {
     if (e.pointerType !== 'touch') return;
     if (act.gallery.on()) {
+      // 最初の指（isPrimary。ほかに触れている指が無い）なのに記録が残っていれば、離れた知らせを取り逃した指なので捨てる
+      if (e.isPrimary) galF.clear();
       if (galF.size >= 2) return;
       capture(gl, e.pointerId);
       if (!galF.size) act.gallery.hold(true);

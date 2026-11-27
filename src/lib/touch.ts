@@ -31,9 +31,10 @@ export function confirmTap(key: string): boolean {
 
 /**
  * タイトルに、ホーム画面に置く案内を出すか。iPhone・iPad の Safari で、ホーム画面から開いていない時だけ
- * （navigator.standalone はその Safari にだけあり、ホーム画面から開くと true）。iframe の中（claude.ai の Artifact など）では出さない（置けないため）
+ * （navigator.standalone はその Safari にだけあり、ホーム画面から開くと true。Mac の Safari にもあるかもしれないので、指で触れる端末だけにする）。iframe の中（claude.ai の Artifact など）では出さない（置けないため）
  */
-export const homeHint = (): boolean => Reflect.get(navigator, 'standalone') === false && window.top === window;
+export const homeHint = (): boolean =>
+  Reflect.get(navigator, 'standalone') === false && navigator.maxTouchPoints > 0 && window.top === window;
 
 /** 指で遊んでいる時は finger を、マウスとキーボードの時は mouse を返す（操作の説明を、遊び方で書き分ける） */
 export const byInput = (mouse: string, finger: string): string => (ui.touch ? finger : mouse);
@@ -44,6 +45,9 @@ export function updatePortrait(): void {
   document.body.classList.toggle('portrait', ui.portrait);
 }
 
+/** 遊び方が変わった時に、古い JS が文言を書き直す処理（initTouch が入れる。図鑑の案内など） */
+let inputChanged: () => void = () => undefined;
+
 /** 指の遊び方にする・戻す */
 export function setTouch(on: boolean): void {
   if (ui.touch === on) return;
@@ -51,6 +55,7 @@ export function setTouch(on: boolean): void {
   document.body.classList.toggle('touch', on);
   updatePortrait();
   fitPanels();
+  inputChanged();
 }
 
 /** 全画面のボタンを、全画面にできて、まだ全画面でない時だけ出す */
@@ -62,6 +67,8 @@ export function updateFullscreenButton(): void {
 export interface TouchActions {
   pack: () => void;
   menu: () => void;
+  /** 遊び方が変わった時（指とマウスの書き分けを書き直す） */
+  changed: () => void;
 }
 
 /**
@@ -70,6 +77,7 @@ export interface TouchActions {
  */
 export function initTouch(act: TouchActions): void {
   // 最後の指の事件の時刻（事件の timeStamp。テスト用モードで止まる performance.now ではなく、事件と同じ時計で比べる）
+  inputChanged = act.changed;
   let lastTouch = -Infinity;
   for (const t of ['pointerdown', 'pointerup', 'pointermove', 'pointercancel'] as const)
     window.addEventListener(
