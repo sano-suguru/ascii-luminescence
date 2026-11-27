@@ -86,7 +86,7 @@
       "globals": { "dbg": "readonly", "document": "readonly", "window": "readonly" }
     },
     {
-      // 自動で遊ぶ台本をこの環境で流す道具：ページに差し込む見かけの時計（addInitScript）と page.evaluate の中で、ブラウザの名前を使う
+      // 自動で試す台本をこの環境で流す道具：ページに差し込む見かけの時計（addInitScript）と page.evaluate の中で、ブラウザの名前を使う
       "files": ["tools/auto-run.mjs"],
       "globals": { "document": "readonly", "window": "readonly", "requestAnimationFrame": "readonly" }
     },

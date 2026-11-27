@@ -35,7 +35,7 @@ const SLOW_MS = 100;
 /** 速さをまとめる間（ミリ秒）と、書き込みの間 */
 const SPAN = 10_000;
 
-/** 自動で遊んだ記録（src/lib/auto.ts。欄 auto に書く） */
+/** 自動で試した記録（src/lib/auto.ts。欄 auto に書く） */
 const autoRec = (): Record<string, unknown> => ({
   laps: autoSt.laps,
   quick: autoSt.quick,
@@ -169,7 +169,7 @@ export async function initDiag(onOwner: () => void): Promise<void> {
     cast: gear.castSt?.h ?? '',
     projs: fight.projs.length > 0,
     audio: sndState(),
-    // 自動で遊んでいる段（src/lib/auto.ts。遅いフレームの「近く」に段の名前が出る）
+    // 自動で試している段（src/lib/auto.ts。遅いフレームの「近く」に段の名前が出る）
     ...(autoSt.on ? { auto: autoSt.step } : {}),
   });
   let last = flags();

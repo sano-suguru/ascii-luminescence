@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 自動で遊ぶ（?auto。src/lib/auto.ts）のテスト：短い台本（?auto=quick）を、テスト用モードでなく（本物の時計で）流し、
+// 自動で試す（?auto。src/lib/auto.ts）のテスト：短い台本（?auto=quick）を、テスト用モードでなく（本物の時計で）流し、
 // ページのエラーが無い・全部の段を通る・うまくいかなかった段が無い・診断の記録の欄 auto と、段の名前のできごとが書かれる・
 // ゲームの保存（al_ で始まる名前）を localStorage に書かない（死んだ時の伝承・視点・表示の切り替えなども）・ほかの名前は書ける、を確かめる。
 // 流している途中に、レベルアップの画面を開かせ（開発用モードの dbg.exp。1つ目を選んで進むか）、ページが25秒隠れたことにする（隠れていた間を、
@@ -13,12 +13,12 @@ await withBrowser(async ({ browser, base }) => {
   // 本物の端末（iPhone の横向き、claude.ai のアプリの中）と同じ大きさ
   const pg = await newPage(browser, errs, { width: 750, height: 312 });
   await pg.addInitScript(fakeClaude, true);
-  // 前から残っている記録（自動で遊んでも変わらないはず）
+  // 前から残っている記録（自動で試しても変わらないはず）
   await pg.addInitScript(() => {
     if (!sessionStorage.getItem('seeded')) {
       sessionStorage.setItem('seeded', '1');
       localStorage.setItem('al_cam', 'fps');
-      // 開発用モード（途中でレベルアップさせる dbg.exp のため。自動で遊ぶ間も、オンにはしない）
+      // 開発用モード（途中でレベルアップさせる dbg.exp のため。自動で試す間も、オンにはしない）
       localStorage.setItem('al_dev', '1');
     }
   });
@@ -46,7 +46,7 @@ await withBrowser(async ({ browser, base }) => {
     delete document.visibilityState;
     delete document.hidden;
   });
-  await pg.waitForFunction(() => document.getElementById('autobar')?.textContent?.includes('遊び終えた'), null, {
+  await pg.waitForFunction(() => document.getElementById('autobar')?.textContent?.includes('試し終えた'), null, {
     timeout: 300000,
     polling: 500,
   });
@@ -86,12 +86,13 @@ await withBrowser(async ({ browser, base }) => {
   if (other !== '1') errs.push('ゲームの物でない名前まで、localStorage に書けない');
   await pg.close();
 
-  // タイトルの［自動で遊ぶ］：持ち主なら出て、押すと始まる（URL に ?auto は付けない。claude.ai はリンクの ?auto をゲームのページに渡さないため）。
+  // タイトルの［自動で試す］：持ち主なら、持ち主と分かった後に［開発用モード］の真下に出て、押すと始まる（URL に ?auto は付けない。claude.ai はリンクの ?auto をゲームのページに渡さないため）。
   // ［止める］：歩いている途中で押すと、台本が置いた指を離す（スティックが消え、記録は「止めた」）
   const st = await newPage(browser, errs, { width: 750, height: 312 });
   await st.addInitScript(fakeClaude, true);
   await st.goto(base, { waitUntil: 'commit', timeout: 120000 });
-  await st.waitForSelector('#autoB', { timeout: 90000 });
+  await st.waitForSelector('#intropanel #autoB', { timeout: 90000 });
+  if (!(await st.evaluate(() => !!document.getElementById('galDev')))) errs.push('持ち主なのに、［開発用モード］が出ない');
   await st.click('#autoB');
   await st.waitForFunction(() => document.getElementById('autobar')?.textContent?.includes('・walk'), null, {
     timeout: 300000,
@@ -99,7 +100,7 @@ await withBrowser(async ({ browser, base }) => {
   });
   await st.waitForFunction(() => !document.getElementById('stick').hidden, null, { timeout: 60000, polling: 100 });
   await st.click('#autoStop');
-  await st.waitForFunction(() => document.getElementById('autobar')?.textContent?.includes('遊び終えた'), null, {
+  await st.waitForFunction(() => document.getElementById('autobar')?.textContent?.includes('試し終えた'), null, {
     timeout: 120000,
     polling: 200,
   });
@@ -107,16 +108,17 @@ await withBrowser(async ({ browser, base }) => {
   const sr = (await readDiag(st))?.auto;
   if (!stopped.stick) errs.push('［止める］の後も、台本のスティックが出たまま（指が離れていない）');
   if (sr?.stop !== '止めた') errs.push(`［止める］の記録が ${sr?.stop}`);
-  if (sr?.laps !== 3 || sr?.quick) errs.push(`［自動で遊ぶ］の周の数が ${sr?.laps}（3 のはず）`);
+  if (sr?.laps !== 3 || sr?.quick) errs.push(`［自動で試す］の周の数が ${sr?.laps}（3 のはず）`);
   await st.close();
 
-  // 持ち主でなければ、［自動で遊ぶ］は出ない（診断の記録が書かれる時だけ出す）
+  // 共有された Artifact を持ち主でない人が開いた時は、［自動で試す］も［開発用モード］も出ない（遊ぶ人に開発用の物を見せない）
   const guest = await newPage(browser, errs, { width: 750, height: 312 });
   await guest.addInitScript(fakeClaude, false);
   await guest.goto(base, { waitUntil: 'commit', timeout: 120000 });
   await guest.waitForSelector('#enter', { timeout: 90000 });
   await new Promise((ok) => setTimeout(ok, 2000));
-  if (await guest.evaluate(() => !!document.getElementById('autoB'))) errs.push('持ち主でないのに、［自動で遊ぶ］が出た');
+  const shown = await guest.evaluate(() => ['autoB', 'galDev'].filter((id) => document.getElementById(id)));
+  if (shown.length) errs.push(`持ち主でないのに、開発用の物が出た（${shown.join('・')}）`);
   await guest.close();
 });
 console.log('page errors:', errs.length ? errs : 'none');

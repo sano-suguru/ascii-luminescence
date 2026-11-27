@@ -1,4 +1,4 @@
-// 自動で遊ぶ（?auto=<周の数>）：本物の iPhone で、人が触らずに速さを確かめるため。決まった台本（AUTO_STEPS）を、ページの中で指の事件を作って、本物の時計で流す。
+// 自動で試す（?auto=<周の数>）：本物の iPhone で、人が触らずに速さを確かめるため。決まった台本（AUTO_STEPS）を、ページの中で指の事件を作って、本物の時計で流す。
 // 段ごとのフレームの数・平均・一番遅い1回・遅いフレームの数を autoSt に貯め、診断の記録（src/lib/diag.ts）が欄 auto に書く（Claude が ArtifactData の道具で読む）。
 // tools/auto-run.mjs も、同じ台本をこの環境で、遅さを足して流す。
 // 始め方は2つ：
@@ -6,7 +6,7 @@
 //     claude.ai は、Artifact のリンクに付けた ?auto をゲームのページに渡さないので、iPhone ではこちらで始める
 //   - URL の ?auto=<n>：n 周（1 から 9。3周でおよそ5分）。?auto=quick：短い1周（各段を短くし、階段は1回）。tests/auto.mjs と tools/auto-run.mjs が使う
 // 決まり：
-//   - 自動で遊んでいる間は、ゲームの保存（al_ で始まる名前）を localStorage に書かない（autoGuard。伝承・解放・見た生き物・墓・視点・音量などを、
+//   - 自動で試している間は、ゲームの保存（al_ で始まる名前）を localStorage に書かない（autoGuard。伝承・解放・見た生き物・墓・視点・音量などを、
 //     ふだん遊ぶ時の記録に残さないため。ほかの名前は書く。同じページのほかの仕組みを止めないように）。
 //     開発用モードはオンにしない（?dev=1 は al_dev を書き残す）。生き物を置く・階段の前へ移る・体力を減らすのは、古い JS の dbg の中身を直に呼ぶ（AutoHooks）
 //   - 探索のシードは、1周目だけ AUTO_SEED（毎回同じ迷宮で、前の結果と比べるため）。死んで［新しい探索へ］を押した後は、ゲームが選ぶ
@@ -60,7 +60,7 @@ export interface AutoStep {
   shut?: number;
 }
 
-/** 自動で遊ぶ様子（診断の記録が書く） */
+/** 自動で試す様子（診断の記録が書く） */
 export const autoSt: {
   on: boolean;
   quick: boolean;
@@ -86,7 +86,7 @@ export const autoSt: {
   steps: [],
 };
 
-/** URL から、自動で遊ぶか（周の数。quick は 1）と、短い台本かを読む */
+/** URL から、自動で試すか（周の数。quick は 1）と、短い台本かを読む */
 export function autoMode(search: string): { laps: number; quick: boolean } {
   let v: string | null = null;
   try {
@@ -99,14 +99,14 @@ export function autoMode(search: string): { laps: number; quick: boolean } {
 }
 
 /**
- * 自動で遊ぶなら、ゲームの保存（al_ で始まる名前）を localStorage に書かないようにする。保存の処理より先に（src/game/00-test-mode.js が、ゲームの古い JS の初めに）呼ぶ。
+ * 自動で試すなら、ゲームの保存（al_ で始まる名前）を localStorage に書かないようにする。保存の処理より先に（src/game/00-test-mode.js が、ゲームの古い JS の初めに）呼ぶ。
  * 読むのはそのまま（ふだんの視点・見回す速さで遊ぶ）
  */
 export function autoGuard(): void {
   if (TEST || !autoMode(location.search).laps) return;
   guardSaves();
 }
-/** ゲームの保存（al_ で始まる名前）を localStorage に書かないようにし、自動で遊んでいる印を付ける */
+/** ゲームの保存（al_ で始まる名前）を localStorage に書かないようにし、自動で試している印を付ける */
 function guardSaves(): void {
   autoSt.on = true;
   const game = (k: unknown): boolean => String(k).startsWith('al_');
