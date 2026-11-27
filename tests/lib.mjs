@@ -104,6 +104,74 @@ export async function openTest(pg, base, query = '') {
 export const frames = (pg, n) => pg.evaluate((n) => __test.frames(n), n);
 // 描かずに進める（速い）
 export const advance = (pg, sec) => pg.evaluate((s) => __test.advance(s), sec);
+// 鍵 key の生き物の体の高さの真ん中を向く（dbg.look）。その生き物の体力を返す（いなければ Error）
+const lookAt = async (pg, key) => {
+  const hp = await pg.evaluate((key) => {
+    const m = __test.state().monsters.find((m) => m[0] === key);
+    if (!m) return null;
+    const v = __test.monsterView(key);
+    dbg.look(m[1], v && v.world ? (v.world.y0 + v.world.y1) / 2 : 0.5, m[2]);
+    return m[3];
+  }, key);
+  if (hp === null) throw new Error(`照準を合わせる生き物 ${key} がいない`);
+  return hp;
+};
+// 鍵 key の生き物が照準の先（__test.mob(n).aimed）になるまで、体の高さの真ん中を向いて 1/30 秒ずつ進める。なれば、もう一度向き直して終わる
+// （照準の先は 0.1 秒ごとに探し直すので、12 回試す。なれなければ Error）
+export async function aimAt(pg, key) {
+  for (let k = 0; k < 12; k++) {
+    await lookAt(pg, key);
+    await advance(pg, 1 / 30);
+    const aimed = await pg.evaluate((key) => {
+      const n = __test.state().monsters.findIndex((m) => m[0] === key);
+      return n >= 0 && !!__test.mob(n)?.aimed;
+    }, key);
+    if (aimed) {
+      await lookAt(pg, key);
+      return;
+    }
+  }
+  throw new Error(`生き物 ${key} が照準の先にならない（12 回、1/30 秒ずつ進めて向き直した）`);
+}
+// 手 hand（'L'・'R'）の武器で、鍵 key の生き物を撃つ。押して、体力が減るまで描かずに 1/30 秒ずつ進める。近接（小剣など）は押した時に当たる。
+// 溜める武器（光弾など）は溜めきる（cast.full）まで待ち、向き直してから離す（早く離すと散る）。当たって光るのは 0.22〜0.35 秒なので、毎フレーム見る。
+// { hit: true, frame }（押してから何フレーム目に当たったか。押した時に当たれば 0）を返す。150 フレームで当たらなければ Error
+export async function strike(pg, hand, key) {
+  // 押してから当たるまでを、ページの中の1回の evaluate で進める（溜める間の1フレームごとに、ページと行き来しない）
+  const frame = await pg.evaluate(
+    ([hand, key]) => {
+      const hpNow = () => {
+          const m = __test.state().monsters.find((m) => m[0] === key);
+          return m ? m[3] : -1;
+        },
+        hp0 = hpNow();
+      __test.press(hand);
+      let released = false;
+      try {
+        for (let k = 0; k < 150; k++) {
+          if (hpNow() < hp0) return k;
+          if (!released && __test.state().cast?.full) {
+            // 離す前に向き直す（lookAt と同じ）
+            const m = __test.state().monsters.find((m) => m[0] === key);
+            if (m) {
+              const v = __test.monsterView(key);
+              dbg.look(m[1], v && v.world ? (v.world.y0 + v.world.y1) / 2 : 0.5, m[2]);
+            }
+            __test.release(hand);
+            released = true;
+          }
+          __test.advance(1 / 30);
+        }
+      } finally {
+        if (!released) __test.release(hand);
+      }
+      return -1;
+    },
+    [hand, key],
+  );
+  if (frame < 0) throw new Error(`手 ${hand} の武器が生き物 ${key} に当たらない（150 フレーム）`);
+  return { hit: true, frame };
+}
 // 一番近い祭壇のそばへ行く（dbg.to('altar') は2マス手前に置くが、祭壇の画面は1.5以内でないと開かない）
 export const nearAltar = (pg) =>
   pg.evaluate(() => {

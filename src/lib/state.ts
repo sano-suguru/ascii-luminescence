@@ -56,7 +56,8 @@ export interface Clock {
 }
 export const clock: Clock = { time: 0, frame: 0 };
 
-/** 揺れと光り（画面の揺れ、画面の光り、ダメージを受けた時と回復した時の光り、稲妻の光り）と、目の慣れ expo（画面の明るさに掛ける。src/lib/camera.ts の updateAtmosphere が、まわりの明るさに合わせてゆっくり変える） */
+/** 揺れと光り（画面の揺れ、画面の光り、ダメージを受けた時と回復した時の光り、稲妻の光り）と、目の慣れ expo（画面の明るさに掛ける。src/lib/camera.ts の updateAtmosphere が、まわりの明るさに合わせてゆっくり変える）と、
+ * 階の場所ごとの空気 ambK（分かれ道は明るく、階段へ向かう道は暗く。src/lib/camera.ts の updateSectionAir）と、詠唱している間に画面をゆっくりにする見た目の強さ slowFx（0 から 1。src/lib/chantfx.ts の updateCross） */
 export interface Vfx {
   shake: number;
   flash: number;
@@ -64,8 +65,10 @@ export interface Vfx {
   hpFlash: number;
   zapFlash: ZapFlash | null;
   expo: number;
+  ambK: number;
+  slowFx: number;
 }
-export const vfx: Vfx = { shake: 0, flash: 0, hurtFlash: 0, hpFlash: 0, zapFlash: null, expo: 1.1 };
+export const vfx: Vfx = { shake: 0, flash: 0, hurtFlash: 0, hpFlash: 0, zapFlash: null, expo: 1.1, ambK: 1, slowFx: 0 };
 
 /** 図鑑の獣を見ている間（'beast'）か、試しの間（'range'）の状態（今は mode と settle だけ型を付ける。ほかの欄は、図鑑と試しの間の処理を移す時に足す） */
 export interface Gallery {
@@ -160,6 +163,18 @@ export interface Ui {
   /** ミニマップのキャンバス mapC と、その 2D の描き手 mctx（16-view-input.js で document から読む。src/lib/minimap.ts が描く） */
   mapC: HTMLCanvasElement | null;
   mctx: CanvasRenderingContext2D | null;
+  /** 方向の矢印を描くキャンバス arrowCv と、その 2D の描き手 arrowCtx、下の HUD hotbarEl（22-world-hints.js で document から読む。src/lib/arrows.ts が描く） */
+  arrowCv: HTMLCanvasElement | null;
+  arrowCtx: CanvasRenderingContext2D | null;
+  hotbarEl: HTMLElement | null;
+  /** 下の HUD の大きさの変わり目を ResizeObserver で見ているか（22-world-hints.js が入れる。見ていなければ hotbarTop を覚えず、毎回読む） */
+  hotbarWatch: boolean;
+  /** 方向の矢印を前のフレームに描いたか（描いた時だけ消す） */
+  arrowsDrawn: boolean;
+  /** 下の HUD の上の端（CSS の画素。-1 は隠れている。null はまだ読んでいない。下の HUD か窓の大きさが変わると null に戻す） */
+  hotbarTop: number | null;
+  /** 照準の文字の、前に書いた中身（文字と色と class。同じ時は書き直さない。src/lib/chantfx.ts の updateCross） */
+  crossKey: string;
   /** メニューの「タイトルへ」「新しい探索」の、もう一度押して確かめる待ちが終わる時刻（待っていなければ 0） */
   titleArm: number;
   newRunArm: number;
@@ -190,6 +205,8 @@ export interface Ui {
   lookPendT: number;
   lookHTML: string;
   lookEl: HTMLElement | null;
+  /** 照準の文字を書く所（22-world-hints.js で document から読む。src/lib/chantfx.ts の updateCross が書く） */
+  crossEl: HTMLElement | null;
   /** 伝言を出したゲームの時刻：生き物が炎から逃げた（6秒あける）・叫ぶ生き物が叫んだ（8秒あける）。src/lib/monsters.ts の chooseNext・src/lib/ground.ts の updateCritter */
   fleeMsgT: number;
   shriekMsgT: number;
@@ -243,6 +260,13 @@ export const ui: Ui = {
   introEl: null,
   mapC: null,
   mctx: null,
+  arrowCv: null,
+  arrowCtx: null,
+  hotbarEl: null,
+  hotbarWatch: false,
+  arrowsDrawn: false,
+  hotbarTop: null,
+  crossKey: '',
   titleArm: 0,
   newRunArm: 0,
   dbgOpen: false,
@@ -260,6 +284,7 @@ export const ui: Ui = {
   lookPendT: 0,
   lookHTML: '',
   lookEl: null,
+  crossEl: null,
   fleeMsgT: -10,
   shriekMsgT: -99,
   grazeMsg: false,
@@ -550,7 +575,7 @@ export const blaze: Blaze = {
 
 /** 光線の一切れ（点の並び・色・残りの秒） */
 export interface BeamSeg {
-  pts: unknown[];
+  pts: [number, number, number][];
   col: readonly number[];
   t: number;
 }

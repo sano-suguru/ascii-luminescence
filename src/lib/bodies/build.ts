@@ -28,6 +28,7 @@ import {
   phantomForm,
   ratForm,
   salamanderForm,
+  snapjawForm,
   trollForm2,
   wraithForm2,
 } from './beasts.ts';
@@ -353,7 +354,7 @@ export function extraLook(ty: { look?: string | null | undefined }, pts: Body): 
 }
 
 // ---- 人型（作り直した物）：材料ごとに陰を付けた、読める文字の体。割合は種類ごと、種類ごとの特徴も
-/** 人型の形（コボルド・ゴブリン・蛇顎・猿・ノーム。呪術師は beasts.ts の conjurerForm） */
+/** 人型の形（コボルド・ゴブリン・猿・ノーム。呪術師は beasts.ts の conjurerForm、スナップジョーは snapjawForm） */
 export function humanoid2(ty: FormType): Body {
   const look = ty.look,
     P = propOf(look),
@@ -363,7 +364,6 @@ export function humanoid2(ty: FormType): Body {
   const CLT: Readonly<Record<string, Color>> = {
     kobold: [0.6, 0.42, 0.3],
     goblin: [0.55, 0.45, 0.32],
-    snapjaw: [0.62, 0.5, 0.36],
     monkey: [0.55, 0.42, 0.3],
     ogre: [0.55, 0.42, 0.3],
     gnome: [0.35, 0.45, 0.75],
@@ -423,12 +423,12 @@ export function humanoid2(ty: FormType): Body {
       lit(a[0] + dx * f, a[1] + dy * f, a[2] + dz * f, ch, s || S, bri, col, part, extra);
     }
   };
-  const lean = look === 'goblin' ? 0.12 : look === 'snapjaw' ? 0.14 : look === 'monkey' ? 0.22 : 0,
+  const lean = look === 'goblin' ? 0.12 : look === 'monkey' ? 0.22 : 0,
     lz = (y: number): number => lean * Math.max(0, (y - P.hip) / (P.hc - P.hip));
   const bw = look === 'ogre' ? 1.45 : look === 'kobold' || look === 'gnome' ? 0.9 : 1,
     legW = P.legW || 1;
   // 脚（布か毛）。腰から振る
-  const furry = look === 'snapjaw' || look === 'monkey' || look === 'kobold';
+  const furry = look === 'monkey' || look === 'kobold';
   for (const sd of [-1, 1]) {
     const part = sd < 0 ? 'legL' : 'legR';
     for (let y = 0.04; y < P.hip; y += GAP) {
@@ -502,32 +502,6 @@ export function humanoid2(ty: FormType): Body {
     for (let k = 0; k < 5; k++)
       lit((k - 2) * 0.07, P.hip - 0.05 - ((k * 7) % 3) * 0.04, 0.14 + lz(P.hip), mpick(['|', '/', '\\']), S * 0.9, 1.0, CL);
     stroke([hand[0], hand[1], hand[2]], [hand[0], hand[1] - 0.02, hand[2] + 0.3], [0.7, 0.55, 0.4], 1.6, S * 0.9, 'armR', arm);
-  }
-  if (look === 'snapjaw') {
-    for (let k = 1; k <= 4; k++) lit(0, H[1] - hr * 0.25, H[2] + hr + k * S * 0.55, k === 4 ? '>' : '=', S * 0.9, 1.4, SK, 'head');
-    for (let k = 0; k < 6; k++)
-      lit(0, H[1] + hr * 0.9 - k * 0.08, H[2] - hr - 0.02 - k * 0.03, '^', S * 0.9, 1.3, [0.4, 0.3, 0.22], 'head');
-    for (let k = 0; k < 5; k++) lit((k - 2) * 0.08, P.hip - 0.04, 0.15 + lz(P.hip), '"', S * 0.9, 1.1, [0.5, 0.4, 0.3]);
-    if (ty.sk === 'sw' || (ty.name && ty.name.includes('見張り'))) {
-      stroke([hand[0], hand[1] - 0.05, hand[2]], [hand[0], hand[1] + 0.45, hand[2]], [0.5, 0.38, 0.25], 1.0, S * 0.9, 'armR', arm);
-      for (let q = 0; q < 4; q++) {
-        const f = q / 3;
-        lit(
-          hand[0],
-          hand[1] + 0.5 + f * 0.22,
-          hand[2],
-          '^',
-          S * (1.1 - f * 0.3),
-          2.0 + 1.2 * f,
-          [1.0, 0.3 + 0.55 * f, 0.1 + 0.4 * f],
-          'flame',
-          {
-            fh: f,
-            piv: P.sh,
-          },
-        );
-      }
-    }
   }
   if (look === 'monkey') {
     for (let k = 0; k < 9; k++) {
@@ -640,8 +614,8 @@ export function buildForm0(ty: FormType): Body {
   }
   if (ty.form === 'humanoid' && ty.look === 'ogre') return ogreForm(ty);
   if (ty.form === 'humanoid' && ty.look === 'conjurer') return conjurerForm(ty);
-  if ((ty.form === 'humanoid' && ty.look && LOOK_PROP[ty.look] !== undefined) || (ty.form === 'humanoid' && ty.look === 'snapjaw'))
-    return humanoid2(ty);
+  if (ty.form === 'humanoid' && ty.look === 'snapjaw') return snapjawForm(ty, ty.sk === 'sw' || !!ty.name?.includes('見張り'));
+  if (ty.form === 'humanoid' && ty.look && LOOK_PROP[ty.look] !== undefined) return humanoid2(ty);
   {
     const F = BY_SMALL[ty.form];
     if (F && !ty.boss) return F(ty);
