@@ -18,6 +18,8 @@
 //      生き物が塞いだマスは、後でまた試す（流し終えた後も、引き始めるまで）ので、引き始める前に、生き物のいないマスの穴が残らない
 //  15. 吹き飛ばされた生き物は、溶岩の手前で止まる（溶岩は、歩けない生き物には壁と同じ。体の大きな生き物は、体が溶岩にかかる手前）。止まると、行き先は今いるマスになる
 //  16. 宝物庫の落石は、ゲームの時刻で進む（溜めている間は半分の速さ、止まっている間は進まない）。階段を下りて暗くなり始めたら進まず、階を移ると消える
+//  17. 倒れた生き物は崩れて、体の文字が床に積もる（残す文字の数の上限・光とみなしてすぐ消す文字は半分より少ない・床より下に沈まない・高い塔にならない・倒れた所の近く）。しばらくすると全部消え、
+//      同時にたくさん倒れても、崩れる体の数は上限（12）を越えて残らない
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { withBrowser, newPage, openTest, advance } from './lib.mjs';
 
@@ -577,6 +579,65 @@ async function rockfallChecks(pg, base) {
   if (r6) errs.push(`16：階段を下りた後も、前の階の落石が続いている（${JSON.stringify(r6)}）`);
 }
 
+// 17：倒れた生き物が崩れて積もり、消える（src/lib/debris.ts）
+async function debrisChecks(pg, base) {
+  await openTest(pg, base, 'seed=202&god=1&depth=5');
+  await advance(pg, 2);
+  // [種類, 残す文字の上限, 倒れた所から積もった文字までの一番遠い距離の上限]
+  for (const [key, cap, farMax] of [
+    ['r', 120, 1.5],
+    ['Zi', 120, 2],
+    ['T', 120, 3.5],
+    ['D', 250, 6],
+  ]) {
+    const r = await pg.evaluate((key) => {
+      __test.clearAll();
+      const W = __test.size().w,
+        p = __test.state().pos;
+      __test.summon(key, Math.floor(p[1] / 2) * W + Math.floor(p[0] / 2) + 2);
+      __test.advance(0.2);
+      dbg.kill('near');
+      const a = __test.debris();
+      __test.advance(2.5);
+      const b = __test.debris();
+      __test.advance(25);
+      return { a, b, c: __test.debris() };
+    }, key);
+    const a = r.a[0],
+      b = r.b[0];
+    if (r.a.length !== 1 || !a || !(a.n > 0)) {
+      errs.push(`17：${key} を倒しても、崩れる体ができない（${JSON.stringify(r.a)}）`);
+      continue;
+    }
+    if (a.kept > cap) errs.push(`17：${key} の残す文字が上限 ${cap} を越える（${a.kept}）`);
+    // 光（目・心臓など）とみなして、落とさずにすぐ消す文字（様子 3）は、体の半分より少ない（明るく描く生き物でも、体は崩れて積もる）
+    if (a.st[3] * 2 >= a.n) errs.push(`17：${key} の文字の半分より多くが、光とみなされてすぐ消える（${a.st[3]} / ${a.n}）`);
+    if (!b || b.st[0] || b.st[1]) errs.push(`17：${key} の文字が、2.5秒たっても落ちきらない（${JSON.stringify(b)}）`);
+    else if (!b.rest) errs.push(`17：${key} の文字が積もらない（${JSON.stringify(b)}）`);
+    else {
+      if (b.rest.y0 < 0) errs.push(`17：${key} の積もった文字が床より下にある（${b.rest.y0}）`);
+      if (b.rest.y1 > 0.7) errs.push(`17：${key} の積もった文字が高く積み上がる（${b.rest.y1}）`);
+      if (b.rest.far > farMax) errs.push(`17：${key} の積もった文字が、倒れた所から遠くまで散らばる（${b.rest.far}）`);
+    }
+    if (r.c.length) errs.push(`17：${key} の積もった文字が、25秒たっても消えない（${JSON.stringify(r.c)}）`);
+  }
+  // 同時に14体倒れても、崩れる体は12を越えて残らない（古い物から早く消す）
+  const many = await pg.evaluate(() => {
+    __test.clearAll();
+    const W = __test.size().w,
+      p = __test.state().pos,
+      c = Math.floor(p[1] / 2) * W + Math.floor(p[0] / 2);
+    for (let k = 0; k < 14; k++) __test.summon('S', c + 2);
+    __test.advance(0.1);
+    for (let k = 0; k < 14; k++) dbg.kill('near');
+    const n0 = __test.debris().length;
+    __test.advance(3);
+    return [n0, __test.debris().length];
+  });
+  if (many[0] !== 14) errs.push(`17：14体倒したのに、崩れる体が ${many[0]} 個（テストの前提が崩れた）`);
+  else if (many[1] > 12) errs.push(`17：同時に14体倒すと、3秒たっても崩れる体が ${many[1]} 個残る（上限は12）`);
+}
+
 await withBrowser(async ({ browser, base }) => {
   const pg = await newPage(browser, errs);
   await doorChecks(pg, base);
@@ -590,6 +651,7 @@ await withBrowser(async ({ browser, base }) => {
   await lavaMobChecks(pg, base);
   await knockLavaChecks(pg, base);
   await rockfallChecks(pg, base);
+  await debrisChecks(pg, base);
 });
 console.log('page errors:', errs.length ? errs : 'none');
 process.exit(errs.length ? 1 : 0);

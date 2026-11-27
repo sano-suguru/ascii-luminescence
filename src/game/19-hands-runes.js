@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------- the weapons in hand
-// VM_ST・vmGlyphS・vmGlyph と形と色の表（VM_MODELS・VM_PART・VM_BRIGHT・VM_REST・VM_REST_HOT・VM_TINT・VM_FIST）は src/lib/hands.ts（古い JS が読むのは、そのうち src/game/imports.mjs にある物）
+// VM_ST・vmGlyphS・vmGlyph と形と色の表（VM_MODELS・VM_PART・VM_BRIGHT・VM_REST・VM_REST_HOT・VM_TINT・VM_FIST）は src/lib/hands.ts（読むのは src/lib/held.ts と src/lib/fx.ts。古い JS は読まない）
 // RUNE_FONT・TRAIT_V・pct など 18 個は src/lib/runes.ts（古い JS が読むのは、そのうち src/game/imports.mjs にある物）
 // 手元の武器を描く drawViewWeapons は src/lib/held.ts（src/game/imports.mjs で読む）
 // 武器を振った線 drawSwing は src/lib/aim.ts（src/game/imports.mjs で読む）

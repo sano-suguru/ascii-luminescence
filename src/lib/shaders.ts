@@ -185,7 +185,7 @@ void main(){
   if(iP.z<0.5){ mv=viewMatrix*vec4(iPos,1.0); mv.xy+=p; }
   else{
     float c=cos(iP.w), s=sin(iP.w); vec3 w=iPos;
-    if(iP.z<1.5) w+=vec3(p.x*c-p.y*s,0.0,p.x*s+p.y*c);
+    if(iP.z<1.5){ float tl=iP.z-1.0, ct=cos(tl); w+=vec3(p.x*c-p.y*ct*s,p.y*sin(tl),p.x*s+p.y*ct*c); }
     else w+=vec3(p.x*c,p.y,-p.x*s);
     mv=viewMatrix*vec4(w,1.0);
   }

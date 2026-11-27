@@ -24,7 +24,7 @@ describe('指紋', () => {
   it('手元の武器の表と描く処理（400の場合）の指紋', { timeout: 60000 }, async () => {
     const body = await handsCases({ ...H, ...W }, 400);
     caseOut('hands', body);
-    expect([fnv(body), body.length]).toEqual(['cf4152a3', 4039042]);
+    expect([fnv(body), body.length]).toEqual(['ed3858c3', 4006074]);
     // 場合が中身を通っているか：描かずに戻る・描く・性質の火花が出る
     expect(body).toMatch(/ dn=0 pN=0 /);
     expect(body).toMatch(/ dn=[1-9]\d* pN=0 /);
@@ -106,5 +106,37 @@ describe('性質の火花', () => {
       if (w !== 'gsword') L.type = 'orb';
       for (const g of sparkGap(L, R, { swing, swingH: 'R' })) expect(g).toBeLessThan(0.04);
     }
+  });
+});
+
+describe('線の向きの文字 vmGlyph', () => {
+  // 画面での線の向き（度。0 が右、90 が上）の、境（22.5・67.5・112.5・157.5）の前後。反対の向き（+180）・負の角度も同じ文字
+  const CASES = [
+    [0, '-'],
+    [22, '-'],
+    [23, '/'],
+    [45, '/'],
+    [67, '/'],
+    [68, '|'],
+    [90, '|'],
+    [112, '|'],
+    [113, '\\'],
+    [135, '\\'],
+    [157, '\\'],
+    [158, '-'],
+    [179.6, '-'],
+  ];
+  it.each(CASES)('%s 度の線は %s', (deg, g) => {
+    for (const a of [deg, deg + 180, deg - 180, deg - 360]) {
+      const r = (a * Math.PI) / 180;
+      expect(H.vmGlyph(Math.cos(r), Math.sin(r))).toBe(g);
+    }
+  });
+  it('vmGlyphS は、目から見た2点を奥行きで割った画面での傾きで選ぶ（途中で計算した配列の点も受け取る）', () => {
+    expect(H.vmGlyphS([0, 0, 1], [1, 1, 1])).toBe('/');
+    // 同じ画面の点へ奥へ伸びる線は、奥行きで割ると傾きが無い
+    expect(H.vmGlyphS([0.1, 0.2, 0.5], [0.2, 0.4, 1])).toBe('-');
+    expect(H.vmGlyphS([0, 0, 1], [0, 1, 2])).toBe('|');
+    expect(H.vmGlyphS([0, 0, 1], [-1, 1, 1])).toBe('\\');
   });
 });

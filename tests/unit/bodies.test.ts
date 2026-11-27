@@ -1,10 +1,11 @@
 // src/lib/bodies/ の単体テスト（生き物の形）
-import { nth } from '../../src/lib/array.ts';
+import { lookup, nth } from '../../src/lib/array.ts';
 import { afterEach, describe, expect, it } from 'vitest';
 import * as beasts from '../../src/lib/bodies/beasts.ts';
 import * as bosses from '../../src/lib/bodies/bosses.ts';
 import { type Body, type BodyType } from '../../src/lib/bodies/kit.ts';
 import { hsl2rgb } from '../../src/lib/color.ts';
+import { MTYPES } from '../../src/lib/creatures.ts';
 import { G } from '../../src/lib/glyphs.ts';
 import * as lords from '../../src/lib/bodies/lords.ts';
 import * as small from '../../src/lib/bodies/small.ts';
@@ -74,7 +75,7 @@ for (const plan of ['quad', 'serpent', 'centipede', 'moth'])
     SPECS.push({ plan, kind: plan === 'quad' ? '竜' : '獣', legs: 6, wings, ...(wings ? { eyes: 5 } : {}), glyphs: ['#', '%', '&'] });
 
 describe('生き物の形', () => {
-  it('TypeScript に移す前と、同じ乱数で同じ形になる（見た目の乱数を引く順番が変わっていない）', () => {
+  it('形の指紋（形と、形を作る時に見た目の乱数を引く順番が、思わず変わっていない）', () => {
     let all = '';
     for (const f of TY_FORMS)
       for (const ty of TYS) {
@@ -88,10 +89,10 @@ describe('生き物の形', () => {
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
     caseOut('bodies-1', all);
-    expect(all.length).toBe(3627621);
-    expect(fnv(all)).toBe('264afb89'); // トロル・ゴーレム・クラーケン・ギタイムシ・ヘビ（trollForm2・golemForm2・krakenForm2・crabForm・snakeForm）を除き、移す前の実装で出した値と同じ（この5つは移した後で作り直した。作り直した王の影の一つ目の姿は、下の別のテスト）
+    expect(all.length).toBe(3798297);
+    expect(fnv(all)).toBe('5bcbce08'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
   });
-  it('主と大きな生き物の形：TypeScript に移す前と、同じ乱数で同じ形になる', () => {
+  it('主と大きな生き物の形の指紋（形と、形を作る時に見た目の乱数を引く順番が、思わず変わっていない）', () => {
     let all = '';
     for (const ty of TYS) {
       all += JSON.stringify(seeded(() => beasts.dragonForm(ty)));
@@ -100,7 +101,7 @@ describe('生き物の形', () => {
     for (const f of BOSS_FORMS) all += JSON.stringify(seeded(f));
     caseOut('bodies-2', all);
     expect(all.length).toBe(1792099);
-    expect(fnv(all)).toBe('7a018410'); // 移す前の実装で出した値から、蜘蛛の女王とナーガの女王の明るさ b だけを 0.6 倍（BOSS_DIM）にした値
+    expect(fnv(all)).toBe('7a018410');
   });
   it('どの点も、座標が有限で、文字の番号が文字の絵の表の中にあり、体のどこかが決まっている', () => {
     const bodies = [
@@ -221,6 +222,40 @@ describe('生き物の形', () => {
       expect(tis).toEqual(new Set([0, 1, 2, 3, 4, 5]));
       for (const ti of tis) expect(Math.min(...b.filter((p) => p.ti === ti).map((p) => p.piv))).toBe(0);
     }
+  });
+  it('吸血コウモリ：目は頭の表面のすぐ外（埋もれず、浮かない）、目のまわりに毛の点が無い。明るさ b は 1.8 まで。腕と脚の部位は無く（翼が羽ばたく）、翼の点はどれも向きと体からの距離を持つ', () => {
+    const B = beasts.BAT;
+    for (const ty of TYS) {
+      const b = seeded(() => beasts.batForm(ty));
+      for (const p of b) {
+        expect(p.b).toBeLessThanOrEqual(1.8);
+        expect(['body', 'head', 'wing']).toContain(p.part);
+      }
+      const eyes = b.filter((p) => p.col === B.eye),
+        fangs = b.filter((p) => p.col === B.fang);
+      expect(eyes.length).toBe(2);
+      expect(fangs.length).toBe(2);
+      for (const p of eyes) expect(beasts.batOut(B.head, p)).toBeGreaterThan(0.01);
+      for (const p of eyes) expect(beasts.batOut(B.head, p)).toBeLessThan(0.04);
+      for (const e of eyes)
+        for (const p of b.filter((q) => q.part === 'head' && q.col !== B.eye && q.col !== B.fang))
+          expect(Math.hypot(p.x - e.x, p.y - e.y, p.z - e.z)).toBeGreaterThan(0.04);
+      // 翼：左右とも同じ数。根もとは胴の横の半径より少し内（膜が胴に付いて見える）、先は胴より十分に外
+      const wing = b.filter((p) => p.part === 'wing'),
+        rs = wing.map((p) => p.r ?? NaN);
+      expect(wing.filter((p) => p.sd === -1).length).toBe(wing.filter((p) => p.sd === 1).length);
+      expect(wing.every((p) => p.sd === -1 || p.sd === 1)).toBe(true);
+      expect(Math.min(...rs)).toBe(B.wingRoot);
+      expect(B.wingRoot).toBeLessThan(B.body.r[0]);
+      expect(B.wingRoot).toBeGreaterThan(B.body.r[0] * 0.8);
+      expect(Math.max(...rs)).toBeGreaterThan(0.7);
+    }
+    // 本物の大きさで、翼の先（形の座標 × 大きさ）は、攻撃が当たる球（aim.ts の aimPoint・projs.ts：0.42 + 0.35 × 大きさ）の中
+    const sc = lookup(MTYPES, 'v').scale,
+      tip = Math.max(
+        ...seeded(() => beasts.batForm({ scale: sc, col: [0.9, 0.25, 0.38] })).map((p) => (p.part === 'wing' ? (p.r ?? NaN) : 0)),
+      );
+    expect(tip * sc).toBeLessThan(0.42 + 0.35 * sc);
   });
   it('ヘビ：点はどれも胴のうねり（slither）か舌（tongue）。明るさ b は 1.8 まで。目は頭の表面のすぐ外（埋もれず、浮かない）。頭は首より幅が広い', () => {
     const H = small.SNAKE;
