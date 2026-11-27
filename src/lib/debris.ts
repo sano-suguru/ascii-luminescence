@@ -3,11 +3,12 @@
 // 写し取る時と、文字ごとのばらつきは、その生き物の鍵の乱数（keyedRand('fall'…)）で決め、動かす間は乱数を引かない。なので、倒した段のほかの物も、ほかの段もずれない。
 // 描くのは体と同じ dyn の文字（足さない描き方で、にじみが無い）。何枚重なっても白くならない。
 import { must, nth } from './array.ts';
-import { drawMonster0, drawTentacles } from './bodies/draw.ts';
+import { drawMonster0, drawTentacles, krakenArms } from './bodies/draw.ts';
 import type { Body } from './bodies/kit.ts';
 import { levelSeed } from './levels.ts';
 import { cellLight } from './lightmap.ts';
 import { dCol, dPar, dPos, dyn } from './particles.ts';
+import { DYN_MAX } from './shaders.ts';
 import { keyedRand, withVisualRand } from './random.ts';
 import { type Mob, buf, clock, fight, gfx, here, player } from './state.ts';
 import { CELL, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MH, MW, TC, TP, TW, TX } from './world.ts';
@@ -61,7 +62,7 @@ export interface Debris {
 /** 崩れる体の数と、積もって残る文字の数の上限（越えたら古い物から早く消す） */
 export const DEBRIS_MAX = 12,
   DEBRIS_KEEP = 3000;
-/** 上から下まで外れるのにかかる秒・重さ・積もった文字が縮んで消える秒・明るすぎる文字（目・心臓の光など）とみなす値 */
+/** 上から下まで外れるのにかかる秒・重さ・積もった文字が縮んで消える秒・明るすぎる文字（目・心臓の光など）とみなす一番低い値 */
 const CRUMBLE = 0.5,
   GRAV = 12,
   SHRINK = 0.6,
@@ -79,7 +80,10 @@ const keepOf = (m: Mob): number => (m.ty.dummy ? 40 : m.ty.boss || m.ty.lord || 
 /** 積もった文字が消え始める基の秒 */
 const lifeOf = (m: Mob): number => (m.ty.dummy ? 3 : m.ty.boss || m.ty.lord ? 20 : 10);
 
-/** 今の体の文字を写し取る（体だけを描く処理を、その生き物の鍵の乱数で呼び、置いた文字を読んで、置いた数を戻す） */
+/**
+ * 今の体の文字を写し取る（体だけを描く処理（触手とクラーケンの腕も、生きている時の描き方 drawMonster1 と同じに選ぶ）を、その生き物の鍵の乱数で呼び、置いた文字を読んで、置いた数を戻す）。
+ * このフレームに置いた文字で置ける数（DYN_MAX）が足りず、体が途中で切れた時は、置いた文字を取っておいて、初めから置き直して写し、元に戻す
+ */
 function snapBody(m: Mob): { pos: number[]; col: number[]; gs: number[] } {
   const d0 = buf.dn,
     p0 = buf.pN,
@@ -87,19 +91,36 @@ function snapBody(m: Mob): { pos: number[]; col: number[]; gs: number[] } {
     col: number[] = [],
     gs: number[] = [];
   const mm: Mob & { form: Body } = { ...m, form: m.form || [] };
-  try {
-    gfx.drawBodyOnly = true;
+  const draw = (from: number): void => {
+    buf.dn = from;
     withVisualRand(keyedRand('fall look', levelSeed(), m.seq), () => {
-      if (m.ty.habitat === 'deep') drawTentacles(mm, clock.time);
+      if (m.ty.habitat === 'deep') (m.ty.form === 'kraken' ? krakenArms : drawTentacles)(mm, clock.time);
       drawMonster0(mm, clock.time);
     });
-    for (let k = d0; k < buf.dn; k++) {
+    pos.length = col.length = gs.length = 0;
+    for (let k = from; k < buf.dn; k++) {
       pos.push(nth(dPos, k * 3), nth(dPos, k * 3 + 1), nth(dPos, k * 3 + 2));
       col.push(nth(dCol, k * 3), nth(dCol, k * 3 + 1), nth(dCol, k * 3 + 2));
       gs.push(nth(dPar, k * 4), nth(dPar, k * 4 + 1));
     }
+  };
+  const keep = { pos: dPos.slice(0, 0), col: dCol.slice(0, 0), par: dPar.slice(0, 0) };
+  try {
+    gfx.drawBodyOnly = true;
+    draw(d0);
+    if (buf.dn >= DYN_MAX && d0 > 0) {
+      keep.pos = dPos.slice(0, d0 * 3);
+      keep.col = dCol.slice(0, d0 * 3);
+      keep.par = dPar.slice(0, d0 * 4);
+      draw(0);
+    }
   } finally {
     gfx.drawBodyOnly = false;
+    if (keep.pos.length) {
+      dPos.set(keep.pos);
+      dCol.set(keep.col);
+      dPar.set(keep.par);
+    }
     buf.dn = d0;
     buf.pN = p0;
   }
@@ -154,6 +175,17 @@ export function crumble(m: Mob, how?: string): void {
   }
   const K = keepOf(m),
     pk = Math.min(1, K / n);
+  // 明るすぎる文字（目・心臓などの光）：体の明るさの真ん中の2倍より明るく、GLOW も越える物。明るく描く生き物でも、体の大半は光に数えない
+  const lum: number[] = [];
+  for (let i = 0; i < n; i++) lum.push(Math.max(nth(col, i * 3), nth(col, i * 3 + 1), nth(col, i * 3 + 2)));
+  const glowAt = Math.max(
+    GLOW,
+    2 *
+      nth(
+        [...lum].sort((a, b) => a - b),
+        n >> 1,
+      ),
+  );
   for (let i = 0; i < n; i++) {
     const x = nth(pos, i * 3),
       y = nth(pos, i * 3 + 1),
@@ -167,8 +199,8 @@ export function crumble(m: Mob, how?: string): void {
     d.g[i] = nth(gs, i * 2);
     d.s[i] = nth(gs, i * 2 + 1);
     const hn = y1 > y0 ? (y - y0) / (y1 - y0) : 1;
-    // 明るすぎる文字（目・心臓などの光）は落とさず、すぐ消す
-    const glow = Math.max(nth(d.r, i), nth(d.gc, i), nth(d.b, i)) > GLOW;
+    // 明るすぎる文字は落とさず、すぐ消す
+    const glow = nth(lum, i) > glowAt;
     d.t0[i] = (1 - hn) * CRUMBLE + rnd() * 0.08;
     let ox = x - m.x,
       oz = z - m.z;
@@ -254,7 +286,8 @@ function stepOne(d: Debris, dt: number): void {
     if (st === GONE) continue;
     const s = nth(d.s, i);
     if (st === ON && t >= nth(d.t0, i)) {
-      st = FALL;
+      // 壁の中にある文字（壁に掛かっていた翼や腕）は、出られないので落とさず、塵にする
+      st = ground(nth(d.x, i), nth(d.z, i)) === 'solid' ? PUFF : FALL;
       d.st[i] = st;
       d.tl[i] = t;
     }
@@ -318,7 +351,7 @@ function stepOne(d: Debris, dt: number): void {
       }
       if (st !== FALL) d.st[i] = st;
     }
-    // 消え始める秒（数が多すぎる時は早める）
+    // 今の様子になってからの秒
     const age = t - nth(d.tl, i);
     let k = 1,
       size = s,
@@ -345,6 +378,7 @@ function stepOne(d: Debris, dt: number): void {
         yaw = nth(d.yaw, i);
         break;
       case REST: {
+        // 消え始める秒（数が多すぎる時は早める）
         const dieAt = Math.min(d.life * (0.6 + 0.3 * nth(d.u, i)), d.hurry + 0.8 * nth(d.u, i));
         size = s * REST_K;
         if (t >= dieAt) size *= 1 - (t - dieAt) / SHRINK;
