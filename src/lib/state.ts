@@ -1345,7 +1345,7 @@ export const keys: { KeyW?: boolean; KeyA?: boolean; KeyS?: boolean; KeyD?: bool
 export const vmKick = { L: -9, R: -9 };
 /** 光線を撃ち続けている間の、手ごとの記録（続けた秒 hold・最後に撃った時刻 last）。丸ごと入れ替えない */
 export const beamHold = { L: { hold: 0, last: -9 }, R: { hold: 0, last: -9 } };
-/** 漂う塵の粒（位置 x・y・z、揺れの位相 ph、文字 g、大きさ s。src/lib/particles.ts の initDust・respawnDust が置き、15-sound-fire.js が動かす）。丸ごと入れ替えない */
+/** 漂う塵の粒（位置 x・y・z、揺れの位相 ph、文字 g、大きさ s。src/lib/particles.ts の initDust・respawnDust が置き、src/lib/motes.ts の updateParticles が動かす）。丸ごと入れ替えない */
 export const dust = {
   x: new Float32Array(DUST_N),
   y: new Float32Array(DUST_N),

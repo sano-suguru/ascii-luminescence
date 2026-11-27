@@ -96,7 +96,6 @@ function flushDyn(){
 }
 
 // ---------------------------------------------------------------- particles
-// DUST_N・GAS_N・PT_TOTAL・P0 は src/lib/shaders.ts（src/game/imports.mjs で読む）
 // 粒子の配列 ptPos・ptCol・ptSize・ptGly は src/lib/particles.ts、描く形 gfx.ptGeo と属性 gfx.bpPos などは src/lib/state.ts（ここでその場で入れる）、粒子を動かす updateParticles は src/lib/motes.ts（src/game/imports.mjs で読む）
 gfx.ptGeo=new T.BufferGeometry();
 gfx.bpPos=new T.BufferAttribute(ptPos,3).setUsage(T.DynamicDrawUsage); gfx.bpCol=new T.BufferAttribute(ptCol,3).setUsage(T.DynamicDrawUsage); gfx.bpSize=new T.BufferAttribute(ptSize,1).setUsage(T.DynamicDrawUsage); gfx.bpGly=new T.BufferAttribute(ptGly,1).setUsage(T.DynamicDrawUsage);

@@ -33,6 +33,8 @@ export async function motesCases(F, A, seeds) {
     player: { ...player },
     buf: { ...buf },
     gfx: { ptGeo: gfx.ptGeo, bpPos: gfx.bpPos, bpCol: gfx.bpCol, bpSize: gfx.bpSize, bpGly: gfx.bpGly },
+    // 中身を書き換える配列（粒子・塵・描く粒子）は写しを取って、終わったら書き戻す
+    arrays: [...Object.values(P), ...Object.values(dust), A.ptPos, A.ptCol, A.ptSize, A.ptGly].map((a) => [a, a.slice()]),
   };
   // GPU に渡す形と属性（05-renderer.js と同じ作り方。three.js は作る時に Math.random を引くので、場合の前に作る）
   const geo = new THREE.BufferGeometry(),
@@ -166,6 +168,7 @@ export async function motesCases(F, A, seeds) {
     Object.assign(player, keep.player);
     Object.assign(buf, keep.buf);
     Object.assign(gfx, keep.gfx);
+    for (const [a, copy] of keep.arrays) a.set(copy);
   }
   return out.join('\n');
 }
