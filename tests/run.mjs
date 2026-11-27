@@ -22,6 +22,7 @@ const SEC = {
   world: 60,
   title: 52,
   touch: 40,
+  auto: 45,
   determinism: 30,
   inventory: 18,
   levels: 14,

@@ -6,6 +6,7 @@
 // 公開する時は、capabilities に db（diag は持ち主だけが読み書き）と user を渡す（CLAUDE.md の「Artifact に公開する」）。
 import { nth } from './array.ts';
 import { sndState } from './audio.ts';
+import { autoSt } from './auto.ts';
 import { placeKey } from './levels.ts';
 import { adv, fight, gear, ui } from './state.ts';
 import { setTookSink } from './took.ts';
@@ -33,6 +34,18 @@ const KEEP = { fps: 60, events: 50, errors: 20, took: 40, slow: 40, menu: 100 };
 const SLOW_MS = 100;
 /** 速さをまとめる間（ミリ秒）と、書き込みの間 */
 const SPAN = 10_000;
+
+/** 自動で遊んだ記録（src/lib/auto.ts。欄 auto に書く） */
+const autoRec = (): Record<string, unknown> => ({
+  laps: autoSt.laps,
+  quick: autoSt.quick,
+  lap: autoSt.lap,
+  step: autoSt.step,
+  done: autoSt.done,
+  stop: autoSt.stop,
+  wakeLock: autoSt.wakeLock,
+  steps: autoSt.steps,
+});
 
 /** 今の場所（タイトル・探索中・止まっている・死んだ） */
 const phase = (): string =>
@@ -120,7 +133,7 @@ export async function initDiag(): Promise<void> {
     dirty = false;
     busy = true;
     doc
-      .set({ ...rec, saved: since() })
+      .set({ ...rec, ...(autoSt.on ? { auto: autoRec() } : {}), saved: since() })
       .catch((e: unknown) => {
         // 書けなかった時は、次の機会にもう一度（書けない理由は、エラーとして残す）
         dirty = true;
@@ -149,6 +162,8 @@ export async function initDiag(): Promise<void> {
     cast: gear.castSt?.h ?? '',
     projs: fight.projs.length > 0,
     audio: sndState(),
+    // 自動で遊んでいる段（src/lib/auto.ts。遅いフレームの「近く」に段の名前が出る）
+    ...(autoSt.on ? { auto: autoSt.step } : {}),
   });
   let last = flags();
   // メニューを開いてから最後に押した項目と時刻（メニューが閉じたら null）

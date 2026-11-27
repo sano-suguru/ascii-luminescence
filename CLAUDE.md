@@ -58,6 +58,11 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      場面が切り替わる時の処理にかかった時間・遅いフレーム・メニューで押した項目（押し間違いの目安）・エラーを Artifact のデータベースの diag に書く initDiag。
                      Claude が ArtifactData の道具で読む。window.claude.use が無い所では何もしない）、took：かかった時間を診断の記録に渡す took（記録していない時は何もしない。
                      levels.ts などが diag.ts を直に読むと輪になるので、間に置く）、
+                     auto：自動で遊ぶ（?auto=<周の数 1〜9>・?auto=quick。台本 AUTO_STEPS（迷宮に入る・歩く・見回す・生き物を置いて撃つ・階段を下りる・メニュー・装備・死んで新しい探索へ）を、
+                     ページの中で合成した指の事件で、本物の時計で流す。段ごとのフレームの数・平均・一番遅い1回・遅いフレームの数を autoSt に貯め、診断の記録が欄 auto に書く。
+                     自動の間は localStorage に書かない（autoGuard。00-test-mode.js が初めに呼ぶ）。開発用モードはオンにせず、dbg の中身を直に呼ぶ（AutoHooks。30-loop-init.js が渡す）。
+                     1周目のシードは AUTO_SEED。死ぬ段の前までは不死。縦向き・隠れている間は待って数えない。Wake Lock を頼む。テスト用モードでは動かない。
+                     合成した指の事件なので手触りは、自動再生の決まりで音は、確かめない）、
                      screens：マウスを捕まえる tryLock（指で遊んでいる間は捕まえにいかない）・失敗した時 lockFailed（一度も捕まえていないか、最後に捕まえてから3回続けて失敗したら（外れてから1.5秒の間の分は数えない）、捕まえられないと決め、ドラッグの案内を1回出す。それまでは、次のクリックでまた捕まえる。Esc のキーを処理している間 ui.escKey は捕まえにいかない）・捕まえる遊び方で探索中なのにマウスが外れているか lockLost・描く画面を押した時に、lockLost なら捕まえ直すだけにする relockClick・外れた時にメニューを開くか menuOnUnlock・ページが隠れた時（アプリの切り替えなど。指で遊ぶ時はマウスが外れないので、こちらで止める）にメニューを開くか menuOnHide（どちらも探索中で、止まっている画面が開いていない時だけ）・「クリックで視点操作に戻る」の一言 updateResume（lockLost の時だけ出す。止まっている間・死んだ時・タイトルでは CSS が隠す）・視点 setCamMode・音量 sndToggle（選んだ段は al_snd に残し、ページを開いた時に loadSndLevel で読む）、particles：粒子を出す spawn・消す killP と、世界の中に文字を置く dyn（配列も。描き方 mode は、こちらを向く・床に寝かせる（1 を越えた分は文字を起こす角度）・立てる）と、漂う塵を置く initDust・respawnDust と、描く粒子の配列 ptPos・ptCol・ptSize・ptGly、motes：粒子を動かす（塵・沼のガスの粒 updateGasPoints・川のさざ波 riverFX・粒子と火の粉を動かして GPU に渡す数を書く updateParticles）、camera：霧と目の慣れ updateAtmosphere・3人称の自分の姿 updateAvatar・岩の中か rockAt・カメラと自分の間の岩の断面 drawSection、
                      debris：倒れた生き物が崩れる（倒れた時の体を写し取る crumble。文字が上から順に外れて落ち、床に寝て小山に積もり、1つずつ縮んで消える。動かして描く updateDebris は tick の段 debris。
                      ばらつきは生き物ごとの鍵の乱数 keyedRand('fall'…) で先に決め、見た目の乱数 mr() は引かない。数の上限：1体に残す文字は、ふつう120・主と大きな物250・試しの間の的40、崩れる体は12・残る文字は全体で3000。テスト用の様子 debrisInfo）、legend：今の探索の伝説の物 getLegend と状態の表示の1行・伝説の物の読み方（legendOfBranch・legendAll・descentSealed）と世界の中に描く drawLegendWorld と神託所の手がかり oracleLegendHints、
@@ -120,9 +125,11 @@ tools/transitions.mjs  場面が切り替わる時の確かめ（node tools/tran
 tools/diag-report.mjs  診断の記録を表にする（node tools/diag-report.mjs <ファイルかフォルダ…>。ArtifactData の道具の list に out_dir を付けて保存した JSON。
                      音の部品の移り変わり・かかった時間の名前ごとの回数と中央と最大・遅いフレームを近くの処理ごとに・メニューの押し方（menuRows。1.5秒以内に別の項目を押した・切り替えを押し戻した回数）・時刻の順の一覧）
 tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ（描き方の引数 GL_ARGS）・テスト用モードのページ。newPage の device で、Playwright の端末の名前（スマホの真似）で開ける。ページはポインタロックを差し替えて止める（realLock で止めない）。環境変数 AL_PREBUILT が 1 なら、組み立て済みとして組み立てない。withBrowser の root で、別の作業場所を組み立てて配信する（tools/field.mjs の --rev））
-tests/run.mjs        ブラウザのテストをまとめて走らせる（pnpm test）：テスト版と Artifact 版を1回だけ組み立て、11のテスト（画面写真の比較 visual も。一覧はおよその秒の表 SEC。tests/ に SEC にも部品の一覧 NOT_TESTS にも無い .mjs があれば止める）を同時に3つずつ走らせる（--jobs で数、名前を挙げるとそれだけ、--shard i/n で n 組に分けた i 組目だけ。分け方はおよその秒の表 SEC で、組ごとの合計が近くなるように決める）。
+tests/run.mjs        ブラウザのテストをまとめて走らせる（pnpm test）：テスト版と Artifact 版を1回だけ組み立て、12のテスト（画面写真の比較 visual も。一覧はおよその秒の表 SEC。tests/ に SEC にも部品の一覧 NOT_TESTS にも無い .mjs があれば止める）を同時に3つずつ走らせる（--jobs で数、名前を挙げるとそれだけ、--shard i/n で n 組に分けた i 組目だけ。分け方はおよその秒の表 SEC で、組ごとの合計が近くなるように決める）。
                      どのテストも自分のブラウザと空いているポートを使うので、ぶつからない。出力はテストごとにまとめて出す。1つが10分を越えたら止めて、それまでの出力を出す
 tests/smoke.mjs      開発用の探索で dbg が動くか ＋ 探索の始め直しで前の場所や状態が残らないか ＋ メニューの「もう一度押して確かめる」待ちが4秒で消えるか ＋ 図鑑を開いても探索の記録が変わらないか ＋ 閉じた祭壇の画面が、装備の画面やメニューを開いて閉じても、離れるまで開かないか ＋ 起きている竜を見た時の伝言 ＋ 最深部で伝説の物を3つ持つと王の影が出て、背の高さと画面への収まりが決めたとおりか、体力を減らすと二つ目の姿になり、大きさが天井に合うか ＋ 伝説の物が揃っていない時は、12階の異界を抜けても最深部に出ないか（画面写真は tests/out/）
+tests/auto.mjs       自動で遊ぶ（?auto=quick）を、テスト用モードでなく本物の時計で流し、エラーが無い・全部の段を通る・うまくいかなかった段が無い（撃って当たったかも）・診断の記録の欄 auto・
+                     localStorage に何も書かない、を確かめる（この環境で1分ほど）
 tests/title.mjs      タイトルの画面（どれもテスト用モードでない時のページ）：タイトルの画面が出るか ＋ 開発用モードのまま読み直した時・保存が使えない時のタイトル ＋
                      自動再生を許さないブラウザの真似で、音の部品がタイトルでは動かず、［迷宮に入る］を押すと動き出すか（診断の記録で見る）（画面写真は tests/out/）
 tests/page-fakes.mjs  テストと道具の部品：偽の window.claude（fakeClaude）・自動再生を許さないブラウザの音の部品の真似（strictAudio。本物の操作の事件を処理している間に作るか resume した時だけ動く。
@@ -214,6 +221,7 @@ tests/unit/bodies-legacy.test.mjs  形を選んで作る処理（buildForm と�
                      たくさんの場合を作る bodies-legacy-cases.mjs（全部の種類と主・古い形・年代記の獣の形、見た目の特徴を直接足す、まわりの飾りを何フレームか続けて呼ぶ、
                      偽の Web Audio と偽の localStorage）を使う。頭の上の印の高さ（src/lib/hud.ts の MARK_H と markHeight）が、表のどの種類でも体の一番上より 0.1 から 0.7 上か
                      （水から出入りする魚・ウナギ・クラーケン、主・忘れられた獣、印を出さない種類は除く）
+tests/unit/auto.test.ts  自動で遊ぶ（src/lib/auto.ts）の URL の読み方と、台本の段の並び
 tests/unit/diag-report.test.mjs  診断の記録の表（tools/diag-report.mjs）の単体テスト（メニューの押し方の数え方）
 tests/unit/inline-all.test.mjs  Artifact 版の組み立て（inlineAll）が、JS と CSS を中に書き、壊れる形（</script・<!--・</style）・HTML の外に残るファイル・大きすぎる物を止めるか（出力の束の小さな偽物で）
 tests/unit/modules.test.mjs  src/lib のどのモジュールも、単独で読めるか（読み込みが輪になって、まだ作っていない値を使っていないか。ファイルごとに別の Node で読む）
@@ -256,7 +264,7 @@ pnpm typecheck        # 型を確かめる（TypeScript 7 の tsc。src/lib/ と
 pnpm test:unit        # 単体テスト（Vitest。tests/unit/）
 pnpm map [語]         # ゲーム本体の地図。語を付けると、見出しにその語を含むファイルだけ（例：pnpm map fire）
 pnpm where index-D0mETEmY.js:4321:12   # 組み立てた JS のその場所が、src/game/ のどこか（行だけも可。--test でテスト版）
-pnpm test             # スモーク・タイトル・サンドボックスの iframe・画面写真の比較・図鑑・世界とのやり取り・指で遊ぶ時・装備の画面・全部の階・同じ結果・枠（tests/run.mjs が同時に3つずつ走らせる。オフラインで動く。2分ほど。1つだけは node tests/smoke.mjs など）
+pnpm test             # スモーク・タイトル・自動で遊ぶ・サンドボックスの iframe・画面写真の比較・図鑑・世界とのやり取り・指で遊ぶ時・装備の画面・全部の階・同じ結果・枠（tests/run.mjs が同時に3つずつ走らせる。オフラインで動く。2分ほど。1つだけは node tests/smoke.mjs など）
 pnpm test:visual      # 画面写真の比較だけ（1分ほど）。違えば tests/out/visual/ に違いの画像
 pnpm shots [名前…]    # 図鑑の生き物を見やすい角度で写す（既定は竜・主たちの12枚（tools/shots.mjs の PICK）。--all で全部、--bare で図鑑の枠を隠す、--out で置き場所、
                       #   --views で生き物ごとに角度の一揃いの7枚（枠を隠し、真ん中の 540×540。形や色を直す時に。例：pnpm shots トロル --views）と、体のまわりを大きくして並べた1枚
@@ -427,6 +435,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 ## 開発用の道具
 **URLの指定**：`?dev=1`（開発用モード：すべて解放済み、dbg が使える）、`seed=`、`depth=`、`god=1`、
 `branch=`、`realm=`、`to=`、`give=`、`reveal=`
+`?auto=<周の数>`・`?auto=quick`（自動で遊ぶ。開発用モードとは別。src/lib/auto.ts）
 
 **dbg（F2の画面と window.dbg）**：
 `dbg.help()`、`info()`、`go(深度)`、`inter(key)`（地下の町 town / 大広間 bigroom / 神託所 oracle / 砦 fortress）、
