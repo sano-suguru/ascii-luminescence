@@ -6,11 +6,10 @@
 window.addEventListener('resize',()=>{ applySize('resize'); sizeMap(); });
 
 // ---------------------------------------------------------------- test hooks (only with ?test=1; see the test mode block at the top)
-let testBoot=false;
 if(TEST)window.__test={
   step:TEST_STEP,
-  ready(){ return testBoot===true&&!!here.D; },
-  error(){ return typeof testBoot==='string'?testBoot:null; },
+  ready(){ return clock.testBoot===true&&!!here.D; },
+  error(){ return typeof clock.testBoot==='string'?clock.testBoot:null; },
   // step the game without drawing (fast); returns the game time
   advance(sec){ const n=Math.max(0,Math.round(sec/TEST_STEP)); for(let i=0;i<n;i++)testTick(false); return +clock.time.toFixed(4); },
   // step and draw n frames (one per animation frame)
@@ -219,6 +218,6 @@ async function init(){
   sndPrep();
   requestAnimationFrame(frame);
 }
-if(TEST)init().then(()=>{ dbgUrl(); testBoot=true; }).catch(e=>{ console.error(e); testBoot='error: '+e; });
+if(TEST)init().then(()=>{ dbgUrl(); clock.testBoot=true; }).catch(e=>{ console.error(e); clock.testBoot='error: '+e; });
 else { init().then(()=>initAuto({ toStairs:()=>dbg.to('stairs'), clear:()=>{ dbg.clear(); }, hurt:n=>{ dbg.hurt(n); }, summon:(k,i)=>{ summon(k,i); }, title:()=>redrawIntroLater() })).catch(e=>console.error(e));
   setTimeout(()=>{ try{ dbgUrl(); }catch(e){ console.error(e); } },400); }

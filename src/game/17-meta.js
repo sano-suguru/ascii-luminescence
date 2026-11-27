@@ -7,7 +7,6 @@ try{ saved.DEVALL=localStorage.getItem('al_dev')==='1'; }catch(e){}
 // 記録 META を保存する saveMeta は src/lib/save.ts、解放の確かめ（unlocked・lockedOf・weaponPool）は src/lib/unlocks.ts（src/game/imports.mjs で読む）
 // loreLeft は src/lib/unlocks.ts（src/game/imports.mjs で読む）
 // 試練を選んでいるか trialOn は src/lib/unlocks.ts（古い JS は読まない）
-let introMode='main';
 function buildUnlockPanel(){ const el=document.getElementById('intropanel'); if(!el)return; const f=t=>`<span class="f">${t}</span>`, KIND={weapon:'武器',rune:'ルーン',bless:'恩恵',build:'ビルド',trial:'試練'};
   const rows=[f('+-- 解放 ---'),`${f('|')} 伝承を使って、選べるものを増やす。　使える伝承 <b style="color:#ffe3a0">${loreLeft()}</b>`,f('|')];
   for(const u of UNLOCKS){ const done=unlocked(u.id), can=!done&&u.cost<=loreLeft();
@@ -15,7 +14,7 @@ function buildUnlockPanel(){ const el=document.getElementById('intropanel'); if(
     rows.push(`${f('|')}               <span class="dim">${u.desc}</span>`); }
   rows.push(f('|'),`${f('|')} <button class="sl" id="unlBack" type="button">[ もどる ]</button>`,f('+---'));
   el.innerHTML=boxText(rows);
-  document.getElementById('unlBack').addEventListener('click',()=>{ introMode='main'; buildIntroPanel(); });
+  document.getElementById('unlBack').addEventListener('click',()=>{ ui.introMode='main'; buildIntroPanel(); });
   for(const b of el.querySelectorAll('button[data-unl]'))b.addEventListener('click',()=>{ const u=UNLOCKS.find(x=>x.id===b.dataset.unl); if(!u||unlocked(u.id)||u.cost>loreLeft())return; saved.META.unl=[...(saved.META.unl||[]),u.id]; saved.META.spent=(saved.META.spent||0)+u.cost; saveMeta(); sndInit(); sChime(0,0,0.5); buildUnlockPanel(); }); }
 function buildIntroPanel(){
   const devOn=saved.DEVALL; if(!devOn)ui.startDepth=1; const seedKeep=(document.getElementById('seedIn')||{}).value||'';
@@ -24,7 +23,7 @@ function buildIntroPanel(){
   // 自動で試している間は、どちらも出さない（開発用モードを変えると、台本の中身が変わるため）
   if(devOn)ui.devSeen=true; const devBtn=(ui.devSeen||ui.owner)&&!autoSt.on, autoBtn=canOfferAuto();
   const el=document.getElementById('intropanel'); if(!el)return; const f=t=>`<span class="f">${t}</span>`;
-  if(introMode==='unlock'){ buildUnlockPanel(); return; }
+  if(ui.introMode==='unlock'){ buildUnlockPanel(); return; }
   const galRow=`${f('|')} <button class="sl" id="galB" type="button">[ 図鑑 ]</button>  <button class="sl" id="galR" type="button">[ 試しの間 ]</button>   `;
   // 指で触る端末（スマホなど）では、キーボードの操作の一覧を出さない（使えない操作で、背の低い画面ではタイトルが収まらなくなるため）
   const coarse=!!(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches);
@@ -46,7 +45,7 @@ function buildIntroPanel(){
     // ［自動で試す］は［開発用モード］の真下に並べる
     ...(autoBtn?[`${f('|')}${' '.repeat(visW(galRow)-1)}<button class="sl" id="autoB" type="button">[ 自動で試す ]</button>`]:[]),f('+---')]);
   document.getElementById('galB').addEventListener('click',()=>{ sndInit(); openBestiary(); });
-  document.getElementById('unlockB').addEventListener('click',()=>{ introMode='unlock'; buildIntroPanel(); });
+  document.getElementById('unlockB').addEventListener('click',()=>{ ui.introMode='unlock'; buildIntroPanel(); });
   for(const b of el.querySelectorAll('button[data-trial]'))b.addEventListener('click',()=>{ const k=b.dataset.trial, T=new Set(saved.META.trials||[]); if(T.has(k))T.delete(k); else T.add(k); saved.META.trials=[...T]; saveMeta(); buildIntroPanel(); });
   document.getElementById('galR').addEventListener('click',()=>openRange());
   if(autoBtn)document.getElementById('autoB').addEventListener('click',()=>startAuto());
@@ -100,13 +99,12 @@ gfx.canvas.addEventListener('wheel',e=>{ if(!ui.started||isPaused()||!gear.hands
 // 次のビルドに持ち替える（ホイールと、指の操作の [持ち替え]。続けて回した時は 0.35 秒あける）。buildsHave は src/lib/hotbar.ts
 function nextBuild(){ if(!ui.started||isPaused()||!gear.hands)return; const have=buildsHave(); if(!have.length||clock.time-(gfx.canvas.wheelT||-9)<0.35)return; gfx.canvas.wheelT=clock.time;
   const pos=Math.max(0,have.indexOf(gear.buildIdx)), next=have[(pos+1)%have.length]; const prev=snapHands(); if(applyBuild(next)){ startSwap(prev); flashHint(`ビルド${next+1}`,900); } renderHotbar(); }
-let downAt=null;
-gfx.canvas.addEventListener('mousedown',e=>{ if(!ui.started||isPaused())return; if(relockClick()){ gfx.canvas.focus(); return; } if(e.button===2){ beginCast('R'); return; } if(ui.locked&&e.button===0){ beginCast('L'); return; } if(e.button===0){ downAt=[e.clientX,e.clientY]; beginCast('L'); } dragging=true; lmx=e.clientX; lmy=e.clientY; if(!ui.locked)tryLock(); gfx.canvas.focus(); updateResume(); });
-window.addEventListener('mouseup',e=>{ if(gear.hands){ if(e.button===0)releaseCast('L'); if(e.button===2)releaseCast('R'); } downAt=null; dragging=false; updateResume(); });
+gfx.canvas.addEventListener('mousedown',e=>{ if(!ui.started||isPaused())return; if(relockClick()){ gfx.canvas.focus(); return; } if(e.button===2){ beginCast('R'); return; } if(ui.locked&&e.button===0){ beginCast('L'); return; } if(e.button===0){ ui.downAt=[e.clientX,e.clientY]; beginCast('L'); } ui.dragging=true; ui.lmx=e.clientX; ui.lmy=e.clientY; if(!ui.locked)tryLock(); gfx.canvas.focus(); updateResume(); });
+window.addEventListener('mouseup',e=>{ if(gear.hands){ if(e.button===0)releaseCast('L'); if(e.button===2)releaseCast('R'); } ui.downAt=null; ui.dragging=false; updateResume(); });
 window.addEventListener('mousemove',e=>{
   if(!ui.started)return;
   if(ui.locked){ player.yaw-=e.movementX*0.0022; player.pitch-=e.movementY*0.0022; }
-  else if(dragging){ player.yaw-=(e.clientX-lmx)*0.0045; player.pitch-=(e.clientY-lmy)*0.0045; lmx=e.clientX; lmy=e.clientY; }
+  else if(ui.dragging){ player.yaw-=(e.clientX-ui.lmx)*0.0045; player.pitch-=(e.clientY-ui.lmy)*0.0045; ui.lmx=e.clientX; ui.lmy=e.clientY; }
   player.pitch=clamp(player.pitch,-1.35,1.35);
 });
 // Esc：捕まえていない時は、メニューを開け閉めする。Esc で閉じた時は捕まえない（下の ui.escKey）。捕まえる遊び方なら、その後は
@@ -149,7 +147,7 @@ void initDiag(()=>redrawIntroLater());
 // Esc のキーを処理している間は、マウスを捕まえにいかない（ui.escKey。Esc のキーで掛けたロックは、ブラウザがすぐ外し、外れた事件でメニューが開いてしまうため）
 window.addEventListener('keydown',e=>{ ui.escKey=e.code==='Escape'; try{ onKeyDown(e); } finally{ ui.escKey=false; } });
 window.addEventListener('keyup',e=>{ keys[e.code]=false; });
-window.addEventListener('blur',()=>{ for(const k in keys)keys[k]=false; dragging=false; });
+window.addEventListener('blur',()=>{ for(const k in keys)keys[k]=false; ui.dragging=false; });
 // ページが隠れたら（アプリの切り替えなど）、押しているキーと指を離したことにし、溜めている詠唱を散らし、探索中ならメニューを開いて止める（src/lib/screens.ts の menuOnHide）
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden)return; for(const k in keys)keys[k]=false; dragging=false; releaseTouch(); if(menuOnHide())setMenu(true); });
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden)return; for(const k in keys)keys[k]=false; ui.dragging=false; releaseTouch(); if(menuOnHide())setMenu(true); });
 

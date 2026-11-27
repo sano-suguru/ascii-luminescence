@@ -74,8 +74,10 @@ export interface Clock {
   warm: number;
   /** テスト用モードの時計（テスト用モードでない時は null。00-test-mode.js がその場で入れる） */
   TESTCLK: TestClock | null;
+  /** テスト用モードで、用意ができたか（true）、用意の途中で止まったわけ（'error: …'）、まだか（false）。__test.ready・error が読む */
+  testBoot: boolean | string;
 }
-export const clock: Clock = { time: 0, frame: 0, last: 0, fovT: 0, mapT: 0, perfT: 0, perfAcc: 0, perfN: 0, warm: 0, TESTCLK: null };
+export const clock: Clock = { time: 0, frame: 0, last: 0, fovT: 0, mapT: 0, perfT: 0, perfAcc: 0, perfN: 0, warm: 0, TESTCLK: null, testBoot: false };
 /** テスト用モードの1歩の秒（ゲームの1/30秒） */
 export const TEST_STEP = 1 / 30;
 /** テスト用モードの __test.frames(n) が描いて進める残りの数と、終わった時に呼ぶ物。丸ごと入れ替えない */
@@ -211,6 +213,16 @@ export interface Ui {
   unlockedAt: number;
   /** Esc のキーを処理している間か（その間は tryLock が捕まえにいかない） */
   escKey: boolean;
+  /** エラーを出す所 #err（00-test-mode.js がその場で入れる。WebGL を作れなかった時に書く） */
+  errEl: HTMLElement | null;
+  /** マウスを捕まえていない時に、描く画面を押してドラッグしているか と、前のマウスの位置（見回す） */
+  dragging: boolean;
+  lmx: number;
+  lmy: number;
+  /** 左のボタンを押した所（書くだけで、読む所は無い） */
+  downAt: [number, number] | null;
+  /** タイトルの画面に出している物（'main'：タイトル、'unlock'：解放の画面） */
+  introMode: 'main' | 'unlock';
   /** 指で遊んでいるか（指で触れたら true、マウスを動かしたら false。src/lib/touch.ts。この間は tryLock が捕まえにいかない） */
   touch: boolean;
   /** 指で遊んでいて、画面が縦向きか（探索中は止めて、横にする案内を出す。src/lib/touch.ts の updatePortrait） */
@@ -328,6 +340,12 @@ export const ui: Ui = {
   lockTries: 0,
   unlockedAt: -1e9,
   escKey: false,
+  errEl: null,
+  dragging: false,
+  lmx: 0,
+  lmy: 0,
+  downAt: null,
+  introMode: 'main',
   touch: false,
   portrait: false,
   devSeen: false,

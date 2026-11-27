@@ -29,7 +29,7 @@ clock.TESTCLK=TEST?(()=>{
       if(typeof e.fn==='function')try{ e.fn(...e.args); }catch(err){ queueMicrotask(()=>{ throw err; }); } }
     now=end; }, realTimeout };
 })():null;
-const errEl=document.getElementById('err');
+ui.errEl=document.getElementById('err');
 // three.js と、光のにじみなどの部品 T は src/lib/three.ts（src/game/imports.mjs で読む）
 // 自動で試す（?auto）間は、localStorage に書かない（保存の処理より先に。src/lib/auto.ts）
 autoGuard();
