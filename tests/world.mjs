@@ -884,6 +884,15 @@ async function hitGlowChecks(pg, base) {
   }
   // 光り終わったフレーム（照準の先のまま、気づいている。弾けた粒が引くと白さも引くので、すぐ写す）
   for (let k = 0; k < 15 && (await mob())?.hitT > 0; k++) await frames(pg, 1);
+  // 当たって吹き飛び、照準から外れていたら、合わせ直してから写す
+  if (!(await mob())?.aimed)
+    try {
+      await aimAt(pg, 'T');
+      await frames(pg, 1);
+    } catch (e) {
+      errs.push(`21：${e.message}（テストの前提が崩れた）`);
+      return;
+    }
   const m = await mob();
   if (!(m && m.hitT === 0 && m.aimed && m.glow > 1.5)) {
     errs.push(`21：光り終わった後、気づいたトロルが照準の先にいない（テストの前提が崩れた。${JSON.stringify(m)}）`);
