@@ -1,5 +1,5 @@
 // 状態の表示と、まわりへの気配（もとは src/game/12-hud-text.js、02-constants.js の placeLabel、06-world.js の showHint、26-spells-hud.js の isPaused、
-// 27-rune-screen.js の renderBook・updateSearch）。状態の入れ物 here・player・adv・ui・stealth・lantern・hudInfo・vfx・clock・keys・blaze（投げた火花）・saved（魔導書）に頼り、画面の #status・#help・#hint に書く。
+// 27-rune-screen.js の renderBook・updateSearch）。状態の入れ物 here・player・adv・ui・stealth・lantern・hudInfo・vfx・clock・keys・saved（魔導書）に頼り、画面の #status・#help・#hint に書く。
 // 状態の表示（体力・経験・場所・明るさ・伝説の物・見つかっているか・速さ）、明るさと気配の範囲、年代記・操作の案内・魔導書、表示の量、
 // 生き物に見つかった時と物音、立ち止まって辺りを調べる、生き物の頭の上の印（世界の中に文字を置く）
 import { lookup, must, nth } from './array.ts';
@@ -16,7 +16,7 @@ import { dyn } from './particles.ts';
 import { expNeed } from './progress.ts';
 import { clamp } from './rng.ts';
 import { REACT } from './runes.ts';
-import { type Mob, type Monster, adv, blaze, clock, here, hudInfo, keys, lantern, player, saved, stealth, ui, vfx } from './state.ts';
+import { type Mob, type Monster, adv, clock, here, hudInfo, keys, lantern, player, saved, stealth, ui, vfx } from './state.ts';
 import { SPECIALS } from './strata.ts';
 import { boxText, visW } from './text.ts';
 import { trialOn } from './unlocks.ts';
@@ -54,7 +54,7 @@ export function flashHint(h: string, ms: number): void {
 }
 
 /**
- * 明るさと気配：足元の明るさ（灯り・光る生き物・投げた火花・手元の灯り）から明るさの段を決め、生き物に気づかれる範囲と手元の灯りを変える。
+ * 明るさと気配：足元の明るさ（灯り・光る生き物・手元の灯り）から明るさの段を決め、生き物に気づかれる範囲と手元の灯りを変える。
  * 段か忍び足か見つかっているかが変わったら、状態の表示を描き直す
  */
 export function updateStealth(dt: number): void {
@@ -65,10 +65,6 @@ export function updateStealth(dt: number): void {
       const d = Math.hypot(m.x - player.x, m.z - player.z);
       if (d < m.ty.light) L += (1 - d / m.ty.light) ** 2 * 0.6;
     }
-  }
-  if (blaze.spark) {
-    const d = Math.hypot(blaze.spark.x - player.x, blaze.spark.z - player.z);
-    if (d < 5) L += (1 - d / 5) ** 2 * 1.2;
   }
   L += stealth.sneak ? 0.02 : 0.12;
   stealth.lum += (L - stealth.lum) * Math.min(1, dt * 4);
