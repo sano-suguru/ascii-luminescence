@@ -147,6 +147,10 @@ describe('生き物の形', () => {
         const root = legs.find((p) => `${Math.sign(p.x)},${p.pz}` === k && Math.abs(p.y - p.piv) < 1e-9 && Math.abs(p.z - p.pz) < 1e-9);
         expect(root).toBeDefined();
       }
+      // 左右で互い違い：同じ対（付け根の奥行きが同じ）の左と右は、別の組で動き、前と真ん中の脚も、同じ側では別の組
+      const partOf = (k: string): string => [...(byLeg.get(k) ?? [])].join();
+      for (const z of ['0.18', '0.24', '0.3']) expect(partOf(`-1,${z}`)).not.toBe(partOf(`1,${z}`));
+      for (const sd of ['-1', '1']) expect(partOf(`${sd},0.3`)).not.toBe(partOf(`${sd},0.24`));
       expect(legs.filter((p) => p.part === 'legL').length).toBe(legs.filter((p) => p.part === 'legR').length);
       // 脚のほかに、回る部位は無い（腕は無い）
       expect(b.some((p) => p.part === 'armL' || p.part === 'armR')).toBe(false);
