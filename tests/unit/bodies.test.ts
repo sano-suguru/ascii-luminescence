@@ -138,6 +138,40 @@ describe('生き物の形', () => {
       expect([axis('legL'), axis('legR')]).toEqual([new Set(['0.62,0']), new Set(['0.62,0'])]);
     }
   });
+  it('氷のハウンド：前脚の点は肩を、後脚の点は腰を軸に回る。目と背中の氷は体の表面のすぐ外（埋もれず、浮かない）。明るさ b は 1.8 まで', () => {
+    const T = beasts.houndTorso,
+      H = beasts.houndHead,
+      C = beasts.HOUND_ICE;
+    for (const ty of TYS) {
+      const b = seeded(() => beasts.iceHoundForm(ty));
+      for (const p of b) {
+        expect(p.b).toBeLessThanOrEqual(1.8);
+        expect(['body', 'head', 'legL', 'legR', 'tail']).toContain(p.part);
+      }
+      // 脚：前（z > 0）の点は肩の軸、後ろの点は腰の軸。前の左と後ろの右が同じ part（同じ向きに振れる）
+      for (const p of b.filter((q) => q.part === 'legL' || q.part === 'legR')) {
+        expect(`${p.piv},${p.pz}`).toBe(p.z > 0 ? '0.82,0.3' : '0.8,-0.32');
+        expect(p.part).toBe(p.z > 0 === p.x < 0 ? 'legL' : 'legR');
+      }
+      // 目：頭の楕円の表面のすぐ外（楕円の式で 1 より少し大きい）
+      const eyes = b.filter((p) => p.col === C.eye);
+      expect(eyes.length).toBe(2);
+      for (const p of eyes) {
+        const k = Math.hypot((p.x - H.c[0]) / H.r[0], (p.y - H.c[1]) / H.r[1], (p.z - H.c[2]) / H.r[2]);
+        expect(k).toBeGreaterThan(1.03);
+        expect(k).toBeLessThan(1.2);
+      }
+      // 背中の氷：どの点も背の表面（胴と同じ式）より下に埋もれない。根もとの点は表面のすぐそば（6本とも）
+      const back = (z: number): number => {
+          const r = T.ring((z - T.z0) / (T.z1 - T.z0));
+          return r.cy + r.ry;
+        },
+        ice = b.filter((p) => p.part === 'body' && p.col === C.ice);
+      for (const p of ice) expect(p.y - back(p.z)).toBeGreaterThan(-0.045);
+      const roots = ice.filter((p) => p.y - back(p.z) < 0.04);
+      expect(new Set(roots.map((p) => Math.round(p.z * 10))).size).toBeGreaterThanOrEqual(5);
+    }
+  });
   it('クラーケン：水面より下に点が無く、目と斑点は頭の表面のすぐ外（埋もれず、浮かない）。明るさ b は 1.8 まで。腕は揺れる触手（tent）だけ', () => {
     const H = beasts.krakenHead,
       K = beasts.KRAKEN;

@@ -493,11 +493,12 @@ export function houndAura(m: Mon & { form: Body }, _t: number): void {
     );
   }
   if (h === 'ice' && mr() < 0.12) {
-    const lz = 0.68 * sc;
+    // 鼻先（形の中の奥行き 0.98・高さ 0.99。beasts.ts の iceHoundForm）から吐く
+    const lz = 0.98 * sc;
     const ice = mr() < 0.15;
     spawn(
       m.x + lz * sy + (mr() - 0.5) * 0.1,
-      m.y + 0.58 * sc,
+      m.y + 0.99 * sc,
       m.z + lz * cy + (mr() - 0.5) * 0.1,
       sy * 0.18,
       -0.12,

@@ -55,7 +55,7 @@ describe('移す前と同じ', () => {
           .map((l) => l.split(' ')[1]?.split(':')[1]),
       ).size,
     ).toBe(7);
-    expect(fp(all)).toEqual(['31ae6d80', 529]);
+    expect(fp(all)).toEqual(['7d2a5afd', 528]);
   });
   it('図鑑の見本の獣', () => {
     expect(fp(JSON.stringify(beastSamples()))).toEqual(['1039558f', 1402]);
@@ -68,7 +68,7 @@ describe('移す前と同じ', () => {
     expect(lines.length).toBe(476);
     expect(new Set(lines.map((l) => l.split(' ')[1]?.split(':')[0])).size).toBeGreaterThan(460);
     expect(lines.some((l) => l.includes(':1 '))).toBe(true);
-    expect(fp(all)).toEqual(['f155f827', 27003]);
+    expect(fp(all)).toEqual(['2b3f3521', 27000]);
   }, 60000);
   it('まわりの飾り・姿を変える途中・王の影の変身（880の場合）の指紋', () => {
     const all = auraCases({ ...AURAS, buildForm: BUILD.buildForm }, 880),
@@ -101,7 +101,7 @@ describe('移す前と同じ', () => {
       true,
       true,
     ]);
-    expect(fp(all)).toEqual(['01747a05', 999071]);
+    expect(fp(all)).toEqual(['50e2882b', 999071]);
   }, 60000);
   it('忘れられた獣の記録（保存の中身10通り×今の探索の記録3通り×保存が使えるか）の指紋', () => {
     const all = beastRecordCases(SAVE),

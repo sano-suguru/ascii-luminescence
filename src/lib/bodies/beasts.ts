@@ -189,6 +189,198 @@ export function salamanderForm(ty: BodyType): Body {
   return pts;
 }
 
+/** 氷のハウンドの胴（形の中の奥行き z での、背の高さ・腹の高さ・横の半径）。体の点と、背中の氷の位置を、同じ式から出す */
+export const houndTorso = {
+  /** 尻の端と胸の端の奥行き */
+  z0: -0.44,
+  z1: 0.42,
+  /** 尻（0）から胸（1）までの割合 u での、背の高さ・腹の高さ・横の半径（間は滑らかにつなぐ） */
+  keys: [
+    [0, 0.85, 0.63, 0.12],
+    [0.18, 0.88, 0.6, 0.13],
+    [0.42, 0.87, 0.66, 0.095],
+    [0.72, 0.93, 0.48, 0.14],
+    [0.9, 0.94, 0.5, 0.14],
+    [1, 0.9, 0.58, 0.11],
+  ] as const satisfies readonly (readonly [number, number, number, number])[],
+  /** 割合 u での、背の高さ top・腹の高さ bot・横の半径 rx（端を閉じる前） */
+  at(u: number): { top: number; bot: number; rx: number } {
+    const K = houndTorso.keys;
+    let i = 0;
+    while (i < K.length - 2 && nth(K, i + 1)[0] < u) i++;
+    const a = nth(K, i),
+      b = nth(K, i + 1),
+      f = clamp((u - a[0]) / (b[0] - a[0]), 0, 1),
+      e = f * f * (3 - 2 * f);
+    return { top: a[1] + (b[1] - a[1]) * e, bot: a[2] + (b[2] - a[2]) * e, rx: a[3] + (b[3] - a[3]) * e };
+  },
+  /** 端を丸く閉じる割合（真ん中は 1、両端で 0） */
+  cap: (u: number): number => {
+    const d = Math.max(0, Math.abs(u - 0.5) - 0.38) / 0.12;
+    return Math.sqrt(Math.max(0, 1 - d * d));
+  },
+  /** 割合 u の輪の、真ん中の高さ cy と、端を閉じた後の縦と横の半径 ry・rx */
+  ring(u: number): { cy: number; ry: number; rx: number } {
+    const { top, bot, rx } = houndTorso.at(u),
+      cp = houndTorso.cap(u);
+    return { cy: (top + bot) / 2, ry: ((top - bot) / 2) * cp, rx: rx * cp };
+  },
+  /** 割合 u の奥行き */
+  z: (u: number): number => houndTorso.z0 + (houndTorso.z1 - houndTorso.z0) * u,
+};
+/** 氷のハウンドの首（胸の上から前へ立ち上がる管）：根もと a・先 b と、それぞれの半径 */
+export const houndNeck = { a: [0, 0.84, 0.3], b: [0, 1.04, 0.56], r0: 0.1, r1: 0.078 } as const satisfies {
+  a: Vec3;
+  b: Vec3;
+  r0: number;
+  r1: number;
+};
+/** 氷のハウンドの頭（楕円）の真ん中 c と半径 r。頭の点と、目・耳の位置を、同じ式から出す */
+export const houndHead = { c: [0, 1.07, 0.63], r: [0.11, 0.1, 0.13] } as const satisfies { c: Vec3; r: Vec3 };
+/** 頭の表面の、向き（nx, ny, nz）の所（長さは 1 にしてから、半径を掛ける）。out は表面から外へ出す割合 */
+export const houndHeadAt = (nx: number, ny: number, nz: number, out = 1): Vec3 => {
+  const l = Math.hypot(nx, ny, nz),
+    { c, r } = houndHead;
+  return [c[0] + (nx / l) * r[0] * out, c[1] + (ny / l) * r[1] * out, c[2] + (nz / l) * r[2] * out];
+};
+/** 氷のハウンドの色 */
+export const HOUND_ICE = {
+  /** 背と脇と頭の上：青 */
+  fur: [0.4, 0.55, 0.82],
+  /** 胸と腹と鼻づらと脚の先：霜の白 */
+  frost: [0.84, 0.9, 0.96],
+  /** 氷の結晶：澄んだ水色 */
+  ice: [0.5, 0.9, 1.0],
+  /** 鼻：黒 */
+  nose: [0.08, 0.1, 0.14],
+  /** 目：澄んだ水色（白い鼻づらと分かれるように、霜より青い） */
+  eye: [0.35, 0.85, 1.0],
+} as const satisfies Record<string, Color>;
+
+// ice hound: a lean hunting dog. A deep chest and tucked waist, a neck rising to a long head with pointed ears,
+// legs bent at the hock behind. A ridge of ice shards runs along the spine from the neck to the haunch, and frost whitens the chest and paws
+export function iceHoundForm(ty: BodyType): Body {
+  // 細かい点で作る（道具の点の大きさと間隔 S は、大きさ scale に反比例する。四つ足は小さいので、そのままだと胴が数個の文字になる）
+  const { S, pts, put, lit, stroke, ell, tube } = q3({ scale: ty.scale * 1.6 }),
+    C = HOUND_ICE,
+    T = houndTorso,
+    NK = houndNeck,
+    // 光の当たらない側（腹と、横から見た向こう側）も見えるように、いちばん暗い文字も点（.）にしない
+    FROSTY: Ramp = [':', ':', '%', '#', '#'],
+    PELT: Ramp = [':', '"', '%', '#', '#'],
+    ICE: Ramp = [':', '/', '|', '^', '^'];
+  // 脚：前脚は肩（高さ 0.82）、後脚は腰（高さ 0.8）を軸に回る。前の左と後ろの右が同じ向きに振れる
+  const FRONT = 0.82,
+    HIP = 0.8;
+  for (const sd of [-1, 1]) {
+    const fp = sd < 0 ? 'legL' : 'legR',
+      rp = sd < 0 ? 'legR' : 'legL',
+      fx = { piv: FRONT, pz: 0.3 },
+      rx = { piv: HIP, pz: -0.32 };
+    // 前脚：まっすぐで細い。先は霜で白い
+    tube([sd * 0.1, 0.78, 0.3], [sd * 0.09, 0.4, 0.32], 0.055, 0.04, PELT, C.fur, fp, fx);
+    tube([sd * 0.09, 0.4, 0.32], [sd * 0.09, 0.07, 0.31], 0.036, 0.032, FROSTY, C.frost, fp, fx);
+    // 後脚：太いもも、後ろへ折れるかかと、前へ下りる足
+    tube([sd * 0.1, 0.78, -0.32], [sd * 0.11, 0.48, -0.24], 0.08, 0.05, PELT, C.fur, rp, rx, 0.15);
+    tube([sd * 0.11, 0.48, -0.24], [sd * 0.1, 0.22, -0.4], 0.045, 0.035, PELT, C.fur, rp, rx);
+    tube([sd * 0.1, 0.22, -0.4], [sd * 0.1, 0.07, -0.36], 0.034, 0.032, FROSTY, C.frost, rp, rx);
+    // 足：前へ向いた爪先
+    for (const [z0, part, ex] of [
+      [0.31, fp, fx],
+      [-0.36, rp, rx],
+    ] as const) {
+      lit(sd * 0.09, 0.03, z0 + 0.04, 'm', 0.9, 1.0, C.frost, part, ex);
+      lit(sd * 0.09, 0.03, z0 + 0.1, '.', 0.7, 1.0, C.frost, part, ex);
+    }
+  }
+  // 胴：尻から胸へ、らせんに点を置く（輪ごとに同じ奥行きに並べると、横から見て縦の縞になる）。1周ごとに奥行きを1段進め、段の数は等しい間隔で割る
+  const NR = Math.max(4, Math.round((T.z1 - T.z0) / (S * 0.6)));
+  for (let r = 0; r <= NR; r++) {
+    const n = Math.max(6, Math.round((Math.PI * (T.ring(r / NR).rx + T.ring(r / NR).ry)) / (S * 0.75)));
+    for (let k = 0; k < (r === NR ? 1 : n); k++) {
+      const u = (r + k / n) / NR,
+        z = T.z(u),
+        { cy, ry, rx } = T.ring(u),
+        cp = T.cap(u),
+        // 端に近いほど、面は前か後ろを向く
+        nz = (u < 0.5 ? -1 : 1) * Math.sqrt(Math.max(0, 1 - cp * cp)),
+        a = (k / n) * Math.PI * 2,
+        ca = Math.cos(a),
+        sa = Math.sin(a),
+        // 胸と腹は霜の白、背と脇は青
+        under = sa < -0.35 || (u > 0.72 && sa < 0.3);
+      put(
+        ca * rx,
+        cy + sa * ry,
+        z,
+        (ca / Math.max(rx, 0.01)) * cp,
+        (sa / Math.max(ry, 0.01)) * cp,
+        nz * 8,
+        under ? FROSTY : PELT,
+        under ? C.frost : C.fur,
+      );
+    }
+  }
+  // 首：胸の上から、前へ立ち上がる
+  tube(NK.a, NK.b, NK.r0, NK.r1, PELT, (_x, oy) => (oy < -0.3 ? C.frost : C.fur), 'head');
+  // 頭：上は青く、下は白い丸い頭と、前へ細る白い鼻づら（鼻筋だけ青い）。黒い鼻
+  {
+    const H = houndHead;
+    ell(H.c, H.r[0], H.r[1], H.r[2], PELT, (_x, ny) => (ny < -0.25 ? C.frost : C.fur), 'head');
+    tube([0, 1.03, 0.75], [0, 0.98, 0.95], 0.068, 0.04, FROSTY, (_x, oy) => (oy > 0.7 ? C.fur : C.frost), 'head');
+    lit(0, 0.985, 0.98, 'o', 0.8, 1.0, C.nose, 'head');
+    for (const sd of [-1, 1]) {
+      // とがった耳：頭の上の後ろから、後ろへ寝た三角（根もとは2本、先で1つになる）
+      const e = houndHeadAt(sd * 0.5, 0.8, -0.35),
+        tip: Vec3 = [e[0] + sd * 0.03, e[1] + 0.09, e[2] - 0.07];
+      for (const dz of [0.03, -0.03]) stroke([e[0], e[1], e[2] + dz], tip, C.fur, 1.1, 0.9, 'head', undefined, S * 0.4);
+      lit(tip[0], tip[1] + 0.02, tip[2] - 0.01, '^', 0.8, 1.1, C.fur, 'head');
+      // 目：頭の前の上の横寄り（鼻づらの根もとに隠れない所）、表面のすぐ外
+      const y = houndHeadAt(sd * 0.75, 0.5, 0.45, 1.1);
+      lit(y[0], y[1], y[2], '.', 0.9, 1.8, C.eye, 'head');
+    }
+  }
+  // 尾：尻から下へ垂れ、先が少し上がる。先ほど大きく揺れる
+  const TN = 9;
+  for (let k = 0; k <= TN; k++) {
+    const f = k / TN,
+      y = 0.8 - 0.4 * f + 0.14 * f * f * f,
+      z = -0.42 - 0.32 * f,
+      r = 0.045 * (1 - 0.5 * f);
+    for (const o of [-1, 1]) lit(o * r, y, z, mpick(['%', '"']), 0.9, 1.1, f > 0.8 ? C.frost : C.fur, 'tail', { piv: k * 0.35 });
+  }
+  // 背中の氷：首の付け根から腰まで、背骨に沿って後ろへ傾いた結晶が並ぶ。根もとは背の表面（胴と同じ式）
+  const NS = 6;
+  for (let q = 0; q < NS; q++) {
+    const u = 0.3 + (0.6 * q) / (NS - 1),
+      z = T.z(u),
+      { cy, ry } = T.ring(u),
+      top = cy + ry,
+      h = 0.1 + 0.09 * Math.sin(q * 1.9 + 0.7) ** 2 + (q === 3 || q === 4 ? 0.05 : 0),
+      tipZ = z - h * 0.8;
+    // 先へ細る錐と、先の明るい文字
+    tube([0, top, z], [0, top + h, tipZ], 0.035, 0.008, ICE, C.ice, 'body');
+    lit(0, top + h * 1.15, z + (tipZ - z) * 1.15, '^', 0.8, 1.3, C.ice, 'body');
+  }
+  // 首の後ろの結晶：根もとは首の管の、上で後ろ向きの面（首の向きに直角）
+  {
+    const dy = NK.b[1] - NK.a[1],
+      dz = NK.b[2] - NK.a[2],
+      L = Math.hypot(dy, dz),
+      oy = dz / L,
+      oz = -dy / L;
+    for (let q = 0; q < 2; q++) {
+      const f = 0.35 + q * 0.35,
+        r = NK.r0 + (NK.r1 - NK.r0) * f,
+        y = NK.a[1] + dy * f + oy * r,
+        z = NK.a[2] + dz * f + oz * r;
+      tube([0, y, z], [0, y + 0.1, z - 0.06], 0.03, 0.008, ICE, C.ice, 'head');
+      lit(0, y + 0.115, z - 0.07, '^', 0.75, 1.3, C.ice, 'head');
+    }
+  }
+  return pts;
+}
+
 export function trollForm2(ty: BodyType): Body {
   const { S, pts, put, lit, stroke, ell, tube } = q3(ty),
     SK: Color = [0.4, 0.48, 0.36],
