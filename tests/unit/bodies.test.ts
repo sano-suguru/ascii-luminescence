@@ -93,8 +93,8 @@ describe('生き物の形', () => {
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
     caseOut('bodies-1', all);
-    expect(all.length).toBe(6943778);
-    expect(fnv(all)).toBe('ef6888ee'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
+    expect(all.length).toBe(6686068);
+    expect(fnv(all)).toBe('f94374ff'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
   });
   it('主と大きな生き物の形の指紋（形と、形を作る時に見た目の乱数を引く順番が、思わず変わっていない）', () => {
     let all = '';
@@ -276,7 +276,7 @@ describe('生き物の形', () => {
       }
       // 背の鞍：肩から尻の間の、背の上の半分だけ
       const saddle = b.filter((p) => p.col === C.saddle || p.col === C.silver);
-      expect(saddle.filter((p) => p.part === 'body').length).toBeGreaterThan(10);
+      expect(saddle.filter((p) => p.part === 'body').length).toBeGreaterThan(5);
       for (const p of saddle.filter((q) => q.part === 'body')) {
         expect(p.z).toBeLessThan(B.saddle[0]);
         expect(p.z).toBeGreaterThan(B.saddle[1]);

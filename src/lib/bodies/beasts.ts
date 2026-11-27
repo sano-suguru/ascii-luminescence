@@ -276,7 +276,7 @@ export const JACKAL = {
 // jackal: a lean, leggy wild dog. A narrow pointed muzzle, very large upright ears, a deep chest and a tucked waist,
 // a tawny coat with a dark grizzled saddle along the back, a cream throat and belly, and a bushy tail hanging low with a black tip
 export function jackalForm(ty: BodyType): Body {
-  const { S, pts, put, lit, tube } = q3({ scale: ty.scale * 1.8 }),
+  const { S, pts, put, lit, tube } = q3({ scale: ty.scale * 1.5 }),
     B = jackalBody,
     C = JACKAL,
     // 段の初め（0番目）は使われない（光の当たらない面でも 1番目）。光の当たらない脇と腹がすかすかにならないように、1番目は詰まった文字にする
@@ -293,7 +293,7 @@ export function jackalForm(ty: BodyType): Body {
     arc.push(nth(arc, j - 1) + Math.hypot(za - zb, B.at(za).cy - B.at(zb).cy));
   }
   const len = nth(arc, SN),
-    nz = Math.round(len / (S * 0.55)),
+    nz = Math.round(len / (S * 0.65)),
     // 背筋に沿った長さ d の所の奥行き
     zAt = (d: number): number => {
       let j = 1;
@@ -305,7 +305,7 @@ export function jackalForm(ty: BodyType): Body {
   for (let i = 0; i <= nz; i++) {
     const d0 = (len * i) / nz,
       z0 = zAt(d0),
-      n = Math.max(5, Math.round((2 * Math.PI * Math.max(B.at(z0).rx, B.at(z0).ry)) / (S * 0.6)));
+      n = Math.max(5, Math.round((2 * Math.PI * Math.max(B.at(z0).rx, B.at(z0).ry)) / (S * 0.7)));
     for (let k = 0; k < n; k++) {
       const f = (k * 0.618) % 1,
         z = zAt(clamp(d0 + (f - 0.5) * (len / nz), 0, len)),
@@ -341,11 +341,11 @@ export function jackalForm(ty: BodyType): Body {
       W = 0.065,
       nx = sd * 0.35,
       nzz = 0.94,
-      rows = Math.max(3, Math.round(H / (S * 0.4)));
+      rows = Math.max(3, Math.round(H / (S * 0.48)));
     for (let r = 0; r <= rows; r++) {
       const v = r / rows,
         hw = W * (1 - v),
-        cols = Math.max(1, Math.round((2 * hw) / (S * 0.4)));
+        cols = Math.max(1, Math.round((2 * hw) / (S * 0.48)));
       for (let c = 0; c <= cols; c++) {
         const u = cols ? -1 + (2 * c) / cols : 0,
           edge = Math.abs(u) > 0.7 || v > 0.8,
@@ -371,7 +371,7 @@ export function jackalForm(ty: BodyType): Body {
     const dx = p1[0] - p0[0],
       dy = p1[1] - p0[1],
       dz = p1[2] - p0[2],
-      m = Math.max(2, Math.round(Math.hypot(dx, dy, dz) / (S * 0.35))),
+      m = Math.max(2, Math.round(Math.hypot(dx, dy, dz) / (S * 0.42))),
       dl = Math.hypot(dy, dz) || 1;
     for (let j = 0; j <= m; j++) {
       const f = j / m,
@@ -411,13 +411,13 @@ export function jackalForm(ty: BodyType): Body {
     }
   // 尾：尻から下へ垂れ、ふさふさに太り、先は黒い。上は鞍に続く暗い毛。付け根から先へ、だんだん大きく振れる（part 'tailw'。piv は付け根から、その輪の真ん中までの距離）
   const [, ry0, rz0] = B.tailRoot,
-    TN = Math.round(0.5 / (S * 0.4));
+    TN = Math.round(0.5 / (S * 0.48));
   for (let j = 0; j <= TN; j++) {
     const f = j / TN,
       y = ry0 - 0.36 * f,
       z = rz0 - 0.06 - 0.3 * Math.sin(f * 1.3),
       r = 0.035 + 0.05 * Math.sin(Math.PI * Math.min(1, f * 1.1)),
-      n = Math.max(5, Math.round((2 * Math.PI * r) / (S * 0.6))),
+      n = Math.max(5, Math.round((2 * Math.PI * r) / (S * 0.7))),
       tip = f > 0.78;
     for (let k = 0; k < n; k++) {
       const a = (k / n) * Math.PI * 2 + j * 0.7,
