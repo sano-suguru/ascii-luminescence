@@ -96,9 +96,6 @@ export interface Ui {
   altarOpenT: number;
   /** プレイヤーが閉じた祭壇の組（離れるまで、また開かない。src/lib/panels.ts の updateAltarPanel。無ければ null） */
   altarDismissed: string | null;
-  /** 祭壇で選んで、置き場所を待っている物と、祭壇の画面の鍵（今はどこも読まない。src/lib/panels.ts の chooseAltar が戻すだけ） */
-  altarSel: { grp: string; slot: number } | null;
-  altarPanelKey: string;
   /** 今いる近くの、灯った祭壇の組（祭壇の真ん中の台から1.5より近い時。無ければ null。祭壇の画面が開いている間は、開いた時の組のまま） */
   altarNear: string | null;
   /** 装備の画面で選んでいるルーン（袋から選んだ物か、手の枠 h・s から選んだ物。無ければ null） */
@@ -131,6 +128,8 @@ export interface Ui {
   dbgOpen: boolean;
   /** 年代記の画面 */
   chronOn: boolean;
+  /** 魔導書を案内の欄 #help に出しているか（マウスの時。メニューの「魔導書」で切り替え、操作の案内・年代記を出すと閉じる） */
+  bookOn: boolean;
   /** 表示の量（0：全部、1：少し、2：なし） */
   uiMode: number;
   /** 速さの表示 */
@@ -185,8 +184,6 @@ export const ui: Ui = {
   altarOpen: false,
   altarOpenT: 0,
   altarDismissed: null,
-  altarSel: null,
-  altarPanelKey: '',
   altarNear: null,
   packSel: null,
   packHover: null,
@@ -204,6 +201,7 @@ export const ui: Ui = {
   newRunArm: 0,
   dbgOpen: false,
   chronOn: false,
+  bookOn: false,
   uiMode: 0,
   perfOn: false,
   gallery: null,
@@ -321,8 +319,6 @@ export interface Player {
   roll?: { t: number; dx: number; dz: number } | null;
   /** 武器を振った残りの秒（0.22 から減る）と、振りの線の色（無ければ決まった色）、波を撃つ途中か（その間は振りの線を描かない） */
   swing?: number;
-  /** 素手の攻撃の間の残りの秒（今は書く所が無く、src/lib/combat.ts の updateLife が減らすだけ） */
-  atkCd?: number;
   swingCol?: readonly number[] | undefined;
   swingWave?: boolean;
   /** 網に掛かった残りの秒（src/lib/events.ts の罠） */

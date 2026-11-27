@@ -89,6 +89,7 @@ export function menuAct(k: string | undefined): void {
   } else if (k === 'chron') {
     ui.chronOn = !ui.chronOn;
     ui.helpOn = false;
+    ui.bookOn = false;
     ui.helpT = 0;
     const el = document.getElementById('help');
     if (el) {
@@ -101,10 +102,10 @@ export function menuAct(k: string | undefined): void {
     ui.chronOn = false;
     ui.helpOn = false;
     ui.helpT = 0;
-    menuAct.book = !menuAct.book;
+    ui.bookOn = !ui.bookOn;
     if (el) {
-      if (menuAct.book) renderBook();
-      el.classList.toggle('off', !menuAct.book);
+      if (ui.bookOn) renderBook();
+      el.classList.toggle('off', !ui.bookOn);
     }
     renderMenu();
   } else if (k === 'cam') {
@@ -143,11 +144,6 @@ export function menuAct(k: string | undefined): void {
       menuArmReset();
     }
   }
-}
-// 型だけの declare namespace で、関数の欄の型を付ける（組み立てで消える。古い JS の文をそのまま残すため）
-export declare namespace menuAct {
-  /** 魔導書を案内の欄 #help に出しているか（マウスの時。メニューの「魔導書」で切り替える） */
-  let book: boolean | undefined;
 }
 // the "press again to make sure" of the menu lasts 4 real seconds (game time stands still while the menu is open), then the label goes back.
 // Only one of the two is armed at a time. Draw the menu again only when one has run out (so a click in the middle is not lost)

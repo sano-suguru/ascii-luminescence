@@ -178,10 +178,11 @@ export function renderHelp(): void {
   if (!el || !here.D) return;
   el.innerHTML = boxText(helpRows());
 }
-/** 操作の案内を出す・消す（年代記は閉じる） */
+/** 操作の案内を出す・消す（年代記と魔導書は閉じる） */
 export function setHelp(on: boolean): void {
   ui.helpOn = on;
   ui.chronOn = false;
+  ui.bookOn = false;
   const el = document.getElementById('help');
   if (!el) return;
   if (on) renderHelp();
