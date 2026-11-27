@@ -75,7 +75,7 @@ for (const plan of ['quad', 'serpent', 'centipede', 'moth'])
     SPECS.push({ plan, kind: plan === 'quad' ? '竜' : '獣', legs: 6, wings, ...(wings ? { eyes: 5 } : {}), glyphs: ['#', '%', '&'] });
 
 describe('生き物の形', () => {
-  it('TypeScript に移す前と、同じ乱数で同じ形になる（見た目の乱数を引く順番が変わっていない）', () => {
+  it('形の指紋（形と、形を作る時に見た目の乱数を引く順番が、思わず変わっていない）', () => {
     let all = '';
     for (const f of TY_FORMS)
       for (const ty of TYS) {
@@ -90,7 +90,7 @@ describe('生き物の形', () => {
     }
     caseOut('bodies-1', all);
     expect(all.length).toBe(3798297);
-    expect(fnv(all)).toBe('5bcbce08'); // トロル・ゴーレム・クラーケン・ギタイムシ・ヘビ・吸血コウモリ（trollForm2・golemForm2・krakenForm2・crabForm・snakeForm・batForm）を除き、移す前の実装で出した値と同じ（この6つは移した後で作り直した。作り直した王の影の一つ目の姿は、下の別のテスト）
+    expect(fnv(all)).toBe('5bcbce08');
   });
   it('主と大きな生き物の形：TypeScript に移す前と、同じ乱数で同じ形になる', () => {
     let all = '';
