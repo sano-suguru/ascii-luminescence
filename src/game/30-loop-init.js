@@ -57,7 +57,7 @@ function tick(raw,draw){
   buf.dn=0; inPhase('fixtures',()=>drawFixtures(t,dt)); inPhase('doors',()=>drawDoors(t,dt)); inPhase('fire',()=>drawFire(t,dt)); inPhase('webs',()=>drawWebs(t)); inPhase('traps',()=>drawTraps(t));
   inPhase('swing',()=>drawSwing()); inPhase('hands',()=>drawViewWeapons(t)); inPhase('omens',()=>drawOmens(t,dt)); inPhase('runes',()=>{ drawRunesWorld(t); updateAltarPanel(); drawArrows(); drawLegendWorld(t); }); inPhase('rockfall',()=>{ if(!here.trans)updateRockfall(dt); }); // 階を移り始めたら、石は落ちず、当たらない（新しい階で newLevel が消す）
   inPhase('bolt',()=>drawBoltFx(t,dt)); inPhase('gallery',()=>drawGallery(t)); inPhase('frozen',()=>drawFrozen(t)); inPhase('castfx',()=>drawCastFx(t));
-  inPhase('avatar',()=>{ if(ui.camMode==='tps'&&here.D&&!ui.gallery){ updateAvatar(dt); drawMonster0(avatar,t); drawSection(); } }); for(const m of here.monsters)inMobPhase('mob draw',m,()=>drawMonster(m,t)); flushDyn();
+  inPhase('avatar',()=>{ if(ui.camMode==='tps'&&here.D&&!ui.gallery){ updateAvatar(dt); drawMonster0(avatar,t); drawSection(); } }); for(const m of here.monsters)inMobPhase('mob draw',m,()=>drawMonster(m,t)); inPhase('debris',()=>updateDebris(dt)); flushDyn();
   inPhase('particles',()=>updateParticles(dt,t));
   fovT+=dt; if(fovT>0.1){ fovT=0; inPhase('fov',()=>{ computeFOV(); checkEvents(false); look(); }); inPhase('gas',()=>stepGas()); inPhase('spread',()=>stepFire()); }
   mapT+=dt; if(mapT>0.11){ mapT=0; if(ui.uiMode===0)inPhase('map',()=>drawMap()); }
@@ -128,6 +128,8 @@ if(TEST)window.__test={
   chill(i,r){ chillArea((i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL,r); },
   burning(i){ return blaze.burning.filter(j=>j===i).length; },
   // 落石：on なら、プレイヤーのまわり（3マス）の床で、宝物庫の天井が崩れた時と同じ落石を始める。今の落石（経った秒・落ちている石の数。無ければ null）を返す
+  // 倒れた生き物が崩れて積もった文字（崩れる体ごとの、文字の数・残す数・消えていない数・様子ごとの数（体に付いたまま・落ちている・積もった・塵になって縮む・水に沈む・溶岩で燃える・消えた）・積もった文字の高さの範囲と倒れた所からの距離。src/lib/debris.ts）
+  debris(){ return debrisInfo(); },
   rockfall(on){ if(on){ const cx=Math.floor(player.x/CELL), cz=Math.floor(player.z/CELL), cells=[]; for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){ const x=cx+dx, z=cz+dz; if(x<0||x>=MW||z<0||z>=MH)continue; const c=z*MW+x; if(here.D.tile[c]===TF)cells.push(c); } fight.rockfall={t:0,dur:9,cells,rocks:[],next:0.2}; }
     const R=fight.rockfall; return R?{t:+R.t.toFixed(4),rocks:R.rocks.length}:null; },
   // lingering things of this level (fields, delayed hits, rains, marks on the floor, a beam being fired, lightning, lightning still to fall and its flash):

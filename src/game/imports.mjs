@@ -65,6 +65,7 @@ import { lockFailed, menuOnUnlock, relockClick, setCamMode, sndToggle, tryLock, 
 import { addLooks, buildForm } from '../lib/bodies/build.ts';
 import { bogAura, dragonAura, drawMorph, houndAura, krakenAura, lichAura, nagaAura, salamanderAura, shadowAura, spiderAura, transformShadow } from '../lib/bodies/auras.ts';
 import { P, dCol, dPar, dPos, dyn, initDust, killP, respawnDust, spawn } from '../lib/particles.ts';
+import { debrisInfo, updateDebris } from '../lib/debris.ts';
 import { drawMonster, drawMonster0, drawTentacles } from '../lib/bodies/draw.ts';
 import { look } from '../lib/look.ts';
 import {
