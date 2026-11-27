@@ -26,7 +26,7 @@ import { BRANCHES, CELL, MH, MW, REALMS, TW, TX, cpos } from './world.ts';
 const level = () => must(here.D, '今の階 here.D');
 
 /** 止まっているか（装備の画面・メニュー・F2 の画面・祭壇の画面・レベルアップの画面のどれかが開いている） */
-export const isPaused = (): boolean => ui.invOpen || ui.menuOpen || ui.dbgOpen || ui.altarOpen || ui.lvlOpen;
+export const isPaused = (): boolean => ui.invOpen || ui.menuOpen || ui.dbgOpen || ui.altarOpen || ui.lvlOpen || (ui.portrait && ui.started);
 /** 今いる場所の名前（特別な階・異界・支道とその階、ふつうの階は深さ） */
 export function placeLabel(): string {
   if (here.inter) return lookup(SPECIALS, here.inter.key).name;

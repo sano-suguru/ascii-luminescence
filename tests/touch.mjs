@@ -14,6 +14,7 @@
 //      両方を同時に・[右手] を押して溜め、指をずらすと見回し、離すと溜めが終わる・指を取り逃した時（touchCancel）も溜めが終わる・[回避]・
 //      メニューを開いている間は、スティックで動かない・レベルアップと祭壇の画面は、1回目のタップで選んで説明を出し、2回目で決める
 //  10. 図鑑を指で動かす：案内が指の時の文言か・枠が画面の上半分に掛からないか・1本指のドラッグで回り、触れている間はひとりでに回らない・2本指で広げると寄り、[向きを戻す] で戻る
+//  11. 縦向き：探索中だけ、止めて横にする案内を出し、横に戻すと続く（タイトルと、マウスで遊んでいる時は出さない）
 //   7. 診断の記録（src/lib/diag.ts）：偽の window.claude（Artifact の中の真似）で、持ち主なら端末・できごと・速さ・かかった時間・遅いフレームを db に書き、持ち主でなければ書かない。
 //      書き込みの途中に頼まれた分（ページが隠れた時）も、途中の分が終わってから書く
 import { FIT_MIN } from '../src/lib/layout.ts';
@@ -643,6 +644,49 @@ await withBrowser(async ({ browser, base }) => {
         errs.push(`図鑑を指で：[向きを戻す] で距離が戻らない（${a.camera.dist} → ${b.camera.dist} → ${r.camera.dist}）`);
     }
     console.log(`図鑑を指で：回る ${turned.toFixed(2)}、距離 ${a.camera.dist} → ${b.camera.dist}`);
+    await pg.context().close();
+  }
+
+  // ---------------------------------------------------------------- 11. 縦向きの間は止めて、横にする案内を出す
+  {
+    const pg = await newPage(browser, errs, { device: 'iPhone 13 landscape' });
+    await openTest(pg, base, 'seed=202');
+    const E = (f, a) => pg.evaluate(f, a);
+    const turnShown = () => E(() => getComputedStyle(document.getElementById('turn')).display !== 'none');
+    const LAND = { width: 750, height: 342 },
+      PORT = { width: 390, height: 664 };
+    // タイトルでは、縦でも出さない
+    await pg.touchscreen.tap(10, 10);
+    await pg.setViewportSize(PORT);
+    await advance(pg, 0.1);
+    if (await turnShown()) errs.push('縦向き：タイトルで横にする案内が出た');
+    await pg.setViewportSize(LAND);
+    await tapEnter(pg);
+    await advance(pg, 2);
+    // 探索中に縦にすると、止まって案内が出る。横に戻すと消えて、また進む
+    await pg.setViewportSize(PORT);
+    await advance(pg, 0.1);
+    let a = await E(() => __test.state());
+    await advance(pg, 1);
+    let b = await E(() => __test.state());
+    if (!(await turnShown()) || !a.paused || b.time !== a.time)
+      errs.push(
+        `縦向き：探索中に縦にしても止まらないか、案内が出ない（案内 ${await turnShown()}、止まる ${a.paused}、時刻 ${a.time} → ${b.time}）`,
+      );
+    await pg.setViewportSize(LAND);
+    await advance(pg, 0.1);
+    a = await E(() => __test.state());
+    await advance(pg, 1);
+    b = await E(() => __test.state());
+    if ((await turnShown()) || a.paused || !(b.time > a.time))
+      errs.push(`縦向き：横に戻しても続かない（案内 ${await turnShown()}、止まる ${a.paused}、時刻 ${a.time} → ${b.time}）`);
+    // マウスで遊んでいる時は、縦長の窓でも止めない
+    await pg.mouse.move(300, 100);
+    await pg.mouse.move(310, 110);
+    await pg.setViewportSize(PORT);
+    await advance(pg, 0.1);
+    a = await E(() => __test.state());
+    if ((await turnShown()) || a.paused) errs.push('縦向き：マウスで遊んでいる時に、縦長の窓で止まった');
     await pg.context().close();
   }
 

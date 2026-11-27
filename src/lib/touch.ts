@@ -4,6 +4,8 @@
 // Chromium は指の pointerdown の preventDefault で止まるが、iPhone（WebKit）は止まらないので、指の事件から COMPAT_MS 以内のマウスの事件も、
 // ゲームの処理に届く前（window の捕まえる段。ゲームのマウスの処理より先に登録する）で、伝わりを止める。click と mouseover は止めない（ボタンと説明が効くように）
 // 指で遊ぶ時は、パネルを画面に収める（src/lib/layout.ts の fitPanels）。
+// 指で遊んでいて画面が縦向きの間は、探索を止めて、横にする案内（#turn）を出す（縦では画面が狭すぎて、指のボタンが表示に重なる。
+// 止めないと、持ち直している間に生き物に襲われる）。タイトル・図鑑・パネルは時間が進まないので、縦でもそのまま。
 // タッチのボタン（#touchbar）：[全画面]（タイトルで、全画面にできて、まだ全画面でない時だけ）・[装備]・[メニュー]（探索中だけ。CSS が出し分ける）
 import { must } from './array.ts';
 import { fitPanels, initFitPanels } from './layout.ts';
@@ -30,11 +32,18 @@ export function confirmTap(key: string): boolean {
 /** 指で遊んでいる時は finger を、マウスとキーボードの時は mouse を返す（操作の説明を、遊び方で書き分ける） */
 export const byInput = (mouse: string, finger: string): string => (ui.touch ? finger : mouse);
 
+/** 指で遊んでいて縦向きかを、画面の大きさから決め直す（止めるのは探索中だけ。src/lib/status.ts の isPaused） */
+export function updatePortrait(): void {
+  ui.portrait = ui.touch && innerHeight > innerWidth;
+  document.body.classList.toggle('portrait', ui.portrait);
+}
+
 /** 指の遊び方にする・戻す */
 export function setTouch(on: boolean): void {
   if (ui.touch === on) return;
   ui.touch = on;
   document.body.classList.toggle('touch', on);
+  updatePortrait();
   fitPanels();
 }
 
@@ -98,6 +107,7 @@ export function initTouch(act: TouchActions): void {
     // 断られても（iPhone の Safari など）何もしない
     document.documentElement.requestFullscreen().catch(() => undefined);
   });
+  window.addEventListener('resize', updatePortrait);
   document.addEventListener('fullscreenchange', updateFullscreenButton);
   updateFullscreenButton();
   initFitPanels();
