@@ -3,7 +3,7 @@
 
 // ---------------------------------------------------------------- direction arrows: from a dial lying on a floor just above the hands, arrows spread out toward places - straight-line direction only, never the way;
 // near ones short and thick, far ones long and thin. The stairs are always known; branch stairs and gates once seen; altars, springs, treasuries, guarded prizes and graves from 20 m (1.5x at the crossroads), the last four as '?' until seen. A place in plain sight needs no arrow.
-const arrowCv=document.getElementById('arrows'), arrowCtx=arrowCv?arrowCv.getContext('2d'):null;
+const arrowCv=document.getElementById('arrows'), arrowCtx=arrowCv?arrowCv.getContext('2d'):null, hotbarEl=document.getElementById('hotbar');
 function arrowTargets(){ const out=[]; if(!here.D||!ui.started||adv.dead)return out; const pc=((player.z/CELL)|0)*MW+((player.x/CELL)|0), atHub=here.D.hub&&here.D.roomOf[pc]===here.D.hub.ri, far=atHub?1.5:1;
   // standing at the crossroads, presences around are felt from farther off
   const P=(cell,ch,col,range,seenOnly,vague)=>{ if(cell==null||cell<0)return; if(seenOnly&&!here.explored[cell])return; const [x,z]=cpos(cell), d=Math.hypot(x-player.x,z-player.z); if(range&&d>range*far)return;
@@ -31,6 +31,8 @@ function drawArrows(){ if(!arrowCtx)return; const W=Math.round(arrowCv.clientWid
   const k=devicePixelRatio*clamp(arrowCv.clientHeight/450,0.6,1), ox=W/2, oy=H*0.6, r0=60*k, ps=player.yaw, fx=-Math.sin(ps), fz=-Math.cos(ps), rx=Math.cos(ps), rz=-Math.sin(ps), FONT='"M PLUS 1 Code","BIZ UDGothic",monospace';
   // a point (u to the right, v ahead) on the dial's floor, seen from Dv away at the slant e: its place on the screen
   const e=clamp(ARROW_TILT0-player.pitch,ARROW_TILT[0],ARROW_TILT[1]), ce=Math.cos(e), se=Math.sin(e), Dv=800*k;
+  // the lowest a tip mark may reach: just above the line at the bottom (#hotbar), wherever it is now; the bottom of the screen when it is hidden
+  const hb=hotbarEl?hotbarEl.getBoundingClientRect():null, floorY=hb&&hb.height>0?hb.top*devicePixelRatio-6*k:H;
   const proj=(u,v)=>{ const dp=Dv/(Dv+v*ce); return [ox+u*dp,oy-v*se*dp]; };
   c.textAlign='center'; c.textBaseline='middle'; c.lineJoin='round';
   // a glyph lying on the dial at (u,v), its line of writing along (du,dv); flat=false stands it up, only as large as its distance makes it
@@ -48,7 +50,7 @@ function drawArrows(){ if(!arrowCtx)return; const W=Math.round(arrowCv.clientWid
     const near=clamp(1-(t.d-3)/37,0,1), len=(30+120*(1-near))*k, size=(18+10*near)*k, alpha=0.62+0.35*near, rgb=t.col.map(v=>Math.round(v*255)).join(',');
     const step=size*0.42, thick=near>0.5, body=thick?'=':'-', ms=(17+5*near)*k, tipR=n=>r0+n*step+size*0.85;
     // what is behind comes toward you: an arrow too long for the room above the line at the bottom is cut shorter
-    let n=Math.max(1,Math.round(len/step)); while(n>1&&proj(su*tipR(n),sv*tipR(n))[1]>H*0.9-ms)n--;
+    let n=Math.max(1,Math.round(len/step)); while(n>1&&proj(su*tipR(n),sv*tipR(n))[1]>floorY-ms)n--;
     for(let i=0;i<n;i++)glyph(i===n-1?'>':body,su*(r0+i*step),sv*(r0+i*step),su,sv,size,rgb,alpha,thick,true);
     // the mark at the tip: larger, standing up on a faint dark disc, the same size however far into the dial it is, to be read at a glance
     const [mx,my]=proj(su*tipR(n),sv*tipR(n));
