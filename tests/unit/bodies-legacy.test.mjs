@@ -68,7 +68,7 @@ describe('移す前と同じ', () => {
     expect(lines.length).toBe(476);
     expect(new Set(lines.map((l) => l.split(' ')[1]?.split(':')[0])).size).toBeGreaterThan(460);
     expect(lines.some((l) => l.includes(':1 '))).toBe(true);
-    expect(fp(all)).toEqual(['2b3f3521', 27000]);
+    expect(fp(all)).toEqual(['82df8055', 27000]);
   }, 60000);
   it('まわりの飾り・姿を変える途中・王の影の変身（880の場合）の指紋', () => {
     const all = auraCases({ ...AURAS, buildForm: BUILD.buildForm }, 880),

@@ -254,7 +254,7 @@ export const HOUND_ICE = {
   /** 鼻：黒 */
   nose: [0.08, 0.1, 0.14],
   /** 目：澄んだ水色（白い鼻づらと分かれるように、霜より青い） */
-  eye: [0.35, 0.85, 1.0],
+  eye: [0.45, 1.0, 1.0],
 } as const satisfies Record<string, Color>;
 
 // ice hound: a lean hunting dog. A deep chest and tucked waist, a neck rising to a long head with pointed ears,
@@ -326,7 +326,12 @@ export function iceHoundForm(ty: BodyType): Body {
   // 頭：上は青く、下は白い丸い頭と、前へ細る白い鼻づら（鼻筋だけ青い）。黒い鼻
   {
     const H = houndHead;
-    ell(H.c, H.r[0], H.r[1], H.r[2], PELT, (_x, ny) => (ny < -0.25 ? C.frost : C.fur), 'head');
+    // 目のまわりは頭の点を空ける（近い所の大きな文字が、斜めから見た目を隠す）
+    const EYE_DIR = [0.75, 0.5, 0.45] as const,
+      el = Math.hypot(...EYE_DIR),
+      nearEye = (nx: number, ny: number, nz: number): boolean =>
+        (Math.abs(nx) * EYE_DIR[0] + ny * EYE_DIR[1] + nz * EYE_DIR[2]) / el > 0.85;
+    ell(H.c, H.r[0], H.r[1], H.r[2], PELT, (_x, ny) => (ny < -0.25 ? C.frost : C.fur), 'head', null, nearEye);
     tube([0, 1.03, 0.75], [0, 0.98, 0.95], 0.068, 0.04, FROSTY, (_x, oy) => (oy > 0.7 ? C.fur : C.frost), 'head');
     lit(0, 0.985, 0.98, 'o', 0.8, 1.0, C.nose, 'head');
     for (const sd of [-1, 1]) {
@@ -336,8 +341,9 @@ export function iceHoundForm(ty: BodyType): Body {
       for (const dz of [0.03, -0.03]) stroke([e[0], e[1], e[2] + dz], tip, C.fur, 1.1, 0.9, 'head', undefined, S * 0.4);
       lit(tip[0], tip[1] + 0.02, tip[2] - 0.01, '^', 0.8, 1.1, C.fur, 'head');
       // 目：頭の前の上の横寄り（鼻づらの根もとに隠れない所）、表面のすぐ外
-      const y = houndHeadAt(sd * 0.75, 0.5, 0.45, 1.1);
-      lit(y[0], y[1], y[2], '.', 0.9, 1.8, C.eye, 'head');
+      const y = houndHeadAt(sd * EYE_DIR[0], EYE_DIR[1], EYE_DIR[2], 1.1);
+      // 点（.）は小さすぎて近くでも読めないので、詰まった文字にする
+      lit(y[0], y[1], y[2], 'o', 0.75, 1.8, C.eye, 'head');
     }
   }
   // 尾：尻から下へ垂れ、先が少し上がる。先ほど大きく揺れる

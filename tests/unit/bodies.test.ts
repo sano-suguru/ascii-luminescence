@@ -172,6 +172,14 @@ describe('生き物の形', () => {
       expect(new Set(roots.map((p) => Math.round(p.z * 10))).size).toBeGreaterThanOrEqual(5);
     }
   });
+  it('氷のハウンド：本物の大きさ（0.8）で、目のまわりは頭の点を空けている（近い所の大きな文字が、斜めから見た目を隠さない。空く幅は、点の間隔が大きさで変わるので、本物の大きさで確かめる）', () => {
+    const b = seeded(() => beasts.iceHoundForm({ scale: 0.8, col: [0.55, 0.85, 1.0] })),
+      eyes = b.filter((p) => p.col === beasts.HOUND_ICE.eye);
+    expect(eyes.length).toBe(2);
+    for (const e of eyes)
+      for (const p of b.filter((q) => q.part === 'head' && q.col !== beasts.HOUND_ICE.eye))
+        expect(Math.hypot(p.x - e.x, p.y - e.y, p.z - e.z)).toBeGreaterThan(0.08);
+  });
   it('クラーケン：水面より下に点が無く、目と斑点は頭の表面のすぐ外（埋もれず、浮かない）。明るさ b は 1.8 まで。腕は揺れる触手（tent）だけ', () => {
     const H = beasts.krakenHead,
       K = beasts.KRAKEN;

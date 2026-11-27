@@ -818,10 +818,12 @@ export async function stepCases(F, seeds, page) {
       }
       // ---- 場面：部屋の出来事（本物の階の出来事と、種類ごとに作った物）
       initEvents();
+      // 部屋の床のマス（像・柱などの通れないマスは除く。本物の階では、溶岩の流れる道や出来事のマスにならない。
+      // 除かないと、像が目覚めてマスの印を変え、火口の溶岩が引かずに残る、のように、本物の階で起きない場面になる）
       const rooms = D.rooms,
         roomCells = (ri) => {
           const out2 = [];
-          for (let i = 0; i < NCELL; i++) if (D.roomOf[i] === ri && D.tile[i] === TF) out2.push(i);
+          for (let i = 0; i < NCELL; i++) if (D.roomOf[i] === ri && D.tile[i] === TF && !D.solid.has(i)) out2.push(i);
           return out2;
         };
       const goto = (i, dx = 0) => {
