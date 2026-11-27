@@ -52,7 +52,8 @@ void main(){
     float ndl=max(dot(n,d/max(dist,0.001))*0.6+0.4,0.0);
     lit+=uDLC[i]*x*x*ndl;
   }
-  lit+=vec3(1.0,0.45,0.12)*fireL*3.4*(0.85+0.15*sin(uTime*11.0+ctr.x*3.0));
+  // light of burning cells (kept moderate: walls and floor behind a creature in a fire would bloom over its body and wash it out)
+  lit+=vec3(1.0,0.45,0.12)*fireL*1.7*(0.85+0.15*sin(uTime*11.0+ctr.x*3.0));
   // soft knee: lifts dim light, compresses hot spots near light sources while keeping hue
   float lm=max(max(lit.r,lit.g),lit.b);
   lit*=1.55/(1.0+lm*0.8);

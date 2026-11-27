@@ -138,6 +138,11 @@ export function drawMonster(m: Mon, t: number): void {
 }
 /** 当たって光っている間の明るさの倍率。照準の先の倍率 AIM_GLOW とは掛け合わせない（掛け合わせると、光のにじみで体が白く飛ぶ。pnpm glare で数える） */
 const HIT_GLOW = 2.4;
+/**
+ * 体の文字に足すまわりの明かり（そのマスの cellLight の 0.12 倍）は、一番強い色が LIT_MAX を越えたら、色の比を保って LIT_MAX まで縮める。
+ * 燃えているマスが固まった所では火の明かりが 10 を越え、体が光のにじみで白く飛ぶため（ふだんの灯りは床のマスの 96% ほどが 2 以下で、変わらない）
+ */
+export const LIT_MAX = 2;
 /** 照準の先の明るさの倍率 */
 const AIM_GLOW = 1.9;
 /**
@@ -234,7 +239,8 @@ export function drawMonster0(m: Mon, t: number): void {
   const near = clamp(dp / 3.5, 0.45, 1);
   const swing = Math.sin(m.walk) * 0.55 * m.moving,
     bob = Math.abs(Math.sin(m.walk)) * 0.04 * m.moving;
-  const lit = cellLight(m.x, m.z);
+  const lit = cellLight(m.x, m.z),
+    litK = (0.12 * LIT_MAX) / Math.max(lit[0], lit[1], lit[2], LIT_MAX);
   const eelArc = ty.form === 'eel' ? Math.sin(Math.PI * (m.surf ?? NaN)) : 0;
   // クラーケンは、水から出ている度合い rise に合わせて沈み、水面より下になる点は描かない（沈んでいる間は外套の上だけ）
   const sink = ty.form === 'kraken' ? KRAKEN_SINK * (1 - clamp(m.rise || 0, 0, 1)) : 0;
@@ -548,7 +554,7 @@ export function drawMonster0(m: Mon, t: number): void {
     const jx = fj ? (mr() - 0.5) * fj : 0,
       jy = fj ? (mr() - 0.5) * fj : 0,
       jz = fj ? (mr() - 0.5) * fj : 0;
-    dyn(wx + jx, wy + jy, wz + jz, g, p.s * sc * sb, cc[0] * k + lit[0] * 0.12, cc[1] * k + lit[1] * 0.12, cc[2] * k + lit[2] * 0.12, 0, 0);
+    dyn(wx + jx, wy + jy, wz + jz, g, p.s * sc * sb, cc[0] * k + lit[0] * litK, cc[1] * k + lit[1] * litK, cc[2] * k + lit[2] * litK, 0, 0);
   }
   if (!gfx.drawBodyOnly) drawMark(m, t, dp);
   // 霊剣：切っ先を上にした小さな剣（刃・鍔・柄・柄頭）。鍔は、剣が回る向きに張る
