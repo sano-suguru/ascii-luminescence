@@ -86,8 +86,8 @@ describe('生き物の形', () => {
       const b = seeded(() => lords.beastForm(spec));
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
-    expect(all.length).toBe(3131402);
-    expect(fnv(all)).toBe('22760e66'); // トロルとゴーレム（trollForm2・golemForm2）を除き、移す前の実装で出した値と同じ（トロルとゴーレムは移した後で作り直した。作り直した王の影の一つ目の姿は、下の別のテスト）
+    expect(all.length).toBe(3232884);
+    expect(fnv(all)).toBe('cb490558'); // トロル・ゴーレム・クラーケン（trollForm2・golemForm2・krakenForm2）を除き、移す前の実装で出した値と同じ（この3つは移した後で作り直した。作り直した王の影の一つ目の姿は、下の別のテスト）
   });
   it('主と大きな生き物の形：TypeScript に移す前と、同じ乱数で同じ形になる', () => {
     let all = '';
@@ -136,6 +136,36 @@ describe('生き物の形', () => {
         axis = (part: string) => new Set(b.filter((p) => p.part === part).map((p) => `${p.piv},${p.pz}`));
       expect([axis('armL'), axis('armR')]).toEqual([new Set(['1.34,0.06']), new Set(['1.34,0.06'])]);
       expect([axis('legL'), axis('legR')]).toEqual([new Set(['0.62,0']), new Set(['0.62,0'])]);
+    }
+  });
+  it('クラーケン：水面より下に点が無く、目と斑点は頭の表面のすぐ外（埋もれず、浮かない）。明るさ b は 1.8 まで。腕は揺れる触手（tent）だけ', () => {
+    const H = beasts.krakenHead,
+      K = beasts.KRAKEN;
+    for (const ty of TYS) {
+      const b = seeded(() => beasts.krakenForm2(ty)),
+        W = beasts.KRAKEN_WATER,
+        // 頭の表面からの距離（外が正。体を作ったのと同じ式）
+        out = (p: { x: number; y: number; z: number }): number => Math.hypot(p.x, (p.z - H.cz(p.y)) / H.kz) - H.r(p.y);
+      for (const p of b) {
+        expect(p.y).toBeGreaterThanOrEqual(W - 1e-9);
+        expect(p.b).toBeLessThanOrEqual(1.8);
+        expect(['body', 'head', 'tent']).toContain(p.part);
+      }
+      const eyes = b.filter((p) => p.col === K.eye),
+        spots = b.filter((p) => p.col === K.spot);
+      expect(eyes.length).toBe(2);
+      expect(spots.length).toBeGreaterThan(10);
+      for (const p of eyes) expect(out(p)).toBeGreaterThan(0.03);
+      for (const p of eyes) expect(out(p)).toBeLessThan(0.08);
+      for (const p of spots) expect(out(p)).toBeGreaterThan(0.01);
+      for (const p of spots) expect(out(p)).toBeLessThan(0.05);
+      // 目のまわりは体の点を空けている（目の輪が体の点に隠れない）
+      for (const e of eyes)
+        for (const p of b.filter((q) => q.part === 'body')) expect(Math.hypot(p.x - e.x, p.y - e.y, p.z - e.z)).toBeGreaterThan(0.1);
+      // 腕の6本は、根もとから先へ揺れが大きくなる（piv が 0 から増える）
+      const tis = new Set(b.filter((p) => p.part === 'tent').map((p) => p.ti));
+      expect(tis).toEqual(new Set([0, 1, 2, 3, 4, 5]));
+      for (const ti of tis) expect(Math.min(...b.filter((p) => p.ti === ti).map((p) => p.piv))).toBe(0);
     }
   });
   it('眠った獣は、脚を体に畳み、低くなる', () => {
