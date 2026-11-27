@@ -122,6 +122,11 @@ tools/transitions.mjs  場面が切り替わる時の確かめ（node tools/tran
                      迷宮に入る → 階段で3回下りる → 死ぬ → ［新しい探索へ］ → 画面の向きを変えて戻す、を本物の時計で通す。書かれた診断の記録を diag-report.mjs の表で出し、
                      自動再生を許さないブラウザの真似で音の部品が押した時に動き出すか・かかった時間が場面ごとに書かれるか・同じ大きさの resize で作り直さないかを確かめる。
                      時間は CPU で描くこの環境の値。CI には入れない（数分かかる）。記録は tests/out/transitions/）
+tools/auto-run.mjs   自動で遊ぶ台本（?auto）を、この環境でスマホの遅さを真似て流す（node tools/auto-run.mjs [--cond lowpower,slow] [--rate 4] [--laps n]。既定は短い台本 ?auto=quick で、条件ごとに5分ほど。--laps n でふつうの台本を n 周（1周で20分を越える）。CI には入れない）。
+                     Artifact 版を 750×312 の指の端末として、偽の window.claude の持ち主で開く。CPU を --rate 倍遅くし、ページの performance.now と rAF の時刻を「見かけの時計」にする
+                     （この環境は CPU で描くので1秒に数フレームしか出ない。本当にかかった時間を K で割り、K は自動で遊ばないページのタイトルで測って、見かけの速さが条件の fps になるように決める。Date.now も見かけの時計。
+                     lowpower は 50fps を1秒に30回までに抑える＝低電力モードの iPhone、slow は 35fps。どちらも1秒に60回より速くはしない）。記録を diag-report の表で出し、tests/out/auto/<条件>.json に置いて、
+                     前の結果（<条件>.prev.json）と段ごとに並べる。確かめること：エラーが無い・全部の段を通る・lowpower では画質を下げても戻して止まる・slow では戻さない
 tools/diag-report.mjs  診断の記録を表にする（node tools/diag-report.mjs <ファイルかフォルダ…>。ArtifactData の道具の list に out_dir を付けて保存した JSON。
                      音の部品の移り変わり・かかった時間の名前ごとの回数と中央と最大・遅いフレームを近くの処理ごとに・メニューの押し方（menuRows。1.5秒以内に別の項目を押した・切り替えを押し戻した回数）・時刻の順の一覧）
 tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ（描き方の引数 GL_ARGS）・テスト用モードのページ。newPage の device で、Playwright の端末の名前（スマホの真似）で開ける。ページはポインタロックを差し替えて止める（realLock で止めない）。環境変数 AL_PREBUILT が 1 なら、組み立て済みとして組み立てない。withBrowser の root で、別の作業場所を組み立てて配信する（tools/field.mjs の --rev））
@@ -275,7 +280,8 @@ node tools/feel.mjs [aim|walk]   # 手触りの試し打ち（見回す速さ・
 pnpm field <名前…>    # 生き物を本物の階で、向かってくるところを距離ごとに写す（--scenes 1:202,3:7 で階、--rev origin/main で前の版と並べる。見た目を直す時の最後に。4分ほど）
 pnpm lords [場所…]    # 主たちを本当にいる場所で、目の高さから写し、大きさと眩しさを数で出す（crypt・lair・sunken・nest・snake・final。--dist で距離（既定 8））
 node tools/transitions.mjs [--rate 1,4]   # 場面が切り替わる時の確かめ（Artifact 版を本物の時計で通し、診断の記録を表にする。1つの速さで3分ほど）
-node tools/diag-report.mjs <フォルダ>     # 診断の記録（ArtifactData の道具で保存した JSON）を表にする
+node tools/diag-report.mjs <フォルダ>     # 診断の記録（ArtifactData の道具で保存した JSON）を表にする（--compare 前.json 今.json で、自動で遊んだ段を並べる）
+node tools/auto-run.mjs [--cond lowpower]  # 自動で遊ぶ台本を、スマホの遅さを真似て流す（条件ごとに5分ほど）
 node tests/visual.mjs --update [--only 場面]   # 基準の画像を作り直す（見た目を意図して変えた時だけ）
 node tests/levels.mjs --seed 202               # 1つのシードだけ（--seeds 100 で数を変える）
 node tests/smoke.mjs --prod                    # 公開用の版（dist/）で起動（JetBrains Mono の所の日本語はシステムのフォント）。タイトルの画面は node tests/title.mjs --prod
@@ -288,7 +294,8 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 ```
 - **Artifact に公開する**：`pnpm build:artifact` の後、Artifact の道具で `.build/artifact/index.html` を公開する。
   診断の記録（src/lib/diag.ts）のため、capabilities は `{db: {rules: [{path: "diag", read: "owner", write: "owner"}]}, user: {}}`（一度渡せば、上げ直す時に省くと、そのまま残る）。
-  記録は、ArtifactData の道具の list で、コレクション diag を読む（開くたびに1件。端末 device・速さ fps（10秒ごとの平均 avg と一番遅い1回 min と、その時にいる場所 place。探索中だけで、タイトル・図鑑・試しの間では null）・できごと events・場面が切り替わる時の処理にかかった時間 took（名前 k と ms。newLevel は生成 gen と組み立て build の内訳、applySize は理由 why と大きさ）・100ms を越えた1フレーム slow（ms・place と、その前の1秒にあったできごとか処理の名前 near。溜めている手・飛ぶ物・音の部品の旗の変化は near に数えない。40件を越えたら短い物から捨てる）・メニューで押した項目 menu（項目 k・その前に押した項目 prev とそれからの秒 dt。メニューを開いて初めての1回は null。人の指の事件だけ。100件まで）・エラー errors）。読んだ記録は `out_dir` に保存して、`node tools/diag-report.mjs` で表にする。公開先の URL は https://claude.ai/artifact/SHDFv8eNiDcWgkmwWvmNn6 。
+  記録は、ArtifactData の道具の list で、コレクション diag を読む（開くたびに1件。端末 device・速さ fps（10秒ごとの平均 avg と一番遅い1回 min と、その時にいる場所 place。探索中だけで、タイトル・図鑑・試しの間では null）・できごと events・場面が切り替わる時の処理にかかった時間 took（名前 k と ms。newLevel は生成 gen と組み立て build の内訳、applySize は理由 why と大きさ）・100ms を越えた1フレーム slow（ms・place と、その前の1秒にあったできごとか処理の名前 near。溜めている手・飛ぶ物・音の部品の旗の変化は near に数えない。40件を越えたら短い物から捨てる）・自動で遊んだ記録 auto（?auto の時だけ。段ごとの秒・フレームの数・平均 avg・最長 worst・遅いフレームの数 slow・Wake Lock）・メニューで押した項目 menu（項目 k・その前に押した項目 prev とそれからの秒 dt。メニューを開いて初めての1回は null。人の指の事件だけ。100件まで）・エラー errors）。読んだ記録は `out_dir` に保存して、`node tools/diag-report.mjs` で表にする。公開先の URL は https://claude.ai/artifact/SHDFv8eNiDcWgkmwWvmNn6 。
+  本物の iPhone で人が触らずに確かめる時は、公開先の URL に `?auto=3` を付けたリンクをユーザーに開いて置いてもらい（横向きで。およそ5分）、記録の欄 auto（段ごとの速さ）を読む。
   上げ直す時は、その URL を `url` に渡す（渡さないと別の Artifact になる。初めは非公開で、見せる相手はユーザーが共有の画面で決める）。公開は外に出す操作なので、ユーザーに確かめてから。
 - **依存を足す・上げる時**：`pnpm add -D --save-exact 名前@版`（確認が出る）。公開から24時間未満の版は入らない（pnpm-workspace.yaml）。
   インストール時にスクリプトを動かす依存は、中身を確かめてから `pnpm approve-builds` で許可する。npm で入れない（権限で止めている）。

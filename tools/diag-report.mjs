@@ -2,7 +2,8 @@
 // 診断の記録（src/lib/diag.ts が Artifact のデータベースの diag に書く物）を、読みやすい表にする。
 //   node tools/diag-report.mjs <ファイルかフォルダ…>   JSON のファイル（ArtifactData の道具の list に out_dir を付けて保存した物）か、それを入れたフォルダ
 // 記録ごとに：端末、音の部品の状態の移り変わり、場面が切り替わる時の処理にかかった時間（名前ごとの回数・中央・最大）、
-// 遅いフレーム（近くにあった処理の名前ごと）、時刻の順の一覧（かかった時間と遅いフレーム）を出す。
+// 遅いフレーム（近くにあった処理の名前ごと）、メニューの押し方、自動で遊んだ段の表（?auto）、画質の移り変わり、時刻の順の一覧（かかった時間と遅いフレーム）を出す。
+//   node tools/diag-report.mjs --compare <前.json> <今.json>   自動で遊んだ段を、前と今で並べる（tools/auto-run.mjs も使う）
 // tools/transitions.mjs も、自分で作った記録をこれで出す
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -43,6 +44,51 @@ export function menuRows(menu) {
   return out;
 }
 
+/** 画質の移り変わり（src/game/30-loop-init.js の setQuality が took に書く物：解像度を変えた applySize と、光のにじみだけ変えた quality。
+ *  理由 why は auto（下げた）・back（下げても速くならず戻して止めた）・hold（比べる前に数えるのが途切れて戻した）） */
+export function qualitySteps(took = []) {
+  return took
+    .filter((r) => (r.k === 'applySize' || r.k === 'quality') && ['auto', 'back', 'hold'].includes(r.why))
+    .map((r) => ({ t: r.t, why: r.why, what: r.k === 'applySize' ? `解像度 ${r.pr}` : `光のにじみ ${r.bloom ? 'あり' : 'なし'}` }));
+}
+
+/** 自動で遊んだ段の表（src/lib/auto.ts の記録 auto） */
+export function autoRows(a) {
+  if (!a) return [];
+  const out = [
+    `自動で遊んだ：${a.lap}/${a.laps}周${a.quick ? '（短い台本）' : ''}・${a.done ? '終わった' : `途中（${a.step}）`}${a.stop ? `・${a.stop}` : ''}・Wake Lock ${a.wakeLock || '-'}`,
+    `  ${pad('周', 4)}${pad('段', 8)}${pad('秒', 7)}${pad('フレーム', 9)}${pad('平均fps', 9)}${pad('最長ms', 8)}${pad('遅い', 6)}ほか`,
+  ];
+  for (const s of a.steps || [])
+    out.push(
+      `  ${pad(s.lap, 4)}${pad(s.k, 8)}${pad(s.sec, 7)}${pad(s.frames, 9)}${pad(s.avg, 9)}${pad(s.worst, 8)}${pad(s.slow, 6)}${[s.waited && `待った：${s.waited}`, s.miss && `違った：${s.miss}`].filter(Boolean).join('・')}`,
+    );
+  return out;
+}
+
+/** 2つの記録（前・今）の、自動で遊んだ段を並べて比べる（周と段の名前で合わせる） */
+export function compareRows(prev, cur) {
+  const key = (s) => `${s.lap}:${s.k}`,
+    old = new Map((prev?.auto?.steps || []).map((s) => [key(s), s]));
+  const out = [
+    `前と今（平均fps・最長ms・遅いフレームの数）：`,
+    `  ${pad('周', 4)}${pad('段', 8)}${pad('平均fps', 16)}${pad('最長ms', 14)}遅い`,
+  ];
+  const arrow = (a, b) => `${a ?? '-'} → ${b ?? '-'}`;
+  for (const s of cur?.auto?.steps || []) {
+    const o = old.get(key(s));
+    out.push(
+      `  ${pad(s.lap, 4)}${pad(s.k, 8)}${pad(arrow(o?.avg, s.avg), 16)}${pad(arrow(o?.worst, s.worst), 14)}${arrow(o?.slow, s.slow)}`,
+    );
+  }
+  const q = (r) =>
+    qualitySteps(r?.took)
+      .map((x) => `${x.why} ${x.what}`)
+      .join(' → ') || '変えていない';
+  out.push(`  画質：前 ${q(prev)}`, `        今 ${q(cur)}`);
+  return out;
+}
+
 /** 1つの記録を、行の配列にする */
 export function report(rec) {
   const out = [];
@@ -79,6 +125,9 @@ export function report(rec) {
       out.push(`  ${pad(k, 22)}${pad(a.length + '回', 6)}中央 ${median(a.map((r) => r.ms))}ms・最大 ${Math.max(...a.map((r) => r.ms))}ms`);
   }
   out.push(...menuRows(rec.menu));
+  out.push(...autoRows(rec.auto));
+  const qs = qualitySteps(took);
+  out.push(`画質の移り変わり：${qs.length ? qs.map((x) => `${x.why} ${x.what}（${x.t}秒）`).join(' → ') : '変えていない'}`);
   const line = [
     ...took.map((r) => ({
       t: r.t,
@@ -105,8 +154,13 @@ const files = (p) =>
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   if (!args.length) {
-    console.log('使い方：node tools/diag-report.mjs <ファイルかフォルダ…>');
+    console.log('使い方：node tools/diag-report.mjs <ファイルかフォルダ…>  か  --compare <前.json> <今.json>');
     process.exit(1);
+  }
+  if (args[0] === '--compare') {
+    const [a, b] = args.slice(1).map((f) => JSON.parse(readFileSync(f, 'utf8')));
+    console.log(compareRows(a, b).join('\n'));
+    process.exit(0);
   }
   for (const f of args.flatMap(files)) {
     console.log(report(JSON.parse(readFileSync(f, 'utf8'))).join('\n'));
