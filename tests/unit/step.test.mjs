@@ -22,7 +22,7 @@ describe('移す前と同じ', () => {
       body = stepText(all),
       calls = all.flatMap((c) => c.calls);
     caseOut('step', body);
-    expect([fnv(body), body.length]).toEqual(['37a5d01f', 2602255]);
+    expect([fnv(body), body.length]).toEqual(['34f9925d', 2608899]);
     // 場合が中身を通っているか：23の関数が全部呼ばれ、どれも止まらない。見た目の乱数・音の乱数・伝言・setTimeout・音の部品を使う呼び出しもある
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);

@@ -13,6 +13,7 @@ export const MARK_H = {
   wraith: 2.35,
   jelly: 0.85,
   eel: 1.2,
+  snake: 0.6,
   shadowking: 3.58,
   shadowserpent: 3.7,
 };
