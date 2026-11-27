@@ -14,6 +14,7 @@ import { SND, clock, gear, player } from '../../src/lib/state.ts';
 import { audioCases } from './audio-cases.mjs';
 import { fakeAudio, fakeAudioClass } from './fake-audio.mjs';
 import { soundRandomCheck } from './sound-random-check.mjs';
+import { caseOut } from './case-out.mjs';
 
 const fnv = (s) => {
   let h = 0x811c9dc5;
@@ -185,6 +186,7 @@ describe('移す前と同じ', () => {
       lines = all.split('\n');
     // 偽の Web Audio が作れずに、どの音も鳴らないまま比べていないか（1440 の場合のうち 1421 で音が鳴る）
     expect([lines.length, lines.filter((l) => l.includes('"start"')).length]).toEqual([1440, 1421]);
+    caseOut('audio-1', all);
     expect([fnv(all), all.length]).toEqual(['c0f1dabc', 4251819]);
     expect(all.includes('"Math.random"')).toBe(false); // 音は見た目の乱数を引かない（引くと、音を変えただけで粒子などの並びがずれる）
     expect(JSON.stringify([player, SND.lv, SND.on, SND.ctx])).toBe(before); // 書き換えた状態は元に戻る
@@ -236,6 +238,7 @@ describe('詠唱の声（chantStart）', () => {
     }
     const all = out.join('\n');
     expect(calls).toBe(0);
+    caseOut('audio-2', all);
     expect([fnv(all), all.length]).toEqual(['ba541717', 115649]);
   });
 });

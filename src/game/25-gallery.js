@@ -101,6 +101,8 @@ function updateGallery(dt){
   if(g.mode==='beast'&&g.m){ const m=g.m, sc=m.ty.scale||1, fix=g.fix, cam=fix||g.view; g.t+=dt; const walking=fix?fix.pose==='walk':Math.floor(g.t/4)%2===1;
     const handled=!!(g.drag||(g.view&&g.t-g.view.t<GAL_IDLE));
     m.moving+=((walking?1:0)-m.moving)*Math.min(1,dt*4); m.walk+=dt*2.2*m.moving; if(!fix&&!handled)m.yaw+=dt*0.45; m.x=g.room.x; m.z=g.room.z;
+    // the conjurer's spirit blades circle it as they do in the dungeon while it has not noticed the player (the bestiary does not run updateMonster)
+    if(m.blades)for(const b of m.blades){ b.a+=dt*1.6; b.x=m.x+Math.cos(b.a)*0.9; b.y=1.55+Math.sin(b.a*2)*0.2; b.z=m.z+Math.sin(b.a)*0.9; }
     if(fix){ m.sleep=fix.pose==='sleep'; if(m.sleep)m.moving=0; }
     else if(m.ty.form==='dragon'&&!m.ty.boss){ m.sleep=Math.floor(g.t/6)%2===0; if(m.sleep){ m.moving=0; } }
     { const ty=m.ty; if(ty.flier)m.y=(1.6+Math.sin(g.t*2.2)*0.15)*Math.max(1,sc*0.7); else if(ty.fl)m.y=ty.fl+Math.sin(g.t*1.3)*0.12; }

@@ -61,6 +61,7 @@ import {
 import { fakeAudioClass } from './fake-audio.mjs';
 import { PLACES, gen, loadEnv } from './gen-places.ts';
 import { swapGlobals } from './ui-cases.mjs';
+import { stateFp } from './case-out.mjs';
 
 /** 移した関数の名前（場合が全部を呼ぶか、fight.test.mjs が確かめる） */
 export const NAMES = [
@@ -655,7 +656,7 @@ export async function fightCases(F, seeds, page) {
           snd: sndN - s0,
           msg: msgN - g0,
           timers: timers.st.n - t0,
-          state: fnv(state()),
+          state: stateFp(state(), fnv),
           msgs: msgs.map((m) => m.html).join('|'),
         });
         return ret;

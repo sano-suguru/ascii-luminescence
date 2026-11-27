@@ -9,6 +9,7 @@ import { G } from '../../src/lib/glyphs.ts';
 import * as lords from '../../src/lib/bodies/lords.ts';
 import * as small from '../../src/lib/bodies/small.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
+import { caseOut } from './case-out.mjs';
 
 const random = Math.random;
 afterEach(() => {
@@ -86,8 +87,9 @@ describe('生き物の形', () => {
       const b = seeded(() => lords.beastForm(spec));
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
-    expect(all.length).toBe(3232884);
-    expect(fnv(all)).toBe('cb490558'); // トロル・ゴーレム・クラーケン（trollForm2・golemForm2・krakenForm2）を除き、移す前の実装で出した値と同じ（この3つは移した後で作り直した。作り直した王の影の一つ目の姿は、下の別のテスト）
+    caseOut('bodies-1', all);
+    expect(all.length).toBe(3545793);
+    expect(fnv(all)).toBe('e4018f65'); // トロル・ゴーレム・クラーケン・ギタイムシ（trollForm2・golemForm2・krakenForm2・crabForm）を除き、移す前の実装で出した値と同じ（この4つは移した後で作り直した。作り直した王の影の一つ目の姿は、下の別のテスト）
   });
   it('主と大きな生き物の形：TypeScript に移す前と、同じ乱数で同じ形になる', () => {
     let all = '';
@@ -96,6 +98,7 @@ describe('生き物の形', () => {
       all += JSON.stringify(seeded(() => beasts.ogreForm({ ...ty, ch: 'O' })));
     }
     for (const f of BOSS_FORMS) all += JSON.stringify(seeded(f));
+    caseOut('bodies-2', all);
     expect(all.length).toBe(1792099);
     expect(fnv(all)).toBe('7a018410'); // 移す前の実装で出した値から、蜘蛛の女王とナーガの女王の明るさ b だけを 0.6 倍（BOSS_DIM）にした値
   });
@@ -107,6 +110,7 @@ describe('生き物の形', () => {
       ...BOSS_FORMS.map((f) => seeded(f)),
       ...TYS.flatMap((ty) => [seeded(() => beasts.dragonForm(ty)), seeded(() => beasts.ogreForm({ ...ty, ch: 'O' }))]),
       ...SPECS.map((s) => seeded(() => lords.beastForm(s))),
+      ...TYS.map((ty) => seeded(() => beasts.conjurerForm(ty))),
     ];
     for (const b of bodies) {
       expect(b.length).toBeGreaterThan(5);
@@ -130,12 +134,62 @@ describe('生き物の形', () => {
       expect([axis('legL'), axis('legR')]).toEqual([new Set(['0.62,0']), new Set(['0.62,0'])]);
     }
   });
+  it('ギタイムシ：脚の点はどれも、その脚の付け根（高さ 0.28・奥行きは脚ごと）を軸に回り、左右で互い違い（3本ずつ）に動く（軸がずれると、歩く時に体から離れる）', () => {
+    for (const ty of TYS) {
+      const b = seeded(() => small.crabForm(ty)),
+        legs = b.filter((p) => p.part === 'legL' || p.part === 'legR');
+      // 脚ごと（付け根の奥行きと左右）に分ける。付け根の点（線の初めの点）は、軸と同じ高さと奥行きにある
+      const byLeg = new Map<string, Set<string>>();
+      for (const p of legs) {
+        const k = `${Math.sign(p.x)},${p.pz}`;
+        byLeg.set(k, (byLeg.get(k) ?? new Set()).add(p.part));
+        expect(p.piv).toBe(0.28);
+      }
+      expect([...byLeg.keys()].sort()).toEqual(['-1,0.18', '-1,0.24', '-1,0.3', '1,0.18', '1,0.24', '1,0.3']);
+      for (const parts of byLeg.values()) expect(parts.size).toBe(1);
+      for (const k of byLeg.keys()) {
+        const root = legs.find((p) => `${Math.sign(p.x)},${p.pz}` === k && Math.abs(p.y - p.piv) < 1e-9 && Math.abs(p.z - p.pz) < 1e-9);
+        expect(root).toBeDefined();
+      }
+      // 左右で互い違い：同じ対（付け根の奥行きが同じ）の左と右は、別の組で動き、前と真ん中の脚も、同じ側では別の組
+      const partOf = (k: string): string => [...(byLeg.get(k) ?? [])].join();
+      for (const z of ['0.18', '0.24', '0.3']) expect(partOf(`-1,${z}`)).not.toBe(partOf(`1,${z}`));
+      for (const sd of ['-1', '1']) expect(partOf(`${sd},0.3`)).not.toBe(partOf(`${sd},0.24`));
+      expect(legs.filter((p) => p.part === 'legL').length).toBe(legs.filter((p) => p.part === 'legR').length);
+      // 脚のほかに、回る部位は無い（腕は無い）
+      expect(b.some((p) => p.part === 'armL' || p.part === 'armR')).toBe(false);
+    }
+  });
   it('ゴーレム：腕の点（肩の大岩と拳も）はどれも肩を、脚の点（足も）は腰を軸に回る（軸がずれると、歩く時に体から離れる）', () => {
     for (const ty of TYS) {
       const b = seeded(() => beasts.golemForm2(ty)),
         axis = (part: string) => new Set(b.filter((p) => p.part === part).map((p) => `${p.piv},${p.pz}`));
       expect([axis('armL'), axis('armR')]).toEqual([new Set(['1.34,0.06']), new Set(['1.34,0.06'])]);
       expect([axis('legL'), axis('legR')]).toEqual([new Set(['0.62,0']), new Set(['0.62,0'])]);
+    }
+  });
+  it('ゴブリンの呪術師：腕の点（袖・手・杖も）はどれも肩を、足の点は腰を軸に回る。明るさ b は 1.8 まで。縁取りと背中の印は、衣の表面のすぐ外', () => {
+    for (const ty of TYS) {
+      const b = seeded(() => beasts.conjurerForm(ty)),
+        axis = (part: string) => new Set(b.filter((p) => p.part === part).map((p) => `${p.piv},${p.pz}`));
+      expect([axis('armL'), axis('armR')]).toEqual([new Set(['1.04,0.14']), new Set(['1.04,0.14'])]);
+      expect([axis('legL'), axis('legR')]).toEqual([new Set(['0.62,0.05']), new Set(['0.62,0.05'])]);
+      for (const p of b) expect(p.b).toBeLessThanOrEqual(1.8);
+      expect(new Set(b.map((p) => p.part))).toEqual(new Set(['body', 'head', 'armL', 'armR', 'legL', 'legR']));
+      // 衣の表面からの距離（外が正。体を作ったのと同じ式 CONJ_ROBE で、点の高さと向きの所の表面と比べる）
+      const R = beasts.CONJ_ROBE,
+        out = (p: { x: number; y: number; z: number }): number => {
+          const f = (p.y - R.y0) / (R.y1 - R.y0),
+            a = Math.atan2((p.z - R.z(f)) / R.rz(f, p.z < R.z(f)), p.x / R.rx(f)),
+            s = beasts.conjRobeAt(f, a);
+          return Math.hypot(p.x, p.z - R.z(f)) - Math.hypot(s.x, s.z - R.z(f));
+        };
+      const deco = b.filter((p) => p.part === 'body' && p.s < 0.95 * nth(b, 0).s);
+      expect(deco.length).toBeGreaterThan(60);
+      for (const p of deco) {
+        expect(out(p)).toBeGreaterThan(0.005);
+        expect(out(p)).toBeLessThan(0.05);
+      }
     }
   });
   it('クラーケン：水面より下に点が無く、目と斑点は頭の表面のすぐ外（埋もれず、浮かない）。明るさ b は 1.8 まで。腕は揺れる触手（tent）だけ', () => {
