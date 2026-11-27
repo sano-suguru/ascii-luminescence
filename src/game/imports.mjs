@@ -9,11 +9,11 @@ import { R, RI, keyedRand, mpick, mr, pick, rand, roll, setSoundRand, shuffle, s
 import { dragonSleepForm } from '../lib/bodies/beasts.ts';
 import { beastSamples, beastSleep, SHADOW_KING_SC, shadowKingScale } from '../lib/bodies/lords.ts';
 import {
-  BASE_H, BRANCHES, CELL, CH_D, CHUNK, CXN, CZN, D4, EYE, FOGS, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MH, MW, NCELL, NDL, NSL, PR, PROPHECIES,
-  REALMS, SF_BRIM, SF_DEAD, SF_FOLIAGE, SF_FUNGFOR, SF_GRASS, SF_HAY, SF_ICE, SF_LUMEN, SF_MUD, SF_OBSIDIAN, SF_RUBBLE, TC, TF, TP,
+  BASE_H, BRANCHES, CELL, CH_D, CHUNK, CXN, CZN, D4, FOGS, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MH, MW, NCELL, NDL, NSL, PR, PROPHECIES,
+  REALMS, SF_BRIM, SF_DEAD, SF_FOLIAGE, SF_FUNGFOR, SF_GRASS, SF_HAY, SF_ICE, SF_LUMEN, SF_MUD, SF_OBSIDIAN, SF_RUBBLE, TC, TF,
   TW, TX, VAULT_WALL_H, FINAL_DEPTH, VEIN_NAME, blocksWalk, cpos, FIRE_TYPES, } from '../lib/world.ts';
 import { topLights } from '../lib/light.ts';
-import { flowW, jagged, lerpAngle, mCenter, sstep, turnDir } from '../lib/math.ts';
+import { flowW, jagged, mCenter, sstep, turnDir } from '../lib/math.ts';
 import { css } from '../lib/color.ts';
 import {
   CAT_BR, CAT_NAME, ELEM_POW, RUNE_FONT, RUNE_TYPES, RALLY_FROM, SLEEP_MULT, SLOT_MAX, TIER_COL, TL, TRAITS, TRAIT_V, WEAPON, elemCount, handRunes, serRune, sp_elem, trList, trName, tv, RES, RUNE_DEF, detailLines, elemCol, modVal, modWorks, rollTraits, runeCol, runeName, syncHand, thingLabel,
@@ -30,10 +30,10 @@ import { setNoiseSeed, vnoise } from '../lib/noise.ts';
 import { ARTS, VAULTS } from '../lib/vaults.ts';
 import { generateLevel } from '../lib/generate.ts';
 import { LOGO_ART, TITLE_LINES } from '../lib/title.ts';
-import { DUST_N, DYN_VS, GAS_N, GLYPH_FS, P0, PT_FS, PT_TOTAL, PT_VS, STATIC_VS, WATER_FS, WATER_VS } from '../lib/shaders.ts';
+import { DYN_VS, GLYPH_FS, PT_FS, PT_VS, STATIC_VS, WATER_FS, WATER_VS } from '../lib/shaders.ts';
 import { ALTAR_W, MARK_H } from '../lib/hud.ts';
 import { drawMap, sizeMap } from '../lib/minimap.ts';
-import { AVATAR_TY, BRANCH_HINT, DECO_K, DECO_NAMES, DUMMY_KINDS, FIX_NAMES, GALLERY_SLEEP, LEGEND_KINDS, LEGEND_ORDER, LORD_GAL, MACHINE_INFO, lookLine, mname } from '../lib/names.ts';
+import { BRANCH_HINT, DECO_K, DECO_NAMES, DUMMY_KINDS, FIX_NAMES, GALLERY_SLEEP, LEGEND_KINDS, LEGEND_ORDER, LORD_GAL, MACHINE_INFO, lookLine, mname } from '../lib/names.ts';
 import { CHANT_STEPS, SND_NAME, VOWELS, sEnv } from '../lib/sound.ts';
 import {
   castSound, sAlarm, sBoom, sBubble, sChime, sCreak, sDist, sHiss, sHowl, sndInit, sndPrep, sndReady, sndUpdate, sNoise, sOut, sRumble, sSplash, sSqueak, sTone, sWhoosh,
@@ -53,7 +53,7 @@ import {
   bookRows, chronRows, cycleUi, drawMark, flyOpen, helpRows, isPaused, onNoticed, placeLabel, renderBook, renderChron, renderHelp, renderStatus, setHelp, flashHint, showHint, updateSearch, updateStealth,
 } from '../lib/status.ts';
 import { descentSealed, drawLegendWorld, getLegend, legendAll, legendOfBranch } from '../lib/legend.ts';
-import { ceilAt, cellLight, updateLights } from '../lib/lightmap.ts';
+import { ceilAt, updateLights } from '../lib/lightmap.ts';
 import { drawDoors, drawFixtures, drawGraves, drawSprings, drawTraps, drawWebs, webTouch } from '../lib/fixtures.ts';
 import { addBolt, drawBoltFx, drawFire, drawFrozen, drawWave, drawZones, sparkCrown } from '../lib/fx.ts';
 import { BRANCH_OMEN, REALM_OMEN, SPECIAL_OMEN, STRATUM_OMEN, drawOmens, drawStairSeal, omenOf, stairsGuarded } from '../lib/omens.ts';
@@ -62,13 +62,15 @@ import { BL, canStep, chooseNext, fireNear, foe, hostile, makeMonster, statOf, s
 import { brimFlare, brimRecover, chillArea, crackIce, ignite, initFire, regrow, splash, stepFire, stepGas, tallAt, trample, updateCritter, updateFrozen, uploadCells } from '../lib/ground.ts';
 import { updateEvents, updateTraps } from '../lib/events.ts';
 import { lockFailed, menuOnHide, menuOnUnlock, relockClick, setCamMode, sndToggle, tryLock, updateResume } from '../lib/screens.ts';
-import { addLooks, buildForm } from '../lib/bodies/build.ts';
+import { addLooks } from '../lib/bodies/build.ts';
 import { bogAura, dragonAura, drawMorph, houndAura, krakenAura, lichAura, nagaAura, salamanderAura, shadowAura, spiderAura, transformShadow } from '../lib/bodies/auras.ts';
-import { P, dCol, dPar, dPos, dyn, initDust, killP, respawnDust, spawn } from '../lib/particles.ts';
+import { P, dCol, dPar, dPos, dyn, initDust, ptCol, ptGly, ptPos, ptSize, spawn } from '../lib/particles.ts';
+import { updateParticles } from '../lib/motes.ts';
+import { drawSection, updateAtmosphere, updateAvatar } from '../lib/camera.ts';
 import { drawMonster, drawMonster0, drawTentacles } from '../lib/bodies/draw.ts';
 import { look } from '../lib/look.ts';
 import {
-  aimOrigin, aimPoint, aimTarget, assistPoint, beamFrame, castPoint, doorBlock, drawSwing, groundPoint, handPoint, handUp, headPos, hittable, losClear, reflectDir, shotFrame, viewDir,
+  aimOrigin, aimPoint, aimTarget, assistPoint, beamFrame, castPoint, doorBlock, drawSwing, groundPoint, handPoint, handUp, hittable, losClear, reflectDir, shotFrame, viewDir,
 } from '../lib/aim.ts';
 import {
   addZone, applyElem, applyHit, burstFire, castNow, castRapid, castStar, chainLightning, coldSnap, conductWater, damageMonster, dashCast, dashCuts, dropRune,
@@ -82,7 +84,7 @@ import { awardLore, graveCandidates, graveRows, loreRows, resultPlace, runLore, 
 // three.js（r147）と光のにじみなどの部品 T、霧の色 fogCol
 import { T, fogCol } from '../lib/three.ts';
 import { buildWorld, setFog, updateWater } from '../lib/build.ts';
-import { DLC, DLP, SL, SND, adv, beamHold, blaze, buf, cellData, clock, fight, gear, gfx, here, hudInfo, iceT, keys, lantern, placeMem, player, saved, stealth, ui, vfx, vmKick, dust, edge, TEST } from '../lib/state.ts';
+import { DLC, DLP, SL, SND, adv, beamHold, blaze, buf, cellData, clock, fight, gear, gfx, here, hudInfo, iceT, keys, lantern, placeMem, player, saved, stealth, ui, vfx, vmKick, edge, TEST } from '../lib/state.ts';
 import { initFitIntro } from '../lib/layout.ts';
 import { byInput, confirmTap, homeHint, initTouch } from '../lib/touch.ts';
 import { TUNE, initTouchpad, releaseTouch } from '../lib/touchpad.ts';

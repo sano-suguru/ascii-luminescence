@@ -95,7 +95,17 @@ export const DUMMY_KINDS = [
   { k: 'dummyT', name: '的の人形（濡れている）', col: [0.5, 0.7, 1.0] },
 ];
 /** 3人称の時の、自分の姿の種類 */
-export const AVATAR_TY = {
+export const AVATAR_TY: {
+  ch: string;
+  name: string;
+  col: Color;
+  form: string;
+  scale: number;
+  speed: number;
+  fl: number;
+  light: number;
+  trail: number;
+} = {
   ch: '@',
   name: 'あなた',
   col: [1.0, 0.9, 0.75],

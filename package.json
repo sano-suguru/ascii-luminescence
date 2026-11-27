@@ -17,6 +17,7 @@
     "test:visual": "node tests/visual.mjs",
     "shots": "node tools/shots.mjs",
     "lords": "node tools/lords.mjs",
+    "field": "node tools/field.mjs",
     "verify": "pnpm check && pnpm test",
     "serve": "vite build && node tools/serve.mjs",
     "where": "node tools/where.mjs",
