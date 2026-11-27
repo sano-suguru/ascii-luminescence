@@ -142,13 +142,14 @@ if(TEST)window.__test={
     const R=fight.rockfall; return R?{t:+R.t.toFixed(4),rocks:R.rocks.length}:null; },
   // lingering things of this level (fields, delayed hits, rains, marks on the floor, a beam being fired, lightning, lightning still to fall and its flash):
   // put one of each where the player stands, made to do nothing for 60 s (a field and a rain with no element, a beam whose first shot is 60 s away),
-  // and count them. It also sets both hands' trigger wait to 60 s (it belongs to the run, not to the level: a new run sets it back to 0)
-  addTraces(){ const x=player.x, z=player.z; addZone(x,z,2,{elem:null},60,false); later(60,()=>{}); fight.marks.push({x,z,r:1,t:60,c:[1,0.5,0.2]});
+  // and count them. It also sets both hands' trigger wait to 60 s (it belongs to the run, not to the level: a new run sets it back to 0).
+  // It also makes an ice hound where the player stands (not added to the level's creatures) and lets it fall, so one crumbling body lies there
+  addTraces(){ const x=player.x, z=player.z; crumble(makeMonster({key:'Zi',cx:Math.floor(x/CELL),cz:Math.floor(z/CELL),g:-1,lead:true})); addZone(x,z,2,{elem:null},60,false); later(60,()=>{}); fight.marks.push({x,z,r:1,t:60,c:[1,0.5,0.2]});
     fight.rains.push({x,z,r:1,n:1,left:1,iv:1,tick:60,sp:{elem:null},follow:false,elemK:0,again:false}); fight.beamRun={h:'L',t:60,tick:60,auto:true,dir:null};
     const a=[x,1,z], b=[x,1,z+1]; fight.boltFx.push({a,b,col:[1,1,1],style:'spark',amp:0.1,t:0,life:60,re:0,pts:jagged(a,b,0.1)}); fight.zapQueue.push({t:60,fn:()=>{}}); vfx.zapFlash={x,y:2,z,col:[1,1,1],t:60,r:6};
     fight.trigCd={L:60,R:60}; return this.traces(); },
   traces(){ return {zones:fight.zones.length,laters:fight.laters.length,rains:fight.rains.length,marks:fight.marks.length,beam:!!fight.beamRun,
-    bolts:fight.boltFx.length,zaps:fight.zapQueue.length,flash:!!vfx.zapFlash,trig:[fight.trigCd.L,fight.trigCd.R]}; },
+    bolts:fight.boltFx.length,zaps:fight.zapQueue.length,flash:!!vfx.zapFlash,trig:[fight.trigCd.L,fight.trigCd.R],debris:fight.debris.length}; },
   // a delayed thing that throws (to see that an error inside one is not swallowed in test mode)
   failLater(message){ later(0,()=>{ throw new Error(message); }); },
   // count the cells in sight now (the game does it every 0.1 s; a check that looks every frame should not miss a short moment)
