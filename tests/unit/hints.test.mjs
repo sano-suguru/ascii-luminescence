@@ -32,6 +32,6 @@ describe('移す前と同じ', () => {
     expect(new Set(by('simPath').map((c) => JSON.parse(c.ret).hitM !== null))).toEqual(new Set([true, false]));
     expect(calls.filter((c) => c.threw).length).toBeLessThan(60);
     caseOut('hints', all);
-    expect([fnv(all), all.length]).toEqual(['b74c1eaf', 6456858]);
+    expect([fnv(all), all.length]).toEqual(['08b30710', 5693499]);
   }, 60000);
 });

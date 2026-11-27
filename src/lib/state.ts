@@ -57,7 +57,7 @@ export interface Clock {
 export const clock: Clock = { time: 0, frame: 0 };
 
 /** 揺れと光り（画面の揺れ、画面の光り、ダメージを受けた時と回復した時の光り、稲妻の光り）と、目の慣れ expo（画面の明るさに掛ける。src/lib/camera.ts の updateAtmosphere が、まわりの明るさに合わせてゆっくり変える）と、
- * 階の場所ごとの空気 ambK（分かれ道は明るく、階段へ向かう道は暗く。src/lib/camera.ts の updateSectionAir）と、詠唱している間に画面をゆっくりにする見た目の強さ slowFx（0〜1。src/lib/chantfx.ts の updateCross） */
+ * 階の場所ごとの空気 ambK（分かれ道は明るく、階段へ向かう道は暗く。src/lib/camera.ts の updateSectionAir）と、詠唱している間に画面をゆっくりにする見た目の強さ slowFx（0 から 1。src/lib/chantfx.ts の updateCross） */
 export interface Vfx {
   shake: number;
   flash: number;

@@ -140,7 +140,7 @@ export async function hintsCases(F, seeds) {
       const D = {
         ...L0.res.level,
         items: L0.res.level.items.map((it) => ({ ...it })),
-        rooms: L0.res.level.rooms,
+        rooms: [...L0.res.level.rooms],
       };
       if (L0.res.lordType) MTYPES['lord'] = L0.res.lordType;
       if (L0.res.beastType) MTYPES['X'] = L0.res.beastType;
@@ -171,6 +171,16 @@ export async function hintsCases(F, seeds) {
         }
         return pick(floors);
       };
+      // 距離の境（矢印の 20・分かれ道では 30、空の枠と床のルーンの 28、石碑の 30）の前後に置くマス
+      const RINGS = [19.5, 20.5, 20.9, 21.5, 27.5, 28.5, 29.5, 30.5, 31.5],
+        ring = () => {
+          const d = pick(RINGS),
+            a = r() * 6.28,
+            cx = Math.floor((player.x + Math.cos(a) * d) / CELL),
+            cz = Math.floor((player.z + Math.sin(a) * d) / CELL);
+          return Math.max(0, Math.min(NCELL - 1, cz * MW + cx));
+        },
+        spot = (rr) => (chance(0.3) ? ring() : nearFloor(rr));
       ui.camMode = chance(0.25) ? 'tps' : 'fps';
       gfx.camera = { position: { x: player.x, y: player.eye, z: player.z } };
       // 見たマス（全部・何も・まだらに）
@@ -180,11 +190,11 @@ export async function hintsCases(F, seeds) {
       // 分かれ道・階段までの距離
       const pc = ((player.z / CELL) | 0) * MW + ((player.x / CELL) | 0),
         myRoom = D.roomOf[pc];
-      D.hub = chance(0.3) ? { ri: chance(0.6) && myRoom >= 0 ? myRoom : Math.floor(r() * D.rooms.length), cx: 0, cz: 0 } : undefined;
+      D.hub = chance(0.45) ? { ri: chance(0.6) && myRoom >= 0 ? myRoom : Math.floor(r() * D.rooms.length), cx: 0, cz: 0 } : undefined;
       if (chance(0.7)) {
         D.dS = new Int32Array(NCELL);
         for (let i = 0; i < NCELL; i++) D.dS[i] = Math.floor(r() * 120);
-        D.pathL = pick([0, -1, 50, 100, 120, r() * 150]);
+        D.pathL = pick([0, -1, 0.5, 1, 50, 100, 120, r() * 150]);
         // 境の 0.7 ちょうどの前後
         if (chance(0.2)) D.dS[pc] = Math.round(D.pathL * 0.7) + pick([-1, 0, 1]);
       } else {
@@ -193,11 +203,12 @@ export async function hintsCases(F, seeds) {
       }
       if (chance(0.1)) D.prof = undefined;
       D.finalVault = chance(0.1);
-      if (chance(0.1)) D.stairs = -1;
-      else if (chance(0.3)) D.stairs = nearFloor(30);
-      D.bstairs = chance(0.4) ? { key: 'crypt', cell: chance(0.1) ? -1 : nearFloor(60) } : null;
+      if (chance(0.1)) D.stairs = pick([-1, 0]);
+      else if (chance(0.3)) D.stairs = spot(30);
+      D.bstairs = chance(0.4) ? { key: 'crypt', cell: chance(0.15) ? pick([-1, 0]) : nearFloor(60) } : null;
+      if (chance(0.5)) here.explored[0] = 1;
       D.portal = chance(0.4) ? { key: 'abyss', cell: nearFloor(60) } : null;
-      D.gate = chance(0.3) ? { cell: nearFloor(30) } : null;
+      D.gate = chance(0.3) ? { cell: chance(0.2) ? pick([-1, 0]) : spot(30) } : null;
       // 生き物：番人の群れ（1・2）・見えている敵・穏やかな物・倒れた物
       here.monsters = [];
       const kinds = Object.keys(MTYPES).filter((k) => MTYPES[k].col && !MTYPES[k].dummy);
@@ -238,7 +249,7 @@ export async function hintsCases(F, seeds) {
       const rune = (cat) => makeRune(pick(RUNE_TYPES[cat]));
       for (let g = 0; g < 1 + Math.floor(r() * 3); g++) {
         const grp = `hint${s}-${g}`,
-          i0 = nearFloor(chance(0.5) ? 10 : 30),
+          i0 = spot(chance(0.5) ? 10 : 30),
           forge = chance(0.2),
           lord = chance(0.2),
           guard = chance(0.3) ? pick([1, 2, 3]) : undefined,
@@ -253,9 +264,13 @@ export async function hintsCases(F, seeds) {
           items.push(it);
         }
       }
+      const dryFloor = (f) =>
+        D.liquid[f]
+          ? (floors.find((c) => !D.liquid[c] && Math.abs((c % MW) - (f % MW)) + Math.abs(((c / MW) | 0) - ((f / MW) | 0)) < 12) ?? f)
+          : f;
       for (let k = 0; k < 3; k++) {
         const kind = pick(['pedestal', 'elite', 'plain', 'slot', 'spring', 'grave', 'vault', 'nothing']),
-          i = nearFloor(chance(0.7) ? 14 : 40),
+          i = spot(chance(0.7) ? 14 : 40),
           taken = chance(0.1);
         if (kind === 'pedestal')
           items.push({ i, kind: 'rune', taken, pedestal: true, rune: rune('atk'), slot: chance(0.5) ? k : undefined });
@@ -268,9 +283,7 @@ export async function hintsCases(F, seeds) {
         // 宝物庫の褒美は、乾いた床に置く（まわりに乾いた床が1つも無いと、兆しを描く所が無く、新しい関数は nth で止まる。本物の階では起きない）
         if (kind === 'vault')
           items.push({
-            i: D.liquid[i]
-              ? (floors.find((c) => !D.liquid[c] && Math.abs((c % MW) - (i % MW)) + Math.abs(((c / MW) | 0) - ((i / MW) | 0)) < 12) ?? i)
-              : i,
+            i: dryFloor(D.tile[i] === TF ? i : nearFloor(14)),
             kind: 'rune',
             taken,
             vault: true,
@@ -279,14 +292,25 @@ export async function hintsCases(F, seeds) {
             ...(chance(0.2) ? { area: { cells: [i, i + 1, i + MW] } } : {}),
           });
       }
+      // 宝物庫の褒美の部屋を、境（6 マス）の前後の小ささにする（写した部屋の一覧の中だけ）
+      for (const it of items)
+        if (it.vault && chance(0.4)) {
+          const ri = D.roomOf[it.i];
+          if (ri >= 0) D.rooms[ri] = { ...D.rooms[ri], cells: D.rooms[ri].cells.slice(0, pick([6, 7])) };
+        }
       D.steles = chance(0.6)
-        ? Array.from({ length: 1 + Math.floor(r() * 3) }, () => ({ i: nearFloor(chance(0.5) ? 6 : 40), g: pick(['&', '%', 'ᚦ', '?']) }))
+        ? Array.from({ length: 1 + Math.floor(r() * 3) }, () => ({ i: spot(chance(0.5) ? 6 : 40), g: pick(['&', '%', 'ᚦ', '?']) }))
         : undefined;
       // 光線・飛ぶ物
       const pt = () => [player.x + (r() - 0.5) * 12, r() * 3, player.z + (r() - 0.5) * 12];
       fight.beamSegs = chance(0.4)
         ? Array.from({ length: 1 + Math.floor(r() * 2) }, () => ({
-            pts: Array.from({ length: 1 + Math.floor(r() * 4) }, pt),
+            pts: chance(0.3)
+              ? (() => {
+                  const a = pt();
+                  return [a, [a[0] + pick([0, 0.05, 0.1, 0.3]), a[1], a[2]], pt()];
+                })()
+              : Array.from({ length: 1 + Math.floor(r() * 4) }, pt),
             col: [r(), r(), r()],
             t: 0.1,
           }))
@@ -329,7 +353,7 @@ export async function hintsCases(F, seeds) {
         gear.hands.L.atk = gear.hands.R.atk = makeRune(two);
       }
       if (gear.hands) for (const h of ['L', 'R']) if (chance(0.6)) gear.hands[h].elem = rune('elem');
-      gear.bag = Array.from({ length: Math.floor(r() * 4) }, () => rune(pick(['elem', 'mod', 'trig', 'body', 'atk'])));
+      gear.bag = Array.from({ length: Math.floor(r() * (chance(0.3) ? 14 : 4)) }, () => rune(pick(['elem', 'mod', 'trig', 'body', 'atk'])));
       const castSt = () =>
         chance(0.3)
           ? null
@@ -345,7 +369,7 @@ export async function hintsCases(F, seeds) {
               beamT: 0,
               ...(chance(0.6) ? { sylT: clock.time - pick([0, 0.1, 0.15, 0.17, 0.5]), syl: Math.floor(r() * 9) } : {}),
             };
-      gear.swapSt = chance(0.2) ? { t: r() * 1.2, dur: 1, snap: null, last: 0 } : null;
+      gear.swapSt = chance(0.2) ? { t: r() * 1.2, dur: pick([1, 0.6, 1.5]), snap: null, last: 0 } : null;
       clock.time = 30 + r() * 200;
       gear.castSt = castSt();
       // 画面の開け閉め
@@ -363,8 +387,9 @@ export async function hintsCases(F, seeds) {
       ui.arrowCv = fc.cv;
       ui.arrowCtx = chance(0.05) ? null : fc.ctx;
       const hb = pick(['shown', 'hidden', 'none']),
-        hbTop = pick([fc.cv.clientHeight - 40, fc.cv.clientHeight * 0.5, 30]);
-      ui.hotbarEl = hb === 'none' ? null : { getBoundingClientRect: () => ({ top: hbTop, height: hb === 'hidden' ? 0 : 40 }) };
+        hbTop = pick([fc.cv.clientHeight - 40, fc.cv.clientHeight * 0.5, 30, 0, 0.5]);
+      ui.hotbarEl =
+        hb === 'none' ? null : { getBoundingClientRect: () => ({ top: hbTop, height: hb === 'hidden' ? pick([0, 0.5, 1]) : 40 }) };
       ui.hotbarWatch = chance(0.6);
       ui.hotbarTop = chance(0.3) ? pick([null, -1, 300]) : null;
       ui.arrowsDrawn = chance(0.5);
@@ -387,6 +412,13 @@ export async function hintsCases(F, seeds) {
       // 呼ぶ関数
       const someTarget = () => {
         const ts = F.arrowTargets();
+        if (chance(0.3)) {
+          const d = pick([5, 10, 21.5, 22.5, 22.9]),
+            cp = Math.cos(player.pitch),
+            x = player.x - Math.sin(player.yaw) * cp * d,
+            z = player.z - Math.cos(player.yaw) * cp * d;
+          return { x, z, d: Math.hypot(x - player.x, z - player.z), ch: '>', col: [1, 1, 1] };
+        }
         return ts.length && chance(0.7)
           ? pick(ts)
           : { x: player.x + (r() - 0.5) * 50, z: player.z + (r() - 0.5) * 50, d: pick([5, 21.9, 22, 22.1, 40]), ch: '>', col: [1, 1, 1] };

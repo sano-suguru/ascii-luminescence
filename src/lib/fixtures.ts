@@ -1,7 +1,9 @@
 // 階に置いてある物を描く（もとは src/game/14-lights-fixtures.js の drawFixtures・drawDoors、21-altars-heal.js の drawSprings、
 // 22-world-hints.js の drawGraves、13-creatures.js の drawWebs・webTouch）：灯りの備品（火鉢・水晶・たいまつ・階段など）、扉（近づくと開く）、
 // 泉、墓、クモの巣（触れると震え、燃えると落ちる）、罠と鉄格子（18-level-player.js の drawTraps）。毎フレーム、世界の中に文字を置き（dyn）、粒子を出す（spawn）。
-// 状態の入れ物 here（今の階）・player・blaze（火）・clock・ui（1人称か3人称か）・gfx（カメラの位置。読むだけ）に頼る。呼ぶのは古い JS の描画（30-loop-init.js の tick と 22-world-hints.js の drawRunesWorld）と、
+// 床と台と祭壇のルーン・石碑・宝物庫の兆しと、光線・飛ぶ物・詠唱と付け替えのルーン（22-world-hints.js の drawRunesWorld）。
+// 状態の入れ物 here（今の階）・player・blaze（火）・clock・ui（1人称か3人称か）・gfx（カメラの位置。読むだけ）・fight（光線・飛ぶ物）・gear（溜めと付け替え）に頼る。
+// 呼ぶのは古い JS の描画（30-loop-init.js の tick。泉と墓はこのファイルの drawRunesWorld も）と、
 // プレイヤーの動き（src/lib/player.ts の updatePlayer が webTouch）。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
 import { lookup, must, nth } from './array.ts';
