@@ -1011,6 +1011,22 @@ await withBrowser(async ({ browser, base }) => {
       await p.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
       await advance(p, 1.5);
     }
+    // メニュー：開いて、表示を2回（0.5秒あけて。押し戻し）、操作の案内、[戻る]、閉じる。開き直して、続ける
+    const tapSel = async (sel) => {
+      const b = await p.locator(sel).boundingBox();
+      await p.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+    };
+    await tapSel('#menuB');
+    await advance(p, 0.5);
+    for (const k of ['ui', 'ui', 'help', 'back']) {
+      await tapSel(`#menu button[data-k="${k}"]`);
+      await advance(p, 0.5);
+    }
+    await tapSel('#menuB');
+    await advance(p, 0.5);
+    await tapSel('#menuB');
+    await advance(p, 0.5);
+    await tapSel('#menu button[data-k="resume"]');
     await nextFrames(p);
     await advance(p, 11);
     await nextFrames(p);
@@ -1027,6 +1043,16 @@ await withBrowser(async ({ browser, base }) => {
         for (const [k, v] of [['open'], ['touch', true], ['started', true], ['pack', true], ['pack', false]])
           if (!ev(k, v)) errs.push(`診断の記録：できごと ${k}=${v} が無い（${JSON.stringify(d.events).slice(0, 300)}）`);
         if (!d.events.some((e) => e.k === 'press' && String(e.v).startsWith('packB'))) errs.push('診断の記録：[装備] を押したことが無い');
+        // メニューの押し方：項目と、その前の項目からの秒。閉じて開き直した後の1回目は、前の項目を持たない
+        const menu = JSON.stringify(d.menu.map(({ k, prev, dt }) => [k, prev, dt]));
+        const wantMenu = JSON.stringify([
+          ['ui', null, null],
+          ['ui', 'ui', 0.5],
+          ['help', 'ui', 0.5],
+          ['back', 'help', 0.5],
+          ['resume', null, null],
+        ]);
+        if (menu !== wantMenu) errs.push(`診断の記録：メニューの押し方が ${menu}（${wantMenu} のはず）`);
         // かかった時間（テスト用モードでは時計が止まっているので 0ms）：迷宮に入った時・音を鳴らし始めた時（先に作った部品で）・階を作った時（生成と組み立ての内訳も）
         const tk = (k) => d.took.find((r) => r.k === k);
         if (

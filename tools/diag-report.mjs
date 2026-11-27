@@ -15,6 +15,34 @@ const median = (a) => {
 };
 const pad = (v, w) => String(v ?? '-').padEnd(w);
 
+/** すぐ押し直したと見る秒（メニューの項目を押してから、次の項目を押すまで） */
+export const QUICK = 1.5;
+/** 押すたびに切り替わる項目（2回押すと元に戻る） */
+const TOGGLES = new Set(['cam', 'ui', 'snd', 'look', 'perf']);
+
+/**
+ * メニューの押し方（src/lib/diag.ts の menu）の表。押し間違いの目安：QUICK 秒以内に別の項目を押した（違う所を押して押し直した）回数と、
+ * 切り替えの項目を QUICK 秒以内に押し戻した回数（同じ項目の2回目。ただし見回す速さ・音量は3段なので、続けて押すのは選び直しのこともある）
+ */
+export function menuRows(menu) {
+  if (!menu) return [];
+  if (!menu.length) return ['メニューの押し方：押していない'];
+  const count = Object.entries(Object.groupBy(menu, (r) => r.k))
+    .map(([k, a]) => `${k} ${a.length}`)
+    .join('・');
+  const quick = menu.filter((r) => r.dt !== null && r.dt <= QUICK);
+  const other = quick.filter((r) => r.prev !== r.k),
+    back = quick.filter((r) => r.prev === r.k && TOGGLES.has(r.k));
+  const out = [`メニューの押し方：${menu.length} 回（${count}）`];
+  out.push(
+    `  ${QUICK}秒以内に別の項目：${other.length} 回${other.length ? `（${other.map((r) => `${r.prev}→${r.k} ${r.dt}秒`).join('・')}）` : ''}`,
+  );
+  out.push(`  ${QUICK}秒以内に押し戻した：${back.length} 回${back.length ? `（${back.map((r) => `${r.k} ${r.dt}秒`).join('・')}）` : ''}`);
+  const dts = menu.map((r) => r.dt).filter((d) => d !== null);
+  if (dts.length) out.push(`  押す間の秒：${dts.join(' ')}`);
+  return out;
+}
+
 /** 1つの記録を、行の配列にする */
 export function report(rec) {
   const out = [];
@@ -50,6 +78,7 @@ export function report(rec) {
     for (const [k, a] of Object.entries(by))
       out.push(`  ${pad(k, 22)}${pad(a.length + '回', 6)}中央 ${median(a.map((r) => r.ms))}ms・最大 ${Math.max(...a.map((r) => r.ms))}ms`);
   }
+  out.push(...menuRows(rec.menu));
   const line = [
     ...took.map((r) => ({
       t: r.t,
