@@ -1,5 +1,5 @@
 // src/lib/bodies/ の単体テスト（生き物の形）
-import { lookup, nth } from '../../src/lib/array.ts';
+import { lookup, must, nth } from '../../src/lib/array.ts';
 import { afterEach, describe, expect, it } from 'vitest';
 import * as beasts from '../../src/lib/bodies/beasts.ts';
 import * as bosses from '../../src/lib/bodies/bosses.ts';
@@ -46,6 +46,8 @@ const TY_FORMS: ((ty: BodyType) => Body)[] = [
   beasts.grazerForm,
   beasts.salamanderForm,
   beasts.iceHoundForm,
+  beasts.fireHoundForm,
+  beasts.lightHoundForm,
   beasts.trollForm2,
   beasts.golemForm2,
   beasts.bogForm2,
@@ -90,8 +92,8 @@ describe('生き物の形', () => {
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
     caseOut('bodies-1', all);
-    expect(all.length).toBe(4197773);
-    expect(fnv(all)).toBe('415a0e8c'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
+    expect(all.length).toBe(5010851);
+    expect(fnv(all)).toBe('815f1c59'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
   });
   it('主と大きな生き物の形の指紋（形と、形を作る時に見た目の乱数を引く順番が、思わず変わっていない）', () => {
     let all = '';
@@ -213,6 +215,91 @@ describe('生き物の形', () => {
     for (const e of eyes)
       for (const p of b.filter((q) => q.part === 'head' && q.col !== beasts.HOUND_ICE.eye))
         expect(Math.hypot(p.x - e.x, p.y - e.y, p.z - e.z)).toBeGreaterThan(0.08);
+  });
+  it('炎と光のハウンド：前脚の点は肩を、後脚の点は腰を軸に回る（氷のハウンドと同じ体）。目は頭の表面のすぐ外。明るさ b は 1.8 まで', () => {
+    const H = beasts.houndHead;
+    for (const [F, C, parts] of [
+      [beasts.fireHoundForm, beasts.HOUND_FIRE, ['body', 'head', 'legL', 'legR', 'tail', 'flame']],
+      [beasts.lightHoundForm, beasts.HOUND_LIGHT, ['body', 'head', 'legL', 'legR', 'tail']],
+    ] as const)
+      for (const ty of TYS) {
+        const b = seeded(() => F(ty));
+        for (const p of b) {
+          expect(p.b).toBeLessThanOrEqual(1.8);
+          expect(parts).toContain(p.part);
+        }
+        for (const p of b.filter((q) => q.part === 'legL' || q.part === 'legR')) {
+          expect(`${p.piv},${p.pz}`).toBe(p.z > 0 ? '0.82,0.3' : '0.8,-0.32');
+          expect(p.part).toBe(p.z > 0 === p.x < 0 ? 'legL' : 'legR');
+        }
+        const eyes = b.filter((p) => p.col === C.eye);
+        expect(eyes.length).toBe(2);
+        for (const p of eyes) {
+          const k = Math.hypot((p.x - H.c[0]) / H.r[0], (p.y - H.c[1]) / H.r[1], (p.z - H.c[2]) / H.r[2]);
+          expect(k).toBeGreaterThan(1.03);
+          expect(k).toBeLessThan(1.2);
+        }
+      }
+  });
+  // 胴の表面からの割合（胴を作ったのと同じ式。1 が表面）
+  const torsoK = (p: { x: number; y: number; z: number }): number => {
+    const T = beasts.houndTorso,
+      r = T.ring((p.z - T.z0) / (T.z1 - T.z0));
+    return Math.hypot(p.x / r.rx, (p.y - r.cy) / r.ry);
+  };
+  it('炎のハウンド：たてがみの炎の根もとは、首と背の表面のすぐそば（浮かず、埋もれない）。脇腹のひびは胴の表面のすぐ外', () => {
+    const T = beasts.houndTorso,
+      NK = beasts.houndNeck,
+      C = beasts.HOUND_FIRE;
+    // 首の管の軸からの距離と、その所の半径の差
+    const neckOut = (p: { y: number; z: number }): number => {
+      const dy = NK.b[1] - NK.a[1],
+        dz = NK.b[2] - NK.a[2],
+        f = Math.min(1, Math.max(0, ((p.y - NK.a[1]) * dy + (p.z - NK.a[2]) * dz) / (dy * dy + dz * dz)));
+      return Math.hypot(p.y - NK.a[1] - dy * f, p.z - NK.a[2] - dz * f) - (NK.r0 + (NK.r1 - NK.r0) * f);
+    };
+    const backOut = (p: { y: number; z: number }): number => {
+      const r = T.ring((p.z - T.z0) / (T.z1 - T.z0));
+      return p.y - (r.cy + r.ry);
+    };
+    for (const ty of TYS) {
+      const b = seeded(() => beasts.fireHoundForm(ty)),
+        roots = b.filter((p) => p.part === 'flame' && p.fh === 0);
+      expect(roots.length).toBe(beasts.fireManeRoots().length * 2);
+      for (const p of roots) {
+        // 首の付け根は胴の上に重なるので、近い方の表面で測る
+        expect(Math.min(Math.abs(neckOut(p)), Math.abs(backOut(p)))).toBeLessThan(0.03);
+      }
+      // 炎は根もとから上へ伸びる：炎の点は根もと（fh 0）から先へ順に並ぶので、1本ごとに、先ほど高い
+      let prev: { y: number } | null = null;
+      for (const p of b.filter((q) => q.part === 'flame')) {
+        if (p.fh !== 0) expect(p.y).toBeGreaterThan(must(prev, '前の炎の点').y + 0.01);
+        prev = p;
+      }
+      const cracks = b.filter((p) => p.col === C.crack);
+      expect(cracks.length).toBe(14);
+      for (const p of cracks) {
+        expect(torsoK(p)).toBeGreaterThan(1.04);
+        expect(torsoK(p)).toBeLessThan(1.12);
+      }
+    }
+  });
+  it('光のハウンド：光の筋は胴の表面のすぐ外から始まり、後ろへ流れる。後ろの点ほど暗い', () => {
+    const C = beasts.HOUND_LIGHT;
+    for (const ty of TYS) {
+      const b = seeded(() => beasts.lightHoundForm(ty)),
+        rays = b.filter((p) => p.col === C.ray),
+        lines = new Map<string, typeof rays>();
+      for (const p of rays) lines.set(`${p.x},${p.y}`, [...(lines.get(`${p.x},${p.y}`) ?? []), p]);
+      expect(lines.size).toBe(6);
+      for (const line of lines.values()) {
+        const byZ = [...line].sort((p, q) => q.z - p.z),
+          head = nth(byZ, 0);
+        expect(torsoK(head)).toBeGreaterThan(1.08);
+        expect(torsoK(head)).toBeLessThan(1.16);
+        for (let i = 1; i < byZ.length; i++) expect(nth(byZ, i).b).toBeLessThan(nth(byZ, i - 1).b);
+      }
+    }
   });
   it('ゴブリンの呪術師：腕の点（袖・手・杖も）はどれも肩を、足の点は腰を軸に回る。明るさ b は 1.8 まで。縁取りと背中の印は、衣の表面のすぐ外', () => {
     for (const ty of TYS) {
