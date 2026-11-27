@@ -86,8 +86,8 @@ describe('生き物の形', () => {
       const b = seeded(() => lords.beastForm(spec));
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
-    expect(all.length).toBe(3232884);
-    expect(fnv(all)).toBe('cb490558'); // トロル・ゴーレム・クラーケン（trollForm2・golemForm2・krakenForm2）を除き、移す前の実装で出した値と同じ（この3つは移した後で作り直した。作り直した王の影の一つ目の姿は、下の別のテスト）
+    expect(all.length).toBe(3303930);
+    expect(fnv(all)).toBe('a0f1fb8c'); // トロル・ゴーレム・クラーケン・ヘビ（trollForm2・golemForm2・krakenForm2・snakeForm）を除き、移す前の実装で出した値と同じ（この4つは移した後で作り直した。作り直した王の影の一つ目の姿は、下の別のテスト）
   });
   it('主と大きな生き物の形：TypeScript に移す前と、同じ乱数で同じ形になる', () => {
     let all = '';
@@ -167,6 +167,33 @@ describe('生き物の形', () => {
       expect(tis).toEqual(new Set([0, 1, 2, 3, 4, 5]));
       for (const ti of tis) expect(Math.min(...b.filter((p) => p.ti === ti).map((p) => p.piv))).toBe(0);
     }
+  });
+  it('ヘビ：点はどれも胴のうねり（slither）か舌（tongue）。明るさ b は 1.8 まで。目は頭の表面のすぐ外（埋もれず、浮かない）。頭は首より幅が広い', () => {
+    const H = small.SNAKE;
+    for (const ty of TYS) {
+      const b = seeded(() => small.snakeForm(ty));
+      for (const p of b) {
+        expect(['slither', 'tongue']).toContain(p.part);
+        expect(p.b).toBeLessThanOrEqual(1.8);
+        expect(p.y).toBeGreaterThanOrEqual(0);
+      }
+      expect(b.filter((p) => p.part === 'tongue').length).toBe(3);
+      const eyes = b.filter((p) => p.col === H.eye);
+      expect(eyes.length).toBe(2);
+      for (const e of eyes) {
+        // 頭の断面の楕円からの距離（外が正。体を作ったのと同じ式。1次の近さ）
+        const h = (e.z - H.z(0)) / H.len,
+          w = H.w(h),
+          hh = H.hh(h),
+          dy = e.y - H.cy(h),
+          f = (e.x * e.x) / (w * w) + (dy * dy) / (hh * hh) - 1,
+          out = f / Math.hypot((2 * e.x) / (w * w), (2 * dy) / (hh * hh));
+        expect(out).toBeGreaterThan(0.005);
+        expect(out).toBeLessThan(0.03);
+      }
+    }
+    // 顎の付け根の幅は、首の太さの倍より広い（遠くでも頭と胴が分かれて見える）
+    expect(H.w(0.3)).toBeGreaterThan(2 * H.rad(1));
   });
   it('眠った獣は、脚を体に畳み、低くなる', () => {
     const spec = nth(SPECS, 0),
