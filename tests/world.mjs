@@ -675,14 +675,23 @@ async function glareChecks(pg, base) {
       return m[3];
     });
   // 照準の先の生き物は 0.1 秒ごとに探し直すので、照準の先になるまで進める
-  for (let k = 0; k < 12; k++) {
+  let aimed = false;
+  for (let k = 0; k < 12 && !aimed; k++) {
     await aim();
     await advance(pg, 1 / 30);
-    if (await pg.evaluate(() => __test.mob(0).aimed)) break;
+    aimed = await pg.evaluate(() => __test.mob(0).aimed);
+  }
+  if (!aimed) {
+    errs.push('18：トロルが照準の先にならない（テストの前提が崩れた）');
+    return;
   }
   const hp0 = await aim();
   await frames(pg, 1);
-  const box = await pg.evaluate(() => __test.monsterView(__test.state().monsters[0][0]).screen);
+  const box = await pg.evaluate(() => __test.monsterView(__test.state().monsters[0][0])?.screen ?? null);
+  if (!box) {
+    errs.push('18：トロルの体が描かれていない（テストの前提が崩れた）');
+    return;
+  }
   const before = PNG.sync.read(await pg.screenshot({ timeout: 90000 }));
   // 小剣は押した時に当たる。当たった次のフレームを描いて写す（光るのは 0.2 秒ほど）
   await pg.evaluate(() => __test.press('R'));

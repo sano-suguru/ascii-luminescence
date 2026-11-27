@@ -141,12 +141,13 @@ const HIT_GLOW = 2.4;
 /** 照準の先の明るさの倍率 */
 const AIM_GLOW = 1.9;
 /**
- * 明るくする倍率 k を、画面での見かけの大きさ（体の大きさ ÷ 床の上の距離）で弱めた物。見かけが BIG[0] までは k のまま、BIG[1] で増やす分を BIG[2] 倍にする
+ * 明るくする倍率 k を、画面での見かけの大きさ（体の大きさ ÷ カメラからの床の上の距離。3人称ではカメラが後ろに下がるので小さく見える）で弱めた物。見かけが BIG[0] までは k のまま、BIG[1] で増やす分を BIG[2] 倍にする
  * （大きな体がすぐ近くで画面を覆うと、同じ倍率でも光のにじみで画面が白く飛ぶため。トロルが 1.8 の所で見かけ 0.89）
  */
 const BIG = [0.4, 0.9, 0.25] as const;
 function glowBoost(m: Mon, k: number): number {
-  const size = m.ty.scale / Math.max(0.5, Math.hypot(m.x - player.x, m.z - player.z)),
+  const cam = gfx.camera.position,
+    size = m.ty.scale / Math.max(0.5, Math.hypot(m.x - cam.x, m.z - cam.z)),
     f = clamp((size - BIG[0]) / (BIG[1] - BIG[0]), 0, 1);
   return 1 + (k - 1) * (1 - (1 - BIG[2]) * f);
 }

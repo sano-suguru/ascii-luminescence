@@ -113,7 +113,7 @@ tools/field.mjs      生き物を本物の階（既定は深さ 1 と 3）に置
 tools/glare.mjs      敵に攻撃を当てた時の眩しさを数える（pnpm glare [名前…]。本物の階で生き物に照準を合わせ、近接（blade）と飛ぶ物（bolt）で当て、当てる前と当たった後の
                      フレームを1枚ずつ写す。体の範囲の白飛び（3つの色がどれも 245 以上）・眩しさ（明るさ 200 以上）・明るさの平均と、画面全体の眩しさ、写した時の hitT・glow・照準の先かを出す。
                      写真・体のまわりを切り抜いて並べた glare.png・summary.json は tests/out/glare/。CI には入れない）
-tools/sheet.mjs      写真を体のまわり（__test.monsterView の画面の範囲）で切り抜いて大きくし、枡に並べた1枚にする（cropRect・writeSheet。shots.mjs と field.mjs が使う）
+tools/sheet.mjs      写真を体のまわり（__test.monsterView の画面の範囲）で切り抜いて大きくし、枡に並べた1枚にする（cropRect・writeSheet。shots.mjs・field.mjs・glare.mjs が使う）
 tools/lords.mjs      主たちを本当にいる場所（支道の奥の階・最深部）に置き、プレイヤーの目の高さから写す（pnpm lords。主の体が描かれた画面の範囲・はみ出し・
                      主の体が足した眩しい画素の割合を出す。写真・眩しい所を赤く塗った写真・summary.json は tests/out/lords/）
 tools/transitions.mjs  場面が切り替わる時の確かめ（node tools/transitions.mjs [--rate 1,4]。Artifact 版をテスト用モードでなく 750×312 で開き、偽の window.claude の持ち主として、

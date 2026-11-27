@@ -131,10 +131,16 @@ async function shoot(browser, base, key, weapon, prefix, errs) {
     });
   };
   // 照準の先の生き物は 0.1 秒ごとに探し直すので、照準の先になるまで進める
-  for (let k = 0; k < 12; k++) {
+  let aimed = false;
+  for (let k = 0; k < 12 && !aimed; k++) {
     await aim();
     await advance(pg, 1 / 30);
-    if (await pg.evaluate(() => __test.mob(0)?.aimed)) break;
+    aimed = await pg.evaluate(() => !!__test.mob(0)?.aimed);
+  }
+  if (!aimed) {
+    errs.push(`${prefix}：照準の先にならない（当てる前の明るさを比べられない）`);
+    await pg.close();
+    return null;
   }
   const hp0 = await aim();
   await frames(pg, 1);
