@@ -544,7 +544,7 @@ export function salamanderAura(m: Mon, _t: number): void {
   const sc = m.ty.scale || 1,
     cy = Math.cos(m.yaw),
     sy = Math.sin(m.yaw),
-    lz = -1.3 * sc;
+    lz = -1.2 * sc;
   spawn(
     m.x + lz * sy,
     0.12,

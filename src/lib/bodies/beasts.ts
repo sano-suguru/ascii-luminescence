@@ -149,56 +149,183 @@ export function grazerForm(ty: BodyType): Body {
   return pts;
 }
 
+/** サラマンダーの体（頭・胴・尾をひと続きに）：奥行き z ごとの、真ん中の高さ cy・横の半径 rx・縦の半径 ry（間は滑らかにつなぐ）。
+ *  体の点と、背の斑点・目・脚の付け根の位置を、同じ式から出す */
+export const salaBody = {
+  /** 鼻先と尾の先の奥行き */
+  z1: 0.78,
+  z0: -1.2,
+  /** [z, cy, rx, ry]。前から順に：鼻先・平たく幅のある頭・首・肩・胴・腰・尾の付け根・細る尾（尾は横より縦が厚い） */
+  keys: [
+    [0.78, 0.16, 0.05, 0.035],
+    [0.7, 0.175, 0.13, 0.058],
+    [0.58, 0.19, 0.185, 0.074],
+    [0.5, 0.195, 0.17, 0.078],
+    [0.41, 0.2, 0.095, 0.078],
+    [0.3, 0.205, 0.135, 0.095],
+    [0.02, 0.215, 0.155, 0.108],
+    [-0.26, 0.205, 0.135, 0.1],
+    [-0.4, 0.19, 0.095, 0.092],
+    [-0.75, 0.155, 0.055, 0.07],
+    [-1.05, 0.12, 0.028, 0.042],
+    [-1.2, 0.1, 0.012, 0.018],
+  ] as const satisfies readonly (readonly [number, number, number, number])[],
+  at(z: number): { cy: number; rx: number; ry: number } {
+    const K = salaBody.keys;
+    let i = 0;
+    while (i < K.length - 2 && nth(K, i + 1)[0] > z) i++;
+    const a = nth(K, i),
+      b = nth(K, i + 1),
+      f = clamp((a[0] - z) / (a[0] - b[0]), 0, 1),
+      e = f * f * (3 - 2 * f);
+    return { cy: a[1] + (b[1] - a[1]) * e, rx: a[2] + (b[2] - a[2]) * e, ry: a[3] + (b[3] - a[3]) * e };
+  },
+  /** 奥行き z の輪の、角度 a（0 が右、Math.PI / 2 が背の真上）の表面の所。out は表面から外へ出す割合 */
+  surf(z: number, a: number, out = 1): Vec3 {
+    const { cy, rx, ry } = salaBody.at(z);
+    return [Math.cos(a) * rx * out, cy + Math.sin(a) * ry * out, z];
+  },
+  /** 尾の付け根の奥行き（ここより後ろの点は、付け根からの距離に合わせて左右に振れる） */
+  tailZ: -0.36,
+};
+/** サラマンダーの脚の付け根（肩と腰）。脚の点は、これを軸に回る */
+export const SALA_SHOULDER = { piv: 0.2, pz: 0.3 },
+  SALA_HIP = { piv: 0.2, pz: -0.26 };
+/** サラマンダーの色 */
+export const SALA = {
+  /** 背と脇：焦げた黒褐色 */
+  crust: [0.24, 0.1, 0.07],
+  /** 腹と脇の下の縁：溶岩の橙 */
+  belly: [1.0, 0.5, 0.16],
+  /** 背の斑点：明るい橙黄 */
+  spot: [1.0, 0.6, 0.16],
+  /** 目：金 */
+  eye: [1.0, 0.78, 0.22],
+  /** 口の線 */
+  mouth: [0.12, 0.05, 0.04],
+} as const satisfies Record<string, Color>;
+
+// salamander: a low lava newt. A broad flat head, a thick body slung low between sprawling legs (elbows out, feet planted),
+// a tail flattened sideways that tapers to a small flame. Charred back with two rows of glowing spots, an orange belly
 export function salamanderForm(ty: BodyType): Body {
-  const { S, pts, lit, stroke } = q2(ty),
-    BLACK: Color = [0.3, 0.26, 0.28],
-    EMBER: Color = [1, 0.35, 0.12];
-  for (let z = 0.6; z >= -1.25; z -= S * 0.8) {
-    const f = (0.6 - z) / 1.85,
-      r = 0.15 * (1 - f * 0.85),
-      n = Math.max(4, Math.round((2 * Math.PI * r) / (S * 0.9)));
+  const { S, pts, put, lit } = q2({ scale: ty.scale * 2 }),
+    B = salaBody,
+    C = SALA,
+    BELLY_R: Ramp = ['-', '-', '=', '=', '%'];
+  // 頭・胴・尾：輪を、鼻先から尾の先まで等しい間隔で並べる（尾の先まで届くように、輪の数を先に決める）。
+  // 輪の点は、前後に少しずつずらす（同じ奥行きに揃うと、横から見て輪が縦の縞に見える）
+  const nz = Math.round((B.z1 - B.z0) / (S * 0.8)),
+    gap = (B.z1 - B.z0) / nz,
+    partAt = (z: number): { part: string; ex: Extra | undefined } =>
+      z < B.tailZ ? { part: 'tailw', ex: { piv: B.tailZ - z } } : { part: z > 0.42 ? 'head' : 'body', ex: undefined };
+  for (let i = 0; i <= nz; i++) {
+    const z0 = B.z1 - gap * i,
+      n = Math.max(5, Math.round((2 * Math.PI * Math.max(B.at(z0).rx, B.at(z0).ry)) / (S * 0.85)));
     for (let k = 0; k < n; k++) {
-      const a = (k / n) * Math.PI * 2,
-        nx = Math.cos(a),
-        ny = Math.sin(a);
-      lit(
-        nx * r,
-        0.17 * (1 - f * 0.6) + ny * r * 0.55,
-        z,
-        ny > 0.6 ? '=' : mpick(['%', '#', ':']),
-        1,
-        ny > 0.3 ? 1.1 : 0.8,
-        BLACK,
-        'slither',
-      );
+      const z = clamp(z0 + (((k * 0.618) % 1) - 0.5) * gap, B.z0, B.z1),
+        { rx, ry } = B.at(z),
+        // 面の前後の向き（半径が前へ細る鼻先は前を、後ろへ細る尾は後ろを向く）：前後で半径が減る割合
+        slope = (B.at(z - 0.02).rx + B.at(z - 0.02).ry - B.at(z + 0.02).rx - B.at(z + 0.02).ry) / 0.08,
+        a = (k / n) * Math.PI * 2 + i * 0.5,
+        sn = Math.sin(a),
+        [x, y] = B.surf(z, a),
+        l = Math.hypot(Math.cos(a) / rx, sn / ry),
+        { part, ex } = partAt(z);
+      // 腹は横の線の文字にする（下を向く面は暗い側の文字になり、SKINR の「:」が縦に並ぶと、横から見て櫛が下がって見える）
+      if (sn < -0.35) put(x, y, z, Math.cos(a) / rx / l, sn / ry / l, slope, BELLY_R, C.belly, part, ex);
+      else put(x, y, z, Math.cos(a) / rx / l, sn / ry / l, slope, SKINR, C.crust, part, ex);
     }
-    if (f > 0.08 && f < 0.75 && Math.round(z * 20) % 2 === 0)
-      lit((mr() - 0.5) * 0.06, 0.17 * (1 - f * 0.6) + r * 0.6, z, mpick(['/', '\\']), 1, 2.6, EMBER, 'slither');
   }
+  // 背の斑点：背の真上から左右に寄った2列の、まだらな塊。間隔と位置をずらす（揃うと縞に見える）。光の当たらない後ろからも見えるように、明るさを決めて置く
+  for (const [z, sd, w] of [
+    [0.5, -1, 0.7],
+    [0.3, 1, 1.2],
+    [0.14, -1, 1.2],
+    [-0.08, 1, 1.2],
+    [-0.24, -1, 1],
+    [-0.48, 1, 1],
+    [-0.66, -1, 0.8],
+    [-0.88, 1, 0.7],
+  ] as const) {
+    // 塊の3点：前後に並べ、1つを背の真ん中寄りにずらす
+    for (const [oz, oa, ch] of [
+      [-0.5, 0, '%'],
+      [0.5, 0, 'o'],
+      [0, 0.38, '%'],
+    ] as const) {
+      const zz = z + oz * S * 0.7 * w,
+        [x, y] = B.surf(zz, Math.PI / 2 - sd * (0.7 - oa), 1.1),
+        { part, ex } = partAt(zz);
+      lit(x, y, zz, ch, Math.min(1.1, 0.8 + 0.25 * w), 1.45, C.spot, part, ex);
+    }
+  }
+  // 口：頭の脇、少し下の線
+  for (const sd of [-1, 1])
+    for (let z = 0.74; z >= 0.5; z -= S * 0.6) {
+      const [x, y] = B.surf(z, sd > 0 ? -0.15 : Math.PI + 0.15, 1.06);
+      lit(x, y, z, '-', 0.8, 0.7, C.mouth, 'head');
+    }
+  // 目：頭の上の左右に、少し飛び出る
   for (const sd of [-1, 1]) {
-    lit(sd * 0.07, 0.24, 0.62, '.', 0.8, 3.2, [1, 0.6, 0.2], 'slither');
+    const [x, y] = B.surf(0.6, Math.PI / 2 - sd * 0.8, 1.15);
+    lit(x, y, 0.6, 'o', 0.8, 1.4, C.eye, 'head');
   }
-  for (const [z, part] of [
-    [0.32, 'legL'],
-    [-0.2, 'legR'],
-  ] as const)
-    for (const sd of [-1, 1]) {
-      const p2 = sd > 0 ? part : part === 'legL' ? 'legR' : 'legL';
-      stroke([sd * 0.12, 0.12, z], [sd * 0.32, 0.06, z + 0.06], BLACK, 1.0, 0.9, p2, { piv: 0.12, pz: z });
-      stroke([sd * 0.32, 0.06, z + 0.06], [sd * 0.36, 0.01, z + 0.14], BLACK, 1.0, 0.9, p2, { piv: 0.12, pz: z });
+  // 脚：細い管にする。点の文字の大きさ S が脚の太さほどあるので、管の輪は2点にして、点を管の向きに細かく並べる（輪を多くすると、文字の分だけ太る）
+  const limb = (p0: Vec3, p1: Vec3, r: number, part: string, ex: Extra): void => {
+    const dx = p1[0] - p0[0],
+      dy = p1[1] - p0[1],
+      dz = p1[2] - p0[2],
+      m = Math.max(2, Math.round(Math.hypot(dx, dy, dz) / (S * 0.35))),
+      dl = Math.hypot(dx, dy) || 1;
+    for (let j = 0; j <= m; j++) {
+      const f = j / m,
+        a = j * 1.9;
+      for (const sg of [1, -1]) {
+        // 管の向きに直交する向き（脚は横か縦に伸びるので、管と z 軸の両方に直交する向きと、z 軸の間で回す）
+        const ox = (-dy / dl) * Math.cos(a) * sg,
+          oy = (dx / dl) * Math.cos(a) * sg,
+          oz = Math.sin(a) * sg;
+        put(p0[0] + dx * f + ox * r, p0[1] + dy * f + oy * r, p0[2] + dz * f + oz * r, ox, oy + 0.3, oz, SKINR, C.crust, part, ex);
+      }
     }
+  };
+  // 脚：肘とひざを外へ張り、手足を床に置く（はうように）。前の左と後ろの右が同じ向きに振れる。点はどれも肩か腰を軸に回る
+  for (const front of [true, false])
+    for (const sd of [-1, 1]) {
+      const part = front === sd < 0 ? 'legL' : 'legR',
+        ex = front ? SALA_SHOULDER : SALA_HIP,
+        z0 = ex.pz,
+        dz = front ? 1 : -1,
+        root: Vec3 = [sd * 0.08, ex.piv, z0],
+        knee: Vec3 = [sd * 0.27, 0.2, z0 + dz * 0.03],
+        foot: Vec3 = [sd * 0.32, 0.035, z0 + dz * 0.1];
+      limb(root, knee, 0.025, part, ex);
+      limb(knee, foot, 0.02, part, ex);
+      // 指：手足から外と前（後ろ足は後ろ）へ広げる
+      for (const [ox, oz] of [
+        [0.07, 0.0],
+        [0.06, 0.05],
+        [0.02, 0.08],
+      ] as const)
+        lit(foot[0] + sd * ox, 0.025, foot[2] + dz * oz, '.', 1.0, 1.1, C.belly, part, ex);
+    }
+  // 尾の先の小さな炎：根もとは深い赤、先は黄色（part 'flame'。尾と一緒に振れるように、尾の付け根からの距離を piv に入れる）
+  const tip = B.at(B.z0 + 0.04);
   for (let q = 0; q < 5; q++) {
     const f = q / 4;
     lit(
-      (mr() - 0.5) * 0.05,
-      0.06 + f * 0.22,
-      -1.28 - 0.04 * f,
+      0,
+      tip.cy + 0.02 + f * 0.2,
+      B.z0 + 0.04 - 0.05 * f,
       '^',
-      1.05 - 0.3 * f,
-      2.2 + 1.2 * f,
-      [1, 0.35 + 0.55 * f, 0.1 + 0.4 * f],
+      1.25 - 0.4 * f,
+      1.3 + 0.45 * f,
+      [1, 0.3 + 0.5 * f, 0.08 + 0.3 * f],
       'flame',
-      { fh: f },
+      {
+        fh: f,
+        piv: B.tailZ - B.z0,
+      },
     );
   }
   return pts;

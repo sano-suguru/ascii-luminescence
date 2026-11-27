@@ -235,6 +235,7 @@ export function drawMonster0(m: Mon, t: number): void {
   const swing = Math.sin(m.walk) * 0.55 * m.moving,
     bob = Math.abs(Math.sin(m.walk)) * 0.04 * m.moving;
   const lit = cellLight(m.x, m.z);
+  const tailSwish = (d: number): number => Math.sin(t * 4 - d * 5 + m.ph) * (0.04 + 0.05 * m.moving) * d;
   const eelArc = ty.form === 'eel' ? Math.sin(Math.PI * (m.surf ?? NaN)) : 0;
   // クラーケンは、水から出ている度合い rise に合わせて沈み、水面より下になる点は描かない（沈んでいる間は外套の上だけ）
   const sink = ty.form === 'kraken' ? KRAKEN_SINK * (1 - clamp(m.rise || 0, 0, 1)) : 0;
@@ -267,6 +268,8 @@ export function drawMonster0(m: Mon, t: number): void {
       }
       case 'flame': {
         const f = p.fh || 0;
+        // 尾の先の炎（サラマンダー）は、尾と一緒に振れる（piv は尾の付け根からの距離。ほかの炎は 0）
+        if (p.piv) lx += tailSwish(p.piv);
         ly += (Math.sin(t * 9 + p.ph) * 0.03 + 0.02) * f;
         lz -= (m.moving || 0) * 0.1 * f;
         lx += Math.sin(t * 6 + p.ph * 2) * 0.015 * f;
@@ -294,6 +297,10 @@ export function drawMonster0(m: Mon, t: number): void {
       }
       case 'eelw':
         lx += Math.sin(t * 4 - p.z * 3.5 + m.ph) * 0.09 * (0.4 + Math.max(0, 0.8 - p.z));
+        break;
+      // 尾（サラマンダー）：付け根では動かず、先ほど大きく左右に振れる（piv は付け根からの距離）。歩くと大きく振る
+      case 'tailw':
+        lx += tailSwish(p.piv);
         break;
       case 'slither':
         lx += Math.sin(t * 5 - p.z * 5 + m.ph) * 0.05 * (0.3 + Math.max(0, 0.6 - p.z));
