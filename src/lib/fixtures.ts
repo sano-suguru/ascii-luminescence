@@ -11,7 +11,6 @@ import { aimOrigin, viewDir } from './aim.ts';
 import { altarFill, guardedNow, vaultArea } from './altars.ts';
 import { sChime, sCreak, sHiss, sSqueak } from './audio.ts';
 import { G, RUNESET } from './glyphs.ts';
-import { updateSectionAir } from './camera.ts';
 import { drawWave, drawZones } from './fx.ts';
 import { allRunes } from './gear.ts';
 import { ceilAt, cellLight } from './lightmap.ts';
@@ -1513,14 +1512,13 @@ export function drawTraps(t: number): void {
 }
 
 /**
- * 床のルーンと、置いてある物の光（もとは src/game/22-world-hints.js）：床の目印と魔法の場・階段の封・泉・墓を描き、階の場所ごとの空気を合わせ、
+ * 床のルーンと、置いてある物の光（もとは src/game/22-world-hints.js）：床の目印と魔法の場・階段の封・泉・墓を描き、
  * 宝物庫の褒美の部屋の兆し（番人が目を覚ます部屋は、床に立つ影と赤い目。天井が崩れる部屋は、床のひびと落ちる砂）、空の枠、床と台と祭壇のルーン（番人が生きている間は暗く）、
  * 石碑を描く。術の跡（光線・飛ぶ物）と、詠唱している手の前を回るルーン、付け替えの間に体のまわりを回るルーンも、ここで描く
  */
 export function drawRunesWorld(t: number): void {
   drawZones(t);
   drawStairSeal(t);
-  updateSectionAir(0.016);
   drawSprings(t);
   drawGraves(t);
   {

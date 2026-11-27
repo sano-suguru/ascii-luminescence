@@ -55,7 +55,7 @@ function tick(raw,draw){
   if(here.monsters.some(m=>m.dead))here.monsters=here.monsters.filter(m=>!m.dead);
   hudInfo.pfFrames++; hudInfo.pfT+=raw; if(hudInfo.pfT>=0.5){ hudInfo.pfFps=Math.round(hudInfo.pfFrames/hudInfo.pfT); hudInfo.pfFrames=0; hudInfo.pfT=0; if(ui.perfOn)renderStatus(); }
   inPhase('world',()=>{ regrow(); brimRecover(dt); if(!adv.dead){ updateTraps(dt); updateSearch(dt); } updateLife(dt); });
-  inPhase('lights',()=>{ updateLights(t); updateAtmosphere(dt); });
+  inPhase('lights',()=>{ updateLights(t); updateAtmosphere(dt); updateSectionAir(dt); });
   buf.dn=0; inPhase('fixtures',()=>drawFixtures(t,dt)); inPhase('doors',()=>drawDoors(t,dt)); inPhase('fire',()=>drawFire(t,dt)); inPhase('webs',()=>drawWebs(t)); inPhase('traps',()=>drawTraps(t));
   inPhase('swing',()=>drawSwing()); inPhase('hands',()=>drawViewWeapons(t)); inPhase('omens',()=>drawOmens(t,dt)); inPhase('runes',()=>{ drawRunesWorld(t); updateAltarPanel(); drawArrows(); drawLegendWorld(t); }); inPhase('rockfall',()=>{ if(!here.trans)updateRockfall(dt); }); // 階を移り始めたら、石は落ちず、当たらない（新しい階で newLevel が消す）
   inPhase('bolt',()=>drawBoltFx(t,dt)); inPhase('gallery',()=>drawGallery(t)); inPhase('frozen',()=>drawFrozen(t)); inPhase('castfx',()=>drawCastFx(t));

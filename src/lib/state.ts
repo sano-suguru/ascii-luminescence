@@ -201,6 +201,8 @@ export interface Ui {
   lookPendT: number;
   lookHTML: string;
   lookEl: HTMLElement | null;
+  /** 照準の文字を書く所（22-world-hints.js で document から読む。src/lib/chantfx.ts の updateCross が書く） */
+  crossEl: HTMLElement | null;
   /** 伝言を出したゲームの時刻：生き物が炎から逃げた（6秒あける）・叫ぶ生き物が叫んだ（8秒あける）。src/lib/monsters.ts の chooseNext・src/lib/ground.ts の updateCritter */
   fleeMsgT: number;
   shriekMsgT: number;
@@ -276,6 +278,7 @@ export const ui: Ui = {
   lookPendT: 0,
   lookHTML: '',
   lookEl: null,
+  crossEl: null,
   fleeMsgT: -10,
   shriekMsgT: -99,
   grazeMsg: false,

@@ -5,10 +5,10 @@
 // 1つの場合では、本物の階に、祭壇の組（ルーン・鍛え・癒し・枠を開ける・まだ中身の無い物・番人のいる物・主の物）・台・主の褒美・宝物庫の褒美（番人・崩れる・何も無い）・
 // 空の枠・泉・墓・石碑・分かれ道・階段までの距離・支道の階段・異界の門・宝物庫の門・光線・飛ぶ物（矢・玉・剣の波・突き）と、生き物（番人の群れ・見えている敵・
 // 穏やかな物・倒れた物）を足し、プレイヤーの位置・向き・見上げる角度・1人称か3人称か、両手の武器と性質、溜め（どちらの手か・溜まり具合・溜めきった・音節が光る）、
-// 付け替えの途中、見たマス、矢印のキャンバスの大きさと画面の倍率・下の HUD の位置（隠れている・無い・大きさを見ていない）、照準の文字の要素（無い時も）を変えて、関数を続けて呼ぶ。
+// 付け替えの途中、見たマス、矢印のキャンバスの大きさと画面の倍率・下の HUD の位置（隠れている・無い・大きさを見ていない）、照準の文字の要素 ui.crossEl（無い時も）を変えて、関数を続けて呼ぶ。
 // 記録するのは、返す値・置いた文字と出した粒子の配列の中身・見た目の乱数を引いた数・偽の描き手にした全部のこと・照準の文字の要素に書いた物・
 // 後処理の uniform に書いた物・状態の変わり方（ui と vfx の欄・祭壇の中身・宝物庫の褒美のまわりの床）。
-// テストを .mjs で書くのは、偽の描き手・キャンバス・画面の部品を、本物の型に合わせられないため。書き換えた状態と document・window・Math.random は、終わったら元に戻す。
+// テストを .mjs で書くのは、偽の描き手・キャンバス・画面の部品を、本物の型に合わせられないため。書き換えた状態と devicePixelRatio・Math.random は、終わったら元に戻す。
 import { MTYPES } from '../../src/lib/creatures.ts';
 import { makeRune } from '../../src/lib/gear.ts';
 import { P, dCol, dPar, dPos } from '../../src/lib/particles.ts';
@@ -118,10 +118,8 @@ export async function hintsCases(F, seeds) {
     random: Math.random,
   };
   const crossEl = { textContent: '', className: '', style: { color: '' } },
-    page = { cross: crossEl },
     win = { devicePixelRatio: 1 };
   const restoreGlobals = swapGlobals({
-    document: { getElementById: (id) => page[id] ?? null },
     devicePixelRatio: 1,
   });
   // 階（場合ごとに作ると遅いので、いくつかを使い回す。足した物は場合ごとに作り直す）
@@ -394,7 +392,7 @@ export async function hintsCases(F, seeds) {
       ui.hotbarTop = chance(0.3) ? pick([null, -1, 300]) : null;
       ui.arrowsDrawn = chance(0.5);
       ui.crossKey = chance(0.3) ? `·rgba(225,215,255,.55)` : '';
-      page.cross = chance(0.05) ? null : crossEl;
+      ui.crossEl = chance(0.05) ? null : crossEl;
       crossEl.textContent = '';
       crossEl.className = '';
       crossEl.style.color = '';
