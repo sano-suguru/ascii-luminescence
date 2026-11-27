@@ -18,7 +18,7 @@ function buildUnlockPanel(){ const el=document.getElementById('intropanel'); if(
   document.getElementById('unlBack').addEventListener('click',()=>{ introMode='main'; buildIntroPanel(); });
   for(const b of el.querySelectorAll('button[data-unl]'))b.addEventListener('click',()=>{ const u=UNLOCKS.find(x=>x.id===b.dataset.unl); if(!u||unlocked(u.id)||u.cost>loreLeft())return; saved.META.unl=[...(saved.META.unl||[]),u.id]; saved.META.spent=(saved.META.spent||0)+u.cost; saveMeta(); sndInit(); sChime(0,0,0.5); buildUnlockPanel(); }); }
 function buildIntroPanel(){
-  const devOn=saved.DEVALL; if(!devOn)ui.startDepth=1; const seedEl=document.getElementById('seedIn'), seedKeep=(seedEl||{}).value||'', seedFocus=!!seedEl&&document.activeElement===seedEl;
+  const devOn=saved.DEVALL; if(!devOn)ui.startDepth=1; const seedKeep=(document.getElementById('seedIn')||{}).value||'';
   // 開発用の物（［開発用モード］・［自動で試す］）は、遊ぶ人には出さない。［開発用モード］は、このページで一度でも開発用モードがオンだった時（?dev=1・al_dev が残っている）か、
   // Artifact の持ち主の時だけ（Artifact では ?dev=1 が届かない）。［自動で試す］は持ち主の時だけ（src/lib/auto.ts の canOfferAuto）
   // 自動で試している間は、どちらも出さない（開発用モードを変えると、台本の中身が変わるため）
@@ -52,10 +52,13 @@ function buildIntroPanel(){
   if(autoBtn)document.getElementById('autoB').addEventListener('click',()=>startAuto());
   if(devBtn)document.getElementById('galDev').addEventListener('click',()=>{ saved.DEVALL=!saved.DEVALL; try{ localStorage.setItem('al_dev',saved.DEVALL?'1':'0'); }catch(er){} buildIntroPanel(); });
   for(const b of el.querySelectorAll('button.sl[data-d]'))b.addEventListener('click',()=>{ ui.startDepth=+b.dataset.d; for(const o of el.querySelectorAll('button.sl[data-d]')){ const on=o===b; o.classList.toggle('on',on); o.querySelector('.mk').innerHTML=on?'&gt;':' '; } });
-  const si=document.getElementById('seedIn'); if(si){ si.value=seedKeep; if(seedFocus)si.focus(); }
+  const si=document.getElementById('seedIn'); if(si)si.value=seedKeep;
 }
 buildIntroPanel();
 initFitIntro();
+// 後から（持ち主と分かった時・ゲームの用意ができた時）タイトルを描き直す。シードの欄に打っている間は、離れてから
+// （描き直すと欄が作り直され、iPhone では打っている途中にキーボードが閉じるため）
+function redrawIntroLater(){ const si=document.getElementById('seedIn'); if(si&&document.activeElement===si){ si.addEventListener('blur',()=>buildIntroPanel(),{once:true}); return; } buildIntroPanel(); }
 
 // the title panel can be rebuilt, so its [迷宮に入る] is caught on the panel itself
 document.getElementById('intropanel').addEventListener('click',e=>{
@@ -142,7 +145,7 @@ function toggleMenu(){
 }
 // 診断の記録（claude.ai の Artifact の中で、持ち主が開いた時だけ。src/lib/diag.ts）
 // 持ち主と分かったら、タイトルを描き直す（［開発用モード］と［自動で試す］を出す）
-void initDiag(()=>buildIntroPanel());
+void initDiag(()=>redrawIntroLater());
 // Esc のキーを処理している間は、マウスを捕まえにいかない（ui.escKey。Esc のキーで掛けたロックは、ブラウザがすぐ外し、外れた事件でメニューが開いてしまうため）
 window.addEventListener('keydown',e=>{ ui.escKey=e.code==='Escape'; try{ onKeyDown(e); } finally{ ui.escKey=false; } });
 window.addEventListener('keyup',e=>{ keys[e.code]=false; });

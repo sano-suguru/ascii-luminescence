@@ -39,7 +39,7 @@ export interface AutoHooks {
   hurt: (n: number) => void;
   /** 生き物を置く */
   summon: (key: string, cell: number) => void;
-  /** タイトルを描き直す（［自動で試す］を出す・隠す。src/game/17-meta.js の buildIntroPanel） */
+  /** タイトルを描き直す（［自動で試す］を出す・隠す。src/game/17-meta.js の redrawIntroLater。シードの欄に打っている間は、離れてから） */
   title: () => void;
 }
 

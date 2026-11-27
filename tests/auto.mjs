@@ -121,7 +121,13 @@ await withBrowser(async ({ browser, base }) => {
   await guest.addInitScript(fakeClaude, false);
   await guest.goto(base, { waitUntil: 'commit', timeout: 120000 });
   await guest.waitForSelector('#enter', { timeout: 90000 });
-  await new Promise((ok) => setTimeout(ok, 2000));
+  // 持ち主かの答えが出てから見る（答えが出る前に見ると、出ていなくて当たり前になる）。ゲームの用意ができた時の描き直しも待つ
+  // （テスト用モードでないので、用意ができた印は無い。答えの後に描いたフレームを2つと、1秒）
+  await guest.evaluate(async () => {
+    await (await window.claude.use('user')).isOwner();
+    for (let n = 0; n < 2; n++) await new Promise((ok) => requestAnimationFrame(ok));
+  });
+  await new Promise((ok) => setTimeout(ok, 1000));
   const shown = await guest.evaluate(() => ['autoB', 'galDev'].filter((id) => document.getElementById(id)));
   if (shown.length) errs.push(`持ち主でないのに、開発用の物が出た（${shown.join('・')}）`);
   await guest.close();

@@ -49,6 +49,16 @@ const autoRec = (): Record<string, unknown> => ({
   steps: autoSt.steps,
 });
 
+/** 書けなかった理由の文（Artifact の db は、ただのオブジェクトで断ることがあり、String では [object Object] になる） */
+function errText(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  try {
+    return JSON.stringify(e) ?? String(e);
+  } catch {
+    return String(e);
+  }
+}
+
 /** 今の場所（タイトル・探索中・止まっている・死んだ） */
 const phase = (): string =>
   !ui.started ? 'title' : adv.dead ? 'dead' : ui.menuOpen || ui.invOpen || ui.altarOpen || ui.lvlOpen ? 'paused' : 'play';
@@ -149,7 +159,7 @@ export async function initDiag(onOwner: () => void): Promise<void> {
       .catch((e: unknown) => {
         // 書けなかった時は、次の機会にもう一度（書けない理由は、エラーとして残す）
         dirty = true;
-        push(rec.errors, KEEP.errors, { k: 'db', v: String(e) });
+        push(rec.errors, KEEP.errors, { k: 'db', v: errText(e) });
       })
       .finally(() => {
         busy = false;

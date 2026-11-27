@@ -73,7 +73,7 @@ try {
       await pg.screenshot({ path: join(dir, file), timeout: 90000 });
       rows.push({ screen: scr, who, ...m, errors: errs, file });
       console.log(
-        `${scr.padEnd(9)} ${who.padEnd(10)} 倍率 ${m.zoom.toFixed(2)}  ［迷宮に入る］${m.enter}  ［開発用モード］${m.dev ?? '無し'}  ［自動で試す］${m.auto ?? '無し'}` +
+        `${scr.padEnd(9)} ${who.padEnd(10)} 倍率 ${m.zoom.toFixed(2)}  ［迷宮に入る］${m.enter}  ［開発用モード］${m.dev ? `${m.dev}（${m.devText.replace(/\[|\]|開発用モード：/g, '')}）` : '無し'}  ［自動で試す］${m.auto ?? '無し'}` +
           `${m.scroll ? `  送る ${m.scroll}` : ''}${errs.length ? `  エラー ${errs.join(' / ')}` : ''}`,
       );
       await ctx.close();
