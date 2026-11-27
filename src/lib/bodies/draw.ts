@@ -129,7 +129,7 @@ export function drawMonster(m: Mon, t: number): void {
   }
   if ((m.hitT ?? NaN) > 0) {
     const g0 = m.glow;
-    m.glow *= HIT_GLOW;
+    m.glow *= glowBoost(m, HIT_GLOW);
     drawMonster1(m, t, true);
     m.glow = g0;
     return;
@@ -141,11 +141,21 @@ const HIT_GLOW = 2.4;
 /** 照準の先の明るさの倍率 */
 const AIM_GLOW = 1.9;
 /**
+ * 明るくする倍率 k を、画面での見かけの大きさ（体の大きさ ÷ 床の上の距離）で弱めた物。見かけが BIG[0] までは k のまま、BIG[1] で増やす分を BIG[2] 倍にする
+ * （大きな体がすぐ近くで画面を覆うと、同じ倍率でも光のにじみで画面が白く飛ぶため。トロルが 1.8 の所で見かけ 0.89）
+ */
+const BIG = [0.4, 0.9, 0.25] as const;
+function glowBoost(m: Mon, k: number): number {
+  const size = m.ty.scale / Math.max(0.5, Math.hypot(m.x - player.x, m.z - player.z)),
+    f = clamp((size - BIG[0]) / (BIG[1] - BIG[0]), 0, 1);
+  return 1 + (k - 1) * (1 - (1 - BIG[2]) * f);
+}
+/**
  * 生き物を描く（続き）：深みの主の触手とクラーケンの立ち上がる腕、遠い小さな生き物は描かない、照準の先の生き物は明るく描いて足もとに輪を足す
- * （hit が真なら、当たって光っている間なので、照準の先でも明るさは重ねず、輪だけを足す）
+ * （明るさは見かけが大きいほど弱める。hit が真なら、当たって光っている間なので、照準の先でも明るさは重ねず、輪だけを足す）
  */
 export function drawMonster1(m: Mon, t: number, hit = false): void {
-  const aimK = hit ? 1 : AIM_GLOW;
+  const aimK = hit ? 1 : glowBoost(m, AIM_GLOW);
   if (m.ty.habitat === 'deep' && Math.hypot(m.x - player.x, m.z - player.z) < 44) {
     // 照準の先なら、体と同じく明るく（クラーケンの立ち上がる腕は m.glow を読む）
     const g0 = m.glow;

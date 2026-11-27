@@ -221,6 +221,8 @@ export function drawZones(t: number): void {
     }
   }
 }
+/** 風の刃の明るさ（突きの線は 1.05 倍）。明るいと、敵より目立ち、光のにじみで白く広がる */
+const WAVE_K = 1.5;
 /** 風の刃の明るさを目からの距離で変える：[この距離までは一番暗い, この距離で元の明るさ, 一番暗い時の倍率] */
 const WAVE_NEAR = [0.3, 2.0, 0.15] as const;
 /**
@@ -249,9 +251,9 @@ export function drawWave(p: Proj): void {
         p.z - dz * k,
         G(i === 0 ? '>' : '-'),
         0.16 - i * 0.015,
-        nth(must(c), 0) * 2.4 * b * (1 - i / 7),
-        nth(must(c), 1) * 2.4 * b * (1 - i / 7),
-        nth(must(c), 2) * 2.4 * b * (1 - i / 7),
+        nth(must(c), 0) * WAVE_K * 1.05 * b * (1 - i / 7),
+        nth(must(c), 1) * WAVE_K * 1.05 * b * (1 - i / 7),
+        nth(must(c), 2) * WAVE_K * 1.05 * b * (1 - i / 7),
       );
     }
     return;
@@ -292,9 +294,9 @@ export function drawWave(p: Proj): void {
           q[2] + oz,
           G(g),
           (p.big ? 0.2 : 0.16) * (0.7 + 0.45 * core),
-          nth(must(c), 0) * 2.3 * bb,
-          nth(must(c), 1) * 2.3 * bb,
-          nth(must(c), 2) * 2.3 * bb,
+          nth(must(c), 0) * WAVE_K * bb,
+          nth(must(c), 1) * WAVE_K * bb,
+          nth(must(c), 2) * WAVE_K * bb,
         );
       }
     }
