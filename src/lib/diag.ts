@@ -35,7 +35,7 @@ const SLOW_MS = 100;
 /** 速さをまとめる間（ミリ秒）と、書き込みの間 */
 const SPAN = 10_000;
 
-/** 自動で遊んだ記録（src/lib/auto.ts。欄 auto に書く） */
+/** 自動で試した記録（src/lib/auto.ts。欄 auto に書く） */
 const autoRec = (): Record<string, unknown> => ({
   laps: autoSt.laps,
   quick: autoSt.quick,
@@ -44,8 +44,20 @@ const autoRec = (): Record<string, unknown> => ({
   done: autoSt.done,
   stop: autoSt.stop,
   wakeLock: autoSt.wakeLock,
+  dev: autoSt.dev,
+  depth: autoSt.depth,
   steps: autoSt.steps,
 });
+
+/** 書けなかった理由の文（Artifact の db は、ただのオブジェクトで断ることがあり、String では [object Object] になる） */
+function errText(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  try {
+    return JSON.stringify(e) ?? String(e);
+  } catch {
+    return String(e);
+  }
+}
 
 /** 今の場所（タイトル・探索中・止まっている・死んだ） */
 const phase = (): string =>
@@ -69,17 +81,27 @@ function device(): Record<string, unknown> {
     requestFullscreen: typeof Reflect.get(el, 'requestFullscreen') === 'function',
     webkitRequestFullscreen: typeof Reflect.get(el, 'webkitRequestFullscreen') === 'function',
     pointerLock: typeof Reflect.get(el, 'requestPointerLock') === 'function',
+    // ページの URL に付いた物（Artifact のリンクに付けた物が、ゲームのページまで届くかを見るため）
+    query: location.search + location.hash,
   };
 }
 
-/** 記録を始める（ページを開いた時に1回）。持ち主かを確かめてから動く */
-export async function initDiag(): Promise<void> {
+/** 記録を始める（ページを開いた時に1回）。持ち主かを確かめてから動く。持ち主と分かったら onOwner を呼ぶ（タイトルを描き直すため） */
+export async function initDiag(onOwner: () => void): Promise<void> {
   const c: unknown = Reflect.get(window, 'claude');
   if (!isClaude(c)) return;
   const user = await c.use('user');
   if (!isUser(user) || !(await user.isOwner())) return;
   const db = await c.use('db');
   if (!isDb(db)) return;
+  // 記録が書けるので、タイトルに［開発用モード］と［自動で試す］を出す（タイトルを描き直すのは、呼んだ src/game/17-meta.js）
+  ui.owner = true;
+  try {
+    onOwner();
+  } catch (e) {
+    // タイトルを描き直せなくても、記録は始める
+    console.error(e);
+  }
   const t0 = Date.now(),
     since = (): number => Math.round((Date.now() - t0) / 100) / 10;
   const doc = db.collection('diag').doc(new Date(t0).toISOString().replace(/[:.]/g, '-'));
@@ -137,7 +159,7 @@ export async function initDiag(): Promise<void> {
       .catch((e: unknown) => {
         // 書けなかった時は、次の機会にもう一度（書けない理由は、エラーとして残す）
         dirty = true;
-        push(rec.errors, KEEP.errors, { k: 'db', v: String(e) });
+        push(rec.errors, KEEP.errors, { k: 'db', v: errText(e) });
       })
       .finally(() => {
         busy = false;
@@ -162,7 +184,7 @@ export async function initDiag(): Promise<void> {
     cast: gear.castSt?.h ?? '',
     projs: fight.projs.length > 0,
     audio: sndState(),
-    // 自動で遊んでいる段（src/lib/auto.ts。遅いフレームの「近く」に段の名前が出る）
+    // 自動で試している段（src/lib/auto.ts。遅いフレームの「近く」に段の名前が出る）
     ...(autoSt.on ? { auto: autoSt.step } : {}),
   });
   let last = flags();

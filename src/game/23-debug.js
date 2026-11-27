@@ -35,7 +35,7 @@ const dbg={
   items(){ return (here.D.items||[]).filter(o=>!o.taken).map(o=>({kind:o.kind,opt:o.opt||null,altar:!!o.altar,vault:!!o.vault,lord:!!o.lord,type:o.rune?o.rune.type:null,pos:cpos(o.i).map(v=>+v.toFixed(2)),slot:o.slot})); },
   clear(){ const n0=here.monsters.length; here.monsters=here.monsters.filter(m=>m.ty.boss||m.key==='lord'||m.key==='final'||m.ty.critter||Math.hypot(m.x-player.x,m.z-player.z)>25); return n0-here.monsters.length; },
 };
-window.dbg=new Proxy(dbg,{get(o,k){ const v=o[k]; if(typeof v!=='function')return v; return (...a)=>saved.DEVALL?v(...a):'開発用モードがオフです（タイトルでオンにするか、URL に ?dev=1 を付けてください）'; }});
+window.dbg=new Proxy(dbg,{get(o,k){ const v=o[k]; if(typeof v!=='function')return v; return (...a)=>saved.DEVALL?v(...a):'開発用モードがオフです（URL に ?dev=1 を付けるか、タイトルの［開発用モード］でオンにしてください）'; }});
 // the F2 screen
 function setDbg(on){ if(on===ui.dbgOpen)return; if(on&&(!saved.DEVALL||!ui.started||adv.dead))return; ui.dbgOpen=on; document.body.classList.toggle('paused',isPaused()); const el=document.getElementById('dbgp'); if(!el)return; el.classList.toggle('show',on); if(on){ renderDbg(); if(document.pointerLockElement)document.exitPointerLock(); } else tryLock(); }
 function renderDbg(){ const el=document.getElementById('dbgp'); if(!el)return; const f=t=>`<span class="f">${t}</span>`, I=dbg.info(), B=(c,t)=>`<button class="row" data-c="${c}">[${t}]</button>`;

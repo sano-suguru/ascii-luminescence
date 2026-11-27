@@ -31,5 +31,5 @@ const TESTCLK=TEST?(()=>{
 })():null;
 const errEl=document.getElementById('err');
 // three.js と、光のにじみなどの部品 T は src/lib/three.ts（src/game/imports.mjs で読む）
-// 自動で遊ぶ（?auto）間は、localStorage に書かない（保存の処理より先に。src/lib/auto.ts）
+// 自動で試す（?auto）間は、localStorage に書かない（保存の処理より先に。src/lib/auto.ts）
 autoGuard();

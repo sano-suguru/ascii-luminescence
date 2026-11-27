@@ -39,8 +39,10 @@ function stepTick(raw,draw){ const g=ui.gallery, r=g&&g.mode==='beast'&&g.m?g.rn
 const tickNoise={n:0};
 const keyedPhase=(r,fn)=>withVisualRand(r,()=>{ const v=fn(); for(let i=0;i<tickNoise.n;i++)mr(); return v; });
 const tickRandOn=()=>{ const g=ui.gallery; return !(g&&g.mode==='beast'&&g.m); };
-const inPhase=(name,fn)=>tickRandOn()?keyedPhase(keyedRand('tick '+name,adv.runSeed,clock.frame),fn):fn();
-const inMobPhase=(name,m,fn)=>tickRandOn()?keyedPhase(keyedRand('tick '+name,levelSeed(),m.seq,clock.frame),fn):fn();
+// テスト用モードの __test.skipPhase(names) で止めた段の名前（その段を飛ばす。何が光っているかを切り分ける時に。tools/glare.mjs の --hide）
+const skipPhases=new Set();
+const inPhase=(name,fn)=>skipPhases.has(name)?undefined:tickRandOn()?keyedPhase(keyedRand('tick '+name,adv.runSeed,clock.frame),fn):fn();
+const inMobPhase=(name,m,fn)=>skipPhases.has(name)?undefined:tickRandOn()?keyedPhase(keyedRand('tick '+name,levelSeed(),m.seq,clock.frame),fn):fn();
 function tick(raw,draw){
   if(isPaused()&&ui.started){ if(frame.stillDrawn)return; frame.stillDrawn=true; } else frame.stillDrawn=false; clock.frame++; const dt=isPaused()?0:clamp(raw,0,0.05)*timeScale();
   clock.time+=dt; const t=clock.time;
@@ -109,6 +111,11 @@ if(TEST)window.__test={
   width(text){ return visW(text); },
   // every phase of tick draws the visual random n more times at its end (each phase reads its own keyed sequence, so nothing should change)
   tickNoise(n){ tickNoise.n=Math.max(0,n|0); return tickNoise.n; },
+  // skip the phases of tick with these names (inPhase('hands',…), the creatures' drawing inMobPhase('mob draw',…)); [] brings them all back.
+  // Returns the names skipped now. A name tick does not have is not taken (so a typo shows: the list comes back without it)
+  // (the names are read from tick's own source, so the list does not need to be kept by hand; the build may rename inPhase to inPhase$1 and so on)
+  skipPhase(names){ const known=new Set([...tick.toString().matchAll(/in(?:Mob)?Phase[$\w]*\(\s*["'`]([^"'`]+)["'`]/g)].map(x=>x[1]));
+    skipPhases.clear(); for(const n of names||[])if(known.has(n))skipPhases.add(n); return [...skipPhases]; },
   // a plain copy of what matters, to compare runs
   state(){ const f=v=>+(+v||0).toFixed(3);
     return {time:f(clock.time),seed:adv.runSeed,place:placeLabel(),depth:here.depth,started:ui.started,dead:adv.dead,hp:f(player.hp),pos:[f(player.x),f(player.z)],yaw:f(player.yaw),lvl:adv.lvl.n,
@@ -273,5 +280,5 @@ async function init(){
   requestAnimationFrame(frame);
 }
 if(TEST)init().then(()=>{ dbgUrl(); testBoot=true; }).catch(e=>{ console.error(e); testBoot='error: '+e; });
-else { init().then(()=>initAuto({ toStairs:()=>dbg.to('stairs'), clear:()=>{ dbg.clear(); }, hurt:n=>{ dbg.hurt(n); }, summon:(k,i)=>{ summon(k,i); } })).catch(e=>console.error(e));
+else { init().then(()=>initAuto({ toStairs:()=>dbg.to('stairs'), clear:()=>{ dbg.clear(); }, hurt:n=>{ dbg.hurt(n); }, summon:(k,i)=>{ summon(k,i); }, title:()=>redrawIntroLater() })).catch(e=>console.error(e));
   setTimeout(()=>{ try{ dbgUrl(); }catch(e){ console.error(e); } },400); }

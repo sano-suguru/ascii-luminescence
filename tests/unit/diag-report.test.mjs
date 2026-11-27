@@ -1,4 +1,4 @@
-// 診断の記録の表（tools/diag-report.mjs）の単体テスト：メニューの押し方の数え方・画質の移り変わり・自動で遊んだ段の比べ方
+// 診断の記録の表（tools/diag-report.mjs）の単体テスト：メニューの押し方の数え方・画質の移り変わり・自動で試した段の比べ方
 import { describe, expect, it } from 'vitest';
 import { compareRows, menuRows, qualitySteps } from '../../tools/diag-report.mjs';
 
@@ -29,7 +29,7 @@ describe('メニューの押し方', () => {
   });
 });
 
-describe('画質と、自動で遊んだ段', () => {
+describe('画質と、自動で試した段', () => {
   // 本物の iPhone（低電力モード）の記録の形：1段下げて、速くならずに戻した
   const took = [
     { t: 0.1, k: 'applySize', why: 'init', pr: 1.5 },
