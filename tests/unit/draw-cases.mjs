@@ -221,7 +221,7 @@ export async function drawCases(F, seeds) {
         if (chance(0.2)) w.touchT = r() * 200;
         D.webAt.set(w.i, w);
       }
-      // 火（燃えている一覧には、同じマスが2回入ることも、火の消えたマスもある）・凍ったマス・投げた火花・火の明かり
+      // 火（燃えている一覧には、同じマスが2回入ることも、火の消えたマスもある）・凍ったマス・火の明かり
       blaze.fire = new Float32Array(NCELL);
       blaze.fireLight = new Float32Array(NCELL);
       blaze.burning = [];

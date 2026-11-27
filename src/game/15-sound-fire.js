@@ -9,7 +9,6 @@
 // FIRE_TYPES は src/lib/world.ts（src/game/imports.mjs で読む）
 // initFire は src/lib/ground.ts（src/game/imports.mjs で読む）
 // 火をつける ignite は src/lib/ground.ts（src/game/imports.mjs で読む）
-// boom は src/lib/combat.ts（src/game/imports.mjs で読む）
 // 火を1歩進める stepFire は src/lib/ground.ts（src/game/imports.mjs で読む）
 // マスの火・灰・変わり方を描画に渡す uploadCells は src/lib/ground.ts（src/game/imports.mjs で読む）
 // 火を描く drawFire は src/lib/fx.ts（src/game/imports.mjs で読む）
