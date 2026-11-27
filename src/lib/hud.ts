@@ -10,6 +10,7 @@ export const LIGHT_NAMES = ['暗がり', '薄明かり', '光の中'],
 export const MARK_H = {
   humanoid: 2.05,
   snapjaw: 1.85,
+  goblin: 1.8,
   quad: 1.1,
   salamander: 0.5,
   orb: 0.55,

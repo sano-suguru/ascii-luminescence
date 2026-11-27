@@ -2768,3 +2768,285 @@ export function snapjawForm(ty: BodyType, sentry: boolean): Body {
   for (const p of pts) if (p.col !== C.eye) p.b *= p.col === FURC ? 0.6 : 0.75;
   return pts;
 }
+
+/** ゴブリンの胴（腰から肩まで）の形。f は腰 0 から肩 1。胴の点と、上着の裾・帯・襟巻きは、この同じ式から置く */
+export const GOB_TORSO = {
+  y0: 0.56,
+  y1: 1.0,
+  /** 横の半径：肩は狭く、腹はふくらむ */
+  rx: (f: number): number => 0.15 + 0.04 * Math.sin(Math.min(1, f / 0.7) * Math.PI * 0.5) - (0.03 * Math.max(0, f - 0.7)) / 0.3,
+  /** 奥行きの半径：腹が前へ出て（太鼓腹）、背中は肩の下で丸く盛り上がる（猫背） */
+  rz: (f: number, back: boolean): number =>
+    back ? 0.12 + 0.06 * Math.sin(f * Math.PI * 0.9) : 0.13 + 0.05 * Math.sin(Math.min(1, f / 0.7) * Math.PI),
+  /** 前へ出る量：上ほど前に屈む */
+  z: (f: number): number => 0.2 * f * f,
+};
+/** 胴の表面の点（f と、まわりの角 a。a が PI/2 で真正面）。法線も返す */
+export function gobTorsoAt(f: number, a: number): { x: number; y: number; z: number; nx: number; ny: number; nz: number } {
+  const T = GOB_TORSO,
+    c = Math.cos(a),
+    s = Math.sin(a),
+    rx = T.rx(f),
+    rz = T.rz(f, s < 0);
+  return { x: c * rx, y: T.y0 + (T.y1 - T.y0) * f, z: s * rz + T.z(f), nx: c / rx, ny: 0.15 + (s < 0 ? 0.5 * f : 0.05), nz: s / rz };
+}
+/** ゴブリンの頭（楕円）の真ん中 c と半径 r。頭の点と、目・耳・鼻の位置を、同じ式から出す */
+export const GOB_HEAD = { c: [0, 1.2, 0.36], r: [0.19, 0.17, 0.17] } as const satisfies { c: Vec3; r: Vec3 };
+/** ゴブリンの色。部分ごとに、色みか明るさがはっきり違う色にする */
+export const GOB_COL = {
+  /** 肌：くすんだ緑 */
+  skin: [0.42, 0.62, 0.24],
+  /** 目のくぼみと口：暗い緑 */
+  shade: [0.12, 0.16, 0.08],
+  /** 耳の内側：暗い赤茶 */
+  inner: [0.42, 0.2, 0.16],
+  /** 上着：暗い革 */
+  hide: [0.36, 0.24, 0.15],
+  /** 襟巻き：赤（種類の色に合わせる） */
+  rag: [0.82, 0.22, 0.12],
+  /** 帯の縄 */
+  rope: [0.7, 0.6, 0.4],
+  /** 牙・爪 */
+  bone: [0.78, 0.74, 0.6],
+  /** 短刀の刃：錆びた鉄 */
+  iron: [0.6, 0.6, 0.62],
+  /** 目：黄色 */
+  eye: [1, 0.85, 0.25],
+} as const satisfies Record<string, Color>;
+
+// goblin: a small, hunched green creature. A big bald head with huge ears sticking out sideways, yellow eyes under a heavy brow,
+// a long hooked nose and a wide grin of teeth. A pot belly in a ragged hide tunic tied with a rope, a red rag round the neck,
+// thin arms and bent legs with big feet. A rusty knife in the right hand, the left hand open with claws
+export function goblinForm(ty: BodyType): Body {
+  // 小さな体なので、点を細かくする（文字の大きさを決める scale を、種類の 1.8 倍にする）
+  const { S, pts, put, lit, stroke, ell, tube } = q3({ scale: ty.scale * 1.8 }),
+    C = GOB_COL,
+    T = GOB_TORSO,
+    H = GOB_HEAD,
+    SKIN: Ramp = [':', ';', '%', '%', '#'],
+    HIDE: Ramp = ['.', ':', '=', '%', '#'],
+    st = S * 0.85;
+  // 腕は肩（高さ 0.96・奥行き 0.18）を、脚は腰（高さ 0.6）を軸に回る
+  const SHOULDER = { piv: 0.96, pz: 0.18 },
+    HIP = { piv: 0.6, pz: 0 };
+  const ellAt = (ex: Extra, ...a: Parameters<typeof ell>): void => {
+    const n0 = pts.length;
+    ell(...a);
+    for (let i = n0; i < pts.length; i++) Object.assign(nth(pts, i), ex);
+  };
+  // 脚：曲げたひざ（太ももは前へ、すねは後ろへ）と、大きな足
+  for (const sd of [-1, 1]) {
+    const part = sd < 0 ? 'legL' : 'legR';
+    tube([sd * 0.1, 0.6, 0], [sd * 0.15, 0.34, 0.1], 0.07, 0.05, SKIN, C.skin, part, HIP, 0.15);
+    tube([sd * 0.15, 0.34, 0.1], [sd * 0.14, 0.08, -0.02], 0.05, 0.04, SKIN, C.skin, part, HIP);
+    ellAt(
+      HIP,
+      [sd * 0.14, 0.05, 0.06],
+      0.06,
+      0.045,
+      0.12,
+      SKIN,
+      () => C.skin,
+      part,
+      st * 0.4,
+      (_nx, ny) => ny < -0.5,
+    );
+    for (const o of [-1, 0, 1]) lit(sd * 0.14 + o * 0.035, 0.03, 0.2, 'v', 0.8, 1.0, C.bone, part, HIP);
+  }
+  // 胴：行の数を決めて、腰から肩まで等しい間隔で置く。下の 9 割ほどは袖の無い上着、上は肌
+  const TUNIC = 0.88;
+  {
+    const nr = Math.max(2, Math.round((T.y1 - T.y0) / st));
+    for (let j = 0; j <= nr; j++) {
+      const f = j / nr,
+        n = Math.max(8, Math.round((2 * Math.PI * Math.max(T.rx(f), T.rz(f, true))) / st));
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * Math.PI * 2 + j * 0.4,
+          p = gobTorsoAt(f, a);
+        if (f < TUNIC) put(p.x, p.y, p.z, p.nx, p.ny, p.nz, HIDE, C.hide);
+        else put(p.x, p.y, p.z, p.nx, p.ny, p.nz, SKIN, C.skin);
+      }
+    }
+  }
+  // 肩の上：丸く盛り上がる（上から見て、胴の中が透けないように）
+  ell(
+    [0, T.y1, T.z(1)],
+    T.rx(1) * 0.95,
+    0.06,
+    T.rz(1, true) * 0.95,
+    SKIN,
+    () => C.skin,
+    'body',
+    null,
+    (_x, ny) => ny < 0,
+  );
+  // 上着の裾：ぎざぎざに破れて、腰の下へ垂れる（胴の下の端の表面のすぐ外）
+  {
+    const n = 18;
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2,
+        p = gobTorsoAt(0, a),
+        l = Math.hypot(p.nx, p.nz) || 1,
+        drop = k % 2 === 0 ? 0.07 : 0.03;
+      for (let q = 1; q <= (k % 2 === 0 ? 2 : 1); q++)
+        lit(
+          p.x + (p.nx / l) * 0.02,
+          p.y - (drop * q) / (k % 2 === 0 ? 2 : 1),
+          p.z + (p.nz / l) * 0.02,
+          q === 2 ? 'V' : '%',
+          1,
+          1.0,
+          C.hide,
+        );
+    }
+  }
+  // 縄の帯（腰の少し上、表面のすぐ外）と、前に下げた結び目
+  {
+    const f = 0.2,
+      n = Math.round((2 * Math.PI * T.rx(f)) / (st * 0.75));
+    for (let k = 0; k < n; k++) {
+      const p = gobTorsoAt(f, (k / n) * Math.PI * 2),
+        l = Math.hypot(p.nx, p.nz) || 1;
+      lit(p.x + (p.nx / l) * 0.02, p.y, p.z + (p.nz / l) * 0.02, '~', 0.9, 1.1, C.rope);
+    }
+    const p = gobTorsoAt(f, Math.PI / 2 + 0.5);
+    for (let q = 0; q < 3; q++) lit(p.x + 0.01, p.y - 0.04 - q * 0.05, p.z + 0.03, q === 2 ? 'o' : '|', 0.8, 1.1, C.rope);
+  }
+  // 襟巻き：首の根もとに巻いた赤い布と、背中へ垂れる端
+  {
+    const f = 0.97,
+      n = 16;
+    for (let k = 0; k < n; k++) {
+      const p = gobTorsoAt(f, (k / n) * Math.PI * 2),
+        l = Math.hypot(p.nx, p.nz) || 1;
+      lit(p.x + (p.nx / l) * 0.025, p.y, p.z + (p.nz / l) * 0.025, '#', 1, 1.1, C.rag);
+    }
+    for (const sd of [-1, 1])
+      for (let q = 1; q <= 3; q++) {
+        const p = gobTorsoAt(1 - q * 0.09, -Math.PI / 2 + sd * 0.25),
+          l = Math.hypot(p.nx, p.nz) || 1;
+        lit(p.x + (p.nx / l) * 0.03, p.y, p.z + (p.nz / l) * 0.03, q === 3 ? 'V' : '%', 0.95, 1.1, C.rag);
+      }
+  }
+  // 首：肩の前から頭へ、前に突き出る
+  tube([0, 0.98, 0.2], [0, H.c[1] - 0.08, H.c[2] - 0.06], 0.07, 0.065, SKIN, C.skin, 'head');
+  // 頭：大きく丸い。あごは前へ細くとがる
+  ell(H.c, H.r[0], H.r[1], H.r[2], SKIN, () => C.skin, 'head');
+  ell([0, H.c[1] - 0.1, H.c[2] + 0.08], 0.1, 0.06, 0.08, SKIN, () => C.skin, 'head');
+  // 頭の表面の点（向き nx, ny から、表面のすぐ外 out）
+  const onHead = (nx: number, ny: number, out: number): Vec3 => {
+    const nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny)),
+      k = 1 + out;
+    return [H.c[0] + nx * H.r[0] * k, H.c[1] + ny * H.r[1] * k, H.c[2] + nz * H.r[2] * k];
+  };
+  // 張り出した眉と、その下の暗いくぼみの中の黄色い目（くぼみの暗さで、目と顔の形が読める）
+  for (const sd of [-1, 1]) {
+    for (const o of [0.15, 0.32, 0.5])
+      lit(...onHead(sd * o, 0.44, 0.06), sd < 0 ? (o > 0.3 ? '\\' : '-') : o > 0.3 ? '/' : '-', 0.85, 1.2, C.skin, 'head');
+    for (let k = 0; k < 6; k++) {
+      const t = (k / 6) * Math.PI * 2;
+      lit(...onHead(sd * 0.34 + Math.cos(t) * 0.11, 0.2 + Math.sin(t) * 0.1, 0.04), '#', 0.8, 0.8, C.shade, 'head');
+    }
+    lit(...onHead(sd * 0.34, 0.2, 0.08), 'o', 0.7, 1.3, C.eye, 'head');
+  }
+  // 長い鉤鼻：眉の間から前へ、先は下へ曲がる。細かい間隔の点の並び（離れると、横から見て鼻の先が顔から浮く）
+  {
+    const a = onHead(0, 0.22, 0),
+      b: Vec3 = [0, a[1] - 0.04, a[2] + 0.15],
+      c: Vec3 = [0, a[1] - 0.1, a[2] + 0.15],
+      line = (p: Vec3, q: Vec3, ch: string, w: number): void => {
+        const n = Math.max(2, Math.round(Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) / (S * 0.3)));
+        for (let k = 0; k <= n; k++) {
+          const f = k / n;
+          for (const o of w > 0 ? [-w, w] : [0])
+            lit(
+              p[0] + (q[0] - p[0]) * f + o * (1 - f * 0.6),
+              p[1] + (q[1] - p[1]) * f,
+              p[2] + (q[2] - p[2]) * f,
+              ch,
+              0.85,
+              1.2,
+              C.skin,
+              'head',
+            );
+        }
+      };
+    line(a, b, '#', 0.025);
+    line(b, c, '%', 0);
+  }
+  // 大きな口：耳の方まで裂けた笑い（暗い線）。上の縁に牙が並ぶ
+  for (let k = 0; k <= 8; k++) {
+    const nx = (k / 8 - 0.5) * 1.2,
+      ny = -0.32 + 0.22 * nx * nx;
+    lit(...onHead(nx, ny, 0.05), '=', 0.8, 0.9, C.shade, 'head');
+    if (k % 2 === 1) lit(...onHead(nx, ny + 0.02, 0.09), 'v', 0.7, 1.3, C.bone, 'head');
+  }
+  // 大きな耳：頭の横から、外へ広く、少し上と後ろへ。根もとが太く先がとがる三角を、列ごとに下の縁から上の縁まで埋める。縁は肌、内側は暗い赤茶
+  for (const sd of [-1, 1]) {
+    const root: Vec3 = [sd * H.r[0] * 0.9, H.c[1], H.c[2] - 0.04],
+      tip: Vec3 = [sd * 0.5, H.c[1] + 0.2, H.c[2] - 0.14],
+      up = 0.1,
+      dn = 0.08,
+      g = S * 0.4,
+      n = Math.max(3, Math.round(Math.abs(tip[0] - root[0]) / g));
+    for (let k = 0; k <= n; k++) {
+      const f = k / n,
+        x = root[0] + (tip[0] - root[0]) * f,
+        y = root[1] + (tip[1] - root[1]) * f,
+        z = root[2] + (tip[2] - root[2]) * f,
+        w = 1 - f,
+        lo = y - dn * w,
+        hi = y + up * w,
+        m = Math.max(1, Math.round((hi - lo) / g));
+      if (k === n) {
+        lit(x, y, z, sd < 0 ? '<' : '>', 0.9, 1.2, C.skin, 'head');
+        continue;
+      }
+      for (let j = 0; j <= m; j++) {
+        const edge = j === 0 || j === m;
+        lit(x, lo + ((hi - lo) * j) / m, z, edge ? '%' : ':', 0.95, edge ? 1.2 : 0.9, edge ? C.skin : C.inner, 'head');
+      }
+    }
+  }
+  // 背骨のこぶ：猫背の背中の真ん中（襟巻きの下から帯の上まで）
+  for (let q = 0; q < 4; q++) {
+    const p = gobTorsoAt(0.82 - q * 0.15, -Math.PI / 2);
+    lit(p.x, p.y, p.z - 0.02, q === 0 ? 'n' : 'o', 0.8, 1.0, q === 0 ? C.skin : C.hide);
+  }
+  // 腕：細く長い。肩から振る
+  const LH: Vec3 = [-0.28, 0.6, 0.36],
+    RH: Vec3 = [0.27, 0.56, 0.34];
+  for (const sd of [-1, 1]) {
+    const part = sd < 0 ? 'armL' : 'armR',
+      sh: Vec3 = [sd * 0.19, 0.96, 0.18],
+      el: Vec3 = [sd * 0.27, 0.74, 0.16],
+      hd = sd > 0 ? RH : LH;
+    tube(sh, el, 0.045, 0.035, SKIN, C.skin, part, SHOULDER, 0.15);
+    tube(el, hd, 0.035, 0.032, SKIN, C.skin, part, SHOULDER);
+    ellAt(SHOULDER, hd, 0.05, 0.05, 0.05, SKIN, () => C.skin, part, st * 0.4);
+  }
+  // 左手：指を開いて、爪
+  {
+    const h = LH;
+    for (const o of [-1, 0, 1])
+      stroke([h[0] + o * 0.03, h[1] - 0.03, h[2] + 0.03], [h[0] + o * 0.045, h[1] - 0.1, h[2] + 0.08], C.bone, 1.0, 0.7, 'armL', SHOULDER);
+  }
+  // 右手：錆びた短刀。柄を握り、刃は前の上へ反る
+  {
+    const h = RH;
+    lit(h[0], h[1] - 0.06, h[2], 'o', 0.7, 1.0, C.hide, 'armR', SHOULDER);
+    for (const o of [-1, 1]) lit(h[0] + o * 0.05, h[1] + 0.06, h[2] + 0.02, '-', 0.8, 1.1, C.iron, 'armR', SHOULDER);
+    const n = 6;
+    for (let k = 1; k <= n; k++) {
+      const f = k / n,
+        y = h[1] + 0.06 + 0.32 * f,
+        z = h[2] + 0.02 + 0.12 * f * f;
+      lit(h[0], y, z, k === n ? '^' : '|', 0.85, 1.3, C.iron, 'armR', SHOULDER);
+      if (k < n) lit(h[0], y, z + 0.035, k % 2 ? ')' : '|', 0.8, 1.0, C.iron, 'armR', SHOULDER);
+    }
+  }
+  // 小さな体は明るく描かれ（1.4 倍）、照準の先ではさらに明るくなる。白い塊にならないように、目のほかは暗めにする。
+  // 一番広い肌は、さらに暗めにする（部屋の灯りの下で、肌だけが白くにじみ、上着と襟巻きの色が消える）
+  for (const p of pts) if (p.col !== C.eye) p.b *= p.col === C.skin ? 0.6 : 0.75;
+  return pts;
+}
