@@ -12,6 +12,7 @@ import * as FIX from '../../src/lib/fixtures.ts';
 import * as LM from '../../src/lib/lightmap.ts';
 import * as LOOK from '../../src/lib/look.ts';
 import { LIGHT_TYPES, PARTS, lookName, viewCases, viewText } from './view-cases.mjs';
+import { caseOut } from './case-out.mjs';
 
 const fnv = (s) => {
   let h = 0x811c9dc5;
@@ -44,7 +45,8 @@ describe('移す前と同じ', () => {
     const all = await viewCases({ ...AIM, ...DRAW, ...FIX, ...LM, ...LOOK }, 240),
       body = viewText(all),
       calls = all.flatMap((c) => c.calls);
-    expect([fnv(body), body.length]).toEqual(['1bb4197e', 59837932]);
+    caseOut('view', body);
+    expect([fnv(body), body.length]).toEqual(['30c9f264', 59837938]);
     // 場合が中身を通っているか：18の関数が全部呼ばれ、文字を置き、粒子を出し、どれも止まらない
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.dn > 0).length).toBeGreaterThan(2000);

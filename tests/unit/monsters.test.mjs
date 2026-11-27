@@ -8,6 +8,7 @@ import { sShriek } from '../../src/lib/audio.ts';
 import * as GROUND from '../../src/lib/ground.ts';
 import * as MON from '../../src/lib/monsters.ts';
 import { NAMES, monsterCases, monsterText } from './monsters-cases.mjs';
+import { caseOut } from './case-out.mjs';
 
 const fnv = (s) => {
   let h = 0x811c9dc5;
@@ -20,7 +21,8 @@ describe('移す前と同じ', () => {
     const all = await monsterCases({ ...MON, ...GROUND, sShriek }, 40),
       body = monsterText(all),
       calls = all.flatMap((c) => c.calls);
-    expect([fnv(body), body.length]).toEqual(['345eb983', 22738775]);
+    caseOut('monsters', body);
+    expect([fnv(body), body.length]).toEqual(['00ae74c5', 22738903]);
     // 場合が中身を通っているか：23の関数が全部呼ばれ、どれも止まらない。伝言・見た目の乱数・音の乱数を引く呼び出しもある
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);

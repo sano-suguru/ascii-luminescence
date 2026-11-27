@@ -124,7 +124,8 @@ async function traceChecks(pg, base) {
   if (!(left.trig[0] > 50)) errs.push(`5：発動のルーンの待ち時間を置けていない（テストの前提が崩れた）：${JSON.stringify(left.trig)}`);
   await pg.evaluate(() => dbg.hurt(9999));
   await advance(pg, 1);
-  await pg.keyboard.press('Enter'); // 新しい探索（newRun）。すぐ確かめる（待ちはゲームの時間で減っていくので）
+  await pg.keyboard.press('Enter'); // 新しい探索（暗くなりきった時に newRun）
+  await advance(pg, 0.9);
   const run = await pg.evaluate(() => __test.traces());
   if (run.trig[0] || run.trig[1])
     errs.push(`5：新しい探索を始めても、前の探索の発動のルーンの待ち時間が残っている：${JSON.stringify(run.trig)}`);

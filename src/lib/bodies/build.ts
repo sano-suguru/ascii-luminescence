@@ -13,6 +13,7 @@ import {
   batForm,
   bogForm2,
   caveSpiderForm,
+  conjurerForm,
   dragonForm,
   golemForm2,
   grazerForm,
@@ -425,7 +426,7 @@ export function extraLook(ty: { look?: string | null | undefined }, pts: Body): 
 }
 
 // ---- 人型（作り直した物）：材料ごとに陰を付けた、読める文字の体。割合は種類ごと、種類ごとの特徴も
-/** 人型の形（コボルド・ゴブリン・術師・蛇顎・猿・ノーム） */
+/** 人型の形（コボルド・ゴブリン・蛇顎・猿・ノーム。呪術師は beasts.ts の conjurerForm） */
 export function humanoid2(ty: FormType): Body {
   const look = ty.look,
     P = propOf(look),
@@ -435,7 +436,6 @@ export function humanoid2(ty: FormType): Body {
   const CLT: Readonly<Record<string, Color>> = {
     kobold: [0.6, 0.42, 0.3],
     goblin: [0.55, 0.45, 0.32],
-    conjurer: [0.42, 0.3, 0.6],
     snapjaw: [0.62, 0.5, 0.36],
     monkey: [0.55, 0.42, 0.3],
     ogre: [0.55, 0.42, 0.3],
@@ -520,7 +520,7 @@ export function humanoid2(ty: FormType): Body {
       const a = (k / n) * Math.PI * 2,
         nx = Math.cos(a),
         nz = Math.sin(a),
-        mat = f < 0.25 && look !== 'ogre' ? 'cloth' : look === 'conjurer' || look === 'gnome' ? 'cloth' : 'skin';
+        mat = f < 0.25 && look !== 'ogre' ? 'cloth' : look === 'gnome' ? 'cloth' : 'skin';
       put(nx * rx, y, nz * rz + lz(y), nx, 0.2, nz, mat, mat === 'cloth' ? CL : SK);
     }
   }
@@ -552,8 +552,7 @@ export function humanoid2(ty: FormType): Body {
       'head',
     );
   }
-  const EYE: Color =
-    look === 'goblin' ? [1, 0.9, 0.3] : look === 'conjurer' ? [0.8, 0.5, 1] : look === 'gnome' ? [0.6, 0.8, 1] : [1, 0.75, 0.4];
+  const EYE: Color = look === 'goblin' ? [1, 0.9, 0.3] : look === 'gnome' ? [0.6, 0.8, 1] : [1, 0.75, 0.4];
   for (const sd of [-1, 1]) lit(H[0] + sd * hr * 0.38, H[1] + hr * 0.15, H[2] + hr * 0.92, '.', S * 0.8, 3.2, EYE, 'head');
   lit(0, P.hc, H[2] + hr * 0.2, ty.ch, S * 1.3, 1.5, SK, 'core');
   const hand = [0.22 * bw + 0.06 + 0.02 * armLen, P.sh - armLen, lz(P.sh) + 0.04 * armLen] as const,
@@ -576,38 +575,6 @@ export function humanoid2(ty: FormType): Body {
     for (let k = 0; k < 5; k++)
       lit((k - 2) * 0.07, P.hip - 0.05 - ((k * 7) % 3) * 0.04, 0.14 + lz(P.hip), mpick(['|', '/', '\\']), S * 0.9, 1.0, CL);
     stroke([hand[0], hand[1], hand[2]], [hand[0], hand[1] - 0.02, hand[2] + 0.3], [0.7, 0.55, 0.4], 1.6, S * 0.9, 'armR', arm);
-  }
-  if (look === 'conjurer') {
-    for (let y = 0.04; y < P.hip + 0.1; y += GAP) {
-      const r = 0.34 - (y / (P.hip + 0.1)) * 0.12,
-        n = Math.max(6, Math.round((2 * Math.PI * r) / GAP));
-      for (let k = 0; k < n; k++) {
-        const a = (k / n) * Math.PI * 2;
-        put(Math.cos(a) * r, y, Math.sin(a) * r * 0.85, Math.cos(a), 0.1, Math.sin(a), 'cloth', CL, 'robe');
-      }
-    }
-    for (let i = 0; i < 10; i++) {
-      const y = 1 - (2 * (i + 0.5)) / 10,
-        rr = Math.sqrt(1 - y * y),
-        a = i * 2.39996;
-      if (Math.sin(a) * rr > 0.4 && y < 0.6) continue;
-      put(
-        Math.cos(a) * rr * hr * 1.35,
-        H[1] + 0.03 + y * hr * 1.3,
-        H[2] - 0.02 + Math.sin(a) * rr * hr * 1.3,
-        Math.cos(a) * rr,
-        y,
-        Math.sin(a) * rr,
-        'cloth',
-        CL,
-        'head',
-      );
-    }
-    lit(0, H[1] + hr * 1.55, H[2] - 0.04, '^', S, 1.2, CL, 'head');
-    stroke([hand[0] + 0.04, 0.04, hand[2]], [hand[0] + 0.04, P.hc + 0.35, hand[2]], [0.85, 0.8, 0.68], 1.1, S * 0.9, 'armR', arm);
-    for (const sd of [-1, 1])
-      lit(hand[0] + 0.04 + sd * 0.07, P.hc + 0.32, hand[2], sd < 0 ? '}' : '{', S * 0.85, 1.3, [0.9, 0.9, 0.8], 'armR', arm);
-    lit(hand[0] + 0.04, P.hc + 0.45, hand[2], '*', S * 1.3, 3.4, [0.75, 0.45, 1.0], 'armR', arm);
   }
   if (look === 'snapjaw') {
     for (let k = 1; k <= 4; k++) lit(0, H[1] - hr * 0.25, H[2] + hr + k * S * 0.55, k === 4 ? '>' : '=', S * 0.9, 1.4, SK, 'head');
@@ -737,6 +704,7 @@ export function buildForm0(ty: FormType): Body {
     if (F && !ty.boss) return F(ty);
   }
   if (ty.form === 'humanoid' && ty.look === 'ogre') return ogreForm(ty);
+  if (ty.form === 'humanoid' && ty.look === 'conjurer') return conjurerForm(ty);
   if ((ty.form === 'humanoid' && ty.look && LOOK_PROP[ty.look] !== undefined) || (ty.form === 'humanoid' && ty.look === 'snapjaw'))
     return humanoid2(ty);
   {

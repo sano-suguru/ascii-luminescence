@@ -518,10 +518,17 @@ export function drawMonster0(m: Mon, t: number): void {
     dyn(wx + jx, wy + jy, wz + jz, g, p.s * sc * sb, cc[0] * k + lit[0] * 0.12, cc[1] * k + lit[1] * 0.12, cc[2] * k + lit[2] * 0.12, 0, 0);
   }
   if (!gfx.drawBodyOnly) drawMark(m, t, dp);
+  // 霊剣：切っ先を上にした小さな剣（刃・鍔・柄・柄頭）。鍔は、剣が回る向きに張る
   if (ty.conj)
     for (const b of must(m.blades, '剣を操る者の剣 blades')) {
-      const bn = clamp(Math.hypot(b.x - gfx.camera.position.x, b.y - gfx.camera.position.y, b.z - gfx.camera.position.z) / 3, 0.25, 1);
-      dyn(b.x, b.y, b.z, G('|'), 0.55, 1.4 * bn, 2.2 * bn, 2.6 * bn, 0, 0);
-      dyn(b.x, b.y - 0.3, b.z, G('+'), 0.3, 0.9 * bn, 1.4 * bn, 1.8 * bn, 0, 0);
+      const bn = clamp(Math.hypot(b.x - gfx.camera.position.x, b.y - gfx.camera.position.y, b.z - gfx.camera.position.z) / 3, 0.25, 1),
+        tx = -Math.sin(b.a),
+        tz = Math.cos(b.a);
+      dyn(b.x, b.y + 0.26, b.z, G('^'), 0.14, 0.7 * bn, 0.8 * bn, 1.0 * bn, 0, 0);
+      for (let k = 0; k < 4; k++) dyn(b.x, b.y + 0.18 - k * 0.07, b.z, G('|'), 0.15, 0.6 * bn, 0.7 * bn, 0.95 * bn, 0, 0);
+      for (const q of [-1, 0, 1])
+        dyn(b.x + tx * q * 0.07, b.y - 0.1, b.z + tz * q * 0.07, G(q ? '-' : '+'), 0.14, 0.75 * bn, 0.55 * bn, 0.95 * bn, 0, 0);
+      dyn(b.x, b.y - 0.17, b.z, G('|'), 0.12, 0.6 * bn, 0.45 * bn, 0.8 * bn, 0, 0);
+      dyn(b.x, b.y - 0.23, b.z, G('o'), 0.1, 0.75 * bn, 0.55 * bn, 0.95 * bn, 0, 0);
     }
 }

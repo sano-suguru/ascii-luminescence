@@ -11,6 +11,7 @@ import { beastSamples } from '../../src/lib/bodies/lords.ts';
 import { MTYPES } from '../../src/lib/creatures.ts';
 import * as SAVE from '../../src/lib/save.ts';
 import { auraCases, beastRecordCases, formCases, formTypes, lookCases } from './bodies-legacy-cases.mjs';
+import { caseOut } from './case-out.mjs';
 
 const fnv = (s) => {
   let h = 0x811c9dc5;
@@ -55,6 +56,7 @@ describe('移す前と同じ', () => {
           .map((l) => l.split(' ')[1]?.split(':')[1]),
       ).size,
     ).toBe(7);
+    caseOut('bodies-legacy-1', all);
     expect(fp(all)).toEqual(['31ae6d80', 529]);
   });
   it('図鑑の見本の獣', () => {
@@ -68,7 +70,8 @@ describe('移す前と同じ', () => {
     expect(lines.length).toBe(476);
     expect(new Set(lines.map((l) => l.split(' ')[1]?.split(':')[0])).size).toBeGreaterThan(460);
     expect(lines.some((l) => l.includes(':1 '))).toBe(true);
-    expect(fp(all)).toEqual(['611b4dab', 27006]);
+    caseOut('bodies-legacy-2', all);
+    expect(fp(all)).toEqual(['2c7329d9', 27015]);
   }, 60000);
   it('まわりの飾り・姿を変える途中・王の影の変身（880の場合）の指紋', () => {
     const all = auraCases({ ...AURAS, buildForm: BUILD.buildForm }, 880),
@@ -101,6 +104,7 @@ describe('移す前と同じ', () => {
       true,
       true,
     ]);
+    caseOut('bodies-legacy-3', all);
     expect(fp(all)).toEqual(['01747a05', 999071]);
   }, 60000);
   it('忘れられた獣の記録（保存の中身10通り×今の探索の記録3通り×保存が使えるか）の指紋', () => {
@@ -108,6 +112,7 @@ describe('移す前と同じ', () => {
       cases = all.split('\n').map((l) => JSON.parse(l));
     // 場合が中身を通っているか：書く場合と、書かない場合（同じ獣・配列でない・null が混じる・保存が使えない）がある
     expect([cases.length, cases.some((c) => c.writes.length), cases.some((c) => c.ok && !c.writes.length)]).toEqual([60, true, true]);
+    caseOut('bodies-legacy-4', all);
     expect(fp(all)).toEqual(['2f2e58ba', 41342]);
   });
 });
