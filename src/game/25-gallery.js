@@ -72,7 +72,7 @@ function showBeast(i){
   // makeMonster is handed g.rnd as the creature's own sequence (m.rnd), so what it makes when first drawn (in the first step) reads it too
   const m=withVisualRand(g.rnd,()=>{ const m=makeMonster({key:'__gal',cx:g.room.cx,cz:g.room.cz,g:-1,lead:true},g.rnd); initDust(); return m; });
   m.x=g.room.x; m.z=g.room.z; m.sleep=false; m.hidden=false; m.wait=1e9; m.galShow=true; m.heartOn=true; m.rise=1; m.surf=1; m.yaw=0; if(e.ty.form==='eel')m.y=0;
-  g.water=e.ty.form==='kraken'||e.ty.form==='deepkraken'||e.ty.form==='eel'||e.ty.form==='fish'||e.ty.habitat==='deep'; if(g.water&&e.ty.form==='kraken')m.y=-0.25*(e.ty.scale||1); if(e.ty.form==='deepkraken')m.y=0; if(e.ty.habitat==='bog')m.y=0;
+  g.water=e.ty.form==='kraken'||e.ty.form==='deepkraken'||e.ty.form==='eel'||e.ty.form==='fish'||e.ty.habitat==='deep'; if(g.water&&e.ty.form==='kraken')m.y=-0.7; if(e.ty.form==='deepkraken')m.y=0; if(e.ty.habitat==='bog')m.y=0;
   here.monsters.push(m); g.m=m; g.t=0; renderGallery();
 }
 // the player's hands on the bestiary: the wheel moves in and out (the distance from 0.6 to 2 times the usual one), a drag with the left button turns the creature
