@@ -6,6 +6,7 @@ import { buildForm } from './bodies/build.ts';
 import { G } from './glyphs.ts';
 import { cellLight } from './lightmap.ts';
 import { lerpAngle } from './math.ts';
+import { bodyUnseen } from './monsters.ts';
 import { AVATAR_TY } from './names.ts';
 import { dyn } from './particles.ts';
 import { clamp } from './rng.ts';
@@ -16,7 +17,7 @@ import { CELL, EYE, MH, MW, TC, TW, TX } from './world.ts';
 const level = () => must(here.D, '今の階 here.D');
 
 // eye adaptation and atmosphere: open caverns thin the fog, bright surroundings lower the exposure
-/** 霧と目の慣れ（毎フレーム）：洞窟の部屋・遺跡では霧の濃さを変え、まわりの明るさ（灯り・近くの生き物と備品）で露出をゆっくり合わせる。溶岩の近くの熱のゆらぎと、水中の見え方も */
+/** 霧と目の慣れ（毎フレーム）：洞窟の部屋・遺跡では霧の濃さを変え、まわりの明るさ（灯り・近くの見える生き物と備品）で露出をゆっくり合わせる。溶岩の近くの熱のゆらぎと、水中の見え方も */
 export function updateAtmosphere(dt: number): void {
   const pc = Math.floor(player.z / CELL) * MW + Math.floor(player.x / CELL),
     ri = nth(level().roomOf, pc);
@@ -27,7 +28,10 @@ export function updateAtmosphere(dt: number): void {
   let B = 0.3 * l[0] + 0.55 * l[1] + 0.15 * l[2];
   for (const m of here.monsters) {
     const d = Math.hypot(m.x - player.x, m.z - player.z);
-    if (d < 5) B += (1 - d / 5) ** 2 * 0.7;
+    if (d >= 5) continue;
+    // 描かれない生き物（src/lib/monsters.ts の bodyUnseen。視界の外かは見ない）と化けている生き物は、目に入る明るさに数えない（近づいたのが暗さで分からないように）
+    if (m.hidden || bodyUnseen(m, d)) continue;
+    B += (1 - d / 5) ** 2 * 0.7;
   }
   for (const f of here.fixtures) {
     const d = Math.hypot(f.x - player.x, f.z - player.z);
