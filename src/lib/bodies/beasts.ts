@@ -1557,7 +1557,7 @@ export function conjRobeAt(f: number, a: number): { x: number; y: number; z: num
 }
 
 export function conjurerForm(ty: BodyType): Body {
-  // 小さな体なので、点を細かくする（大きさは種類の scale ではなく、この値で決める）
+  // 小さな体なので、点を細かくする（文字の大きさを決める scale を、1.25 より小さくしない）
   const { S, pts, put, lit, stroke, ell, tube } = q3({ scale: Math.max(ty.scale, 1.25) }),
     ROBE: Color = [0.52, 0.27, 0.88],
     ROBE_IN: Color = [0.24, 0.16, 0.36],

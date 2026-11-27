@@ -107,6 +107,7 @@ describe('生き物の形', () => {
       ...BOSS_FORMS.map((f) => seeded(f)),
       ...TYS.flatMap((ty) => [seeded(() => beasts.dragonForm(ty)), seeded(() => beasts.ogreForm({ ...ty, ch: 'O' }))]),
       ...SPECS.map((s) => seeded(() => lords.beastForm(s))),
+      ...TYS.map((ty) => seeded(() => beasts.conjurerForm(ty))),
     ];
     for (const b of bodies) {
       expect(b.length).toBeGreaterThan(5);
