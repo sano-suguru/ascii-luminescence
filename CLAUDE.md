@@ -134,7 +134,7 @@ tools/field.mjs      生き物を本物の階（既定は深さ 1 と 3）に置
                      --kill [1,4,10,30,90,240,330] で、距離ごとの代わりに、4m（大きな物は体の大きさの2倍）で倒して、倒してからのフレーム数ごとに写し、時間の順に横に並べた <名前>-kill.png
                      （倒した後は体が無いので、倒す直前の体の範囲を 1.6 倍に広げた枠で切り抜く。積もった文字に重なる、見た時の説明と行く先の矢印は隠す。倒れ方を直す時に）
 tools/glare.mjs      敵に攻撃を当てた時の眩しさを数える（pnpm glare [名前…]。本物の階で生き物に照準を合わせ（tests/lib.mjs の aimAt）、近接（blade）と飛ぶ物（bolt）で当て（strike）、
-                     当てる前の1枚と、当たった次のフレームから光り終わる（hitT が 0 になる）フレームまでを1枚ずつ写す。--hide 段,…（tick の段の名前。例：hands,swing。体は 'mob draw'、剣の波は飛ぶ物の 'projs'）で、
+                     当てる前の1枚と、当たった次のフレームから光り終わる（hitT が 0 になる）フレームまでを1枚ずつ写す（場合ごとに自分のページで、3つずつ同時に）。--hide 段,…（tick の段の名前。例：hands,swing。体は 'mob draw'、剣の波は飛ぶ物の 'projs'）で、
                      その段を止めて（__test.skipPhase）撃った数も、止めない時と並べて出す（何が光っているかの切り分けに）。体の範囲の白飛び（3つの色がどれも 245 以上）・眩しさ（明るさ 200 以上）・明るさの平均と、画面全体の眩しさ、写した時の hitT・glow・照準の先かを出す。
                      写真・体のまわりを切り抜いて並べた glare.png・summary.json は tests/out/glare/。CI には入れない）
 tools/sheet.mjs      写真を体のまわり（__test.monsterView の画面の範囲）で切り抜いて大きくし、枡に並べた1枚にする（cropRect・writeSheet。shots.mjs・field.mjs・glare.mjs が使う）
@@ -309,7 +309,7 @@ node tools/case-diff.mjs --update [テストの名前…]     # 比べ合わせ�
 node tools/feel.mjs [aim|walk]   # 手触りの試し打ち（見回す速さ・8方向とアナログのスティックを比べる。4分ほど。--look・--trials・--routes）
 pnpm field <名前…>    # 生き物を本物の階で、向かってくるところを距離ごとに写す（--scenes 1:202,3:7 で階、--rev origin/main で前の版と並べる。--kill で倒して時間を追って写す。見た目を直す時の最後に。4分ほど）
 pnpm lords [場所…]    # 主たちを本当にいる場所で、目の高さから写し、大きさと眩しさを数で出す（crypt・lair・sunken・nest・snake・final。--dist で距離（既定 8））
-pnpm glare [名前…]    # 敵に攻撃を当てた時の眩しさを数で出す（既定はゴブリン・トロル・レイスを小剣と光弾で。--weapons・--scene 1:202・--hide hands,swing。1分ほど）
+pnpm glare [名前…]    # 敵に攻撃を当てた時の眩しさを数で出す（既定はゴブリン・トロル・レイスを小剣と光弾で。--weapons・--scene 1:202・--hide hands,swing。40秒ほど）
 node tools/transitions.mjs [--rate 1,4]   # 場面が切り替わる時の確かめ（Artifact 版を本物の時計で通し、診断の記録を表にする。1つの速さで3分ほど）
 node tools/diag-report.mjs <フォルダ>     # 診断の記録（ArtifactData の道具で保存した JSON）を表にする（--compare 前.json 今.json で、自動で遊んだ段を並べる）
 node tools/auto-run.mjs [--cond lowpower]  # 自動で遊ぶ台本を、スマホの遅さを真似て流す（条件ごとに5分ほど）

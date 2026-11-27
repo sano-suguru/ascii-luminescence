@@ -113,8 +113,8 @@ if(TEST)window.__test={
   tickNoise(n){ tickNoise.n=Math.max(0,n|0); return tickNoise.n; },
   // skip the phases of tick with these names (inPhase('hands',…), the creatures' drawing inMobPhase('mob draw',…)); [] brings them all back.
   // Returns the names skipped now. A name tick does not have is not taken (so a typo shows: the list comes back without it)
-  // (the names are read from tick's own source, so the list does not need to be kept by hand)
-  skipPhase(names){ const known=new Set([...tick.toString().matchAll(/in(?:Mob)?Phase\(\s*["'`]([^"'`]+)["'`]/g)].map(x=>x[1]));
+  // (the names are read from tick's own source, so the list does not need to be kept by hand; the build may rename inPhase to inPhase$1 and so on)
+  skipPhase(names){ const known=new Set([...tick.toString().matchAll(/in(?:Mob)?Phase[$\w]*\(\s*["'`]([^"'`]+)["'`]/g)].map(x=>x[1]));
     skipPhases.clear(); for(const n of names||[])if(known.has(n))skipPhases.add(n); return [...skipPhases]; },
   // a plain copy of what matters, to compare runs
   state(){ const f=v=>+(+v||0).toFixed(3);

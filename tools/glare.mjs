@@ -14,19 +14,22 @@
 //   明るさ：範囲の中の明るさの平均（0〜255）
 //   画面：画面全体で、明るさ 200 以上の画素の割合（目の前に描く振った線の光や、光のにじみが画面に広がった分も入る）
 // と、写した時の体の明るさの元（当たって光る残りの秒 hitT・倍率 glow・照準の先か）を出し、summary.json に書く。
-// 写真は <名前>-<武器>[-hide-<段>]-<before|hit0…>.png（画面全体）と、行が生き物と武器の組（--hide なら、止めない時と止めた時の2行）、
+// 場合（生き物・武器・止める段の組）ごとに自分のページで撃ち、JOBS ずつ同時に写す（出力は場合の順）。
+// 写真は <名前>-<武器>[-hide-<段>]-<before|hit0…>.png（画面全体。写す前に、前の回のその場合の写真を消す）と、行が生き物と武器の組（--hide なら、止めない時と止めた時の2行）、
 // 列が当てる前・当たった次のフレーム・その後のフレームの、体のまわりを切り抜いて並べた1枚 glare.png。画面全体の霞は、切り抜きでは見えないので、元の写真を1枚ずつ見る。
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
 import { PNG } from 'pngjs';
 import { withBrowser, newPage, openTest, advance, frames, aimAt, strike, arg, OUT } from '../tests/lib.mjs';
 import { cropRect, writeSheet } from './sheet.mjs';
+import { MTYPES } from '../src/lib/creatures.ts';
 
 const W = 960,
   H = 540,
   CLIP = { x: 0, y: 0, width: W, height: H },
   AFTER_MAX = 30, // 当たった後に写すフレームの数の上限（1フレーム＝ゲームの1/30秒。当たって光る hitT は 0.22〜0.35 秒なので、ふつうは 7〜11 枚で光り終わる）
-  GLARE_PICK = ['ゴブリン', 'トロル', 'レイス'];
+  GLARE_PICK = ['ゴブリン', 'トロル', 'レイス'],
+  JOBS = 3; // 同時に写す場合の数（どの場合も自分のページで撃つので、ぶつからない。CPU で描くので、多くしすぎると1つずつが遅くなる）
 const argv = process.argv.slice(2);
 const usage = (why) => {
   console.log(`${why}\n使い方：pnpm glare [名前…] [--weapons blade,bolt] [--scene 1:202] [--hide 段,…] [--out <ディレクトリ>]`);
@@ -75,6 +78,9 @@ function measure(file, box) {
 
 /** 1つの生き物を1つの武器で撃って写す（skip：止める tick の段）。写真と数の一覧を返す */
 async function shoot(browser, base, key, weapon, prefix, errs, skip = []) {
+  // 前の回に写した、この場合の写真を消す（光り終わるまでの枚数は回ごとに変わるので、多かった回の分が残らないように）
+  const own = new RegExp(`^${basename(prefix).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-(before|hit\\d+)\\.png$`);
+  for (const f of readdirSync(dirname(prefix))) if (own.test(f)) rmSync(join(dirname(prefix), f));
   const pageErrs = [];
   const pg = await newPage(browser, pageErrs, { width: W, height: H, still: true });
   const fail = async (why) => {
@@ -158,36 +164,61 @@ async function shoot(browser, base, key, weapon, prefix, errs, skip = []) {
 const errs = [],
   rows = [],
   sheetRows = [];
+// 名前（または表の鍵）→ 鍵。初めからある種類は表 MTYPES で引き、無ければ（主など、探索の途中で足される物）図鑑を開いて引く
+const fromTable = (want) => {
+  const hit = Object.entries(MTYPES).filter(([k, t]) => !t.dummy && (k === want || t.name === want));
+  return hit.length === 1 ? { key: hit[0][0], name: hit[0][1].name } : null;
+};
 await withBrowser(async ({ browser, base }) => {
-  const pg = await newPage(browser, errs, { width: W, height: H, still: true });
-  await openTest(pg, base);
-  await advance(pg, 1);
-  const list = await pg.evaluate(() => __test.gallery());
-  await pg.close();
-  if (typeof list === 'string') throw new Error(list);
+  let list = null;
+  const cases = [];
   for (const want of names) {
-    const e = list.find((x) => (x.name === want || x.key === want) && !String(x.key).includes(':'));
+    let e = fromTable(want);
+    if (!e) {
+      if (!list) {
+        const pg = await newPage(browser, errs, { width: W, height: H, still: true });
+        await openTest(pg, base);
+        await advance(pg, 1);
+        list = await pg.evaluate(() => __test.gallery());
+        await pg.close();
+        if (typeof list === 'string') throw new Error(list);
+      }
+      e = list.find((x) => (x.name === want || x.key === want) && !String(x.key).includes(':'));
+    }
     if (!e) {
       errs.push(`図鑑に無い名前：${want}`);
       continue;
     }
     for (const weapon of weapons)
       for (const skip of hide.length ? [[], hide] : [[]]) {
-        const tail = skip.length ? `-hide-${skip.join('_').replace(/\s/g, '-')}` : '',
-          prefix = join(outDir, `${e.name.replace(/[\\/:*?"<>|（）\s]/g, '_')}-${weapon}${tail}`);
-        const got = await shoot(browser, base, e.key, weapon, prefix, errs, skip);
-        if (!got) continue;
-        rows.push({ name: e.name, key: e.key, weapon, hide: skip, ...got });
-        const rect = cropRect([got.box], CLIP);
-        sheetRows.push(got.shots.map((s) => ({ file: s.file, rect })));
-        const pct = (v) => `${(v * 100).toFixed(1).padStart(5)}%`;
-        console.log(`${e.name}（${weapon}${skip.length ? `・止めた段：${skip.join('・')}` : ''}）`);
-        for (const s of got.shots)
-          console.log(
-            `  ${s.tag.padEnd(6)} 白飛び ${pct(s.white)}  眩しさ ${pct(s.bright)}  明るさ ${String(s.mean).padStart(5)}  画面 ${pct(s.screen)}  hitT ${s.hitT.toFixed(2)}  glow ${s.glow}${s.aimed ? '  照準' : ''}`,
-          );
+        const tail = skip.length ? `-hide-${skip.join('_').replace(/\s/g, '-')}` : '';
+        cases.push({ e, weapon, skip, prefix: join(outDir, `${e.name.replace(/[\\/:*?"<>|（）\s]/g, '_')}-${weapon}${tail}`) });
       }
   }
+  // JOBS ずつ同時に写す。出力と並べた1枚は、場合の順に並べる
+  const got = Array.from({ length: cases.length });
+  let next = 0;
+  const worker = async () => {
+    while (next < cases.length) {
+      const i = next++,
+        c = cases[i];
+      got[i] = await shoot(browser, base, c.e.key, c.weapon, c.prefix, errs, c.skip);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(JOBS, cases.length) }, worker));
+  cases.forEach(({ e, weapon, skip }, i) => {
+    const g = got[i];
+    if (!g) return;
+    rows.push({ name: e.name, key: e.key, weapon, hide: skip, ...g });
+    const rect = cropRect([g.box], CLIP);
+    sheetRows.push(g.shots.map((s) => ({ file: s.file, rect })));
+    const pct = (v) => `${(v * 100).toFixed(1).padStart(5)}%`;
+    console.log(`${e.name}（${weapon}${skip.length ? `・止めた段：${skip.join('・')}` : ''}）`);
+    for (const s of g.shots)
+      console.log(
+        `  ${s.tag.padEnd(6)} 白飛び ${pct(s.white)}  眩しさ ${pct(s.bright)}  明るさ ${String(s.mean).padStart(5)}  画面 ${pct(s.screen)}  hitT ${s.hitT.toFixed(2)}  glow ${s.glow}${s.aimed ? '  照準' : ''}`,
+      );
+  });
 });
 if (sheetRows.length) {
   const file = join(outDir, 'glare.png');

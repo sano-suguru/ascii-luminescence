@@ -155,7 +155,8 @@ const [runs, looks, noise] = await withBrowser(async ({ browser, base }) => {
     await pv.close();
     looks.push(got);
   }
-  const noise = [await noisy(browser, base, 0, 0), await noisy(browser, base, 3, 37), await noisy(browser, base, 0, 0, SKIP)];
+  // 3つは別のページで、互いに頼らないので、同時に走らせる
+  const noise = await Promise.all([noisy(browser, base, 0, 0), noisy(browser, base, 3, 37), noisy(browser, base, 0, 0, SKIP)]);
   return [out, looks, noise];
 });
 const [a, b, c] = runs.map((s) => JSON.stringify(s));

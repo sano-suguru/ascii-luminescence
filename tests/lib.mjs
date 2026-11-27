@@ -137,28 +137,40 @@ export async function aimAt(pg, key) {
 // 溜める武器（光弾など）は溜めきる（cast.full）まで待ち、向き直してから離す（早く離すと散る）。当たって光るのは 0.22〜0.35 秒なので、毎フレーム見る。
 // { hit: true, frame }（押してから何フレーム目に当たったか。押した時に当たれば 0）を返す。150 フレームで当たらなければ Error
 export async function strike(pg, hand, key) {
-  const hpNow = () =>
-    pg.evaluate((key) => {
-      const m = __test.state().monsters.find((m) => m[0] === key);
-      return m ? m[3] : -1;
-    }, key);
-  const hp0 = await hpNow();
-  await pg.evaluate((h) => __test.press(h), hand);
-  let released = false;
-  try {
-    for (let k = 0; k < 150; k++) {
-      if ((await hpNow()) < hp0) return { hit: true, frame: k };
-      if (!released && (await pg.evaluate(() => __test.state().cast?.full))) {
-        await lookAt(pg, key);
-        await pg.evaluate((h) => __test.release(h), hand);
-        released = true;
+  // 押してから当たるまでを、ページの中の1回の evaluate で進める（溜める間の1フレームごとに、ページと行き来しない）
+  const frame = await pg.evaluate(
+    ([hand, key]) => {
+      const hpNow = () => {
+          const m = __test.state().monsters.find((m) => m[0] === key);
+          return m ? m[3] : -1;
+        },
+        hp0 = hpNow();
+      __test.press(hand);
+      let released = false;
+      try {
+        for (let k = 0; k < 150; k++) {
+          if (hpNow() < hp0) return k;
+          if (!released && __test.state().cast?.full) {
+            // 離す前に向き直す（lookAt と同じ）
+            const m = __test.state().monsters.find((m) => m[0] === key);
+            if (m) {
+              const v = __test.monsterView(key);
+              dbg.look(m[1], v && v.world ? (v.world.y0 + v.world.y1) / 2 : 0.5, m[2]);
+            }
+            __test.release(hand);
+            released = true;
+          }
+          __test.advance(1 / 30);
+        }
+      } finally {
+        if (!released) __test.release(hand);
       }
-      await advance(pg, 1 / 30);
-    }
-  } finally {
-    if (!released) await pg.evaluate((h) => __test.release(h), hand);
-  }
-  throw new Error(`手 ${hand} の武器が生き物 ${key} に当たらない（150 フレーム）`);
+      return -1;
+    },
+    [hand, key],
+  );
+  if (frame < 0) throw new Error(`手 ${hand} の武器が生き物 ${key} に当たらない（150 フレーム）`);
+  return { hit: true, frame };
 }
 // 一番近い祭壇のそばへ行く（dbg.to('altar') は2マス手前に置くが、祭壇の画面は1.5以内でないと開かない）
 export const nearAltar = (pg) =>
