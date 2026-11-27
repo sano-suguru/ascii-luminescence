@@ -1,6 +1,6 @@
 // tools/case-diff.mjs の単体テスト（場合の書き出しを比べて、まとめる所。テストを走らせる所は、本物の書き出しで手で確かめた）
 import { describe, expect, it } from 'vitest';
-import { plainText, report, summarize } from '../../tools/case-diff.mjs';
+import { applyFix, plainText, report, summarize } from '../../tools/case-diff.mjs';
 import { stateFp } from './case-out.mjs';
 
 const line = (calls) => JSON.stringify(calls);
@@ -85,5 +85,36 @@ describe('状態の指紋（case-out.mjs）', () => {
       if (prev === undefined) delete process.env.AL_CASES_OUT;
       else process.env.AL_CASES_OUT = prev;
     }
+  });
+});
+
+describe('落ちた指紋を書き換える（--update）', () => {
+  const src = [
+    "  it('x', () => {",
+    "    caseOut('x', all);",
+    "    expect([fnv(all), all.length]).toEqual(['aaaa1111', 100]);",
+    '    expect(all.length).toBe(100);',
+    "    expect(fnv(all)).toBe('bbbb2222'); // 説明（括弧）も残す);",
+    "    expect(new Set(calls)).toEqual(new Set(['a']));",
+    '  });',
+  ].join('\n');
+  it('配列と、数・文字列の toBe を、今の値に書き換える（行の後ろの説明は残す）', () => {
+    const a = applyFix(src, 3, "AssertionError: expected [ 'cccc3333', 120 ] to deeply equal [ 'aaaa1111', 100 ]");
+    expect(a.src?.split('\n')[2]).toBe("    expect([fnv(all), all.length]).toEqual(['cccc3333', 120]);");
+    const b = applyFix(src, 4, 'AssertionError: expected 120 to be 100 // Object.is equality');
+    expect(b.src?.split('\n')[3]).toBe('    expect(all.length).toBe(120);');
+    const c = applyFix(src, 5, "AssertionError: expected 'dddd4444' to be 'bbbb2222' // Object.is equality");
+    expect(c.src?.split('\n')[4]).toBe("    expect(fnv(all)).toBe('dddd4444'); // 説明（括弧）も残す);");
+  });
+  it('caseOut のすぐ後でない行・行の値が期待していた値と違う時・指紋でない失敗は、書き換えない', () => {
+    expect(applyFix(src, 6, "AssertionError: expected Set{ 'b' } to deeply equal Set{ 'a' }").src).toBeUndefined();
+    expect(applyFix(src, 3, "AssertionError: expected [ 'cccc3333', 120 ] to deeply equal [ 'ffff0000', 1 ]").why).toBe(
+      '行の値が、テストの期待していた値と違う',
+    );
+    expect(
+      applyFix(src.replace("    caseOut('x', all);\n", ''), 2, "AssertionError: expected [ 'c', 1 ] to deeply equal [ 'aaaa1111', 100 ]")
+        .why,
+    ).toBe('caseOut のすぐ後（4 行以内）の行ではない');
+    expect(applyFix(src, 3, 'TypeError: x is undefined').why).toBe('指紋の失敗の文ではない');
   });
 });

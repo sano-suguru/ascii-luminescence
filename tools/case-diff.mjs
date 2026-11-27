@@ -4,11 +4,17 @@
 //   node tools/case-diff.mjs                 指紋のテスト全部を、origin/main の src/ と今の src/ で比べる
 //   node tools/case-diff.mjs view fight      tests/unit/view.test.mjs と fight.test.mjs だけ
 //   --rev <版>                               比べる前の版（既定 origin/main）
+//   --update [テストの名前…]                 比べ合わせはせず、今の版で指紋のテストを走らせ、落ちた指紋の値だけを今の値に書き換える
+//                                            （比べ合わせで、違いがねらった所とそれに続く物だけと確かめた後に使う。main を取り込んで指紋の行がぶつかった時は、
+//                                            main の値を取ってから、比べ合わせ → これ）
 // しくみ：今の作業場所でテストを走らせ、次に、一時的な作業場所（git worktree。tests/ は今の物を写し、src/ だけを --rev の版にする）で走らせる。
 // どちらも環境変数 AL_CASES_OUT を渡すので、テストは指紋の元の文を書き出す（tests/unit/case-out.mjs。その時は指紋のテストが落ちるが、成否は見ない）。
 // 書き出しは tests/out/case-diff/old/・new/、まとめは tests/out/case-diff/summary.txt。
 // まとめ：テストごとに、違う行の数・違う所（場所を一般にした道すじ。配列の要素は、呼び出しなら [名前]、生き物なら {鍵}）ごとの数と、
 // 数の違い（後 − 前）・行ごとの最初の違い。状態は欄ごとの指紋になる（stateFp）ので、どの欄・どの生き物の欄が違うかまで見える。
+// --update が書き換えるのは、caseOut の呼び出しから 4 行以内の toEqual(…)・toBe(…) の行で、テストが期待していた値がその行の値と同じ時だけ
+// （そのほかの失敗は書き出すだけで、触らない）。1つのテストに指紋が並ぶ時（長さと指紋を別の行で確かめる、など）は、前の行が落ちると後の行まで進まないので、
+// 落ちる指紋が無くなるまで、最大 4 回走らせ直す。
 import { spawnSync, execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -164,6 +170,72 @@ export function compareDirs(oldDir, newDir) {
   return r;
 }
 
+/** Vitest の値の書き方（[ 'a', 1 ]）を、ソースの書き方（['a', 1]）にする */
+const srcForm = (v) => v.replace(/\[ /g, '[').replace(/ \]/g, ']');
+/** 空白を除いた形（比べるため） */
+const bare = (v) => v.replace(/\s+/g, '');
+/**
+ * 落ちた指紋の1件を、ソースに当てる。msg は失敗の文の1行目（expected <今の値> to deeply equal|be <期待していた値>）、line は落ちた行（1 から）。
+ * 書き換えられれば新しいソースを、書き換えない時は理由を返す
+ */
+export function applyFix(src, line, msg) {
+  const m = /^AssertionError: expected (.+?) to (?:deeply equal|be) (.+?)(?: \/\/ Object\.is equality)?$/.exec(msg);
+  if (!m) return { why: '指紋の失敗の文ではない' };
+  const [, actual = '', expected = ''] = m,
+    lines = src.split('\n'),
+    i = line - 1,
+    text = lines[i];
+  if (text === undefined) return { why: `${line} 行目が無い` };
+  if (!lines.slice(Math.max(0, i - 4), i).some((l) => l.includes('caseOut('))) return { why: 'caseOut のすぐ後（4 行以内）の行ではない' };
+  const call = /\.(toEqual|toBe)\((.*?)\);/.exec(text);
+  if (!call || bare(call[2] ?? '') !== bare(srcForm(expected))) return { why: '行の値が、テストの期待していた値と違う' };
+  lines[i] = text.replace(`.${call[1]}(${call[2]});`, `.${call[1]}(${srcForm(actual)});`);
+  return { src: lines.join('\n') };
+}
+
+/** 今の版で指紋のテストを走らせ、落ちた指紋の値を書き換える（最大 4 回） */
+function update(files) {
+  const json = join(ROOT, 'tests/out/case-diff/update.json');
+  mkdirSync(dirname(json), { recursive: true });
+  for (let round = 1; round <= 4; round++) {
+    const r = spawnSync(
+      'pnpm',
+      ['exec', 'vitest', 'run', '--reporter=json', `--outputFile=${json}`, ...files.map((f) => `tests/unit/${f}`)],
+      {
+        cwd: ROOT,
+        encoding: 'utf8',
+        maxBuffer: 1 << 28,
+      },
+    );
+    if (r.error) throw r.error;
+    const res = JSON.parse(readFileSync(json, 'utf8'));
+    let fixed = 0;
+    const left = [];
+    for (const f of res.testResults)
+      for (const a of f.assertionResults) {
+        if (a.status !== 'failed') continue;
+        const msg = String(a.failureMessages?.[0] ?? ''),
+          at = new RegExp(`${f.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:(\\d+):\\d+`).exec(msg),
+          src = readFileSync(f.name, 'utf8'),
+          out = at ? applyFix(src, Number(at[1]), msg.split('\n')[0] ?? '') : { why: '落ちた行が分からない' };
+        if (out.src !== undefined) {
+          writeFileSync(f.name, out.src);
+          fixed++;
+          console.log(`  書き換えた：${f.name.replace(ROOT + '/', '')}:${at?.[1]}  ${msg.split('\n')[0]}`);
+        } else left.push(`${f.name.replace(ROOT + '/', '')}「${a.title}」：${out.why}\n    ${msg.split('\n')[0]}`);
+      }
+    if (!fixed) {
+      if (left.length) {
+        console.log(`\n書き換えなかった失敗（${left.length}）：\n  ` + left.join('\n  '));
+        process.exitCode = 1;
+      } else console.log(`指紋のテストは全部通る（${round - 1} 回書き換えた）`);
+      return;
+    }
+  }
+  console.log('4 回書き換えても、まだ落ちる指紋がある。もう一度走らせて確かめる');
+  process.exitCode = 1;
+}
+
 function main() {
   const argv = process.argv.slice(2),
     ri = argv.indexOf('--rev'),
@@ -182,6 +254,11 @@ function main() {
         return f;
       })
     : all;
+  if (argv.includes('--update')) {
+    if (ri >= 0) throw new Error('--update は比べ合わせをしないので、--rev と一緒には使えない');
+    update(files);
+    return;
+  }
   const out = join(ROOT, 'tests/out/case-diff'),
     dirs = { old: join(out, 'old'), new: join(out, 'new') };
   rmSync(out, { recursive: true, force: true });
