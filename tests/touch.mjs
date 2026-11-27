@@ -13,7 +13,7 @@
 //   8. 指の操作（src/lib/touchpad.ts。CDP の Input.dispatchTouchEvent で、2本の指を同時に動かす）：左半分のスティックで進む（離すと止まる）・右半分のドラッグで見回す・
 //      両方を同時に・[右手] を押して溜め、指をずらすと見回し、離すと溜めが終わる・指を取り逃した時（touchCancel）も溜めが終わる・[回避]・
 //      メニューを開いている間は、スティックで動かない・レベルアップと祭壇の画面は、1回目のタップで選んで説明を出し、2回目で決める
-//   7. 診断の記録（src/lib/diag.ts）：偽の window.claude（Artifact の中の真似）で、持ち主なら端末・できごと・速さを db に書き、持ち主でなければ書かない。
+//   7. 診断の記録（src/lib/diag.ts）：偽の window.claude（Artifact の中の真似）で、持ち主なら端末・できごと・速さ・かかった時間・遅いフレームを db に書き、持ち主でなければ書かない。
 //      書き込みの途中に頼まれた分（ページが隠れた時）も、途中の分が終わってから書く
 import { FIT_MIN } from '../src/lib/layout.ts';
 import { withBrowser, newPage, openTest, advance, nearAltar } from './lib.mjs';
@@ -599,6 +599,9 @@ await withBrowser(async ({ browser, base }) => {
     await openTest(p, base, 'seed=202');
     await tapEnter(p);
     await advance(p, 2);
+    // 階を移る（かかった時間の記録 took に newLevel が入る）
+    await p.evaluate(() => dbg.go(2));
+    await advance(p, 2);
     // [装備] を2回（開いて閉じる）
     for (let k = 0; k < 2; k++) {
       const b = await p.locator('#packB').boundingBox();
@@ -621,6 +624,18 @@ await withBrowser(async ({ browser, base }) => {
         for (const [k, v] of [['open'], ['touch', true], ['started', true], ['pack', true], ['pack', false]])
           if (!ev(k, v)) errs.push(`診断の記録：できごと ${k}=${v} が無い（${JSON.stringify(d.events).slice(0, 300)}）`);
         if (!d.events.some((e) => e.k === 'press' && String(e.v).startsWith('packB'))) errs.push('診断の記録：[装備] を押したことが無い');
+        // かかった時間（テスト用モードでは時計が止まっているので 0ms）：迷宮に入った時・音を鳴らし始めた時（先に作った部品で）・階を作った時（生成と組み立ての内訳も）
+        const tk = (k) => d.took.find((r) => r.k === k);
+        if (
+          !tk('start') ||
+          tk('sndInit')?.early !== true ||
+          typeof tk('newLevel')?.gen !== 'number' ||
+          typeof tk('newLevel')?.build !== 'number'
+        )
+          errs.push(`診断の記録：かかった時間が無い（${JSON.stringify(d.took).slice(0, 300)}）`);
+        // 遅いフレーム（テスト用モードでは、advance で進めた分がフレームの間になるので、いつも出る）
+        if (!d.slow.some((r) => r.ms > 100)) errs.push(`診断の記録：遅いフレームが無い（${JSON.stringify(d.slow).slice(0, 200)}）`);
+        if (!ev('audio', 'running')) errs.push(`診断の記録：音の部品が動き出したことが無い（${JSON.stringify(d.events).slice(0, 300)}）`);
         if (!(d.fps.length >= 1 && d.fps[0].avg > 0)) errs.push(`診断の記録：速さが無い（${JSON.stringify(d.fps)}）`);
         else {
           // 探索の始めの階（本道）にいる。場所は placeKey の形（探索のシード:m:深さ）

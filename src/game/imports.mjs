@@ -35,14 +35,14 @@ import { ALTAR_W, MARK_H, MCH, MCW, MMC, MMR, MPAD, tone } from '../lib/hud.ts';
 import { AVATAR_TY, BRANCH_HINT, DECO_K, DECO_NAMES, DUMMY_KINDS, FIX_NAMES, GALLERY_SLEEP, LEGEND_KINDS, LEGEND_ORDER, LORD_GAL, MACHINE_INFO, TRAP_INFO, lookLine, mname } from '../lib/names.ts';
 import { CHANT_STEPS, SND_NAME, VOWELS, sEnv } from '../lib/sound.ts';
 import {
-  castSound, sAlarm, sBoom, sBubble, sChime, sCrackleBurst, sCreak, sDist, sHiss, sHowl, sndInit, sndReady, sndUpdate, sNoise, sOut, sRumble, sSplash, sSqueak, sTone, sWhoosh,
+  castSound, sAlarm, sBoom, sBubble, sChime, sCrackleBurst, sCreak, sDist, sHiss, sHowl, sndInit, sndPrep, sndReady, sndUpdate, sNoise, sOut, sRumble, sSplash, sSqueak, sTone, sWhoosh,
 } from '../lib/audio.ts';
 import {
   altarDetail, altarFill, altarLine, altarOpts, guardedNow, placeAltar, placeChosen, placeRunesForLevel, takeRune, vaultArea,
 } from '../lib/altars.ts';
 import { lockedOf, loreLeft, unlocked, weaponPool } from '../lib/unlocks.ts';
 import {
-  advance, checkEvents, computeFOV, die, generate, initEvents, newLevel, newRun, interAfter, interAt, isFinal, levelSeed, placeKey, settleSlotPick, setupFinal, showStratum, strataGrowth,
+  advance, checkEvents, computeFOV, die, generate, initEvents, newLevel, newRun, startNewRun, interAfter, interAt, isFinal, levelSeed, placeKey, settleSlotPick, setupFinal, showStratum, strataGrowth,
 } from '../lib/levels.ts';
 import { msg, renderLog } from '../lib/log.ts';
 import { buildsHave, renderHotbar } from '../lib/hotbar.ts';
@@ -85,3 +85,4 @@ import { initFitIntro } from '../lib/layout.ts';
 import { byInput, confirmTap, initTouch } from '../lib/touch.ts';
 import { TUNE, initTouchpad } from '../lib/touchpad.ts';
 import { initDiag } from '../lib/diag.ts';
+import { took } from '../lib/took.ts';

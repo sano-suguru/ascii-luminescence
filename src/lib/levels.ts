@@ -10,6 +10,8 @@ import { makeHistory } from './history.ts';
 import { legendAll, descentSealed } from './legend.ts';
 import { msg } from './log.ts';
 import { mr, keyedRand, roll } from './random.ts';
+import { clamp } from './rng.ts';
+import { took } from './took.ts';
 import { rollTraits } from './runes.ts';
 import {
   adv,
@@ -437,12 +439,14 @@ export function checkEvents(first?: boolean): void {
  * 層が変わったら層の名前を出す（もとは src/game/18-level-player.js）
  */
 export function newLevel(seedOverride?: number): void {
+  const t0 = performance.now();
   settleSlotPick();
   if (advance.bounced) {
     advance.bounced = false;
     setTimeout(() => msg('<b style="color:#a98cff">.</b>闇の底に触れた途端、何かに押し返された。まだ、降りることは許されていない。'), 1200);
   }
   here.D = generate(seedOverride !== undefined ? seedOverride : levelSeed(), here.depth);
+  const tGen = performance.now();
   if (here.depth === FINAL_DEPTH && !here.branch && !here.realm) here.D.finalVault = true;
   blaze.frozen = new Map();
   placeRunesForLevel();
@@ -460,7 +464,9 @@ export function newLevel(seedOverride?: number): void {
   gear.castSt = null;
   must(gfx.U).uAmb.value = level().prof.ambient;
   hudInfo.explored = 0;
+  const tBuild = performance.now();
   buildWorld();
+  const tBuilt = performance.now();
   updateWater();
   here.fixtures = level().fixtures;
   // 生き物ごとの見た目の乱数は、階のシードとその階で何体目か（here.mobSeq）から作る。map(makeMonster) にしない（番号を並びとして渡してしまう）
@@ -578,6 +584,7 @@ export function newLevel(seedOverride?: number): void {
     }
     here.lastStratum = level().stratum;
   }
+  took('newLevel', t0, { gen: Math.round(tGen - t0), build: Math.round(tBuilt - tBuild) });
 }
 /**
  * 死んだ時（勝った後は何もしない）：動きを止め、伝承を受け取り、墓に遺せる物を選ぶ結果の画面を出す（選び直すと描き直す。［新しい探索へ］で次の探索。
@@ -585,6 +592,7 @@ export function newLevel(seedOverride?: number): void {
  */
 export function die(cause: string): void {
   if (adv.won) return;
+  const t0 = performance.now();
   adv.dead = true;
   keys.KeyW = keys.KeyA = keys.KeyS = keys.KeyD = false;
   const el = document.getElementById('death');
@@ -627,13 +635,15 @@ export function die(cause: string): void {
     if (b.dataset['gv'] !== undefined) {
       ui.graveSel = +b.dataset['gv'];
       draw();
-    } else if (b.id === 'newRunB') newRun();
+    } else if (b.id === 'newRunB') startNewRun();
   };
   el.classList.add('show');
   sRumble(0.6, 2.5);
+  took('die', t0);
 }
 /** 新しい探索を始める（墓を記録し、結果の画面を閉じ、探索のシード・深さ・体力・レベル・記録・手と持ち物を戻して、1つ目の階に入る。もとは src/game/18-level-player.js） */
 export function newRun(): void {
+  const t0 = performance.now();
   saveGrave();
   document.body.classList.remove('over');
   const el = document.getElementById('death');
@@ -660,4 +670,15 @@ export function newRun(): void {
   adv.runStats = { kills: 0, t0: clock.time, maxDepth: here.depth, book0: saved.BOOK.size, beastsNew: 0 };
   resetRunes();
   newLevel();
+  took('newRun', t0);
+}
+/**
+ * 結果の画面から新しい探索へ（［新しい探索へ］・Enter・R）：結果の画面を消し、暗くして、真っ暗になった時に newRun する（src/game/30-loop-init.js の tick）。
+ * 新しい階を作るのは重く、スマホでは何百ミリ秒も止まるので、止まるのを真っ暗な間にする。階を移る途中なら、今の暗さから続けて暗くする
+ */
+export function startNewRun(): void {
+  if (here.trans?.run) return;
+  const el = document.getElementById('death');
+  if (el) el.classList.remove('show', 'won');
+  here.trans = { phase: 'out', t: clamp((1 - here.fade) * 0.8, 0, 0.8), run: true };
 }

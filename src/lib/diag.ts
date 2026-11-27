@@ -1,10 +1,12 @@
-// 診断の記録：claude.ai の Artifact の中で、持ち主が開いた時だけ、端末・速さ・できごと・エラーを Artifact のデータベース（db の機能）に書く。
+// 診断の記録：claude.ai の Artifact の中で、持ち主が開いた時だけ、端末・速さ・できごと・場面が切り替わる時の処理にかかった時間（src/lib/took.ts）・遅いフレーム・エラーを
+// Artifact のデータベース（db の機能）に書く。
 // Claude が ArtifactData の道具で読んで、本物の端末での様子を確かめるため（スマホ対応の間）。
 // window.claude.use が無い所（ふつうの公開用の版・テスト）や、持ち主でない人が開いた時は、何もしない。乱数は使わない（ゲームの動きを変えない）。
 // 記録は、開くたびに1件（diag/<開いた時刻>）。書き込みは、変わった時だけ、10秒に1回まで（ページを離れる時も1回）。
 // 公開する時は、capabilities に db（diag は持ち主だけが読み書き）と user を渡す（CLAUDE.md の「Artifact に公開する」）。
 import { placeKey } from './levels.ts';
-import { adv, fight, gear, ui } from './state.ts';
+import { SND, adv, fight, gear, ui } from './state.ts';
+import { setTookSink } from './took.ts';
 
 interface ClaudeLike {
   use(name: string): Promise<unknown>;
@@ -23,8 +25,10 @@ const isClaude = (v: unknown): v is ClaudeLike => hasFn(v, 'use');
 const isUser = (v: unknown): v is UserLike => hasFn(v, 'isOwner');
 const isDb = (v: unknown): v is DbLike => hasFn(v, 'collection');
 
-/** 速さの記録の数・できごとの数・エラーの数の上限（古い物から捨てる） */
-const KEEP = { fps: 60, events: 50, errors: 20 };
+/** 速さの記録の数・できごとの数・エラーの数・かかった時間の数・遅いフレームの数の上限（古い物から捨てる） */
+const KEEP = { fps: 60, events: 50, errors: 20, took: 40, slow: 40 };
+/** これより長くかかった1フレームを、遅いフレームとして1つずつ書く（ミリ秒） */
+const SLOW_MS = 100;
 /** 速さをまとめる間（ミリ秒）と、書き込みの間 */
 const SPAN = 10_000;
 
@@ -65,12 +69,16 @@ export async function initDiag(): Promise<void> {
     since = (): number => Math.round((Date.now() - t0) / 100) / 10;
   const doc = db.collection('diag').doc(new Date(t0).toISOString().replace(/[:.]/g, '-'));
   type Row = Record<string, unknown>;
-  const rec: { t0: string; device: Row; fps: Row[]; events: Row[]; errors: Row[] } = {
+  // took：場面が切り替わる時の処理にかかった時間（src/lib/took.ts）。slow：SLOW_MS より長くかかった1フレーム。
+  // どちらも、できごとの一覧とは別に持つ（できごとは押すたびに増え、すぐ押し出されるため）
+  const rec: { t0: string; device: Row; fps: Row[]; events: Row[]; errors: Row[]; took: Row[]; slow: Row[] } = {
     t0: new Date(t0).toISOString(),
     device: device(),
     fps: [],
     events: [],
     errors: [],
+    took: [],
+    slow: [],
   };
   // busy：書き込みの途中。again：その途中に、また書くよう頼まれた（終わったらもう一度書く。ページを離れる時の分が抜けないように）
   let dirty = true,
@@ -81,7 +89,21 @@ export async function initDiag(): Promise<void> {
     if (list.length > max) list.splice(0, list.length - max);
     dirty = true;
   };
-  const event = (k: string, v?: unknown): void => push(rec.events, KEEP.events, v === undefined ? { k } : { k, v });
+  // 最後のできごとかかかった時間の名前と時刻（遅いフレームの近くで、何があったかを添える）
+  let lastK = '',
+    lastAt = -1e9;
+  const mark = (k: string): void => {
+    lastK = k;
+    lastAt = performance.now();
+  };
+  const event = (k: string, v?: unknown): void => {
+    mark(k);
+    push(rec.events, KEEP.events, v === undefined ? { k } : { k, v });
+  };
+  setTookSink((k, ms, v) => {
+    mark(k);
+    push(rec.took, KEEP.took, { k, ms: Math.round(ms), phase: phase(), ...v });
+  });
   const flush = (): void => {
     if (busy) {
       again = true;
@@ -119,6 +141,7 @@ export async function initDiag(): Promise<void> {
     locked: ui.locked,
     cast: gear.castSt?.h ?? '',
     projs: fight.projs.length > 0,
+    audio: SND.ctx?.state ?? '',
   });
   let last = flags();
   setInterval(() => {
@@ -156,6 +179,14 @@ export async function initDiag(): Promise<void> {
     const now = performance.now();
     frames++;
     worst = Math.max(worst, now - prev);
+    // 遅いフレーム：その前の1秒の間に、できごとかかかった時間の記録があれば、その名前を添える
+    if (now - prev > SLOW_MS)
+      push(rec.slow, KEEP.slow, {
+        ms: Math.round(now - prev),
+        phase: phase(),
+        place: ui.started && !ui.gallery ? placeKey() : null,
+        near: now - lastAt < 1000 + (now - prev) ? lastK : null,
+      });
     prev = now;
     if (now - from >= SPAN) {
       push(rec.fps, KEEP.fps, {

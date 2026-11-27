@@ -1,14 +1,20 @@
 // ---------------------------------------------------------------- sizing
-function applySize(){
+// why：何のために（'init'・'resize'・速さに合わせて解像度を下げた 'auto'）。大きさと解像度が前と同じなら、作り直さない
+// （iOS は、画面の向きを変えると、同じ大きさの resize を続けて出すことがある。作り直すと、描く物の大きさを全部取り直すため）
+let sizedAs='';
+function applySize(why){
   frame.stillDrawn=false;
   const w=window.innerWidth, h=window.innerHeight;
+  if(sizedAs===w+'x'+h+'@'+pixelRatio)return; sizedAs=w+'x'+h+'@'+pixelRatio;
+  const t0=performance.now();
   gfx.renderer.setPixelRatio(pixelRatio); gfx.renderer.setSize(w,h,false);
   composer.setPixelRatio(pixelRatio); composer.setSize(w,h);
   gfx.camera.aspect=w/h; gfx.camera.updateProjectionMatrix();
   gfx.U.uScale.value=(h*pixelRatio)/(2*Math.tan(gfx.camera.fov*Math.PI/360));
   gfx.finalPass.uniforms.uRes.value.set(w*pixelRatio,h*pixelRatio);
+  took('applySize',t0,{why,w,h,pr:+pixelRatio.toFixed(2)});
 }
-window.addEventListener('resize',()=>{ applySize(); sizeMap(); });
+window.addEventListener('resize',()=>{ applySize('resize'); sizeMap(); });
 
 // ---------------------------------------------------------------- main loop
 let last=0, fovT=0, mapT=0, perfT=0, perfAcc=0, perfN=0, warm=0;
@@ -39,7 +45,7 @@ function tick(raw,draw){
   gfx.U.uTime.value=t;
   inPhase('trans',()=>{ if(here.trans){
     here.trans.t+=dt;
-    if(here.trans.phase==='out'){ here.fade=1-here.trans.t/0.8; if(here.trans.t>=0.8){ if(here.trans.regen)adv.runSeed=(Math.random()*1e9)>>>0; else advance(here.trans.go); newLevel(); here.trans={phase:'in',t:0}; here.fade=0; } }
+    if(here.trans.phase==='out'){ here.fade=1-here.trans.t/0.8; if(here.trans.t>=0.8){ if(here.trans.run)newRun(); else { if(here.trans.regen)adv.runSeed=(Math.random()*1e9)>>>0; else advance(here.trans.go); newLevel(); } here.trans={phase:'in',t:0}; here.fade=0; } }
     else { here.fade=here.trans.t/1.3; if(here.trans.t>=1.3){ here.trans=null; here.fade=1; } }
   } else here.fade=Math.min(1,here.fade+dt*0.8); });
   inPhase('player',()=>{ updatePlayer(dt); updateStealth(dt); updateStatuses(dt); });
@@ -67,7 +73,7 @@ function tick(raw,draw){
   if(draw)composer.render(dt);
   if(TEST)return; // keep the resolution fixed in tests
   warm+=raw; if(warm>3&&!document.hidden){ perfAcc+=raw; perfN++; perfT+=raw;
-    if(perfT>2.5){ const avg=perfAcc/perfN; if(avg>1/48&&pixelRatio>0.75){ pixelRatio=Math.max(0.75,pixelRatio-0.2); applySize(); } perfT=perfAcc=perfN=0; } }
+    if(perfT>2.5){ const avg=perfAcc/perfN; if(avg>1/48&&pixelRatio>0.75){ pixelRatio=Math.max(0.75,pixelRatio-0.2); applySize('auto'); } perfT=perfAcc=perfN=0; } }
 }
 
 // ---------------------------------------------------------------- test hooks (only with ?test=1; see the test mode block at the top)
@@ -240,8 +246,10 @@ async function init(){
   makeWater();
   const dynMesh=new T.Mesh(dynGeo,dynMat); dynMesh.frustumCulled=false; dynMesh.renderOrder=1; gfx.scene.add(dynMesh);
   const pts=new T.Points(ptGeo,ptMat); pts.frustumCulled=false; pts.renderOrder=5; gfx.scene.add(pts);
-  applySize();
+  applySize('init');
   newLevel();
+  // 音の部品を先に作っておく（迷宮に入る時に止まらないように。鳴らし始めるのは、押した時の sndInit。src/lib/audio.ts）
+  sndPrep();
   requestAnimationFrame(frame);
 }
 if(TEST)init().then(()=>{ dbgUrl(); testBoot=true; }).catch(e=>{ console.error(e); testBoot='error: '+e; });

@@ -5,7 +5,8 @@ import { must, nth } from './array.ts';
 import { sndRand } from './random.ts';
 import { clamp } from './rng.ts';
 import { CHANT_STEPS, SND_LV, VOWELS, sEnv } from './sound.ts';
-import { type ChantVoice, type DroneLoop, type SoundLoop, SND, blaze, clock, gear, here, player } from './state.ts';
+import { type ChantVoice, type DroneLoop, type SoundLoop, type SoundLoops, SND, blaze, clock, gear, here, player } from './state.ts';
+import { took } from './took.ts';
 import { CELL, FIRE_TYPES, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MH, MW, TC, TX } from './world.ts';
 
 /** 音を鳴らせるか（音の部品があって動いていて、音量がオフでない） */
@@ -13,30 +14,30 @@ export const sndReady = (): boolean | null => SND.ctx && SND.ctx.state === 'runn
 /** 音の部品 */
 const actx = (): AudioContext => must(SND.ctx, '音の部品 SND.ctx');
 
+/** 作った音の部品（sndInit が SND に入れる） */
+interface SoundParts {
+  ctx: AudioContext;
+  master: GainNode;
+  inp: GainNode;
+  wet: GainNode;
+  noise: AudioBuffer;
+  L: SoundLoops;
+}
 /**
- * 音の部品を作る（はじめてのクリックで呼ぶ）。作れなければ音は鳴らない（作りかけの部品は閉じる）。
- * 2回目からは、止まっていたのを動かすだけ（動かせなくても、部品はそのまま使う）
+ * 音の部品を作る。音量 master は 0 のまま（鳴らし始めるのは sndInit）。作れなければ null（作りかけの部品は閉じる）。
+ * 響き（3.4秒の雑音）を作って響きの部品に渡すのが重い（Chromium で 40ms ほど、CPU の遅い端末ではその数倍）
  */
-export function sndInit(): void {
-  if (SND.ctx) {
-    try {
-      SND.ctx.resume().catch(() => {});
-    } catch {
-      // 動かす関数が無い古いブラウザでは、そのまま使う
-    }
-    return;
-  }
+function makeSound(): SoundParts | null {
+  let made: AudioContext | null = null;
   try {
     const w: { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext } = window;
     const AC = w.AudioContext || w.webkitAudioContext;
-    if (!AC) return;
+    if (!AC) return null;
     const ctx = new AC();
-    SND.ctx = ctx;
+    made = ctx;
     const master = ctx.createGain();
     master.gain.value = 0;
     master.connect(ctx.destination);
-    SND.master = master;
-    master.gain.setTargetAtTime(nth(SND_LV, SND.lv), ctx.currentTime, 1.5);
     const comp = ctx.createDynamicsCompressor();
     comp.connect(master);
     const dry = ctx.createGain();
@@ -53,16 +54,13 @@ export function sndInit(): void {
     wet.gain.value = 0.35;
     conv.connect(wet);
     wet.connect(comp);
-    SND.wet = wet;
     const inp = ctx.createGain();
     inp.connect(dry);
     inp.connect(conv);
-    SND.inp = inp;
     // 雑音（2秒）
     const nb = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate),
       nd = nb.getChannelData(0);
     for (let i = 0; i < nd.length; i++) nd[i] = sndRand() * 2 - 1;
-    SND.noise = nb;
     const loop = (type: BiquadFilterType, freq: number, q: number): SoundLoop => {
       const s0 = ctx.createBufferSource();
       s0.buffer = nb;
@@ -79,10 +77,10 @@ export function sndInit(): void {
       s0.start();
       return { g, f };
     };
-    SND.L.rumble = loop('lowpass', 90, 0.7);
-    SND.L.water = loop('bandpass', 700, 0.6);
-    SND.L.fire = loop('bandpass', 1100, 0.5);
-    SND.L.wind = loop('bandpass', 320, 0.4);
+    const rumble = loop('lowpass', 90, 0.7);
+    const water = loop('bandpass', 700, 0.6);
+    const fire = loop('bandpass', 1100, 0.5);
+    const wind = loop('bandpass', 320, 0.4);
     const drone = ctx.createGain();
     drone.gain.value = 0;
     drone.connect(inp);
@@ -103,19 +101,60 @@ export function sndInit(): void {
       o.start();
       return o;
     });
-    SND.L.drone = { g: drone, o: os };
+    return { ctx, master, inp, wet, noise: nb, L: { rumble, water, fire, wind, drone: { g: drone, o: os } } };
   } catch {
-    // 作りかけの部品は閉じて、全部空に戻す（次のクリックで、はじめから作り直す）
-    const ctx = SND.ctx;
-    SND.ctx = SND.master = SND.inp = SND.wet = SND.noise = null;
-    SND.L = {};
-    if (ctx)
+    if (made)
       try {
-        ctx.close().catch(() => {});
+        made.close().catch(() => {});
       } catch {
         // 閉じる関数が無い古いブラウザでは、閉じずに手放す
       }
+    return null;
   }
+}
+/** 先に作っておいた音の部品（sndPrep。まだ SND に入れていないので、鳴らない） */
+let prepared: SoundParts | null = null;
+/**
+ * 音の部品を先に作っておく（タイトルを出した時に1回）。迷宮に入る時（sndInit）に重い処理をしないため。
+ * SND には入れないので、sndInit までは音を鳴らさない（ブラウザが音の部品をすぐ動かしても、音量は 0）。
+ * 操作の前に作った部品は、ふつう止まっている（ブラウザの決まり）。sndInit が、押した時に動かす
+ */
+export function sndPrep(): void {
+  if (SND.ctx || prepared) return;
+  const t0 = performance.now();
+  prepared = makeSound();
+  took('sndPrep', t0);
+}
+/**
+ * 音を鳴らし始める（はじめてのクリックで呼ぶ）。先に作った部品があればそれを使って動かし、無ければここで作る。作れなければ音は鳴らない
+ * （次のクリックで、はじめから作り直す）。2回目からは、止まっていたのを動かすだけ（動かせなくても、部品はそのまま使う）
+ */
+export function sndInit(): void {
+  const resume = (ctx: AudioContext): void => {
+    try {
+      ctx.resume().catch(() => {});
+    } catch {
+      // 動かす関数が無い古いブラウザでは、そのまま使う
+    }
+  };
+  if (SND.ctx) {
+    resume(SND.ctx);
+    return;
+  }
+  const t0 = performance.now(),
+    early = prepared;
+  prepared = null;
+  const p = early ?? makeSound();
+  if (!p) return;
+  SND.ctx = p.ctx;
+  SND.master = p.master;
+  SND.inp = p.inp;
+  SND.wet = p.wet;
+  SND.noise = p.noise;
+  SND.L = p.L;
+  p.master.gain.setTargetAtTime(nth(SND_LV, SND.lv), p.ctx.currentTime, 1.5);
+  if (early) resume(p.ctx);
+  took('sndInit', t0, { early: !!early });
 }
 /** 音の大きさ（聞く位置から 24 離れると 0。位置が無い音は 1） */
 export const sDist = (x?: number, z?: number): number =>
