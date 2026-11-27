@@ -403,7 +403,15 @@ export const AUTO_STEPS: Step[] = [
       if (!foes.length) return '生き物を置けない';
       if (!shotR) return '右手で放てない';
       if (!shotL) return '左手で撃てない';
-      return foes.some((m, i) => m.dead || (m.hp ?? 0) < (hp0[i] ?? 0)) ? '' : '攻撃が当たらない';
+      if (foes.some((m, i) => m.dead || (m.hp ?? 0) < (hp0[i] ?? 0))) return '';
+      // 当たらなかった時は、置いた生き物ごとに、プレイヤーからの距離・向いている向きからのずれ（度）・体力（前 → 後）を書く（CI と端末の記録で、わけを探すため）
+      const seen = foes.map((m, i) => {
+        const dx = m.x - player.x,
+          dz = m.z - player.z,
+          off = Math.atan2(Math.sin(Math.atan2(-dx, -dz) - player.yaw), Math.cos(Math.atan2(-dx, -dz) - player.yaw));
+        return `${m.key} ${Math.hypot(dx, dz).toFixed(1)}m ${Math.round((off * 180) / Math.PI)}度 ${hp0[i] ?? 0}→${m.hp ?? 0}`;
+      });
+      return `攻撃が当たらない（右 ${shotR}・左 ${shotL}。${seen.join('、')}）`;
     },
   ],
   [
