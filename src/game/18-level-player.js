@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------- level control
-let expo=1.1;
+// 目の慣れ expo は src/lib/state.ts の vfx（src/game/imports.mjs で読む）
 adv.runSeed=(Math.random()*1e9)>>>0;
 // levelSeed は src/lib/levels.ts（src/game/imports.mjs で読む）
 // setFog は src/lib/build.ts（src/game/imports.mjs で読む）

@@ -57,7 +57,7 @@ function tick(raw,draw){
   buf.dn=0; inPhase('fixtures',()=>drawFixtures(t,dt)); inPhase('doors',()=>drawDoors(t,dt)); inPhase('fire',()=>drawFire(t,dt)); inPhase('webs',()=>drawWebs(t)); inPhase('traps',()=>drawTraps(t));
   inPhase('swing',()=>drawSwing()); inPhase('hands',()=>drawViewWeapons(t)); inPhase('omens',()=>drawOmens(t,dt)); inPhase('runes',()=>{ drawRunesWorld(t); updateAltarPanel(); drawArrows(); drawLegendWorld(t); }); inPhase('rockfall',()=>{ if(!here.trans)updateRockfall(dt); }); // 階を移り始めたら、石は落ちず、当たらない（新しい階で newLevel が消す）
   inPhase('bolt',()=>drawBoltFx(t,dt)); inPhase('gallery',()=>drawGallery(t)); inPhase('frozen',()=>drawFrozen(t)); inPhase('castfx',()=>drawCastFx(t));
-  inPhase('avatar',()=>{ if(ui.camMode==='tps'&&here.D&&!ui.gallery){ updateAvatar(dt); drawMonster0(avatar,t); drawSection(); } }); for(const m of here.monsters)inMobPhase('mob draw',m,()=>drawMonster(m,t)); flushDyn();
+  inPhase('avatar',()=>{ if(ui.camMode==='tps'&&here.D&&!ui.gallery){ updateAvatar(dt); drawMonster0(ui.avatar,t); drawSection(); } }); for(const m of here.monsters)inMobPhase('mob draw',m,()=>drawMonster(m,t)); flushDyn();
   inPhase('particles',()=>updateParticles(dt,t));
   fovT+=dt; if(fovT>0.1){ fovT=0; inPhase('fov',()=>{ computeFOV(); checkEvents(false); look(); }); inPhase('gas',()=>stepGas()); inPhase('spread',()=>stepFire()); }
   mapT+=dt; if(mapT>0.11){ mapT=0; if(ui.uiMode===0)inPhase('map',()=>drawMap()); }
@@ -254,7 +254,7 @@ async function init(){
       void main(){ if(uCut>0.5){ vec3 seg=uCutP-uCamP; float L2=max(dot(seg,seg),1e-4); float tc=clamp(dot(vW-uCamP,seg)/L2,0.0,1.0); if(tc<0.97&&length(vW-(uCamP+seg*tc))<mix(2.6,0.9,tc)+0.15) discard; } gl_FragColor=vec4(0.0); }`});
   makeWater();
   const dynMesh=new T.Mesh(dynGeo,dynMat); dynMesh.frustumCulled=false; dynMesh.renderOrder=1; gfx.scene.add(dynMesh);
-  const pts=new T.Points(ptGeo,ptMat); pts.frustumCulled=false; pts.renderOrder=5; gfx.scene.add(pts);
+  const pts=new T.Points(gfx.ptGeo,ptMat); pts.frustumCulled=false; pts.renderOrder=5; gfx.scene.add(pts);
   applySize('init');
   newLevel();
   // 音の部品を先に作っておく（迷宮に入る時に止まらないように。鳴らし始めるのは、押した時の sndInit。src/lib/audio.ts）
