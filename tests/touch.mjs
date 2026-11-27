@@ -1022,10 +1022,9 @@ await withBrowser(async ({ browser, base }) => {
       await tapSel(`#menu button[data-k="${k}"]`);
       await advance(p, 0.5);
     }
+    // 閉じて、時計を進めずにすぐ開き直す（開き直した後の1回目は、前の項目を持たない）
     await tapSel('#menuB');
-    await advance(p, 0.5);
     await tapSel('#menuB');
-    await advance(p, 0.5);
     await tapSel('#menu button[data-k="resume"]');
     await nextFrames(p);
     await advance(p, 11);

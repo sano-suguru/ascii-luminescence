@@ -166,14 +166,19 @@ export async function initDiag(): Promise<void> {
     ...(autoSt.on ? { auto: autoSt.step } : {}),
   });
   let last = flags();
-  // メニューを開いてから最後に押した項目と時刻（メニューが閉じたら null）
+  // メニューを開いてから最後に押した項目と時刻（メニューが閉じたら null。閉じたことは、#menu の show が外れたのを見て知る。
+  // 0.25秒ごとの見回りで知ると、すぐ開き直した時に前の項目が残るため）
   let menuLast: { k: string; at: number } | null = null;
+  const menuEl = document.getElementById('menu');
+  if (menuEl)
+    new MutationObserver(() => {
+      if (!menuEl.classList.contains('show')) menuLast = null;
+    }).observe(menuEl, { attributes: true, attributeFilter: ['class'] });
   // 音の部品の、記録を始めた時の状態（その後は、変わった時だけ書く。押す前に動いていないかを、後から確かめられるように）
   event('audio', last['audio']);
   setInterval(() => {
     const now = flags();
     for (const [k, v] of Object.entries(now)) if (last[k] !== v) event(k, v);
-    if (!now['menu']) menuLast = null;
     last = now;
   }, 250);
   window.addEventListener(

@@ -1,17 +1,21 @@
-// 自動で遊ぶ（?auto=1）：本物の iPhone で、人が触らずに速さを確かめるため。決まった台本（AUTO_STEPS）を、ページの中で指の事件を作って、本物の時計で流す。
+// 自動で遊ぶ（?auto=<周の数>）：本物の iPhone で、人が触らずに速さを確かめるため。決まった台本（AUTO_STEPS）を、ページの中で指の事件を作って、本物の時計で流す。
 // 段ごとのフレームの数・平均・一番遅い1回・遅いフレームの数を autoSt に貯め、診断の記録（src/lib/diag.ts）が欄 auto に書く（Claude が ArtifactData の道具で読む）。
 // tools/auto-run.mjs も、同じ台本をこの環境で、遅さを足して流す。
-//   ?auto=1：3周（およそ5分）。?auto=<n>：n 周（1 から 9）。?auto=quick：短い1周（各段を短くし、階段は1回。tests/auto.mjs が使う）
+//   ?auto=<n>：n 周（1 から 9。3周でおよそ5分）。?auto=quick：短い1周（各段を短くし、階段は1回。tests/auto.mjs が使う）
 // 決まり：
-//   - 自動で遊んでいる間は、localStorage に何も書かない（autoGuard。伝承・解放・見た生き物・墓・視点・音量などを、ふだん遊ぶ時の記録に残さないため）。
+//   - 自動で遊んでいる間は、ゲームの保存（al_ で始まる名前）を localStorage に書かない（autoGuard。伝承・解放・見た生き物・墓・視点・音量などを、
+//     ふだん遊ぶ時の記録に残さないため。ほかの名前は書く。同じページのほかの仕組みを止めないように）。
 //     開発用モードはオンにしない（?dev=1 は al_dev を書き残す）。生き物を置く・階段の前へ移る・体力を減らすのは、古い JS の dbg の中身を直に呼ぶ（AutoHooks）
 //   - 探索のシードは、1周目だけ AUTO_SEED（毎回同じ迷宮で、前の結果と比べるため）。死んで［新しい探索へ］を押した後は、ゲームが選ぶ
 //   - 生き物に倒されないように、死ぬ段の前までは開発用の不死（ui.godMode）にする
 //   - 縦向きの間（探索が止まる）と、ページが隠れている間は待ち、その段の数を数えない。戻った時に、止まって開いたメニューを閉じる
+//   - レベルアップの画面は1つ目を選び、祭壇の画面は閉じる（開いている間はゲームが止まり、ゲームの時刻で待つ所が終わらないため。閉じた回数を段の shut に書く）
+//   - 止めた時・段の中で例外が起きた時も、台本が置いた指は全部離す（離さないと、スティックが倒れたままで歩き続け、本物の指のスティックも出ない）
 //   - 画面が消えないように、Wake Lock を頼む（断られたら、その理由を記録に書く）
 //   - 指の事件は合成した物（isTrusted が false）。順番や間は本物の指と違いうるので、手触りは確かめない。音は鳴らない（自動再生の決まり）ので確かめない
 //   - テスト用モード（?test=1）では動かない（時計が止まっているため）
 import { must } from './array.ts';
+import { chooseLevel, closeAltar } from './panels.ts';
 import { TEST, adv, clock, here, player, ui } from './state.ts';
 import { CELL, MW, TF } from './world.ts';
 
@@ -45,8 +49,10 @@ export interface AutoStep {
   slow: number;
   /** 途中で縦向きになった・隠れた（その間は数えていない） */
   waited?: string;
-  /** 段の中でうまくいかなかったこと（階段で下りられないなど） */
+  /** 段の中でうまくいかなかったこと（階段で下りられないなど。例外が起きた時はその文） */
   miss?: string;
+  /** レベルアップ・祭壇の画面を閉じた回数 */
+  shut?: number;
 }
 
 /** 自動で遊ぶ様子（診断の記録が書く） */
@@ -88,15 +94,24 @@ export function autoMode(search: string): { laps: number; quick: boolean } {
 }
 
 /**
- * 自動で遊ぶなら、localStorage に書かないようにする。保存の処理より先に（src/game/00-test-mode.js が、ゲームの古い JS の初めに）呼ぶ。
+ * 自動で遊ぶなら、ゲームの保存（al_ で始まる名前）を localStorage に書かないようにする。保存の処理より先に（src/game/00-test-mode.js が、ゲームの古い JS の初めに）呼ぶ。
  * 読むのはそのまま（ふだんの視点・見回す速さで遊ぶ）
  */
 export function autoGuard(): void {
   if (TEST || !autoMode(location.search).laps) return;
   autoSt.on = true;
+  const game = (k: unknown): boolean => String(k).startsWith('al_');
   try {
-    Storage.prototype.setItem = () => undefined;
-    Storage.prototype.removeItem = () => undefined;
+    // 元の処理（読み方は Reflect。this を付けずに読むと、lint が止めるため）
+    const set: unknown = Reflect.get(Storage.prototype, 'setItem'),
+      remove: unknown = Reflect.get(Storage.prototype, 'removeItem');
+    if (typeof set !== 'function' || typeof remove !== 'function') return;
+    Storage.prototype.setItem = function (k: string, v: string): void {
+      if (!game(k)) Reflect.apply(set, this, [k, v]);
+    };
+    Storage.prototype.removeItem = function (k: string): void {
+      if (!game(k)) Reflect.apply(remove, this, [k]);
+    };
   } catch {
     // 入れ替えられなくても、続ける（localStorage が使えない所では、もともと書けない）
   }
@@ -104,7 +119,7 @@ export function autoGuard(): void {
 
 // ---------------------------------------------------------------- 時計とフレームの数
 /** 今の段のフレームの数（rAF ごとに足す。数えない間は null） */
-let cur: { frames: number; sum: number; worst: number; slow: number } | null = null;
+let cur: { frames: number; sum: number; worst: number; slow: number; shut: number } | null = null;
 let prevAt = 0;
 /** 待っている処理（rAF ごとに確かめる） */
 const waiters: (() => boolean)[] = [];
@@ -113,14 +128,27 @@ function tickFrame(): void {
     dt = prevAt ? now - prevAt : 0;
   prevAt = now;
   const held = ui.portrait || document.hidden;
+  // 縦向きの間は数えない（戻った最初のフレームの間に、待っていた間が入らないように、次のフレームから数え直す。
+  // 隠れている間はフレームが来ないので、visibilitychange で数え直す。initAuto）
+  if (held) prevAt = 0;
   if (cur && dt > 0 && !held) {
     cur.frames++;
     cur.sum += dt;
     cur.worst = Math.max(cur.worst, dt);
     if (dt > SLOW_MS) cur.slow++;
   }
+  settlePanels();
   for (let i = waiters.length - 1; i >= 0; i--) if (must(waiters[i], 'waiter')()) waiters.splice(i, 1);
   requestAnimationFrame(tickFrame);
+}
+
+/** レベルアップの画面は1つ目を選び、祭壇の画面は閉じる（台本を流している間だけ） */
+function settlePanels(): void {
+  if (!autoSt.on || autoSt.done) return;
+  if (!ui.lvlOpen && !ui.altarOpen) return;
+  if (ui.lvlOpen) chooseLevel(0);
+  else closeAltar(true);
+  if (cur) cur.shut++;
 }
 
 /** 台本を止めた（［止める］を押した）時に、待っている所から投げる */
@@ -168,6 +196,8 @@ const wait = (sec: number): Promise<boolean> => until(() => false, autoSt.quick 
 
 // ---------------------------------------------------------------- 指の事件
 let nextId = 1000;
+/** 置いたまま離していない指（止めた時・例外の時に全部離す） */
+const live = new Set<() => void>();
 function fire(el: EventTarget, type: string, id: number, x: number, y: number): void {
   el.dispatchEvent(
     new PointerEvent(type, {
@@ -201,12 +231,17 @@ function finger(target: Element, x: number, y: number): { move: (x: number, y: n
   const id = nextId++;
   let at: [number, number] = [x, y];
   fire(target, 'pointerdown', id, x, y);
+  const up = (): void => {
+    if (!live.delete(up)) return;
+    fire(target, 'pointerup', id, ...at);
+  };
+  live.add(up);
   return {
     move: (mx, my) => {
       at = [mx, my];
       fire(target, 'pointermove', id, mx, my);
     },
-    up: () => fire(target, 'pointerup', id, ...at),
+    up,
   };
 }
 /** sec 秒かけて、指を (dx,dy) だけ少しずつ動かす */
@@ -436,11 +471,15 @@ async function runStep(lap: number, k: string, fn: Step[1], h: AutoHooks): Promi
   showBar();
   waitedWhy = '';
   const t0 = performance.now();
-  cur = { frames: 0, sum: 0, worst: 0, slow: 0 };
+  cur = { frames: 0, sum: 0, worst: 0, slow: 0, shut: 0 };
   let miss = '';
   try {
     miss = await fn(h);
+  } catch (e) {
+    if (!(e instanceof Stopped)) miss = `例外：${String(e).slice(0, 200)}`;
+    throw e;
   } finally {
+    for (const up of live) up();
     const c = cur;
     cur = null;
     autoSt.steps.push({
@@ -453,6 +492,7 @@ async function runStep(lap: number, k: string, fn: Step[1], h: AutoHooks): Promi
       slow: c.slow,
       ...(waitedWhy ? { waited: waitedWhy } : {}),
       ...(miss ? { miss } : {}),
+      ...(c.shut ? { shut: c.shut } : {}),
     });
   }
 }
@@ -470,6 +510,9 @@ export async function initAuto(h: AutoHooks): Promise<void> {
   autoSt.quick = m.quick;
   requestAnimationFrame(tickFrame);
   document.addEventListener('visibilitychange', () => {
+    // 隠れている間はフレームが来ないので、戻った最初のフレームの間に隠れていた間が入る。数え直す
+    prevAt = 0;
+    if (cur) waitedWhy = 'hidden';
     if (document.visibilityState === 'visible') {
       if (autoSt.wakeLock === 'ok' || wakeLock) void lockScreen();
       setTimeout(resumeIfPaused, 300);
