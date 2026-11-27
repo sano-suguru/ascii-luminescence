@@ -12,11 +12,12 @@
 //      （狭い横向きの端末と、claude.ai のアプリの中で測った本物の大きさ 750×312）
 //   8. 指の操作（src/lib/touchpad.ts。CDP の Input.dispatchTouchEvent で、2本の指を同時に動かす）：左半分のスティックで進む（離すと止まる）・右半分のドラッグで見回す・
 //      両方を同時に・[右手] を押して溜め、指をずらすと見回し、離すと溜めが終わる・指を取り逃した時（touchCancel）も溜めが終わる・[回避]・
-//      メニューを開いている間は、スティックで動かない・レベルアップと祭壇の画面は、1回目のタップで選んで説明を出し、2回目で決める
+//      ページが隠れると（アプリの切り替え）メニューが開いて止まり、触れている指は離したことになる・メニューを開いている間は、スティックで動かない・レベルアップと祭壇の画面は、1回目のタップで選んで説明を出し、2回目で決める
 //  10. 図鑑を指で動かす：案内が指の時の文言か（マウスで開いた後に指で触った時も）・離れた知らせを取り逃した指が残っても回せるか・枠が画面の上半分に掛からないか・1本指のドラッグで回り、触れている間はひとりでに回らない・2本指で広げると寄り、[向きを戻す] で戻る
 //  11. 縦向き：探索中だけ、止めて横にする案内を出し、横に戻すと続く・縦のまま死んでも結果の画面から新しい探索へ進める（タイトルと、マウスで遊んでいる時は出さない）
 //  12. ホーム画面に置く案内：iPhone の Safari で、ホーム画面から開いていない時だけタイトルに出る（指で触れない端末では出ない）
 //  13. iPhone の横向きの切り欠きとホームの棒（safe-area-inset の真似）：端の表示とボタンが、その分を避けるか
+//  14. 開発用モードでない時のタイトルが、ホーム画面に置く案内と試練が出ても、スマホの横向き（iPhone 13 横・750×312）で送らずに収まる
 //   7. 診断の記録（src/lib/diag.ts）：偽の window.claude（Artifact の中の真似）で、持ち主なら端末・できごと・速さ・かかった時間・遅いフレームを db に書き、持ち主でなければ書かない。
 //      書き込みの途中に頼まれた分（ページが隠れた時）も、途中の分が終わってから書く
 import { FIT_MIN } from '../src/lib/layout.ts';
@@ -31,6 +32,62 @@ const tapEnter = async (pg) => {
   const b = await pg.locator('#enter').boundingBox();
   if (!b) throw new Error('#enter が見えない');
   await pg.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+};
+/**
+ * パネル sel の行のボタンの押せる範囲（src/index.html の body.touch の ::after・::before）：見えている各ボタンの真ん中がそのボタンになり、
+ * 文字の外 3px（sides の向き）を押しても、そのボタンか、その点に同じかもっと近い隣のボタンになるか（隣のボタンそのものの上なら、隣のボタンになるか）。広げた範囲で、パネルが横に送れるようにならないか
+ */
+const reach = (pg, sel, sides = ['left', 'right', 'up', 'down']) =>
+  pg.evaluate(
+    ([s, sides]) => {
+      const panel = document.querySelector(s),
+        pr = panel.getBoundingClientRect(),
+        bad = [];
+      let n = 0;
+      const inside = (r, x, y) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+      const shrink = (r) => ({ left: r.left + 1, right: r.right - 1, top: r.top + 1, bottom: r.bottom - 1 });
+      const dist = (r, x, y) => Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));
+      const all = [...panel.querySelectorAll('button')];
+      for (const b of all) {
+        const r = b.getBoundingClientRect();
+        if (!(r.width > 0) || getComputedStyle(b).pointerEvents === 'none') continue;
+        if (r.top < Math.max(0, pr.top) || r.bottom > Math.min(innerHeight, pr.bottom) || r.left < 0 || r.right > innerWidth) continue;
+        n++;
+        const name = b.textContent.trim().slice(0, 10),
+          cx = (r.left + r.right) / 2,
+          cy = (r.top + r.bottom) / 2;
+        if (document.elementFromPoint(cx, cy)?.closest('button') !== b) bad.push(`${name}：真ん中が別の物`);
+        const pts = { left: [r.left - 3, cy], right: [r.right + 3, cy], up: [cx, r.top - 3], down: [cx, r.bottom + 3] };
+        for (const side of sides) {
+          const [x, y] = pts[side];
+          // 画面の端から 2px（ブラウザが何も返さないことがある）と、パネルの見えている所の外は調べない
+          if (x < 2 || y < 2 || x > innerWidth - 2 || y > innerHeight - 2 || !inside(pr, x, y)) continue;
+          const hit = document.elementFromPoint(x, y)?.closest('button');
+          // 隣のボタンそのものの上なら、そのボタン（広げた範囲が、隣のボタンを覆わない）。
+          // 隣のボタンの端から 1px 以内は、どちらでもよい（文字の位置の小数がブラウザの版で少し違い、端では丸め方でどちらにもなる）
+          const own = all.find((o) => o !== b && inside(shrink(o.getBoundingClientRect()), x, y));
+          if (own) {
+            if (hit !== own)
+              bad.push(
+                `${name}：${side} の外 3px は ${own.textContent.trim().slice(0, 10)} の上なのに ${hit ? hit.textContent.trim().slice(0, 10) : 'ボタンでない'}`,
+              );
+            continue;
+          }
+          // そのボタンか、その点に同じかもっと近いボタン（同じ行に1字の間で並ぶボタンは、間を後のボタンが取る）
+          if (hit === b || (hit && dist(hit.getBoundingClientRect(), x, y) <= 3)) continue;
+          bad.push(`${name}：${side} の外 3px が ${hit ? hit.textContent.trim().slice(0, 10) : 'ボタンでない'}`);
+        }
+      }
+      return { n, bad, wide: panel.scrollWidth > panel.clientWidth + 1 ? [panel.scrollWidth, panel.clientWidth] : null };
+    },
+    [sel, sides],
+  );
+const reaches = async (pg, sel, what, sides) => {
+  const r = await reach(pg, sel, sides);
+  if (!r.n) errs.push(`押せる範囲：${what}に見えているボタンが無い（テストの前提が崩れた）`);
+  if (r.bad.length)
+    errs.push(`押せる範囲：${what}のボタンの押せる範囲が広がっていない（${r.n} 個のうち：${r.bad.slice(0, 6).join('、')}）`);
+  if (r.wide) errs.push(`押せる範囲：${what}が横に送れるようになった（${r.wide.join('/')}）`);
 };
 await withBrowser(async ({ browser, base }) => {
   // ---------------------------------------------------------------- 1. タイトルの枠が画面に収まる
@@ -285,6 +342,53 @@ await withBrowser(async ({ browser, base }) => {
     await pg.touchscreen.tap(...(await mid('#menuB')));
     await advance(pg, 0.1);
 
+    // ページが隠れると（アプリの切り替え）、メニューが開いて止まり、触れている指は離したことになる（隠れている間に離した指の知らせは、届かないことがある）。
+    // 戻ってメニューを閉じると、また進む
+    {
+      const setHidden = (h) =>
+        E((h) => {
+          Object.defineProperty(document, 'hidden', { configurable: true, get: () => h });
+          document.dispatchEvent(new Event('visibilitychange'));
+        }, h);
+      const [hx, hy] = await mid('#castR');
+      await touch('touchStart', [[150, 250, 1]]);
+      await touch('touchMove', [[150, 190, 1]]);
+      await touch('touchStart', [
+        [150, 190, 1],
+        [hx, hy, 3],
+      ]);
+      await advance(pg, 2); // 溜めている間はゲームの時間が半分の速さなので、溜め 0.8 秒に 1.6 秒かかる
+      const full = await st();
+      if (!full.cast?.full) errs.push(`隠れた時：[右手] を押しても溜めきらない（テストの前提が崩れた。${JSON.stringify(full.cast)}）`);
+      await setHidden(true);
+      a = await st();
+      // 溜めきっていても、放たずに散らす（飛ぶ物が増えない）
+      if (a.projs !== full.projs) errs.push(`隠れた時：溜めきった詠唱を放った（飛ぶ物 ${full.projs} → ${a.projs}）`);
+      await advance(pg, 1);
+      b = await st();
+      const held = await E(() => ({
+        stick: !document.getElementById('stick').hidden,
+        menu: document.getElementById('menu').classList.contains('show'),
+      }));
+      if (!a.paused || !held.menu || b.time !== a.time)
+        errs.push(
+          `隠れた時：ページが隠れても、メニューが開いて止まらない（止まる ${a.paused}、メニュー ${held.menu}、時刻 ${a.time} → ${b.time}）`,
+        );
+      if (a.cast || held.stick)
+        errs.push(`隠れた時：触れていた指を離したことにしない（溜め ${JSON.stringify(a.cast)}、スティック ${held.stick}）`);
+      await touch('touchCancel', []);
+      await setHidden(false);
+      if (held.menu) await pg.touchscreen.tap(...(await mid('#menuB')));
+      await advance(pg, 0.5); // 離した後の惰性が収まるまで
+      a = await st();
+      await advance(pg, 0.5);
+      b = await st();
+      if (a.paused || !(b.time > a.time) || dist(a, b) > 0.05)
+        errs.push(
+          `隠れた時：戻ってメニューを閉じても続かないか、ひとりでに動く（止まる ${a.paused}、時刻 ${a.time} → ${b.time}、動いた ${dist(a, b).toFixed(2)}）`,
+        );
+    }
+
     // [右手]（樫の杖）：押すと溜め、指をずらすと見回し、離すと溜めが終わる
     const [rx, ry] = await mid('#castR');
     a = await st();
@@ -428,6 +532,9 @@ await withBrowser(async ({ browser, base }) => {
       if (f.zoom < FIT_MIN - 1e-6) errs.push(`狭い画面：${what}を ${FIT_MIN} 倍より小さく縮めた（${f.zoom}）`);
       return f;
     };
+    // タイトル（指で触れてから。指の遊び方になる）
+    await pg.touchscreen.tap(5, 5);
+    await reaches(pg, '#intropanel', 'タイトル');
     await tapEnter(pg);
     await advance(pg, 2);
     if (!(await text('#log')).includes('左半分で動く')) errs.push('狭い画面：初めて指で入った時の一言が出ない');
@@ -435,6 +542,7 @@ await withBrowser(async ({ browser, base }) => {
     // メニューと、メニューの中に開く操作の案内（[戻る] で一覧に戻る）
     await tap('#menuB');
     await fits('#menu', 'メニュー');
+    await reaches(pg, '#menu', 'メニュー', ['right']);
     await tap('#menu button[data-k="help"]');
     await fits('#menu', 'メニューの中の操作の案内');
     let t = await text('#menu');
@@ -442,6 +550,26 @@ await withBrowser(async ({ browser, base }) => {
       errs.push(`狭い画面：操作の案内が、指の操作の説明でない（${t.slice(0, 120)}）`);
     await tap('#menu button[data-k="back"]');
     if (!(await text('#menu')).includes('探索を続ける')) errs.push('狭い画面：操作の案内の [戻る] で、メニューの一覧に戻らない');
+    // 見回す速さ：押すたびに ふつう → 速い → 遅い → ふつう と回り、選んだ段は残って、開き直したページでも使う（src/lib/touchpad.ts の LOOK）
+    {
+      const lookOf = () => E(() => __test.touchTune().look);
+      const label = () => text('#menu button[data-k="look"]');
+      if (!(await label()).includes('見回す速さ：ふつう') || (await lookOf()) !== 0.005)
+        errs.push(`見回す速さ：初めがふつうでない（${await label()}、${await lookOf()}）`);
+      await tap('#menu button[data-k="look"]');
+      if (!(await label()).includes('見回す速さ：速い') || (await lookOf()) !== 0.007)
+        errs.push(`見回す速さ：押しても速くならない（${await label()}、${await lookOf()}）`);
+      const pg2 = await pg.context().newPage();
+      await openTest(pg2, base, 'seed=202');
+      const kept = await pg2.evaluate(() => __test.touchTune().look);
+      await pg2.close();
+      if (kept !== 0.007) errs.push(`見回す速さ：選んだ段が、開き直したページに残らない（${kept}）`);
+      await tap('#menu button[data-k="look"]');
+      if (!(await label()).includes('見回す速さ：遅い') || (await lookOf()) !== 0.0035)
+        errs.push(`見回す速さ：速いの次が遅いでない（${await label()}、${await lookOf()}）`);
+      await tap('#menu button[data-k="look"]');
+      await fits('#menu', '見回す速さの段を足したメニュー');
+    }
     await tap('#menu button[data-k="book"]');
     if (!(await text('#menu')).includes('魔導書')) errs.push('狭い画面：メニューの「魔導書」が、メニューの中に開かない');
     await tap('#menuB');
@@ -451,6 +579,7 @@ await withBrowser(async ({ browser, base }) => {
     await E(() => dbg.give('runes'));
     await tap('#packB');
     let f = await fits('#pack', '装備の画面');
+    await reaches(pg, '#pack', '装備の画面');
     if (!(f.sh > f.ch)) errs.push(`狭い画面：装備の画面が送れない（テストの前提が崩れた。${JSON.stringify(f)}）`);
     if (!(await text('#pack')).includes('続けて2回押すと自動ではめる')) errs.push('狭い画面：装備の画面の案内が、指の言い方でない');
     // 手のルーンの枠にはめられる、袋のルーン（押して、光る枠ができる物）を探す
@@ -540,6 +669,7 @@ await withBrowser(async ({ browser, base }) => {
     await E(() => dbg.exp(400));
     await advance(pg, 0.6);
     f = await fits('#altarp', 'レベルアップの画面');
+    await reaches(pg, '#altarp', 'レベルアップの画面');
     if (f.bar) errs.push('狭い画面：レベルアップの画面の間も、[装備] [メニュー] が出ている');
     if (!(await text('#altarp')).includes('1回押すと説明が出る')) errs.push('狭い画面：レベルアップの画面の案内が、指の言い方でない');
     for (let i = 0; i < 20 && (await E(() => document.getElementById('altarp').classList.contains('open'))); i++) {
@@ -558,6 +688,7 @@ await withBrowser(async ({ browser, base }) => {
       errs.push('狭い画面：祭壇の画面が開かない（テストの前提が崩れた）');
     else {
       f = await fits('#altarp', '祭壇の画面');
+      await reaches(pg, '#altarp', '祭壇の画面');
       if (f.bar) errs.push('狭い画面：祭壇の画面の間も、[装備] [メニュー] が出ている');
       if (!(await text('#altarp')).includes('1回押すと説明、もう1回で決まる')) errs.push('狭い画面：祭壇の画面の案内が、指の言い方でない');
       await tap('#altarp button[data-cancel]');
@@ -569,7 +700,10 @@ await withBrowser(async ({ browser, base }) => {
     await advance(pg, 3);
     if (!(await E(() => document.getElementById('death').classList.contains('show'))))
       errs.push('狭い画面：結果の画面が出ない（テストの前提が崩れた）');
-    else await fits('#death', '結果の画面');
+    else {
+      await fits('#death', '結果の画面');
+      await reaches(pg, '#death', '結果の画面');
+    }
     await pg.context().close();
   }
 
@@ -603,6 +737,27 @@ await withBrowser(async ({ browser, base }) => {
       if (top !== 'gl') await new Promise((ok) => setTimeout(ok, 200));
     }
     if (top !== 'gl') errs.push(`図鑑を指で：描く画面の上に ${top} がある`);
+    await reaches(pg, '#gal', '図鑑');
+    // 指で回している途中にページが隠れ、離れた知らせを取り逃しても、戻ればまたひとりでに回る
+    {
+      const setHidden = (h) =>
+        E((h) => {
+          Object.defineProperty(document, 'hidden', { configurable: true, get: () => h });
+          document.dispatchEvent(new Event('visibilitychange'));
+        }, h);
+      await touch('touchStart', [[X, Y, 1]]);
+      await touch('touchMove', [[X + 20, Y, 1]]);
+      await setHidden(true);
+      await setHidden(false);
+      // 触れていた間と離してからしばらく（GAL_IDLE）は止まるので、それを越えるまで進めてから比べる
+      await advance(pg, 4);
+      const t0 = await draw();
+      await advance(pg, 1);
+      const t1 = await draw();
+      if (t1.turn === t0.turn) errs.push(`図鑑を指で：回している途中に隠れると、戻ってもひとりでに回らない（${t0.turn} → ${t1.turn}）`);
+      await touch('touchCancel', []);
+      await advance(pg, 2);
+    }
     await pg.screenshot({ path: 'tests/out/touch-gallery.png', timeout: 90000 });
     // 1本指のドラッグで回る（横に 80px で 0.8 ラジアン）。触れている間は、ひとりでに回らない
     let a = await draw();
@@ -768,6 +923,49 @@ await withBrowser(async ({ browser, base }) => {
       errs.push(
         `ホーム画面の案内：navigator.standalone が ${standalone}${touchless ? '・指で触れない端末' : ''}の時に、案内が${has ? '出た' : '出ない'}`,
       );
+    await pg.context().close();
+  }
+
+  // ---------------------------------------------------------------- 14. 開発用モードでない時のタイトルが、スマホの横向きで送らずに収まる
+  // （ホーム画面に置く案内と試練の両方が出る、行の一番多い場合。テスト用モードは開発用モードをオンにするので、[開発用モード] を押してオフにする）
+  for (const { what, opts, standalone } of [
+    { what: 'iPhone 13 横の Safari（ホーム画面に置く案内が出る）', opts: { device: 'iPhone 13 landscape' }, standalone: false },
+    { what: '750×312（Claude のアプリの中）', opts: null, standalone: undefined },
+  ]) {
+    const pg = opts
+      ? await newPage(browser, errs, opts)
+      : await (await browser.newContext({ viewport: { width: 750, height: 312 }, hasTouch: true, isMobile: true })).newPage();
+    if (!opts) pg.on('pageerror', (e) => errs.push(String(e.stack || e).slice(0, 600)));
+    if (standalone !== undefined)
+      await pg.addInitScript(
+        (v) => Object.defineProperty(Navigator.prototype, 'standalone', { configurable: true, get: () => v }),
+        standalone,
+      );
+    await pg.addInitScript(() => localStorage.setItem('al_meta', JSON.stringify({ unl: ['t_dusk', 't_fury'] })));
+    await openTest(pg, base, 'seed=202');
+    await pg.evaluate(() => document.getElementById('galDev').click());
+    await pg.evaluate(() => document.fonts.ready);
+    const m = await pg.evaluate(() => {
+      const it = document.getElementById('intro'),
+        p = document.getElementById('intropanel'),
+        t = p.innerText;
+      return {
+        sh: it.scrollHeight,
+        ch: it.clientHeight,
+        enter: document.getElementById('enter').getBoundingClientRect().bottom,
+        zoom: Number(p.style.zoom || 1),
+        dev: t.includes('開始する層'),
+        home: t.includes('ホーム画面に追加'),
+        trial: t.includes('猛り'),
+      };
+    });
+    if (m.dev || !m.trial || m.home !== (standalone === false))
+      errs.push(`タイトルの収まり：${what}の前提が崩れた（開発用 ${m.dev}、試練 ${m.trial}、ホーム画面の案内 ${m.home}）`);
+    if (m.sh > m.ch || m.enter > m.ch)
+      errs.push(
+        `タイトルの収まり：${what}で、タイトルを送らないと［迷宮に入る］まで見えない（${m.sh}/${m.ch}、［迷宮に入る］の下 ${m.enter}、倍率 ${m.zoom}）`,
+      );
+    console.log(`タイトルの収まり：${what}：倍率 ${m.zoom.toFixed(2)}、${m.sh}/${m.ch}`);
     await pg.context().close();
   }
 

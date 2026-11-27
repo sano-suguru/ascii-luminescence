@@ -48,17 +48,17 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      audio：音を鳴らす（Web Audio。音の部品（タイトルを出した時に先に作って止めておく sndPrep、迷宮に入る時などに鳴らし始める sndInit、状態 sndState）・効果音・術を放つ音 castSound・まわりの音 sndUpdate。状態 SND に頼る物）、log：伝言 msg、hotbar：下の HUD renderHotbar（指の操作の [持ち替え] の出し分けも）と持ち替えられるビルド buildsHave、save：保存 saveSet・saveMeta と忘れられた獣の記録 loadBeasts・recordBeast、
                      inventory：装備の画面 renderInv（中のボタンの処理・ビルドの呼び出し applyBuild も）と、開け閉め setInv・付け替えの詠唱 startSwap、
                      panels：レベルアップの画面（選択肢 levelChoices・開く openLevelUp・選ぶ chooseLevel）と祭壇の画面（開く openAltar・閉じる closeAltar・選ぶ chooseAltar・毎フレーム開け閉めする updateAltarPanel）。どちらも #altarp に描き、指なら選択肢は2回押して決める（confirmTap）、
-                     menu：メニュー（描く renderMenu・開け閉め setMenu・項目を押した menuAct・確かめ待ちを4秒で戻す menuArmReset。指で遊ぶ時は、操作の案内・年代記・魔導書をメニューの中に開く）とタイトルへ戻る returnToTitle、
+                     menu：メニュー（描く renderMenu・開け閉め setMenu・項目を押した menuAct・確かめ待ちを4秒で戻す menuArmReset。指で遊ぶ時は、操作の案内・年代記・魔導書をメニューの中に開き、見回す速さの項目も出す）とタイトルへ戻る returnToTitle、
                      status：状態の表示 renderStatus・明るさと気配 updateStealth・年代記・操作の案内・魔導書（枠の行 chronRows・helpRows・bookRows。操作の案内は指で遊ぶ時は指の操作の説明）・表示の量・見つかった時 onNoticed・物音 makeNoise・
                      立ち止まって調べる updateSearch・止まっているか isPaused・場所の名前 placeLabel・下の一言 showHint（自分で消す一言は flashHint、出した一言だけ消すのは clearHint）・頭の上の印 drawMark、
                      layout：画面の大きさに合わせる（タイトルの枠を zoom で縮めて画面に収める fitIntro。指で遊ぶ時のパネル（装備・メニュー・祭壇とレベルアップ・結果）も、[装備] [メニュー] の下から画面の下までに縮め、入らない分は中を送る fitPanels。下限 FIT_MIN）、
                      touch：指で遊ぶ時の土台（指で触れたら指の遊び方 setTouch。指の後にブラウザが出すマウスの事件を止める（iPhone は pointerdown の preventDefault で止まらないので、指の事件から COMPAT_MS 以内のマウスの事件も止める）。タッチのボタン [全画面] [装備] [メニュー] initTouch。パネルの選択肢を指で押した時の2段階（1回目で選んで説明、2回目で決める）confirmTap。操作の説明を遊び方で書き分ける byInput。指で遊んでいて縦向きの間は、探索を止めて横にする案内 #turn を出す updatePortrait。タイトルにホーム画面に置く案内を出すか homeHint（iPhone・iPad の Safari で、指で触れる端末で、ホーム画面から開いていない時だけ）。遊び方が変わった時に古い JS が文言を書き直す処理（initTouch の changed。図鑑の案内）。ゲームのマウスの処理より先に 16-view-input.js が呼ぶ）、
-                     touchpad：指の操作（試して合わせる値 TUNE（見回す速さ look・アナログか analog。アナログなら倒し具合を thumb.stick に入れ、src/lib/player.ts がキーの代わりに向きと速さに使う）・左半分に触れた所に出るスティックで移動・右半分のドラッグで見回す・[右手] [左手] で詠唱・[持ち替え]（ビルドを2つ以上保存した時だけ出る）・[回避]・図鑑では1本指のドラッグで回し・見下ろし、2本指でつまんで寄る・引く initTouchpad。描く画面は touch-action を既定のままにし、touchmove の preventDefault で送りと拡大を止める。touch-action: none の上で指を動かすと、Chromium は直後のボタンのタップを click にしないため）、
+                     touchpad：指の操作（試して合わせる値 TUNE（見回す速さ look（メニューで遅い・ふつう・速いから選ぶ段 LOOK・cycleLook。選んだ段は al_look に残す）・アナログか analog。アナログなら倒し具合を thumb.stick に入れ、src/lib/player.ts がキーの代わりに向きと速さに使う）・左半分に触れた所に出るスティックで移動・右半分のドラッグで見回す・[右手] [左手] で詠唱・[持ち替え]（ビルドを2つ以上保存した時だけ出る）・[回避]・図鑑では1本指のドラッグで回し・見下ろし、2本指でつまんで寄る・引く initTouchpad。ページが隠れた時に、触れている指（図鑑の指も）を離したことにし、溜めている詠唱を放たずに散らす releaseTouch。描く画面は touch-action を既定のままにし、touchmove の preventDefault で送りと拡大を止める。touch-action: none の上で指を動かすと、Chromium は直後のボタンのタップを click にしないため）、
                      diag：診断の記録（claude.ai の Artifact の中で、持ち主が開いた時だけ、端末・速さ・できごと（開け閉め・溜めている手・飛ぶ物があるか・音の部品の状態（先に作った部品も。記録を始めた時の状態も書く）・ボタンと描く画面を押した）・
                      場面が切り替わる時の処理にかかった時間・遅いフレーム・エラーを Artifact のデータベースの diag に書く initDiag。
                      Claude が ArtifactData の道具で読む。window.claude.use が無い所では何もしない）、took：かかった時間を診断の記録に渡す took（記録していない時は何もしない。
                      levels.ts などが diag.ts を直に読むと輪になるので、間に置く）、
-                     screens：マウスを捕まえる tryLock（指で遊んでいる間は捕まえにいかない）・失敗した時 lockFailed（一度も捕まえていないか、最後に捕まえてから3回続けて失敗したら（外れてから1.5秒の間の分は数えない）、捕まえられないと決め、ドラッグの案内を1回出す。それまでは、次のクリックでまた捕まえる。Esc のキーを処理している間 ui.escKey は捕まえにいかない）・捕まえる遊び方で探索中なのにマウスが外れているか lockLost・描く画面を押した時に、lockLost なら捕まえ直すだけにする relockClick・外れた時にメニューを開くか menuOnUnlock（止まっている画面が開いていない時だけ）・「クリックで視点操作に戻る」の一言 updateResume（lockLost の時だけ出す。止まっている間・死んだ時・タイトルでは CSS が隠す）・視点 setCamMode・音量 sndToggle、particles：粒子を出す spawn・消す killP と、世界の中に文字を置く dyn（配列も。描き方 mode は、こちらを向く・床に寝かせる（1 を越えた分は文字を起こす角度）・立てる）と、漂う塵を置く initDust・respawnDust と、描く粒子の配列 ptPos・ptCol・ptSize・ptGly、motes：粒子を動かす（塵・沼のガスの粒 updateGasPoints・川のさざ波 riverFX・粒子と火の粉を動かして GPU に渡す数を書く updateParticles）、camera：霧と目の慣れ updateAtmosphere・3人称の自分の姿 updateAvatar・岩の中か rockAt・カメラと自分の間の岩の断面 drawSection、
+                     screens：マウスを捕まえる tryLock（指で遊んでいる間は捕まえにいかない）・失敗した時 lockFailed（一度も捕まえていないか、最後に捕まえてから3回続けて失敗したら（外れてから1.5秒の間の分は数えない）、捕まえられないと決め、ドラッグの案内を1回出す。それまでは、次のクリックでまた捕まえる。Esc のキーを処理している間 ui.escKey は捕まえにいかない）・捕まえる遊び方で探索中なのにマウスが外れているか lockLost・描く画面を押した時に、lockLost なら捕まえ直すだけにする relockClick・外れた時にメニューを開くか menuOnUnlock・ページが隠れた時（アプリの切り替えなど。指で遊ぶ時はマウスが外れないので、こちらで止める）にメニューを開くか menuOnHide（どちらも探索中で、止まっている画面が開いていない時だけ）・「クリックで視点操作に戻る」の一言 updateResume（lockLost の時だけ出す。止まっている間・死んだ時・タイトルでは CSS が隠す）・視点 setCamMode・音量 sndToggle、particles：粒子を出す spawn・消す killP と、世界の中に文字を置く dyn（配列も。描き方 mode は、こちらを向く・床に寝かせる（1 を越えた分は文字を起こす角度）・立てる）と、漂う塵を置く initDust・respawnDust と、描く粒子の配列 ptPos・ptCol・ptSize・ptGly、motes：粒子を動かす（塵・沼のガスの粒 updateGasPoints・川のさざ波 riverFX・粒子と火の粉を動かして GPU に渡す数を書く updateParticles）、camera：霧と目の慣れ updateAtmosphere・3人称の自分の姿 updateAvatar・岩の中か rockAt・カメラと自分の間の岩の断面 drawSection、
                      debris：倒れた生き物が崩れる（倒れた時の体を写し取る crumble。文字が上から順に外れて落ち、床に寝て小山に積もり、1つずつ縮んで消える。動かして描く updateDebris は tick の段 debris。
                      ばらつきは生き物ごとの鍵の乱数 keyedRand('fall'…) で先に決め、見た目の乱数 mr() は引かない。数の上限：1体に残す文字は、ふつう120・主と大きな物250・試しの間の的40、崩れる体は12・残る文字は全体で3000。テスト用の様子 debrisInfo）、legend：今の探索の伝説の物 getLegend と状態の表示の1行・伝説の物の読み方（legendOfBranch・legendAll・descentSealed）と世界の中に描く drawLegendWorld と神託所の手がかり oracleLegendHints、
                      lightmap：マスの明るさ cellLight と天井の高さ ceilAt・灯りの揺らぎ flicker と灯りを描画に渡す配列を書き直す updateLights（状態に頼る。灯りの計算そのものは light）、
@@ -131,15 +131,15 @@ tests/frame.mjs      サンドボックス付きの iframe の中（allow-script
                      タイトル → 探索 → ドラッグで見回す → Esc でメニュー → レベルアップ → 祭壇 → 死 → 始め直し → タイトル → 図鑑 → 探索が、ページのエラーなしで通るか ＋
                      requestPointerLock が無い・呼んでも何も起きない・音の部品を作れないブラウザ（初めに動く台本で作る）でも、Esc でメニューが開き、ドラッグで見回せるか ＋
                      はじめの流れを Artifact 版（.build/artifact/index.html）でも通し、ほかのファイルを読まないか ＋ Artifact 版を、テスト用モードでなく開いてもタイトルが出るか
-tests/touch.mjs      指で遊ぶ時の土台（スマホの真似で、テスト用モード）：タイトルの枠がどの端末でも画面に収まるか（縮める下限まで縮めても収まらない時だけ縦に送る）＋
+tests/touch.mjs      指で遊ぶ時の土台（スマホの真似で、テスト用モード）：タイトルの枠がどの端末でも画面に収まるか（縮める下限まで縮めても収まらない時だけ縦に送る。開発用モードでなければ、ホーム画面に置く案内と試練が出ても、スマホの横向きで送らずに収まる）＋
                      指で「迷宮に入る」を押すとマウスを捕まえにいかずに始まるか ＋ 描く画面を指で押しても左手の詠唱が始まらないか（iPhone と同じ順番の事件（指の後に mousedown）でも）＋ [装備] [メニュー] で開け閉めできるか・
                      [全画面] はタイトルで全画面にできる時だけ出るか ＋ マウスを動かすとタッチのボタンが消えるか ＋ 探索中のタッチのボタンと指の操作のボタンが、状態の表示・ミニマップ・下の HUD・互いと重ならないか（本物の大きさ 750×312 も）＋
                      指の操作（CDP の Input.dispatchTouchEvent で2本の指）：スティックで進む・離すと止まる・右半分で見回す・同時に・拡大されない・見回した直後もボタンが効く・
-                     [右手] で溜めて、ずらすと見回し、離すと終わる・指を取り逃しても終わる・[回避]・メニューの間は動かない・レベルアップと祭壇は2回押して決まる ＋
+                     [右手] で溜めて、ずらすと見回し、離すと終わる・指を取り逃しても終わる・[回避]・ページが隠れるとメニューが開いて止まり、触れている指は離したことになり、溜めきった詠唱も放たない・メニューの間は動かない・レベルアップと祭壇は2回押して決まる ＋
                      本物の大きさ 750×312 で：左下の伝言と下の HUD が重ならない・初めて指で入った時の一言・メニュー・装備の画面・レベルアップ・祭壇・結果の画面が画面に収まる（装備の画面は中を送れて、
-                     中を書き直しても送った所が残り、袋のルーンを選ぶと、はめられる枠が見える所まで送る）・メニューの中に開く操作の案内と魔導書・ビルドを2つ保存すると [持ち替え] が出て持ち替える（溜めている間は持ち替えない）・
-                     レベルアップと祭壇の間は [装備] [メニュー] が隠れる・指の時の案内の文言 ＋ 縦向きの間は探索を止めて横にする案内を出す（タイトルとマウスの時は出さない。縦のまま死んでも、結果の画面から新しい探索へ進める）＋ ホーム画面に置く案内（iPhone の Safari で、ホーム画面から開いていない時だけ。指で触れない端末では出さない）＋ iPhone の横向きの切り欠きとホームの棒（CDP で safe-area-inset を真似る）を、端の表示とボタンが避けるか ＋
-                     図鑑を指で動かす（1本指で回す・2本指でつまんで寄る・[向きを戻す]・背の低い画面で枠が画面の上半分に掛からない・マウスで開いた後に指で触ると案内が変わる・離れた知らせを取り逃した指が残っても回せる）＋
+                     中を書き直しても送った所が残り、袋のルーンを選ぶと、はめられる枠が見える所まで送る）・メニューの中に開く操作の案内と魔導書・メニューの見回す速さ（押すと段が回り、開き直したページにも残る）・ビルドを2つ保存すると [持ち替え] が出て持ち替える（溜めている間は持ち替えない）・
+                     レベルアップと祭壇の間は [装備] [メニュー] が隠れる・指の時の案内の文言・パネルの行のボタン（タイトル・メニュー・装備・レベルアップ・祭壇・結果・図鑑）の押せる範囲が文字の外まで広がり、隣のボタンを覆わない ＋ 縦向きの間は探索を止めて横にする案内を出す（タイトルとマウスの時は出さない。縦のまま死んでも、結果の画面から新しい探索へ進める）＋ ホーム画面に置く案内（iPhone の Safari で、ホーム画面から開いていない時だけ。指で触れない端末では出さない）＋ iPhone の横向きの切り欠きとホームの棒（CDP で safe-area-inset を真似る）を、端の表示とボタンが避けるか ＋
+                     図鑑を指で動かす（1本指で回す・2本指でつまんで寄る・[向きを戻す]・背の低い画面で枠が画面の上半分に掛からない・マウスで開いた後に指で触ると案内が変わる・離れた知らせを取り逃した指が残っても回せる・回している途中に隠れても、戻ればひとりでに回る）＋
                      診断の記録：偽の window.claude（tests/page-fakes.mjs）で、持ち主なら端末・できごと・速さ・かかった時間・遅いフレーム（40件を越えたら短い物から捨てる）を書き、持ち主でなければ書かないか・書き込みの途中に頼まれた分も後で書くか
 tests/gallery.mjs    図鑑：全部の生き物を立つ・歩く・眠るの姿で出して、例外・描いた文字の数・NaN を確かめる ＋ 図鑑を手で動かす（ホイールで寄る・引く、ドラッグで回す・見下ろす、離すとしばらく止まってまた回る、R と ← → で戻る、ドラッグが外れる、背の高い生き物に寄ると狙う点が上がる） ＋ ほかの所で見た目の乱数を余分に引いても、前に別の生き物を出しても、図鑑の写真（画面写真の比較の4体）が変わらないか（違えば、3つのページの画面写真を tests/out/gallery-rand/ に残す。走らせるたびに空にする） ＋ 出してすぐ __test.galleryDraw で覗いても、後の描いた物が変わらないか
 tests/gallery-specimens.mjs  画面写真の比較で写す図鑑の4体と写し方（visual.mjs と gallery.mjs が使う）
@@ -209,7 +209,7 @@ tests/unit/minimap.test.mjs  ミニマップ（キャンバスの大きさと描
                      迷宮の生成を変えると、この指紋も変わる）を使う
 tests/unit/screens.test.mjs  粒子と置く文字・頭の上の印・装備の画面の開け閉めと付け替えの詠唱・マウスを捕まえる・視点・音量の単体テスト。たくさんの場合を作る screens-cases.mjs
                      （偽の画面の部品が、したことを記録する。マウスを捕まえる時の返し方も変える）を使う
-tests/unit/bodies.test.ts  生き物の形の性質（点の座標が有限か・文字の番号が表の中か・眠った獣の形・深みの主の触手）と、src/lib/bodies/ の各生き物の形が移す前と同じ乱数で同じ形になるか（移した後で作り直したトロル・ゴーレム・クラーケン・ギタイムシ・ヘビと王の影の一つ目の姿は除く）
+tests/unit/bodies.test.ts  生き物の形の性質（点の座標が有限か・文字の番号が表の中か・眠った獣の形・深みの主の触手）と、src/lib/bodies/ の各生き物の形が移す前と同じ乱数で同じ形になるか（移した後で作り直したトロル・ゴーレム・クラーケン・ギタイムシ・ヘビ・吸血コウモリと王の影の一つ目の姿は除く）
 tests/unit/bodies-legacy.test.mjs  形を選んで作る処理（buildForm と見た目の特徴）・まわりの飾りと王の影の変身・図鑑の見本の獣・忘れられた獣の記録が、移す前と同じか（指紋）。
                      たくさんの場合を作る bodies-legacy-cases.mjs（全部の種類と主・古い形・年代記の獣の形、見た目の特徴を直接足す、まわりの飾りを何フレームか続けて呼ぶ、
                      偽の Web Audio と偽の localStorage）を使う。頭の上の印の高さ（src/lib/hud.ts の MARK_H と markHeight）が、表のどの種類でも体の一番上より 0.1 から 0.7 上か
@@ -279,7 +279,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 ```
 - **Artifact に公開する**：`pnpm build:artifact` の後、Artifact の道具で `.build/artifact/index.html` を公開する。
   診断の記録（src/lib/diag.ts）のため、capabilities は `{db: {rules: [{path: "diag", read: "owner", write: "owner"}]}, user: {}}`（一度渡せば、上げ直す時に省くと、そのまま残る）。
-  記録は、ArtifactData の道具の list で、コレクション diag を読む（開くたびに1件。端末 device・速さ fps（10秒ごとの平均 avg と一番遅い1回 min と、その時にいる場所 place。探索中だけで、タイトル・図鑑・試しの間では null）・できごと events・場面が切り替わる時の処理にかかった時間 took（名前 k と ms。newLevel は生成 gen と組み立て build の内訳、applySize は理由 why と大きさ）・100ms を越えた1フレーム slow（ms・place と、その前の1秒にあったできごとか処理の名前 near。溜めている手・飛ぶ物・音の部品の旗の変化は near に数えない。40件を越えたら短い物から捨てる）・エラー errors）。読んだ記録は `out_dir` に保存して、`node tools/diag-report.mjs` で表にする。公開先の URL は https://claude.ai/artifact/QJStjdouDGtGtEBFBStU3d 。
+  記録は、ArtifactData の道具の list で、コレクション diag を読む（開くたびに1件。端末 device・速さ fps（10秒ごとの平均 avg と一番遅い1回 min と、その時にいる場所 place。探索中だけで、タイトル・図鑑・試しの間では null）・できごと events・場面が切り替わる時の処理にかかった時間 took（名前 k と ms。newLevel は生成 gen と組み立て build の内訳、applySize は理由 why と大きさ）・100ms を越えた1フレーム slow（ms・place と、その前の1秒にあったできごとか処理の名前 near。溜めている手・飛ぶ物・音の部品の旗の変化は near に数えない。40件を越えたら短い物から捨てる）・エラー errors）。読んだ記録は `out_dir` に保存して、`node tools/diag-report.mjs` で表にする。公開先の URL は https://claude.ai/artifact/SHDFv8eNiDcWgkmwWvmNn6 。
   上げ直す時は、その URL を `url` に渡す（渡さないと別の Artifact になる。初めは非公開で、見せる相手はユーザーが共有の画面で決める）。公開は外に出す操作なので、ユーザーに確かめてから。
 - **依存を足す・上げる時**：`pnpm add -D --save-exact 名前@版`（確認が出る）。公開から24時間未満の版は入らない（pnpm-workspace.yaml）。
   インストール時にスクリプトを動かす依存は、中身を確かめてから `pnpm approve-builds` で許可する。npm で入れない（権限で止めている）。
@@ -438,7 +438,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 
 ## 保存データ（localStorage）
 `al_meta`（伝承・解放・墓・試練・指で遊ぶ時の始めの一言を出したか）、`al_book`（魔導書：記した反応）、`al_beasts`（忘れられた獣）、
-`al_runes`（見たルーン）、`al_seen`（見た生き物）、`al_cam`（1人称/3人称）、`al_dev`（開発用モード）
+`al_runes`（見たルーン）、`al_seen`（見た生き物）、`al_cam`（1人称/3人称）、`al_look`（指で遊ぶ時の見回す速さの段）、`al_dev`（開発用モード）
 
 ## ゲーム本体の地図（src/game/）
 ファイルは名前の順につながる（後のファイルは、前のファイルの変数や関数を使える。トップレベルで実行する文は順番に気をつける）。
