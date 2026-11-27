@@ -1,15 +1,18 @@
 #!/usr/bin/env node
-// ブラウザのテスト（pnpm test）をまとめて走らせる：テスト版と Artifact 版を1回だけ組み立て（.build/test/・.build/artifact/）、11のテスト（画面写真の比較 visual も）を同時に jobs 個ずつ走らせる。
+// ブラウザのテスト（pnpm test）をまとめて走らせる：テスト版と Artifact 版を1回だけ組み立て（.build/test/・.build/artifact/）、12のテスト（画面写真の比較 visual も）を同時に jobs 個ずつ走らせる。
 // どのテストも、自分のブラウザと、空いているポートの配信を使うので、互いにぶつからない（組み立ては、ここで済ませたことを AL_PREBUILT で伝える）。
 // 出力は、テストが終わるたびにまとめて出す（混ざらないように）。1つのテストが LIMIT_MIN 分を越えたら止めて、それまでの出力と「時間切れ」を出す。
 // どれかが失敗したら（時間切れ・シグナルで止められた時も）、終わりのコードを 1 にする。
+// テストごとの出力（画面に出す物と同じ中身）は、tests/out/run/<名前>.log にも書く（後から失敗の文を読むため）。走らせ始める時に、そのテストの前の回のログを書き直し、
+// 出力が来るたびに書き足す（この道具ごと止められても、そこまでの出力が残る）。終わった時に、頭に日時と終わり方を書いた形で書き直す。走らせないテストの前の回のログは残る。
+// 失敗したテストがある時は、終わりの「失敗：…」の行の後に、そのログのパスを出す。
 //   node tests/run.mjs              全部（同時に3つまで）
 //   node tests/run.mjs --jobs 2     同時に走らせる数（1 以上の整数）
 //   node tests/run.mjs smoke world  名前を挙げた物だけ（ほかの指定 --prod・--update などは受け付けない。1つずつ node tests/smoke.mjs --prod のように走らせる）
 //   node tests/run.mjs --shard 1/2  n 組に分けた i 組目だけ（CI が2台のランナーで分けて走らせる）。分け方は SEC のおよその秒で、組ごとの合計が近くなるように決める
 import { spawn } from 'node:child_process';
-import { readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { appendFileSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { build } from 'vite';
 import { ROOT } from './lib.mjs';
 
@@ -86,10 +89,34 @@ const t0 = Date.now();
 // Artifact 版を読むのは frame だけ
 for (const mode of list.includes('frame') ? ['test', 'artifact'] : ['test'])
   await build({ configFile: join(ROOT, 'vite.config.mjs'), mode, logLevel: 'warn' });
+const LOG_DIR = join(ROOT, 'tests', 'out', 'run');
+const logOf = (name) => join(LOG_DIR, `${name}.log`);
+const head = (name, start, lines) =>
+  `# tests/run.mjs のログ：${name}\n# 始めた：${start.toISOString()}（UTC）\n${lines.map((l) => `# ${l}\n`).join('')}\n`;
+// ログが書けない時（記憶域の残りが尽きた・tests/out/run を消された など）も、テストと画面への出力は続ける（そのテストで1回だけ知らせる）
+const logWriter = (name) => {
+  let warned = false;
+  return (write) => {
+    try {
+      write();
+    } catch (e) {
+      if (!warned) console.error(`${name} のログを書けなかった（${e instanceof Error ? e.message : String(e)}）。画面への出力は続ける`);
+      warned = true;
+    }
+  };
+};
 const run = (name) =>
   new Promise((ok) => {
     const t = Date.now(),
-      out = [];
+      start = new Date(t),
+      out = [],
+      log = logOf(name),
+      tryLog = logWriter(name);
+    // 前の回のログを書き直す。終わり方は、終わった時に書き直すまで「走っている途中」
+    tryLog(() => {
+      mkdirSync(LOG_DIR, { recursive: true });
+      writeFileSync(log, head(name, start, ['終わり方：走っている途中（終わる前に tests/run.mjs が止まった）']));
+    });
     const ch = spawn(process.execPath, [join(ROOT, 'tests', `${name}.mjs`)], { env: { ...process.env, AL_PREBUILT: '1' } });
     let timedOut = false;
     const timer = setTimeout(
@@ -99,8 +126,12 @@ const run = (name) =>
       },
       LIMIT_MIN * 60 * 1000,
     );
-    ch.stdout.on('data', (d) => out.push(d));
-    ch.stderr.on('data', (d) => out.push(d));
+    const take = (d) => {
+      out.push(d);
+      tryLog(() => appendFileSync(log, d));
+    };
+    ch.stdout.on('data', take);
+    ch.stderr.on('data', take);
     ch.on('close', (code, signal) => {
       clearTimeout(timer);
       const sec = ((Date.now() - t) / 1000).toFixed(1),
@@ -108,6 +139,17 @@ const run = (name) =>
         why = timedOut ? `時間切れ（${LIMIT_MIN}分）` : signal ? `シグナル ${signal} で止められた` : `終わりのコード ${code}`;
       console.log(`\n---- ${name}（${sec}秒）${failed ? ` 失敗：${why}` : ''}`);
       process.stdout.write(Buffer.concat(out));
+      tryLog(() =>
+        writeFileSync(
+          log,
+          Buffer.concat([
+            Buffer.from(
+              head(name, start, [`終わった：${new Date().toISOString()}（UTC、${sec}秒）`, `終わり方：${why}${failed ? '（失敗）' : ''}`]),
+            ),
+            ...out,
+          ]),
+        ),
+      );
       ok({ name, failed, sec });
     });
   });
@@ -122,6 +164,9 @@ const failed = results.filter((r) => r.failed);
 console.log(
   `\n全部で ${((Date.now() - t0) / 1000).toFixed(1)}秒（同時に ${jobs} つまで）：${results.map((r) => `${r.name} ${r.sec}秒${r.failed ? ' 失敗' : ''}`).join('、')}`,
 );
-if (failed.length) console.log(`失敗：${failed.map((r) => r.name).join('・')}`);
+if (failed.length) {
+  console.log(`失敗：${failed.map((r) => r.name).join('・')}`);
+  for (const r of failed) console.log(`  ログ：${relative(ROOT, logOf(r.name))}`);
+}
 if (results.length !== list.length) console.log(`走らせたテストの数が足りない（${results.length} / ${list.length}）`);
 process.exit(failed.length || results.length !== list.length ? 1 : 0);
