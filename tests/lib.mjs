@@ -41,16 +41,18 @@ export const annotate = (s) =>
       });
 
 // 組み立てて配信し、ブラウザを開く。fn が終わったら必ず閉じる。
-export async function withBrowser(fn, { prod = false } = {}) {
+// root：組み立てる作業場所（既定はこの作業場所。tools/field.mjs の --rev が、前の版の src を置いた一時的な作業場所を渡す。その時は AL_PREBUILT によらず組み立てる）
+export async function withBrowser(fn, { prod = false, root = ROOT } = {}) {
   mkdirSync(OUT, { recursive: true });
   // テスト版は .build/test/、prod は公開用と同じ dist/（three.js とフォントは、どちらも組み立てに入っている。違いはテスト版の cjkFallback だけ）
   // テストをまとめて走らせる時（tests/run.mjs）は、テスト版を先に1回だけ組み立てて AL_PREBUILT を渡すので、ここでは組み立てない
   // （同時に走るテストが、同じ .build/test/ に組み立てるとぶつかるため）
   const mode = prod ? 'production' : 'test',
-    dir = join(ROOT, prod ? 'dist' : '.build/test');
-  if (prod || process.env.AL_PREBUILT !== '1') await build({ configFile: join(ROOT, 'vite.config.mjs'), mode, logLevel: 'warn' });
+    dir = join(root, prod ? 'dist' : '.build/test');
+  if (prod || root !== ROOT || process.env.AL_PREBUILT !== '1')
+    await build({ configFile: join(root, 'vite.config.mjs'), mode, logLevel: 'warn' });
   else console.log('組み立ては済んでいるので、組み立てない（AL_PREBUILT=1。1つだけ走らせる時は、この環境変数を消すこと）');
-  mapDir = join(ROOT, '.build/maps', mode);
+  mapDir = join(root, '.build/maps', mode);
   // サンドボックスの iframe（tests/frame.mjs）から読めるように、CORS の見出しを付ける
   const srv = await serve(dir, 0, { cors: true });
   // システムのフォントを見せない（tests/fonts.conf）。テスト版は日本語も同梱のフォントで描くので、どのマシンでも同じ文字になる。

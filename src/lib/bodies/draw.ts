@@ -6,7 +6,7 @@
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
 import { lookup, must, nth } from '../array.ts';
 import { G, SWAPSET } from '../glyphs.ts';
-import { MARK_H } from '../hud.ts';
+import { MARK_H, markHeight } from '../hud.ts';
 import { cellLight } from '../lightmap.ts';
 import { dyn, spawn } from '../particles.ts';
 import { clamp } from '../rng.ts';
@@ -113,14 +113,18 @@ export function drawMonster(m: Mon, t: number): void {
   if (m.drawHide) return; // __test.hideMonster: not drawn for a moment (its light stays)
   if ((m.wind ?? NaN) > 0) {
     const sc = m.ty.scale,
-      // クラーケンは外套の上（2.2 だと体の中に埋もれる）
+      // クラーケンは外套の上（2.2 だと体の中に埋もれる）。主と忘れられた獣のほかは、頭の上の印と同じ高さ（markHeight）
       h =
         m.y +
         (m.ty.habitat === 'deep'
           ? m.ty.form === 'kraken'
             ? (krakenHead.top + 0.12) * sc
             : 2.2
-          : (m.key === 'final' ? lookup(MARK_H, m.ty.form) : 1.9) * sc);
+          : m.key === 'final'
+            ? lookup(MARK_H, m.ty.form) * sc
+            : m.ty.boss || m.ty.beast
+              ? 1.9 * sc
+              : markHeight(m.ty));
     dyn(m.x, h, m.z, G('!'), 0.5, 3.2, 0.6, 0.4);
   }
   if ((m.hitT ?? NaN) > 0) {
