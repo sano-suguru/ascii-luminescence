@@ -302,7 +302,7 @@ export function drawMonster0(m: Mon, t: number): void {
       case 'eelw':
         lx += Math.sin(t * 4 - p.z * 3.5 + m.ph) * 0.09 * (0.4 + Math.max(0, 0.8 - p.z));
         break;
-      // 尾（サラマンダー・ネズミ）：付け根では動かず、先ほど大きく左右に振れる（piv は付け根からの距離）。歩く時は体と一緒に上下する
+      // 尾（サラマンダー・ネズミ・ジャッカル）：付け根では動かず、先ほど大きく左右に振れる（piv は付け根からの距離）。歩く時は体と一緒に上下する
       case 'tailw':
         lx += tailSwish(m, t, p.piv);
         ly += bob;
