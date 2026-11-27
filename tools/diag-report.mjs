@@ -18,8 +18,8 @@ const pad = (v, w) => String(v ?? '-').padEnd(w);
 
 /** すぐ押し直したと見る秒（メニューの項目を押してから、次の項目を押すまで） */
 export const QUICK = 1.5;
-/** 押すたびに切り替わる項目（2回押すと元に戻る） */
-const TOGGLES = new Set(['ui', 'snd', 'look', 'perf']);
+/** 押すたびに切り替わる項目（cam は今のメニューに無いが、保存してある前の記録を読むために数える） */
+const TOGGLES = new Set(['cam', 'ui', 'snd', 'look', 'perf']);
 
 /**
  * メニューの押し方（src/lib/diag.ts の menu）の表。押し間違いの目安：QUICK 秒以内に別の項目を押した（違う所を押して押し直した）回数と、

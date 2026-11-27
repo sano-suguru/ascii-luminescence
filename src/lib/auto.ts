@@ -431,7 +431,8 @@ export const AUTO_STEPS: Step[] = [
     async () => {
       tap('#menuB');
       await wait(0.8);
-      for (const k of ['ui', 'ui', 'perf', 'perf']) {
+      // 音量は押すたびに al_snd に書こうとする（autoGuard が止めるのを tests/auto.mjs が確かめる）。4段なので4回で元に戻る
+      for (const k of ['ui', 'ui', 'snd', 'snd', 'snd', 'snd']) {
         tap(`#menu button[data-k="${k}"]`);
         await wait(0.8);
       }

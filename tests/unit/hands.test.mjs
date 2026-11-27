@@ -24,7 +24,7 @@ describe('指紋', () => {
   it('手元の武器の表と描く処理（400の場合）の指紋', { timeout: 60000 }, async () => {
     const body = await handsCases({ ...H, ...W }, 400);
     caseOut('hands', body);
-    expect([fnv(body), body.length]).toEqual(['0d92268a', 4251322]);
+    expect([fnv(body), body.length]).toEqual(['6a655c98', 4170890]);
     // 場合が中身を通っているか：描かずに戻る・描く・性質の火花が出る
     expect(body).toMatch(/ dn=0 pN=0 /);
     expect(body).toMatch(/ dn=[1-9]\d* pN=0 /);

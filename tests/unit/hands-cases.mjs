@@ -174,13 +174,13 @@ export async function handsCases(F, seeds) {
       // 分かれ道
       Object.assign(ui, { started: true, gallery: null });
       adv.dead = false;
-      const br = s % 23;
-      if (br === 2) ui.started = false;
-      else if (br === 3) adv.dead = true;
-      else if (br === 4) gear.hands = null;
-      else if (br === 5) here.D = null;
-      else if (br === 6) ui.gallery = { mode: 'beast' };
-      else if (br === 7) ui.gallery = { mode: 'range' };
+      const br = s % 22;
+      if (br === 1) ui.started = false;
+      else if (br === 2) adv.dead = true;
+      else if (br === 3) gear.hands = null;
+      else if (br === 4) here.D = null;
+      else if (br === 5) ui.gallery = { mode: 'beast' };
+      else if (br === 6) ui.gallery = { mode: 'range' };
       buf.dn = 0;
       buf.pN = 0;
       let after = 0;

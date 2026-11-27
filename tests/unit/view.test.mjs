@@ -40,13 +40,13 @@ const NAMES = [
 ];
 
 describe('移す前と同じ', () => {
-  it('描く・調べる処理（240の場合、18の関数）の指紋', { timeout: 60000 }, async () => {
+  it('描く・調べる処理（240の場合、17の関数）の指紋', { timeout: 60000 }, async () => {
     const all = await viewCases({ ...AIM, ...DRAW, ...FIX, ...LM, ...LOOK }, 240),
       body = viewText(all),
       calls = all.flatMap((c) => c.calls);
     caseOut('view', body);
     expect([fnv(body), body.length]).toEqual(['a7201a98', 82241319]);
-    // 場合が中身を通っているか：18の関数が全部呼ばれ、文字を置き、粒子を出し、どれも止まらない
+    // 場合が中身を通っているか：17の関数が全部呼ばれ、文字を置き、粒子を出し、どれも止まらない
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.dn > 0).length).toBeGreaterThan(2000);
     expect(calls.filter((c) => c.pN > 0).length).toBeGreaterThan(50);
