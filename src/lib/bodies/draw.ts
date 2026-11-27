@@ -22,11 +22,10 @@ import {
   lichAura,
   nagaAura,
   salamanderAura,
-  tailSwish,
   shadowAura,
   spiderAura,
 } from './auras.ts';
-import { KRAKEN, KRAKEN_SINK, KRAKEN_WATER, dragonSleepForm, krakenHead } from './beasts.ts';
+import { KRAKEN, KRAKEN_SINK, KRAKEN_WATER, dragonSleepForm, krakenHead, tailSwish } from './beasts.ts';
 import type { Body } from './kit.ts';
 import { beastSleep } from './lords.ts';
 

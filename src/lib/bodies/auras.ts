@@ -16,7 +16,7 @@ import { type Monster, SND, adv, clock, here, player, ui, vfx } from '../state.t
 import { BASE_H, CELL, MW } from '../world.ts';
 import { buildForm } from './build.ts';
 import type { Body } from './kit.ts';
-import { salaBody } from './beasts.ts';
+import { salaBody, tailSwish } from './beasts.ts';
 import { shadowSerpentScale } from './bosses.ts';
 import { KRAKEN_T } from './lords.ts';
 
@@ -539,9 +539,6 @@ export function houndAura(m: Mon & { form: Body }, _t: number): void {
   }
 }
 
-/** サラマンダーの尾の、左右の振れ（形の中の横 x のずれ）。d は尾の付け根からの距離（付け根で 0、先ほど大きい）。歩くと大きく振る（位相 ph と歩く度合い moving が無い時は 0） */
-export const tailSwish = (m: { ph?: number; moving?: number }, t: number, d: number): number =>
-  Math.sin(t * 4 - d * 5 + (m.ph ?? 0)) * (0.04 + 0.05 * (m.moving || 0)) * d;
 /** サラマンダー：尾の先の炎から、ときどき火の粉（尾と一緒に振れる） */
 export function salamanderAura(m: Mon, t: number): void {
   if (toPlayer(m) > 24 || mr() > 0.08) return;
@@ -552,7 +549,8 @@ export function salamanderAura(m: Mon, t: number): void {
     lx = tailSwish(m, t, salaBody.tailZ - salaBody.z0) * sc;
   spawn(
     m.x + lx * cy + lz * sy,
-    0.12,
+    // 歩く時は、炎と一緒に上下する（drawMonster0 の bob と同じ）
+    0.12 + Math.abs(Math.sin(m.walk ?? 0)) * 0.04 * (m.moving || 0) * sc,
     m.z - lx * sy + lz * cy,
     (mr() - 0.5) * 0.2,
     -0.1,
