@@ -59,6 +59,56 @@ describe('音の土台', () => {
       globalThis.window = saved;
     }
   });
+  it('先に作った部品（sndPrep）は、sndInit までは SND に入れず音量も上げない。sndInit で入れ、音量を上げ始め、止まっていた部品を動かす', () => {
+    const saved = globalThis.window;
+    try {
+      fresh();
+      const log = [];
+      // 止める関数を持つ部品（偽の Web Audio には無いので足す）。先に作った部品は、押すまで止めておく
+      globalThis.window = {
+        AudioContext: function SuspendableAudioContext() {
+          const c = fakeAudio(log);
+          c.suspend = () => {
+            log.push(['suspend']);
+            c.state = 'suspended';
+            return Promise.resolve();
+          };
+          return c;
+        },
+      };
+      expect(A.sndState()).toBe('');
+      A.sndPrep();
+      expect(log).toContainEqual(['suspend']);
+      expect(A.sndState()).toBe('suspended');
+      expect([SND.ctx, SND.master, Object.keys(SND.L)]).toEqual([null, null, []]);
+      expect(log.filter((l) => l[2] === 'setTargetAtTime' || l[0] === 'resume')).toEqual([]);
+      expect(A.sndReady()).toBe(null);
+      A.sndPrep(); // 2回目は作らない
+      const made = log.length;
+      log.length = 0;
+      A.sndInit();
+      expect(Object.keys(SND.L)).toEqual(['rumble', 'water', 'fire', 'wind', 'drone']);
+      expect(log).toEqual([['gain0', 'gain', 'setTargetAtTime', 0.5, 12.5, 1.5], ['resume']]);
+      expect(made).toBeGreaterThan(20);
+      // 音が鳴り始めた後は、先に作らない
+      log.length = 0;
+      A.sndPrep();
+      expect(log).toEqual([]);
+      // 先に作れなかった時は、押した時（sndInit）に作り直す
+      fresh();
+      globalThis.window = {
+        AudioContext: function BrokenAudioContext() {
+          throw new Error('作れない');
+        },
+      };
+      A.sndPrep();
+      globalThis.window = { AudioContext: fakeAudioClass([]) };
+      A.sndInit();
+      expect(Object.keys(SND.L)).toEqual(['rumble', 'water', 'fire', 'wind', 'drone']);
+    } finally {
+      globalThis.window = saved;
+    }
+  });
   it('作る途中で止まったら、作りかけの音の部品を閉じ、部品を全部空に戻す。次は、はじめから作り直せる', async () => {
     const saved = globalThis.window;
     try {
@@ -135,7 +185,7 @@ describe('移す前と同じ', () => {
       lines = all.split('\n');
     // 偽の Web Audio が作れずに、どの音も鳴らないまま比べていないか（1440 の場合のうち 1421 で音が鳴る）
     expect([lines.length, lines.filter((l) => l.includes('"start"')).length]).toEqual([1440, 1421]);
-    expect([fnv(all), all.length]).toEqual(['b5c61e76', 4251819]);
+    expect([fnv(all), all.length]).toEqual(['c0f1dabc', 4251819]);
     expect(all.includes('"Math.random"')).toBe(false); // 音は見た目の乱数を引かない（引くと、音を変えただけで粒子などの並びがずれる）
     expect(JSON.stringify([player, SND.lv, SND.on, SND.ctx])).toBe(before); // 書き換えた状態は元に戻る
   }, 30000);

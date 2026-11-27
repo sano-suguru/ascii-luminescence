@@ -50,6 +50,7 @@ initFitIntro();
 // the title panel can be rebuilt, so its [迷宮に入る] is caught on the panel itself
 document.getElementById('intropanel').addEventListener('click',e=>{
   if(!(e.target&&e.target.closest&&e.target.closest('#enter')))return;
+  const t0=performance.now();
   sndInit();
   const sv=(document.getElementById('seedIn').value||'').trim();
   let regen=false;
@@ -60,7 +61,7 @@ document.getElementById('intropanel').addEventListener('click',e=>{
   adv.dead=false; { const de=document.getElementById('death'); if(de)de.classList.remove('show','won'); }
   adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(saved.META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:clock.time,maxDepth:here.depth,book0:saved.BOOK.size,beastsNew:0}; resetRunes();
   if(regen)newLevel();
-  ui.started=true; document.body.classList.add('started'); if(here.D)showStratum(here.D.stratum); if(ui.touch)touchTip(); else { setHelp(true); ui.helpT=25; } ui.introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume();
+  ui.started=true; document.body.classList.add('started'); if(here.D)showStratum(here.D.stratum); if(ui.touch)touchTip(); else { setHelp(true); ui.helpT=25; } ui.introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume(); took('start',t0);
 });
 // 指で遊ぶ時は、始めに操作の案内（キーボードの説明）を出さず、初めて指で迷宮に入った時だけ、左下の伝言に一言を出す（記録 META の touchTip で1回だけ。
 // 階に入った時の伝言の後に出るよう、1.5秒待つ）
@@ -111,10 +112,10 @@ function onKeyDown(e){
   if(isPaused())return;
   if(ui.started&&e.code==='KeyM'){ sndToggle(); }
   if(ui.started&&e.code==='KeyH'){ cycleUi(); }
-  if(adv.dead&&(e.code==='Enter'||e.code==='KeyR')){ newRun(); return; }
+  if(adv.dead&&(e.code==='Enter'||e.code==='KeyR')){ startNewRun(); return; }
   if(ui.started&&e.code==='Space'){ startRoll(); }
   if(ui.started&&e.code==='KeyP'){ ui.perfOn=!ui.perfOn; renderStatus(); }
-  if(ui.started&&e.code==='KeyJ'){ ui.chronOn=!ui.chronOn; ui.helpOn=false; ui.helpT=0; const el=document.getElementById('help'); if(el){ if(ui.chronOn)renderChron(); el.classList.toggle('off',!ui.chronOn); } }
+  if(ui.started&&e.code==='KeyJ'){ ui.chronOn=!ui.chronOn; ui.helpOn=false; ui.bookOn=false; ui.helpT=0; const el=document.getElementById('help'); if(el){ if(ui.chronOn)renderChron(); el.classList.toggle('off',!ui.chronOn); } }
   if(ui.started&&(e.key==='?'||e.code==='Slash')){ setHelp(!ui.helpOn); ui.helpT=0; }
 }
 // 装備の画面を開け閉めする（Tab とタッチの [装備]）。祭壇の画面が開いていれば、閉じて装備の画面を開く

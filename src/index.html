@@ -29,7 +29,7 @@ body.started #touchbar{right:auto;left:50%;transform:translateX(-50%);}
 #touchbar .play{display:none;}
 body.started:not(.over) #touchbar .play{display:block;}
 body.started #fsB{display:none;}
-/* レベルアップと祭壇の画面の間は、[装備] [メニュー] を隠す（画面の見出しに重なる。どちらも画面の中のボタンで閉じる。body.choosing は 18-level-player.js・21-altars-heal.js） */
+/* レベルアップと祭壇の画面の間は、[装備] [メニュー] を隠す（画面の見出しに重なる。どちらも画面の中のボタンで閉じる。body.choosing は src/lib/panels.ts） */
 body.choosing #touchbar{display:none;}
 /* 指の操作（src/lib/touchpad.ts）：探索中で、止まっていない時だけ。右下に [右手] [左手]、左上の状態の表示の下に [回避]。スティックは左半分に触れた所に出る */
 #tctl{display:none;}
