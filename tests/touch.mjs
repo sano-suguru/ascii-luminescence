@@ -15,6 +15,7 @@
 //      メニューを開いている間は、スティックで動かない・レベルアップと祭壇の画面は、1回目のタップで選んで説明を出し、2回目で決める
 //  10. 図鑑を指で動かす：案内が指の時の文言か・枠が画面の上半分に掛からないか・1本指のドラッグで回り、触れている間はひとりでに回らない・2本指で広げると寄り、[向きを戻す] で戻る
 //  11. 縦向き：探索中だけ、止めて横にする案内を出し、横に戻すと続く（タイトルと、マウスで遊んでいる時は出さない）
+//  12. ホーム画面に置く案内：iPhone の Safari で、ホーム画面から開いていない時だけタイトルに出る
 //   7. 診断の記録（src/lib/diag.ts）：偽の window.claude（Artifact の中の真似）で、持ち主なら端末・できごと・速さ・かかった時間・遅いフレームを db に書き、持ち主でなければ書かない。
 //      書き込みの途中に頼まれた分（ページが隠れた時）も、途中の分が終わってから書く
 import { FIT_MIN } from '../src/lib/layout.ts';
@@ -655,17 +656,22 @@ await withBrowser(async ({ browser, base }) => {
     const turnShown = () => E(() => getComputedStyle(document.getElementById('turn')).display !== 'none');
     const LAND = { width: 750, height: 342 },
       PORT = { width: 390, height: 664 };
+    // 大きさを変えた後、resize の事件が届くまで待つ（ブラウザが次に描く時に出すので、すぐには届かない）
+    const resize = async (size) => {
+      await pg.setViewportSize(size);
+      for (let i = 0; i < 50 && (await E(() => innerWidth)) !== size.width; i++) await new Promise((ok) => setTimeout(ok, 100));
+      await new Promise((ok) => setTimeout(ok, 300));
+      await advance(pg, 0.1);
+    };
     // タイトルでは、縦でも出さない
     await pg.touchscreen.tap(10, 10);
-    await pg.setViewportSize(PORT);
-    await advance(pg, 0.1);
+    await resize(PORT);
     if (await turnShown()) errs.push('縦向き：タイトルで横にする案内が出た');
-    await pg.setViewportSize(LAND);
+    await resize(LAND);
     await tapEnter(pg);
     await advance(pg, 2);
     // 探索中に縦にすると、止まって案内が出る。横に戻すと消えて、また進む
-    await pg.setViewportSize(PORT);
-    await advance(pg, 0.1);
+    await resize(PORT);
     let a = await E(() => __test.state());
     await advance(pg, 1);
     let b = await E(() => __test.state());
@@ -673,8 +679,7 @@ await withBrowser(async ({ browser, base }) => {
       errs.push(
         `縦向き：探索中に縦にしても止まらないか、案内が出ない（案内 ${await turnShown()}、止まる ${a.paused}、時刻 ${a.time} → ${b.time}）`,
       );
-    await pg.setViewportSize(LAND);
-    await advance(pg, 0.1);
+    await resize(LAND);
     a = await E(() => __test.state());
     await advance(pg, 1);
     b = await E(() => __test.state());
@@ -683,10 +688,28 @@ await withBrowser(async ({ browser, base }) => {
     // マウスで遊んでいる時は、縦長の窓でも止めない
     await pg.mouse.move(300, 100);
     await pg.mouse.move(310, 110);
-    await pg.setViewportSize(PORT);
-    await advance(pg, 0.1);
+    await resize(PORT);
     a = await E(() => __test.state());
     if ((await turnShown()) || a.paused) errs.push('縦向き：マウスで遊んでいる時に、縦長の窓で止まった');
+    await pg.context().close();
+  }
+
+  // ---------------------------------------------------------------- 12. ホーム画面に置く案内（iPhone の Safari で、ホーム画面から開いていない時だけ）
+  for (const [standalone, want] of [
+    [false, true],
+    [true, false],
+    [undefined, false],
+  ]) {
+    const pg = await newPage(browser, errs, { device: 'iPhone 13 landscape' });
+    // navigator.standalone は iPhone・iPad の Safari にだけある（ホーム画面から開くと true）。無い時は Chromium のまま
+    if (standalone !== undefined)
+      await pg.addInitScript(
+        (v) => Object.defineProperty(Navigator.prototype, 'standalone', { configurable: true, get: () => v }),
+        standalone,
+      );
+    await openTest(pg, base, 'seed=202');
+    const has = await pg.evaluate(() => document.getElementById('intropanel').innerText.includes('ホーム画面に追加'));
+    if (has !== want) errs.push(`ホーム画面の案内：navigator.standalone が ${standalone} の時に、案内が${has ? '出た' : '出ない'}`);
     await pg.context().close();
   }
 

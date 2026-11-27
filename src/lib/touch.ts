@@ -29,6 +29,12 @@ export function confirmTap(key: string): boolean {
   return false;
 }
 
+/**
+ * タイトルに、ホーム画面に置く案内を出すか。iPhone・iPad の Safari で、ホーム画面から開いていない時だけ
+ * （navigator.standalone はその Safari にだけあり、ホーム画面から開くと true）。iframe の中（claude.ai の Artifact など）では出さない（置けないため）
+ */
+export const homeHint = (): boolean => Reflect.get(navigator, 'standalone') === false && window.top === window;
+
 /** 指で遊んでいる時は finger を、マウスとキーボードの時は mouse を返す（操作の説明を、遊び方で書き分ける） */
 export const byInput = (mouse: string, finger: string): string => (ui.touch ? finger : mouse);
 
