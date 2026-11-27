@@ -2,7 +2,7 @@
 // Artifact のデータベース（db の機能）に書く。
 // Claude が ArtifactData の道具で読んで、本物の端末での様子を確かめるため（スマホ対応の間）。
 // window.claude.use が無い所（ふつうの公開用の版・テスト）や、持ち主でない人が開いた時は、何もしない。乱数は使わない（ゲームの動きを変えない）。
-// 記録は、開くたびに1件（diag/<開いた時刻>）。書き込みは、変わった時だけ、10秒に1回まで（ページを離れる時も1回）。
+// 記録は、開くたびに1件（diag/<開いた時刻>）。書き込みは、変わった時だけ、10秒に1回まで（ページを離れる時と、自動で試し終えた時も1回）。
 // 公開する時は、capabilities に db（diag は持ち主だけが読み書き）と user を渡す（CLAUDE.md の「Artifact に公開する」）。
 import { nth } from './array.ts';
 import { sndState } from './audio.ts';
@@ -201,7 +201,10 @@ export async function initDiag(onOwner: () => void): Promise<void> {
   setInterval(() => {
     const now = flags();
     for (const [k, v] of Object.entries(now)) if (last[k] !== v) event(k, v);
+    // 自動で試し終えた（止めた時も）：10秒ごとを待たずに、その場で書く（終わってすぐページを閉じると、終わった印が残らなかった）
+    const ended = now['auto'] === 'done' && last['auto'] !== 'done';
     last = now;
+    if (ended) flush();
   }, 250);
   window.addEventListener(
     'pointerdown',
