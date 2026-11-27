@@ -931,7 +931,7 @@ export function fireBeam(h: Side, dirIn: V3 | null, orgIn: readonly number[] | n
       z = must(oz),
       left = 12 * (tv(sp, 'length') ?? NaN),
       bounces = sp.aff.bounce || 0;
-    const seg = [[x, y, z]],
+    const seg: [number, number, number][] = [[x, y, z]],
       hitSet = new Set<Mob>();
     while (left > 0) {
       const nx = x + d[0] * 0.25,
