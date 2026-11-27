@@ -23,7 +23,8 @@
 //  18. 敵に攻撃を当てても、画面が白く飛ばない（トロルに照準を合わせ、すぐ近くで小剣を当てる。光っている間の画面全体の眩しい画素が 25% 以下）。
 //      当たった光は残っている（体の範囲の明るさが、当てる前より 1.1 倍を越えて上がる）。数え方は tools/glare.mjs（pnpm glare）と同じ
 //  19. 場面を作る道具：__test.elem で手に性質を付け替えられる（下の HUD の手の名前に出る）。__test.hold で止めた生き物は、すぐ隣でも歩かず攻撃せず、言った向きへ回り、
-//      放すとまた動く。__test.cam で目と同じ所に置いたカメラは目と同じに写し、後ろへ下げると、見ている点を真ん中にしたまま小さく写す。null で目に戻る
+//      放すとまた動く。__test.cam で目と同じ所に置いたカメラは目と同じに写し、前へ出すと、見ている点を真ん中にしたまま大きく写す。null で目に戻る。
+//      岩の中には置かない。置いている間も、ゲームの一歩の間のカメラは目のまま（術はプレイヤーから出て、当たる）
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { PNG } from 'pngjs';
 import { withBrowser, newPage, openTest, advance, frames, aimAt, strike } from './lib.mjs';
@@ -819,28 +820,58 @@ async function sceneToolChecks(pg, base) {
   });
   await pg.evaluate((eye) => __test.cam(eye), eye);
   const v1 = await view();
-  const back = await pg.evaluate((eye) => {
+  const fwd = await pg.evaluate((eye) => {
     const [x, y, z] = eye.pos,
       [ax, , az] = eye.at,
       d = Math.hypot(ax - x, az - z);
-    return __test.cam({ pos: [x - ((ax - x) / d) * 3, y, z - ((az - z) / d) * 3], at: eye.at });
+    return __test.cam({ pos: [x + ((ax - x) / d) * 2, y, z + ((az - z) / d) * 2], at: eye.at });
   }, eye);
   const v2 = await view();
+  // 岩の中には置かない（プレイヤーのマスから一番近い壁のマスの真ん中）
+  const inRock = await pg.evaluate(() => {
+    const s = __test.state(),
+      { w, h } = __test.size();
+    let best = null;
+    for (let i = 0; i < w * h; i++) {
+      const c = __test.cell(i);
+      if (c.floor || c.water || c.lava) continue;
+      const d = Math.hypot(c.x - s.pos[0], c.z - s.pos[1]);
+      if (!best || d < best[0]) best = [d, c];
+    }
+    return __test.cam({ pos: [best[1].x, 1.5, best[1].z], at: [s.pos[0], 1.5, s.pos[1]] });
+  });
   await pg.evaluate(() => __test.cam(null));
   const v3 = await view();
+  // 置いている間も、ゲームの一歩の外のカメラは目のまま。右手の光弾で撃つと、トロルに当たる
+  await pg.evaluate((fwd) => __test.cam(fwd), fwd);
+  const during = await pg.evaluate(() => __test.cam());
+  await pg.evaluate(() => __test.equip('R', 'mstaff'));
+  let hit = null;
+  try {
+    hit = await strike(pg, 'R', 'T');
+  } catch (e) {
+    errs.push(`19：カメラを置いている間に撃っても当たらない（${e.message}）`);
+  }
+  await pg.evaluate(() => __test.cam(null));
   const near = (a, b, px) => a && b && Math.abs(a.x - b.x) <= px && Math.abs(a.y - b.y) <= px;
-  if (!back) errs.push('19：__test.cam がカメラの指定を返さない');
+  if (!fwd || typeof fwd === 'string' || !fwd.clear)
+    errs.push(`19：トロルへ 2 前へ出したカメラを置けないか、トロルまでの線が岩を通ると言う（${JSON.stringify(fwd)}）`);
   if (!near(v0, v1, 2))
     errs.push(`19：目と同じ所に置いたカメラで、写り方が変わる（目 ${JSON.stringify(v0)}、置いたカメラ ${JSON.stringify(v1)}）`);
-  // 下げると小さく写り、見ている点（画面の真ん中）からのずれも、同じ割合で縮む（体の範囲の真ん中は、見ている点の真上とは限らないので）
+  // 前へ出すと大きく写り、見ている点（画面の真ん中）からのずれも、同じ割合で伸びる（体の範囲の真ん中は、見ている点の真上とは限らないので）
   const k = v0 && v2 ? v2.h / v0.h : 0;
-  if (!(k > 0 && k < 0.85) || Math.abs(v2.x - 480 - (v0.x - 480) * k) > 6 || Math.abs(v2.y - 270 - (v0.y - 270) * k) > 6)
+  if (!(k > 1.2) || Math.abs(v2.x - 480 - (v0.x - 480) * k) > 6 || Math.abs(v2.y - 270 - (v0.y - 270) * k) > 6)
     errs.push(
-      `19：3 後ろへ下げたカメラで、小さく写らないか、写る所が見ている点からずれる（目 ${JSON.stringify(v0)}、下げたカメラ ${JSON.stringify(v2)}）`,
+      `19：2 前へ出したカメラで、大きく写らないか、写る所が見ている点からずれる（目 ${JSON.stringify(v0)}、前へ出したカメラ ${JSON.stringify(v2)}）`,
     );
+  if (Math.hypot(during.pos[0] - eye.pos[0], during.pos[1] - eye.pos[1], during.pos[2] - eye.pos[2]) > 0.05)
+    errs.push(
+      `19：カメラを置いている間に、ゲームの一歩の外のカメラが目でない（目 ${JSON.stringify(eye.pos)}、${JSON.stringify(during.pos)}）`,
+    );
+  if (typeof inRock !== 'string') errs.push(`19：岩の中にカメラを置けた（${JSON.stringify(inRock)}）`);
   if (!near(v0, v3, 2)) errs.push(`19：__test.cam(null) で目に戻らない（置く前 ${JSON.stringify(v0)}、戻した後 ${JSON.stringify(v3)}）`);
   console.log(
-    `19：トロルの写る所 目 ${JSON.stringify(v0)}・同じ所のカメラ ${JSON.stringify(v1)}・3 下げたカメラ ${JSON.stringify(v2)}・戻した後 ${JSON.stringify(v3)}`,
+    `19：トロルの写る所 目 ${JSON.stringify(v0)}・同じ所のカメラ ${JSON.stringify(v1)}・2 前へ出したカメラ ${JSON.stringify(v2)}・戻した後 ${JSON.stringify(v3)}。置いている間に撃って ${hit ? hit.frame + ' フレーム目に当たった' : '当たらない'}`,
   );
 }
 

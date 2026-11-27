@@ -43,11 +43,16 @@ const tickRandOn=()=>{ const g=ui.gallery; return !(g&&g.mode==='beast'&&g.m); }
 const skipPhases=new Set();
 const inPhase=(name,fn)=>skipPhases.has(name)?undefined:tickRandOn()?keyedPhase(keyedRand('tick '+name,adv.runSeed,clock.frame),fn):fn();
 const inMobPhase=(name,m,fn)=>skipPhases.has(name)?undefined:tickRandOn()?keyedPhase(keyedRand('tick '+name,levelSeed(),m.seq,clock.frame),fn):fn();
-// テスト用モードの __test.cam で置いたカメラ（{pos, at}。null ならふだんどおり、プレイヤーの目か3人称のカメラ）。プレイヤーの段の後に置き直す。
-// 1人称のままだと、術はカメラの所から出る（照準の元 aimOrigin が1人称ではカメラの位置なので）。プレイヤーの姿を写して撃つ時は tps で3人称にする
-let testCam=null, testCamPrev=null; // testCamPrev：cam の tps で3人称にする前の視点（戻す時に使う）
+// テスト用モードの __test.cam で置いたカメラ（{pos, at}。null ならふだんどおり）。描く間（見える区切りを選ぶ所と描く所）だけ、このカメラにする。
+// ゲームの一歩の間は目のカメラのままなので、術の出る所・手元の灯り・照準・見た時の説明は、ふだんどおりプレイヤーの目から。
+// 手元の武器と詠唱の円は目の前に描くので、離れたカメラから写すと宙に浮く（要らなければ __test.skipPhase(['hands','castfx'])）。
+// 生き物の光り方の強さ（近いほど弱める）と、こちらを向く飾りは、目からの距離と向きで決まる
+let testCam=null;
 const placeTestCam=()=>{ const [x,y,z]=testCam.pos, [ax,ay,az]=testCam.at; gfx.camera.position.set(x,y,z);
   gfx.camera.rotation.set(Math.atan2(ay-y,Math.hypot(ax-x,az-z)),Math.atan2(-(ax-x),-(az-z)),0); };
+// fn の間だけ、置いたカメラにする（置いていなければ、そのまま fn）
+const withTestCam=fn=>{ if(!testCam)return fn(); const c=gfx.camera, p=c.position.clone(), r=c.rotation.clone();
+  placeTestCam(); c.updateMatrixWorld(); try{ return fn(); } finally{ c.position.copy(p); c.rotation.copy(r); c.updateMatrixWorld(); } };
 function tick(raw,draw){
   if(isPaused()&&ui.started){ if(frame.stillDrawn)return; frame.stillDrawn=true; } else frame.stillDrawn=false; clock.frame++; const dt=isPaused()?0:clamp(raw,0,0.05)*timeScale();
   clock.time+=dt; const t=clock.time;
@@ -57,7 +62,7 @@ function tick(raw,draw){
     if(here.trans.phase==='out'){ here.fade=1-here.trans.t/0.8; if(here.trans.t>=0.8){ if(here.trans.run)newRun(); else { if(here.trans.regen)adv.runSeed=(Math.random()*1e9)>>>0; else advance(here.trans.go); newLevel(); } here.trans={phase:'in',t:0}; here.fade=0; } }
     else { here.fade=here.trans.t/1.3; if(here.trans.t>=1.3){ here.trans=null; here.fade=1; } }
   } else here.fade=Math.min(1,here.fade+dt*0.8); });
-  inPhase('player',()=>{ updatePlayer(dt); updateStealth(dt); updateStatuses(dt); }); if(testCam)placeTestCam();
+  inPhase('player',()=>{ updatePlayer(dt); updateStealth(dt); updateStatuses(dt); });
   for(const m of here.monsters)if(!m.galShow&&!m.ty.dummy)inMobPhase('mob',m,()=>updateMonster(m,dt*monTimeK(m),t));
   if(here.monsters.some(m=>m.dead))here.monsters=here.monsters.filter(m=>!m.dead);
   hudInfo.pfFrames++; hudInfo.pfT+=raw; if(hudInfo.pfT>=0.5){ hudInfo.pfFps=Math.round(hudInfo.pfFrames/hudInfo.pfT); hudInfo.pfFrames=0; hudInfo.pfT=0; if(ui.perfOn)renderStatus(); }
@@ -78,8 +83,7 @@ function tick(raw,draw){
   inPhase('cross',()=>updateCross(raw));
   inPhase('projs',()=>updateProjs(dt));
   inPhase('sound',()=>sndUpdate(dt)); inPhase('events',()=>updateEvents(dt,t));
-  cullChunks();
-  if(draw)composer.render(dt);
+  withTestCam(()=>{ cullChunks(); if(draw)composer.render(dt); });
   if(TEST)return; // keep the resolution fixed in tests
   // 速さに合わせて画質を下げる（src/lib/quality.ts）。数えるのは探索中だけ（階を移る途中・止まっている間・タイトルと図鑑は数えない。
   // 階を作る一瞬の遅れで下がらないように）。数えないフレームが来たら、そこから3秒は様子を見てから数え直す
@@ -141,11 +145,15 @@ if(TEST)window.__test={
   // n 番目（0 から。state().monsters の順）の生き物を、その場に止める（{yaw, walk}：yaw は向く向き（体の向き m.yaw と同じ、atan2(x の差, z の差)。無ければ今の向きのまま）、
   // walk なら足踏みする。止めている間は歩かず、攻撃もしない。気づく・当たってひるむ・吹き飛ぶ・燃えるなどは、ふだんどおり）。null で放す。止めたかを返す
   hold(n,o){ const m=here.monsters[n]; if(!m)return false; m.hold=o?{...(o.yaw!==undefined?{yaw:o.yaw}:{}),walk:!!o.walk}:null; return true; },
-  // カメラを pos（[x,y,z]）に置いて at（[x,y,z]）を見る（毎 tick 置き直す）。tps が真なら3人称にして、プレイヤーの姿も描く（術はプレイヤーから出る）。
-  // null で元に戻す（3人称にしていたら、前の視点に戻す）。今のカメラの指定を返す。引数なしなら何も変えず、今のカメラの位置と向き {pos, yaw, pitch} を返す
+  // 描く時のカメラを pos（[x,y,z]）に置いて at（[x,y,z]）を見る（ゲームの一歩は目のカメラのまま。上の testCam）。pos が岩の中（壁・地図の外・天井より上）か、
+  // 横に 0.4 以内に壁がある時は置かず、わけの文を返す。置いたら {pos, at, clear}（clear は pos から at までの線が岩を通らないか）を返す。
+  // null で目に戻す。引数なしなら何も変えず、目のカメラの位置と向き {pos, yaw, pitch} を返す
   cam(o){ if(o===undefined){ const p=gfx.camera.position; return {pos:[p.x,p.y,p.z],yaw:gfx.camera.rotation.y,pitch:gfx.camera.rotation.x}; }
-    if(o){ if(o.tps&&ui.camMode!=='tps'){ testCamPrev=ui.camMode; ui.camMode='tps'; ui.camPos=null; } testCam={pos:o.pos.slice(),at:o.at.slice()}; placeTestCam(); }
-    else { testCam=null; if(testCamPrev!==null){ ui.camMode=testCamPrev; ui.camPos=null; testCamPrev=null; } } return testCam; },
+    if(!o){ testCam=null; return null; }
+    const [x,y,z]=o.pos, [ax,ay,az]=o.at;
+    for(const [dx,dz] of [[0,0],[0.4,0],[-0.4,0],[0,0.4],[0,-0.4]])if(rockAt(x+dx,y,z+dz))return 'camera in rock: '+JSON.stringify(o.pos);
+    let clear=true; for(let k=1;k<40&&clear;k++){ const f=k/40; if(rockAt(x+(ax-x)*f,y+(ay-y)*f,z+(az-z)*f))clear=false; }
+    testCam={pos:o.pos.slice(),at:o.at.slice()}; return {...testCam,clear}; },
   // true when the hand started charging, or attacked at once (a weapon with no charge, such as the short sword)
   press(h){ const r0=player.recover||0; beginCast(h); return !!gear.castSt||(player.recover||0)>r0; },
   release(h){ releaseCast(h); },
@@ -236,9 +244,10 @@ if(TEST)window.__test={
     try{ gfx.drawBodyOnly=true; if(m.ty.habitat==='deep')drawTentacles(m,clock.time); drawMonster0(m,clock.time); d1=buf.dn; for(let k=d0;k<d1;k++)pts.push([dPos[k*3],dPos[k*3+1],dPos[k*3+2]]); }
     finally{ gfx.drawBodyOnly=false; buf.dn=d0; buf.pN=p0; }
     if(!pts.length)return {key,x:m.x,z:m.z,glyphs:0};
-    gfx.camera.updateMatrixWorld(); const W=canvas.clientWidth, H=canvas.clientHeight, v=new T.Vector3(); let out=0, y0=1e9, y1=-1e9; const sb=[1e9,1e9,-1e9,-1e9];
-    for(const [x,y,z] of pts){ y0=Math.min(y0,y); y1=Math.max(y1,y); v.set(x,y,z).project(gfx.camera); const sx=(v.x+1)/2*W, sy=(1-v.y)/2*H;
-      if(v.z>1||sx<0||sx>W||sy<0||sy>H){ out++; if(v.z>1)continue; } sb[0]=Math.min(sb[0],sx); sb[1]=Math.min(sb[1],sy); sb[2]=Math.max(sb[2],sx); sb[3]=Math.max(sb[3],sy); }
+    // 画面の範囲は、描いたカメラ（__test.cam で置いていれば、そのカメラ）で数える
+    const W=canvas.clientWidth, H=canvas.clientHeight, v=new T.Vector3(); let out=0, y0=1e9, y1=-1e9; const sb=[1e9,1e9,-1e9,-1e9];
+    withTestCam(()=>{ gfx.camera.updateMatrixWorld(); for(const [x,y,z] of pts){ y0=Math.min(y0,y); y1=Math.max(y1,y); v.set(x,y,z).project(gfx.camera); const sx=(v.x+1)/2*W, sy=(1-v.y)/2*H;
+      if(v.z>1||sx<0||sx>W||sy<0||sy>H){ out++; if(v.z>1)continue; } sb[0]=Math.min(sb[0],sx); sb[1]=Math.min(sb[1],sy); sb[2]=Math.max(sb[2],sx); sb[3]=Math.max(sb[3],sy); } });
     const c=(a,lo,hi)=>Math.round(Math.max(lo,Math.min(hi,a)));
     return {key,name:m.ty.name,form:m.ty.form,scale:m.ty.scale,x:m.x,z:m.z,glyphs:pts.length,world:{y0:+y0.toFixed(2),y1:+y1.toFixed(2)},ceil:+ceilAt(m.x,m.z).toFixed(2),
       screen:{x0:c(sb[0],0,W),y0:c(sb[1],0,H),x1:c(sb[2],0,W),y1:c(sb[3],0,H)},cut:+(out/pts.length).toFixed(3)}; },

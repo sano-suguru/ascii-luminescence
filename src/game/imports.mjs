@@ -68,7 +68,7 @@ import { addLooks } from '../lib/bodies/build.ts';
 import { bogAura, dragonAura, drawMorph, houndAura, krakenAura, lichAura, nagaAura, salamanderAura, shadowAura, spiderAura, transformShadow } from '../lib/bodies/auras.ts';
 import { P, dCol, dPar, dPos, dyn, initDust, ptCol, ptGly, ptPos, ptSize, spawn } from '../lib/particles.ts';
 import { updateParticles } from '../lib/motes.ts';
-import { drawSection, updateAtmosphere, updateAvatar, updateSectionAir } from '../lib/camera.ts';
+import { drawSection, rockAt, updateAtmosphere, updateAvatar, updateSectionAir } from '../lib/camera.ts';
 import { crumble, debrisInfo, updateDebris } from '../lib/debris.ts';
 import { drawMonster, drawMonster0, drawTentacles } from '../lib/bodies/draw.ts';
 import { look } from '../lib/look.ts';
