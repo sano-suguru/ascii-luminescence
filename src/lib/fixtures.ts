@@ -13,7 +13,7 @@ import { sChime, sCreak, sHiss, sSqueak } from './audio.ts';
 import { G, RUNESET } from './glyphs.ts';
 import { drawWave, drawZones } from './fx.ts';
 import { allRunes } from './gear.ts';
-import { ceilAt, cellLight } from './lightmap.ts';
+import { ceilAt, cellLight, litScale } from './lightmap.ts';
 import { msg } from './log.ts';
 import { dyn, spawn } from './particles.ts';
 import { clamp, mulberry32 } from './rng.ts';
@@ -1244,18 +1244,20 @@ export function drawDoors(_t: number, dt: number): void {
       bZ = -Math.sin(d.yaw);
     const hx = d.bx - bX * 0.95,
       hz = d.bz - bZ * 0.95;
-    // cellLight は毎回同じ配列を返すので、1つ目は先に読んでおく
+    // cellLight は毎回同じ配列を返すので、1つ目は先に読んでおく。どちらのマスの明かりも、強い所で頭打ちにする（src/lib/lightmap.ts の LIT_MAX）
     const l1 = cellLight(((d.i % MW) + 0.5) * CELL, (((d.i / MW) | 0) + 0.5) * CELL),
-      lr = l1[0],
-      lg = l1[1],
-      lb = l1[2];
-    const l2 = cellLight(((d.j % MW) + 0.5) * CELL, (((d.j / MW) | 0) + 0.5) * CELL);
+      k1 = litScale(l1),
+      lr = l1[0] * k1,
+      lg = l1[1] * k1,
+      lb = l1[2] * k1;
+    const l2 = cellLight(((d.j % MW) + 0.5) * CELL, (((d.j / MW) | 0) + 0.5) * CELL),
+      k2 = litScale(l2);
     const lan = Math.max(0, 1 - dd / 8);
     const la = lan * lan * 0.8;
     const k0 = 0.07 + la,
-      wr = 0.62 * (k0 + (lr + l2[0]) * 0.2),
-      wg = 0.38 * (k0 + (lg + l2[1]) * 0.2),
-      wb = 0.22 * (k0 + (lb + l2[2]) * 0.2);
+      wr = 0.62 * (k0 + (lr + l2[0] * k2) * 0.2),
+      wg = 0.38 * (k0 + (lg + l2[1] * k2) * 0.2),
+      wb = 0.22 * (k0 + (lb + l2[2] * k2) * 0.2);
     for (let row = 0; row < 9; row++)
       for (let col = 0; col < 6; col++) {
         const u = (col + 0.5) * (1.9 / 6),

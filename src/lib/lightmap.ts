@@ -39,6 +39,14 @@ export function cellLight(x: number, z: number): [number, number, number] {
   return out;
 }
 
+/**
+ * 生き物の体・倒れて崩れた文字・扉の文字に足すまわりの明かり（cellLight）の頭打ち。一番強い色が LIT_MAX を越えたら、色の比を保って LIT_MAX まで縮める。
+ * 燃えているマスが固まった所では火の明かりが 10 を越え、光のにじみで白く飛ぶため（ふだんの灯りは床のマスの 96% ほどが 2 以下で、変わらない）
+ */
+export const LIT_MAX = 2;
+/** cellLight の明かり l に掛ける倍率（一番強い色が LIT_MAX 以下なら 1） */
+export const litScale = (l: readonly [number, number, number]): number => LIT_MAX / Math.max(l[0], l[1], l[2], LIT_MAX);
+
 /** x・z のマスの天井の高さ。マップの外は BASE_H。座標が NaN の時は、範囲の確かめをすり抜けて undefined（呼ぶ側の計算で NaN になる） */
 export const ceilAt = (x: number, z: number): number | undefined => {
   const cx = Math.floor(x / CELL),
