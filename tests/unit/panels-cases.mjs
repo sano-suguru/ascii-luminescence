@@ -198,7 +198,7 @@ export async function panelCases(makeF, seeds, page, mocked) {
       setTimeout: (fn, ms) => (q.set(++id, { fn, at: nowMs + (ms || 0), id }), st.n++, id),
       clearTimeout: (i) => q.delete(i),
       flush() {
-        for (;;) {
+        for (let k = 0; k < 200; k++) {
           const due = [...q.values()].filter((e) => e.at <= nowMs).sort((a, b) => a.at - b.at || a.id - b.id)[0];
           if (!due) return;
           q.delete(due.id);
