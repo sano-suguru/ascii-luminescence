@@ -16,6 +16,7 @@
 //  10. 図鑑を指で動かす：案内が指の時の文言か・枠が画面の上半分に掛からないか・1本指のドラッグで回り、触れている間はひとりでに回らない・2本指で広げると寄り、[向きを戻す] で戻る
 //  11. 縦向き：探索中だけ、止めて横にする案内を出し、横に戻すと続く（タイトルと、マウスで遊んでいる時は出さない）
 //  12. ホーム画面に置く案内：iPhone の Safari で、ホーム画面から開いていない時だけタイトルに出る
+//  13. iPhone の横向きの切り欠きとホームの棒（safe-area-inset の真似）：端の表示とボタンが、その分を避けるか
 //   7. 診断の記録（src/lib/diag.ts）：偽の window.claude（Artifact の中の真似）で、持ち主なら端末・できごと・速さ・かかった時間・遅いフレームを db に書き、持ち主でなければ書かない。
 //      書き込みの途中に頼まれた分（ページが隠れた時）も、途中の分が終わってから書く
 import { FIT_MIN } from '../src/lib/layout.ts';
@@ -710,6 +711,30 @@ await withBrowser(async ({ browser, base }) => {
     await openTest(pg, base, 'seed=202');
     const has = await pg.evaluate(() => document.getElementById('intropanel').innerText.includes('ホーム画面に追加'));
     if (has !== want) errs.push(`ホーム画面の案内：navigator.standalone が ${standalone} の時に、案内が${has ? '出た' : '出ない'}`);
+    await pg.context().close();
+  }
+
+  // ---------------------------------------------------------------- 13. iPhone の横向きの切り欠きとホームの棒（safe-area-inset）を避ける
+  {
+    const pg = await newPage(browser, errs, { device: 'iPhone 13 landscape' });
+    const cdp = await pg.context().newCDPSession(pg);
+    // iPhone 13 の横向き：左右に切り欠きの分 47px、下にホームの棒の分 21px（上は時刻の帯が出ない）
+    const IN = { left: 47, right: 47, bottom: 21, top: 0 };
+    await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: IN });
+    await openTest(pg, base, 'seed=202');
+    await tapEnter(pg);
+    await advance(pg, 2);
+    const out = await pg.evaluate((IN) => {
+      const bad = [];
+      for (const id of ['status', 'mapwrap', 'log', 'hotbar', 'castR', 'castL', 'rollB', 'touchbar']) {
+        const r = document.getElementById(id).getBoundingClientRect();
+        if (!r.width) continue;
+        if (r.left < IN.left - 0.5 || r.right > innerWidth - IN.right + 0.5 || r.bottom > innerHeight - IN.bottom + 0.5)
+          bad.push(`${id} ${r.left | 0}-${r.right | 0} x ${r.top | 0}-${r.bottom | 0}`);
+      }
+      return bad;
+    }, IN);
+    if (out.length) errs.push(`切り欠きとホームの棒：避けていない表示がある（画面 750×342、${out.join('、')}）`);
     await pg.context().close();
   }
 
