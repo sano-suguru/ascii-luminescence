@@ -555,7 +555,6 @@ export function newLevel(seedOverride?: number): void {
   blaze.gasAny = false;
   initFire();
   initEvents();
-  blaze.spark = null;
   fight.projs = [];
   showHint('');
   edge.t = 0;

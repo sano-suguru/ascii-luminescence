@@ -498,7 +498,6 @@ export async function viewCases(F, seeds) {
       vfx.zapFlash = chance(0.4)
         ? null
         : { x: px, y: 1, z: pz, col: [r(), r(), r()], t: pick([999, 0, -0.1, r()]), r: chance(0.5) ? 8 : 0 };
-      blaze.spark = chance(0.3) ? { x: px + r() * 4, y: 1 + r(), z: pz + r() * 4, vx: 0, vy: 0, vz: 0, t: 0 } : null;
       // カメラ（TypeScript が読む位置だけ）と、見た時の説明を出す所
       gfx.camera = { position: { x: px, y: 1.6, z: pz } };
       const lookEl = { innerHTML: '' };

@@ -234,7 +234,6 @@ export async function drawCases(F, seeds) {
       }
       blaze.frozen = new Map();
       for (let k = 0; k < 5; k++) blaze.frozen.set(cellNear(px, pz, 50), { t: chance(0.2) ? 5 : r() * 10, liq: 0, surf: 0 });
-      blaze.spark = chance(0.4) ? { x: px + r() * 4, y: 1 + r(), z: pz + r() * 4, vx: 0, vy: 0, vz: 0, t: 0 } : null;
       // 床の物：泉・墓（ルーンつき）・伝説の物
       for (let k = 0; k < 6; k++) {
         const i = cellNear(px, pz, 40),

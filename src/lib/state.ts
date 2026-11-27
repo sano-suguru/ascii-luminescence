@@ -423,17 +423,7 @@ export const gear: Gear = {
   humNode: null,
 };
 
-/** 投げた火花（火打ち石。当たった所に火がつく） */
-export interface Spark {
-  x: number;
-  y: number;
-  z: number;
-  vx: number;
-  vy: number;
-  vz: number;
-  t: number;
-}
-/** 火と地面のマス（マスごとの火・燃える物・灰になったか・マスの変わり方の種類・火の明かり・匂い）と、燃えているマスの一覧・ガス・投げた火花。階に入るたびに作り直す（火・燃える物・灰・マスの変わり方・明かりと燃えているマスは src/lib/ground.ts の initFire、匂い・ガス・火花は src/lib/levels.ts の newLevel） */
+/** 火と地面のマス（マスごとの火・燃える物・灰になったか・マスの変わり方の種類・火の明かり・匂い）と、燃えているマスの一覧・ガス。階に入るたびに作り直す（火・燃える物・灰・マスの変わり方・明かりと燃えているマスは src/lib/ground.ts の initFire、匂い・ガスは src/lib/levels.ts の newLevel） */
 export interface Blaze {
   /** マスごとの火の強さ */
   fire: Float32Array;
@@ -451,7 +441,6 @@ export interface Blaze {
   burning: number[];
   /** どこかにガスがあるか */
   gasAny: boolean;
-  spark: Spark | null;
   /** 凍らせた水のマス（マス → 溶けるまでの秒・元の液体・元の床）。src/lib/ground.ts の chillArea・updateFrozen */
   frozen: Map<number, { t: number; liq: number; surf: number }>;
   /** 踏み分けた背の高い草や茸のマスと、踏んだゲームの時刻（src/lib/ground.ts の trample が足し、src/lib/ground.ts の regrow が元に戻す。newLevel が空にする） */
@@ -474,7 +463,6 @@ export const blaze: Blaze = {
   scent: new Float32Array(NCELL),
   burning: [],
   gasAny: false,
-  spark: null,
   frozen: new Map(),
   trampled: [],
   fireSrc: [],
@@ -1244,7 +1232,7 @@ export const cellData = new Uint8Array(NCELL * 4);
 /** 薄い氷のマスに乗っていた秒（マス → 秒。src/lib/ground.ts の crackIce。src/lib/levels.ts の newLevel が階ごとに空にする）。丸ごと入れ替えない */
 export const iceT = new Map<number, number>();
 /** 灯りを描画に渡す配列（src/lib/lightmap.ts の updateLights が毎フレーム書き、05-renderer.js の U が描画に渡す）。丸ごと入れ替えない。
- * SL：階の灯りの色と強さ（灯り1つに3つ）、DLP：動く灯りの位置と届く距離（1つに4つ。0番は手元の灯り、最後は稲妻か火花）、DLC：動く灯りの色（1つに3つ） */
+ * SL：階の灯りの色と強さ（灯り1つに3つ）、DLP：動く灯りの位置と届く距離（1つに4つ。0番は手元の灯り、最後は稲妻の光り）、DLC：動く灯りの色（1つに3つ） */
 export const SL = new Float32Array(NSL * 3),
   DLP = new Float32Array(NDL * 4),
   DLC = new Float32Array(NDL * 3);
