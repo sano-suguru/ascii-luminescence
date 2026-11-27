@@ -154,8 +154,10 @@ const SUBS = ['gsweep', 'gwave', 'bpower', 'rshot', 'mshot', 'mmoon'];
 const NAN32 = new Uint32Array(new Float32Array([NaN]).buffer)[0] ?? 0;
 /**
  * 配列の中身の指紋（NaN は1つの並びにそろえる。level・pickup・step の場合も使う）。
- * FNV-1a の形で、4バイトを1つの数として混ぜる（1バイトずつ混ぜると、掛け算が前の結果を待つので、大きな配列で遅い。
- * 混ぜる1歩は元に戻せる変換なので、どこか1つの数が変われば、指紋は必ず変わる）。4バイトに足りない終わりは1バイトずつ混ぜる
+ * FNV-1a の形で、4バイトを1つの数として混ぜる（1バイトずつ混ぜると、掛け算が前の結果を待つので、大きな配列で遅い）。
+ * 掛け算は上の桁へしか伝わらないので、混ぜるたびに上の桁を下へ戻す（戻さないと、2つの数の一番上の桁（Float32 の符号）が
+ * どちらも変わった時に打ち消し合い、指紋が変わらない）。混ぜる1歩はどれも元に戻せる変換なので、どこか1つの数が変われば、
+ * 指紋は必ず変わる。4バイトに足りない終わりは1バイトずつ混ぜる
  */
 const hashArr0 = (a, from = 0, to = a.length) => {
   // 配列は写さずに読む（Float64Array に NaN がある時と、4バイトの区切りに揃っていない時だけ写す。呼ぶ数が多く、写すとテストの時間の多くを占めるため）
@@ -176,8 +178,13 @@ const hashArr0 = (a, from = 0, to = a.length) => {
     for (let i = 0; i < w.length; i++) {
       const x = w[i];
       h = Math.imul(h ^ ((x & 0x7f800000) === 0x7f800000 && x & 0x7fffff ? NAN32 : x), 0x01000193);
+      h ^= h >>> 15;
     }
-  else for (let i = 0; i < w.length; i++) h = Math.imul(h ^ w[i], 0x01000193);
+  else
+    for (let i = 0; i < w.length; i++) {
+      h = Math.imul(h ^ w[i], 0x01000193);
+      h ^= h >>> 15;
+    }
   for (let i = w.length * 4; i < n; i++) h = Math.imul(h ^ b[i], 0x01000193);
   return (h >>> 0).toString(16).padStart(8, '0');
 };

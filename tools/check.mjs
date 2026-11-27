@@ -24,8 +24,10 @@ const STEPS = [
 const t0 = performance.now();
 const run = ([name, cmd, args]) =>
   new Promise((done) => {
-    const t = performance.now(),
-      p = spawn(cmd, args, { cwd: ROOT, env: process.env });
+    // Windows の node_modules/.bin は .cmd なので、シェルを通さないと動かない（パスに空白があってもよいように囲む。Node 本体はシェルを通さない）
+    const shell = process.platform === 'win32' && cmd !== process.execPath,
+      t = performance.now(),
+      p = spawn(shell ? `"${cmd}"` : cmd, args, { cwd: ROOT, env: process.env, shell });
     // 単体テスト（一番長い）を先にし、ほかの段は優先度を下げて、空いたコアで走らせる（同じ優先度だと、単体テストからコアを奪い、全体が縮まない）
     if (name !== '単体テスト' && p.pid)
       try {
@@ -35,6 +37,9 @@ const run = ([name, cmd, args]) =>
       }
     let out = '',
       ended = false;
+    // 文字として読む（バイトの塊ごとに文字にすると、塊の境で日本語の文字が壊れる）
+    p.stdout.setEncoding('utf8');
+    p.stderr.setEncoding('utf8');
     p.stdout.on('data', (d) => (out += d));
     p.stderr.on('data', (d) => (out += d));
     // 起動に失敗した時は error の後に close も来るので、1回だけ出す
