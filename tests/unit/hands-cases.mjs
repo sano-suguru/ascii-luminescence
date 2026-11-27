@@ -219,6 +219,8 @@ export async function handsCases(F, seeds) {
     }
   } finally {
     here.D = keep.here.D;
+    // 場合で足した欄（swing など、初めは無かった物）も消して、元の形に戻す
+    for (const k of Object.keys(player)) if (!(k in keep.player)) delete player[k];
     Object.assign(player, keep.player);
     Object.assign(gear, keep.gear);
     Object.assign(ui, keep.ui);
