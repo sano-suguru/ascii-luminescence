@@ -1,10 +1,10 @@
 // 粒子と、世界の中に置く文字（もとは src/game/05-renderer.js）。どちらも、決まった大きさの配列に値を書いて、数を増やすだけ。
-// 配列を GPU に渡す部品（three.js の属性）と、毎フレームの数の受け渡し（flushDyn）・粒子を動かす処理は、古い JS（05・15）にある。
+// 配列を GPU に渡す部品（three.js の属性）と、置いた文字の数の受け渡し（flushDyn）は、古い JS（05）にある。粒子を動かして GPU に渡す数を書く処理は src/lib/motes.ts。
 // 数は状態の入れ物 buf（dn・pN）。漂う塵の粒を置く処理（initDust・respawnDust。もとは 15-sound-fire.js）もここ（塵の配列 dust は src/lib/state.ts）。
 import { must, nth } from './array.ts';
 import { G } from './glyphs.ts';
 import { mpick, mr } from './random.ts';
-import { DUST_N, DYN_MAX, P_MAX } from './shaders.ts';
+import { DUST_N, DYN_MAX, P_MAX, PT_TOTAL } from './shaders.ts';
 import { buf, dust, here, player } from './state.ts';
 import { CELL, CH_D, MH, MW, TC, TF } from './world.ts';
 
@@ -44,6 +44,13 @@ export function dyn(
   dPar[i4 + 3] = yaw || 0;
   buf.dn++;
 }
+
+/** 描く粒子（塵・ガス・そのほかの粒子を、この順に並べる。src/lib/motes.ts の updateParticles が毎フレーム書き、05-renderer.js の gfx.ptGeo が描画に渡す）：
+ * 位置 ptPos・色 ptCol（1つに3つ）、大きさ ptSize・文字 ptGly（1つに1つ。もとは src/game/05-renderer.js） */
+export const ptPos = new Float32Array(PT_TOTAL * 3),
+  ptCol = new Float32Array(PT_TOTAL * 3),
+  ptSize = new Float32Array(PT_TOTAL),
+  ptGly = new Float32Array(PT_TOTAL);
 
 /** 粒子（位置・速さ・経った秒 age・続く秒 life・色・文字 gl・大きさ sz・動き方 ty・揺れの位相 ph）。番号 0 から buf.pN 未満が生きている */
 export const P = {
