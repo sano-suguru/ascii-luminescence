@@ -349,29 +349,30 @@ export const AUTO_STEPS: Step[] = [
       // 溜めと戻りをゲームの時刻で待つので、遅い端末ではフレームが多く要る。短い台本は1回だけ
       for (let k = 0; k < (autoSt.quick ? 1 : 3); k++) {
         faceNearest();
-        // 右手で溜めて、溜めきったら放つ
+        // 右手で溜めて、溜めきったら、向き直して放つ
         await until(ready, 2, true);
         const r = el('#castR'),
           [rx, ry] = mid(r),
           f = finger(r, rx, ry);
         if (await until(() => !!gear.castSt?.full, 3, true)) shotR++;
+        faceNearest();
         f.up();
         // 左手を続けて押す（前の一撃の戻りが終わってから）
         for (let j = 0; j < 5; j++) {
-          await until(ready, 2, true);
+          const can = await until(ready, 2, true);
           faceNearest();
           const l = el('#castL'),
             [lx, ly] = mid(l),
             g = finger(l, lx, ly);
-          if ((player.recover ?? 0) > 0) shotL++;
+          if (can && (player.recover ?? 0) > 0) shotL++;
           await wait(0.12);
           g.up();
         }
         tap('#rollB');
         await until(() => !player.roll, 2, true);
       }
-      // 飛んでいる物が着いてから数える
-      await until(() => !fight.projs.length, 2, true);
+      // 飛んでいる物と、遅れて起きる当たりが済んでから数える
+      await until(() => !fight.projs.length && !fight.laters.length, 2, true);
       h.clear();
       // 置いた生き物のどれにも当たらなければ、うまくいかなかったと書く（狙いや指の事件が効いていない）
       if (!foes.length) return '生き物を置けない';
