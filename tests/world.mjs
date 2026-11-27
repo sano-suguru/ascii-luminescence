@@ -24,7 +24,8 @@
 //      当たった光は残っている（体の範囲の明るさが、当てる前より 1.1 倍を越えて上がる）。数え方は tools/glare.mjs（pnpm glare）と同じ
 //  19. 場面を作る道具：__test.elem で手に性質を付け替えられる（下の HUD の手の名前に出る）。__test.hold で止めた生き物は、すぐ隣でも歩かず攻撃せず、言った向きへ回り、
 //      放すとまた動く。__test.cam で目と同じ所に置いたカメラは目と同じに写し、前へ出すと、見ている点を真ん中にしたまま大きく写す。null で目に戻る。
-//      岩の中には置かない。置いている間も、ゲームの一歩の間のカメラは目のまま（術はプレイヤーから出て、当たる）
+//      岩の中（地図の外・天井より上）には置かない。ほかの階へ移ると目に戻る。置いている間も、ゲームの一歩の間のカメラは目のまま（術はプレイヤーから出て、当たる）。
+//      小さな生き物は止められない（わけの文を返す）。無い手・性質でない鍵・3つの数でない pos は受け付けない
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { PNG } from 'pngjs';
 import { withBrowser, newPage, openTest, advance, frames, aimAt, strike } from './lib.mjs';
@@ -736,13 +737,14 @@ async function sceneToolChecks(pg, base) {
       ice = hb(),
       c = __test.elem('R', null),
       none = hb();
-    return { a, b, c, fire, ice, none, bad: __test.elem('R', 'blade') };
+    return { a, b, c, fire, ice, none, bad: __test.elem('R', 'blade'), badHand: __test.elem('r', 'fire') };
   });
   if (el.a !== 'fire' || !el.fire.includes('炎の')) errs.push(`19：右手に炎を付けても、手の名前に炎が出ない（${el.a}・${el.fire}）`);
   if (el.b !== 'ice' || !el.ice.includes('氷の') || el.ice.includes('炎の'))
     errs.push(`19：炎を氷に付け替えられない（${el.b}・${el.ice}）`);
   if (el.c !== null || el.none.includes('炎の') || el.none.includes('氷の')) errs.push(`19：性質を外せない（${el.c}・${el.none}）`);
   if (!String(el.bad).startsWith('no such element')) errs.push(`19：性質でない鍵を受け付けた（${el.bad}）`);
+  if (!String(el.badHand).startsWith('no such hand')) errs.push(`19：無い手を受け付けた（${el.badHand}）`);
   // 止める：プレイヤーのすぐ隣のトロルを、プレイヤーから見て横を向かせて止める。3 秒たっても動かず、体力も減らず、言った向きを向く
   const put = await pg.evaluate(() => {
     __test.clearAll();
@@ -757,6 +759,10 @@ async function sceneToolChecks(pg, base) {
       if (!best || d < best[0]) best = [d, i];
     }
     if (!best) return null;
+    // 小さな生き物（清掃機）は止められない（動きが別の処理なので）
+    __test.summon('Rc', best[1]);
+    const critter = __test.hold(0, {});
+    __test.clearAll();
     __test.summon('T', best[1]);
     __test.hold(0, { yaw: 1.2 });
     const m0 = __test.mob(0);
@@ -767,14 +773,15 @@ async function sceneToolChecks(pg, base) {
     __test.advance(4);
     const m2 = __test.mob(0),
       s2 = __test.state();
-    return { m0, m1, m2, hp0: s.hp, hp1: s1.hp, hp2: s2.hp };
+    return { m0, m1, m2, hp0: s.hp, hp1: s1.hp, hp2: s2.hp, critter };
   });
   if (!put) errs.push('19：トロルを置く床が無い（テストの前提が崩れた）');
   else {
-    const { m0, m1, m2, hp0, hp1, hp2 } = put,
+    const { m0, m1, m2, hp0, hp1, hp2, critter } = put,
       turn = Math.abs(Math.atan2(Math.sin(m1.yaw - 1.2), Math.cos(m1.yaw - 1.2)));
     if (Math.hypot(m1.x - m0.x, m1.z - m0.z) > 0.01)
       errs.push(`19：止めたトロルが歩いた（${JSON.stringify([m0.x, m0.z])} → ${JSON.stringify([m1.x, m1.z])}）`);
+    if (!String(critter).startsWith('cannot hold a critter')) errs.push(`19：小さな生き物を止めたと言う（${critter}）`);
     if (hp1 < hp0) errs.push(`19：止めたトロルが攻撃した（体力 ${hp0} → ${hp1}）`);
     if (turn > 0.05) errs.push(`19：止めたトロルが、言った向き 1.2 を向かない（${m1.yaw}）`);
     if (!(hp2 < hp1 || Math.hypot(m2.x - m1.x, m2.z - m1.z) > 0.1)) errs.push(`19：放したトロルが、動きも攻撃もしない`);
@@ -827,18 +834,14 @@ async function sceneToolChecks(pg, base) {
     return __test.cam({ pos: [x + ((ax - x) / d) * 2, y, z + ((az - z) / d) * 2], at: eye.at });
   }, eye);
   const v2 = await view();
-  // 岩の中には置かない（プレイヤーのマスから一番近い壁のマスの真ん中）
+  // 岩の中には置かない（地図の外と、天井より上）。pos・at が3つの数でなければ置かない
   const inRock = await pg.evaluate(() => {
-    const s = __test.state(),
-      { w, h } = __test.size();
-    let best = null;
-    for (let i = 0; i < w * h; i++) {
-      const c = __test.cell(i);
-      if (c.floor || c.water || c.lava) continue;
-      const d = Math.hypot(c.x - s.pos[0], c.z - s.pos[1]);
-      if (!best || d < best[0]) best = [d, c];
-    }
-    return __test.cam({ pos: [best[1].x, 1.5, best[1].z], at: [s.pos[0], 1.5, s.pos[1]] });
+    const s = __test.state();
+    return [
+      __test.cam({ pos: [-1, 1.5, -1], at: [s.pos[0], 1.5, s.pos[1]] }),
+      __test.cam({ pos: [s.pos[0], 99, s.pos[1]], at: [s.pos[0] + 1, 1.5, s.pos[1]] }),
+      __test.cam({ pos: [s.pos[0], 1.5], at: [s.pos[0] + 1, 1.5, s.pos[1]] }),
+    ];
   });
   await pg.evaluate(() => __test.cam(null));
   const v3 = await view();
@@ -868,7 +871,21 @@ async function sceneToolChecks(pg, base) {
     errs.push(
       `19：カメラを置いている間に、ゲームの一歩の外のカメラが目でない（目 ${JSON.stringify(eye.pos)}、${JSON.stringify(during.pos)}）`,
     );
-  if (typeof inRock !== 'string') errs.push(`19：岩の中にカメラを置けた（${JSON.stringify(inRock)}）`);
+  if (!inRock.slice(0, 2).every((r) => String(r).startsWith('camera in rock')))
+    errs.push(`19：岩の中にカメラを置けた（${JSON.stringify(inRock)}）`);
+  if (!String(inRock[2]).startsWith('pos and at')) errs.push(`19：数が2つの pos でカメラを置けた（${JSON.stringify(inRock[2])}）`);
+  // ほかの階へ移ると、置いたカメラは捨てて目に戻る（同じ階の間は残る）
+  const moved = await pg.evaluate((fwd) => {
+    __test.cam(fwd);
+    const before = __test.cam().placed;
+    dbg.go(2);
+    __test.advance(2);
+    return { before, after: __test.cam().placed, depth: __test.state().depth };
+  }, fwd);
+  if (!moved.before || moved.after !== null || moved.depth !== 2)
+    errs.push(
+      `19：ほかの階へ移っても、置いたカメラが残る（移る前 ${JSON.stringify(moved.before)}、移った後 ${JSON.stringify(moved.after)}、深さ ${moved.depth}）`,
+    );
   if (!near(v0, v3, 2)) errs.push(`19：__test.cam(null) で目に戻らない（置く前 ${JSON.stringify(v0)}、戻した後 ${JSON.stringify(v3)}）`);
   console.log(
     `19：トロルの写る所 目 ${JSON.stringify(v0)}・同じ所のカメラ ${JSON.stringify(v1)}・2 前へ出したカメラ ${JSON.stringify(v2)}・戻した後 ${JSON.stringify(v3)}。置いている間に撃って ${hit ? hit.frame + ' フレーム目に当たった' : '当たらない'}`,

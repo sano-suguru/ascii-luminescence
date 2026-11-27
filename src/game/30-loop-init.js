@@ -43,7 +43,8 @@ const tickRandOn=()=>{ const g=ui.gallery; return !(g&&g.mode==='beast'&&g.m); }
 const skipPhases=new Set();
 const inPhase=(name,fn)=>skipPhases.has(name)?undefined:tickRandOn()?keyedPhase(keyedRand('tick '+name,adv.runSeed,clock.frame),fn):fn();
 const inMobPhase=(name,m,fn)=>skipPhases.has(name)?undefined:tickRandOn()?keyedPhase(keyedRand('tick '+name,levelSeed(),m.seq,clock.frame),fn):fn();
-// テスト用モードの __test.cam で置いたカメラ（{pos, at}。null ならふだんどおり）。描く間（見える区切りを選ぶ所と描く所）だけ、このカメラにする。
+// テスト用モードの __test.cam で置いたカメラ（{pos, at, lvl}。null ならふだんどおり）。描く間（見える区切りを選ぶ所と描く所）だけ、このカメラにする。
+// 置いた時の階（lvl）と違う階に移ったら、置いたカメラは捨てて目に戻す（岩の中かは置いた時の階でしか確かめていないので）。
 // ゲームの一歩の間は目のカメラのままなので、術の出る所・手元の灯り・照準・見た時の説明は、ふだんどおりプレイヤーの目から。
 // 手元の武器と詠唱の円は目の前に描くので、離れたカメラから写すと宙に浮く（要らなければ __test.skipPhase(['hands','castfx'])）。
 // 生き物の光り方の強さ（近いほど弱める）と、こちらを向く飾りは、目からの距離と向きで決まる
@@ -51,7 +52,7 @@ let testCam=null;
 const placeTestCam=()=>{ const [x,y,z]=testCam.pos, [ax,ay,az]=testCam.at; gfx.camera.position.set(x,y,z);
   gfx.camera.rotation.set(Math.atan2(ay-y,Math.hypot(ax-x,az-z)),Math.atan2(-(ax-x),-(az-z)),0); };
 // fn の間だけ、置いたカメラにする（置いていなければ、そのまま fn）
-const withTestCam=fn=>{ if(!testCam)return fn(); const c=gfx.camera, p=c.position.clone(), r=c.rotation.clone();
+const withTestCam=fn=>{ if(testCam&&testCam.lvl!==here.D)testCam=null; if(!testCam)return fn(); const c=gfx.camera, p=c.position.clone(), r=c.rotation.clone();
   placeTestCam(); c.updateMatrixWorld(); try{ return fn(); } finally{ c.position.copy(p); c.rotation.copy(r); c.updateMatrixWorld(); } };
 function tick(raw,draw){
   if(isPaused()&&ui.started){ if(frame.stillDrawn)return; frame.stillDrawn=true; } else frame.stillDrawn=false; clock.frame++; const dt=isPaused()?0:clamp(raw,0,0.05)*timeScale();
@@ -137,23 +138,29 @@ if(TEST)window.__test={
   open(t){ if(!['slotL','slotR','body'].includes(t))return 'no such slot: '+t; applyOpen(t); return t; },
   equip(h,type){ if(!RUNE_DEF[type]||RUNE_DEF[type].cat!=='atk')return 'no such weapon: '+type; equipWeapon(h,makeRune(type)); renderHotbar(); return type; },
   // 手 h（'L'・'R'）に性質（RUNE_DEF の性質の鍵：'fire'・'ice'・'thunder'・'poison'）を付ける。手の性質のルーンを外してから、空いた枠に入れる。
-  // 付けた性質を返す（無い鍵・入る枠が無い時は、わけの文）。null なら性質のルーンを外すだけ
-  elem(h,type){ if(type!==null&&(!RUNE_DEF[type]||RUNE_DEF[type].cat!=='elem'))return 'no such element: '+type; const H=gear.hands[h], n=H.slotN||2;
-    for(let i=0;i<n;i++){ const r=H.slots[i]; if(r&&RUNE_DEF[r.type].cat==='elem')slotSet(h,'s'+i,null); }
+  // 付けた性質を返す（無い手・無い鍵・入る枠が無い時は、わけの文。入らなければ、外したルーンを元に戻す）。null なら性質のルーンを外すだけ
+  elem(h,type){ if(h!=='L'&&h!=='R')return 'no such hand: '+h; if(type!==null&&(!RUNE_DEF[type]||RUNE_DEF[type].cat!=='elem'))return 'no such element: '+type;
+    const H=gear.hands[h], n=H.slotN||2, took=[];
+    for(let i=0;i<n;i++){ const r=H.slots[i]; if(r&&RUNE_DEF[r.type].cat==='elem'){ took.push([i,r]); slotSet(h,'s'+i,null); } }
     let put=type===null; if(!put){ const ru=makeRune(type); for(let i=0;i<n&&!put;i++)if(!H.slots[i]&&canPutAt(h,i,ru)){ slotSet(h,'s'+i,ru); put=true; } }
+    if(!put)for(const [i,r] of took)slotSet(h,'s'+i,r);
     syncHands(); renderHotbar(); return put?type:'no free slot: '+h; },
   // n 番目（0 から。state().monsters の順）の生き物を、その場に止める（{yaw, walk}：yaw は向く向き（体の向き m.yaw と同じ、atan2(x の差, z の差)。無ければ今の向きのまま）、
-  // walk なら足踏みする。止めている間は歩かず、攻撃もしない。気づく・当たってひるむ・吹き飛ぶ・燃えるなどは、ふだんどおり）。null で放す。止めたかを返す
-  hold(n,o){ const m=here.monsters[n]; if(!m)return false; m.hold=o?{...(o.yaw!==undefined?{yaw:o.yaw}:{}),walk:!!o.walk}:null; return true; },
+  // walk なら足踏みする。止めている間は歩かず、攻撃もしない（止めた時に、攻撃の溜めも捨てる）。気づく・当たってひるむ・吹き飛ぶ・燃える・ブロートが近くで弾けるなどは、ふだんどおり）。
+  // null で放す。止めたら true、いなければ false。小さな生き物（魚・清掃機など。動きが別の処理）は止められないので、わけの文を返す
+  hold(n,o){ const m=here.monsters[n]; if(!m)return false; if(m.ty.critter)return 'cannot hold a critter: '+m.key;
+    m.hold=o?{...(o.yaw!==undefined?{yaw:o.yaw}:{}),walk:!!o.walk}:null; if(o)m.wind=0; return true; },
   // 描く時のカメラを pos（[x,y,z]）に置いて at（[x,y,z]）を見る（ゲームの一歩は目のカメラのまま。上の testCam）。pos が岩の中（壁・地図の外・天井より上）か、
   // 横に 0.4 以内に壁がある時は置かず、わけの文を返す。置いたら {pos, at, clear}（clear は pos から at までの線が岩を通らないか）を返す。
-  // null で目に戻す。引数なしなら何も変えず、目のカメラの位置と向き {pos, yaw, pitch} を返す
-  cam(o){ if(o===undefined){ const p=gfx.camera.position; return {pos:[p.x,p.y,p.z],yaw:gfx.camera.rotation.y,pitch:gfx.camera.rotation.x}; }
+  // null で目に戻す（ほかの階へ移っても目に戻る）。pos・at が3つの数でなければ、わけの文。引数なしなら何も変えず、目のカメラの位置と向きと置いたカメラ {pos, yaw, pitch, placed} を返す（placed は置いていなければ null）
+  cam(o){ if(o===undefined){ if(testCam&&testCam.lvl!==here.D)testCam=null; const p=gfx.camera.position;
+    return {pos:[p.x,p.y,p.z],yaw:gfx.camera.rotation.y,pitch:gfx.camera.rotation.x,placed:testCam?{pos:testCam.pos,at:testCam.at}:null}; }
     if(!o){ testCam=null; return null; }
+    const v3=a=>Array.isArray(a)&&a.length===3&&a.every(Number.isFinite); if(!v3(o.pos)||!v3(o.at))return 'pos and at must be [x,y,z]';
     const [x,y,z]=o.pos, [ax,ay,az]=o.at;
     for(const [dx,dz] of [[0,0],[0.4,0],[-0.4,0],[0,0.4],[0,-0.4]])if(rockAt(x+dx,y,z+dz))return 'camera in rock: '+JSON.stringify(o.pos);
     let clear=true; for(let k=1;k<40&&clear;k++){ const f=k/40; if(rockAt(x+(ax-x)*f,y+(ay-y)*f,z+(az-z)*f))clear=false; }
-    testCam={pos:o.pos.slice(),at:o.at.slice()}; return {...testCam,clear}; },
+    testCam={pos:o.pos.slice(),at:o.at.slice(),lvl:here.D}; return {pos:testCam.pos,at:testCam.at,clear}; },
   // true when the hand started charging, or attacked at once (a weapon with no charge, such as the short sword)
   press(h){ const r0=player.recover||0; beginCast(h); return !!gear.castSt||(player.recover||0)>r0; },
   release(h){ releaseCast(h); },
