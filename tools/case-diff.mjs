@@ -131,8 +131,8 @@ export function report(name, s, { maxPaths = 25, maxFirsts = 6 } = {}) {
   for (const f of s.firsts.slice(0, maxFirsts)) {
     r += `    ${f.where}\n      前：${short(f.old)}\n      後：${short(f.new)}\n`;
     if (f.before) r += `      手前：${short(f.before, 160)}\n`;
-    // 呼び出しの中の違いなら、その時の伝言の終わり（何が起きた所か。例：〜を倒した）
-    if (f.msgs) r += `      伝言：…${f.msgs.replace(/<[^>]*>/g, '').slice(-80)}\n`;
+    // 呼び出しの中の違いなら、その時の伝言の終わり（何が起きた所か。例：〜を倒した）。印（HTML）を除き、残った < > も消す
+    if (f.msgs) r += `      伝言：…${f.msgs.replace(/<[^>]*>/g, '').replace(/[<>]/g, '').slice(-80)}\n`;
   }
   if (s.firsts.length > maxFirsts) r += `    …ほか ${s.firsts.length - maxFirsts} 行\n`;
   return r;
