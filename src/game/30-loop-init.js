@@ -17,7 +17,7 @@ function applySize(why){
 window.addEventListener('resize',()=>{ applySize('resize'); sizeMap(); });
 
 // ---------------------------------------------------------------- main loop
-let last=0, fovT=0, mapT=0, perfT=0, perfAcc=0, perfN=0, warm=0;
+let last=0, fovT=0, mapT=0, perfT=0, perfAcc=0, perfN=0, warm=0, qTried=null, qStop=false;
 function frame(nowMs){
   requestAnimationFrame(frame);
   if(TEST){ if(TESTQ.n>0){ TESTQ.n--; try{ testTick(true); } finally{ if(!TESTQ.n&&TESTQ.done){ const d=TESTQ.done; TESTQ.done=null; d(); } } } return; }
@@ -76,8 +76,8 @@ function tick(raw,draw){
   // 階を作る一瞬の遅れで下がらないように）。数えないフレームが来たら、そこから3秒は様子を見てから数え直す
   if(!ui.started||here.trans||isPaused()||document.hidden){ warm=perfT=perfAcc=perfN=0; return; }
   warm+=raw; if(warm>3){ perfAcc+=raw; perfN++; perfT+=raw;
-    if(perfT>QUALITY.span){ const q=nextQuality(perfAcc/perfN,{pr:pixelRatio,bloom:bloom.enabled}); perfT=perfAcc=perfN=0;
-      if(q){ const pr0=pixelRatio; pixelRatio=q.pr; bloom.enabled=q.bloom; if(q.pr!==pr0)applySize('auto'); else took('quality',performance.now(),{bloom:q.bloom}); } } }
+    if(perfT>QUALITY.span&&!qStop){ const p=planQuality(perfAcc/perfN,{pr:pixelRatio,bloom:bloom.enabled},qTried), q=p.q; perfT=perfAcc=perfN=0; qTried=p.tried; qStop=p.stop;
+      if(q){ const pr0=pixelRatio; pixelRatio=q.pr; bloom.enabled=q.bloom; if(q.pr!==pr0)applySize(p.stop?'back':'auto'); else took('quality',performance.now(),{bloom:q.bloom,back:p.stop}); } } }
 }
 
 // ---------------------------------------------------------------- test hooks (only with ?test=1; see the test mode block at the top)
