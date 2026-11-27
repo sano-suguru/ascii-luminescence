@@ -1,6 +1,6 @@
-// src/lib/quality.ts の単体テスト（速さに合わせて画質を下げる段の決め方）
+// src/lib/quality.ts の単体テスト（速さに合わせて画質を下げる段の決め方と、下げても速くならない時に戻すか）
 import { describe, expect, it } from 'vitest';
-import { QUALITY, nextQuality, planQuality, type Quality, type QualityTry } from '../../src/lib/quality.ts';
+import { QUALITY, holdQuality, nextQuality, stepQuality, type Quality, type QualityRun } from '../../src/lib/quality.ts';
 
 const slow = 1 / 30,
   fast = 1 / 60;
@@ -36,59 +36,78 @@ describe('nextQuality', () => {
   });
 });
 
-describe('planQuality', () => {
-  /** 画質 q の時の平均のフレームの時間 at(q) を返す端末で、何回か決めさせ、変えた先と止まったかを並べる */
-  const run = (at: (q: Quality) => number, n = 10): { steps: [number, boolean][]; stop: boolean; q: Quality } => {
-    let q: Quality = { pr: 1.5, bloom: true },
-      tried: QualityTry | null = null,
-      stop = false;
-    const steps: [number, boolean][] = [];
-    for (let i = 0; i < n && !stop; i++) {
-      const p = planQuality(at(q), q, tried);
-      tried = p.tried;
-      stop = p.stop;
-      if (p.q) {
-        q = p.q;
-        steps.push([q.pr, q.bloom]);
-      }
-    }
-    return { steps, stop, q };
-  };
-  it('描く回数が 30 に抑えられた端末（下げても 30fps のまま）：1段だけ試して、元に戻して止める', () => {
-    const r = run(() => 1 / 30);
-    expect(r.steps).toEqual([
+/** 平均の並び avgs を順に渡し、画質の移り変わりを [細かさ, 光のにじみ] で返す */
+function run(avgs: number[], q: Quality = { pr: 1.5, bloom: true }): [number, boolean][] {
+  let r: QualityRun = { q, prev: null, done: false };
+  return avgs.map((avg) => {
+    r = stepQuality(avg, r);
+    return [r.q.pr, r.q.bloom];
+  });
+}
+
+describe('stepQuality', () => {
+  it('書き換えが30回に抑えられた端末（低電力モードの iPhone）は、1段下げて速くならなければ戻し、それからは変えない', () => {
+    expect(run([1 / 30, 1 / 30, 1 / 30, 1 / 30, 1 / 30])).toEqual([
       [1.3, true],
       [1.5, true],
+      [1.5, true],
+      [1.5, true],
+      [1.5, true],
     ]);
-    expect(r.stop).toBe(true);
-    expect(r.q).toEqual({ pr: 1.5, bloom: true });
   });
-  it('光のにじみを切っても速くならなければ、光のにじみを戻して止める（描く細かさは、速くなった所まで下げたまま）', () => {
-    // 描く画素の数に比べて遅い：細かさを下げると速くなるが、光のにじみは関係ない
-    const r = run((q) => (1 / 15) * (q.pr / 1.5) ** 2);
-    expect(r.steps).toEqual([
-      [1.3, true],
-      [1.1, true],
-      [1, true],
-      [1, false],
-      [1, true],
-    ]);
-    expect(r.stop).toBe(true);
-  });
-  it('下げるたびに速くなる端末：nextQuality と同じく下限まで下げる', () => {
-    const r = run((q) => (1 / 8) * (q.pr / 1.5) ** 2 * (q.bloom ? 1.3 : 1));
-    expect(r.steps).toEqual([
+  it('下げて速くなるなら、今までどおり下限まで下げる', () => {
+    // 1段ごとにフレームの時間が1割より多く縮み、下限に着くまでは遅い
+    const avgs = [0.06, 0.048, 0.0384, 0.0307, 0.0246, 0.0216, 0.0173];
+    expect(run(avgs)).toEqual([
       [1.3, true],
       [1.1, true],
       [1, true],
       [1, false],
       [0.8, false],
       [0.75, false],
+      [0.75, false],
     ]);
   });
-  it('下げて速くなり、十分に速くなったら、それより後は変えない（止めはしない）', () => {
-    const p = planQuality(1 / 55, { pr: 1.3, bloom: true }, { from: { pr: 1.5, bloom: true }, avg: 1 / 40 });
-    expect(p).toEqual({ q: null, tried: null, stop: false });
-    expect(QUALITY.gain).toBeGreaterThan(1);
+  it('途中の段が効かなければ、その1段だけ戻して止める', () => {
+    expect(run([0.05, 0.04, 0.039, 0.02])).toEqual([
+      [1.3, true],
+      [1.1, true],
+      [1.3, true],
+      [1.3, true],
+    ]);
+  });
+  it('下げて速くなり、もう遅くなければ、そこで止める（後でまた遅くなれば下げる）', () => {
+    expect(run([0.03, fast, fast, slow])).toEqual([
+      [1.3, true],
+      [1.3, true],
+      [1.3, true],
+      [1.1, true],
+    ]);
+  });
+  it('縮みがちょうど gain の割合なら、効かなかったと見る', () => {
+    const a = 0.04;
+    expect(run([a, a * (1 - QUALITY.gain)])).toEqual([
+      [1.3, true],
+      [1.5, true],
+    ]);
+  });
+});
+
+describe('holdQuality', () => {
+  it('下げた1段の比べが済む前に途切れたら、その1段を戻し、次に遅ければ下げ直して比べる', () => {
+    let r: QualityRun = stepQuality(1 / 30, { q: { pr: 1.5, bloom: true }, prev: null, done: false });
+    expect(r.q).toEqual({ pr: 1.3, bloom: true });
+    r = holdQuality(r);
+    expect(r).toEqual({ q: { pr: 1.5, bloom: true }, prev: null, done: false });
+    r = stepQuality(1 / 30, r);
+    expect(r.q).toEqual({ pr: 1.3, bloom: true });
+    r = stepQuality(1 / 30, r);
+    expect(r).toEqual({ q: { pr: 1.5, bloom: true }, prev: null, done: true });
+  });
+  it('比べが済んでいる時・止めた後は変えない', () => {
+    const settled: QualityRun = { q: { pr: 1.1, bloom: true }, prev: null, done: false };
+    expect(holdQuality(settled)).toBe(settled);
+    const done: QualityRun = { q: { pr: 1.5, bloom: true }, prev: { q: { pr: 1.5, bloom: true }, avg: 0.03 }, done: true };
+    expect(holdQuality(done)).toBe(done);
   });
 });
