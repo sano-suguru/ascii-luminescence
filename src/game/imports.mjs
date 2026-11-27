@@ -69,7 +69,7 @@ import { bogAura, dragonAura, drawMorph, houndAura, krakenAura, lichAura, nagaAu
 import { P, dCol, dPar, dPos, dyn, initDust, ptCol, ptGly, ptPos, ptSize, spawn } from '../lib/particles.ts';
 import { updateParticles } from '../lib/motes.ts';
 import { drawSection, updateAtmosphere, updateAvatar } from '../lib/camera.ts';
-import { debrisInfo, updateDebris } from '../lib/debris.ts';
+import { crumble, debrisInfo, updateDebris } from '../lib/debris.ts';
 import { drawMonster, drawMonster0, drawTentacles } from '../lib/bodies/draw.ts';
 import { look } from '../lib/look.ts';
 import {
