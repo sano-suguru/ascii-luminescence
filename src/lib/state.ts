@@ -1256,6 +1256,8 @@ export const buf: Buf = { dn: 0, pN: 0 };
 export interface CameraView {
   readonly position: { readonly x: number; readonly y: number; readonly z: number; set(x: number, y: number, z: number): unknown };
   readonly rotation: { set(x: number, y: number, z: number): unknown };
+  /** 画面の横と縦の比（本物のカメラだけにある。手元の武器を細い画面で縮める src/lib/held.ts が読む） */
+  readonly aspect?: number;
 }
 /** three.js の、マスの火・灰・変わり方を描画に渡す絵（DataTexture）のうち、TypeScript が書く欄だけ（本物は 05-renderer.js が作る。中身は cellData） */
 export interface CellTex {
@@ -1345,7 +1347,7 @@ export const SL = new Float32Array(NSL * 3),
   DLC = new Float32Array(NDL * 3);
 /** 押しているキー（キーの code → 押しているか）。丸ごと入れ替えない */
 export const keys: { KeyW?: boolean; KeyA?: boolean; KeyS?: boolean; KeyD?: boolean; [code: string]: boolean | undefined } = {};
-/** 手元の武器が跳ねたゲームの時刻（術を放った時。19-hands-runes.js の drawViewWeapons が読む）。丸ごと入れ替えない */
+/** 手元の武器が跳ねたゲームの時刻（術を放った時。src/lib/held.ts の drawViewWeapons が読む）。丸ごと入れ替えない */
 export const vmKick = { L: -9, R: -9 };
 /** 光線を撃ち続けている間の、手ごとの記録（続けた秒 hold・最後に撃った時刻 last）。丸ごと入れ替えない */
 export const beamHold = { L: { hold: 0, last: -9 }, R: { hold: 0, last: -9 } };
