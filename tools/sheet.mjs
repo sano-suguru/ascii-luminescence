@@ -1,4 +1,4 @@
-// 写真を、生き物の体のまわりで切り抜いて大きくし、枡に並べた1枚にする道具（tools/shots.mjs と tools/field.mjs が使う）。
+// 写真を、生き物の体のまわりで切り抜いて大きくし、枡に並べた1枚にする道具（tools/shots.mjs・tools/field.mjs・tools/glare.mjs が使う）。
 import { readFileSync, writeFileSync } from 'node:fs';
 import { PNG } from 'pngjs';
 

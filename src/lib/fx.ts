@@ -1,7 +1,7 @@
 // 火と術の跡を描く（もとは src/game/15-sound-fire.js の drawFire、26-spells-hud.js の drawFrozen、24-goal.js の addBolt・sparkCrown・drawBoltFx、
 // 20-chant-hits.js の drawZones・drawWave）：燃えているマスの炎、凍らせた水、たどれる稲妻（ぎざぎざの線がちらつき、遅れて落ちる稲妻を順に起こす）、
 // 当たった生き物の頭の火花の輪、床の目印と魔法の場、剣が飛ばす風の刃。毎フレーム、世界の中に文字を置き（dyn）、粒子を出す（spawn）。
-// 状態の入れ物 blaze（火）・fight（稲妻・目印）・vfx（稲妻の光り）・player に頼る。呼ぶのは古い JS の描画（30-loop-init.js の tick と
+// 状態の入れ物 blaze（火）・fight（稲妻・目印）・vfx（稲妻の光り）・player・gfx（カメラの位置。読むだけ）に頼る。呼ぶのは古い JS の描画（30-loop-init.js の tick と
 // 22-world-hints.js の drawRunesWorld）と、稲妻を出す処理（20-chant-hits.js・26-spells-hud.js）。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
 import { must, nth } from './array.ts';
@@ -13,7 +13,7 @@ import { dyn, spawn } from './particles.ts';
 import { mpick, mr } from './random.ts';
 import { clamp } from './rng.ts';
 import { elemCol } from './runes.ts';
-import { type Monster, type Proj, blaze, fight, player, vfx } from './state.ts';
+import { type Monster, type Proj, blaze, fight, gfx, player, vfx } from './state.ts';
 import { CELL, MW, cpos } from './world.ts';
 
 /** 燃えているマスの炎（34 より遠いマスは描かない。ときどき火の粉を出す） */
@@ -221,11 +221,18 @@ export function drawZones(t: number): void {
     }
   }
 }
+/** 風の刃の明るさ（突きの線は 1.05 倍）。明るいと、敵より目立ち、光のにじみで白く広がる */
+const WAVE_K = 1.5;
+/** 風の刃の明るさを目からの距離で変える：[この距離までは一番暗い, この距離で元の明るさ, 一番暗い時の倍率] */
+const WAVE_NEAR = [0.3, 2.0, 0.15] as const;
 /**
  * 剣が飛ばす風の刃（剣は短く、大剣の払いは幅広く）。刃が振った面に沿って傾き（剣は右手なら右上から左下、左手なら逆、大剣の払いはほぼ水平）、
- * 前へ弓なりに反って両端が手前に流れる。真ん中は太く明るく、端は細い。飛ぶほど広がり、薄い尾を引き、終わりに薄れる。突きは細い線
+ * 前へ弓なりに反って両端が手前に流れる。真ん中は太く明るく、端は細い。飛ぶほど広がり、薄い尾を引き、終わりに薄れる。突きは細い線。
+ * 出たばかりの目の前では暗く、離れるほど明るくする（目の前で明るいと、光のにじみが画面の半分に広がって白く飛ぶ。pnpm glare の「画面」で数える）
  */
 export function drawWave(p: Proj): void {
+  const cam = gfx.camera.position,
+    nearK = clamp((Math.hypot(p.x - cam.x, p.y - cam.y, p.z - cam.z) - WAVE_NEAR[0]) / (WAVE_NEAR[1] - WAVE_NEAR[0]), WAVE_NEAR[2], 1);
   const c = elemCol(p.sp.elem),
     v = Math.hypot(p.vx, p.vz) || 1,
     dx = p.vx / v,
@@ -234,7 +241,7 @@ export function drawWave(p: Proj): void {
     pz = dx,
     life = clamp(1 - p.t / (p.maxT || 1), 0, 1),
     fade = Math.min(1, life * 2.2),
-    b = (0.75 + 0.55 * fade) * fade;
+    b = (0.75 + 0.55 * fade) * fade * nearK;
   if (p.thrust) {
     for (let i = 0; i < 6; i++) {
       const k = i * 0.16;
@@ -244,9 +251,9 @@ export function drawWave(p: Proj): void {
         p.z - dz * k,
         G(i === 0 ? '>' : '-'),
         0.16 - i * 0.015,
-        nth(must(c), 0) * 2.4 * b * (1 - i / 7),
-        nth(must(c), 1) * 2.4 * b * (1 - i / 7),
-        nth(must(c), 2) * 2.4 * b * (1 - i / 7),
+        nth(must(c), 0) * WAVE_K * 1.05 * b * (1 - i / 7),
+        nth(must(c), 1) * WAVE_K * 1.05 * b * (1 - i / 7),
+        nth(must(c), 2) * WAVE_K * 1.05 * b * (1 - i / 7),
       );
     }
     return;
@@ -287,9 +294,9 @@ export function drawWave(p: Proj): void {
           q[2] + oz,
           G(g),
           (p.big ? 0.2 : 0.16) * (0.7 + 0.45 * core),
-          nth(must(c), 0) * 2.3 * bb,
-          nth(must(c), 1) * 2.3 * bb,
-          nth(must(c), 2) * 2.3 * bb,
+          nth(must(c), 0) * WAVE_K * bb,
+          nth(must(c), 1) * WAVE_K * bb,
+          nth(must(c), 2) * WAVE_K * bb,
         );
       }
     }
