@@ -2,6 +2,7 @@
 // その左の [持ち替え] で次のビルドへ（ビルドを2つ以上保存した時だけ出る。src/lib/hotbar.ts）、左の [回避]（左上の状態の表示の下）で回避。指の遊び方（ui.touch。src/lib/touch.ts）の時だけ、CSS が出す（src/index.html の #tctl）。
 // 移動はスティックの向きを WASD に置き換え（8方向）、端まで倒すと走る（Shift）。詠唱のボタンを押したまま指をずらすと、見回しもできる。
 // ボタンの外で離した時・指を取り逃した時（pointercancel）も、離したことにする。止まっている間（メニューなど）は、新しく押しても何もしない。
+// 図鑑で生き物を見ている間は、描く画面の1本指のドラッグで生き物を回し・見下ろし（マウスのドラッグと同じ）、2本指でつまむと寄る・引く（ホイールと同じ）。
 // 描く画面と指の操作のボタンは touch-action を既定のままにし、touchmove の preventDefault で、ブラウザの送りと拡大を止める
 // （touch-action: none の上で指を動かすと、Chromium はその直後のボタンのタップを click にしない。[メニュー] などが1回効かなくなる）
 import { must } from './array.ts';
@@ -31,6 +32,8 @@ let stickF: (Finger & { ox: number; oy: number }) | null = null,
   lookF: Finger | null = null;
 /** 詠唱のボタンを押している指（指の番号 → 手と、見回すための前の位置） */
 const holds = new Map<number, Finger & { h: Side }>();
+/** 図鑑の描く画面に触れている指（指の番号 → 前の位置） */
+const galF = new Map<number, Finger>();
 
 /** 指を捕まえる（その指が画面のどこへ動いても、事件が届くように）。捕まえられない指（もう離れた指など）は、そのまま */
 function capture(el: Element, id: number): void {
@@ -83,6 +86,23 @@ function endHold(id: number): void {
 /** ボタンを押した時にすること（ビルドの持ち替えは、古い JS のホイールと同じ処理を渡す） */
 export interface PadActions {
   build: () => void;
+  /** 図鑑の操作（古い JS の src/game/25-gallery.js。マウスのドラッグとホイールと同じ処理） */
+  gallery: {
+    /** 図鑑で生き物を見ているか */
+    on: () => boolean;
+    /** 回す（横）・見下ろす（縦）。指が動いた px */
+    drag: (dx: number, dy: number) => void;
+    /** 寄る・引く。f は2本の指の間の長さが何倍になったか（広げると寄る） */
+    zoom: (f: number) => void;
+    /** 指で触れ始めた・全部離した（触れている間は、生き物がひとりでに回らない） */
+    hold: (on: boolean) => void;
+  };
+}
+
+/** 2本の指の間の長さ */
+function spread(): number {
+  const [a, b] = [...galF.values()];
+  return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
 }
 
 /** 指の操作を用意する（ページを開いた時に1回） */
@@ -100,6 +120,13 @@ export function initTouchpad(act: PadActions): void {
     );
   gl.addEventListener('pointerdown', (e) => {
     if (e.pointerType !== 'touch') return;
+    if (act.gallery.on()) {
+      if (galF.size >= 2) return;
+      capture(gl, e.pointerId);
+      if (!galF.size) act.gallery.hold(true);
+      galF.set(e.pointerId, { id: e.pointerId, x: e.clientX, y: e.clientY });
+      return;
+    }
     if (!canPlay()) return;
     capture(gl, e.pointerId);
     if (e.clientX < innerWidth / 2 && !stickF) {
@@ -131,6 +158,20 @@ export function initTouchpad(act: PadActions): void {
   });
   window.addEventListener('pointermove', (e) => {
     if (e.pointerType !== 'touch') return;
+    const g = galF.get(e.pointerId);
+    if (g) {
+      // 2本の時はつまむだけ、1本の時は回すだけ
+      const d0 = spread();
+      const dx = e.clientX - g.x,
+        dy = e.clientY - g.y;
+      g.x = e.clientX;
+      g.y = e.clientY;
+      if (galF.size >= 2) {
+        const d1 = spread();
+        if (d0 > 0 && d1 > 0) act.gallery.zoom(d1 / d0);
+      } else act.gallery.drag(dx, dy);
+      return;
+    }
     if (stickF?.id === e.pointerId) stickKeys(e.clientX - stickF.ox, e.clientY - stickF.oy);
     const f = lookF?.id === e.pointerId ? lookF : holds.get(e.pointerId);
     if (f) {
@@ -141,6 +182,7 @@ export function initTouchpad(act: PadActions): void {
   });
   const end = (e: PointerEvent): void => {
     if (e.pointerType !== 'touch') return;
+    if (galF.delete(e.pointerId) && !galF.size) act.gallery.hold(false);
     if (stickF?.id === e.pointerId) endStick();
     if (lookF?.id === e.pointerId) lookF = null;
     endHold(e.pointerId);

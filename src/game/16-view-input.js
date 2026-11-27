@@ -105,4 +105,4 @@ document.addEventListener('pointerlockchange',()=>{ const was=ui.locked; ui.lock
 document.addEventListener('pointerlockerror',lockFailed);
 // 指で遊ぶ時の土台（src/lib/touch.ts）。指の後に出るマウスの事件を止めるので、ゲームのマウスの処理（17-meta.js）より先に用意する。togglePack・toggleMenu は 17-meta.js
 initTouch({pack:togglePack,menu:toggleMenu});
-initTouchpad({build:nextBuild});
+initTouchpad({build:nextBuild,gallery:{on:()=>!!(ui.gallery&&ui.gallery.mode==='beast'),drag:galleryDrag,zoom:galleryZoom,hold:galleryHold}});

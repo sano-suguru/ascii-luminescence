@@ -106,6 +106,8 @@ body.paused #help{opacity:0;}
 #gal{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:25;margin:0;white-space:pre;font-family:"M PLUS 1 Code","BIZ UDGothic","JetBrains Mono",ui-monospace,monospace;font-size:13px;line-height:1.7;color:var(--ink);background:rgba(4,3,12,.9);padding:2px 6px;display:none;pointer-events:auto;}
 #gal.show{display:block;}
 #gal .f{color:var(--shade);}
+/* 指で遊ぶ背の低い画面（スマホの横向き）：図鑑の枠を小さくして下に寄せる（生き物の体の下半分が、枠に隠れていた） */
+@media (max-height:520px){ body.touch #gal{bottom:calc(4px + env(safe-area-inset-bottom,0px));font-size:12px;line-height:1.4;} }
 #arrows{position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none;z-index:15;}
 #altarp{display:none;position:fixed;left:50%;bottom:86px;transform:translateX(-50%);z-index:22;margin:0;white-space:pre;font-family:"M PLUS 1 Code","BIZ UDGothic",ui-monospace,monospace;font-size:13px;line-height:1.55;color:#e4dcf6;background:rgba(8,6,16,.82);padding:6px 12px;border-radius:4px;pointer-events:none;}
 #altarp.show{display:block;}

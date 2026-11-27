@@ -13,6 +13,7 @@
 //   8. 指の操作（src/lib/touchpad.ts。CDP の Input.dispatchTouchEvent で、2本の指を同時に動かす）：左半分のスティックで進む（離すと止まる）・右半分のドラッグで見回す・
 //      両方を同時に・[右手] を押して溜め、指をずらすと見回し、離すと溜めが終わる・指を取り逃した時（touchCancel）も溜めが終わる・[回避]・
 //      メニューを開いている間は、スティックで動かない・レベルアップと祭壇の画面は、1回目のタップで選んで説明を出し、2回目で決める
+//  10. 図鑑を指で動かす：案内が指の時の文言か・枠が画面の上半分に掛からないか・1本指のドラッグで回り、触れている間はひとりでに回らない・2本指で広げると寄り、[向きを戻す] で戻る
 //   7. 診断の記録（src/lib/diag.ts）：偽の window.claude（Artifact の中の真似）で、持ち主なら端末・できごと・速さ・かかった時間・遅いフレームを db に書き、持ち主でなければ書かない。
 //      書き込みの途中に頼まれた分（ページが隠れた時）も、途中の分が終わってから書く
 import { FIT_MIN } from '../src/lib/layout.ts';
@@ -566,6 +567,82 @@ await withBrowser(async ({ browser, base }) => {
     if (!(await E(() => document.getElementById('death').classList.contains('show'))))
       errs.push('狭い画面：結果の画面が出ない（テストの前提が崩れた）');
     else await fits('#death', '結果の画面');
+    await pg.context().close();
+  }
+
+  // ---------------------------------------------------------------- 10. 図鑑を指で動かす
+  {
+    const pg = await newPage(browser, errs, { device: 'iPhone 13 landscape' });
+    await openTest(pg, base, 'seed=202');
+    const E = (f, a) => pg.evaluate(f, a);
+    const cdp = await pg.context().newCDPSession(pg);
+    const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y, id]) => ({ x, y, id })) });
+    const draw = () => E(() => __test.galleryDraw());
+    await pg.locator('#galB').scrollIntoViewIfNeeded();
+    const gb = await pg.locator('#galB').boundingBox();
+    await pg.touchscreen.tap(gb.x + gb.width / 2, gb.y + gb.height / 2);
+    await advance(pg, 2);
+    const txt = await E(() => document.getElementById('gal').innerText);
+    if (!txt.includes('つまんで寄る') || !txt.includes('[向きを戻す]') || txt.includes('ホイール'))
+      errs.push(`図鑑を指で：案内が指の時の文言でない（${txt.replace(/\s+/g, ' ').slice(0, 200)}）`);
+    // 背の低い画面では、枠を小さくして下に寄せる（画面の上半分に生き物が見えるように）
+    const galTop = await E(() => document.getElementById('gal').getBoundingClientRect().top / innerHeight);
+    if (!(galTop > 0.5)) errs.push(`図鑑を指で：図鑑の枠が画面の上半分に掛かっている（上の端が ${(galTop * 100).toFixed(0)}%）`);
+    // 描く画面の、図鑑の枠に掛からない所（右の上のあたり）
+    const vw = await E(() => innerWidth);
+    const X = vw * 0.75,
+      Y = 50;
+    // タイトルの画面が消えるのは CSS のアニメーション（実時間）なので、そこが描く画面になるまで待つ
+    // （テスト用モードでは setTimeout が止まっているので、waitForFunction ではなく、ここで待つ）
+    let top = '';
+    for (let i = 0; i < 100 && top !== 'gl'; i++) {
+      top = await E(([x, y]) => document.elementFromPoint(x, y)?.id ?? '', [X, Y]);
+      if (top !== 'gl') await new Promise((ok) => setTimeout(ok, 200));
+    }
+    if (top !== 'gl') errs.push(`図鑑を指で：描く画面の上に ${top} がある`);
+    await pg.screenshot({ path: 'tests/out/touch-gallery.png', timeout: 90000 });
+    // 1本指のドラッグで回る（横に 80px で 0.8 ラジアン）。触れている間は、ひとりでに回らない
+    let a = await draw();
+    await touch('touchStart', [[X, Y, 1]]);
+    await touch('touchMove', [[X + 40, Y, 1]]);
+    await touch('touchMove', [[X + 80, Y, 1]]);
+    let b = await draw();
+    const turned = Math.abs(Math.atan2(Math.sin(b.turn - a.turn), Math.cos(b.turn - a.turn)));
+    if (!(Math.abs(turned - 0.8) < 0.05)) errs.push(`図鑑を指で：ドラッグで回らない（${a.turn} → ${b.turn}）`);
+    await advance(pg, 1);
+    const c = await draw();
+    if (c.turn !== b.turn) errs.push(`図鑑を指で：触れている間に、ひとりでに回った（${b.turn} → ${c.turn}）`);
+    await touch('touchEnd', []);
+    // 2本指で広げると寄り、[向きを戻す] で元の距離に戻る
+    await advance(pg, 1.5);
+    a = await draw();
+    await touch('touchStart', [[X - 60, Y, 1]]);
+    await touch('touchStart', [
+      [X - 60, Y, 1],
+      [X + 60, Y, 2],
+    ]);
+    await touch('touchMove', [
+      [X - 100, Y, 1],
+      [X + 60, Y, 2],
+    ]);
+    await touch('touchMove', [
+      [X - 100, Y, 1],
+      [X + 100, Y, 2],
+    ]);
+    await touch('touchEnd', []);
+    await advance(pg, 1.5);
+    b = await draw();
+    if (!(b.camera.dist < a.camera.dist * 0.75)) errs.push(`図鑑を指で：つまんで広げても寄らない（${a.camera.dist} → ${b.camera.dist}）`);
+    const rb = await pg.locator('#gal button[data-g="reset"]').boundingBox();
+    if (!rb) errs.push('図鑑を指で：[向きを戻す] が見えない');
+    else {
+      await pg.touchscreen.tap(rb.x + rb.width / 2, rb.y + rb.height / 2);
+      await advance(pg, 1.5);
+      const r = await draw();
+      if (!(Math.abs(r.camera.dist - a.camera.dist) < 0.05))
+        errs.push(`図鑑を指で：[向きを戻す] で距離が戻らない（${a.camera.dist} → ${b.camera.dist} → ${r.camera.dist}）`);
+    }
+    console.log(`図鑑を指で：回る ${turned.toFixed(2)}、距離 ${a.camera.dist} → ${b.camera.dist}`);
     await pg.context().close();
   }
 
