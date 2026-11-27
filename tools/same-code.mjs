@@ -9,6 +9,7 @@
 //   nth(a, i) → a[i]、lookup(o, k) → o[k]：範囲の外や無い欄では止まる（元は undefined）
 //   o['k'] → o.k（k が名前にできる文字の時。両方に当てる）
 //   must(x, '…') → x：x が null・undefined の時は止まる（元はその先で止まるか、黙って進む）
+//   cssOf(c) → css(c)：表から読んだ色を css にする。色が無い・3つより少ない時は止まる（元は NaN の色か、その先で止まる。src/lib/color.ts）
 //   level() → here.D：そのファイルの level が () => must(here.D, …) の時だけ
 //   x ?? NaN → x：算術（- * / % **、もう片方が数と分かる +）・大小の比べ方・単項の - +・Math.* の引数の中だけ（undefined も NaN も同じ結果になる所）。
 //     null は undefined と結果が違う（null * 2 は 0）が、道具は型を見ないので見分けられない。値が null にならない所でだけ ?? NaN を書くこと
@@ -137,7 +138,7 @@ function norm(n, ctx) {
   });
 }
 
-/** nth・lookup・must・level() を戻し、?? NaN には印（NaNDefault）を付ける（印は、使われる所を見てから外す） */
+/** nth・lookup・must・cssOf・level() を戻し、?? NaN には印（NaNDefault）を付ける（印は、使われる所を見てから外す） */
 function undo(n, ctx) {
   return walk(n, (x) => {
     if ((isCall(x, 'nth') || isCall(x, 'lookup')) && x.arguments.length === 2) {
@@ -145,6 +146,8 @@ function undo(n, ctx) {
       return member(undo(x.arguments[0], ctx), undo(x.arguments[1], ctx), true);
     }
     if (isCall(x, 'must') && x.arguments.length >= 1) return (ctx.hit('must'), undo(x.arguments[0], ctx));
+    if (isCall(x, 'cssOf') && x.arguments.length === 1)
+      return (ctx.hit('cssOf'), { ...x, callee: ident('css'), arguments: [undo(x.arguments[0], ctx)] });
     if (ctx.levelIsHereD && isCall(x, 'level') && x.arguments.length === 0)
       return (ctx.hit('level'), member(ident('here'), ident('D'), false));
     if (x.type === 'LogicalExpression' && x.operator === '??' && x.right.type === 'Identifier' && x.right.name === 'NaN')
