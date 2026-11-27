@@ -12,6 +12,7 @@ import * as ST from '../../src/lib/status.ts';
 import { G } from '../../src/lib/glyphs.ts';
 import { adv, msgs, ui } from '../../src/lib/state.ts';
 import { fakeScreen, particleCases, screenCases } from './screens-cases.mjs';
+import { caseOut } from './case-out.mjs';
 
 const fnv = (s) => {
   let h = 0x811c9dc5;
@@ -24,6 +25,7 @@ describe('移す前と同じ', () => {
     const all = particleCases(PT, 300);
     // 場合が中身を通っているか：粒子と文字の数が上限に達する場合も通る
     expect([all.split('\n').length, all.includes('"pN":3600'), all.includes('"dn":12000')]).toEqual([300, true, true]);
+    caseOut('screens-1', all);
     expect([fnv(all), all.length]).toEqual(['04640061', 87148]);
   });
   it('頭の上の印・装備の画面の開け閉め・付け替えの詠唱・マウスを捕まえる・視点・音量（300の場合）の指紋', async () => {
@@ -56,6 +58,7 @@ describe('移す前と同じ', () => {
       calls.some((c) => c.f === 'setInv' && !c.on && c.swap),
       cases.some((c) => c.calls.some((x) => x.grew === 16) && c.log.some((e) => e[1] === 'start')),
     ]).toEqual([true, true, true, true]);
+    caseOut('screens-2', all);
     expect([fnv(all), all.length]).toEqual(['7254ffee', 763699]);
   });
 });

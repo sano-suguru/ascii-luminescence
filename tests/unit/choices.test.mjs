@@ -15,6 +15,7 @@ import { keyedRand } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 import { rollTraits } from '../../src/lib/runes.ts';
 import { adv, gear, here, player, saved } from '../../src/lib/state.ts';
+import { caseOut } from './case-out.mjs';
 
 const fnv = (s) => {
   let h = 0x811c9dc5;
@@ -100,6 +101,7 @@ describe('レベルアップの選択肢', () => {
       all.push(showLevel(levelChoices(() => Math.random())));
     }
     const txt = all.join('\n');
+    caseOut('choices', txt);
     expect([fnv(txt), txt.length]).toEqual(['6aeb2b3a', 19148]); // 乱数を分ける前の古い JS で出した値
   });
 });

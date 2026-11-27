@@ -7,6 +7,7 @@ import { randomRuneType } from '../../src/lib/gear.ts';
 import { adv, player, saved } from '../../src/lib/state.ts';
 import * as UN from '../../src/lib/unlocks.ts';
 import { altarCases } from './altar-cases.mjs';
+import { caseOut } from './case-out.mjs';
 
 const fnv = (s) => {
   let h = 0x811c9dc5;
@@ -72,6 +73,7 @@ describe('移す前と同じ', () => {
       count(/"kind":"spring"/),
       count(/ERR/),
     ]).toEqual([400, 400, 380, 343, 400, 189, 0]);
+    caseOut('altars', all);
     expect([fnv(all), all.length]).toEqual(['bf108741', 1665849]);
   }, 30000);
 });

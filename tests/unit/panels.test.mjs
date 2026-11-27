@@ -10,6 +10,7 @@ import { ui } from '../../src/lib/state.ts';
 import { fnv } from './fight-cases.mjs';
 import { NAMES, panelCases, panelDom, panelText } from './panels-cases.mjs';
 import { swapGlobals } from './ui-cases.mjs';
+import { caseOut } from './case-out.mjs';
 
 // ここで移さない重い処理は、呼んだ時の記録だけ取る（新しい階・新しい探索・装備の画面の開け閉め。どれも古い関数と新しい関数の両方から、同じ入れ替えた物が呼ばれる）
 const mocked = vi.hoisted(() => []);
@@ -43,6 +44,7 @@ describe('移す前と同じ', () => {
     const all = await panelCases(makeF, SEEDS, panelDom(), mocked),
       body = panelText(all),
       calls = all.flatMap((c) => c.calls);
+    caseOut('panels', body);
     expect([fnv(body), body.length]).toEqual(['51ce1536', 1527250]);
     // 場合が中身を通っているか：移した関数が全部呼ばれ、どれも止まらず、待たせた処理も止まらない
     expect(new Set(calls.map((c) => c.name).filter((n) => NAMES.includes(n)))).toEqual(new Set(NAMES));

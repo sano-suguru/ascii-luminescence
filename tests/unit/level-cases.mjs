@@ -43,6 +43,7 @@ import { BRANCHES, CELL, FINAL_DEPTH, MH, MW, NCELL, REALMS, SF_HAY, TF, TP } fr
 import { fakeAudioClass } from './fake-audio.mjs';
 import { fakeCamera, fakeDom, fakeTimers, fakeUniforms, hashArr } from './fight-cases.mjs';
 import { swapGlobals } from './ui-cases.mjs';
+import { stateFp } from './case-out.mjs';
 
 /** 移した関数の名前（場合が全部を呼ぶか、level.test.mjs が確かめる） */
 export const NAMES = [
@@ -332,7 +333,7 @@ export async function levelCases(F, seeds, page) {
           snd: sndN - s0,
           msg: msgN - g0,
           timers: timers.st.n - t0,
-          state: fnv(state()),
+          state: stateFp(state(), fnv),
           msgs: msgs.map((m) => m.html).join('|'),
         });
         return ret;
@@ -634,7 +635,7 @@ export async function levelCases(F, seeds, page) {
           if (chance(0.7)) {
             // ［新しい探索へ］は暗くし始めるだけ（startNewRun）。真っ暗になった時に tick が呼ぶ newRun を、ここで呼ぶ
             el.onclick(btn({}, 'newRunB'));
-            calls.push({ name: 'newRunB', state: fnv(state()) });
+            calls.push({ name: 'newRunB', state: stateFp(state(), fnv) });
             if (here.trans && here.trans.run) call('newRun');
           }
         }

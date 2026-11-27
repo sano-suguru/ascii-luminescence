@@ -11,6 +11,7 @@ import * as MON from '../../src/lib/monsters.ts';
 import * as PLAYER from '../../src/lib/player.ts';
 import * as RESULTS from '../../src/lib/results.ts';
 import { NAMES, fakeDom, fightCases, fightText } from './fight-cases.mjs';
+import { caseOut } from './case-out.mjs';
 
 const fnv = (s) => {
   let h = 0x811c9dc5;
@@ -23,6 +24,7 @@ describe('移す前と同じ', () => {
     const all = await fightCases({ ...AIM, ...AUDIO, ...COMBAT, ...GEAR, ...MON, ...PLAYER, ...RESULTS }, 16, fakeDom()),
       body = fightText(all),
       calls = all.flatMap((c) => c.calls);
+    caseOut('fight', body);
     expect([fnv(body), body.length]).toEqual(['abc3ddad', 3681076]);
     // 場合が中身を通っているか：59の関数が全部呼ばれ、どれも止まらない。見た目の乱数・音の乱数・伝言・setTimeout を使う呼び出しもある
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
