@@ -726,7 +726,7 @@ async function glareChecks(pg, base) {
   console.log(`18：当たった時の画面の眩しい画素 ${(scr * 100).toFixed(1)}%、体の明るさ ${m0.toFixed(1)} → ${m1.toFixed(1)}`);
 }
 
-// 20：反応と火が重なった時の眩しさ（src/lib/bodies/draw.ts の LIT_MAX・src/lib/shaders.ts の火の明かり）
+// 20：反応と火が重なった時の眩しさ（src/lib/lightmap.ts の LIT_MAX・src/lib/shaders.ts の火の明かり）
 async function reactFireGlareChecks(pg, base) {
   // 大洞窟（床に枯れ草が多い）。樫の杖を両手に持ち、左に氷、右に炎を付け、5 ほど先の見えている床にトロルを置いて止める
   await openTest(pg, base, 'seed=7&depth=3&god=1');
@@ -768,21 +768,16 @@ async function reactFireGlareChecks(pg, base) {
     return;
   }
   await frames(pg, 1);
-  const box = await pg.evaluate(() => __test.monsterView('T')?.screen ?? null);
-  if (!box) {
-    errs.push('20：トロルの体が描かれていない（テストの前提が崩れた）');
-    return;
-  }
   const lum = (png, i) => 0.2126 * png.data[i] + 0.7152 * png.data[i + 1] + 0.0722 * png.data[i + 2];
-  // 画面全体の眩しい画素（明るさ 200 以上）の割合と、体の範囲の白飛び（3つの色がどれも 245 以上）の割合と明るさの平均（数え方は tools/glare.mjs と同じ）
-  const measure = (png) => {
+  // 画面全体の眩しい画素（明るさ 200 以上）の割合と、体の範囲 box の白飛び（3つの色がどれも 245 以上）の割合と明るさの平均（数え方は tools/glare.mjs と同じ）
+  const measure = (png, box) => {
     let scr = 0,
       white = 0,
       sum = 0,
       n = 0;
     for (let i = 0; i < png.data.length; i += 4) if (lum(png, i) >= 200) scr++;
-    for (let y = box.y0; y < box.y1; y++)
-      for (let x = box.x0; x < box.x1; x++) {
+    for (let y = Math.max(0, box.y0); y < Math.min(png.height, box.y1); y++)
+      for (let x = Math.max(0, box.x0); x < Math.min(png.width, box.x1); x++) {
         const i = (y * png.width + x) * 4;
         n++;
         sum += lum(png, i);
@@ -790,7 +785,17 @@ async function reactFireGlareChecks(pg, base) {
       }
     return { scr: scr / (png.width * png.height), white: n ? white / n : 0, mean: n ? sum / n : 0 };
   };
-  const before = measure(PNG.sync.read(await pg.screenshot({ timeout: 90000 })));
+  // 写して数える。体の範囲は写すたびに読み直す（当たって吹き飛んだり向きを変えたりしても、体の所で数える）
+  const shot = async () => {
+    const box = await pg.evaluate(() => __test.monsterView('T')?.screen ?? null);
+    if (!box) return null;
+    return measure(PNG.sync.read(await pg.screenshot({ timeout: 90000 })), box);
+  };
+  const before = await shot();
+  if (!before) {
+    errs.push('20：トロルの体が描かれていない（テストの前提が崩れた）');
+    return;
+  }
   // 氷で凍えさせてから炎を当てる（蒸気の反応が起き、炎の玉は当たった所の枯れ草に火をつける）
   try {
     await strike(pg, 'L', 'T');
@@ -814,7 +819,12 @@ async function reactFireGlareChecks(pg, base) {
   const after = [];
   for (let k = 0; k < 4; k++) {
     await frames(pg, 2);
-    after.push(measure(PNG.sync.read(await pg.screenshot({ timeout: 90000 }))));
+    const a = await shot();
+    if (!a) {
+      errs.push(`20：当たって ${2 * (k + 1)} フレーム目に、トロルの体が描かれていない（テストの前提が崩れた）`);
+      return;
+    }
+    after.push(a);
   }
   const top = (k) => Math.max(...after.map((a) => a[k]));
   const pct = (v) => `${(v * 100).toFixed(1)}%`;

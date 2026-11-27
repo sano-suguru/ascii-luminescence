@@ -7,7 +7,7 @@
 import { lookup, must, nth } from '../array.ts';
 import { G, SWAPSET } from '../glyphs.ts';
 import { MARK_H, markHeight } from '../hud.ts';
-import { cellLight } from '../lightmap.ts';
+import { cellLight, litScale } from '../lightmap.ts';
 import { dyn, spawn } from '../particles.ts';
 import { clamp } from '../rng.ts';
 import { mr, withMobRand } from '../random.ts';
@@ -138,11 +138,6 @@ export function drawMonster(m: Mon, t: number): void {
 }
 /** 当たって光っている間の明るさの倍率。照準の先の倍率 AIM_GLOW とは掛け合わせない（掛け合わせると、光のにじみで体が白く飛ぶ。pnpm glare で数える） */
 const HIT_GLOW = 2.4;
-/**
- * 体の文字に足すまわりの明かり（そのマスの cellLight の 0.12 倍）は、一番強い色が LIT_MAX を越えたら、色の比を保って LIT_MAX まで縮める。
- * 燃えているマスが固まった所では火の明かりが 10 を越え、体が光のにじみで白く飛ぶため（ふだんの灯りは床のマスの 96% ほどが 2 以下で、変わらない）
- */
-export const LIT_MAX = 2;
 /** 照準の先の明るさの倍率 */
 const AIM_GLOW = 1.9;
 /**
@@ -240,7 +235,8 @@ export function drawMonster0(m: Mon, t: number): void {
   const swing = Math.sin(m.walk) * 0.55 * m.moving,
     bob = Math.abs(Math.sin(m.walk)) * 0.04 * m.moving;
   const lit = cellLight(m.x, m.z),
-    litK = (0.12 * LIT_MAX) / Math.max(lit[0], lit[1], lit[2], LIT_MAX);
+    // 体に足すまわりの明かりは、強い所で頭打ちにする（src/lib/lightmap.ts の LIT_MAX）
+    litK = 0.12 * litScale(lit);
   const eelArc = ty.form === 'eel' ? Math.sin(Math.PI * (m.surf ?? NaN)) : 0;
   // クラーケンは、水から出ている度合い rise に合わせて沈み、水面より下になる点は描かない（沈んでいる間は外套の上だけ）
   const sink = ty.form === 'kraken' ? KRAKEN_SINK * (1 - clamp(m.rise || 0, 0, 1)) : 0;

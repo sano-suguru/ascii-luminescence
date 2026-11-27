@@ -1,6 +1,6 @@
 // カメラから見て描く・調べる処理の単体テスト：生き物を描く処理（src/lib/bodies/draw.ts）・罠と鉄格子を描く処理（fixtures.ts の drawTraps）・
 // 見た時の説明（look.ts）・灯りの揺らぎと灯りを描画に渡す配列（lightmap.ts の flicker・updateLights）・照準（aim.ts）。
-// 生き物の体に足すまわりの明かりの頭打ち（draw.ts の LIT_MAX）は、体の文字1つだけの生き物を、火の明かりの強さを変えたマスで描いて確かめる。
+// まわりの明かりの頭打ち（lightmap.ts の LIT_MAX・litScale。生き物の体・倒れて崩れた文字・扉が使う）は、倍率そのものと、体の文字1つだけの生き物を火の明かりの強さを変えたマスで描いた色で確かめる。
 // 指紋は、view-cases.mjs の場合の結果。動きを意図して変えた時や、場合の入力を変えた時は、変わり方を確かめてから作り直す（何が変わったかは、コミットと PR に書く）。
 // 階は Node で本物の迷宮を生成するので、迷宮の生成を変えると、この指紋も変わる（その時は generate.test.ts の指紋と一緒に作り直す）。
 // テストを .mjs で書くのは、偽の画面の部品・偽のカメラ・偽の Web Audio を、本物の型に合わせられないため。
@@ -44,7 +44,20 @@ const NAMES = [
   'drawSwing',
 ];
 
-describe('体に足すまわりの明かりの頭打ち（LIT_MAX）', () => {
+describe('まわりの明かりの頭打ち（LIT_MAX）', () => {
+  it('litScale は、一番強い色が LIT_MAX 以下なら 1、越えたら一番強い色をちょうど LIT_MAX にする', () => {
+    expect(LM.litScale([0, 0, 0])).toBe(1);
+    expect(LM.litScale([2, 0.5, 0.1])).toBe(1);
+    expect(LM.litScale([-1, 0, 0])).toBe(1);
+    for (const l of [
+      [10, 4.5, 1.2],
+      [0.3, 8, 0.2],
+      [3, 3, 3],
+    ]) {
+      const k = LM.litScale(l);
+      expect(Math.max(...l.map((v) => v * k))).toBeCloseTo(LM.LIT_MAX, 10);
+    }
+  });
   // 体の文字1つだけの生き物を、灯りの無い階のマス (5,5) に置き、そのマスの火の明かり fireLight を変えて描く。体の文字の色（dCol）を返す
   const colorAt = (fl) => {
     const keep = { D: here.D, fireLight: blaze.fireLight, dn: buf.dn, px: player.x, pz: player.z, body: gfx.drawBodyOnly },
@@ -80,9 +93,9 @@ describe('体に足すまわりの明かりの頭打ち（LIT_MAX）', () => {
     }
   };
   it('火の明かりが強さ LIT_MAX を越えても、体の文字はそれより明るくならず、色の比は保つ', () => {
-    expect(DRAW.LIT_MAX).toBe(2);
+    expect(LM.LIT_MAX).toBe(2);
     // cellLight の火の明かりは、一番強い赤が fireLight の 2.2 倍。赤が LIT_MAX になる fireLight と、その5倍（燃えているマスが固まった所）
-    const flCap = DRAW.LIT_MAX / 2.2,
+    const flCap = LM.LIT_MAX / 2.2,
       none = colorAt(0),
       cap = colorAt(flCap),
       hot = colorAt(flCap * 5),

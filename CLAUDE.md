@@ -84,7 +84,7 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      camera：霧と目の慣れ updateAtmosphere・その点が岩の中か rockAt・階の場所ごとの空気 updateSectionAir（分かれ道は明るく、階段へ向かう道は暗く）、
                      debris：倒れた生き物が崩れる（倒れた時の体を写し取る crumble。文字が上から順に外れて落ち、床に寝て小山に積もり、1つずつ縮んで消える。動かして描く updateDebris は tick の段 debris。ばらつきは生き物ごとの鍵の乱数 keyedRand('fall'…) で先に決め、見た目の乱数 mr() は引かない。数の上限：1体に残す文字は、ふつう120・主と大きな物250・試しの間の的40、崩れる体は12・残る文字は全体で3000。テスト用の様子 debrisInfo）、
                      legend：今の探索の伝説の物 getLegend と状態の表示の1行・伝説の物の読み方（legendOfBranch・legendAll・descentSealed）と世界の中に描く drawLegendWorld と神託所の手がかり oracleLegendHints、
-                     lightmap：マスの明るさ cellLight と天井の高さ ceilAt・灯りの揺らぎ flicker と灯りを描画に渡す配列を書き直す updateLights（状態に頼る。灯りの計算そのものは light）、
+                     lightmap：マスの明るさ cellLight と、生き物の体・倒れて崩れた文字・扉に足す時の頭打ち LIT_MAX・litScale と天井の高さ ceilAt・灯りの揺らぎ flicker と灯りを描画に渡す配列を書き直す updateLights（状態に頼る。灯りの計算そのものは light）、
                      fixtures：階に置いてある物を描く（灯りの備品 drawFixtures・扉 drawDoors・泉 drawSprings・墓 drawGraves・クモの巣 drawWebs・罠と鉄格子 drawTraps・床と台と祭壇のルーンと石碑と宝物庫の兆し drawRunesWorld（光線・飛ぶ物・詠唱している手の前と付け替えの間のルーンも））と巣に触れた時 webTouch、
                      arrows：方向の矢印（行き先 arrowTargets・見通せるか inPlainSight・画面に重ねた 2D のキャンバス #arrows に描く drawArrows。キャンバスと下の HUD は 22-world-hints.js が ui に入れる）、
                      chantfx：詠唱の見た目（術が飛ぶ道 simPath・手の前の円と飛ぶ道と落ちる所 drawCastFx・照準の文字 #cross と詠唱の間の画面の色 updateCross）、
@@ -159,7 +159,7 @@ tools/diag-report.mjs  診断の記録を表にする（node tools/diag-report.m
 tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ（描き方の引数 GL_ARGS）・テスト用モードのページ。newPage の device で、Playwright の端末の名前（スマホの真似）で開ける。ページはポインタロックを差し替えて止める（realLock で止めない）。環境変数 AL_PREBUILT が 1 なら、組み立て済みとして組み立てない。withBrowser の root で、別の作業場所を組み立てて配信する（tools/field.mjs の --rev）。
                      生き物を撃つ部品：aimAt(pg, 鍵) は、照準の先（__test.mob(n).aimed）になるまで dbg.look で体の高さの真ん中を向いて 1/30 秒ずつ進める（12 回でなれなければ Error）。
                      strike(pg, 手, 鍵) は、押して、近接ならすぐ当たり、溜める武器なら cast.full まで待って向き直してから離し、体力が減るまで描かずに 1/30 秒ずつ進める（{hit, frame} を返す。150 フレームで当たらなければ Error）。
-                     tools/glare.mjs と tests/world.mjs の 18 が使う）
+                     tools/glare.mjs と tests/world.mjs の 18・20 が使う）
 tests/run.mjs        ブラウザのテストをまとめて走らせる（pnpm test）：テスト版と Artifact 版を1回だけ組み立て、12のテスト（画面写真の比較 visual も。一覧はおよその秒の表 SEC。tests/ に SEC にも部品の一覧 NOT_TESTS にも無い .mjs があれば止める）を同時に3つずつ走らせる（--jobs で数、名前を挙げるとそれだけ、--shard i/n で n 組に分けた i 組目だけ。分け方はおよその秒の表 SEC で、組ごとの合計が近くなるように決める）。
                      どのテストも自分のブラウザと空いているポートを使うので、ぶつからない。出力（標準出力と標準エラー）はテストごとにまとめて出す。1つが10分を越えたら止めて、それまでの出力を出す。
                      同じ出力を tests/out/run/<名前>.log にも書く（走らせ始める時に前の回の物を書き直し、出力が来るたびに書き足すので、時間切れ・シグナル・この道具ごと止められた時も、そこまでが残る。
@@ -242,7 +242,7 @@ tests/unit/traits.test.mjs  特性を名前で読む所（TL・tv・wTL）が、
 tests/unit/case-out.mjs  指紋の元の文を書き出す caseOut と、状態の指紋 stateFp（環境変数 AL_CASES_OUT がある時だけ、書き出し、状態を欄ごと・生き物ごとの指紋にする。tools/case-diff.mjs が使う）。
                      指紋を取るテストを足す時は、指紋を比べる行の前に caseOut('名前', 文) を置く
 tests/unit/same-code.test.mjs  tools/same-code.mjs の単体テスト（規則ごとに同じと言う物・違うと言う物、抜けた文・係数・比べ方・乱数を引く順番の違いを見つけるか）
-tests/unit/view.test.mjs  カメラから見て描く・調べる処理（生き物を描く・罠と鉄格子を描く・見た時の説明・灯りの揺らぎと灯りの配列・照準）の単体テスト。生き物の体に足すまわりの明かりが、強さ LIT_MAX（src/lib/bodies/draw.ts）で頭打ちになり、色の比を保つか（火が固まった所で体が白く飛ばないように）も。たくさんの場合を作る view-cases.mjs
+tests/unit/view.test.mjs  カメラから見て描く・調べる処理（生き物を描く・罠と鉄格子を描く・見た時の説明・灯りの揺らぎと灯りの配列・照準）の単体テスト。まわりの明かりの頭打ち（src/lib/lightmap.ts の LIT_MAX・litScale）で、生き物の体に足す明かりが強さ LIT_MAX を越えず、色の比を保つか（火が固まった所で体が白く飛ばないように）も。たくさんの場合を作る view-cases.mjs
                      （Node で本物の迷宮を生成し、全部の種類の生き物・罠・床の物・灯りの種類を足し、偽のカメラ（位置だけ）を物へ向ける。説明の分かれ道ごとの場面も通す。
                      迷宮の生成を変えると、この指紋も変わる）を使う
 tests/unit/motes.test.mjs  粒子を動かす処理（塵・沼のガスの粒・川のさざ波・粒子と火の粉、GPU に渡す数）の単体テスト。たくさんの場合を作る motes-cases.mjs
