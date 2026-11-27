@@ -6,6 +6,7 @@
 //   privateMaps(dir) ソースマップを出力の外（.build/maps/）へ移す。公開物には入れない（tools/where.mjs とテストだけが読む）
 //   noCssStub()      ページの中の <style> から Vite が作る、空の JS モジュールを消す
 //   fontCss()        @fontsource の CSS を絞る：古い形式（woff）の候補を外し、BIZ UDGothic は補いの文字（BIZ_CHARS）を含む面だけ残す
+//   homeScreen()     公開用：ホーム画面に置けるようにする（Web アプリの宣言 manifest.webmanifest とアイコンを出し、HTML から読む）
 //   inlineAll()      Artifact 版：JS と CSS を index.html の中に書き込み、HTML 1つにする（フォントは vite.config.mjs が CSS の data URI にする）。
 //                    ARTIFACT_MAX を越えたら止める
 import { mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -137,6 +138,50 @@ export function testPage() {
     writeBundle() {
       // cjkFallback の面は fonts/ から読む
       symlinkSync(join(root, 'node_modules/@fontsource'), join(outDir, 'fonts'), 'junction');
+    },
+  };
+}
+
+// ホーム画面に置けるようにする（公開用の組み立てだけ。テスト版と Artifact 版には入れない：Artifact はほかのファイルを読めず、テスト版は要らない）。
+// display は standalone（iPhone は fullscreen が効かない。standalone ならアドレスバーが消える）。アイコンは src/icons/（tools/icons.mjs で作る）。
+// iPhone はホーム画面のアイコンを apple-touch-icon から取り、アドレスバーを消すかを apple-mobile-web-app-capable で決める
+export const HOME_ICONS = [192, 512];
+export function homeScreen() {
+  const manifest = {
+    name: 'ASCII LUMINESCENCE',
+    short_name: 'ASCII LUMI',
+    lang: 'ja',
+    start_url: './',
+    scope: './',
+    display: 'standalone',
+    orientation: 'landscape',
+    background_color: '#030209',
+    theme_color: '#030209',
+    icons: HOME_ICONS.map((n) => ({ src: `icon-${n}.png`, sizes: `${n}x${n}`, type: 'image/png' })),
+  };
+  return {
+    name: 'home-screen',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        if (!html.includes('</title>\n')) throw new Error('src/index.html に </title> が見つからない');
+        const head = [
+          '<link rel="manifest" href="./manifest.webmanifest">',
+          '<link rel="apple-touch-icon" href="./icon-192.png">',
+          '<meta name="theme-color" content="#030209">',
+          '<meta name="mobile-web-app-capable" content="yes">',
+          '<meta name="apple-mobile-web-app-capable" content="yes">',
+          '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">',
+          '<meta name="apple-mobile-web-app-title" content="ASCII LUMI">',
+        ];
+        return html.replace('</title>\n', `</title>\n${head.join('\n')}\n`);
+      },
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'manifest.webmanifest', source: `${JSON.stringify(manifest, null, 2)}\n` });
+      for (const n of HOME_ICONS)
+        this.emitFile({ type: 'asset', fileName: `icon-${n}.png`, source: readFileSync(join(root, `src/icons/icon-${n}.png`)) });
     },
   };
 }

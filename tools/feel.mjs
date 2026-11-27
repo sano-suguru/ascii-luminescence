@@ -5,6 +5,7 @@
 //   node tools/feel.mjs                 狙う（見回す速さを3通り）と歩く（8方向とアナログ）
 //   node tools/feel.mjs aim             狙うだけ（walk で歩くだけ）
 //   --look 0.003,0.005,0.008           比べる見回す速さ（指が1px動くと何ラジアン回るか）
+//   --win 2.5,8.9                      狙う課題の、合わせる幅（± 度。既定 2.5）。照準の助け（src/lib/aim.ts の aimTarget）が効く角度を比べる時に
 //   --trials <数>                      狙う課題の回数（既定 20）。歩く課題の道の数は --routes（既定 4）
 // 結果は表で出し、tests/out/feel/summary.json にも書く。
 //
@@ -40,6 +41,7 @@ const W = 750,
 const argv = process.argv.slice(2);
 const only = argv.find((a) => a === 'aim' || a === 'walk');
 const LOOKS = (arg('--look', '0.003,0.005,0.008') ?? '').split(',').map(Number);
+const WINS = (arg('--win', '2.5') ?? '').split(',').map(Number);
 const TRIALS = Number(arg('--trials', 20)),
   ROUTES = Number(arg('--routes', 4));
 
@@ -81,64 +83,66 @@ await withBrowser(async ({ browser, base }) => {
 
   // ---------------------------------------------------------------- 狙う
   if (only !== 'walk')
-    for (const K of LOOKS) {
-      await E((k) => __test.touchTune({ look: k, analog: false }), K);
-      const r = rng(1234),
-        tol = (2.5 * Math.PI) / 180,
-        rows = [];
-      for (let n = 0; n < TRIALS; n++) {
-        const off = ((r() < 0.5 ? -1 : 1) * ((15 + r() * 105) * Math.PI)) / 180;
-        const goal = (await st()).yaw + off;
-        let t = HAND.react,
-          over = 0,
-          clutches = 0,
-          first = true,
-          err = off,
-          ok = false;
-        while (t < 4) {
-          const D = Math.abs(err) / K,
-            g = gauss(r, first ? HAND.gain1 : HAND.gainN),
-            want = D * g,
-            len = Math.min(want, HAND.strokeMax),
-            dir = err > 0 ? -1 : 1, // 右へなぞると右を向く（yaw が減る）。向きを増やすには左へ
-            T = HAND.fittsA + HAND.fittsB * Math.log2(len / ((2 * tol) / K) + 1),
-            x0 = dir < 0 ? W - 30 : W / 2 + 30,
-            steps = Math.max(2, Math.round(T * HZ));
-          await touch('touchStart', [[x0, 160, 1]]);
-          for (let i = 1; i <= steps; i++) {
-            const s = i / steps,
-              p = len * (10 * s ** 3 - 15 * s ** 4 + 6 * s ** 5); // 速さが滑らかに上がって下がる、人の手の動き（躍度最小）
-            await touch('touchMove', [[x0 + dir * p + gauss(r, [0, HAND.tremor]), 160, 1]]);
+    for (const K of LOOKS)
+      for (const WIN of WINS) {
+        await E((k) => __test.touchTune({ look: k, analog: false }), K);
+        const r = rng(1234),
+          tol = (WIN * Math.PI) / 180,
+          rows = [];
+        for (let n = 0; n < TRIALS; n++) {
+          const off = ((r() < 0.5 ? -1 : 1) * ((15 + r() * 105) * Math.PI)) / 180;
+          const goal = (await st()).yaw + off;
+          let t = HAND.react,
+            over = 0,
+            clutches = 0,
+            first = true,
+            err = off,
+            ok = false;
+          while (t < 4) {
+            const D = Math.abs(err) / K,
+              g = gauss(r, first ? HAND.gain1 : HAND.gainN),
+              want = D * g,
+              len = Math.min(want, HAND.strokeMax),
+              dir = err > 0 ? -1 : 1, // 右へなぞると右を向く（yaw が減る）。向きを増やすには左へ
+              T = HAND.fittsA + HAND.fittsB * Math.log2(len / ((2 * tol) / K) + 1),
+              x0 = dir < 0 ? W - 30 : W / 2 + 30,
+              steps = Math.max(2, Math.round(T * HZ));
+            await touch('touchStart', [[x0, 160, 1]]);
+            for (let i = 1; i <= steps; i++) {
+              const s = i / steps,
+                p = len * (10 * s ** 3 - 15 * s ** 4 + 6 * s ** 5); // 速さが滑らかに上がって下がる、人の手の動き（躍度最小）
+              await touch('touchMove', [[x0 + dir * p + gauss(r, [0, HAND.tremor]), 160, 1]]);
+            }
+            await touch('touchEnd', []);
+            t += T;
+            const e2 = goal - (await st()).yaw;
+            if (Math.sign(e2) !== Math.sign(err) && Math.abs(e2) > tol) over++;
+            err = e2;
+            first = false;
+            if (want > HAND.strokeMax) {
+              clutches++;
+              t += HAND.clutch;
+            }
+            if (Math.abs(err) <= tol) {
+              ok = true;
+              break;
+            }
+            t += HAND.replan;
           }
-          await touch('touchEnd', []);
-          t += T;
-          const e2 = goal - (await st()).yaw;
-          if (Math.sign(e2) !== Math.sign(err) && Math.abs(e2) > tol) over++;
-          err = e2;
-          first = false;
-          if (want > HAND.strokeMax) {
-            clutches++;
-            t += HAND.clutch;
-          }
-          if (Math.abs(err) <= tol) {
-            ok = true;
-            break;
-          }
-          t += HAND.replan;
+          rows.push({ off: (off * 180) / Math.PI, t, over, clutches, ok });
         }
-        rows.push({ off: (off * 180) / Math.PI, t, over, clutches, ok });
+        const okRows = rows.filter((x) => x.ok);
+        summary.aim.push({
+          look: K,
+          win: WIN,
+          meanT: mean(okRows.map((x) => x.t)),
+          medianT: median(okRows.map((x) => x.t)),
+          over: mean(rows.map((x) => x.over)),
+          clutch: mean(rows.map((x) => x.clutches)),
+          miss: rows.length - okRows.length,
+          rows,
+        });
       }
-      const okRows = rows.filter((x) => x.ok);
-      summary.aim.push({
-        look: K,
-        meanT: mean(okRows.map((x) => x.t)),
-        medianT: median(okRows.map((x) => x.t)),
-        over: mean(rows.map((x) => x.over)),
-        clutch: mean(rows.map((x) => x.clutches)),
-        miss: rows.length - okRows.length,
-        rows,
-      });
-    }
 
   // ---------------------------------------------------------------- 歩く
   if (only !== 'aim') {
@@ -270,9 +274,12 @@ await withBrowser(async ({ browser, base }) => {
 
   // ---------------------------------------------------------------- 結果
   if (summary.aim.length) {
-    console.log(`\n狙う（${TRIALS}回。左右に 15〜120° 離れた向きへ ±2.5° 以内に）`);
-    console.log('見回す速さ | 合うまでの秒（平均・真ん中） | 行き過ぎ（1回あたり） | 持ち替え（1回あたり） | 4秒で合わず');
-    for (const a of summary.aim) console.log(`${a.look} | ${f2(a.meanT)}・${f2(a.medianT)} | ${f2(a.over)} | ${f2(a.clutch)} | ${a.miss}`);
+    console.log(`\n狙う（${TRIALS}回。左右に 15〜120° 離れた向きへ、合わせる幅の内に）`);
+    console.log(
+      '見回す速さ | 合わせる幅（±度） | 合うまでの秒（平均・真ん中） | 行き過ぎ（1回あたり） | 持ち替え（1回あたり） | 4秒で合わず',
+    );
+    for (const a of summary.aim)
+      console.log(`${a.look} | ${a.win} | ${f2(a.meanT)}・${f2(a.medianT)} | ${f2(a.over)} | ${f2(a.clutch)} | ${a.miss}`);
   }
   if (summary.walk.length) {
     console.log(`\n歩く（${routes_n(summary)}本の道。18〜26 マス先まで、道なりに）`);

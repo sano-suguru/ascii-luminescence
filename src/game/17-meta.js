@@ -30,6 +30,8 @@ function buildIntroPanel(){
   const layerRows=devOn?[`${f('|')} 開始する層`,...layers.map(st=>`${f('|')}   <button class="sl${st.from===ui.startDepth?' on':''}" type="button" data-d="${st.from}"><span class="mk">${st.from===ui.startDepth?'&gt;':' '}</span> 第${st.n}層 ${st.name}</button>`),f('|')]:[];
   el.innerHTML=boxText([f('+-- 地下迷宮へ ---'),
     `${f('|')} 壁も床も天井も、そこに棲むものも、`,`${f('|')} すべてが光る文字でできた地下迷宮。`,`${f('|')} 深く潜るほど闇は濃く、溶岩の光が強くなる。`,f('|'),
+    // iPhone の Safari で、ホーム画面から開いていない時だけ：ホーム画面に置くと、アドレスバーの無い広い画面で遊べる（src/lib/touch.ts の homeHint）
+    ...(homeHint()?[`${f('|')} <span class="lab">共有の「ホーム画面に追加」から開くと、</span>`,`${f('|')} <span class="lab">アドレスバーの無い広い画面で遊べる。</span>`,f('|')]:[]),
     ...(coarse?[]:[...keyRows,f('|')]),...layerRows,
     `${f('|')} シード [<input id="seedIn" type="text" inputmode="numeric" autocomplete="off" maxlength="10" size="10" placeholder="ランダム" aria-label="シード">]`,f('|'),
     ...(UNLOCKS.some(u=>u.kind==='trial'&&unlocked(u.id))?[`${f('|')} 試練 `+UNLOCKS.filter(u=>u.kind==='trial'&&unlocked(u.id)).map(u=>`<button class="sl${(saved.META.trials||[]).includes(u.t)?' on':''}" type="button" data-trial="${u.t}"><span class="mk">${(saved.META.trials||[]).includes(u.t)?'&gt;':' '}</span> ${u.name.replace(/試練|「|」/g,'')}</button>`).join('  '),f('|')]:[]),

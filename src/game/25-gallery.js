@@ -88,6 +88,9 @@ function galleryWheel(dy){ const g=ui.gallery; if(!g||g.mode!=='beast'||!g.m||g.
 function galleryDrag(dx,dy){ const g=ui.gallery; if(!g||g.mode!=='beast'||!g.m||g.fix)return; const v=galleryView();
   // the first move up or down starts from where the camera is now: its angle (tiltNow), and its distance from the point it looks at as a part of R (stretchNow)
   g.m.yaw+=dx*0.01; if(dy){ if(v.pitch===null)v.stretch=g.stretchNow??1; v.pitch=clamp((v.pitch??g.tiltNow??0)+dy*0.006,-0.3,1.3); } }
+// fingers (src/lib/touchpad.ts): a pinch multiplies the distance's zoom by f, and while a finger is on the screen the creature does not turn by itself (as with g.drag for the mouse)
+function galleryZoom(f){ const g=ui.gallery; if(!g||g.mode!=='beast'||!g.m||g.fix||!(f>0))return; const v=galleryView(); v.zoom=clamp(v.zoom*f,GAL_ZOOM[0],GAL_ZOOM[1]); }
+function galleryHold(on){ const g=ui.gallery; if(!g||g.mode!=='beast')return; g.drag=on?{x:0,y:0}:null; galleryView(); }
 function galleryReset(){ const g=ui.gallery; if(!g||g.mode!=='beast')return; g.view=null; g.drag=null; }
 function updateGallery(dt){
   if(!ui.gallery)return; const g=ui.gallery;
@@ -154,8 +157,9 @@ function renderGallery(){
     const desc=galleryDesc(g);
     el.innerHTML=boxText([f('+-- 図鑑 ---'),`${f('|')} ${head}`,`${f('|')} <span class="lab" data-gd="0">${desc[0]}</span>`,`${f('|')} <span class="lab" data-gd="1">${desc[1]}</span>`,f('|'),
       `${f('|')} <button class="row" data-g="prev">[&lt;]</button> ${String(g.list.length?g.idx+1:0).padStart(2,' ')} / ${String(g.list.length).padStart(2,' ')}  <span class="lab">（見つけた数 ${String([...saved.SEEN].filter(k=>k).length).padStart(2,' ')} / ${g.all}）</span> <button class="row" data-g="next">[&gt;]</button>`,
-      `${f('|')} <button class="row" data-g="back">[タイトルへ戻る]</button>   <span class="lab">← → で切り替え　Esc で戻る</span>`,`${f('|')} <span class="lab">ドラッグで回す　ホイールで寄る　R で戻す</span>`,f('+---')],GW);
-    for(const b of el.querySelectorAll('button[data-g]'))b.onclick=()=>{ const k=b.dataset.g; if(k==='prev')showBeast(g.idx-1); else if(k==='next')showBeast(g.idx+1); else returnToTitle(); }; }
+      `${f('|')} <button class="row" data-g="back">[タイトルへ戻る]</button>   <span class="lab">${byInput('← → で切り替え　Esc で戻る','')}</span>`,
+      `${f('|')} ${byInput('<span class="lab">ドラッグで回す　ホイールで寄る　R で戻す</span>','<span class="lab">指で回す　つまんで寄る</span>  <button class="row" data-g="reset">[向きを戻す]</button>')}`,f('+---')],GW);
+    for(const b of el.querySelectorAll('button[data-g]'))b.onclick=()=>{ const k=b.dataset.g; if(k==='prev')showBeast(g.idx-1); else if(k==='next')showBeast(g.idx+1); else if(k==='reset')galleryReset(); else returnToTitle(); }; }
 }
 // ---------------------------------------------------------------- the testing chamber: every rune found so far, and dummies that get back up
 // DUMMY_KINDS は src/lib/names.ts（src/game/imports.mjs で読む）
