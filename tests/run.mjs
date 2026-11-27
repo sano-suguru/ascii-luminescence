@@ -28,7 +28,7 @@ const SEC = {
   panels: 11,
 };
 // tests/ の .mjs のうち、ここで走らせない物（テストの部品と、pnpm check が走らせる glyphs）。これと SEC のどちらにも無いファイルがあれば止める
-const NOT_TESTS = ['lib', 'run', 'reach', 'gallery-specimens', 'glyphs'];
+const NOT_TESTS = ['lib', 'run', 'reach', 'gallery-specimens', 'glyphs', 'page-fakes'];
 const missing = readdirSync(import.meta.dirname)
   .filter((f) => f.endsWith('.mjs'))
   .map((f) => f.slice(0, -4))

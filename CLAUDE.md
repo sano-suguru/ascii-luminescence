@@ -95,11 +95,20 @@ tools/feel.mjs       手触りの試し打ち（node tools/feel.mjs [aim|walk]�
                      道からのずれ。指のくせの値はファイルの頭の HAND。比べ合いにだけ使い、気持ちよさは本物の指で確かめる。CI には入れない。結果は tests/out/feel/summary.json）
 tools/lords.mjs      主たちを本当にいる場所（支道の奥の階・最深部）に置き、プレイヤーの目の高さから写す（pnpm lords。主の体が描かれた画面の範囲・はみ出し・
                      主の体が足した眩しい画素の割合を出す。写真・眩しい所を赤く塗った写真・summary.json は tests/out/lords/）
-tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ・テスト用モードのページ。newPage の device で、Playwright の端末の名前（スマホの真似）で開ける。ページはポインタロックを差し替えて止める（realLock で止めない）。環境変数 AL_PREBUILT が 1 なら、組み立て済みとして組み立てない）
+tools/transitions.mjs  場面が切り替わる時の確かめ（node tools/transitions.mjs [--rate 1,4]。Artifact 版をテスト用モードでなく 750×312 で開き、偽の window.claude の持ち主として、
+                     迷宮に入る → 階段で3回下りる → 死ぬ → ［新しい探索へ］ → 画面の向きを変えて戻す、を本物の時計で通す。書かれた診断の記録を diag-report.mjs の表で出し、
+                     自動再生を許さないブラウザの真似で音の部品が押した時に動き出すか・かかった時間が場面ごとに書かれるか・同じ大きさの resize で作り直さないかを確かめる。
+                     時間は CPU で描くこの環境の値。CI には入れない（数分かかる）。記録は tests/out/transitions/）
+tools/diag-report.mjs  診断の記録を表にする（node tools/diag-report.mjs <ファイルかフォルダ…>。ArtifactData の道具の list に out_dir を付けて保存した JSON。
+                     音の部品の移り変わり・かかった時間の名前ごとの回数と中央と最大・遅いフレームを近くの処理ごとに・時刻の順の一覧）
+tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ（描き方の引数 GL_ARGS）・テスト用モードのページ。newPage の device で、Playwright の端末の名前（スマホの真似）で開ける。ページはポインタロックを差し替えて止める（realLock で止めない）。環境変数 AL_PREBUILT が 1 なら、組み立て済みとして組み立てない）
 tests/run.mjs        ブラウザのテストをまとめて走らせる（pnpm test）：テスト版と Artifact 版を1回だけ組み立て、11のテスト（画面写真の比較 visual も。一覧はおよその秒の表 SEC。tests/ に SEC にも部品の一覧 NOT_TESTS にも無い .mjs があれば止める）を同時に3つずつ走らせる（--jobs で数、名前を挙げるとそれだけ、--shard i/n で n 組に分けた i 組目だけ。分け方はおよその秒の表 SEC で、組ごとの合計が近くなるように決める）。
                      どのテストも自分のブラウザと空いているポートを使うので、ぶつからない。出力はテストごとにまとめて出す。1つが10分を越えたら止めて、それまでの出力を出す
 tests/smoke.mjs      開発用の探索で dbg が動くか ＋ 探索の始め直しで前の場所や状態が残らないか ＋ メニューの「もう一度押して確かめる」待ちが4秒で消えるか ＋ 図鑑を開いても探索の記録が変わらないか ＋ 閉じた祭壇の画面が、装備の画面やメニューを開いて閉じても、離れるまで開かないか ＋ 起きている竜を見た時の伝言 ＋ 最深部で伝説の物を3つ持つと王の影が出て、背の高さと画面への収まりが決めたとおりか、体力を減らすと二つ目の姿になり、大きさが天井に合うか ＋ 伝説の物が揃っていない時は、12階の異界を抜けても最深部に出ないか（画面写真は tests/out/）
-tests/title.mjs      タイトルの画面（どれもテスト用モードでない時のページ）：タイトルの画面が出るか ＋ 開発用モードのまま読み直した時・保存が使えない時のタイトル（画面写真は tests/out/）
+tests/title.mjs      タイトルの画面（どれもテスト用モードでない時のページ）：タイトルの画面が出るか ＋ 開発用モードのまま読み直した時・保存が使えない時のタイトル ＋
+                     自動再生を許さないブラウザの真似で、音の部品がタイトルでは動かず、［迷宮に入る］を押すと動き出すか（診断の記録で見る）（画面写真は tests/out/）
+tests/page-fakes.mjs  テストと道具の部品：偽の window.claude（fakeClaude）・自動再生を許さないブラウザの音の部品の真似（strictAudio。本物の操作の事件を処理している間に作るか resume した時だけ動く。
+                     navigator.userActivation は Playwright の evaluate も操作として数えるので使わない）・診断の記録を今すぐ書かせて読む readDiag
 tests/frame.mjs      サンドボックス付きの iframe の中（allow-scripts だけ。claude.ai の Artifact より厳しく、localStorage にさわると SecurityError、ポインタロックは断られる）で、
                      タイトル → 探索 → ドラッグで見回す → Esc でメニュー → レベルアップ → 祭壇 → 死 → 始め直し → タイトル → 図鑑 → 探索が、ページのエラーなしで通るか ＋
                      requestPointerLock が無い・呼んでも何も起きない・音の部品を作れないブラウザ（初めに動く台本で作る）でも、Esc でメニューが開き、ドラッグで見回せるか ＋
@@ -112,7 +121,7 @@ tests/touch.mjs      指で遊ぶ時の土台（スマホの真似で、テス�
                      本物の大きさ 750×312 で：左下の伝言と下の HUD が重ならない・初めて指で入った時の一言・メニュー・装備の画面・レベルアップ・祭壇・結果の画面が画面に収まる（装備の画面は中を送れて、
                      中を書き直しても送った所が残り、袋のルーンを選ぶと、はめられる枠が見える所まで送る）・メニューの中に開く操作の案内と魔導書・ビルドを2つ保存すると [持ち替え] が出て持ち替える（溜めている間は持ち替えない）・
                      レベルアップと祭壇の間は [装備] [メニュー] が隠れる・指の時の案内の文言 ＋
-                     診断の記録：偽の window.claude で、持ち主なら端末・できごと・速さ・かかった時間・遅いフレームを書き、持ち主でなければ書かないか・書き込みの途中に頼まれた分も後で書くか
+                     診断の記録：偽の window.claude（tests/page-fakes.mjs）で、持ち主なら端末・できごと・速さ・かかった時間・遅いフレーム（40件を越えたら短い物から捨てる）を書き、持ち主でなければ書かないか・書き込みの途中に頼まれた分も後で書くか
 tests/gallery.mjs    図鑑：全部の生き物を立つ・歩く・眠るの姿で出して、例外・描いた文字の数・NaN を確かめる ＋ 図鑑を手で動かす（ホイールで寄る・引く、ドラッグで回す・見下ろす、離すとしばらく止まってまた回る、R と ← → で戻る、ドラッグが外れる、背の高い生き物に寄ると狙う点が上がる） ＋ ほかの所で見た目の乱数を余分に引いても、前に別の生き物を出しても、図鑑の写真（画面写真の比較の4体）が変わらないか（違えば、3つのページの画面写真を tests/out/gallery-rand/ に残す。走らせるたびに空にする） ＋ 出してすぐ __test.galleryDraw で覗いても、後の描いた物が変わらないか
 tests/gallery-specimens.mjs  画面写真の比較で写す図鑑の4体と写し方（visual.mjs と gallery.mjs が使う）
 tests/world.mjs      世界とのやり取り：扉・火・氷と冷気・小さな生き物（修復機・清掃機・猟犬）がマスや扉を変える処理（扉が視界を遮る・燃え尽きる・修復機が作り直す、階に残る物が階を移ると消える、猟犬が匂いの無いマスを追わない、硫黄・氷・冷気と火、薄い氷に乗っていた秒が階を移ると0に戻る、火口が噴き上がって溶岩が流れ、引き、また噴き上がる、溶岩の上に立つ生き物がいない・引き始める前に生き物のいないマスの穴が残らない、吹き飛ばされた生き物が溶岩の手前で止まる、攻撃を転がってかわすとかわした時の加護が効き、ただ転がっただけでは効かない）。生き物は全部消してから、要る物だけ置く
@@ -213,6 +222,8 @@ pnpm shots [名前…]    # 図鑑の生き物を見やすい角度で写す（�
                       #   --views で生き物ごとに角度の一揃いの7枚（枠を隠し、真ん中の 540×540。形や色を直す時に。例：pnpm shots トロル --views））
 node tools/feel.mjs [aim|walk]   # 手触りの試し打ち（見回す速さ・8方向とアナログのスティックを比べる。4分ほど。--look・--trials・--routes）
 pnpm lords [場所…]    # 主たちを本当にいる場所で、目の高さから写し、大きさと眩しさを数で出す（crypt・lair・sunken・nest・snake・final。--dist で距離（既定 8））
+node tools/transitions.mjs [--rate 1,4]   # 場面が切り替わる時の確かめ（Artifact 版を本物の時計で通し、診断の記録を表にする。1つの速さで3分ほど）
+node tools/diag-report.mjs <フォルダ>     # 診断の記録（ArtifactData の道具で保存した JSON）を表にする
 node tests/visual.mjs --update [--only 場面]   # 基準の画像を作り直す（見た目を意図して変えた時だけ）
 node tests/levels.mjs --seed 202               # 1つのシードだけ（--seeds 100 で数を変える）
 node tests/smoke.mjs --prod                    # 公開用の版（dist/）で起動（JetBrains Mono の所の日本語はシステムのフォント）。タイトルの画面は node tests/title.mjs --prod
@@ -225,7 +236,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 ```
 - **Artifact に公開する**：`pnpm build:artifact` の後、Artifact の道具で `.build/artifact/index.html` を公開する。
   診断の記録（src/lib/diag.ts）のため、capabilities は `{db: {rules: [{path: "diag", read: "owner", write: "owner"}]}, user: {}}`（一度渡せば、上げ直す時に省くと、そのまま残る）。
-  記録は、ArtifactData の道具の list で、コレクション diag を読む（開くたびに1件。端末 device・速さ fps（10秒ごとの平均 avg と一番遅い1回 min と、その時にいる場所 place。探索中だけで、タイトル・図鑑・試しの間では null）・できごと events・場面が切り替わる時の処理にかかった時間 took（名前 k と ms。newLevel は生成 gen と組み立て build の内訳、applySize は理由 why と大きさ）・100ms を越えた1フレーム slow（ms・place と、その前の1秒にあったできごとか処理の名前 near）・エラー errors）。公開先の URL は https://claude.ai/artifact/QJStjdouDGtGtEBFBStU3d 。
+  記録は、ArtifactData の道具の list で、コレクション diag を読む（開くたびに1件。端末 device・速さ fps（10秒ごとの平均 avg と一番遅い1回 min と、その時にいる場所 place。探索中だけで、タイトル・図鑑・試しの間では null）・できごと events・場面が切り替わる時の処理にかかった時間 took（名前 k と ms。newLevel は生成 gen と組み立て build の内訳、applySize は理由 why と大きさ）・100ms を越えた1フレーム slow（ms・place と、その前の1秒にあったできごとか処理の名前 near。40件を越えたら短い物から捨てる）・エラー errors）。読んだ記録は `out_dir` に保存して、`node tools/diag-report.mjs` で表にする。公開先の URL は https://claude.ai/artifact/QJStjdouDGtGtEBFBStU3d 。
   上げ直す時は、その URL を `url` に渡す（渡さないと別の Artifact になる。初めは非公開で、見せる相手はユーザーが共有の画面で決める）。公開は外に出す操作なので、ユーザーに確かめてから。
 - **依存を足す・上げる時**：`pnpm add -D --save-exact 名前@版`（確認が出る）。公開から24時間未満の版は入らない（pnpm-workspace.yaml）。
   インストール時にスクリプトを動かす依存は、中身を確かめてから `pnpm approve-builds` で許可する。npm で入れない（権限で止めている）。

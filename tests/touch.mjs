@@ -17,6 +17,7 @@
 //      書き込みの途中に頼まれた分（ページが隠れた時）も、途中の分が終わってから書く
 import { FIT_MIN } from '../src/lib/layout.ts';
 import { withBrowser, newPage, openTest, advance, nearAltar } from './lib.mjs';
+import { fakeClaude, readDiag } from './page-fakes.mjs';
 
 const errs = [];
 const HINT = 'マウスをドラッグして視点を動かせます';
@@ -569,29 +570,7 @@ await withBrowser(async ({ browser, base }) => {
   }
 
   // ---------------------------------------------------------------- 7. 診断の記録
-  // 偽の window.claude：user は持ち主か（owner）を答え、db は書き込まれた物を window.__sets に貯める。
-  // window.__hold が true の間は、書き込みを終わらせない（window.__release() で終わる。書き込みの途中を作るため）
-  const fakeClaude = (owner) => {
-    window.__sets = [];
-    window.__hold = false;
-    const waits = [];
-    window.__release = () => {
-      window.__hold = false;
-      for (const f of waits.splice(0)) f();
-    };
-    const set = async (p, id, d) => {
-      window.__sets.push({ p, id, d: JSON.parse(JSON.stringify(d)) });
-      if (window.__hold) await new Promise((ok) => waits.push(ok));
-    };
-    window.claude = {
-      use: async (n) =>
-        n === 'user'
-          ? { isOwner: async () => owner }
-          : n === 'db'
-            ? { collection: (p) => ({ doc: (id) => ({ set: (d) => set(p, id, d) }) }) }
-            : null,
-    };
-  };
+  // 偽の window.claude は tests/page-fakes.mjs（書き込まれた物を window.__sets に貯め、window.__hold の間は書き込みを終わらせない）
   const nextFrames = (p) => p.evaluate(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
   for (const owner of [true, false]) {
     const p = await newPage(browser, errs, { device: 'iPhone 13 landscape' });
@@ -635,6 +614,16 @@ await withBrowser(async ({ browser, base }) => {
           errs.push(`診断の記録：かかった時間が無い（${JSON.stringify(d.took).slice(0, 300)}）`);
         // 遅いフレーム（テスト用モードでは、advance で進めた分がフレームの間になるので、いつも出る）
         if (!d.slow.some((r) => r.ms > 100)) errs.push(`診断の記録：遅いフレームが無い（${JSON.stringify(d.slow).slice(0, 200)}）`);
+        // 遅いフレームは40件まで。越えたら短い物から捨てる（advance(11) で進めた 11 秒の1回は、後の短い物が41回あっても残る）
+        for (let k = 0; k < 41; k++) {
+          await advance(p, 0.15);
+          await nextFrames(p);
+        }
+        const kept = (await readDiag(p))?.slow ?? [];
+        if (kept.length !== 40 || !kept.some((r) => r.ms > 10000))
+          errs.push(
+            `診断の記録：遅いフレームを、長い物から40件残していない（${kept.length} 件、一番長い ${Math.max(0, ...kept.map((r) => r.ms))}ms）`,
+          );
         if (!ev('audio', 'running')) errs.push(`診断の記録：音の部品が動き出したことが無い（${JSON.stringify(d.events).slice(0, 300)}）`);
         if (!(d.fps.length >= 1 && d.fps[0].avg > 0)) errs.push(`診断の記録：速さが無い（${JSON.stringify(d.fps)}）`);
         else {

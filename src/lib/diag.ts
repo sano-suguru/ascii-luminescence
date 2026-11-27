@@ -4,6 +4,7 @@
 // window.claude.use が無い所（ふつうの公開用の版・テスト）や、持ち主でない人が開いた時は、何もしない。乱数は使わない（ゲームの動きを変えない）。
 // 記録は、開くたびに1件（diag/<開いた時刻>）。書き込みは、変わった時だけ、10秒に1回まで（ページを離れる時も1回）。
 // 公開する時は、capabilities に db（diag は持ち主だけが読み書き）と user を渡す（CLAUDE.md の「Artifact に公開する」）。
+import { nth } from './array.ts';
 import { placeKey } from './levels.ts';
 import { SND, adv, fight, gear, ui } from './state.ts';
 import { setTookSink } from './took.ts';
@@ -25,7 +26,7 @@ const isClaude = (v: unknown): v is ClaudeLike => hasFn(v, 'use');
 const isUser = (v: unknown): v is UserLike => hasFn(v, 'isOwner');
 const isDb = (v: unknown): v is DbLike => hasFn(v, 'collection');
 
-/** 速さの記録の数・できごとの数・エラーの数・かかった時間の数・遅いフレームの数の上限（古い物から捨てる） */
+/** 速さの記録の数・できごとの数・エラーの数・かかった時間の数・遅いフレームの数の上限（遅いフレームは短い物から、ほかは古い物から捨てる） */
 const KEEP = { fps: 60, events: 50, errors: 20, took: 40, slow: 40 };
 /** これより長くかかった1フレームを、遅いフレームとして1つずつ書く（ミリ秒） */
 const SLOW_MS = 100;
@@ -180,13 +181,22 @@ export async function initDiag(): Promise<void> {
     frames++;
     worst = Math.max(worst, now - prev);
     // 遅いフレーム：その前の1秒の間に、できごとかかかった時間の記録があれば、その名前を添える
-    if (now - prev > SLOW_MS)
-      push(rec.slow, KEEP.slow, {
+    if (now - prev > SLOW_MS) {
+      push(rec.slow, Infinity, {
         ms: Math.round(now - prev),
         phase: phase(),
         place: ui.started && !ui.gallery ? placeKey() : null,
         near: now - lastAt < 1000 + (now - prev) ? lastK : null,
       });
+      // 数が上限を越えたら、一番短い物（同じ長さなら古い物）を捨てる（遅いフレームが続く端末でも、飛び抜けて長い1回を残すため）
+      if (rec.slow.length > KEEP.slow) {
+        let k = 0;
+        rec.slow.forEach((r, i) => {
+          if (Number(r['ms']) < Number(nth(rec.slow, k)['ms'])) k = i;
+        });
+        rec.slow.splice(k, 1);
+      }
+    }
     prev = now;
     if (now - from >= SPAN) {
       push(rec.fps, KEEP.fps, {
