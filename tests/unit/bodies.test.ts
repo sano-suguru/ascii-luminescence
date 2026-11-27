@@ -9,6 +9,7 @@ import { G } from '../../src/lib/glyphs.ts';
 import * as lords from '../../src/lib/bodies/lords.ts';
 import * as small from '../../src/lib/bodies/small.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
+import { caseOut } from './case-out.mjs';
 
 const random = Math.random;
 afterEach(() => {
@@ -86,6 +87,7 @@ describe('生き物の形', () => {
       const b = seeded(() => lords.beastForm(spec));
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
+    caseOut('bodies-1', all);
     expect(all.length).toBe(3545793);
     expect(fnv(all)).toBe('e4018f65'); // トロル・ゴーレム・クラーケン・ギタイムシ（trollForm2・golemForm2・krakenForm2・crabForm）を除き、移す前の実装で出した値と同じ（この4つは移した後で作り直した。作り直した王の影の一つ目の姿は、下の別のテスト）
   });
@@ -96,6 +98,7 @@ describe('生き物の形', () => {
       all += JSON.stringify(seeded(() => beasts.ogreForm({ ...ty, ch: 'O' })));
     }
     for (const f of BOSS_FORMS) all += JSON.stringify(seeded(f));
+    caseOut('bodies-2', all);
     expect(all.length).toBe(1792099);
     expect(fnv(all)).toBe('7a018410'); // 移す前の実装で出した値から、蜘蛛の女王とナーガの女王の明るさ b だけを 0.6 倍（BOSS_DIM）にした値
   });

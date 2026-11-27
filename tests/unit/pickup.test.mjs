@@ -12,6 +12,7 @@ import * as PICKUP from '../../src/lib/pickup.ts';
 import { adv, fight, hudInfo } from '../../src/lib/state.ts';
 import { fakeDom, fnv } from './fight-cases.mjs';
 import { NAMES, pickupCases, pickupText } from './pickup-cases.mjs';
+import { caseOut } from './case-out.mjs';
 
 // 場合ごとに、関数が覚える状態（入れ物に移した物）を初めに戻す
 const makeF = () => {
@@ -27,6 +28,7 @@ describe('移す前と同じ', () => {
     const all = await pickupCases(makeF, 16, fakeDom()),
       body = pickupText(all),
       calls = all.flatMap((c) => c.calls);
+    caseOut('pickup', body);
     expect([fnv(body), body.length]).toEqual(['0ef5d7b0', 2358936]);
     // 場合が中身を通っているか：9の関数が全部呼ばれ、どれも止まらず、待たせた処理も止まらない
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
