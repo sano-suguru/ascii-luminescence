@@ -18,7 +18,7 @@ function buildUnlockPanel(){ const el=document.getElementById('intropanel'); if(
   document.getElementById('unlBack').addEventListener('click',()=>{ introMode='main'; buildIntroPanel(); });
   for(const b of el.querySelectorAll('button[data-unl]'))b.addEventListener('click',()=>{ const u=UNLOCKS.find(x=>x.id===b.dataset.unl); if(!u||unlocked(u.id)||u.cost>loreLeft())return; saved.META.unl=[...(saved.META.unl||[]),u.id]; saved.META.spent=(saved.META.spent||0)+u.cost; saveMeta(); sndInit(); sChime(0,0,0.5); buildUnlockPanel(); }); }
 function buildIntroPanel(){
-  const devOn=saved.DEVALL; if(!devOn)startDepth=1; const seedKeep=(document.getElementById('seedIn')||{}).value||'';
+  const devOn=saved.DEVALL; if(!devOn)ui.startDepth=1; const seedKeep=(document.getElementById('seedIn')||{}).value||'';
   const el=document.getElementById('intropanel'); if(!el)return; const f=t=>`<span class="f">${t}</span>`;
   if(introMode==='unlock'){ buildUnlockPanel(); return; }
   // 指で触る端末（スマホなど）では、キーボードの操作の一覧を出さない（使えない操作で、背の低い画面ではタイトルが収まらなくなるため）
@@ -27,7 +27,7 @@ function buildIntroPanel(){
   const cell=([k,v])=>{ const s=`<b>[${k}]</b> ${v}`; return s+' '.repeat(Math.max(1,24-visW(s))); };
   const keyRows=[]; for(let i=0;i<keyList.length;i+=2)keyRows.push(`${f('|')} ${cell(keyList[i])}${keyList[i+1]?cell(keyList[i+1]):''}`);
   const seen=new Set(), layers=[]; for(const st of STRATA){ if(seen.has(st.n))continue; seen.add(st.n); layers.push(st); }
-  const layerRows=devOn?[`${f('|')} 開始する層`,...layers.map(st=>`${f('|')}   <button class="sl${st.from===startDepth?' on':''}" type="button" data-d="${st.from}"><span class="mk">${st.from===startDepth?'&gt;':' '}</span> 第${st.n}層 ${st.name}</button>`),f('|')]:[];
+  const layerRows=devOn?[`${f('|')} 開始する層`,...layers.map(st=>`${f('|')}   <button class="sl${st.from===ui.startDepth?' on':''}" type="button" data-d="${st.from}"><span class="mk">${st.from===ui.startDepth?'&gt;':' '}</span> 第${st.n}層 ${st.name}</button>`),f('|')]:[];
   el.innerHTML=boxText([f('+-- 地下迷宮へ ---'),
     `${f('|')} 壁も床も天井も、そこに棲むものも、`,`${f('|')} すべてが光る文字でできた地下迷宮。`,`${f('|')} 深く潜るほど闇は濃く、溶岩の光が強くなる。`,f('|'),
     ...(coarse?[]:[...keyRows,f('|')]),...layerRows,
@@ -41,7 +41,7 @@ function buildIntroPanel(){
   for(const b of el.querySelectorAll('button[data-trial]'))b.addEventListener('click',()=>{ const k=b.dataset.trial, T=new Set(saved.META.trials||[]); if(T.has(k))T.delete(k); else T.add(k); saved.META.trials=[...T]; saveMeta(); buildIntroPanel(); });
   document.getElementById('galR').addEventListener('click',()=>openRange());
   document.getElementById('galDev').addEventListener('click',()=>{ saved.DEVALL=!saved.DEVALL; try{ localStorage.setItem('al_dev',saved.DEVALL?'1':'0'); }catch(er){} buildIntroPanel(); });
-  for(const b of el.querySelectorAll('button.sl[data-d]'))b.addEventListener('click',()=>{ startDepth=+b.dataset.d; for(const o of el.querySelectorAll('button.sl[data-d]')){ const on=o===b; o.classList.toggle('on',on); o.querySelector('.mk').innerHTML=on?'&gt;':' '; } });
+  for(const b of el.querySelectorAll('button.sl[data-d]'))b.addEventListener('click',()=>{ ui.startDepth=+b.dataset.d; for(const o of el.querySelectorAll('button.sl[data-d]')){ const on=o===b; o.classList.toggle('on',on); o.querySelector('.mk').innerHTML=on?'&gt;':' '; } });
   const si=document.getElementById('seedIn'); if(si)si.value=seedKeep;
 }
 buildIntroPanel();
@@ -55,13 +55,13 @@ document.getElementById('intropanel').addEventListener('click',e=>{
   const sv=(document.getElementById('seedIn').value||'').trim();
   let regen=false;
   if(/^[0-9]{1,10}$/.test(sv)){ const n=Number(sv)>>>0; if(n!==adv.runSeed){ adv.runSeed=n; regen=true; } }
-  if(startDepth!==here.depth){ here.depth=startDepth; regen=true; }
+  if(ui.startDepth!==here.depth){ here.depth=ui.startDepth; regen=true; }
   if(regen){ here.branch=null; here.realm=null; here.inter=null; }
   fight.rains=[]; fight.marks=[]; fight.zones=[]; fight.laters=[];
   adv.dead=false; { const de=document.getElementById('death'); if(de)de.classList.remove('show','won'); }
   adv.PLAYER_MAX=40; adv.lvl={n:1,exp:0,pending:0,bless:{},strata:new Set()}; adv.runTrials=(saved.META.trials||[]).filter(k=>unlocked('t_'+k)); player.hp=adv.PLAYER_MAX; adv.runStats={kills:0,t0:clock.time,maxDepth:here.depth,book0:saved.BOOK.size,beastsNew:0}; resetRunes();
   if(regen)newLevel();
-  ui.started=true; document.body.classList.add('started'); if(here.D)showStratum(here.D.stratum); if(ui.touch)touchTip(); else { setHelp(true); ui.helpT=25; } introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume(); took('start',t0);
+  ui.started=true; document.body.classList.add('started'); if(here.D)showStratum(here.D.stratum); if(ui.touch)touchTip(); else { setHelp(true); ui.helpT=25; } ui.introEl.classList.add('gone'); canvas.focus(); tryLock(); updateResume(); took('start',t0);
 });
 // 指で遊ぶ時は、始めに操作の案内（キーボードの説明）を出さず、初めて指で迷宮に入った時だけ、左下の伝言に一言を出す（記録 META の touchTip で1回だけ。
 // 階に入った時の伝言の後に出るよう、1.5秒待つ）

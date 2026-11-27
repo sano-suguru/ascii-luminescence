@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------- debugging (developer mode): one set of commands behind both the F2 screen and window.dbg (for automated checks), plus URL options
 function dbgEnter(){ const keepB=here.branch, keepR=here.realm, keepI=here.inter, keepD=here.depth;
-  if(!ui.started){ startDepth=keepD; document.getElementById('enter').click(); }
+  if(!ui.started){ ui.startDepth=keepD; document.getElementById('enter').click(); }
   here.branch=keepB; here.realm=keepR; here.inter=keepI; here.depth=keepD; newLevel(); if(here.D)showStratum(here.D.stratum); }
 function dbgNear(cell){ if(cell==null||cell<0)return false; let best=-1, bd=1e9; const cx=cell%MW, cz=(cell/MW)|0;
   for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){ if(cx+dx<0||cx+dx>=MW||cz+dz<0||cz+dz>=MH)continue; const i=(cz+dz)*MW+cx+dx; if(i===cell||here.D.tile[i]!==TF||here.D.liquid[i]===LQ_DEEP)continue; const d=Math.abs(Math.hypot(dx,dz)-2); if(d<bd){ bd=d; best=i; } }

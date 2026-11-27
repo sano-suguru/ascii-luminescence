@@ -72,7 +72,7 @@ import {
 import {
   addZone, applyElem, applyHit, burstFire, castNow, castRapid, castStar, chainLightning, coldSnap, conductWater, damageMonster, dashCast, dashCuts, dropRune,
   fireBeam, fireWave, gainExp, hitFeedback, hitReact, hurtPlayer, inWater, landElem, later, lordFell, meleeCast, monsterStrike, nearestFoe, onDodged, onKilledBy,
-  orbBurst, rallyOnHit, react, startRain, updateRally, zapLine,
+  orbBurst, rallyOnHit, react, startRain, updateLife, updateRally, zapLine,
 } from '../lib/combat.ts';
 import { placeThirdPerson, solidAt, updatePlayer } from '../lib/player.ts';
 import { beginCast, releaseCast, startRoll, timeScale, updateCast } from '../lib/chant.ts';
@@ -87,3 +87,5 @@ import { byInput, confirmTap, initTouch } from '../lib/touch.ts';
 import { TUNE, initTouchpad } from '../lib/touchpad.ts';
 import { initDiag } from '../lib/diag.ts';
 import { took } from '../lib/took.ts';
+import { closeAltar, updateAltarPanel } from '../lib/panels.ts';
+import { returnToTitle, setMenu } from '../lib/menu.ts';
