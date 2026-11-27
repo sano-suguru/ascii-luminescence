@@ -92,8 +92,8 @@ describe('生き物の形', () => {
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
     caseOut('bodies-1', all);
-    expect(all.length).toBe(5010851);
-    expect(fnv(all)).toBe('815f1c59'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
+    expect(all.length).toBe(4985436);
+    expect(fnv(all)).toBe('b0b268ec'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
   });
   it('主と大きな生き物の形の指紋（形と、形を作る時に見た目の乱数を引く順番が、思わず変わっていない）', () => {
     let all = '';
@@ -282,6 +282,23 @@ describe('生き物の形', () => {
         expect(torsoK(p)).toBeGreaterThan(1.04);
         expect(torsoK(p)).toBeLessThan(1.12);
       }
+    }
+  });
+  it('光のハウンド：胴は透けている（輪郭の線のほかは細い文字 : で、輪郭の線は淡い金）。輪郭の線（背と腹の線・尻と胸の端）は、その所の点がどれも淡い金', () => {
+    const T = beasts.houndTorso,
+      C = beasts.HOUND_LIGHT;
+    for (const ty of TYS) {
+      const b = seeded(() => beasts.lightHoundForm(ty)),
+        torso = b.filter((p) => p.part === 'body' && p.col !== C.ray);
+      for (const p of torso) {
+        const u = (p.z - T.z0) / (T.z1 - T.z0),
+          r = T.ring(u),
+          line = Math.abs((p.y - r.cy) / Math.max(r.ry, 0.01)) > 0.85 || beasts.LIGHT_RINGS.some((v) => Math.abs(u - v) < 0.035);
+        if (line) expect(p.col).toBe(C.pale);
+        else expect(p.g).toBe(G(':'));
+      }
+      // 透けた所がある（胴の点の1割5分より多くが、細い文字。間の点は半分に減らしてあるので、数は輪郭より少ない）
+      expect(torso.filter((p) => p.g === G(':') && p.col !== C.pale).length).toBeGreaterThan(torso.length * 0.15);
     }
   });
   it('光のハウンド：光の筋は胴の表面のすぐ外から始まり、後ろへ流れる。後ろの点ほど暗い', () => {

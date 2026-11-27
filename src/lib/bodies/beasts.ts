@@ -451,7 +451,7 @@ export const HOUND_FIRE = {
   /** 目：黄色 */
   eye: [1.0, 0.9, 0.35],
 } as const satisfies Record<string, Color>;
-/** 炎のたてがみの根もと（首の上の5つと、背の7つ）：位置と、炎の高さ */
+/** 炎のたてがみの根もと（首の上の5つと、背の7つ）：位置と、炎の高さ（不揃い） */
 export function fireManeRoots(): { at: Vec3; h: number }[] {
   const T = houndTorso,
     NK = houndNeck,
@@ -461,17 +461,29 @@ export function fireManeRoots(): { at: Vec3; h: number }[] {
     oy = dz / L,
     oz = -dy / L,
     out: { at: Vec3; h: number }[] = [];
-  // 首：管の、上で後ろ向きの面（首の向きに直角）。頭の後ろから根もとへ高くなる
-  for (let q = 0; q < 5; q++) {
-    const f = 0.9 - q * 0.2,
-      r = NK.r0 + (NK.r1 - NK.r0) * f;
-    out.push({ at: [0, NK.a[1] + dy * f + oy * r, NK.a[2] + dz * f + oz * r], h: 0.12 + 0.025 * q });
+  // 首：管の、上で後ろ向きの面（首の向きに直角）。高さと間隔は不揃いにする（揃えると、止まった姿が縞の帯に見える）
+  for (const [f, h] of [
+    [0.9, 0.1],
+    [0.72, 0.17],
+    [0.5, 0.12],
+    [0.33, 0.2],
+    [0.1, 0.16],
+  ] as const) {
+    const r = NK.r0 + (NK.r1 - NK.r0) * f;
+    out.push({ at: [0, NK.a[1] + dy * f + oy * r, NK.a[2] + dz * f + oz * r], h });
   }
-  // 背：肩から腰へ、低くなる
-  for (let q = 0; q < 7; q++) {
-    const u = 0.88 - q * 0.075,
-      { cy, ry } = T.ring(u);
-    out.push({ at: [0, cy + ry, T.z(u)], h: 0.24 - q * 0.025 });
+  // 背：肩から腰へ、だんだん低くなる（これも不揃いに）
+  for (const [u, h] of [
+    [0.89, 0.26],
+    [0.8, 0.17],
+    [0.74, 0.23],
+    [0.64, 0.13],
+    [0.57, 0.18],
+    [0.47, 0.1],
+    [0.4, 0.12],
+  ] as const) {
+    const { cy, ry } = T.ring(u);
+    out.push({ at: [0, cy + ry, T.z(u)], h });
   }
   return out;
 }
@@ -493,17 +505,20 @@ export function fireHoundForm(ty: BodyType): Body {
     // 自分の灯りの橙に照らされて、1.8 では光のにじみが顔を隠す
     eyeB: 1.5,
   });
-  // 炎のたてがみ：根もとは深い赤、先は黄色。先ほど揺れ、走ると後ろへなびく（part 'flame'）。左右に少しずらした2本で、厚みを出す
-  for (const { at, h } of fireManeRoots()) {
-    const n = 5;
+  // 炎のたてがみ：根もとは深い赤、先は黄色。先ほど揺れ、走ると後ろへなびく（part 'flame'）。左右に少しずらした2本で厚みを出す。
+  // 2本目の高さと、後ろへの傾きは炎ごとに変える（揃うと縞に見える）
+  fireManeRoots().forEach(({ at, h }, k) => {
+    const n = 5,
+      h2 = nth([0.55, 0.9, 0.7], k % 3),
+      lean = nth([0.3, 0.55, 0.42, 0.65], k % 4);
     for (const ox of [-0.025, 0.025])
       for (let q = 0; q < n; q++) {
         const f = q / (n - 1),
-          hh = h * (ox < 0 ? 1 : 0.8);
+          hh = h * (ox < 0 ? 1 : h2);
         lit(
           at[0] + ox * (1 - f),
           at[1] + hh * f,
-          at[2] - hh * 0.45 * f,
+          at[2] - hh * lean * f,
           '^',
           1.1 - 0.4 * f,
           1.2 + 0.3 * f,
@@ -514,7 +529,7 @@ export function fireHoundForm(ty: BodyType): Body {
           },
         );
       }
-  }
+  });
   // 脇腹のひび：胴の表面のすぐ外に、上から下へ折れ曲がる細い橙の線（左右に2本ずつ。縞に見えないよう、長さと位置をずらす）
   for (const sd of [-1, 1])
     for (const [u, a0, n] of [
@@ -553,9 +568,9 @@ export function lightStreaks(S: number): { x: number; y: number; z0: number; z1:
     out: { x: number; y: number; z0: number; z1: number; n: number }[] = [];
   for (const sd of [-1, 1])
     for (const [u, a, z1] of [
-      [0.62, 0.55, -0.7],
-      [0.5, 0.05, -0.85],
-      [0.38, -0.45, -0.62],
+      [0.62, 0.55, -0.9],
+      [0.5, 0.05, -1.1],
+      [0.38, -0.45, -0.85],
     ] as const) {
       const { cy, ry, rx } = T.ring(u),
         z0 = T.z(u);
@@ -570,7 +585,10 @@ export function lightStreaks(S: number): { x: number; y: number; z0: number; z1:
   return out;
 }
 
-// light hound: the hound body in gold, made of light. Streaks of light stream back from the flanks, the hindquarters fade out,
+/** 光のハウンドの胴で、輪郭として濃く残す輪（尻から胸への割合。尻と胸の端だけ。間に輪を置くと、横から見て縦の縞になる） */
+export const LIGHT_RINGS = [0.06, 0.94] as const;
+
+// light hound: the hound body in gold, made of light. The torso is see-through between its outline lines, streaks of light stream back from the flanks, the hindquarters fade out,
 // and the tail ends in a star
 export function lightHoundForm(ty: BodyType): Body {
   const kit = houndKit(ty),
@@ -585,13 +603,33 @@ export function lightHoundForm(ty: BodyType): Body {
     belly: [':', ':', '%', '#', '#'],
     eyeB: 1.5,
   });
+  // 透けた胴：輪郭の線（背と腹の線と、尻と胸の端の輪）だけを淡い金の明るい点で残し、間は半分に減らして細く暗い文字にする（脚・首・頭・尾はそのまま）
+  {
+    const T = houndTorso,
+      keep: Body = [];
+    let n = 0;
+    for (const p of pts) {
+      if (p.part !== 'body') {
+        keep.push(p);
+        continue;
+      }
+      const u = (p.z - T.z0) / (T.z1 - T.z0),
+        r = T.ring(u),
+        sa = (p.y - r.cy) / Math.max(r.ry, 0.01);
+      if (Math.abs(sa) > 0.85 || LIGHT_RINGS.some((v) => Math.abs(u - v) < 0.035))
+        keep.push(Object.assign(p, { col: C.pale, b: Math.min(1.6, p.b * 1.2) }));
+      else if (n++ % 2 === 0) keep.push(Object.assign(p, { g: G(':'), b: p.b * 0.7 }));
+    }
+    pts.length = 0;
+    pts.push(...keep);
+  }
   // 後ろへ行くほど薄れる（光でできた体が、走った跡の残像へほどけていく）
   for (const p of pts) if (p.z < -0.05) p.b *= 1 - 0.45 * Math.min(1, (-0.05 - p.z) / 0.7);
   // 光の筋：脇腹の表面のすぐ外から、後ろへ流れる横の線（尻を越えて、先ほど薄れる）
   for (const st of lightStreaks(S))
     for (let q = 0; q < st.n; q++) {
       const f = q / Math.max(1, st.n - 1);
-      lit(st.x, st.y, st.z0 - (st.z0 - st.z1) * f, '-', 0.85, 1.7 - 0.9 * f, C.ray, 'body');
+      lit(st.x, st.y, st.z0 - (st.z0 - st.z1) * f, '-', 0.9, 1.3 - 0.8 * f, C.ray, 'body');
     }
   // 尾の先の星
   lit(0, 0.57, -0.76, '*', 0.9, 1.7, C.pale, 'tail', { piv: 9 * 0.35 });
