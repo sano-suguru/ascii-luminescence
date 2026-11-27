@@ -911,6 +911,8 @@ export interface Monster {
   wind?: number;
   /** __test.hideMonster：しばらく描かない（灯りは残る） */
   drawHide?: boolean;
+  /** __test.hold：その場に止める（歩かず・攻撃せず、向きは yaw へ回る。walk なら足踏みする）。null か無ければ、ふだんどおり動く */
+  hold?: { yaw?: number; walk?: boolean } | null;
   /** 当たってひるむのが終わるゲームの時刻（それまで体が震える） */
   flinchUntil?: number;
   /** 眠っている姿（竜と忘れられた獣。初めて描く時に作る）と、前に描いた時に眠っていたか、今描く姿（眠っている時は眠っている姿、ほかは null） */
