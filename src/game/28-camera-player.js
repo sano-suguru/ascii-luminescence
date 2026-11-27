@@ -1,5 +1,7 @@
 // ---------------------------------------------------------------- first / third person (chosen in the menu)
 try{ ui.camMode=localStorage.getItem('al_cam')||'fps'; }catch(e){}
+// 残した音量の段（src/lib/screens.ts の loadSndLevel）
+loadSndLevel();
 // AVATAR_TY は src/lib/names.ts（src/game/imports.mjs で読む）
 // 頭の位置 headPos と、攻撃や投げた物が出る所 aimOrigin は src/lib/aim.ts（src/game/imports.mjs で読む）
 // placeThirdPerson は src/lib/player.ts（src/game/imports.mjs で読む）

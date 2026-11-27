@@ -108,7 +108,7 @@ export function krakenArms(m: Mon, t: number): void {
   });
 }
 
-/** 生き物を描く：近接の攻撃を溜めている間は頭の上に !、当たって光っている間は3倍の明るさで描く（__test.hideMonster で隠した物は描かない） */
+/** 生き物を描く：近接の攻撃を溜めている間は頭の上に !、当たって光っている間は HIT_GLOW 倍の明るさで描く（__test.hideMonster で隠した物は描かない） */
 export function drawMonster(m: Mon, t: number): void {
   if (m.drawHide) return; // __test.hideMonster: not drawn for a moment (its light stays)
   if ((m.wind ?? NaN) > 0) {
@@ -129,26 +129,45 @@ export function drawMonster(m: Mon, t: number): void {
   }
   if ((m.hitT ?? NaN) > 0) {
     const g0 = m.glow;
-    m.glow *= 3;
-    drawMonster1(m, t);
+    m.glow *= glowBoost(m, HIT_GLOW);
+    drawMonster1(m, t, true);
     m.glow = g0;
     return;
   }
   drawMonster1(m, t);
 }
-/** 生き物を描く（続き）：深みの主の触手とクラーケンの立ち上がる腕、遠い小さな生き物は描かない、照準の先の生き物は明るく描いて足もとに輪を足す */
-export function drawMonster1(m: Mon, t: number): void {
+/** 当たって光っている間の明るさの倍率。照準の先の倍率 AIM_GLOW とは掛け合わせない（掛け合わせると、光のにじみで体が白く飛ぶ。pnpm glare で数える） */
+const HIT_GLOW = 2.4;
+/** 照準の先の明るさの倍率 */
+const AIM_GLOW = 1.9;
+/**
+ * 明るくする倍率 k を、画面での見かけの大きさ（体の大きさ ÷ カメラからの床の上の距離。3人称ではカメラが後ろに下がるので小さく見える）で弱めた物。見かけが BIG[0] までは k のまま、BIG[1] で増やす分を BIG[2] 倍にする
+ * （大きな体がすぐ近くで画面を覆うと、同じ倍率でも光のにじみで画面が白く飛ぶため。トロルが 1.8 の所で見かけ 0.89）
+ */
+const BIG = [0.4, 0.9, 0.25] as const;
+function glowBoost(m: Mon, k: number): number {
+  const cam = gfx.camera.position,
+    size = m.ty.scale / Math.max(0.5, Math.hypot(m.x - cam.x, m.z - cam.z)),
+    f = clamp((size - BIG[0]) / (BIG[1] - BIG[0]), 0, 1);
+  return 1 + (k - 1) * (1 - (1 - BIG[2]) * f);
+}
+/**
+ * 生き物を描く（続き）：深みの主の触手とクラーケンの立ち上がる腕、遠い小さな生き物は描かない、照準の先の生き物は明るく描いて足もとに輪を足す
+ * （明るさは見かけが大きいほど弱める。hit が真なら、当たって光っている間なので、照準の先でも明るさは重ねず、輪だけを足す）
+ */
+export function drawMonster1(m: Mon, t: number, hit = false): void {
+  const aimK = hit ? 1 : glowBoost(m, AIM_GLOW);
   if (m.ty.habitat === 'deep' && Math.hypot(m.x - player.x, m.z - player.z) < 44) {
     // 照準の先なら、体と同じく明るく（クラーケンの立ち上がる腕は m.glow を読む）
     const g0 = m.glow;
-    if (m === ui.aimMon && !m.hidden) m.glow *= 1.9;
+    if (m === ui.aimMon && !m.hidden) m.glow *= aimK;
     (m.ty.form === 'kraken' ? krakenArms : drawTentacles)(m, t);
     m.glow = g0;
   }
   if (m.ty.critter && Math.hypot(m.x - player.x, m.z - player.z) > 30) return;
   if (m === ui.aimMon && !m.hidden) {
     const g0 = m.glow;
-    m.glow *= 1.9;
+    m.glow *= aimK;
     drawMonster0(m, t);
     m.glow = g0;
     const sc = m.ty.scale,
