@@ -8,6 +8,7 @@ import { META_DEF, type Meta } from './progress.ts';
 import { type History } from './history.ts';
 import type { HandsSnap, Spec } from './gear.ts';
 import type { LoreResult } from './results.ts';
+import type { Debris } from './debris.ts';
 import type { Body, Glyph } from './bodies/kit.ts';
 import { type Rune } from './runes.ts';
 import type { AVATAR_TY } from './names.ts';
@@ -695,6 +696,8 @@ export interface Fight {
   rallyChime: number;
   /** 宝物庫の天井が崩れている間の落石（src/lib/pickup.ts の vaultSprung が始め、updateRockfall が進める。無ければ null） */
   rockfall: Rockfall | null;
+  /** 倒れた生き物が崩れて積もった文字（src/lib/debris.ts の crumble が足し、updateDebris が動かして描く。新しい階で空にする） */
+  debris: Debris[];
 }
 /** 落石（経った秒 t、崩れる秒 dur、石が落ちうる床のマス cells、落ちている石 rocks（位置・落ち始めてからの秒・落ちきったか）、次の石までの秒 next） */
 export interface Rockfall {
@@ -735,6 +738,7 @@ export const fight: Fight = {
   rallyMotes: [],
   rallyChime: 0,
   rockfall: null,
+  debris: [],
 };
 
 /** 階を移る途中（out：暗くなって出ていく、in：明るくなって入る。go は行き先の種類） */
