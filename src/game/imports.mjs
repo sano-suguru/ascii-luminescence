@@ -48,7 +48,7 @@ import { msg, renderLog } from '../lib/log.ts';
 import { buildsHave, renderHotbar } from '../lib/hotbar.ts';
 import { applyBuild, renderInv, setInv, startSwap } from '../lib/inventory.ts';
 import {
-  bookRows, chronRows, cycleUi, drawMark, flyOpen, helpRows, isPaused, makeNoise, onNoticed, placeLabel, renderBook, renderChron, renderHelp, renderStatus, setHelp, showHint, updateSearch, updateStealth,
+  bookRows, chronRows, cycleUi, drawMark, flyOpen, helpRows, isPaused, makeNoise, onNoticed, placeLabel, renderBook, renderChron, renderHelp, renderStatus, setHelp, flashHint, showHint, updateSearch, updateStealth,
 } from '../lib/status.ts';
 import { descentSealed, drawLegendWorld, getLegend, legendAll, legendOfBranch } from '../lib/legend.ts';
 import { ceilAt, cellLight, updateLights } from '../lib/lightmap.ts';
