@@ -90,18 +90,33 @@ const t0 = Date.now();
 for (const mode of list.includes('frame') ? ['test', 'artifact'] : ['test'])
   await build({ configFile: join(ROOT, 'vite.config.mjs'), mode, logLevel: 'warn' });
 const LOG_DIR = join(ROOT, 'tests', 'out', 'run');
-mkdirSync(LOG_DIR, { recursive: true });
 const logOf = (name) => join(LOG_DIR, `${name}.log`);
 const head = (name, start, lines) =>
   `# tests/run.mjs のログ：${name}\n# 始めた：${start.toISOString()}（UTC）\n${lines.map((l) => `# ${l}\n`).join('')}\n`;
+// ログが書けない時（記憶域の残りが尽きた・tests/out/run を消された など）も、テストと画面への出力は続ける（そのテストで1回だけ知らせる）
+const logWriter = (name) => {
+  let warned = false;
+  return (write) => {
+    try {
+      write();
+    } catch (e) {
+      if (!warned) console.error(`${name} のログを書けなかった（${e instanceof Error ? e.message : String(e)}）。画面への出力は続ける`);
+      warned = true;
+    }
+  };
+};
 const run = (name) =>
   new Promise((ok) => {
     const t = Date.now(),
       start = new Date(t),
       out = [],
-      log = logOf(name);
+      log = logOf(name),
+      tryLog = logWriter(name);
     // 前の回のログを書き直す。終わり方は、終わった時に書き直すまで「走っている途中」
-    writeFileSync(log, head(name, start, ['終わり方：走っている途中（終わる前に tests/run.mjs が止まった）']));
+    tryLog(() => {
+      mkdirSync(LOG_DIR, { recursive: true });
+      writeFileSync(log, head(name, start, ['終わり方：走っている途中（終わる前に tests/run.mjs が止まった）']));
+    });
     const ch = spawn(process.execPath, [join(ROOT, 'tests', `${name}.mjs`)], { env: { ...process.env, AL_PREBUILT: '1' } });
     let timedOut = false;
     const timer = setTimeout(
@@ -113,7 +128,7 @@ const run = (name) =>
     );
     const take = (d) => {
       out.push(d);
-      appendFileSync(log, d);
+      tryLog(() => appendFileSync(log, d));
     };
     ch.stdout.on('data', take);
     ch.stderr.on('data', take);
@@ -124,14 +139,16 @@ const run = (name) =>
         why = timedOut ? `時間切れ（${LIMIT_MIN}分）` : signal ? `シグナル ${signal} で止められた` : `終わりのコード ${code}`;
       console.log(`\n---- ${name}（${sec}秒）${failed ? ` 失敗：${why}` : ''}`);
       process.stdout.write(Buffer.concat(out));
-      writeFileSync(
-        log,
-        Buffer.concat([
-          Buffer.from(
-            head(name, start, [`終わった：${new Date().toISOString()}（UTC、${sec}秒）`, `終わり方：${why}${failed ? '（失敗）' : ''}`]),
-          ),
-          ...out,
-        ]),
+      tryLog(() =>
+        writeFileSync(
+          log,
+          Buffer.concat([
+            Buffer.from(
+              head(name, start, [`終わった：${new Date().toISOString()}（UTC、${sec}秒）`, `終わり方：${why}${failed ? '（失敗）' : ''}`]),
+            ),
+            ...out,
+          ]),
+        ),
       );
       ok({ name, failed, sec });
     });
