@@ -19,7 +19,7 @@ export const arg = (k, d) => {
 };
 
 // ヘッドレスの Chromium はソフトウェアGL（swiftshader）で描く。とても遅い（960x540 で1秒に1フレームほど）。
-const GL_ARGS = [
+export const GL_ARGS = [
   '--use-gl=angle',
   '--use-angle=swiftshader',
   '--enable-unsafe-swiftshader',
