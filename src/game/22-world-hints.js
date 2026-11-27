@@ -32,7 +32,7 @@ const ARROW_TILT=[0.55,1.15], ARROW_TILT0=0.8;
 function drawArrows(){ if(!arrowCtx)return; const W=Math.round(arrowCv.clientWidth*devicePixelRatio), H=Math.round(arrowCv.clientHeight*devicePixelRatio), c=arrowCtx; if(arrowCv.width!==W||arrowCv.height!==H){ arrowCv.width=W; arrowCv.height=H; } if(arrowsDrawn){ c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,W,H); arrowsDrawn=false; }
   if(!ui.started||adv.dead||isPaused()||ui.gallery)return; const ts=arrowTargets().filter(t=>!inPlainSight(t)); if(!ts.length)return; arrowsDrawn=true;
   // on a short screen the whole dial is smaller, so what is behind you still fits above the bottom edge
-  const k=devicePixelRatio*clamp(arrowCv.clientHeight/450,0.6,1), ox=W/2, oy=H*0.6, r0=60*k, ps=player.yaw, fx=-Math.sin(ps), fz=-Math.cos(ps), rx=Math.cos(ps), rz=-Math.sin(ps), FONT='"M PLUS 1 Code","BIZ UDGothic",monospace';
+  const k=devicePixelRatio*clamp(arrowCv.clientHeight/450,0.6,1), ox=W/2, oy=H*0.6, r0=60*k, a0=24*k, ps=player.yaw, fx=-Math.sin(ps), fz=-Math.cos(ps), rx=Math.cos(ps), rz=-Math.sin(ps), FONT='"M PLUS 1 Code","BIZ UDGothic",monospace';
   // a point (u to the right, v ahead) on the dial's floor, seen from Dv away at the slant e: its place on the screen
   const e=clamp(ARROW_TILT0-player.pitch,ARROW_TILT[0],ARROW_TILT[1]), ce=Math.cos(e), se=Math.sin(e), Dv=800*k;
   // the lowest a tip mark may reach: just above the line at the bottom (#hotbar), wherever it is now; the bottom of the screen when it is hidden
@@ -45,16 +45,15 @@ function drawArrows(){ if(!arrowCtx)return; const W=Math.round(arrowCv.clientWid
     c.font=`${bold?'bold ':''}${size}px ${FONT}`;
     c.lineWidth=Math.max(2,size*0.28); c.strokeStyle='rgba(4,3,10,0.85)'; c.strokeText(ch,0,0);
     c.shadowColor=`rgba(${rgb},${(alpha*0.9).toFixed(2)})`; c.shadowBlur=size*0.6; c.fillStyle=`rgba(${rgb},${alpha.toFixed(2)})`; c.fillText(ch,0,0); c.restore(); };
-  // a faint shadow on the floor under the dial, and the ring the arrows spread from
+  // a faint shadow on the floor under the dial. No ring is drawn where the arrows start: a ring of dots just below the sight read as part of it, and as the ring where an orb will land
   { const [cx]=proj(0,0), [,ty]=proj(0,r0*2.2), [,by]=proj(0,-r0*2.2), [lx]=proj(-r0*2.2,0); c.save(); c.translate(cx,(ty+by)/2); c.scale(1,(by-ty)/2/(cx-lx));
     const g=c.createRadialGradient(0,0,0,0,0,cx-lx); g.addColorStop(0,'rgba(4,3,10,0.6)'); g.addColorStop(1,'rgba(4,3,10,0)'); c.fillStyle=g; c.beginPath(); c.arc(0,0,cx-lx,0,Math.PI*2); c.fill(); c.restore(); }
-  for(let q=0;q<24;q++){ const a=q/24*Math.PI*2; glyph('·',Math.cos(a)*r0*0.72,Math.sin(a)*r0*0.72,Math.cos(a),Math.sin(a),19*k,'215,205,250',0.75,false); }
   for(const t of ts){ const dx=t.x-player.x, dz=t.z-player.z, th=Math.atan2(dx*rx+dz*rz,dx*fx+dz*fz), su=Math.sin(th), sv=Math.cos(th);
     const near=clamp(1-(t.d-3)/37,0,1), len=(30+120*(1-near))*k, size=(18+10*near)*k, alpha=0.62+0.35*near, rgb=t.col.map(v=>Math.round(v*255)).join(',');
-    const step=size*0.42, thick=near>0.5, body=thick?'=':'-', ms=(17+5*near)*k, tipR=n=>r0+n*step+size*0.85;
+    const step=size*0.42, thick=near>0.5, body=thick?'=':'-', ms=(17+5*near)*k, tipR=n=>a0+n*step+size*0.85;
     // what is behind comes toward you: an arrow too long for the room above the line at the bottom is cut shorter
     let n=Math.max(1,Math.round(len/step)); while(n>1&&proj(su*tipR(n),sv*tipR(n))[1]>floorY-ms)n--;
-    for(let i=0;i<n;i++)glyph(i===n-1?'>':body,su*(r0+i*step),sv*(r0+i*step),su,sv,size,rgb,alpha,thick);
+    for(let i=0;i<n;i++)glyph(i===n-1?'>':body,su*(a0+i*step),sv*(a0+i*step),su,sv,size,rgb,alpha,thick);
     // the mark at the tip: larger, standing up on a faint dark disc, the same size however far into the dial it is, to be read at a glance
     const [mx,my]=proj(su*tipR(n),sv*tipR(n));
     c.beginPath(); c.arc(mx,my,ms*0.7,0,Math.PI*2); c.fillStyle='rgba(6,4,14,0.55)'; c.fill(); c.lineWidth=1.2*k; c.strokeStyle=`rgba(${rgb},${(alpha*0.6).toFixed(2)})`; c.stroke();
