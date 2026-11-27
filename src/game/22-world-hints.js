@@ -1,9 +1,9 @@
 // ---------------------------------------------------------------- drawing: runes on the floor, pedestals, altars, steles, beams, a ring while swapping, the chant at your hands
 // 先にある物の手がかり（表 STRATUM_OMEN など・computeOmen・omenOf・omenSound・drawOmens）と階段の封（stairsGuarded・drawStairSeal）は src/lib/omens.ts（src/game/imports.mjs で読む）
 
-// ---------------------------------------------------------------- direction arrows: from a point just above the hands, arrows spread out toward places - straight-line direction only, never the way;
+// ---------------------------------------------------------------- direction arrows: from a dial lying on a floor just above the hands, arrows spread out toward places - straight-line direction only, never the way;
 // near ones short and thick, far ones long and thin. The stairs are always known; branch stairs and gates once seen; altars, springs, treasuries, guarded prizes and graves from 20 m (1.5x at the crossroads), the last four as '?' until seen. A place in plain sight needs no arrow.
-const arrowCv=document.getElementById('arrows'), arrowCtx=arrowCv?arrowCv.getContext('2d'):null;
+const arrowCv=document.getElementById('arrows'), arrowCtx=arrowCv?arrowCv.getContext('2d'):null, hotbarEl=document.getElementById('hotbar');
 function arrowTargets(){ const out=[]; if(!here.D||!ui.started||adv.dead)return out; const pc=((player.z/CELL)|0)*MW+((player.x/CELL)|0), atHub=here.D.hub&&here.D.roomOf[pc]===here.D.hub.ri, far=atHub?1.5:1;
   // standing at the crossroads, presences around are felt from farther off
   const P=(cell,ch,col,range,seenOnly,vague)=>{ if(cell==null||cell<0)return; if(seenOnly&&!here.explored[cell])return; const [x,z]=cpos(cell), d=Math.hypot(x-player.x,z-player.z); if(range&&d>range*far)return;
@@ -22,23 +22,44 @@ function arrowTargets(){ const out=[]; if(!here.D||!ui.started||adv.dead)return 
 function inPlainSight(t){ if(t.d>22)return false; const [ox,oy,oz]=aimOrigin(), [vx,vy,vz]=viewDir(), dx=t.x-ox, dz=t.z-oz, dy=0.9-oy, L=Math.hypot(dx,dy,dz)||1;
   if((dx*vx+dy*vy+dz*vz)/L<Math.cos(0.5))return false; return losClear(ox,oy,oz,t.x,0.9,t.z); }
 let arrowsDrawn=false;
-function drawArrows(){ if(!arrowCtx)return; const W=Math.round(arrowCv.clientWidth*devicePixelRatio), H=Math.round(arrowCv.clientHeight*devicePixelRatio), c=arrowCtx; if(arrowCv.width!==W||arrowCv.height!==H){ arrowCv.width=W; arrowCv.height=H; } if(arrowsDrawn){ c.clearRect(0,0,W,H); arrowsDrawn=false; }
+// where the line at the bottom (#hotbar) starts, in CSS pixels (-1: hidden), kept until it or the window changes size, so the page's layout is not read every tick
+// (reading it right after the status or the log was written makes the browser lay the page out again). Without ResizeObserver it is read every time
+let hotbarTop=null; const hotbarWatch=!!(hotbarEl&&window.ResizeObserver);
+if(hotbarWatch){ new ResizeObserver(()=>{ hotbarTop=null; }).observe(hotbarEl); addEventListener('resize',()=>{ hotbarTop=null; }); }
+// the dial lies on a floor in front of you, seen from above at a slant: what is ahead points away into the dial, what is behind comes toward you.
+// The slant follows the look up and down, but only between ARROW_TILT (radians above the floor), so the dial never leaves the screen or turns into a flat circle
+const ARROW_TILT=[0.55,1.15], ARROW_TILT0=0.8;
+function drawArrows(){ if(!arrowCtx)return; const W=Math.round(arrowCv.clientWidth*devicePixelRatio), H=Math.round(arrowCv.clientHeight*devicePixelRatio), c=arrowCtx; if(arrowCv.width!==W||arrowCv.height!==H){ arrowCv.width=W; arrowCv.height=H; } if(arrowsDrawn){ c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,W,H); arrowsDrawn=false; }
   if(!ui.started||adv.dead||isPaused()||ui.gallery)return; const ts=arrowTargets().filter(t=>!inPlainSight(t)); if(!ts.length)return; arrowsDrawn=true;
-  const k=devicePixelRatio, ox=W/2, oy=H*0.66, r0=46*k, ps=player.yaw, fx=-Math.sin(ps), fz=-Math.cos(ps), rx=Math.cos(ps), rz=-Math.sin(ps), FONT='"M PLUS 1 Code","BIZ UDGothic",monospace';
+  // on a short screen the whole dial is smaller, so what is behind you still fits above the bottom edge
+  const k=devicePixelRatio*clamp(arrowCv.clientHeight/450,0.6,1), ox=W/2, oy=H*0.6, r0=60*k, ps=player.yaw, fx=-Math.sin(ps), fz=-Math.cos(ps), rx=Math.cos(ps), rz=-Math.sin(ps), FONT='"M PLUS 1 Code","BIZ UDGothic",monospace';
+  // a point (u to the right, v ahead) on the dial's floor, seen from Dv away at the slant e: its place on the screen
+  const e=clamp(ARROW_TILT0-player.pitch,ARROW_TILT[0],ARROW_TILT[1]), ce=Math.cos(e), se=Math.sin(e), Dv=800*k;
+  // the lowest a tip mark may reach: just above the line at the bottom (#hotbar), wherever it is now; the bottom of the screen when it is hidden
+  let top=hotbarTop; if(top===null){ const hb=hotbarEl?hotbarEl.getBoundingClientRect():null; top=hb&&hb.height>0?hb.top:-1; if(hotbarWatch)hotbarTop=top; }
+  const floorY=top<0?H:top*devicePixelRatio-6*k;
+  const proj=(u,v)=>{ const dp=Dv/(Dv+v*ce); return [ox+u*dp,oy-v*se*dp]; };
   c.textAlign='center'; c.textBaseline='middle'; c.lineJoin='round';
-  // the ring the arrows spread from
-  c.font=`${11*k}px ${FONT}`; for(let q=0;q<24;q++){ const a=q/24*Math.PI*2; c.lineWidth=3*k; c.strokeStyle='rgba(0,0,0,0.55)'; c.strokeText('·',ox+Math.cos(a)*r0*0.72,oy+Math.sin(a)*r0*0.72); c.fillStyle='rgba(210,200,245,0.45)'; c.fillText('·',ox+Math.cos(a)*r0*0.72,oy+Math.sin(a)*r0*0.72); }
-  const glyph=(ch,x,y,rot,size,rgb,alpha,bold)=>{ c.save(); c.translate(x,y); if(rot)c.rotate(rot); c.font=`${bold?'bold ':''}${size}px ${FONT}`;
+  // a glyph lying on the dial at (u,v), its line of writing along (du,dv)
+  const glyph=(ch,u,v,du,dv,size,rgb,alpha,bold)=>{ const [x,y]=proj(u,v), [ax,ay]=proj(u+du,v+dv), [bx,by]=proj(u+dv,v-du); c.save(); c.setTransform(ax-x,ay-y,bx-x,by-y,x,y);
+    c.font=`${bold?'bold ':''}${size}px ${FONT}`;
     c.lineWidth=Math.max(2,size*0.28); c.strokeStyle='rgba(4,3,10,0.85)'; c.strokeText(ch,0,0);
     c.shadowColor=`rgba(${rgb},${(alpha*0.9).toFixed(2)})`; c.shadowBlur=size*0.6; c.fillStyle=`rgba(${rgb},${alpha.toFixed(2)})`; c.fillText(ch,0,0); c.restore(); };
-  for(const t of ts){ const dx=t.x-player.x, dz=t.z-player.z, th=Math.atan2(dx*rx+dz*rz,dx*fx+dz*fz), sx=Math.sin(th), sy=-Math.cos(th);
-    const near=clamp(1-(t.d-3)/37,0,1), len=(24+96*(1-near))*k, size=(13+7*near)*k, alpha=0.62+0.35*near, rgb=t.col.map(v=>Math.round(v*255)).join(',');
-    const step=size*0.42, n=Math.max(1,Math.round(len/step)), thick=near>0.5, body=thick?'=':'-';
-    for(let i=0;i<n;i++){ const px=ox+sx*(r0+i*step), py=oy+sy*(r0+i*step); glyph(i===n-1?'>':body,px,py,th-Math.PI/2,size,rgb,alpha,thick); }
-    // the mark at the tip: larger, on a faint dark disc
-    const mx=ox+sx*(r0+n*step+size*0.85), my=oy+sy*(r0+n*step+size*0.85), ms=(17+5*near)*k;
+  // a faint shadow on the floor under the dial, and the ring the arrows spread from
+  { const [cx]=proj(0,0), [,ty]=proj(0,r0*2.2), [,by]=proj(0,-r0*2.2), [lx]=proj(-r0*2.2,0); c.save(); c.translate(cx,(ty+by)/2); c.scale(1,(by-ty)/2/(cx-lx));
+    const g=c.createRadialGradient(0,0,0,0,0,cx-lx); g.addColorStop(0,'rgba(4,3,10,0.6)'); g.addColorStop(1,'rgba(4,3,10,0)'); c.fillStyle=g; c.beginPath(); c.arc(0,0,cx-lx,0,Math.PI*2); c.fill(); c.restore(); }
+  for(let q=0;q<24;q++){ const a=q/24*Math.PI*2; glyph('·',Math.cos(a)*r0*0.72,Math.sin(a)*r0*0.72,Math.cos(a),Math.sin(a),19*k,'215,205,250',0.75,false); }
+  for(const t of ts){ const dx=t.x-player.x, dz=t.z-player.z, th=Math.atan2(dx*rx+dz*rz,dx*fx+dz*fz), su=Math.sin(th), sv=Math.cos(th);
+    const near=clamp(1-(t.d-3)/37,0,1), len=(30+120*(1-near))*k, size=(18+10*near)*k, alpha=0.62+0.35*near, rgb=t.col.map(v=>Math.round(v*255)).join(',');
+    const step=size*0.42, thick=near>0.5, body=thick?'=':'-', ms=(17+5*near)*k, tipR=n=>r0+n*step+size*0.85;
+    // what is behind comes toward you: an arrow too long for the room above the line at the bottom is cut shorter
+    let n=Math.max(1,Math.round(len/step)); while(n>1&&proj(su*tipR(n),sv*tipR(n))[1]>floorY-ms)n--;
+    for(let i=0;i<n;i++)glyph(i===n-1?'>':body,su*(r0+i*step),sv*(r0+i*step),su,sv,size,rgb,alpha,thick);
+    // the mark at the tip: larger, standing up on a faint dark disc, the same size however far into the dial it is, to be read at a glance
+    const [mx,my]=proj(su*tipR(n),sv*tipR(n));
     c.beginPath(); c.arc(mx,my,ms*0.7,0,Math.PI*2); c.fillStyle='rgba(6,4,14,0.55)'; c.fill(); c.lineWidth=1.2*k; c.strokeStyle=`rgba(${rgb},${(alpha*0.6).toFixed(2)})`; c.stroke();
-    glyph(t.ch,mx,my+ms*0.02,0,ms,rgb,Math.min(1,alpha+0.1),true); } }
+    c.save(); c.translate(mx,my+ms*0.02); c.font=`bold ${ms}px ${FONT}`; c.lineWidth=Math.max(2,ms*0.28); c.strokeStyle='rgba(4,3,10,0.85)'; c.strokeText(t.ch,0,0);
+    c.shadowColor=`rgba(${rgb},${(Math.min(1,alpha+0.1)*0.9).toFixed(2)})`; c.shadowBlur=ms*0.6; c.fillStyle=`rgba(${rgb},${Math.min(1,alpha+0.1).toFixed(2)})`; c.fillText(t.ch,0,0); c.restore(); } }
 // the air of each part of a level: the crossroads a little brighter, the way to the stairs a little darker and quieter
 let ambK=1;
 function updateSectionAir(dt){ if(!here.D||!here.D.prof)return; const pc=((player.z/CELL)|0)*MW+((player.x/CELL)|0); let k=1;
