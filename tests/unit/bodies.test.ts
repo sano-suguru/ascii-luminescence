@@ -45,6 +45,7 @@ const TY_FORMS: ((ty: BodyType) => Body)[] = [
   beasts.jackalForm,
   beasts.grazerForm,
   beasts.salamanderForm,
+  beasts.iceHoundForm,
   beasts.trollForm2,
   beasts.golemForm2,
   beasts.bogForm2,
@@ -75,7 +76,7 @@ for (const plan of ['quad', 'serpent', 'centipede', 'moth'])
     SPECS.push({ plan, kind: plan === 'quad' ? '竜' : '獣', legs: 6, wings, ...(wings ? { eyes: 5 } : {}), glyphs: ['#', '%', '&'] });
 
 describe('生き物の形', () => {
-  it('TypeScript に移す前と、同じ乱数で同じ形になる（見た目の乱数を引く順番が変わっていない）', () => {
+  it('形の指紋（形と、形を作る時に見た目の乱数を引く順番が、思わず変わっていない）', () => {
     let all = '';
     for (const f of TY_FORMS)
       for (const ty of TYS) {
@@ -89,10 +90,10 @@ describe('生き物の形', () => {
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
     caseOut('bodies-1', all);
-    expect(all.length).toBe(3798297);
-    expect(fnv(all)).toBe('5bcbce08'); // トロル・ゴーレム・クラーケン・ギタイムシ・ヘビ・吸血コウモリ（trollForm2・golemForm2・krakenForm2・crabForm・snakeForm・batForm）を除き、移す前の実装で出した値と同じ（この6つは移した後で作り直した。作り直した王の影の一つ目の姿は、下の別のテスト）
+    expect(all.length).toBe(4197773);
+    expect(fnv(all)).toBe('415a0e8c'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
   });
-  it('主と大きな生き物の形：TypeScript に移す前と、同じ乱数で同じ形になる', () => {
+  it('主と大きな生き物の形の指紋（形と、形を作る時に見た目の乱数を引く順番が、思わず変わっていない）', () => {
     let all = '';
     for (const ty of TYS) {
       all += JSON.stringify(seeded(() => beasts.dragonForm(ty)));
@@ -101,7 +102,7 @@ describe('生き物の形', () => {
     for (const f of BOSS_FORMS) all += JSON.stringify(seeded(f));
     caseOut('bodies-2', all);
     expect(all.length).toBe(1792099);
-    expect(fnv(all)).toBe('7a018410'); // 移す前の実装で出した値から、蜘蛛の女王とナーガの女王の明るさ b だけを 0.6 倍（BOSS_DIM）にした値
+    expect(fnv(all)).toBe('7a018410');
   });
   it('どの点も、座標が有限で、文字の番号が文字の絵の表の中にあり、体のどこかが決まっている', () => {
     const bodies = [
@@ -168,6 +169,50 @@ describe('生き物の形', () => {
       expect([axis('armL'), axis('armR')]).toEqual([new Set(['1.34,0.06']), new Set(['1.34,0.06'])]);
       expect([axis('legL'), axis('legR')]).toEqual([new Set(['0.62,0']), new Set(['0.62,0'])]);
     }
+  });
+  it('氷のハウンド：前脚の点は肩を、後脚の点は腰を軸に回る。目と背中の氷は体の表面のすぐ外（埋もれず、浮かない）。明るさ b は 1.8 まで', () => {
+    const T = beasts.houndTorso,
+      H = beasts.houndHead,
+      C = beasts.HOUND_ICE;
+    for (const ty of TYS) {
+      const b = seeded(() => beasts.iceHoundForm(ty));
+      for (const p of b) {
+        expect(p.b).toBeLessThanOrEqual(1.8);
+        expect(['body', 'head', 'legL', 'legR', 'tail']).toContain(p.part);
+      }
+      // 脚：前（z > 0）の点は肩の軸、後ろの点は腰の軸。前の左と後ろの右が同じ part（同じ向きに振れる）
+      for (const p of b.filter((q) => q.part === 'legL' || q.part === 'legR')) {
+        expect(`${p.piv},${p.pz}`).toBe(p.z > 0 ? '0.82,0.3' : '0.8,-0.32');
+        expect(p.part).toBe(p.z > 0 === p.x < 0 ? 'legL' : 'legR');
+      }
+      // 目：頭の楕円の表面のすぐ外（楕円の式で 1 より少し大きい）
+      const eyes = b.filter((p) => p.col === C.eye);
+      expect(eyes.length).toBe(2);
+      for (const p of eyes) {
+        const k = Math.hypot((p.x - H.c[0]) / H.r[0], (p.y - H.c[1]) / H.r[1], (p.z - H.c[2]) / H.r[2]);
+        expect(k).toBeGreaterThan(1.03);
+        expect(k).toBeLessThan(1.2);
+      }
+      // 背中の氷：どの点も背の表面（胴と同じ式）より下に埋もれない。6本とも、根もとの奥行きに、表面のすぐそばの点がある（浮かない）
+      const back = (z: number): number => {
+          const r = T.ring((z - T.z0) / (T.z1 - T.z0));
+          return r.cy + r.ry;
+        },
+        ice = b.filter((p) => p.part === 'body' && p.col === C.ice);
+      for (const p of ice) expect(p.y - back(p.z)).toBeGreaterThan(-0.045);
+      for (let q = 0; q < 6; q++) {
+        const z = T.z(0.3 + (0.6 * q) / 5);
+        expect(ice.some((p) => Math.abs(p.z - z) < 0.04 && p.y - back(p.z) < 0.04)).toBe(true);
+      }
+    }
+  });
+  it('氷のハウンド：本物の大きさ（0.8）で、目のまわりは頭の点を空けている（近い所の大きな文字が、斜めから見た目を隠さない。空く幅は、点の間隔が大きさで変わるので、本物の大きさで確かめる）', () => {
+    const b = seeded(() => beasts.iceHoundForm({ scale: 0.8, col: [0.55, 0.85, 1.0] })),
+      eyes = b.filter((p) => p.col === beasts.HOUND_ICE.eye);
+    expect(eyes.length).toBe(2);
+    for (const e of eyes)
+      for (const p of b.filter((q) => q.part === 'head' && q.col !== beasts.HOUND_ICE.eye))
+        expect(Math.hypot(p.x - e.x, p.y - e.y, p.z - e.z)).toBeGreaterThan(0.08);
   });
   it('ゴブリンの呪術師：腕の点（袖・手・杖も）はどれも肩を、足の点は腰を軸に回る。明るさ b は 1.8 まで。縁取りと背中の印は、衣の表面のすぐ外', () => {
     for (const ty of TYS) {
