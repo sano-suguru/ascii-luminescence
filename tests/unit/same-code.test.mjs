@@ -98,7 +98,9 @@ describe('同じと言う物', () => {
     expect(r.review).toEqual(['a.ts の一番外：specials = SPECIALS']);
   });
   it('残りの引数の型（...a: unknown[]）', () => {
-    expect(cmp(`function f(...a){ return g(...a); }`, `export function f(...a: unknown[]): unknown { return g(...a); }`).n).toEqual({ f: 0 });
+    expect(cmp(`function f(...a){ return g(...a); }`, `export function f(...a: unknown[]): unknown { return g(...a); }`).n).toEqual({
+      f: 0,
+    });
   });
   it('使わない catch の引数', () => {
     expect(cmp(`function f(){ try{ g(); }catch(e){} }`, `export function f() { try { g(); } catch {} }`).n).toEqual({ f: 0 });
