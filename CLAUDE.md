@@ -112,6 +112,7 @@ tools/vite-plugins.mjs  Vite のプラグイン：legacyGame（src/game をつ�
 tools/game-source.mjs   ゲーム本体をつなぐ処理（gameSource）・行の対応・ソースマップ・テスト版のフォント
 tools/icons.mjs      ホーム画面のアイコン src/icons/icon-192.png・icon-512.png を作る（タイトルのロゴの光る「A」。絵を変える時だけ走らせ、PNG を git に入れる）
 tools/sourcemap.mjs  ソースマップの読み書き（自前の小さな道具）
+tools/check.mjs      pnpm check の中身：構文と lint・型・整形・単体テスト・使う文字・組み立てを同時に走らせる（単体テストを先にし、ほかの段は優先度を下げて空いたコアで。通った段は1行、落ちた段は出力を全部出す）
 tools/lint-game.mjs  src/game/ をつないで構文と lint を調べ、場所を元のファイルの行で出す（読んだ名前の宣言し直しと、状態の入れ物の名前の宣言も止める。入れ物の名前は src/lib/state.ts の export から取る）
 tools/state-move.mjs 状態を入れ物に移す道具：古い JS の一番外の状態を、src/lib/state.ts の入れ物の欄に移す書き換え（名前の見分けは eslint-scope）。単体テストは tests/unit/state-move.test.mjs（小さな見本で確かめる）
 tools/legacy-eval.mjs  テストの道具：古い JS のトップレベルの宣言を名前で取り出して評価する（移す前の古い関数を取り出して、新しい関数と結果を比べる。まだ古い JS にある関数を単体テストで本物のまま使う。型は .d.mts）
@@ -293,7 +294,7 @@ docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 ## 組み立て・実行・テスト（Node 26・pnpm 12）
 ```
 pnpm install --frozen-lockfile   # 依存を入れる（クラウドのセッションでは SessionStart hook が Node・pnpm ごと自動で行う）
-pnpm check            # 構文 + lint（エラーだけ。型の情報も使う） + 型（tsc） + 整形の確かめ + 単体テスト（Vite の組み立ても試す） + 使う文字 + 組み立て（公開用と Artifact 版）。40秒ほど（単体テストの階の比べ合わせ level.test.mjs が長い）。編集のたびにこれ
+pnpm check            # 構文 + lint（エラーだけ。型の情報も使う） + 型（tsc） + 整形の確かめ + 単体テスト（Vite の組み立ても試す） + 使う文字 + 組み立て（公開用と Artifact 版）。段は tools/check.mjs が同時に走らせる。40秒ほど（4コアのクラウドの環境では1分半ほど。単体テストの指紋の比べ合わせ fight.test.mjs・level.test.mjs が長い）。編集のたびにこれ
 pnpm lint             # 警告も含めて lint を見る（src/game/ はつないで調べる）
 pnpm fmt              # 整形する（Oxfmt。src/game/ の古い JS と index.html 以外）
 pnpm typecheck        # 型を確かめる（TypeScript 7 の tsc。src/lib/ と tests/unit/*.ts。1秒かからない）
