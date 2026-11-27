@@ -51,12 +51,12 @@ export const TEST = (() => {
   }
 })();
 
-/** 時計（ゲームの時刻。止めている間・テスト用モードで進めない間は進まない。溜めている間・ヒットストップ中はゆっくり進む） */
 /** テスト用モードの時計（ゲームの時計を ms 進め、その間に来る setTimeout・setInterval を流す advance と、本物の setTimeout。00-test-mode.js が作る） */
 export interface TestClock {
   advance(ms: number): void;
   realTimeout: (fn: () => void, ms: number) => number;
 }
+/** 時計（ゲームの時刻。止めている間・テスト用モードで進めない間は進まない。溜めている間・ヒットストップ中はゆっくり進む） */
 export interface Clock {
   /** ゲームが始まってからの秒（src/lib/loop.ts の tick が進める） */
   time: number;
@@ -1402,7 +1402,7 @@ export interface Gfx {
   camera: CameraView;
   cellTex: CellTex;
   drawBodyOnly: boolean;
-  /** ここから下は、05-renderer.js・30-loop-init.js・06-world.js がその場で入れる three.js の物（入れるまでは null・undefined か空）。
+  /** ここから下は、05-renderer.js・30-loop-init.js がその場で入れる three.js の物（水面は 30-loop-init.js が呼ぶ src/lib/render.ts の makeWater）（入れるまでは null・undefined か空）。
    * 描画する部品（WebGL を使えない時は作れず、ゲームは始まらない） */
   renderer: WebGLRenderer | undefined;
   /** 描く画面（#gl。05-renderer.js が document から読む） */
@@ -1438,7 +1438,7 @@ export interface Gfx {
   /** 階の文字を区切りごとにまとめた物（区切りの文字の数 count と、区切りを包む球 sphere。球で、見えない区切りを描かない）と、壁の向こうを隠す板（src/lib/build.ts の buildWorld が作る） */
   chunks: { mesh: Mesh; count: number; sphere: Sphere }[];
   occMesh: Mesh | null;
-  /** 水面の絵（マスごとの水の深さ・流れ・湖か・藻と、灯りの番号と重み。06-world.js の makeWater が作り、src/lib/build.ts の updateWater が書く） */
+  /** 水面の絵（マスごとの水の深さ・流れ・湖か・藻と、灯りの番号と重み。src/lib/render.ts の makeWater（30-loop-init.js の init が呼ぶ）が作り、src/lib/build.ts の updateWater が書く） */
   waterTex: DataTexture | null;
   waterLTex: DataTexture | null;
   /** その階の霧の濃さの基 */
