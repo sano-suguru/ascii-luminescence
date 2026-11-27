@@ -1,104 +1,9 @@
-// ---------------------------------------------------------------- sizing
-// why：何のために（'init'・'resize'・速さに合わせて解像度を下げた 'auto'・下げても速くならず戻した 'back'・比べる前に数えるのが途切れて戻した 'hold'）。大きさと解像度が前と同じなら、作り直さない
-// （iOS は、画面の向きを変えると、同じ大きさの resize を続けて出すことがある。作り直すと、描く物の大きさを全部取り直すため）
-let sizedAs='';
-function applySize(why){
-  frame.stillDrawn=false;
-  const w=window.innerWidth, h=window.innerHeight;
-  if(sizedAs===w+'x'+h+'@'+pixelRatio)return; sizedAs=w+'x'+h+'@'+pixelRatio;
-  const t0=performance.now();
-  gfx.renderer.setPixelRatio(pixelRatio); gfx.renderer.setSize(w,h,false);
-  composer.setPixelRatio(pixelRatio); composer.setSize(w,h);
-  gfx.camera.aspect=w/h; gfx.camera.updateProjectionMatrix();
-  gfx.U.uScale.value=(h*pixelRatio)/(2*Math.tan(gfx.camera.fov*Math.PI/360));
-  gfx.finalPass.uniforms.uRes.value.set(w*pixelRatio,h*pixelRatio);
-  took('applySize',t0,{why,w,h,pr:+pixelRatio.toFixed(2)});
-}
+// ---------------------------------------------------------------- sizing and the main loop
+// 大きさに合わせる applySize・毎フレームの frame・テスト用モードの1歩 testTick・ゲームの一歩 stepTick・tick・tick の段ごとの見た目の乱数 inPhase・inMobPhase・
+// テスト用モードの __test.cam で置いたカメラ withTestCam・画質を変える setQuality は src/lib/loop.ts（src/game/imports.mjs で読む）。
+// 描く細かさ gfx.pixelRatio・後処理 gfx.composer・光のにじみ gfx.bloom・画質を下げる途中の状態 gfx.qRun・置いたカメラ gfx.testCam は src/lib/state.ts の gfx、
+// 前のフレームの時刻と溜め（clock.last・fovT・mapT と、画質を決めるために数える perfT・perfAcc・perfN・warm）は clock、__test が使う TESTQ・tickNoise・skipPhases も src/lib/state.ts
 window.addEventListener('resize',()=>{ applySize('resize'); sizeMap(); });
-
-// ---------------------------------------------------------------- main loop
-let last=0, fovT=0, mapT=0, perfT=0, perfAcc=0, perfN=0, warm=0;
-// 画質を下げる途中の状態（src/lib/quality.ts の stepQuality。q は数えるたびに今の値で置き換える）
-let qRun={q:{pr:1,bloom:true},prev:null,done:false};
-function frame(nowMs){
-  requestAnimationFrame(frame);
-  if(TEST){ if(TESTQ.n>0){ TESTQ.n--; try{ testTick(true); } finally{ if(!TESTQ.n&&TESTQ.done){ const d=TESTQ.done; TESTQ.done=null; d(); } } } return; }
-  const now=nowMs/1000; let raw=last?now-last:0.016; last=now;
-  stepTick(raw,true);
-}
-const TESTQ={n:0,done:null};
-function testTick(draw){ TESTCLK.advance(TEST_STEP*1000); stepTick(TEST_STEP,draw); }
-// one step of the game. While the bestiary shows a creature, the visual random (mr) reads the creature's own sequence (showBeast in 25-gallery.js)
-function stepTick(raw,draw){ const g=ui.gallery, r=g&&g.mode==='beast'&&g.m?g.rnd:null; if(r)withVisualRand(r,()=>tick(raw,draw)); else tick(raw,draw); }
-// tick の段ごとの見た目の乱数：tick を段（プレイヤー・世界・灯り・描く物の種類ごと・粒子・火の広がり・飛ぶ物…）に分け、段ごとに、何の段か・探索のシード・
-// 何回目の tick か（clock.frame）を鍵にした新しい並びを読む（keyedRand）。生き物は1体ずつ、動きと描画を、階のシード・階で何体目か（m.seq）・何回目の tick か を鍵にした並びで読む。
-// なので、ある段で見た目の乱数を引く回数が変わっても、ほかの段・ほかの生き物と、次の tick からは変わらない（見た目だけの変更で、生き物の動き・戦い・火の広がりがずれない）。
-// 同じ段の中では、その tick の後の物がずれる。図鑑で生き物を出している間は、段に分けず、これまでどおり生き物の並びで tick を包む（stepTick）。
-// tick の外（マウスやキーの処理・setTimeout）は、Math.random の並びのまま（tick の中では引かないので、tick の中の変更ではずれない）。
-// テスト用モードの __test.tickNoise(n) は、どの段も終わりに見た目の乱数を n 回余分に引く（段を分けていれば、何も変わらないことを確かめる。tests/determinism.mjs）
-const tickNoise={n:0};
-const keyedPhase=(r,fn)=>withVisualRand(r,()=>{ const v=fn(); for(let i=0;i<tickNoise.n;i++)mr(); return v; });
-const tickRandOn=()=>{ const g=ui.gallery; return !(g&&g.mode==='beast'&&g.m); };
-// テスト用モードの __test.skipPhase(names) で止めた段の名前（その段を飛ばす。何が光っているかを切り分ける時に。tools/glare.mjs の --hide）
-const skipPhases=new Set();
-const inPhase=(name,fn)=>skipPhases.has(name)?undefined:tickRandOn()?keyedPhase(keyedRand('tick '+name,adv.runSeed,clock.frame),fn):fn();
-const inMobPhase=(name,m,fn)=>skipPhases.has(name)?undefined:tickRandOn()?keyedPhase(keyedRand('tick '+name,levelSeed(),m.seq,clock.frame),fn):fn();
-// テスト用モードの __test.cam で置いたカメラ（{pos, at, lvl}。null ならふだんどおり）。描く間（見える区切りを選ぶ所と描く所）だけ、このカメラにする。
-// 置いた時の階（lvl）と違う階に移ったら、置いたカメラは捨てて目に戻す（岩の中かは置いた時の階でしか確かめていないので）。
-// ゲームの一歩の間は目のカメラのままなので、術の出る所・手元の灯り・照準・見た時の説明は、ふだんどおりプレイヤーの目から。
-// 手元の武器と詠唱の円は目の前に描くので、離れたカメラから写すと宙に浮く（要らなければ __test.skipPhase(['hands','castfx'])）。
-// 生き物の光り方の強さ（近いほど弱める）と、こちらを向く飾りは、目からの距離と向きで決まる
-let testCam=null;
-const placeTestCam=()=>{ const [x,y,z]=testCam.pos, [ax,ay,az]=testCam.at; gfx.camera.position.set(x,y,z);
-  gfx.camera.rotation.set(Math.atan2(ay-y,Math.hypot(ax-x,az-z)),Math.atan2(-(ax-x),-(az-z)),0); };
-// fn の間だけ、置いたカメラにする（置いていなければ、そのまま fn）
-const withTestCam=fn=>{ if(testCam&&testCam.lvl!==here.D)testCam=null; if(!testCam)return fn(); const c=gfx.camera, p=c.position.clone(), r=c.rotation.clone();
-  placeTestCam(); c.updateMatrixWorld(); try{ return fn(); } finally{ c.position.copy(p); c.rotation.copy(r); c.updateMatrixWorld(); } };
-function tick(raw,draw){
-  if(isPaused()&&ui.started){ if(frame.stillDrawn)return; frame.stillDrawn=true; } else frame.stillDrawn=false; clock.frame++; const dt=isPaused()?0:clamp(raw,0,0.05)*timeScale();
-  clock.time+=dt; const t=clock.time;
-  gfx.U.uTime.value=t;
-  inPhase('trans',()=>{ if(here.trans){
-    here.trans.t+=dt;
-    if(here.trans.phase==='out'){ here.fade=1-here.trans.t/0.8; if(here.trans.t>=0.8){ if(here.trans.run)newRun(); else { if(here.trans.regen)adv.runSeed=(Math.random()*1e9)>>>0; else advance(here.trans.go); newLevel(); } here.trans={phase:'in',t:0}; here.fade=0; } }
-    else { here.fade=here.trans.t/1.3; if(here.trans.t>=1.3){ here.trans=null; here.fade=1; } }
-  } else here.fade=Math.min(1,here.fade+dt*0.8); });
-  inPhase('player',()=>{ updatePlayer(dt); updateStealth(dt); updateStatuses(dt); });
-  for(const m of here.monsters)if(!m.galShow&&!m.ty.dummy)inMobPhase('mob',m,()=>updateMonster(m,dt*monTimeK(m),t));
-  if(here.monsters.some(m=>m.dead))here.monsters=here.monsters.filter(m=>!m.dead);
-  hudInfo.pfFrames++; hudInfo.pfT+=raw; if(hudInfo.pfT>=0.5){ hudInfo.pfFps=Math.round(hudInfo.pfFrames/hudInfo.pfT); hudInfo.pfFrames=0; hudInfo.pfT=0; if(ui.perfOn)renderStatus(); }
-  inPhase('world',()=>{ regrow(); brimRecover(dt); if(!adv.dead){ updateTraps(dt); updateSearch(dt); } updateLife(dt); });
-  inPhase('lights',()=>{ updateLights(t); updateAtmosphere(dt); updateSectionAir(dt); });
-  buf.dn=0; inPhase('fixtures',()=>drawFixtures(t,dt)); inPhase('doors',()=>drawDoors(t,dt)); inPhase('fire',()=>drawFire(t,dt)); inPhase('webs',()=>drawWebs(t)); inPhase('traps',()=>drawTraps(t));
-  inPhase('swing',()=>drawSwing()); inPhase('hands',()=>drawViewWeapons(t)); inPhase('omens',()=>drawOmens(t,dt)); inPhase('runes',()=>{ drawRunesWorld(t); updateAltarPanel(); drawArrows(); drawLegendWorld(t); }); inPhase('rockfall',()=>{ if(!here.trans)updateRockfall(dt); }); // 階を移り始めたら、石は落ちず、当たらない（新しい階で newLevel が消す）
-  inPhase('bolt',()=>drawBoltFx(t,dt)); inPhase('gallery',()=>drawGallery(t)); inPhase('frozen',()=>drawFrozen(t)); inPhase('castfx',()=>drawCastFx(t));
-  for(const m of here.monsters)inMobPhase('mob draw',m,()=>drawMonster(m,t)); inPhase('debris',()=>updateDebris(dt)); flushDyn();
-  inPhase('particles',()=>updateParticles(dt,t));
-  fovT+=dt; if(fovT>0.1){ fovT=0; inPhase('fov',()=>{ computeFOV(); checkEvents(false); look(); }); inPhase('gas',()=>stepGas()); inPhase('spread',()=>stepFire()); }
-  mapT+=dt; if(mapT>0.11){ mapT=0; if(ui.uiMode===0)inPhase('map',()=>drawMap()); }
-  if(ui.helpT>0){ ui.helpT-=dt; if(ui.helpT<=0&&ui.helpOn)setHelp(false); }
-  gfx.finalPass.uniforms.uTime.value=t; gfx.finalPass.uniforms.uFade.value=clamp(here.fade,0,1); gfx.finalPass.uniforms.uHurt.value=vfx.hurtFlash+(player.hp<adv.PLAYER_MAX*0.25&&!adv.dead?0.18+0.08*Math.sin(t*4):0);
-  inPhase('pickup',()=>{ if(ui.started&&!here.trans&&!adv.dead&&!isPaused())pickupItems(); });
-  inPhase('cast',()=>{ if(gear.hands)updateCast(dt); });
-  inPhase('final',()=>updateFinal(dt)); inPhase('galstep',()=>updateGallery(dt)); inPhase('seen',()=>trackSeen(dt)); inPhase('thaw',()=>{ updateFrozen(dt); cloudsMeetFire(); });
-  inPhase('cross',()=>updateCross(raw));
-  inPhase('projs',()=>updateProjs(dt));
-  inPhase('sound',()=>sndUpdate(dt)); inPhase('events',()=>updateEvents(dt,t));
-  withTestCam(()=>{ cullChunks(); if(draw)composer.render(dt); });
-  if(TEST)return; // keep the resolution fixed in tests
-  // 速さに合わせて画質を下げる（src/lib/quality.ts）。数えるのは探索中だけ（階を移る途中・止まっている間・タイトルと図鑑は数えない。
-  // 階を作る一瞬の遅れで下がらないように）。数えないフレームが来たら、そこから3秒は様子を見てから数え直す
-  if(!ui.started||here.trans||isPaused()||document.hidden){ warm=perfT=perfAcc=perfN=0; if(qRun.prev){ qRun=holdQuality(qRun); setQuality(qRun.q,'hold'); } return; }
-  warm+=raw; if(warm>3){ perfAcc+=raw; perfN++; perfT+=raw;
-    if(perfT>QUALITY.span){ qRun=stepQuality(perfAcc/perfN,{...qRun,q:{pr:pixelRatio,bloom:bloom.enabled}}); perfT=perfAcc=perfN=0;
-      setQuality(qRun.q,qRun.done?'back':'auto'); } }
-}
-// 画質を q にする。変えたら、作り直した直後の遅いフレームを次の比べに数えないように、3秒おいてから数え直す
-function setQuality(q,why){
-  if(q.pr===pixelRatio&&q.bloom===bloom.enabled)return;
-  const pr0=pixelRatio; pixelRatio=q.pr; bloom.enabled=q.bloom; warm=perfT=perfAcc=perfN=0;
-  if(q.pr!==pr0)applySize(why); else took('quality',performance.now(),{bloom:q.bloom,why});
-}
 
 // ---------------------------------------------------------------- test hooks (only with ?test=1; see the test mode block at the top)
 let testBoot=false;
@@ -115,7 +20,7 @@ if(TEST)window.__test={
   // 指の操作の、試して合わせる値を変える（{look, analog}。src/lib/touchpad.ts の TUNE。tools/feel.mjs が使う）
   touchTune(o){ Object.assign(TUNE,o||{}); return {...TUNE}; },
   // the quality the frame loop lowers on a slow device (src/lib/quality.ts; tests keep it fixed): pr is the pixel ratio, bloom whether the glow is drawn. Returns what it is now
-  quality(q){ if(q){ if(q.pr!==undefined)pixelRatio=q.pr; if(q.bloom!==undefined)bloom.enabled=q.bloom; applySize('auto'); } return {pr:pixelRatio,bloom:bloom.enabled}; },
+  quality(q){ if(q){ if(q.pr!==undefined)gfx.pixelRatio=q.pr; if(q.bloom!==undefined)gfx.bloom.enabled=q.bloom; applySize('auto'); } return {pr:gfx.pixelRatio,bloom:gfx.bloom.enabled}; },
   bless(n=1){ for(const k in BLESS)adv.lvl.bless[k]=n; return Object.keys(BLESS).length; },
   // how many columns the panels count for a piece of text (visW)
   width(text){ return visW(text); },
@@ -153,14 +58,14 @@ if(TEST)window.__test={
   // 描く時のカメラを pos（[x,y,z]）に置いて at（[x,y,z]）を見る（ゲームの一歩は目のカメラのまま。上の testCam）。pos が岩の中（壁・地図の外・天井より上）か、
   // 横に 0.4 以内に壁がある時は置かず、わけの文を返す。置いたら {pos, at, clear}（clear は pos から at までの線が岩を通らないか）を返す。
   // null で目に戻す（ほかの階へ移っても目に戻る）。pos・at が3つの数でなければ、わけの文。引数なしなら何も変えず、目のカメラの位置と向きと置いたカメラ {pos, yaw, pitch, placed} を返す（placed は置いていなければ null）
-  cam(o){ if(o===undefined){ if(testCam&&testCam.lvl!==here.D)testCam=null; const p=gfx.camera.position;
-    return {pos:[p.x,p.y,p.z],yaw:gfx.camera.rotation.y,pitch:gfx.camera.rotation.x,placed:testCam?{pos:testCam.pos,at:testCam.at}:null}; }
-    if(!o){ testCam=null; return null; }
+  cam(o){ if(o===undefined){ if(gfx.testCam&&gfx.testCam.lvl!==here.D)gfx.testCam=null; const p=gfx.camera.position;
+    return {pos:[p.x,p.y,p.z],yaw:gfx.camera.rotation.y,pitch:gfx.camera.rotation.x,placed:gfx.testCam?{pos:gfx.testCam.pos,at:gfx.testCam.at}:null}; }
+    if(!o){ gfx.testCam=null; return null; }
     const v3=a=>Array.isArray(a)&&a.length===3&&a.every(Number.isFinite); if(!v3(o.pos)||!v3(o.at))return 'pos and at must be [x,y,z]';
     const [x,y,z]=o.pos, [ax,ay,az]=o.at;
     for(const [dx,dz] of [[0,0],[0.4,0],[-0.4,0],[0,0.4],[0,-0.4]])if(rockAt(x+dx,y,z+dz))return 'camera in rock: '+JSON.stringify(o.pos);
     let clear=true; for(let k=1;k<40&&clear;k++){ const f=k/40; if(rockAt(x+(ax-x)*f,y+(ay-y)*f,z+(az-z)*f))clear=false; }
-    testCam={pos:o.pos.slice(),at:o.at.slice(),lvl:here.D}; return {pos:testCam.pos,at:testCam.at,clear}; },
+    gfx.testCam={pos:o.pos.slice(),at:o.at.slice(),lvl:here.D}; return {pos:gfx.testCam.pos,at:gfx.testCam.at,clear}; },
   // true when the hand started charging, or attacked at once (a weapon with no charge, such as the short sword)
   press(h){ const r0=player.recover||0; beginCast(h); return !!gear.castSt||(player.recover||0)>r0; },
   release(h){ releaseCast(h); },
@@ -252,7 +157,7 @@ if(TEST)window.__test={
     finally{ gfx.drawBodyOnly=false; buf.dn=d0; buf.pN=p0; }
     if(!pts.length)return {key,x:m.x,z:m.z,glyphs:0};
     // 画面の範囲は、描いたカメラ（__test.cam で置いていれば、そのカメラ）で数える
-    const W=canvas.clientWidth, H=canvas.clientHeight, v=new T.Vector3(); let out=0, y0=1e9, y1=-1e9; const sb=[1e9,1e9,-1e9,-1e9];
+    const W=gfx.canvas.clientWidth, H=gfx.canvas.clientHeight, v=new T.Vector3(); let out=0, y0=1e9, y1=-1e9; const sb=[1e9,1e9,-1e9,-1e9];
     withTestCam(()=>{ gfx.camera.updateMatrixWorld(); for(const [x,y,z] of pts){ y0=Math.min(y0,y); y1=Math.max(y1,y); v.set(x,y,z).project(gfx.camera); const sx=(v.x+1)/2*W, sy=(1-v.y)/2*H;
       if(v.z>1||sx<0||sx>W||sy<0||sy>H){ out++; if(v.z>1)continue; } sb[0]=Math.min(sb[0],sx); sb[1]=Math.min(sb[1],sy); sb[2]=Math.max(sb[2],sx); sb[3]=Math.max(sb[3],sy); } });
     const c=(a,lo,hi)=>Math.round(Math.max(lo,Math.min(hi,a)));
@@ -295,19 +200,19 @@ if(TEST)window.__test={
 
 // ---------------------------------------------------------------- init
 async function init(){
-  try{ if(document.fonts&&document.fonts.load)await Promise.race([Promise.all([document.fonts.load('800 96px "JetBrains Mono"'),document.fonts.load('500 96px "Noto Sans Runic"','ᚦᛏᛜᛞᚲᛁᛊᚾᚱᚺ'),document.fonts.load('400 14px "BIZ UDGothic"','←→！：？［］')]),new Promise(r=>(TEST?TESTCLK.realTimeout:setTimeout)(r,2500))]); }catch(e){}
+  try{ if(document.fonts&&document.fonts.load)await Promise.race([Promise.all([document.fonts.load('800 96px "JetBrains Mono"'),document.fonts.load('500 96px "Noto Sans Runic"','ᚦᛏᛜᛞᚲᛁᛊᚾᚱᚺ'),document.fonts.load('400 14px "BIZ UDGothic"','←→！：？［］')]),new Promise(r=>(TEST?clock.TESTCLK.realTimeout:setTimeout)(r,2500))]); }catch(e){}
   gfx.U.uAtlas.value=buildAtlas();
   gfx.staticMat=new T.ShaderMaterial({uniforms:{uAtlas:gfx.U.uAtlas,uTime:gfx.U.uTime,uSL:gfx.U.uSL,uDLP:gfx.U.uDLP,uDLC:gfx.U.uDLC,uFogDen:gfx.U.uFogDen,uFogColor:gfx.U.uFogColor,uRamp:gfx.U.uRamp,uAmb:gfx.U.uAmb,uCell:gfx.U.uCell,uCollT:gfx.U.uCollT,uCamP:gfx.U.uCamP,uCutP:gfx.U.uCutP,uCut:gfx.U.uCut},
     vertexShader:STATIC_VS,fragmentShader:GLYPH_FS,side:T.DoubleSide,alphaToCoverage:true});
-  dynMat=new T.ShaderMaterial({uniforms:{uAtlas:gfx.U.uAtlas,uFogDen:gfx.U.uFogDen,uFogColor:gfx.U.uFogColor},vertexShader:DYN_VS,fragmentShader:GLYPH_FS,side:T.DoubleSide,alphaToCoverage:true});
-  ptMat=new T.ShaderMaterial({uniforms:{uAtlas:gfx.U.uAtlas,uScale:gfx.U.uScale,uFogDen:gfx.U.uFogDen},vertexShader:PT_VS,fragmentShader:PT_FS,transparent:true,depthWrite:false,blending:T.AdditiveBlending});
+  gfx.dynMat=new T.ShaderMaterial({uniforms:{uAtlas:gfx.U.uAtlas,uFogDen:gfx.U.uFogDen,uFogColor:gfx.U.uFogColor},vertexShader:DYN_VS,fragmentShader:GLYPH_FS,side:T.DoubleSide,alphaToCoverage:true});
+  gfx.ptMat=new T.ShaderMaterial({uniforms:{uAtlas:gfx.U.uAtlas,uScale:gfx.U.uScale,uFogDen:gfx.U.uFogDen},vertexShader:PT_VS,fragmentShader:PT_FS,transparent:true,depthWrite:false,blending:T.AdditiveBlending});
   gfx.occMat=new T.ShaderMaterial({uniforms:{uCamP:gfx.U.uCamP,uCutP:gfx.U.uCutP,uCut:gfx.U.uCut},colorWrite:false,side:T.DoubleSide,
     vertexShader:`varying vec3 vW; void main(){ vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
     fragmentShader:`uniform vec3 uCamP; uniform vec3 uCutP; uniform float uCut; varying vec3 vW;
       void main(){ if(uCut>0.5){ vec3 seg=uCutP-uCamP; float L2=max(dot(seg,seg),1e-4); float tc=clamp(dot(vW-uCamP,seg)/L2,0.0,1.0); if(tc<0.97&&length(vW-(uCamP+seg*tc))<mix(2.6,0.9,tc)+0.15) discard; } gl_FragColor=vec4(0.0); }`});
   makeWater();
-  const dynMesh=new T.Mesh(dynGeo,dynMat); dynMesh.frustumCulled=false; dynMesh.renderOrder=1; gfx.scene.add(dynMesh);
-  const pts=new T.Points(gfx.ptGeo,ptMat); pts.frustumCulled=false; pts.renderOrder=5; gfx.scene.add(pts);
+  const dynMesh=new T.Mesh(gfx.dynGeo,gfx.dynMat); dynMesh.frustumCulled=false; dynMesh.renderOrder=1; gfx.scene.add(dynMesh);
+  const pts=new T.Points(gfx.ptGeo,gfx.ptMat); pts.frustumCulled=false; pts.renderOrder=5; gfx.scene.add(pts);
   applySize('init');
   newLevel();
   // 音の部品を先に作っておく（迷宮に入る時に止まらないように。鳴らし始めるのは、押した時の sndInit。src/lib/audio.ts）

@@ -1,5 +1,5 @@
 // 倒れた生き物が崩れる：体の文字が上から順に外れて落ち、床に寝て小山に積もり、しばらくして1つずつ縮んで消える。
-// 倒れた時（src/lib/combat.ts の damageMonster）に crumble が、その時の体を写し取って「崩れる体」を1つ足し、tick の段 debris（src/game/30-loop-init.js）で updateDebris が動かして描く。
+// 倒れた時（src/lib/combat.ts の damageMonster）に crumble が、その時の体を写し取って「崩れる体」を1つ足し、tick の段 debris（src/lib/loop.ts）で updateDebris が動かして描く。
 // 写し取る時と、文字ごとのばらつきは、その生き物の鍵の乱数（keyedRand('fall'…)）で決め、動かす間は乱数を引かない。なので、倒した段のほかの物も、ほかの段もずれない。
 // 描くのは体と同じ dyn の文字（足さない描き方で、にじみが無い）。何枚重なっても白くならない。
 import { must, nth } from './array.ts';

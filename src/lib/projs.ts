@@ -1,6 +1,6 @@
 // 飛ぶ物と、毎フレーム続く戦いの跡を進める（もとは src/game/20-chant-hits.js・26-spells-hud.js）：矢と玉（まっすぐ飛ぶ矢・弧を描いて弾ける玉。
 // 跳ね返る・追う・貫く・壁を抜ける）、状態異常（燃える・毒・冷える・動けない・痺れる）と吹き飛び、毒の霧、遅れて起きること、魔法の場、雨、
-// 毒の霧に火がつく、生き物の時間の速さ。状態の入れ物 fight・here・player・clock・vfx・blaze・saved に頼る。呼ぶのは古い JS のメインループ（30-loop-init.js の tick）。
+// 毒の霧に火がつく、生き物の時間の速さ。状態の入れ物 fight・here・player・clock・vfx・blaze・saved に頼る。呼ぶのはメインループ（src/lib/loop.ts の tick）。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う結果になるので、順番を変えないこと。
 import { lookup, must, nth } from './array.ts';
 import { doorBlock, hittable, losClear, reflectDir } from './aim.ts';

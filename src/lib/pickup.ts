@@ -1,6 +1,6 @@
 // 足元の物を拾う（もとは src/game/21-altars-heal.js と 24-goal.js）。ルーン・墓・泉・枠・伝説の物を拾った時と、宝物庫の褒美を取った時（番人が起きる・天井が崩れる）と、落石。
 // 状態の入れ物 here（今の階の物 items と生き物）・player・adv（探索の記録）・gear（手）・fight（落石 rockfall）・saved（墓と伝説の物）に頼る。
-// 呼ぶのは古い JS（30-loop-init.js の tick が pickupItems と updateRockfall（落石だけの段）、21-altars-heal.js の祭壇の画面が grabItem、23-debug.js が openSlot）
+// 呼ぶのは src/lib/loop.ts の tick（pickupItems と、落石だけの段で updateRockfall）、21-altars-heal.js の祭壇の画面（grabItem）、23-debug.js（openSlot）
 import { lookup, must, nth } from './array.ts';
 import { guardedNow, placeChosen, takeRune, vaultArea } from './altars.ts';
 import { sChime, sRumble } from './audio.ts';

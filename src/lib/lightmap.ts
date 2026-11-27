@@ -1,7 +1,7 @@
 // マスの明るさ（もとは src/game/14-lights-fixtures.js）と天井の高さ（もとは 06-world.js）、灯りの揺らぎ flicker と、灯りを描画に渡す配列を書き直す updateLights（もとは 14-lights-fixtures.js）。
 // 状態の入れ物 here（今の階の灯りと天井・生き物）・blaze（火の明かり）・player・ui・gfx（カメラの位置。読むだけ）・gear（詠唱）・vfx（稲妻の光り）・
 // lantern（手元の灯り）と、灯りを描画に渡す配列 SL・DLP・DLC に頼る物。灯りの計算そのもの（迷宮の生成も使う）は src/lib/light.ts。
-// updateLights を呼ぶのは古い JS の描画（30-loop-init.js の tick）。flicker はランプの時に見た目の乱数 mr() を引く。
+// updateLights を呼ぶのは描画（src/lib/loop.ts の tick）。flicker はランプの時に見た目の乱数 mr() を引く。
 import { must, nth } from './array.ts';
 import { bodyN } from './gear.ts';
 import type { LevelLight } from './generate.ts';

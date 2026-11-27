@@ -47,3 +47,11 @@ export function recordBeast(ty: Pick<MonsterType, 'name' | 'col' | 'spec' | 'lor
     // 保存が使えない時は、何もしない
   }
 }
+/** 名前 k で保存した集まり（見た生き物・見たルーン）を読む。読めない時は空 */
+export const loadSet = (k: string): Set<string> => {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(k) || '[]'));
+  } catch (e) {
+    return new Set();
+  }
+};

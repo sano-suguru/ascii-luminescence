@@ -3,7 +3,7 @@
 // 移す時は tools/state-move.mjs を使う（同じ名前の局所の変数は書き換えない）。初めの値は、古い JS の宣言のまま。
 // 入れ物の名前は、古い JS の局所の名前とぶつからない物にする（道具が確かめる。fx は座標の fx とぶつかるので vfx にした）。
 import { type MonsterType } from './creatures.ts';
-import { type BranchPlace, type Fixture, type InterPlace, type Level, type RealmPlace, type Web } from './generate.ts';
+import { type BranchPlace, type Fixture, type InterPlace, type Level, type LevelLight, type RealmPlace, type Web } from './generate.ts';
 import { META_DEF, type Meta } from './progress.ts';
 import { type History } from './history.ts';
 import type { HandsSnap, Spec } from './gear.ts';
@@ -14,16 +14,21 @@ import { type Rune } from './runes.ts';
 import type {
   BufferAttribute,
   BufferGeometry,
+  InstancedBufferAttribute,
+  InstancedBufferGeometry,
   DataTexture,
   Mesh,
   Scene,
   ShaderMaterial,
   Sphere,
   Texture,
-  Vector3,
   WebGLRenderer,
 } from 'three';
+import { Euler, Matrix4, Vector3 } from 'three';
 import type { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import type { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import type { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import type { QualityRun } from './quality.ts';
 import { DUST_N } from './shaders.ts';
 import { NCELL, NDL, NSL } from './world.ts';
 
@@ -46,14 +51,39 @@ export const TEST = (() => {
   }
 })();
 
+/** テスト用モードの時計（ゲームの時計を ms 進め、その間に来る setTimeout・setInterval を流す advance と、本物の setTimeout。00-test-mode.js が作る） */
+export interface TestClock {
+  advance(ms: number): void;
+  realTimeout: (fn: () => void, ms: number) => number;
+}
 /** 時計（ゲームの時刻。止めている間・テスト用モードで進めない間は進まない。溜めている間・ヒットストップ中はゆっくり進む） */
 export interface Clock {
-  /** ゲームが始まってからの秒（30-loop-init.js の tick が進める） */
+  /** ゲームが始まってからの秒（src/lib/loop.ts の tick が進める） */
   time: number;
-  /** tick が進んだ回数（止めている間に描き直さない時は数えない）。tick の段ごとの見た目の乱数の鍵にする（30-loop-init.js の inPhase・inMobPhase） */
+  /** tick が進んだ回数（止めている間に描き直さない時は数えない）。tick の段ごとの見た目の乱数の鍵にする（src/lib/loop.ts の inPhase・inMobPhase） */
   frame: number;
+  /** 前のフレームの時刻（秒。src/lib/loop.ts の frame） */
+  last: number;
+  /** 見えるマスを数え直すまでと、ミニマップを描き直すまでの溜め（秒） */
+  fovT: number;
+  mapT: number;
+  /** 画質を決めるために数えている秒・フレームの時間の和・数（src/lib/quality.ts）と、数え始めるまで様子を見ている秒 */
+  perfT: number;
+  perfAcc: number;
+  perfN: number;
+  warm: number;
+  /** テスト用モードの時計（テスト用モードでない時は null。00-test-mode.js がその場で入れる） */
+  TESTCLK: TestClock | null;
 }
-export const clock: Clock = { time: 0, frame: 0 };
+export const clock: Clock = { time: 0, frame: 0, last: 0, fovT: 0, mapT: 0, perfT: 0, perfAcc: 0, perfN: 0, warm: 0, TESTCLK: null };
+/** テスト用モードの1歩の秒（ゲームの1/30秒） */
+export const TEST_STEP = 1 / 30;
+/** テスト用モードの __test.frames(n) が描いて進める残りの数と、終わった時に呼ぶ物。丸ごと入れ替えない */
+export const TESTQ: { n: number; done: (() => void) | null } = { n: 0, done: null };
+/** テスト用モードの __test.tickNoise(n)：tick のどの段も、終わりに見た目の乱数を n 回余分に引く。丸ごと入れ替えない */
+export const tickNoise = { n: 0 };
+/** テスト用モードの __test.skipPhase(names) で止めた tick の段の名前（その段を飛ばす）。丸ごと入れ替えない */
+export const skipPhases = new Set<string>();
 
 /** 揺れと光り（画面の揺れ、画面の光り、ダメージを受けた時と回復した時の光り、稲妻の光り）と、目の慣れ expo（画面の明るさに掛ける。src/lib/camera.ts の updateAtmosphere が、まわりの明るさに合わせてゆっくり変える）と、
  * 階の場所ごとの空気 ambK（分かれ道は明るく、階段へ向かう道は暗く。src/lib/camera.ts の updateSectionAir）と、詠唱している間に画面をゆっくりにする見た目の強さ slowFx（0 から 1。src/lib/chantfx.ts の updateCross） */
@@ -69,9 +99,93 @@ export interface Vfx {
 }
 export const vfx: Vfx = { shake: 0, flash: 0, hurtFlash: 0, hpFlash: 0, zapFlash: null, expo: 1.1, ambK: 1, slowFx: 0 };
 
-/** 図鑑の獣を見ている間（'beast'）か、試しの間（'range'）の状態（今は mode と settle だけ型を付ける。ほかの欄は、図鑑と試しの間の処理を移す時に足す） */
+/** 図鑑の一覧の1つ（鍵と種類。忘れられた獣・主・王の影は、図鑑のために作った種類） */
+export interface GalleryEntry {
+  key: string;
+  ty: MonsterType;
+}
+/** 図鑑の部屋（真ん中のマスと位置。図鑑の部屋は、カメラを向ける開けた向き dir とその向きに床が続く距離 far も） */
+export interface GalleryRoom {
+  cx: number;
+  cz: number;
+  x: number;
+  z: number;
+  dir?: number;
+  far?: number;
+}
+/** 図鑑のカメラ（プレイヤーが動かす view と、__test.galleryShow が止める fix の共通の欄） */
+export interface GalleryCam {
+  /** 寄る・引く（距離を 1/zoom 倍） */
+  zoom: number;
+  /** 見下ろす角度（null：図鑑が生き物の大きさから決める高さ） */
+  pitch: number | null;
+  /** 見下ろし始めた時の、見ている点からの距離の割合（src/lib/gallery.ts の galleryDrag） */
+  stretch?: number;
+  /** 寄った時に止まる球を数えた形と、見ている点の高さと、球の半径 */
+  bodyFor?: Body;
+  bodyAt?: number;
+  bodyR?: number;
+  /** 体の高さの真ん中（見ている点からの高さ） */
+  midOff?: number;
+}
+/** __test.galleryShow が止める向きと姿 */
+export interface GalleryFix extends GalleryCam {
+  /** 向き（0 でこちらを向く） */
+  yaw: number;
+  /** 'stand'・'walk'・'sleep' */
+  pose: string;
+  /** 体の高さの真ん中を画面の真ん中に写すか */
+  center: boolean;
+}
+/** プレイヤーが動かすカメラ（ホイールとドラッグ。src/lib/gallery.ts の galleryView） */
+export interface GalleryView extends GalleryCam {
+  /** 最後に動かした時の g.t */
+  t: number;
+  /** なめらかに動かしている、見ている点の高さと距離 */
+  aimS: number | undefined;
+  rS: number | undefined;
+  /** 体の高さの真ん中を数えた形 */
+  midFor?: Body;
+}
+/** 試しの間の的（置く位置・種類・倒れてから起き上がるまでの秒・今の生き物） */
+export interface GalleryDummy {
+  k: string;
+  x: number;
+  z: number;
+  m?: Mob;
+  respawn?: number;
+}
+/** 図鑑の獣を見ている間（'beast'）か、試しの間（'range'）の状態（src/lib/gallery.ts） */
 export interface Gallery {
   mode: 'beast' | 'range';
+  /** 部屋（作る前に ui.gallery を入れるので、作るまでは null） */
+  room?: GalleryRoom | null;
+  /** 図鑑：見せる一覧と、図鑑の全部の数・今の番号・出している生き物・出してからの秒 */
+  list?: GalleryEntry[];
+  all?: number;
+  idx?: number;
+  m?: Mob | null;
+  t?: number;
+  /** 図鑑を開いた時の備品と灯り（生き物を出すたびに戻す） */
+  still?: { fixtures: Fixture[]; lights: LevelLight[] };
+  /** 止めた向きと姿（__test.galleryShow だけ）と、プレイヤーが動かすカメラ */
+  fix?: GalleryFix | null;
+  view?: GalleryView | null;
+  /** マウスで回している間（押した所） */
+  drag?: { x: number; y: number } | null;
+  /** 今のカメラが見ている点の高さ・距離・角度・見ている点からの距離の割合 */
+  aimY?: number | undefined;
+  rNow?: number | undefined;
+  tiltNow?: number;
+  stretchNow?: number;
+  /** 出している生き物の見た目の乱数の並び */
+  rnd?: () => number;
+  /** 水に住む生き物か（水のさざ波を描く） */
+  water?: boolean;
+  /** 今出している説明が眠っている時の物か */
+  shownSleep?: boolean;
+  /** 試しの間の的 */
+  dummies?: GalleryDummy[];
   /** 生き物を出した後、目の慣れと霧をすぐ合わせるまでの段（1：カメラを置くのを待つ、2：次の一歩で src/lib/camera.ts の updateAtmosphere が合わせて 0 にする） */
   settle?: number;
 }
@@ -173,6 +287,8 @@ export interface Ui {
   perfOn: boolean;
   /** 図鑑の獣を見ている間・試しの間の状態（どちらでもなければ null） */
   gallery: Gallery | null;
+  /** 見た物の記録を次に数えるまでの秒（src/lib/gallery.ts の trackSeen。0.5 秒ごと） */
+  seenT: number;
   /** マウスを捕まえられないと決めたか（決めた後は捕まえようとしない。捕まえていない時は、ドラッグで視点を動かし、Esc でメニューを開く） */
   plFailed: boolean;
   /** 装備の画面を開けた時の両手（handsKey の key と、写し snap）。閉じた時に変わっていれば、付け替えの詠唱をする。閉じている間は null */
@@ -253,6 +369,7 @@ export const ui: Ui = {
   uiMode: 0,
   perfOn: false,
   gallery: null,
+  seenT: 0,
   plFailed: false,
   packSnap: null,
   aimMon: null,
@@ -875,6 +992,8 @@ export interface Monster {
   /** 体の明るさ（生き物の処理が入れる）と、心臓を見せるか（王の影。src/lib/levels.ts の spawnFinalBoss） */
   glow?: number;
   heartOn?: boolean;
+  /** 図鑑に出している生き物（tick が動かさない。src/lib/gallery.ts の showBeast） */
+  galShow?: boolean;
   /** ここから下は、描く処理（src/lib/bodies/draw.ts）と見た時の説明（src/lib/look.ts）・灯り（src/lib/lightmap.ts の updateLights）が読む欄。
    * 生き物の表の鍵（'final' は王の影）と、揺れの位相 ph・歩きの位相 walk・警戒 alert（src/lib/monsters.ts の makeMonster が入れる） */
   key?: string;
@@ -1263,10 +1382,15 @@ export interface Buf {
 export const buf: Buf = { dn: 0, pN: 0 };
 /** three.js のカメラのうち、TypeScript が使う欄だけ（本物は 05-renderer.js が作る PerspectiveCamera。位置と向きは src/lib/player.ts が set で書く） */
 export interface CameraView {
-  readonly position: { readonly x: number; readonly y: number; readonly z: number; set(x: number, y: number, z: number): unknown };
-  readonly rotation: { set(x: number, y: number, z: number): unknown };
-  /** 画面の横と縦の比（本物のカメラだけにある。手元の武器を細い画面で縮める src/lib/held.ts が読む） */
-  readonly aspect?: number;
+  readonly position: Vector3;
+  readonly rotation: Euler;
+  /** 画面の横と縦の比（手元の武器を細い画面で縮める src/lib/held.ts が読む）と、縦の画角（度） */
+  aspect: number;
+  readonly fov: number;
+  readonly projectionMatrix: Matrix4;
+  readonly matrixWorldInverse: Matrix4;
+  updateProjectionMatrix(): void;
+  updateMatrixWorld(): void;
 }
 /** three.js の、マスの火・灰・変わり方を描画に渡す絵（DataTexture）のうち、TypeScript が書く欄だけ（本物は 05-renderer.js が作る。中身は cellData） */
 export interface CellTex {
@@ -1278,9 +1402,11 @@ export interface Gfx {
   camera: CameraView;
   cellTex: CellTex;
   drawBodyOnly: boolean;
-  /** ここから下は、05-renderer.js・30-loop-init.js・06-world.js がその場で入れる three.js の物（入れるまでは null・undefined か空）。
+  /** ここから下は、05-renderer.js・30-loop-init.js がその場で入れる three.js の物（水面は 30-loop-init.js が呼ぶ src/lib/render.ts の makeWater）（入れるまでは null・undefined か空）。
    * 描画する部品（WebGL を使えない時は作れず、ゲームは始まらない） */
   renderer: WebGLRenderer | undefined;
+  /** 描く画面（#gl。05-renderer.js が document から読む） */
+  canvas: HTMLCanvasElement | null;
   /** 描く物を入れる場面（05-renderer.js が作る。three.js は物を作る時に Math.random を引くので、テスト用モードの乱数の入れ替えの後に作る） */
   scene: Scene | null;
   /** 描画の全部の部品が分け合う値（シェーダーの uniform） */
@@ -1290,10 +1416,29 @@ export interface Gfx {
   occMat: ShaderMaterial | undefined;
   /** 画面の最後の後処理（露出・熱のゆらぎ・水中・傷の赤み・詠唱の間の色） */
   finalPass: ShaderPass | null;
+  /** 描く細かさ（画面の倍率。遅い端末では src/lib/quality.ts が下げる）と、作り直した大きさ（'横x縦@細かさ'。src/lib/loop.ts の applySize） */
+  pixelRatio: number;
+  sizedAs: string;
+  /** 後処理をつなぐ部品と、光のにじみ（遅い端末では切る） */
+  composer: EffectComposer | null;
+  bloom: UnrealBloomPass | null;
+  /** 画質を下げる途中の状態（src/lib/quality.ts の stepQuality） */
+  qRun: QualityRun;
+  /** 置いた文字を描く形と、その属性（位置・色・大きさなど。src/lib/render.ts の flushDyn が数を渡す）と、置いた文字と粒子の部品 */
+  dynGeo: InstancedBufferGeometry | null;
+  aPos: InstancedBufferAttribute | null;
+  aCol: InstancedBufferAttribute | null;
+  aPar: InstancedBufferAttribute | null;
+  dynMat: ShaderMaterial | undefined;
+  ptMat: ShaderMaterial | undefined;
+  /** 水面 */
+  waterMesh: Mesh | null;
+  /** テスト用モードの __test.cam で置いたカメラ（位置 pos・見る点 at・置いた時の階 lvl。null ならふだんどおり。src/lib/loop.ts の withTestCam） */
+  testCam: { pos: [number, number, number]; at: [number, number, number]; lvl: Level | null } | null;
   /** 階の文字を区切りごとにまとめた物（区切りの文字の数 count と、区切りを包む球 sphere。球で、見えない区切りを描かない）と、壁の向こうを隠す板（src/lib/build.ts の buildWorld が作る） */
   chunks: { mesh: Mesh; count: number; sphere: Sphere }[];
   occMesh: Mesh | null;
-  /** 水面の絵（マスごとの水の深さ・流れ・湖か・藻と、灯りの番号と重み。06-world.js の makeWater が作り、src/lib/build.ts の updateWater が書く） */
+  /** 水面の絵（マスごとの水の深さ・流れ・湖か・藻と、灯りの番号と重み。src/lib/render.ts の makeWater（30-loop-init.js の init が呼ぶ）が作り、src/lib/build.ts の updateWater が書く） */
   waterTex: DataTexture | null;
   waterLTex: DataTexture | null;
   /** その階の霧の濃さの基 */
@@ -1325,15 +1470,40 @@ export interface Uniforms {
   uAmb: { value: number };
 }
 export const gfx: Gfx = {
-  camera: { position: { x: 0, y: 0, z: 0, set: () => undefined }, rotation: { set: () => undefined } },
+  // 仮のカメラ（本物の PerspectiveCamera は、作る時に Math.random を引くので、05-renderer.js がテスト用モードの乱数の入れ替えの後に作る。
+  // Vector3・Euler・Matrix4 は乱数を引かない）
+  camera: {
+    position: new Vector3(),
+    rotation: new Euler(),
+    aspect: 1,
+    fov: 74,
+    projectionMatrix: new Matrix4(),
+    matrixWorldInverse: new Matrix4(),
+    updateProjectionMatrix: () => undefined,
+    updateMatrixWorld: () => undefined,
+  },
   cellTex: { needsUpdate: false },
   drawBodyOnly: false,
   renderer: undefined,
+  canvas: null,
   scene: null,
   U: null,
   staticMat: undefined,
   occMat: undefined,
   finalPass: null,
+  pixelRatio: 1,
+  sizedAs: '',
+  composer: null,
+  bloom: null,
+  qRun: { q: { pr: 1, bloom: true }, prev: null, done: false },
+  dynGeo: null,
+  aPos: null,
+  aCol: null,
+  aPar: null,
+  dynMat: undefined,
+  ptMat: undefined,
+  waterMesh: null,
+  testCam: null,
   chunks: [],
   occMesh: null,
   waterTex: null,

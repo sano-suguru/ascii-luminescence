@@ -2,8 +2,8 @@
 // Math.random and the sound random (sndRand, its own sequence) are seeded, and the clock (performance.now / setTimeout / setInterval / the audio clock AudioContext.currentTime) only moves when the game steps.
 // The game does not step by itself: window.__test.frames(n) draws n frames, __test.advance(sec) steps without drawing.
 // テスト用モードか TEST は src/lib/state.ts（src/game/imports.mjs で読む）
-const TEST_STEP=1/30;
-const TESTCLK=TEST?(()=>{
+// テスト用モードの1歩の秒 TEST_STEP は src/lib/state.ts（src/game/imports.mjs で読む）
+clock.TESTCLK=TEST?(()=>{
   const q=new URLSearchParams(location.search), sd=Number(q.get('seed'))>>>0||1;
   let a=(sd^0x9e3779b9)>>>0; Math.random=()=>{ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; };
   let now=0, nextId=1; const timers=new Map(); const realTimeout=window.setTimeout.bind(window);
