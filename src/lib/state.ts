@@ -77,7 +77,19 @@ export interface Clock {
   /** テスト用モードで、用意ができたか（true）、用意の途中で止まったわけ（'error: …'）、まだか（false）。__test.ready・error が読む */
   testBoot: boolean | string;
 }
-export const clock: Clock = { time: 0, frame: 0, last: 0, fovT: 0, mapT: 0, perfT: 0, perfAcc: 0, perfN: 0, warm: 0, TESTCLK: null, testBoot: false };
+export const clock: Clock = {
+  time: 0,
+  frame: 0,
+  last: 0,
+  fovT: 0,
+  mapT: 0,
+  perfT: 0,
+  perfAcc: 0,
+  perfN: 0,
+  warm: 0,
+  TESTCLK: null,
+  testBoot: false,
+};
 /** テスト用モードの1歩の秒（ゲームの1/30秒） */
 export const TEST_STEP = 1 / 30;
 /** テスト用モードの __test.frames(n) が描いて進める残りの数と、終わった時に呼ぶ物。丸ごと入れ替えない */

@@ -32,7 +32,7 @@ import {
 import { setNoiseSeed, vnoise } from '../lib/noise.ts';
 import { ARTS, VAULTS } from '../lib/vaults.ts';
 import { generateLevel } from '../lib/generate.ts';
-import { LOGO_ART, TITLE_LINES } from '../lib/title.ts';
+import { buildLogo } from '../lib/title.ts';
 import { DYN_VS, GLYPH_FS, PT_FS, PT_VS, STATIC_VS, WATER_FS, WATER_VS } from '../lib/shaders.ts';
 import { ALTAR_W, MARK_H } from '../lib/hud.ts';
 import { drawMap, sizeMap } from '../lib/minimap.ts';
