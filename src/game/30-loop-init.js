@@ -74,10 +74,12 @@ function tick(raw,draw){
   if(TEST)return; // keep the resolution fixed in tests
   // 速さに合わせて画質を下げる（src/lib/quality.ts）。数えるのは探索中だけ（階を移る途中・止まっている間・タイトルと図鑑は数えない。
   // 階を作る一瞬の遅れで下がらないように）。数えないフレームが来たら、そこから3秒は様子を見てから数え直す
-  if(!ui.started||here.trans||isPaused()||document.hidden){ warm=perfT=perfAcc=perfN=0; return; }
+  // 数え直す時は、下げた段を比べる記録も捨てる（中断の前と後は、別の場面のことがあるため。下げた画質はそのままで、次の間で決め直す）
+  if(!ui.started||here.trans||isPaused()||document.hidden){ warm=perfT=perfAcc=perfN=0; qTried=null; return; }
   warm+=raw; if(warm>3){ perfAcc+=raw; perfN++; perfT+=raw;
     if(perfT>QUALITY.span&&!qStop){ const p=planQuality(perfAcc/perfN,{pr:pixelRatio,bloom:bloom.enabled},qTried), q=p.q; perfT=perfAcc=perfN=0; qTried=p.tried; qStop=p.stop;
-      if(q){ const pr0=pixelRatio; pixelRatio=q.pr; bloom.enabled=q.bloom; if(q.pr!==pr0)applySize(p.stop?'back':'auto'); else took('quality',performance.now(),{bloom:q.bloom,back:p.stop}); } } }
+      // 変えたら、3秒の様子見からやり直す（描く大きさを変えた一瞬の遅れを、次の間の平均に入れないため）
+      if(q){ const pr0=pixelRatio; pixelRatio=q.pr; bloom.enabled=q.bloom; warm=0; if(q.pr!==pr0)applySize(p.stop?'back':'auto'); else took('quality',performance.now(),{bloom:q.bloom,back:p.stop}); } } }
 }
 
 // ---------------------------------------------------------------- test hooks (only with ?test=1; see the test mode block at the top)

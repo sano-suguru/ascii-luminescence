@@ -357,10 +357,13 @@ await withBrowser(async ({ browser, base }) => {
         [150, 190, 1],
         [hx, hy, 3],
       ]);
-      await advance(pg, 0.3);
-      if (!(await st()).cast) errs.push('隠れた時：[右手] を押しても溜めない（テストの前提が崩れた）');
+      await advance(pg, 2); // 溜めている間はゲームの時間が半分の速さなので、溜め 0.8 秒に 1.6 秒かかる
+      const full = await st();
+      if (!full.cast?.full) errs.push(`隠れた時：[右手] を押しても溜めきらない（テストの前提が崩れた。${JSON.stringify(full.cast)}）`);
       await setHidden(true);
       a = await st();
+      // 溜めきっていても、放たずに散らす（飛ぶ物が増えない）
+      if (a.projs !== full.projs) errs.push(`隠れた時：溜めきった詠唱を放った（飛ぶ物 ${full.projs} → ${a.projs}）`);
       await advance(pg, 1);
       b = await st();
       const held = await E(() => ({
@@ -735,6 +738,26 @@ await withBrowser(async ({ browser, base }) => {
     }
     if (top !== 'gl') errs.push(`図鑑を指で：描く画面の上に ${top} がある`);
     await reaches(pg, '#gal', '図鑑');
+    // 指で回している途中にページが隠れ、離れた知らせを取り逃しても、戻ればまたひとりでに回る
+    {
+      const setHidden = (h) =>
+        E((h) => {
+          Object.defineProperty(document, 'hidden', { configurable: true, get: () => h });
+          document.dispatchEvent(new Event('visibilitychange'));
+        }, h);
+      await touch('touchStart', [[X, Y, 1]]);
+      await touch('touchMove', [[X + 20, Y, 1]]);
+      await setHidden(true);
+      await setHidden(false);
+      // 触れていた間と離してからしばらく（GAL_IDLE）は止まるので、それを越えるまで進めてから比べる
+      await advance(pg, 4);
+      const t0 = await draw();
+      await advance(pg, 1);
+      const t1 = await draw();
+      if (t1.turn === t0.turn) errs.push(`図鑑を指で：回している途中に隠れると、戻ってもひとりでに回らない（${t0.turn} → ${t1.turn}）`);
+      await touch('touchCancel', []);
+      await advance(pg, 2);
+    }
     await pg.screenshot({ path: 'tests/out/touch-gallery.png', timeout: 90000 });
     // 1本指のドラッグで回る（横に 80px で 0.8 ラジアン）。触れている間は、ひとりでに回らない
     let a = await draw();

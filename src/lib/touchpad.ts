@@ -6,7 +6,7 @@
 // 描く画面と指の操作のボタンは touch-action を既定のままにし、touchmove の preventDefault で、ブラウザの送りと拡大を止める
 // （touch-action: none の上で指を動かすと、Chromium はその直後のボタンのタップを click にしない。[メニュー] などが1回効かなくなる）
 import { must, nth } from './array.ts';
-import { beginCast, releaseCast, startRoll } from './chant.ts';
+import { beginCast, fizzle, releaseCast, startRoll } from './chant.ts';
 import type { Side } from './gear.ts';
 import { clamp } from './rng.ts';
 import { adv, gear, keys, thumb, player, ui } from './state.ts';
@@ -46,7 +46,8 @@ export function cycleLook(): void {
 /** 残した見回す速さの段を読む（無い・読めない・表に無い番号なら、そのまま） */
 function loadLook(): void {
   try {
-    const v = LOOK.speeds[Number(localStorage.getItem('al_look') ?? NaN)];
+    const s = localStorage.getItem('al_look'),
+      v = s !== null && /^\d$/.test(s) ? LOOK.speeds[Number(s)] : undefined;
     if (v !== undefined) TUNE.look = v;
   } catch {
     // 読めない時は、ふつうのまま
@@ -116,11 +117,24 @@ function endHold(id: number): void {
   if (gear.hands) releaseCast(f.h);
 }
 
-/** 触れている指を全部、離したことにする（ページが隠れた時。隠れている間に離した指の知らせは届かないことがあるため）。図鑑の指は、図鑑が自分で始め直す */
+/** 図鑑の指が全部離れた時に知らせる先（initTouchpad で覚える） */
+let galHold: ((on: boolean) => void) | null = null;
+/**
+ * ページが隠れた時：触れている指を全部、離したことにする（隠れている間に離した指の知らせは届かないことがあるため）。
+ * 溜めている詠唱は、放たずに散らす（指で溜めていてもマウスで溜めていても。離した時のように放つと、狙っていない向きへ撃つため）
+ */
 export function releaseTouch(): void {
   if (stickF) endStick();
   lookF = null;
-  for (const id of holds.keys()) endHold(id);
+  holds.clear();
+  if (gear.castSt) {
+    gear.castSt = null;
+    fizzle();
+  }
+  if (galF.size) {
+    galF.clear();
+    galHold?.(false);
+  }
 }
 
 /** ボタンを押した時にすること（ビルドの持ち替えは、古い JS のホイールと同じ処理を渡す） */
@@ -148,6 +162,7 @@ function spread(): number {
 /** 指の操作を用意する（ページを開いた時に1回） */
 export function initTouchpad(act: PadActions): void {
   loadLook();
+  galHold = act.gallery.hold;
   const gl = must(document.getElementById('gl'), '#gl'),
     stickEl = must(document.getElementById('stick'), '#stick');
   // 指を動かした時の、ブラウザの送りと拡大を止める（上の説明。touch-action: none は使わない）

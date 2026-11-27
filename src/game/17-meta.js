@@ -138,6 +138,6 @@ void initDiag();
 window.addEventListener('keydown',e=>{ ui.escKey=e.code==='Escape'; try{ onKeyDown(e); } finally{ ui.escKey=false; } });
 window.addEventListener('keyup',e=>{ keys[e.code]=false; });
 window.addEventListener('blur',()=>{ for(const k in keys)keys[k]=false; dragging=false; });
-// ページが隠れたら（アプリの切り替えなど）、押しているキーと指を離したことにし、探索中ならメニューを開いて止める（src/lib/screens.ts の menuOnHide）
+// ページが隠れたら（アプリの切り替えなど）、押しているキーと指を離したことにし、溜めている詠唱を散らし、探索中ならメニューを開いて止める（src/lib/screens.ts の menuOnHide）
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden)return; for(const k in keys)keys[k]=false; dragging=false; releaseTouch(); if(menuOnHide())setMenu(true); });
 

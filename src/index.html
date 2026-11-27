@@ -53,7 +53,8 @@ body.touch #log .m:nth-last-child(n+3){display:none;}
 /* 指で遊ぶ時のパネル（装備・メニュー・祭壇とレベルアップ・結果）：画面に入るまで縮め、入らない分は中を送る（src/lib/layout.ts の fitPanels） */
 body.touch #pack,body.touch #menu,body.touch #altarp.open,body.touch #death{overflow-y:auto;overscroll-behavior:contain;}
 /* 指で遊ぶ時、パネルの行のボタンの押せる範囲を広げる（文字の大きさと並びは変えない）。::after がまわりに広げた範囲（左右は1字。同じ行のボタンの間の2字を半分ずつ分ける）、::before がボタンそのものの範囲。
-   ::before を上の層に置くので、広げた範囲が隣のボタンに重なっても、隣のボタンそのものを押した時は隣のボタンになる */
+   ::before を上の層に置くので、広げた範囲が隣のボタンに重なっても、隣のボタンそのものを押した時は隣のボタンになる。
+   ただし装備の画面の薄い枠（.dimmed。選んだルーンをはめられない枠）は、opacity で層の組が分かれ、::before が上の層に出ないので、重なった所は隣の枠が取る（はめられる枠を押しやすいので、そのままにしている） */
 body.touch :is(#pack,#altarp,#death,#gal,#intropanel) button{position:relative;}
 body.touch :is(#pack,#altarp,#death,#gal,#intropanel) button::after{content:'';position:absolute;inset:-.45em -1ch;z-index:1;}
 body.touch :is(#pack,#altarp,#death,#gal,#intropanel) button::before{content:'';position:absolute;inset:0;z-index:2;}
