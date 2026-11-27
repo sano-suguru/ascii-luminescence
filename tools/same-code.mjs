@@ -21,6 +21,7 @@
 //   使う所で道具の中の名前を宣言し直さず、道具の中で渡す値の名前を宣言し直さない時だけ（toPlayer(m) → Math.hypot(m.x - player.x, m.z - player.z) など）。
 //   ただし、古い方の関数も同じ名前で読んでいて、その名前を古い JS が src/game/imports.mjs でこのファイルから読んでいる道具（そのファイルが export する物。sndReady など）は、
 //   古い方と同じ物を呼んでいるので開かない（export しない道具や、別のファイルから読んでいる名前と同じ名前の道具は開く）
+//   古い JS が imports.mjs で別のファイルから読んでいる名前は、このファイルの同じ名前の物とは比べない（同じ名前の別の物。比べるのは読んでいるファイルの物）
 //   先に読む：const X = 式（式は名前と欄の読み取りだけか、数・名前とその計算だけでできた、ループや関数の内側でない所で1回だけ使うオブジェクト）、
 //   const [a, b] = 式 の後ろで、X を式に戻す（両方に当てる。X を書き換えている・宣言し直している時と、式が読む名前をその先で宣言し直している時は戻さない。
 //   古い方と新しい方の両方にある先読みは、消した所に印を残し、位置も比べる）
@@ -533,10 +534,11 @@ const lineAt = (text, pos) => (pos === undefined ? '?' : text.slice(0, pos).spli
 
 /**
  * 新しい .ts の文（{ file, text } の並び）を、古い JS の宣言 old（legacyDecls）と比べる（only を渡したら、その名前だけ）。
- * imported は、古い JS が imports.mjs で読む名前 → 読むファイル（importedFrom。file と同じ書き方の道）。古い方と同じ物を呼んでいる道具を開かないために使う
+ * imported は、古い JS が imports.mjs で読む名前 → 読むファイル（importedFrom。file と同じ書き方の道）。古い方と同じ物を呼んでいる道具を開かないために使う。
+ * importedNow は、今の imports.mjs の同じ物。移した名前を、読んでいるファイルの物とだけ比べるために使う
  * 返り値：関数ごとの結果 results（違い diffs は { old: 古い所, new: 新しい所, oldLine, newLine }）、人が確かめる一覧 review、当てた規則の数 used、比べた名前 compared
  */
-export function compareSources(old, files, only = null, imported = new Map()) {
+export function compareSources(old, files, only = null, imported = new Map(), importedNow = new Map()) {
   const used = {},
     review = [],
     results = [],
@@ -591,6 +593,8 @@ export function compareSources(old, files, only = null, imported = new Map()) {
       const od = old.get(name);
       // only を渡したら、その名前だけ（古い JS から消えた名前。今も古い JS にある同じ名前の別の物と取り違えないため）
       if (!od || (only && !only.has(name))) continue;
+      // 古い JS がその名前を imports.mjs で別のファイルから読んでいれば、こちらは同じ名前の別の物（text.ts の中だけの frame と、loop.ts の frame など）
+      if (importedNow.has(name) && importedNow.get(name) !== file) continue;
       compared.add(name);
       const o0 = norm(od.node, ctx);
       let n = unType(nd.node);
@@ -831,7 +835,14 @@ if (process.argv[1] && import.meta.filename === process.argv[1]) {
       ? readFileSync(join(oldDir, 'imports.mjs'), 'utf8')
       : ''
     : (rawOld.get('imports.mjs') ?? '');
-  const { results, review, used, compared } = compareSources(old, sources, goneAll, importedFrom(importsText));
+  const nowImports = join(root, 'src/game/imports.mjs');
+  const { results, review, used, compared } = compareSources(
+    old,
+    sources,
+    goneAll,
+    importedFrom(importsText),
+    importedFrom(existsSync(nowImports) ? readFileSync(nowImports, 'utf8') : ''),
+  );
   let bad = 0;
   for (const r of results) {
     console.log(`${r.diffs.length ? '✗' : '✓'} ${r.file} ${r.name}${r.diffs.length ? `：違い ${r.diffs.length}` : ''}`);
