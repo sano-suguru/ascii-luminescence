@@ -1,5 +1,6 @@
 // ミニマップ（もとは src/game/16-view-input.js の sizeMap・drawMap）：右上のキャンバス（#map）に、プレイヤーのまわりの見たマスを文字で描く。
 // 今見えているマスは、灯りと手元の灯りで照らした色で描き、その色を here.mem に覚える。見えていないマスは、覚えた色を暗く、青みに寄せて描く。
+// 燃えているマスは、地面（氷・瓦礫・枯れ草）や飾りより火を描き、燃え尽きた草は灰の印で描く。
 // 床の物（ルーン）・見つけた罠・鉄格子とレバー・クモの巣・見えている生き物（透明な物は近い時だけ薄く）・プレイヤーと向きの矢印を、上に重ねる。
 // 状態の入れ物 ui（キャンバスと描き手。16-view-input.js が document から入れる）・here（今の階と見たマス）・player・blaze（火と灰）・lantern に頼る。
 // 呼ぶのは古い JS（16-view-input.js が読み込んだ時に sizeMap、30-loop-init.js が画面の大きさが変わった時に sizeMap、tick の段 'map' で drawMap）。
@@ -106,8 +107,10 @@ export function drawMap(): void {
       if (!here.explored[i]) continue;
       const tt = D.tile[i];
       let ch: string, b0: number, b1: number, b2: number;
-      const fxc = D.fixCell.get(i),
-        dc = fxc ? null : D.decoCell.get(i);
+      // 燃えているマスは、飾り（血・骨・絨毯など）より火を描く。備品の文字は残す
+      const burning = (blaze.fire[i] ?? NaN) > 0.05,
+        fxc = D.fixCell.get(i),
+        dc = fxc || burning ? null : D.decoCell.get(i);
       if (fxc) {
         ch = fxc.ch;
         b0 = (fxc.col[0] ?? NaN) * 1.4 + 0.3;
@@ -160,6 +163,12 @@ export function drawMap(): void {
         b0 = 0.55;
         b1 = 0.6;
         b2 = 0.28;
+      } else if (burning) {
+        // 火は、地面（氷・瓦礫・枯れ草）より先に描く
+        ch = '^';
+        b0 = 2.2;
+        b1 = 1.0;
+        b2 = 0.3;
       } else if (D.surface[i] === SF_ICE) {
         ch = '=';
         b0 = 0.7;
@@ -170,16 +179,12 @@ export function drawMap(): void {
         b0 = 0.7;
         b1 = 0.58;
         b2 = 0.48;
-      } else if (D.surface[i] === SF_DEAD) {
+      } else if (D.surface[i] === SF_DEAD && !blaze.burnt[i]) {
+        // 燃え尽きた枯れ草は、下の灰の印で描く
         ch = '"';
         b0 = 0.65;
         b1 = 0.52;
         b2 = 0.32;
-      } else if ((blaze.fire[i] ?? NaN) > 0.05) {
-        ch = '^';
-        b0 = 2.2;
-        b1 = 1.0;
-        b2 = 0.3;
       } else if (D.pit && D.pit[i]) {
         ch = ':';
         b0 = 1.0;
