@@ -20,8 +20,15 @@ export function relockClick(): boolean {
   return true;
 }
 
-/** マウスが外れた時（pointerlockchange）に、メニューを開くか。探索中で、止まっている画面（装備・レベルアップ・祭壇・F2 など）が開いていない時だけ */
-export const menuOnUnlock = (was: boolean): boolean => was && !ui.locked && ui.started && !adv.dead && !isPaused();
+/** 探索中で、止まっている画面（メニュー・装備・レベルアップ・祭壇・F2 など）が開いていないか */
+const playing = (): boolean => ui.started && !adv.dead && !isPaused();
+/** マウスが外れた時（pointerlockchange）に、メニューを開くか。playing の時だけ */
+export const menuOnUnlock = (was: boolean): boolean => was && !ui.locked && playing();
+/**
+ * ページが隠れた時（visibilitychange。アプリや窓の切り替え・画面を消した時）に、メニューを開くか。playing の時だけ。
+ * 指で遊ぶ時はマウスを捕まえていないので、外れた事件が来ず、開かないと、戻った瞬間から敵が動くため（マウスの時も同じ扱い）
+ */
+export const menuOnHide = (): boolean => playing();
 
 /** 「クリックで視点操作に戻る」の一言（#resume）を、lockLost の時だけ出す。止まっている間・死んだ時・タイトルでは CSS が隠す（src/index.html） */
 export function updateResume(): void {
