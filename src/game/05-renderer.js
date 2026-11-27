@@ -97,11 +97,10 @@ function flushDyn(){
 
 // ---------------------------------------------------------------- particles
 // DUST_N・GAS_N・PT_TOTAL・P0 は src/lib/shaders.ts（src/game/imports.mjs で読む）
-const ptPos=new Float32Array(PT_TOTAL*3), ptCol=new Float32Array(PT_TOTAL*3), ptSize=new Float32Array(PT_TOTAL), ptGly=new Float32Array(PT_TOTAL);
-const ptGeo=new T.BufferGeometry();
-const bpPos=new T.BufferAttribute(ptPos,3).setUsage(T.DynamicDrawUsage), bpCol=new T.BufferAttribute(ptCol,3).setUsage(T.DynamicDrawUsage),
-      bpSize=new T.BufferAttribute(ptSize,1).setUsage(T.DynamicDrawUsage), bpGly=new T.BufferAttribute(ptGly,1).setUsage(T.DynamicDrawUsage);
-ptGeo.setAttribute('position',bpPos); ptGeo.setAttribute('aCol',bpCol); ptGeo.setAttribute('aSize',bpSize); ptGeo.setAttribute('aGlyph',bpGly);
+// 粒子の配列 ptPos・ptCol・ptSize・ptGly は src/lib/particles.ts、描く形 gfx.ptGeo と属性 gfx.bpPos などは src/lib/state.ts（ここでその場で入れる）、粒子を動かす updateParticles は src/lib/motes.ts（src/game/imports.mjs で読む）
+gfx.ptGeo=new T.BufferGeometry();
+gfx.bpPos=new T.BufferAttribute(ptPos,3).setUsage(T.DynamicDrawUsage); gfx.bpCol=new T.BufferAttribute(ptCol,3).setUsage(T.DynamicDrawUsage); gfx.bpSize=new T.BufferAttribute(ptSize,1).setUsage(T.DynamicDrawUsage); gfx.bpGly=new T.BufferAttribute(ptGly,1).setUsage(T.DynamicDrawUsage);
+gfx.ptGeo.setAttribute('position',gfx.bpPos); gfx.ptGeo.setAttribute('aCol',gfx.bpCol); gfx.ptGeo.setAttribute('aSize',gfx.bpSize); gfx.ptGeo.setAttribute('aGlyph',gfx.bpGly);
 // dust は src/lib/state.ts（src/game/imports.mjs で読む）
 // 粒子の配列 P と、粒子を出す spawn・消す killP は src/lib/particles.ts、生きている数 buf.pN は src/lib/state.ts（src/game/imports.mjs で読む）
 
