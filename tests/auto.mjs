@@ -51,6 +51,12 @@ await withBrowser(async ({ browser, base }) => {
     polling: 500,
   });
   console.log(`台本が終わるまで ${((Date.now() - t0) / 1000).toFixed(0)} 秒`);
+  // 終わった印は、10秒ごとの書き込みを待たずに、その場で書く（終わってすぐページを閉じても残るように）。readDiag で書かせる前に、書いた物を見る
+  const doneWritten = await pg
+    .waitForFunction(() => (window.__sets || []).some((x) => x.d?.auto?.done), null, { timeout: 2000, polling: 100 })
+    .then(() => true)
+    .catch(() => false);
+  if (!doneWritten) errs.push('自動で試し終えたのに、終わった印をすぐ書いていない');
   const rec = await readDiag(pg);
   const a = rec?.auto;
   if (!a) errs.push('診断の記録に auto の欄が無い');
