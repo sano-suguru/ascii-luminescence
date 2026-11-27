@@ -129,6 +129,8 @@ tools/feel.mjs       手触りの試し打ち（node tools/feel.mjs [aim|walk]�
 tools/field.mjs      生き物を本物の階（既定は深さ 1 と 3）に置き、向かってくるところを 4m・3m・2.5m で写し、3m ほどで照準を合わせた1枚も写す（pnpm field <名前>。照準が当たると明るく描くので、ふだんは少し横を見る）。
                      体のまわりで切り抜いて並べた <名前>-field.png。--rev <版> で、src/ だけを前の版にした一時的な作業場所でも写し、階ごとに前・今を同じ枠で上下に並べる。写真は tests/out/field/。
                      見た目を直す時の最後の確かめ（迷宮の灯りの下では図鑑より明るく見える）。主・忘れられた獣は pnpm lords
+                     --kill [1,4,10,30,90,240,330] で、距離ごとの代わりに、4m（大きな物は体の大きさの2倍）で倒して、倒してからのフレーム数ごとに写し、時間の順に横に並べた <名前>-kill.png
+                     （倒した後は体が無いので、倒す直前の体の範囲を 1.6 倍に広げた枠で切り抜く。倒れ方を直す時に）
 tools/sheet.mjs      写真を体のまわり（__test.monsterView の画面の範囲）で切り抜いて大きくし、枡に並べた1枚にする（cropRect・writeSheet。shots.mjs と field.mjs が使う）
 tools/lords.mjs      主たちを本当にいる場所（支道の奥の階・最深部）に置き、プレイヤーの目の高さから写す（pnpm lords。主の体が描かれた画面の範囲・はみ出し・
                      主の体が足した眩しい画素の割合を出す。写真・眩しい所を赤く塗った写真・summary.json は tests/out/lords/）
@@ -282,7 +284,7 @@ pnpm shots [名前…]    # 図鑑の生き物を見やすい角度で写す（�
 node tools/case-diff.mjs [テストの名前…] [--rev 版]   # 指紋のテストの書き出しを、前の版の src/ と今の src/ で比べてまとめる（指紋を作り直す前に。2分ほど）
 node tools/case-diff.mjs --update [テストの名前…]     # 比べ合わせで確かめた後、落ちた指紋の値を今の値に書き換える
 node tools/feel.mjs [aim|walk]   # 手触りの試し打ち（見回す速さ・8方向とアナログのスティックを比べる。4分ほど。--look・--trials・--routes）
-pnpm field <名前…>    # 生き物を本物の階で、向かってくるところを距離ごとに写す（--scenes 1:202,3:7 で階、--rev origin/main で前の版と並べる。見た目を直す時の最後に。4分ほど）
+pnpm field <名前…>    # 生き物を本物の階で、向かってくるところを距離ごとに写す（--scenes 1:202,3:7 で階、--rev origin/main で前の版と並べる。--kill で倒して時間を追って写す。見た目を直す時の最後に。4分ほど）
 pnpm lords [場所…]    # 主たちを本当にいる場所で、目の高さから写し、大きさと眩しさを数で出す（crypt・lair・sunken・nest・snake・final。--dist で距離（既定 8））
 node tools/transitions.mjs [--rate 1,4]   # 場面が切り替わる時の確かめ（Artifact 版を本物の時計で通し、診断の記録を表にする。1つの速さで3分ほど）
 node tools/diag-report.mjs <フォルダ>     # 診断の記録（ArtifactData の道具で保存した JSON）を表にする
