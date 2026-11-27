@@ -86,8 +86,8 @@ describe('生き物の形', () => {
       const b = seeded(() => lords.beastForm(spec));
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
-    expect(all.length).toBe(3232884);
-    expect(fnv(all)).toBe('cb490558'); // トロル・ゴーレム・クラーケン（trollForm2・golemForm2・krakenForm2）を除き、移す前の実装で出した値と同じ（この3つは移した後で作り直した。作り直した王の影の一つ目の姿は、下の別のテスト）
+    expect(all.length).toBe(3403425);
+    expect(fnv(all)).toBe('3187aa4f'); // トロル・ゴーレム・クラーケン・吸血コウモリ（trollForm2・golemForm2・krakenForm2・batForm）を除き、移す前の実装で出した値と同じ（この4つは移した後で作り直した。作り直した王の影の一つ目の姿は、下の別のテスト）
   });
   it('主と大きな生き物の形：TypeScript に移す前と、同じ乱数で同じ形になる', () => {
     let all = '';
@@ -166,6 +166,33 @@ describe('生き物の形', () => {
       const tis = new Set(b.filter((p) => p.part === 'tent').map((p) => p.ti));
       expect(tis).toEqual(new Set([0, 1, 2, 3, 4, 5]));
       for (const ti of tis) expect(Math.min(...b.filter((p) => p.ti === ti).map((p) => p.piv))).toBe(0);
+    }
+  });
+  it('吸血コウモリ：目は頭の表面のすぐ外（埋もれず、浮かない）、目のまわりに毛の点が無い。明るさ b は 1.8 まで。腕と脚の部位は無く（翼が羽ばたく）、翼の点はどれも向きと体からの距離を持つ', () => {
+    const B = beasts.BAT;
+    for (const ty of TYS) {
+      const b = seeded(() => beasts.batForm(ty));
+      for (const p of b) {
+        expect(p.b).toBeLessThanOrEqual(1.8);
+        expect(['body', 'head', 'wing']).toContain(p.part);
+      }
+      const eyes = b.filter((p) => p.col === B.eye),
+        fangs = b.filter((p) => p.col === B.fang);
+      expect(eyes.length).toBe(2);
+      expect(fangs.length).toBe(2);
+      for (const p of eyes) expect(beasts.batOut(B.head, p)).toBeGreaterThan(0.01);
+      for (const p of eyes) expect(beasts.batOut(B.head, p)).toBeLessThan(0.04);
+      for (const e of eyes)
+        for (const p of b.filter((q) => q.part === 'head' && q.col !== B.eye && q.col !== B.fang))
+          expect(Math.hypot(p.x - e.x, p.y - e.y, p.z - e.z)).toBeGreaterThan(0.04);
+      // 翼：左右とも同じ数。根もとは胴の横（胴の半径のあたり）から、先は胴より十分に外。ただし照準が当たる球（aim.ts の aimPoint：0.42 + 0.35 × scale）の中
+      const wing = b.filter((p) => p.part === 'wing'),
+        rs = wing.map((p) => p.r ?? NaN);
+      expect(wing.filter((p) => p.sd === -1).length).toBe(wing.filter((p) => p.sd === 1).length);
+      expect(wing.every((p) => p.sd === -1 || p.sd === 1)).toBe(true);
+      expect(Math.min(...rs)).toBeCloseTo(B.body.r[0], 1);
+      expect(Math.max(...rs)).toBeGreaterThan(0.7);
+      expect(Math.max(...rs)).toBeLessThan(0.42 + 0.35);
     }
   });
   it('眠った獣は、脚を体に畳み、低くなる', () => {
