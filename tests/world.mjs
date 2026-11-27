@@ -24,7 +24,7 @@
 //      当たった光は残っている（体の範囲の明るさが、当てる前より 1.1 倍を越えて上がる）。数え方は tools/glare.mjs（pnpm glare）と同じ
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { PNG } from 'pngjs';
-import { withBrowser, newPage, openTest, advance, frames } from './lib.mjs';
+import { withBrowser, newPage, openTest, advance, frames, aimAt, strike } from './lib.mjs';
 
 const errs = [];
 
@@ -667,38 +667,26 @@ async function glareChecks(pg, base) {
     errs.push('18：トロルを置く床が無い（テストの前提が崩れた）');
     return;
   }
-  const aim = () =>
-    pg.evaluate(() => {
-      const m = __test.state().monsters[0],
-        v = __test.monsterView(m[0]);
-      dbg.look(m[1], v && v.world ? (v.world.y0 + v.world.y1) / 2 : 0.5, m[2]);
-      return m[3];
-    });
-  // 照準の先の生き物は 0.1 秒ごとに探し直すので、照準の先になるまで進める
-  let aimed = false;
-  for (let k = 0; k < 12 && !aimed; k++) {
-    await aim();
-    await advance(pg, 1 / 30);
-    aimed = await pg.evaluate(() => __test.mob(0).aimed);
-  }
-  if (!aimed) {
-    errs.push('18：トロルが照準の先にならない（テストの前提が崩れた）');
+  // 照準を合わせ（照準の先は明るく描くので、当てる前もそうしておく）、当てる前を写す
+  try {
+    await aimAt(pg, 'T');
+  } catch (e) {
+    errs.push(`18：${e.message}（テストの前提が崩れた）`);
     return;
   }
-  const hp0 = await aim();
   await frames(pg, 1);
-  const box = await pg.evaluate(() => __test.monsterView(__test.state().monsters[0][0])?.screen ?? null);
+  const box = await pg.evaluate(() => __test.monsterView('T')?.screen ?? null);
   if (!box) {
     errs.push('18：トロルの体が描かれていない（テストの前提が崩れた）');
     return;
   }
   const before = PNG.sync.read(await pg.screenshot({ timeout: 90000 }));
   // 小剣は押した時に当たる。当たった次のフレームを描いて写す（光るのは 0.2 秒ほど）
-  await pg.evaluate(() => __test.press('R'));
-  const hp1 = await pg.evaluate(() => __test.state().monsters[0][3]);
-  await pg.evaluate(() => __test.release('R'));
-  if (!(hp1 < hp0)) {
-    errs.push(`18：小剣がトロルに当たらない（テストの前提が崩れた。体力 ${hp0} → ${hp1}）`);
+  try {
+    const { frame } = await strike(pg, 'R', 'T');
+    if (frame !== 0) throw new Error(`小剣が押した時に当たらず、${frame} フレーム後に当たった`);
+  } catch (e) {
+    errs.push(`18：${e.message}（テストの前提が崩れた）`);
     return;
   }
   await frames(pg, 1);
