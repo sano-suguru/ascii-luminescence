@@ -139,6 +139,9 @@ describe('頭の上の印', () => {
       Math.random = random;
     }
     expect(n).toBeGreaterThan(25);
+    // MARK_H は見た目（look）と形（form）の行を1つの表に持つので、同じ名前の見た目と形があると、見た目の行が形の行を隠す
+    const forms = new Set(Object.values(MTYPES).map((t) => t.form));
+    expect(Object.values(MTYPES).filter((t) => t.look && t.look !== t.form && forms.has(t.look)).map((t) => t.look)).toEqual([]);
     // 外れた種類は、src/lib/hud.ts の MARK_H に、その形（form）か見た目（look）の行を足すか直す
     expect(bad).toEqual([]);
   });

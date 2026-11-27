@@ -3,7 +3,8 @@
 // 向かってくる姿が読めるか・光ってにじまないか・頭の上の印が体に付いているかを確かめる時に使う（見た目を直す時の最後の確かめ）。
 //   pnpm field ヘビ                名前で選ぶ（図鑑の名前。表の鍵（n・T など）でもよい。主・忘れられた獣は pnpm lords）
 //   --scenes 1:202,3:7             写す階（深さ:シード を , で区切る。既定は、石の迷宮の深さ 1 と大洞窟の深さ 3）
-//   --rev <版>                     前の版（git の版。例 origin/main）とも同じ所で写し、前と今を上下に並べる（src/ だけを前の版にした一時的な作業場所で組み立てる）
+//   --rev <版>                     前の版（git の版。例 origin/main）とも同じ所で写し、前と今を上下に並べる（src/ だけを前の版にした一時的な作業場所で組み立てる。
+//                                  その作業場所の src/ 以外（vite.config.mjs など）は、最後のコミットの物。まだコミットしていない src/ の外の変更は、前の版には入らない）
 //   --out <ディレクトリ>           置き場所（既定 tests/out/field/）
 // 写す物（階ごと）：生き物を 6 マスほど先の、見えている床に置き、向かってくるところを 4m・3m・2.5m で写す（照準が当たると明るく描くので、
 // いつも少し横を見る）。もう1枚、3m ほどの所で照準を合わせて写す（照準の先は明るさが 1.9 倍になる。白い塊にならないか）。
@@ -145,7 +146,7 @@ async function shootScene(browser, base, key, { depth, seed }, prefix, errs) {
   return got;
 }
 
-/** 作業場所 root で組み立てたゲームで、全部の生き物と階を写す。返り値は [生き物][階] ごとの写真 */
+/** 作業場所 root で組み立てたゲームで、全部の生き物と階を写す。返り値は [図鑑の名前][階] ごとの写真 */
 async function shootAll(root, tag, errs) {
   const res = {};
   await withBrowser(
@@ -163,10 +164,10 @@ async function shootAll(root, tag, errs) {
           errs.push(`図鑑に無い名前（主・忘れられた獣は pnpm lords）：${want}`);
           continue;
         }
-        res[want] = [];
+        res[e.name] = [];
         for (const sc of scenes) {
           const prefix = join(outDir, `${e.name.replace(/[\\/:*?"<>|（）\s]/g, '_')}-${sc.depth}${tag}`);
-          res[want].push(await shootScene(browser, base, e.key, sc, prefix, errs));
+          res[e.name].push(await shootScene(browser, base, e.key, sc, prefix, errs));
           console.log(`${e.name} 深さ ${sc.depth}${tag ? `（${tag.slice(1)}）` : ''}：写した`);
         }
       }
