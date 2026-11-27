@@ -121,7 +121,7 @@ export interface Rune {
   named?: unknown;
 }
 /** 特性の名前（武器 w に無い特性なら、種類の名前のまま） */
-export const trName = (w: string, t: RuneTrait): string => {
+export const trName = (w: string, t: { k: string; lv?: number }): string => {
   const tw: Partial<Record<string, Trait>> | undefined = TRAITS[w],
     tr = tw && tw[t.k];
   return tr ? tr.name : t.k;
