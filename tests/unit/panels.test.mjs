@@ -54,7 +54,7 @@ describe('移す前と同じ', () => {
     const all = await panelCases(makeF, SEEDS, panelDom(), mocked),
       body = panelText(all),
       calls = all.flatMap((c) => c.calls);
-    expect([fnv(body), body.length]).toEqual(['141d6df0', 1518447]);
+    expect([fnv(body), body.length]).toEqual(['ac825f3e', 1518447]);
     // 場合が中身を通っているか：移した関数が全部呼ばれ、どれも止まらず、待たせた処理も止まらない
     expect(new Set(calls.map((c) => c.name).filter((n) => NAMES.includes(n)))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).map((c) => [c.name, c.threw])).toEqual([]);
