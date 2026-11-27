@@ -25,6 +25,7 @@ import { renderStatus, makeNoise, onNoticed } from './status.ts';
 import { LQ_DEEP, LQ_WATER, MW, TF, CELL, MH, NCELL, TC, TW, TX } from './world.ts';
 import { clamp } from './rng.ts';
 import { die } from './levels.ts';
+import { crumble } from './debris.ts';
 import { victory } from './results.ts';
 
 /** 今の階 */
@@ -1533,27 +1534,7 @@ export function damageMonster(m: Mob, n: number, how: string): void {
     if (BL('momentum') && clock.time - (m.playerT || -99) < 1) player.momUntil = clock.time + 3;
     if (BL('shatter') && m.st && (m.st.chill ?? NaN) > 0 && clock.time - (m.playerT || -99) < 0.1)
       coldSnap(m.x, m.z, BL('shatter') >= 2 ? 3.5 : 2.5);
-    for (const p of m.form) {
-      if (mr() < 0.6) continue;
-      // 色を持つ点は、その色で砕ける（無い点は生き物の色）
-      const a = mr() * 6.28,
-        pc = p.col || m.ty.col;
-      spawn(
-        m.x + p.x * m.ty.scale,
-        m.y + p.y * m.ty.scale,
-        m.z + p.z * m.ty.scale,
-        Math.cos(a) * 1.2,
-        0.3 + mr() * 1.5,
-        Math.sin(a) * 1.2,
-        0.8 + mr() * 0.8,
-        p.g,
-        0.18,
-        pc[0] * 1.6,
-        pc[1] * 1.6,
-        pc[2] * 1.6,
-        0,
-      );
-    }
+    crumble(m, how);
     if (sndReady()) {
       const t = must(SND.ctx).currentTime;
       sEnv(sTone(t, 'triangle', 300, 90, 0.4, sOut(m.x, m.z, 0.3)), t, 0.01, 0.35);

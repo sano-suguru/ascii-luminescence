@@ -1,16 +1,17 @@
 // 生き物の形（src/lib/bodies/build.ts）・まわりの飾りと王の影の変身（auras.ts）・図鑑の見本の獣（lords.ts の beastSamples）・
 // 忘れられた獣の記録（save.ts）の単体テスト。
-// 指紋の値は、移す前の古い JS（src/game/07・08・09・10）で数えた値から、2つの分だけ違う：移した後に作り直した所（王の影の一つ目の姿・蜘蛛の女王と
-// ナーガの女王の明るさ・トロルとクラーケンの形・二つ目の姿の大きさ・王の影の裾の影の流れ（いつもまわりの3方向へ）・姿を変える途中の黒い太陽の位置）と、音（王の影の変身の音など）が見た目の乱数を引かず、
-// 音の乱数（sndRand）を使うこと（作り直す前の src/lib/bodies の lords.ts・bosses.ts・auras.ts に戻し、音の乱数を Math.random に回すと、古い JS と同じ値になる）。
+// 指紋は、形・見た目の特徴・まわりの飾り・獣の記録が、思わず変わっていないかを見る。
 // テストを .mjs で書くのは、偽の画面の部品・偽の Web Audio・偽の localStorage を、本物の型に合わせられないため。
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as AURAS from '../../src/lib/bodies/auras.ts';
 import * as BUILD from '../../src/lib/bodies/build.ts';
 import { beastSamples } from '../../src/lib/bodies/lords.ts';
 import { MTYPES } from '../../src/lib/creatures.ts';
+import { markHeight } from '../../src/lib/hud.ts';
+import { mulberry32 } from '../../src/lib/rng.ts';
 import * as SAVE from '../../src/lib/save.ts';
 import { auraCases, beastRecordCases, formCases, formTypes, lookCases } from './bodies-legacy-cases.mjs';
+import { caseOut } from './case-out.mjs';
 
 const fnv = (s) => {
   let h = 0x811c9dc5;
@@ -36,7 +37,7 @@ afterAll(() => {
     }
 });
 
-describe('移す前と同じ', () => {
+describe('指紋（思わず変わっていないか）', () => {
   it('表に書き足した見た目（全部の種類の look と、機械の形・猟犬の尾と色）', () => {
     const touched = Object.entries(MTYPES).map(([k, t]) => [k, t.look]),
       robots = ['Rc', 'Re', 'Rw'].map((k) => MTYPES[k]?.form),
@@ -55,7 +56,8 @@ describe('移す前と同じ', () => {
           .map((l) => l.split(' ')[1]?.split(':')[1]),
       ).size,
     ).toBe(7);
-    expect(fp(all)).toEqual(['7ad9d73d', 497]);
+    caseOut('bodies-legacy-1', all);
+    expect(fp(all)).toEqual(['31ae6d80', 529]);
   });
   it('図鑑の見本の獣', () => {
     expect(fp(JSON.stringify(beastSamples()))).toEqual(['1039558f', 1402]);
@@ -68,7 +70,8 @@ describe('移す前と同じ', () => {
     expect(lines.length).toBe(476);
     expect(new Set(lines.map((l) => l.split(' ')[1]?.split(':')[0])).size).toBeGreaterThan(460);
     expect(lines.some((l) => l.includes(':1 '))).toBe(true);
-    expect(fp(all)).toEqual(['82df8055', 27000]);
+    caseOut('bodies-legacy-2', all);
+    expect(fp(all)).toEqual(['87afa3ce', 27018]);
   }, 60000);
   it('まわりの飾り・姿を変える途中・王の影の変身（880の場合）の指紋', () => {
     const all = auraCases({ ...AURAS, buildForm: BUILD.buildForm }, 880),
@@ -101,13 +104,47 @@ describe('移す前と同じ', () => {
       true,
       true,
     ]);
-    expect(fp(all)).toEqual(['50e2882b', 999071]);
+    caseOut('bodies-legacy-3', all);
+    expect(fp(all)).toEqual(['01747a05', 999071]);
   }, 60000);
   it('忘れられた獣の記録（保存の中身10通り×今の探索の記録3通り×保存が使えるか）の指紋', () => {
     const all = beastRecordCases(SAVE),
       cases = all.split('\n').map((l) => JSON.parse(l));
     // 場合が中身を通っているか：書く場合と、書かない場合（同じ獣・配列でない・null が混じる・保存が使えない）がある
     expect([cases.length, cases.some((c) => c.writes.length), cases.some((c) => c.ok && !c.writes.length)]).toEqual([60, true, true]);
+    caseOut('bodies-legacy-4', all);
     expect(fp(all)).toEqual(['2f2e58ba', 41342]);
+  });
+});
+
+describe('頭の上の印', () => {
+  // 水から出入りする物（魚・ウナギ・クラーケン）は、描く高さが水の上と下で変わるので除く。主と忘れられた獣は、点の高さの式が違うので除く
+  const WATER = new Set(['fish', 'eel', 'kraken']);
+  it('表のどの種類も、印（眠っている z・気づいた !・攻撃の溜めの !）が、体の一番上より 0.1 から 0.7 上に出る（体に埋もれず、浮かない）', () => {
+    const random = Math.random,
+      bad = [];
+    let n = 0;
+    try {
+      for (const [k, ty] of Object.entries(MTYPES)) {
+        if (!ty.col || ty.dummy || ty.boss || ty.beast || ty.peaceful || ty.invisible || WATER.has(ty.form)) continue;
+        Math.random = mulberry32(1);
+        const top = Math.max(...BUILD.buildForm(ty).map((p) => p.y)) * ty.scale,
+          gap = markHeight(ty) - top;
+        n++;
+        if (!(gap >= 0.1 && gap <= 0.7)) bad.push(`${k}（${ty.name}）：体の一番上 ${top.toFixed(2)}、印 ${markHeight(ty).toFixed(2)}`);
+      }
+    } finally {
+      Math.random = random;
+    }
+    expect(n).toBeGreaterThan(25);
+    // MARK_H は見た目（look）と形（form）の行を1つの表に持つので、同じ名前の見た目と形があると、見た目の行が形の行を隠す
+    const forms = new Set(Object.values(MTYPES).map((t) => t.form));
+    expect(
+      Object.values(MTYPES)
+        .filter((t) => t.look && t.look !== t.form && forms.has(t.look))
+        .map((t) => t.look),
+    ).toEqual([]);
+    // 外れた種類は、src/lib/hud.ts の MARK_H に、その形（form）か見た目（look）の行を足すか直す
+    expect(bad).toEqual([]);
   });
 });

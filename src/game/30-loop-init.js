@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------- sizing
-// why：何のために（'init'・'resize'・速さに合わせて解像度を下げた 'auto'）。大きさと解像度が前と同じなら、作り直さない
+// why：何のために（'init'・'resize'・速さに合わせて解像度を下げた 'auto'・下げても速くならず戻した 'back'・比べる前に数えるのが途切れて戻した 'hold'）。大きさと解像度が前と同じなら、作り直さない
 // （iOS は、画面の向きを変えると、同じ大きさの resize を続けて出すことがある。作り直すと、描く物の大きさを全部取り直すため）
 let sizedAs='';
 function applySize(why){
@@ -18,6 +18,8 @@ window.addEventListener('resize',()=>{ applySize('resize'); sizeMap(); });
 
 // ---------------------------------------------------------------- main loop
 let last=0, fovT=0, mapT=0, perfT=0, perfAcc=0, perfN=0, warm=0;
+// 画質を下げる途中の状態（src/lib/quality.ts の stepQuality。q は数えるたびに今の値で置き換える）
+let qRun={q:{pr:1,bloom:true},prev:null,done:false};
 function frame(nowMs){
   requestAnimationFrame(frame);
   if(TEST){ if(TESTQ.n>0){ TESTQ.n--; try{ testTick(true); } finally{ if(!TESTQ.n&&TESTQ.done){ const d=TESTQ.done; TESTQ.done=null; d(); } } } return; }
@@ -57,7 +59,7 @@ function tick(raw,draw){
   buf.dn=0; inPhase('fixtures',()=>drawFixtures(t,dt)); inPhase('doors',()=>drawDoors(t,dt)); inPhase('fire',()=>drawFire(t,dt)); inPhase('webs',()=>drawWebs(t)); inPhase('traps',()=>drawTraps(t));
   inPhase('swing',()=>drawSwing()); inPhase('hands',()=>drawViewWeapons(t)); inPhase('omens',()=>drawOmens(t,dt)); inPhase('runes',()=>{ drawRunesWorld(t); updateAltarPanel(); drawArrows(); drawLegendWorld(t); }); inPhase('rockfall',()=>{ if(!here.trans)updateRockfall(dt); }); // 階を移り始めたら、石は落ちず、当たらない（新しい階で newLevel が消す）
   inPhase('bolt',()=>drawBoltFx(t,dt)); inPhase('gallery',()=>drawGallery(t)); inPhase('frozen',()=>drawFrozen(t)); inPhase('castfx',()=>drawCastFx(t));
-  inPhase('avatar',()=>{ if(ui.camMode==='tps'&&here.D&&!ui.gallery){ updateAvatar(dt); drawMonster0(avatar,t); drawSection(); } }); for(const m of here.monsters)inMobPhase('mob draw',m,()=>drawMonster(m,t)); flushDyn();
+  inPhase('avatar',()=>{ if(ui.camMode==='tps'&&here.D&&!ui.gallery){ updateAvatar(dt); drawMonster0(ui.avatar,t); drawSection(); } }); for(const m of here.monsters)inMobPhase('mob draw',m,()=>drawMonster(m,t)); inPhase('debris',()=>updateDebris(dt)); flushDyn();
   inPhase('particles',()=>updateParticles(dt,t));
   fovT+=dt; if(fovT>0.1){ fovT=0; inPhase('fov',()=>{ computeFOV(); checkEvents(false); look(); }); inPhase('gas',()=>stepGas()); inPhase('spread',()=>stepFire()); }
   mapT+=dt; if(mapT>0.11){ mapT=0; if(ui.uiMode===0)inPhase('map',()=>drawMap()); }
@@ -72,8 +74,18 @@ function tick(raw,draw){
   cullChunks();
   if(draw)composer.render(dt);
   if(TEST)return; // keep the resolution fixed in tests
-  warm+=raw; if(warm>3&&!document.hidden){ perfAcc+=raw; perfN++; perfT+=raw;
-    if(perfT>2.5){ const avg=perfAcc/perfN; if(avg>1/48&&pixelRatio>0.75){ pixelRatio=Math.max(0.75,pixelRatio-0.2); applySize('auto'); } perfT=perfAcc=perfN=0; } }
+  // 速さに合わせて画質を下げる（src/lib/quality.ts）。数えるのは探索中だけ（階を移る途中・止まっている間・タイトルと図鑑は数えない。
+  // 階を作る一瞬の遅れで下がらないように）。数えないフレームが来たら、そこから3秒は様子を見てから数え直す
+  if(!ui.started||here.trans||isPaused()||document.hidden){ warm=perfT=perfAcc=perfN=0; if(qRun.prev){ qRun=holdQuality(qRun); setQuality(qRun.q,'hold'); } return; }
+  warm+=raw; if(warm>3){ perfAcc+=raw; perfN++; perfT+=raw;
+    if(perfT>QUALITY.span){ qRun=stepQuality(perfAcc/perfN,{...qRun,q:{pr:pixelRatio,bloom:bloom.enabled}}); perfT=perfAcc=perfN=0;
+      setQuality(qRun.q,qRun.done?'back':'auto'); } }
+}
+// 画質を q にする。変えたら、作り直した直後の遅いフレームを次の比べに数えないように、3秒おいてから数え直す
+function setQuality(q,why){
+  if(q.pr===pixelRatio&&q.bloom===bloom.enabled)return;
+  const pr0=pixelRatio; pixelRatio=q.pr; bloom.enabled=q.bloom; warm=perfT=perfAcc=perfN=0;
+  if(q.pr!==pr0)applySize(why); else took('quality',performance.now(),{bloom:q.bloom,why});
 }
 
 // ---------------------------------------------------------------- test hooks (only with ?test=1; see the test mode block at the top)
@@ -90,6 +102,8 @@ if(TEST)window.__test={
   // give every blessing at level n (default 1), so a level-up offers their next level (shown with II)
   // 指の操作の、試して合わせる値を変える（{look, analog}。src/lib/touchpad.ts の TUNE。tools/feel.mjs が使う）
   touchTune(o){ Object.assign(TUNE,o||{}); return {...TUNE}; },
+  // the quality the frame loop lowers on a slow device (src/lib/quality.ts; tests keep it fixed): pr is the pixel ratio, bloom whether the glow is drawn. Returns what it is now
+  quality(q){ if(q){ if(q.pr!==undefined)pixelRatio=q.pr; if(q.bloom!==undefined)bloom.enabled=q.bloom; applySize('auto'); } return {pr:pixelRatio,bloom:bloom.enabled}; },
   bless(n=1){ for(const k in BLESS)adv.lvl.bless[k]=n; return Object.keys(BLESS).length; },
   // how many columns the panels count for a piece of text (visW)
   width(text){ return visW(text); },
@@ -122,6 +136,8 @@ if(TEST)window.__test={
   chill(i,r){ chillArea((i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL,r); },
   burning(i){ return blaze.burning.filter(j=>j===i).length; },
   // 落石：on なら、プレイヤーのまわり（3マス）の床で、宝物庫の天井が崩れた時と同じ落石を始める。今の落石（経った秒・落ちている石の数。無ければ null）を返す
+  // 倒れた生き物が崩れて積もった文字（崩れる体ごとの、文字の数・残す数・消えていない数・様子ごとの数（体に付いたまま・落ちている・積もった・塵になって縮む・水に沈む・溶岩で燃える・消えた）・積もった文字の高さの範囲と倒れた所からの距離。src/lib/debris.ts）
+  debris(){ return debrisInfo(); },
   rockfall(on){ if(on){ const cx=Math.floor(player.x/CELL), cz=Math.floor(player.z/CELL), cells=[]; for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){ const x=cx+dx, z=cz+dz; if(x<0||x>=MW||z<0||z>=MH)continue; const c=z*MW+x; if(here.D.tile[c]===TF)cells.push(c); } fight.rockfall={t:0,dur:9,cells,rocks:[],next:0.2}; }
     const R=fight.rockfall; return R?{t:+R.t.toFixed(4),rocks:R.rocks.length}:null; },
   // lingering things of this level (fields, delayed hits, rains, marks on the floor, a beam being fired, lightning, lightning still to fall and its flash):
@@ -248,7 +264,7 @@ async function init(){
       void main(){ if(uCut>0.5){ vec3 seg=uCutP-uCamP; float L2=max(dot(seg,seg),1e-4); float tc=clamp(dot(vW-uCamP,seg)/L2,0.0,1.0); if(tc<0.97&&length(vW-(uCamP+seg*tc))<mix(2.6,0.9,tc)+0.15) discard; } gl_FragColor=vec4(0.0); }`});
   makeWater();
   const dynMesh=new T.Mesh(dynGeo,dynMat); dynMesh.frustumCulled=false; dynMesh.renderOrder=1; gfx.scene.add(dynMesh);
-  const pts=new T.Points(ptGeo,ptMat); pts.frustumCulled=false; pts.renderOrder=5; gfx.scene.add(pts);
+  const pts=new T.Points(gfx.ptGeo,ptMat); pts.frustumCulled=false; pts.renderOrder=5; gfx.scene.add(pts);
   applySize('init');
   newLevel();
   // 音の部品を先に作っておく（迷宮に入る時に止まらないように。鳴らし始めるのは、押した時の sndInit。src/lib/audio.ts）

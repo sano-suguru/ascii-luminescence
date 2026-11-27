@@ -18,11 +18,13 @@ import { BLESS, META_DEF } from '../../src/lib/progress.ts';
 import { setSoundRand } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 import { RUNE_TYPES, TRAITS } from '../../src/lib/runes.ts';
+import { TUNE } from '../../src/lib/touchpad.ts';
 import { SND, adv, blaze, clock, fight, gear, gfx, here, hudInfo, msgs, placeMem, player, saved, ui, vfx } from '../../src/lib/state.ts';
 import { CELL, MW, NCELL, TF, cpos } from '../../src/lib/world.ts';
 import { fakeCamera, fakeUniforms, fnv, text } from './fight-cases.mjs';
 import { PLACES, gen, loadEnv } from './gen-places.ts';
 import { swapGlobals } from './ui-cases.mjs';
+import { stateFp } from './case-out.mjs';
 
 /** 移した関数の名前（場合が全部を呼ぶか、panels.test.mjs が確かめる。ほかの関数は、これらの中から呼ばれる） */
 export const NAMES = [
@@ -161,6 +163,7 @@ function fire(page, e, type, target) {
 export async function panelCases(makeF, seeds, page, mocked) {
   const env = await loadEnv(),
     out = [];
+  const keepLook = TUNE.look;
   const keep = {
     here: { ...here },
     adv: { ...adv },
@@ -427,7 +430,7 @@ export async function panelCases(makeF, seeds, page, mocked) {
           msg: msgN - g0,
           timers: timers.st.n - t0,
           dom: page.log.slice(l0),
-          state: fnv(state()),
+          state: stateFp(state(), fnv),
           msgs: msgs.map((m) => m.html).join('|'),
         });
         return ret;
@@ -442,7 +445,7 @@ export async function panelCases(makeF, seeds, page, mocked) {
         } catch (e) {
           threw = String(e && e.message).slice(0, 80);
         }
-        calls.push({ name: `ev:${id}:${type}`, threw, msg: msgN - g0, dom: page.log.slice(l0), state: fnv(state()) });
+        calls.push({ name: `ev:${id}:${type}`, threw, msg: msgN - g0, dom: page.log.slice(l0), state: stateFp(state(), fnv) });
       };
       const click = (b) => {
         const l0 = page.log.length;
@@ -452,7 +455,7 @@ export async function panelCases(makeF, seeds, page, mocked) {
         } catch (e) {
           threw = String(e && e.message).slice(0, 80);
         }
-        calls.push({ name: `onclick:${b.name}`, threw, dom: page.log.slice(l0), state: fnv(state()) });
+        calls.push({ name: `onclick:${b.name}`, threw, dom: page.log.slice(l0), state: stateFp(state(), fnv) });
       };
       const btns = (id) => (page.els[id] ? page.els[id].buttons() : []);
       const tick = (ms) => {
@@ -603,7 +606,7 @@ export async function panelCases(makeF, seeds, page, mocked) {
       call('updateLife', 0.3);
       adv.dead = false;
       // ---- 場面：メニュー（マウスと指、全部の項目。確かめ待ちは4秒で戻る）
-      const ITEMS = ['resume', 'pack', 'help', 'chron', 'book', 'cam', 'ui', 'snd', 'perf', 'new', 'title', 'back'];
+      const ITEMS = ['resume', 'pack', 'help', 'chron', 'book', 'cam', 'ui', 'snd', 'look', 'perf', 'new', 'title', 'back'];
       for (const touch of [false, true, false]) {
         ui.touch = touch;
         call('setMenu', true);
@@ -637,6 +640,7 @@ export async function panelCases(makeF, seeds, page, mocked) {
     }
   } finally {
     console.error = keepErr;
+    TUNE.look = keepLook;
     restoreGlobals();
     delete msgs.push;
     Math.random = keep.random;

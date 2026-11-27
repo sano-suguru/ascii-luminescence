@@ -7,7 +7,7 @@ import { sAlarm, sAlert, sChime, sHowl, sRoar } from './audio.ts';
 import { cssOf } from './color.ts';
 import { G } from './glyphs.ts';
 import { bodyN } from './gear.ts';
-import { LIGHT_COLS, LIGHT_NAMES, MARK_H } from './hud.ts';
+import { LIGHT_COLS, LIGHT_NAMES, markHeight } from './hud.ts';
 import { legendLine } from './legend.ts';
 import { cellLight } from './lightmap.ts';
 import { msg } from './log.ts';
@@ -26,7 +26,14 @@ import { BRANCHES, CELL, MH, MW, REALMS, TW, TX, cpos } from './world.ts';
 const level = () => must(here.D, '今の階 here.D');
 
 /** 止まっているか（装備の画面・メニュー・F2 の画面・祭壇の画面・レベルアップの画面のどれかが開いている） */
-export const isPaused = (): boolean => ui.invOpen || ui.menuOpen || ui.dbgOpen || ui.altarOpen || ui.lvlOpen;
+export const isPaused = (): boolean =>
+  ui.invOpen ||
+  ui.menuOpen ||
+  ui.dbgOpen ||
+  ui.altarOpen ||
+  ui.lvlOpen ||
+  // 縦向きで止めるのは、生きて探索している間だけ（結果の画面では横にする案内が隠れるので、止めると［新しい探索へ］の後に黙って固まる）
+  (ui.portrait && ui.started && !adv.dead);
 /** 今いる場所の名前（特別な階・異界・支道とその階、ふつうの階は深さ） */
 export function placeLabel(): string {
   if (here.inter) return lookup(SPECIALS, here.inter.key).name;
@@ -336,8 +343,6 @@ export function updateSearch(dt: number): void {
   }
 }
 
-/** 頭の上の印の高さ（形ごと。表に無い形は 1.5） */
-const markH: Readonly<Record<string, number>> = MARK_H;
 /**
  * 生き物の頭の上の印（もとは src/game/12-hud-text.js）：眠っている z（上へ流れる2つ）・気づいた !（出た時に大きく）・怪しんでいる ?。
  * 争わない生き物・見えていない生き物・見えない生き物と、22より遠い（dp はカメラからの距離）時は出さない。近いほど暗くする
@@ -345,7 +350,7 @@ const markH: Readonly<Record<string, number>> = MARK_H;
 export function drawMark(m: Monster, t: number, dp: number): void {
   if (m.ty.peaceful || !m.visible || m.ty.invisible || dp > 22) return;
   m.mark = (m.mark ?? NaN) + 1 / 60;
-  const y = (m.y ?? NaN) + (markH[m.ty.form] || 1.5) * m.ty.scale + 0.25,
+  const y = (m.y ?? NaN) + markHeight(m.ty),
     near = clamp(dp / 4, 0.5, 1);
   if (m.sleep) {
     for (let k = 0; k < 2; k++) {

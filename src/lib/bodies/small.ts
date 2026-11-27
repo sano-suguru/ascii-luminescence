@@ -1,6 +1,9 @@
 // 小さな生き物の形（もとは src/game/09-bodies-creatures.js の初めと、13-creatures.js の古い形。古いトロルは 07-bodies-lords.js）。
+import { nth } from '../array.ts';
+import type { Color } from '../color.ts';
 import { mpick, mr } from '../random.ts';
-import { type Body, type BodyType, adder, cpt } from './kit.ts';
+import { clamp } from '../rng.ts';
+import { type Body, type BodyType, type Ramp, type Vec3, adder, cpt, q3 } from './kit.ts';
 
 export function jellyForm(ty: BodyType): Body {
   const pts: Body = [],
@@ -96,22 +99,166 @@ export function eelForm(ty: BodyType): Body {
   return pts;
 }
 
+const smooth = (a: number, b: number, t: number): number => {
+  const u = clamp((t - a) / (b - a), 0, 1);
+  return u * u * (3 - 2 * u);
+};
+const SNAKE_EYE: Color = [1, 0.82, 0.25];
+/**
+ * ヘビの体の式（形を作る snakeForm と、目の位置を確かめるテストが使う）。
+ * 胴：背骨 spine（t は尾の先 0 から首の付け根 1）と太さ rad。胴は地面に寝て S の字にうねり、首の前の方だけ持ち上がる。
+ * 頭：首の付け根から前へ長さ len。h（後ろ 0 から鼻先 1）ごとの断面は、横の半径 w・縦の半径 hh・真ん中の高さ cy の楕円。
+ * 後ろ（顎の付け根）で一番広く、鼻先へ細くなる三角
+ */
+export const SNAKE = {
+  rad: (t: number): number => 0.014 + 0.084 * Math.pow(Math.min(1, t / 0.5), 0.8) - 0.045 * smooth(0.6, 1, t),
+  spine: (t: number): Vec3 => [
+    0.32 * Math.sin(Math.PI * 2.2 * t + 0.4) * (1 - smooth(0.6, 1, t)),
+    SNAKE.rad(t) + 0.42 * smooth(0.66, 1, t),
+    -1.0 + 1.36 * t,
+  ],
+  len: 0.3,
+  w: (h: number): number => (h < 0.3 ? 0.065 + 0.05 * Math.sin((h / 0.3) * Math.PI * 0.5) : 0.115 - 0.075 * Math.pow((h - 0.3) / 0.7, 1.1)),
+  hh: (h: number): number => Math.max(0.035, SNAKE.w(h) * 0.7),
+  cy: (h: number): number => SNAKE.spine(1)[1] + 0.005 - 0.03 * h,
+  z: (h: number): number => SNAKE.spine(1)[2] + h * SNAKE.len,
+  eye: SNAKE_EYE,
+};
+// ヘビ：地面に S の字にうねる胴と、持ち上げた首の先の、首より幅の広い三角の頭。首には黄色い輪、背中には濃い菱の模様、腹は淡い。
+// 胴の表面・模様・頭・目は、同じ式（SNAKE）から出す。点はどれも part が slither（描画が奥行きで左右にうねらせる。脚が無いので回す軸は要らない）。
 export function snakeForm(ty: BodyType): Body {
   const pts: Body = [],
-    S = 0.22 / ty.scale,
-    C = ty.col;
-  for (let k = 0; k <= 18; k++) {
-    const z = 0.55 - k * 0.075,
-      w = 0.06 * (1 - k / 24);
-    cpt(pts, 0, 0.05, z, k % 3 === 0 ? '=' : '~', S, 1.1, C, 'slither');
-    for (const sd of [-1, 1]) if (k % 2 === 0) cpt(pts, sd * w, 0.05, z, '.', S * 0.7, 0.8, [0.55, 0.6, 0.35], 'slither');
+    S = 0.13,
+    ST = S * 0.55,
+    LD = [0.42, 0.72, 0.55] as const,
+    C: Color = [ty.col[0] * 0.8, ty.col[1] * 0.85, ty.col[2] * 0.7],
+    DARK: Color = [0.16, 0.28, 0.08],
+    BELLY: Color = [0.85, 0.8, 0.52],
+    COLLAR: Color = [1, 0.76, 0.22],
+    BACK_R: Ramp = ['.', ':', '=', '%', '#'],
+    BELLY_R: Ramp = ['.', '-', '=', '=', '='],
+    { rad, spine } = SNAKE;
+  // 面の向きで明るさと文字を決める点（bk 倍の明るさ）
+  const put = (x: number, y: number, z: number, nx: number, ny: number, nz: number, ramp: Ramp, col: Color, bk = 1): void => {
+    const l = Math.hypot(nx, ny, nz) || 1,
+      d = (nx * LD[0] + ny * LD[1] + nz * LD[2]) / l,
+      i = clamp(0.2 + 0.8 * Math.max(0, d), 0, 1);
+    cpt(pts, x, y, z, nth(ramp, Math.min(ramp.length - 1, Math.floor(i * ramp.length))), S, (0.35 + 0.7 * i) * bk, col, 'slither');
+  };
+  // 背骨を長さで等しく割る（細かい表から、長さ ST ごとの t を拾う）
+  const FINE = 400,
+    len: number[] = [0];
+  for (let i = 1; i <= FINE; i++) {
+    const p0 = spine((i - 1) / FINE),
+      p1 = spine(i / FINE);
+    len.push(nth(len, i - 1) + Math.hypot(p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]));
   }
-  cpt(pts, -0.06, 0.07, 0.6, '<', S, 1.4, C, 'slither');
-  cpt(pts, 0.06, 0.07, 0.6, '>', S, 1.4, C, 'slither');
-  cpt(pts, 0, 0.08, 0.64, '^', S, 1.3, C, 'slither');
-  cpt(pts, 0.03, 0.1, 0.62, '.', S * 0.8, 3.0, [1.0, 0.9, 0.4], 'slither');
-  cpt(pts, -0.03, 0.1, 0.62, '.', S * 0.8, 3.0, [1.0, 0.9, 0.4], 'slither');
-  cpt(pts, 0, 0.06, 0.73, '-', S * 0.8, 1.8, [0.95, 0.35, 0.35], 'tongue');
+  const total = nth(len, FINE),
+    rings = Math.round(total / ST);
+  for (let r = 0; r <= rings; r++) {
+    const want = (r / rings) * total;
+    let i = 1;
+    while (i < FINE && nth(len, i) < want) i++;
+    const t = (i - 1 + (want - nth(len, i - 1)) / (nth(len, i) - nth(len, i - 1) || 1)) / FINE,
+      P = spine(t),
+      Q = spine(Math.min(1, t + 0.002)),
+      O = spine(Math.max(0, t - 0.002));
+    // 進む向き T、横 X（水平）、上 U（T と X の外積）
+    let tx = Q[0] - O[0],
+      ty2 = Q[1] - O[1],
+      tz = Q[2] - O[2];
+    const tl = Math.hypot(tx, ty2, tz) || 1;
+    tx /= tl;
+    ty2 /= tl;
+    tz /= tl;
+    const xl = Math.hypot(tz, tx) || 1,
+      Xx = tz / xl,
+      Xz = -tx / xl,
+      ux = ty2 * Xz,
+      uy = tz * Xx - tx * Xz,
+      uz = -ty2 * Xx;
+    const rr = rad(t),
+      fromHead = total - want,
+      n = Math.max(4, Math.round((2 * Math.PI * rr) / ST)),
+      onGround = t < 0.62;
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + r * 0.5,
+        ca = Math.cos(a),
+        sa = Math.sin(a);
+      // 地面に着いている腹は描かない
+      if (onGround && sa < -0.35) continue;
+      const ox = ca * Xx + sa * ux,
+        oy = sa * uy,
+        oz = ca * Xz + sa * uz,
+        x = P[0] + ox * rr,
+        y = P[1] + oy * rr * 0.85,
+        z = P[2] + oz * rr;
+      // 背中の菱：頭からの長さで繰り返す三角の幅（真上からの角度 q）の中なら濃く
+      const d = (fromHead / 0.17) % 1,
+        tri = 1 - Math.abs(2 * d - 1),
+        q = Math.abs(Math.atan2(ca, sa));
+      // 首の黄色い輪（頭と胴の境）。どの向きからも見えるように明るさを決めて置く
+      if (fromHead < 0.1) cpt(pts, x, y, z, k % 2 ? '#' : '%', S, 0.75, COLLAR, 'slither');
+      else if (sa < -0.35) put(x, y, z, ox, oy, oz, BELLY_R, BELLY);
+      else if (rr > 0.03 && q < 1.3 * tri) put(x, y, z, ox, oy, oz, BACK_R, DARK, 0.85);
+      else put(x, y, z, ox, oy, oz, BACK_R, C);
+    }
+  }
+  // 頭：断面の楕円を後ろから鼻先へ並べる。上は濃く、顎は淡い
+  const hSteps = Math.round(SNAKE.len / ST);
+  for (let j = 1; j <= hSteps; j++) {
+    const h = j / hSteps,
+      w = SNAKE.w(h),
+      hh = SNAKE.hh(h),
+      // 細くなる向きの分、面は前を向く
+      dw = (SNAKE.w(Math.min(1, h + 0.01)) - SNAKE.w(Math.max(0, h - 0.01))) / (0.02 * SNAKE.len),
+      n = Math.max(5, Math.round((2 * Math.PI * w) / ST));
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + j * 0.4,
+        ca = Math.cos(a),
+        sa = Math.sin(a);
+      put(
+        ca * w,
+        SNAKE.cy(h) + sa * hh,
+        SNAKE.z(h),
+        ca / w,
+        sa / hh,
+        -dw / w,
+        sa < -0.4 ? BELLY_R : BACK_R,
+        sa < -0.4 ? BELLY : sa > 0.3 && h < 0.92 ? DARK : C,
+      );
+    }
+  }
+  // 鼻先のふた
+  put(0, SNAKE.cy(1), SNAKE.z(1) + 0.01, 0, 0.3, 1, BACK_R, C);
+  // 目：頭の横の上寄り（断面の楕円の角度 (0.8, 0.6) のところ）の表面から、面の向きに 0.012 外
+  for (const sd of [-1, 1]) {
+    const h = 0.5,
+      w = SNAKE.w(h),
+      hh = SNAKE.hh(h),
+      ca = 0.8,
+      sa = 0.6,
+      nl = Math.hypot(ca / w, sa / hh),
+      out = 0.012;
+    cpt(
+      pts,
+      sd * (ca * w + (out * ca) / w / nl),
+      SNAKE.cy(h) + sa * hh + (out * sa) / hh / nl,
+      SNAKE.z(h),
+      'o',
+      S * 0.85,
+      1.2,
+      SNAKE.eye,
+      'slither',
+    );
+  }
+  // 舌（二股。描画が、ちらちら出し入れする）
+  for (const [z, ch] of [
+    [0.03, '-'],
+    [0.07, '-'],
+    [0.11, '<'],
+  ] as const)
+    cpt(pts, 0, SNAKE.cy(1) - 0.012, SNAKE.z(1) + z, ch, S * 0.8, 1.6, [0.95, 0.3, 0.3], 'tongue');
   return pts;
 }
 
@@ -162,27 +309,96 @@ export function shroomForm(ty: BodyType): Body {
   return pts;
 }
 
+// ギタイムシ：巻物に化ける虫。背中に、開いた巻物（両側に巻いた軸・字の並ぶ紙）を背負う。頭は前に低く、長い触角が前へ伸びる
 export function crabForm(ty: BodyType): Body {
-  const pts: Body = [],
-    S = 0.22 / ty.scale,
-    C = ty.col;
-  for (let k = 0; k < 14; k++) {
-    const a = (k / 14) * Math.PI * 2;
-    cpt(pts, Math.cos(a) * 0.32, 0.22, Math.sin(a) * 0.24, Math.abs(Math.sin(a)) > 0.7 ? '=' : '(', S, 1.1, C, 'body');
-  }
-  for (let k = 0; k < 5; k++)
-    cpt(pts, (k - 2) * 0.1, 0.26, (k % 2) * 0.06 - 0.03, k === 2 ? '?' : '~', S, k === 2 ? 2.2 : 1.1, [0.95, 0.88, 0.6], 'body');
-  for (const sd of [-1, 1])
-    for (let l = 0; l < 3; l++) {
-      const z = 0.14 - l * 0.14,
-        part = (l % 2 === 0) === sd > 0 ? 'legL' : 'legR';
-      cpt(pts, sd * 0.4, 0.14, z, sd < 0 ? '\\' : '/', S, 1.0, C, part, { piv: 0.22, pz: z });
-      cpt(pts, sd * 0.48, 0.04, z, '|', S * 0.9, 0.9, C, part, { piv: 0.22, pz: z });
+  const { S, pts, put, lit, stroke, ell } = q3({ scale: ty.scale * 1.5 }),
+    SHELL: Color = [0.42, 0.28, 0.17],
+    LEG: Color = [0.5, 0.33, 0.2],
+    PAPER: Color = [0.9, 0.82, 0.6],
+    INK: Color = [0.55, 0.24, 0.16],
+    EYE: Color = [1.0, 0.45, 0.3];
+  // 腹：前後に長い丸い胴の、横と下の殻（上は巻物の紙が覆う）。行の数を決め、後ろの端 Z0 から前の端 Z1 まで等しい間隔で置く
+  const Z0 = -0.62,
+    Z1 = 0.1,
+    YC = 0.32,
+    st = S * 0.85,
+    nr = Math.max(2, Math.round((Z1 - Z0) / st));
+  for (let j = 0; j <= nr; j++) {
+    const f = j / nr,
+      z = Z0 + (Z1 - Z0) * f,
+      w = Math.sqrt(Math.max(0, 1 - Math.pow(2 * f - 1, 2) * 0.82)),
+      rx = 0.3 * w,
+      ry = 0.17 * w,
+      n = Math.max(6, Math.round((2 * Math.PI * Math.max(rx, ry)) / st));
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2,
+        c = Math.cos(a),
+        sn = Math.sin(a);
+      if (sn <= 0.25) put(c * rx, YC + sn * ry, z, c, sn, (2 * f - 1) * 0.6, ['.', ':', '%', '#', '#'], SHELL);
     }
-  for (const sd of [-1, 1]) {
-    cpt(pts, sd * 0.1, 0.32, 0.22, '|', S * 0.7, 1.0, C, 'head');
-    cpt(pts, sd * 0.1, 0.38, 0.22, '.', S * 0.9, 2.6, [1, 1, 0.9], 'head');
   }
+  // 巻物の紙：両側の軸の間に張った四角い紙。真ん中ほど少し高い（平らだと、目の高さから見た時に点が1本の線に重なり、明るい縞になる）。
+  // 明るさは決めて置く（面の向きで決めると、上を向いた紙がどれも明るくなり、にじんで白い塊になる）。紙の行と、字の行（~）を交互に並べる
+  const PW = 0.24,
+    paperY = (x: number): number => YC + 0.1 + 0.05 * (1 - (x / PW) * (x / PW)),
+    nrow = Math.max(3, Math.round((Z1 - Z0 - 0.08) / (st * 0.6))),
+    ncol = Math.max(3, Math.round((2 * PW) / (st * 0.7)));
+  for (let j = 0; j <= nrow; j++) {
+    const z = Z0 + 0.04 + ((Z1 - Z0 - 0.08) * j) / nrow,
+      ink = j % 2 === 1 && j < nrow;
+    for (let i = 0; i <= ncol; i++) {
+      const x = -PW + (2 * PW * i) / ncol;
+      if (ink && Math.abs(x) < PW * 0.8) lit(x, paperY(x) + 0.01, z, '~', 1, 1.0, INK);
+      else lit(x, paperY(x), z, '=', 1, 0.75 + 0.15 * (x / PW), PAPER);
+    }
+  }
+  // 巻物の両側の巻いた軸と、その端の渦（@）
+  // （軸も明るさを決めて置く。上の点ほど少し明るく、下は暗い）
+  const RX = 0.29,
+    RY = YC + 0.08,
+    RR = 0.07,
+    nz = Math.max(2, Math.round((Z1 - Z0 - 0.1) / (st * 0.5)));
+  for (const sd of [-1, 1]) {
+    for (let j = 0; j <= nz; j++) {
+      const z = Z0 + 0.05 + ((Z1 - Z0 - 0.1) * j) / nz;
+      for (let k = 0; k < 3; k++) {
+        const a = (k / 3) * Math.PI * 2 + j * 1.1,
+          sn = Math.sin(a);
+        lit(sd * RX + Math.cos(a) * RR, RY + sn * RR, z, '=', 1, 0.7 + 0.2 * sn, PAPER);
+      }
+    }
+    for (const z of [Z0 + 0.01, Z1 - 0.01]) lit(sd * RX, RY, z, '@', 1, 1.0, PAPER);
+  }
+  // 胸：背中の前の小さな殻
+  ell([0, 0.3, 0.24], 0.15, 0.11, 0.12, ['.', ':', '%', '#', '#'], () => SHELL);
+  // 頭：前に低く。赤い小さな目と、前へ伸びる大あご
+  ell([0, 0.27, 0.44], 0.13, 0.1, 0.1, ['.', ':', '%', '#', '#'], () => SHELL, 'head');
+  for (const sd of [-1, 1]) {
+    lit(sd * 0.09, 0.31, 0.51, 'o', 0.8, 1.4, EYE, 'head');
+    lit(sd * 0.05, 0.2, 0.56, sd < 0 ? '(' : ')', 0.8, 1.1, LEG, 'head');
+    // 触角：上へ立ち上がってから前へ長く伸びる（遠くから見ても、前がどちらか分かり、虫に見えるように）
+    stroke([sd * 0.05, 0.35, 0.5], [sd * 0.16, 0.6, 0.7], LEG, 1.3, 0.9, 'head', undefined, S * 0.45);
+    stroke([sd * 0.16, 0.6, 0.7], [sd * 0.32, 0.66, 1.0], LEG, 1.3, 0.9, 'head', undefined, S * 0.45);
+  }
+  // 脚：胸の横から3対。短く、ひざは胴の高さまで（ひざを高く上げて外へ広く開くと、蜘蛛に見える）。すねは外へ傾ける（真下へ下ろすと、箱を柱で支えた台に見える）。前の脚は前へ、真ん中は横へ、後ろの脚は後ろへ。
+  // 歩く時は、それぞれの付け根（高さ HIP_Y・奥行き hz）を軸に回る。左右で互い違い（3本ずつ）に動く
+  // 脚ごとに、付け根の奥行き hz・ひざの横 kx と奥行き kz・足先の横 fx と奥行き fz
+  const HIP_Y = 0.28,
+    LEGS: readonly (readonly [number, number, number, number, number])[] = [
+      [0.3, 0.28, 0.48, 0.46, 0.74],
+      [0.24, 0.34, 0.2, 0.58, 0.14],
+      [0.18, 0.3, -0.16, 0.5, -0.5],
+    ];
+  for (const sd of [-1, 1])
+    LEGS.forEach(([hz, kx, kz, fx, fz], l) => {
+      const part = (l % 2 === 0) === sd > 0 ? 'legL' : 'legR',
+        ex = { piv: HIP_Y, pz: hz },
+        hip: Vec3 = [sd * 0.13, HIP_Y, hz],
+        knee: Vec3 = [sd * kx, 0.36, kz],
+        foot: Vec3 = [sd * fx, 0.02, fz];
+      stroke(hip, knee, LEG, 1.2, 0.85, part, ex, S * 0.6);
+      stroke(knee, foot, LEG, 1.2, 0.85, part, ex, S * 0.6);
+    });
   return pts;
 }
 

@@ -4,7 +4,7 @@ import type { Color } from '../color.ts';
 import { G } from '../glyphs.ts';
 import { clamp } from '../rng.ts';
 import { mpick, mr } from '../random.ts';
-import { type Body, type BodyType, type Extra, type Ramp, type Vec3, FUR, MUD, SCALE, SKINR, STONE, q2, q3 } from './kit.ts';
+import { type Body, type BodyType, type Extra, type Ramp, type Vec3, FUR, MUD, SCALE, SKINR, STONE, q2, q3, strokeCh } from './kit.ts';
 
 type Leg = readonly [number, number, string];
 
@@ -969,21 +969,229 @@ export function caveSpiderForm(ty: BodyType): Body {
   return pts;
 }
 
+/** 楕円（真ん中と、軸ごとの半径） */
+interface Ellipsoid {
+  c: Vec3;
+  r: Vec3;
+}
+/** 吸血コウモリの体の寸法（形の中の座標。体の真ん中が原点で、前が +z。テストも同じ値で表面からの距離を数える） */
+export const BAT: { body: Ellipsoid; head: Ellipsoid; wingY: number; wingTilt: number; wingRoot: number; eye: Color; fang: Color } = {
+  /** 胴 */
+  body: { c: [0, 0, -0.03], r: [0.1, 0.095, 0.16] },
+  /** 頭 */
+  head: { c: [0, 0.05, 0.18], r: [0.09, 0.082, 0.082] },
+  /** 翼の面の高さ */
+  wingY: 0.03,
+  /** 翼の面の傾き（後ろへ 1 進むと、この分下がる） */
+  wingTilt: 0.5,
+  /** 翼の根もとの、体の真ん中からの距離（胴の横の半径より少し内。膜が胴に付いて見える） */
+  wingRoot: 0.09,
+  eye: [1, 0.22, 0.2],
+  fang: [0.95, 0.92, 0.85],
+};
+/** 楕円 e の表面からの距離（外が正。半径で割った距離から近似する） */
+export const batOut = (e: Ellipsoid, p: { x: number; y: number; z: number }): number => {
+  const [cx, cy, cz] = e.c,
+    [rx, ry, rz] = e.r,
+    dx = (p.x - cx) / rx,
+    dy = (p.y - cy) / ry,
+    dz = (p.z - cz) / rz,
+    k = Math.hypot(dx, dy, dz);
+  return ((k - 1) * Math.hypot(dx * rx, dy * ry, dz * rz)) / (k || 1);
+};
+
+// vampire bat: a furry egg of a body with a round head, tall pointed ears (pink inside), red eyes, a pug nose and two white fangs.
+// The wings are membranes stretched over the long arm and four fingers, with a scalloped trailing edge, drawn in the wing's own plane
+// (r = out from the body, z = along it; the 'wing' motion flaps them). Short legs with hooked claws trail behind, joined by a tail membrane.
 export function batForm(ty: BodyType): Body {
-  const { pts, lit, ell } = q3(ty),
-    FURC: Color = [0.3, 0.24, 0.26],
-    MEM: Color = [0.45, 0.2, 0.32],
-    EYE: Color = [1, 0.25, 0.25];
-  ell([0, 0, 0], 0.13, 0.12, 0.15, FUR, () => FURC, 'body');
+  // 小さな体なので、文字を細かくする（kit の大きさ S は scale から決まるので、種類の scale の 1.5 倍を渡し、文字を 1/1.5 にする）
+  const { S, pts, put, lit } = q3({ scale: 1.5 * ty.scale }),
+    FURC: Color = [0.4, 0.2, 0.22],
+    CHEST: Color = [0.62, 0.34, 0.32],
+    SKIN: Color = [0.62, 0.32, 0.36],
+    EAR: Color = [0.85, 0.42, 0.5],
+    BONE: Color = [0.72, 0.42, 0.44],
+    MEM: Color = [0.58, 0.12, 0.22],
+    MEM_D: Color = [0.36, 0.07, 0.15],
+    EDGE: Color = [0.85, 0.28, 0.36],
+    FURR: Ramp = ['%', '%', '"', '%', '#'];
+  // 楕円の毛皮：高さを等しく割った行ごとの輪（skip が真の所は描かない）
+  const blob = (
+    e: Ellipsoid,
+    col: (nx: number, ny: number, nz: number) => Color,
+    part: string,
+    skip?: (nx: number, ny: number, nz: number) => boolean,
+  ) => {
+    const [cx, cy, cz] = e.c,
+      [rx, ry, rz] = e.r,
+      st = S * 0.8,
+      rows = Math.max(3, Math.round((Math.PI * ry) / st));
+    for (let i = 0; i <= rows; i++) {
+      const v = (Math.PI * i) / rows,
+        sv = Math.sin(v),
+        cv = Math.cos(v),
+        n = Math.max(1, Math.round((2 * Math.PI * Math.max(rx, rz) * sv) / st));
+      for (let k = 0; k < n; k++) {
+        const u = (k / n) * Math.PI * 2 + i * 0.7,
+          nx = Math.cos(u) * sv,
+          ny = cv,
+          nz = Math.sin(u) * sv;
+        if (skip && skip(nx, ny, nz)) continue;
+        put(cx + nx * rx, cy + ny * ry, cz + nz * rz, nx / rx, ny / ry, nz / rz, FURR, col(nx, ny, nz), part);
+      }
+    }
+  };
+  // 1. 胴：背は暗く、胸と腹は明るい
+  blob(BAT.body, (_x, ny, nz) => (ny < -0.2 || nz > 0.55 ? CHEST : FURC), 'body');
+  // 首の毛の盛り上がり（頭と胴のつなぎ目）
+  for (let k = 0; k < 10; k++) {
+    const a = (k / 10) * Math.PI * 2;
+    lit(Math.cos(a) * 0.085, 0.03 + Math.sin(a) * 0.07, 0.1, '%', 1, 1.0, CHEST, 'head');
+  }
+  // 2. 頭：前の顔は明るい。目のまわりは毛の点を空ける（目が毛に埋もれないように）
+  const H = BAT.head,
+    hc = H.c,
+    hr = H.r,
+    // 目の向き（頭の楕円の、半径で割った座標での向き）
+    EYES = [-1, 1].map((sd) => {
+      const l = Math.hypot(sd * 0.42, 0.3, 0.86);
+      return [(sd * 0.42) / l, 0.3 / l, 0.86 / l] as const;
+    });
+  blob(
+    H,
+    (_x, ny, nz) => (nz > 0.6 && ny < 0.3 ? SKIN : FURC),
+    'head',
+    (nx, ny, nz) => EYES.some(([ex, ey, ez]) => nx * ex + ny * ey + nz * ez > 0.9),
+  );
+  // 目：顔の前の左右、表面のすぐ外
+  for (const [ex, ey, ez] of EYES)
+    lit(hc[0] + ex * hr[0] * 1.25, hc[1] + ey * hr[1] * 1.25, hc[2] + ez * hr[2] * 1.25, 'o', 0.9, 1.8, BAT.eye, 'head');
+  // 低い鼻（上を向いた豚鼻）と、口の両端から下に出る白い牙
+  lit(0, hc[1] - 0.005, hc[2] + hr[2] + 0.035, 'n', 1, 1.3, SKIN, 'head');
+  for (const sd of [-1, 1]) lit(sd * 0.025, hc[1] - 0.06, hc[2] + hr[2] + 0.01, 'v', 0.8, 1.6, BAT.fang, 'head');
+  // 3. 耳：頭の上から高くとがる三角。縁は毛の色、内は桃色
   for (const sd of [-1, 1]) {
-    lit(sd * 0.08, 0.16, 0.04, '^', 1.1, 1.3, FURC, 'body');
-    lit(sd * 0.04, 0.03, 0.13, '.', 0.8, 3.4, EYE, 'body');
-    lit(sd * 0.02, -0.05, 0.14, 'v', 0.7, 2.2, [0.95, 0.95, 0.9], 'body');
-    for (let k = 0; k < 4; k++) {
-      const r = 0.18 + k * 0.15;
-      lit(0, 0.06 - k * 0.01, 0.02, '-', 1, 1.4, [0.6, 0.5, 0.5], 'wing', { sd, r });
-      for (let q = 1; q < 3; q++)
-        lit(0, 0.06 - k * 0.01 - q * 0.07, 0.02 - q * 0.02, mpick(['%', ':']), 1, 1.0, MEM, 'wing', { sd, r: r * (1 - q * 0.12) });
+    const b0: Vec3 = [sd * 0.025, hc[1] + hr[1] * 0.85, hc[2] + 0.01],
+      b1: Vec3 = [sd * 0.09, hc[1] + hr[1] * 0.5, hc[2] - 0.01],
+      tip: Vec3 = [sd * 0.12, hc[1] + 0.25, hc[2] - 0.02],
+      rows = 5;
+    for (let i = 0; i <= rows; i++) {
+      const f = i / rows,
+        a: Vec3 = [b0[0] + (tip[0] - b0[0]) * f, b0[1] + (tip[1] - b0[1]) * f, b0[2] + (tip[2] - b0[2]) * f],
+        b: Vec3 = [b1[0] + (tip[0] - b1[0]) * f, b1[1] + (tip[1] - b1[1]) * f, b1[2] + (tip[2] - b1[2]) * f],
+        w = Math.hypot(b[0] - a[0], b[1] - a[1]),
+        n = Math.max(1, Math.round(w / (S * 0.7)));
+      // 最後の行は耳の先の1点だけ
+      for (let j = 0; j <= (i === rows ? 0 : n); j++) {
+        const g = j / n,
+          edge = j === 0 || j === n || i === rows;
+        lit(
+          a[0] + (b[0] - a[0]) * g,
+          a[1] + (b[1] - a[1]) * g,
+          a[2] + (b[2] - a[2]) * g + (edge ? 0 : 0.012),
+          edge ? (i === rows ? '^' : sd < 0 ? '/' : '\\') : '%',
+          1,
+          edge ? 1.2 : 1.1,
+          edge ? FURC : EAR,
+          'head',
+        );
+      }
+    }
+  }
+  // 4. 後ろ脚：胴の後ろの下から後ろへ伸び、先に鉤爪。脚の間に尾の膜
+  for (const sd of [-1, 1]) {
+    const hip: Vec3 = [sd * 0.06, -0.06, -0.14],
+      foot: Vec3 = [sd * 0.09, -0.09, -0.3];
+    const n = 3;
+    for (let k = 0; k <= n; k++) {
+      const f = k / n;
+      lit(hip[0] + (foot[0] - hip[0]) * f, hip[1] + (foot[1] - hip[1]) * f, hip[2] + (foot[2] - hip[2]) * f, '|', 1, 1.0, SKIN, 'body');
+    }
+    for (const dx of [-0.02, 0.02]) lit(foot[0] + dx, foot[1] - 0.02, foot[2] - 0.03, 'v', 0.8, 1.3, BONE, 'body');
+  }
+  // 尾の膜：両足の先から後ろの尖りへ細くなる三角。縁は翼と同じ色
+  for (let i = 0; i <= 3; i++) {
+    const f = i / 3,
+      z = -0.24 - 0.16 * f,
+      w = 0.09 * (1 - f),
+      n = Math.round((2 * w) / (S * 0.7));
+    for (let j = 0; j <= n; j++) {
+      const edge = j === 0 || j === n;
+      lit(n ? -w + (2 * w * j) / n : 0, -0.09 - 0.02 * f, z, '%', 1, edge ? 1.1 : 0.85, edge ? EDGE : MEM, 'body');
+    }
+  }
+  // 5. 翼：腕の骨（肩 → 手首）、手首から指の骨4本、骨の間に膜、後ろの縁は指の先の間で内へ弧を描く
+  type P2 = readonly [number, number];
+  // 翼の面は、後ろほど低く傾ける（前から見ても膜の面と後ろの縁の弧が見える。傾けないと、前からは1本の線になる）
+  const WY = BAT.wingY,
+    TILT = BAT.wingTilt,
+    sh: P2 = [BAT.wingRoot, 0.03],
+    el: P2 = [0.26, 0.11],
+    wr: P2 = [0.44, 0.13],
+    tips: readonly P2[] = [
+      [0.72, 0.05],
+      [0.76, -0.2],
+      [0.62, -0.37],
+      [0.38, -0.35],
+    ],
+    root: P2 = [BAT.wingRoot, -0.2];
+  const tip = (i: number): P2 => nth(tips, i);
+  for (const sd of [-1, 1]) {
+    const W = (r: number, z: number, ch: string, b: number, col: Color, s2 = 1, dy = 0) =>
+      lit(0, WY + TILT * z + dy, z, ch, s2, b, col, 'wing', { sd, r });
+    // 骨の線（from が 1 なら、始めの点を描かない。関節の点を、ほかの骨と重ねて描かないように）
+    const bone = (a: P2, b2: P2, ch: string, s2: number, from = 0) => {
+      const n = Math.max(2, Math.round(Math.hypot(b2[0] - a[0], b2[1] - a[1]) / (S * 0.7)));
+      for (let k = from; k <= n; k++) {
+        const f = k / n;
+        W(a[0] + (b2[0] - a[0]) * f, a[1] + (b2[1] - a[1]) * f, ch, 0.95, BONE, s2);
+      }
+    };
+    bone(sh, el, '-', 1);
+    bone(el, wr, '-', 1, 1);
+    for (const tp of tips) bone(wr, tp, '-', 0.85, 1);
+    // 膜：三角ごとに埋める。真ん中ほど少し下がる（平らな面が目の高さで1本の線に重ならないように）。
+    // 後ろの縁になる三角（4つ目の値が真）は、辺 B-C が A の方へ弧を描いてへこむ（へこみの外は描かず、弧の上に縁を置く）。
+    // 指の間の膜は、隣どうしで色の濃さを変える（膜を正面から見た時に、境の指の骨が読めるように）
+    const tris: readonly (readonly [P2, P2, P2, boolean, Color])[] = [
+      [wr, tip(0), tip(1), true, MEM],
+      [wr, tip(1), tip(2), true, MEM_D],
+      [wr, tip(2), tip(3), true, MEM],
+      [sh, wr, tip(3), false, MEM_D],
+      [sh, tip(3), root, true, MEM_D],
+      [sh, el, wr, false, MEM],
+    ];
+    for (const [A, B, C, trailing, mc] of tris) {
+      const st = S * 0.72,
+        // 辺 B-C の上の f の所の、へこみの深さ
+        bow = (f: number) => (trailing ? 0.22 * Math.hypot(C[0] - B[0], C[1] - B[1]) * Math.sin(Math.PI * f) : 0),
+        nu = Math.max(2, Math.round(Math.hypot(B[0] - A[0], B[1] - A[1]) / st)),
+        nv = Math.max(2, Math.round(Math.hypot(C[0] - A[0], C[1] - A[1]) / st));
+      for (let i = 1; i < nu; i++)
+        for (let j = 1; j < nv; j++) {
+          const u = i / nu,
+            v = j / nv,
+            sum = u + v,
+            f = v / sum,
+            // A から、辺 B-C の上の f の所までの長さ
+            L = Math.hypot(B[0] + (C[0] - B[0]) * f - A[0], B[1] + (C[1] - B[1]) * f - A[1]);
+          // 縁の手前と、へこみの外は描かない
+          if (sum >= 0.92 || 1 - sum < bow(f) / L + (trailing ? 0.06 : 0)) continue;
+          const r = A[0] + (B[0] - A[0]) * u + (C[0] - A[0]) * v,
+            z = A[1] + (B[1] - A[1]) * u + (C[1] - A[1]) * v;
+          W(r, z, mpick(['%', '#', '%', '&']), 0.45 + 0.1 * mr(), mc, 1, -0.05 * 4 * u * v);
+        }
+      if (!trailing) continue;
+      const n = Math.max(2, Math.round(Math.hypot(C[0] - B[0], C[1] - B[1]) / (S * 0.7)));
+      for (let k = 1; k < n; k++) {
+        const f = k / n,
+          r = B[0] + (C[0] - B[0]) * f,
+          z = B[1] + (C[1] - B[1]) * f,
+          dr = A[0] - r,
+          dz = A[1] - z,
+          dl = Math.hypot(dr, dz) || 1;
+        W(r + (dr / dl) * bow(f), z + (dz / dl) * bow(f), '~', 1.15, EDGE);
+      }
     }
   }
   return pts;
@@ -1726,5 +1934,251 @@ export function lichForm(ty: BodyType): Body {
   ] as const)
     lit(0, 1.0 + dy, 0, ch, 1.05, 2.2, BOOK, 'orbit', { r: 0.6, sp: 0.7, ph: 0 });
   lit(0, 1.12, 0, '~', 0.9, 2.8, ICE, 'orbit', { r: 0.6, sp: 0.7, ph: 0.12 });
+  return pts;
+}
+
+/** ゴブリンの呪術師の衣（頭巾の下から裾まで）の形。f は裾 0 から肩 1。体の点と、縁取り・背中の印・帯は、この同じ式から置く */
+export const CONJ_ROBE = {
+  y0: 0.04,
+  y1: 1.1,
+  /** 横の半径：裾は広く、肩へ細くなる */
+  rx: (f: number): number => 0.2 + 0.2 * Math.pow(1 - f, 1.8),
+  /** 奥行きの半径：背中は丸く盛り上がる（猫背） */
+  rz: (f: number, back: boolean): number => (0.17 + 0.17 * Math.pow(1 - f, 1.8)) * (back ? 1 + 0.45 * Math.sin(f * Math.PI * 0.85) : 1),
+  /** 前へ出る量：上ほど前に屈む */
+  z: (f: number): number => 0.2 * f * f,
+  /** 裾の襞（下の方だけ。半径に掛ける） */
+  fold: (f: number, a: number): number => 1 + 0.16 * Math.max(0, 0.45 - f) * Math.cos(9 * a),
+};
+/** 衣の表面の点（f と、まわりの角 a。a が PI/2 で真正面）。法線も返す */
+export function conjRobeAt(f: number, a: number): { x: number; y: number; z: number; nx: number; ny: number; nz: number } {
+  const R = CONJ_ROBE,
+    c = Math.cos(a),
+    s = Math.sin(a),
+    k = R.fold(f, a),
+    rx = R.rx(f) * k,
+    rz = R.rz(f, s < 0) * k;
+  // 半径が上へ細くなる分、面は少し上を向く
+  return { x: c * rx, y: R.y0 + (R.y1 - R.y0) * f, z: s * rz + R.z(f), nx: c / rx, ny: 0.35 * (1 - f) + 0.1, nz: s / rz };
+}
+
+export function conjurerForm(ty: BodyType): Body {
+  // 小さな体なので、点を細かくする（文字の大きさを決める scale を、1.25 より小さくしない）
+  const { S, pts, put, lit, stroke, ell, tube } = q3({ scale: Math.max(ty.scale, 1.25) }),
+    ROBE: Color = [0.52, 0.27, 0.88],
+    ROBE_IN: Color = [0.24, 0.16, 0.36],
+    TRIM: Color = [0.88, 0.72, 0.42],
+    EDGE: Color = [0.68, 0.55, 0.9],
+    SKN: Color = [0.5, 0.78, 0.32],
+    EYE: Color = [1.0, 0.85, 0.3],
+    WOOD: Color = [0.46, 0.32, 0.2],
+    BONE_C: Color = [0.88, 0.84, 0.7],
+    GLOW: Color = [0.82, 0.55, 1.0],
+    CLOTH: Ramp = ['.', ':', ';', '|', '#'],
+    R = CONJ_ROBE,
+    st = S * 0.85;
+  // 腕は肩（高さ 1.04・奥行き 0.14）を、足は腰（高さ 0.62）を軸に回る
+  const SHOULDER = { piv: 1.04, pz: 0.14 },
+    HIP = { piv: 0.62, pz: 0.05 };
+  const ellAt = (ex: Extra, ...a: Parameters<typeof ell>): void => {
+    const n0 = pts.length;
+    ell(...a);
+    for (let i = n0; i < pts.length; i++) Object.assign(nth(pts, i), ex);
+  };
+  // 衣：裾から肩まで、行の数を決めて等しい間隔で割る（最後の行が肩に来る）
+  const nr = Math.max(1, Math.round((R.y1 - R.y0) / st));
+  for (let j = 0; j <= nr; j++) {
+    const f = j / nr,
+      n = Math.max(8, Math.round((2 * Math.PI * Math.max(R.rx(f), R.rz(f, true))) / st));
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + j * 0.37,
+        p = conjRobeAt(f, a);
+      put(p.x, p.y, p.z, p.nx, p.ny, p.nz, CLOTH, ROBE);
+    }
+  }
+  // 肩の上の面（頭巾の下に、首のまわりの肩を張る。少し盛り上げる）
+  for (let q = 0.75; q > 0.2; q -= 0.27) {
+    const n = Math.max(6, Math.round((2 * Math.PI * R.rx(1) * q) / st));
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + q * 2,
+        c = Math.cos(a),
+        s = Math.sin(a);
+      put(c * R.rx(1) * q, R.y1 + 0.05 * (1 - q * q), s * R.rz(1, s < 0) * q + R.z(1), c * q, 1, s * q, CLOTH, ROBE);
+    }
+  }
+  // 縁取り：裾の輪（表面のすぐ外）
+  const OUT = 0.025;
+  const onRobe = (f: number, a: number, ch: string, s: number, b: number, col: Color): void => {
+    const p = conjRobeAt(f, a),
+      l = Math.hypot(p.nx, p.nz) || 1;
+    lit(p.x + (p.nx / l) * OUT, p.y, p.z + (p.nz / l) * OUT, ch, s, b, col);
+  };
+  {
+    const n = Math.round((2 * Math.PI * R.rx(0)) / (st * 0.8));
+    for (let k = 0; k < n; k++) onRobe(0.02, (k / n) * Math.PI * 2, '=', 0.85, 1.0, TRIM);
+  }
+  // 帯（腰）と、前に垂れる結び目、ぶら下がった骨のお守り
+  const FW = (0.62 - R.y0) / (R.y1 - R.y0);
+  {
+    const n = Math.round((2 * Math.PI * R.rx(FW)) / (st * 0.75));
+    for (let k = 0; k < n; k++) onRobe(FW, (k / n) * Math.PI * 2, '-', 0.9, 1.15, TRIM);
+  }
+  for (const [da, len] of [
+    [-0.35, 3],
+    [0.3, 2],
+    [0.55, 3],
+  ] as const) {
+    const a = Math.PI / 2 + da;
+    for (let q = 1; q <= len; q++) onRobe(FW - (q * 0.05) / (R.y1 - R.y0), a, q === len ? 'o' : ':', 0.8, q === len ? 1.4 : 1.0, BONE_C);
+  }
+  // 背中の印：円の中に目（光の当たらない背中でも見えるように、明るさを決めて置く）
+  {
+    const cy = 0.8,
+      rr = 0.11,
+      at = (x: number, y: number, ch: string, s: number, b: number): void => {
+        const f = (y - R.y0) / (R.y1 - R.y0),
+          rx = R.rx(f),
+          c = clamp(x / rx, -1, 1),
+          a = -Math.acos(c);
+        onRobe(f, a, ch, s, b, GLOW);
+      };
+    for (let k = 0; k < 14; k++) {
+      const t = (k / 14) * Math.PI * 2;
+      at(Math.cos(t) * rr, cy + Math.sin(t) * rr, strokeCh(-Math.sin(t), Math.cos(t)), 0.75, 1.35);
+    }
+    at(-0.05, cy, '<', 0.75, 1.3);
+    at(0, cy, 'o', 0.8, 1.6);
+    at(0.05, cy, '>', 0.75, 1.3);
+  }
+  // 頭巾：頭を包み、前の開きから顔が見える。先は長く、後ろへ垂れる
+  const HC = [0, 1.38, 0.3] as const,
+    HR = 0.28;
+  ell(
+    HC,
+    HR,
+    HR * 1.05,
+    HR,
+    CLOTH,
+    () => ROBE,
+    'head',
+    null,
+    (_nx, ny, nz) => nz > 0.3 || ny < -0.75,
+  );
+  tube([0, 1.6, 0.22], [0, 1.76, 0.04], 0.16, 0.1, CLOTH, ROBE, 'head');
+  tube([0, 1.76, 0.04], [0, 1.8, -0.22], 0.1, 0.06, CLOTH, ROBE, 'head');
+  tube([0, 1.8, -0.22], [0, 1.72, -0.4], 0.06, 0.03, CLOTH, ROBE, 'head');
+  lit(0, 1.69, -0.45, 'o', 0.8, 1.3, TRIM, 'head');
+  // 頭巾の開きの縁取り
+  for (let k = 0; k < 16; k++) {
+    const t = (k / 16) * Math.PI * 2,
+      q = Math.sqrt(1 - 0.32 * 0.32),
+      nx = Math.cos(t) * q,
+      ny = Math.sin(t) * q;
+    if (ny < -0.75) continue;
+    lit(
+      HC[0] + nx * HR * 1.04,
+      HC[1] + ny * HR * 1.09,
+      HC[2] + 0.32 * HR * 1.04,
+      strokeCh(-Math.sin(t), Math.cos(t)),
+      0.8,
+      1.1,
+      EDGE,
+      'head',
+    );
+  }
+  // 頭巾の中の暗がり（顔の後ろ。開きから奥が透けないように）
+  for (let k = 0; k < 9; k++) {
+    const t = (k / 9) * Math.PI * 2;
+    lit(HC[0] + Math.cos(t) * 0.12, HC[1] + Math.sin(t) * 0.13, HC[2] - 0.02, '#', 1, 0.5, ROBE_IN, 'head');
+  }
+  // 顔：頭巾の開きから前へ出る。光る黄色い目、怒った眉、長い鼻、牙
+  const FC = [0, 1.33, 0.4] as const,
+    FR = [0.18, 0.16, 0.11] as const;
+  ell(
+    FC,
+    FR[0],
+    FR[1],
+    FR[2],
+    SKINR,
+    () => SKN,
+    'head',
+    null,
+    (_nx, _ny, nz) => nz < 0.1,
+  );
+  const face = (x: number, y: number, dz: number): number =>
+    FC[2] + FR[2] * Math.sqrt(Math.max(0, 1 - (x / FR[0]) ** 2 - ((y - FC[1]) / FR[1]) ** 2)) + dz;
+  for (const sd of [-1, 1]) {
+    lit(sd * 0.07, 1.37, face(sd * 0.07, 1.37, 0.03), 'o', 0.65, 1.8, EYE, 'head');
+    lit(sd * 0.075, 1.43, face(sd * 0.075, 1.43, 0.03), sd < 0 ? '\\' : '/', 0.75, 1.1, [0.3, 0.18, 0.12], 'head');
+    lit(sd * 0.05, 1.24, face(sd * 0.05, 1.24, 0.03), 'v', 0.6, 1.3, BONE_C, 'head');
+  }
+  stroke([0, 1.35, face(0, 1.35, 0.02)], [0, 1.27, 0.66], SKN, 1.35, 0.85, 'head');
+  // 長い耳：頭巾の横から突き出る（上と下の縁を、先で合わせる）
+  for (const sd of [-1, 1]) {
+    const tip = [sd * 0.6, 1.5, 0.24] as const;
+    stroke([sd * 0.27, 1.43, 0.32], tip, SKN, 1.3, 0.85, 'head');
+    stroke([sd * 0.27, 1.31, 0.32], tip, SKN, 1.15, 0.85, 'head');
+    lit(tip[0] + sd * 0.03, tip[1] + 0.01, tip[2], sd < 0 ? '<' : '>', 0.9, 1.3, SKN, 'head');
+  }
+  // 右腕：広がる袖と、杖を握る手
+  const RH = [0.34, 0.74, 0.34] as const;
+  tube([0.19, 1.04, 0.16], [0.31, 0.82, 0.3], 0.08, 0.12, CLOTH, ROBE, 'armR', SHOULDER);
+  for (let k = 0; k < 10; k++) {
+    const t = (k / 10) * Math.PI * 2;
+    lit(0.31 + Math.cos(t) * 0.12, 0.82 + Math.sin(t) * 0.05, 0.3 + Math.sin(t) * 0.11, '=', 0.8, 1.1, EDGE, 'armR', SHOULDER);
+  }
+  ellAt(SHOULDER, RH, 0.06, 0.06, 0.06, SKINR, () => SKN, 'armR');
+  // 杖：曲がった木。先は二股の鉤爪で、紫の石をつかむ
+  const SX = RH[0] + 0.02,
+    SZ = RH[2] + 0.02,
+    TOP = 1.62;
+  {
+    const n = Math.round((TOP - 0.02) / (st * 0.7));
+    for (let j = 0; j <= n; j++) {
+      const y = 0.02 + ((TOP - 0.02) * j) / n,
+        w = 0.015 * Math.sin(y * 9);
+      lit(SX + w, y, SZ, j % 4 === 2 ? (w > 0 ? ')' : '(') : '|', 0.85, 0.95, WOOD, 'armR', SHOULDER);
+    }
+  }
+  for (const sd of [-1, 1]) {
+    stroke([SX, TOP, SZ], [SX + sd * 0.09, TOP + 0.1, SZ], WOOD, 1.1, 0.8, 'armR', SHOULDER);
+    stroke([SX + sd * 0.09, TOP + 0.1, SZ], [SX + sd * 0.05, TOP + 0.22, SZ], WOOD, 1.1, 0.8, 'armR', SHOULDER);
+  }
+  lit(SX, TOP + 0.13, SZ, '*', 0.9, 1.6, GLOW, 'armR', SHOULDER);
+  for (const [dx, dy, ch] of [
+    [0, 0.07, '^'],
+    [0, -0.06, 'v'],
+    [-0.045, 0, '<'],
+    [0.045, 0, '>'],
+  ] as const)
+    lit(SX + dx, TOP + 0.13 + dy, SZ, ch, 0.7, 1.5, GLOW, 'armR', SHOULDER);
+  // 左腕：前へ差し出した手。指を開き、手のひらの上に小さな光
+  const LH = [-0.31, 0.98, 0.5] as const;
+  tube([-0.19, 1.04, 0.16], [-0.29, 0.98, 0.42], 0.08, 0.12, CLOTH, ROBE, 'armL', SHOULDER);
+  for (let k = 0; k < 10; k++) {
+    const t = (k / 10) * Math.PI * 2;
+    lit(-0.29 + Math.cos(t) * 0.12, 0.98 + Math.sin(t) * 0.12, 0.43, strokeCh(-Math.sin(t), Math.cos(t)), 0.8, 1.1, EDGE, 'armL', SHOULDER);
+  }
+  ellAt(SHOULDER, LH, 0.055, 0.05, 0.05, SKINR, () => SKN, 'armL');
+  for (const dx of [-0.05, 0, 0.05])
+    stroke([LH[0] + dx * 0.6, LH[1] + 0.04, LH[2] + 0.02], [LH[0] + dx, LH[1] + 0.13, LH[2] + 0.05], SKN, 1.0, 0.7, 'armL', SHOULDER);
+  lit(LH[0], LH[1] + 0.24, LH[2] + 0.06, 'o', 0.75, 1.4, GLOW, 'armL', SHOULDER);
+  // 足：裾の前から、とがった爪先がのぞく
+  for (const sd of [-1, 1]) {
+    const part = sd < 0 ? 'legL' : 'legR';
+    ellAt(
+      HIP,
+      [sd * 0.12, 0.05, 0.36],
+      0.065,
+      0.045,
+      0.1,
+      SKINR,
+      () => SKN,
+      part,
+      null,
+      (_nx, ny) => ny < -0.5,
+    );
+    lit(sd * 0.13, 0.05, 0.48, '^', 0.7, 1.2, SKN, part, HIP);
+  }
   return pts;
 }

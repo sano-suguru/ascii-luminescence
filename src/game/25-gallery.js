@@ -88,6 +88,9 @@ function galleryWheel(dy){ const g=ui.gallery; if(!g||g.mode!=='beast'||!g.m||g.
 function galleryDrag(dx,dy){ const g=ui.gallery; if(!g||g.mode!=='beast'||!g.m||g.fix)return; const v=galleryView();
   // the first move up or down starts from where the camera is now: its angle (tiltNow), and its distance from the point it looks at as a part of R (stretchNow)
   g.m.yaw+=dx*0.01; if(dy){ if(v.pitch===null)v.stretch=g.stretchNow??1; v.pitch=clamp((v.pitch??g.tiltNow??0)+dy*0.006,-0.3,1.3); } }
+// fingers (src/lib/touchpad.ts): a pinch multiplies the distance's zoom by f, and while a finger is on the screen the creature does not turn by itself (as with g.drag for the mouse)
+function galleryZoom(f){ const g=ui.gallery; if(!g||g.mode!=='beast'||!g.m||g.fix||!(f>0))return; const v=galleryView(); v.zoom=clamp(v.zoom*f,GAL_ZOOM[0],GAL_ZOOM[1]); }
+function galleryHold(on){ const g=ui.gallery; if(!g||g.mode!=='beast')return; g.drag=on?{x:0,y:0}:null; galleryView(); }
 function galleryReset(){ const g=ui.gallery; if(!g||g.mode!=='beast')return; g.view=null; g.drag=null; }
 function updateGallery(dt){
   if(!ui.gallery)return; const g=ui.gallery;
@@ -98,6 +101,8 @@ function updateGallery(dt){
   if(g.mode==='beast'&&g.m){ const m=g.m, sc=m.ty.scale||1, fix=g.fix, cam=fix||g.view; g.t+=dt; const walking=fix?fix.pose==='walk':Math.floor(g.t/4)%2===1;
     const handled=!!(g.drag||(g.view&&g.t-g.view.t<GAL_IDLE));
     m.moving+=((walking?1:0)-m.moving)*Math.min(1,dt*4); m.walk+=dt*2.2*m.moving; if(!fix&&!handled)m.yaw+=dt*0.45; m.x=g.room.x; m.z=g.room.z;
+    // the conjurer's spirit blades circle it as they do in the dungeon while it has not noticed the player (the bestiary does not run updateMonster)
+    if(m.blades)for(const b of m.blades){ b.a+=dt*1.6; b.x=m.x+Math.cos(b.a)*0.9; b.y=1.55+Math.sin(b.a*2)*0.2; b.z=m.z+Math.sin(b.a)*0.9; }
     if(fix){ m.sleep=fix.pose==='sleep'; if(m.sleep)m.moving=0; }
     else if(m.ty.form==='dragon'&&!m.ty.boss){ m.sleep=Math.floor(g.t/6)%2===0; if(m.sleep){ m.moving=0; } }
     { const ty=m.ty; if(ty.flier)m.y=(1.6+Math.sin(g.t*2.2)*0.15)*Math.max(1,sc*0.7); else if(ty.fl)m.y=ty.fl+Math.sin(g.t*1.3)*0.12; }
@@ -152,8 +157,9 @@ function renderGallery(){
     const desc=galleryDesc(g);
     el.innerHTML=boxText([f('+-- 図鑑 ---'),`${f('|')} ${head}`,`${f('|')} <span class="lab" data-gd="0">${desc[0]}</span>`,`${f('|')} <span class="lab" data-gd="1">${desc[1]}</span>`,f('|'),
       `${f('|')} <button class="row" data-g="prev">[&lt;]</button> ${String(g.list.length?g.idx+1:0).padStart(2,' ')} / ${String(g.list.length).padStart(2,' ')}  <span class="lab">（見つけた数 ${String([...saved.SEEN].filter(k=>k).length).padStart(2,' ')} / ${g.all}）</span> <button class="row" data-g="next">[&gt;]</button>`,
-      `${f('|')} <button class="row" data-g="back">[タイトルへ戻る]</button>   <span class="lab">← → で切り替え　Esc で戻る</span>`,`${f('|')} <span class="lab">ドラッグで回す　ホイールで寄る　R で戻す</span>`,f('+---')],GW);
-    for(const b of el.querySelectorAll('button[data-g]'))b.onclick=()=>{ const k=b.dataset.g; if(k==='prev')showBeast(g.idx-1); else if(k==='next')showBeast(g.idx+1); else returnToTitle(); }; }
+      `${f('|')} <button class="row" data-g="back">[タイトルへ戻る]</button>   <span class="lab">${byInput('← → で切り替え　Esc で戻る','')}</span>`,
+      `${f('|')} ${byInput('<span class="lab">ドラッグで回す　ホイールで寄る　R で戻す</span>','<span class="lab">指で回す　つまんで寄る</span>  <button class="row" data-g="reset">[向きを戻す]</button>')}`,f('+---')],GW);
+    for(const b of el.querySelectorAll('button[data-g]'))b.onclick=()=>{ const k=b.dataset.g; if(k==='prev')showBeast(g.idx-1); else if(k==='next')showBeast(g.idx+1); else if(k==='reset')galleryReset(); else returnToTitle(); }; }
 }
 // ---------------------------------------------------------------- the testing chamber: every rune found so far, and dummies that get back up
 // DUMMY_KINDS は src/lib/names.ts（src/game/imports.mjs で読む）

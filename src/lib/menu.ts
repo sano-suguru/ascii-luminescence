@@ -11,6 +11,7 @@ import { SND_NAME } from './sound.ts';
 import { SND, adv, gear, here, placeMem, player, ui, vfx } from './state.ts';
 import { bookRows, chronRows, cycleUi, helpRows, isPaused, renderBook, renderChron, renderStatus, setHelp } from './status.ts';
 import { boxText } from './text.ts';
+import { LOOK, cycleLook, lookLevel } from './touchpad.ts';
 
 /** 指で遊ぶ時に、メニューの中に開く物を k にする（'' なら一覧）。送った所を一番上に戻す */
 export function menuGo(k: string): void {
@@ -44,6 +45,8 @@ export function renderMenu(): void {
     ['cam', `視点：${ui.camMode === 'tps' ? '三人称' : '一人称'}`],
     ['ui', `表示：${nth(['通常', '最小', 'なし'], ui.uiMode)}`],
     ['snd', `音量：${nth(SND_NAME, SND.lv)}`],
+    // 指で遊ぶ時だけ（マウスの見回す速さは変わらない）
+    ...(ui.touch ? [['look', `見回す速さ：${nth(LOOK.names, lookLevel())}`]] : []),
     ['perf', `速度の表示：${ui.perfOn ? 'オン' : 'オフ'}`],
     ['new', ui.newRunArm > performance.now() ? '本当に最初からやり直す？（もう一度押す）' : '新しい探索を始める'],
     [
@@ -113,6 +116,9 @@ export function menuAct(k: string | undefined): void {
     renderMenu();
   } else if (k === 'ui') {
     cycleUi();
+    renderMenu();
+  } else if (k === 'look') {
+    cycleLook();
     renderMenu();
   } else if (k === 'snd') {
     sndToggle();

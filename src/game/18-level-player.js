@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------- level control
-let expo=1.1;
+// 目の慣れ expo は src/lib/state.ts の vfx（src/game/imports.mjs で読む）
 adv.runSeed=(Math.random()*1e9)>>>0;
 // levelSeed は src/lib/levels.ts（src/game/imports.mjs で読む）
 // setFog は src/lib/build.ts（src/game/imports.mjs で読む）
@@ -11,7 +11,6 @@ adv.runSeed=(Math.random()*1e9)>>>0;
 // ---------------------------------------------------------------- player
 // 薄い氷に乗っていた秒 iceT は src/lib/state.ts、氷が割れる crackIce・背の高い茂みか tallAt・踏み分ける trample・硫黄が燃え上がる brimFlare は src/lib/ground.ts（src/game/imports.mjs で読む）
 // 踏み分けた草が戻る regrow と、燃えた硫黄が戻る brimRecover は src/lib/ground.ts（src/game/imports.mjs で読む）
-// TRAP_INFO は src/lib/names.ts（src/game/imports.mjs で読む）
 // 罠を踏んだ時 triggerTrap と、罠を進める updateTraps は src/lib/events.ts（src/game/imports.mjs で読む）
 // 罠と鉄格子を描く drawTraps は src/lib/fixtures.ts（src/game/imports.mjs で読む）
 

@@ -148,6 +148,13 @@ describe('Vite の組み立て（公開用と同じ設定）', () => {
       expect(code).not.toContain('sourceMappingURL');
       expect(code).not.toContain('html_proxy'); // ページの <style> の空の部品（noCssStub）
       expect(readFileSync(join(out, 'index.html'), 'utf8')).toContain('--void:#030209'); // <style> は HTML に残っている
+      // ホーム画面に置ける（homeScreen）：宣言とアイコンを出し、HTML から読む
+      const html = readFileSync(join(out, 'index.html'), 'utf8'),
+        mf = JSON.parse(readFileSync(join(out, 'manifest.webmanifest'), 'utf8'));
+      expect(html).toContain('<link rel="manifest" href="./manifest.webmanifest">');
+      expect(html).toContain('<link rel="apple-touch-icon" href="./icon-192.png">');
+      expect(mf.display).toBe('standalone');
+      for (const ic of mf.icons) expect(readFileSync(join(out, ic.src)).subarray(1, 4).toString()).toBe('PNG');
       const map = findMap(js, maps),
         lines = code.split('\n'),
         cache = {};

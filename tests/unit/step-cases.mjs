@@ -27,6 +27,7 @@ import { fakeAudioClass } from './fake-audio.mjs';
 import { fakeCamera, fakeDom, fakeTimers, fakeUniforms, fnv, hashArr, text } from './fight-cases.mjs';
 import { PLACES, gen, loadEnv } from './gen-places.ts';
 import { swapGlobals } from './ui-cases.mjs';
+import { stateFp } from './case-out.mjs';
 
 /** 移した関数の名前（場合が全部を呼ぶか、step.test.mjs が確かめる） */
 export const NAMES = [
@@ -398,7 +399,7 @@ export async function stepCases(F, seeds, page) {
           msg: msgN - g0,
           timers: timers.st.n - t0,
           audio: fnv(JSON.stringify(alog.slice(a0))),
-          state: fnv(state()),
+          state: stateFp(state(), fnv),
           msgs: msgs.map((m) => m.html).join('|'),
         });
         return ret;
@@ -818,8 +819,8 @@ export async function stepCases(F, seeds, page) {
       }
       // ---- 場面：部屋の出来事（本物の階の出来事と、種類ごとに作った物）
       initEvents();
-      // 部屋の床のマス（像・柱などの通れないマスは除く。本物の階では、溶岩の流れる道や出来事のマスにならない。
-      // 除かないと、像が目覚めてマスの印を変え、火口の溶岩が引かずに残る、のように、本物の階で起きない場面になる）
+      // 部屋の床のマス。通れない所（目覚める前の像など）は外す（迷宮の生成と同じく、溶岩の流れる道は通れない所を通らない。
+      // 像のマスに溶岩が流れると、像が目覚めた時にマスの印が書き換わり、引いても溶岩が残る）
       const rooms = D.rooms,
         roomCells = (ri) => {
           const out2 = [];
@@ -867,6 +868,12 @@ export async function stepCases(F, seeds, page) {
         here.events.push({ type: 'erupt', src: src2, order: cells1.slice(0, 4), state: 0, t: 0.1, k: 0 });
         if (chance(0.5)) here.fovVis[cells1[1]] = here.fovStamp;
         if (chance(0.5)) saved.LEGEND = null;
+        // 場合の前提：溶岩の流れる道（噴き上がりと部屋の出来事の流れ）に、通れない所が無い（迷宮の生成と同じ。通れない所に流れると、引いても残ることがある）。
+        // 崩れていたら、たまたま通る・落ちるのを待たず、ここで止める
+        const solidWay = here.events
+          .filter((e) => e.type === 'erupt' || e.type === 'lavaflow')
+          .flatMap((e) => e.order.filter((i) => D.solid.has(i)));
+        if (solidWay.length) throw new Error(`場合の前提が崩れた：溶岩の流れる道に通れないマス ${solidWay.join(',')}（seed ${s}）`);
         const erupts = here.events.filter((e) => e.type === 'erupt'),
           seen = new Map(erupts.map((e) => [e, new Set([e.state])]));
         // 流れる順の写し（噴き上がりの後も、並びが変わらないか）と、水のマスを1つ（引いた後に水へ戻るか）

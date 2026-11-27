@@ -7,7 +7,7 @@
 // ソースマップは、どの mode でも .build/maps/<mode>/ に置き、出力には残さない（公開しない）。
 import { join } from 'node:path';
 import { defineConfig } from 'vite';
-import { fontCss, inlineAll, legacyGame, noCssStub, privateMaps, testPage } from './tools/vite-plugins.mjs';
+import { fontCss, homeScreen, inlineAll, legacyGame, noCssStub, privateMaps, testPage } from './tools/vite-plugins.mjs';
 
 const root = import.meta.dirname;
 
@@ -40,6 +40,8 @@ export default defineConfig(({ mode }) => ({
     noCssStub(),
     fontCss(),
     mode === 'test' && testPage(),
+    // 公開用（と、単体テストが公開用と同じ設定で試す mode）だけ。テスト版と Artifact 版には入れない
+    mode !== 'test' && mode !== 'artifact' && homeScreen(),
     mode === 'artifact' && inlineAll(),
     privateMaps(join(root, '.build/maps', mode)),
   ],

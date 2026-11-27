@@ -3,6 +3,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { GenEnv, GenResult } from '../../src/lib/generate.ts';
 import { PLACES, type Place, gen as gen0, loadEnv } from './gen-places.ts';
+import { caseOut } from './case-out.mjs';
 
 let env: GenEnv;
 beforeAll(async () => {
@@ -72,6 +73,7 @@ describe('迷宮の生成', () => {
   it('今の迷宮と同じになる（全部の場所の指紋）', () => {
     let all = '';
     for (const pl of PLACES) all += text(gen(202, pl));
+    caseOut('generate', all);
     expect([fnv(all), all.length]).toEqual(['32286f5d', 20044568]);
   }, 30000);
 });

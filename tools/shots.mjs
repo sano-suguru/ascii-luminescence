@@ -7,13 +7,19 @@
 //   --views                     生き物ごとに、角度の一揃い（下の VIEWS の7枚：正面・斜め前・横・後ろ・上から・歩く姿・遠く）を写す。
 //                               図鑑の枠を隠し、体の高さの真ん中を画面の真ん中に置き、真ん中の 540×540 を切り出す。ファイル名は <番号>-<名前>-<向き>.png
 //                               （形や色を直す時に。例：pnpm shots トロル --views）
+//                               あわせて、体が写った範囲（__test.monsterView）を <番号>-<名前>-views.json に書き、7枚を体のまわりで切り抜いて
+//                               大きくし、横に並べた1枚 <番号>-<名前>-views.png も作る（小さな生き物も、細かい所まで見えるように）
+//   --compare <ディレクトリ>    --views と一緒に。前に --views で写した置き場所を渡すと、同じ生き物の前の写真と今の写真を、
+//                               同じ枠（前と今の体の範囲を合わせた物）で切り抜いて上下に並べた <番号>-<名前>-compare.png を作る（上が前、下が今）。
+//                               同じ枠なので、大きさの違いも見える（例：前の版で写す → 直す → pnpm shots ギタイムシ --views --compare <前の置き場所>）
 //   --out <ディレクトリ>        置き場所（既定 tests/out/shots/）
 // 同じコマンドなら、いつも同じ写真になる（テスト用モード）。写す物の組み合わせや順番を変えると、同じ生き物でも写真が少し変わる：
 // 羽ばたきはゲームの時計で動き、時計は写すたびに進む。火花・炎のゆらぎは乱数で決まり、乱数の進み方は前に写した物の描き方で変わる。
 // 背景に漂う粒も、前に写した時のカメラの位置を少し引きずる。
-import { mkdirSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { basename, join, resolve } from 'node:path';
 import { withBrowser, newPage, openTest, advance, frames, arg, OUT } from '../tests/lib.mjs';
+import { cropRect, writeSheet } from './sheet.mjs';
 
 // 写し方は図鑑の形（form）ごとに決める。無い形は DEFAULT。無い欄は、図鑑が生き物の大きさから決める写し方のまま
 //   yaw：0 でこちらを向き、＋でこちらから見て右へ回る（ラジアン）
@@ -61,16 +67,21 @@ const WAIT = 3; // 出してから写すまでのゲームの秒（灯りと姿�
 
 const argv = process.argv.slice(2);
 const usage = (why) => {
-  console.log(`${why}\n使い方：pnpm shots [名前…] [--all] [--bare] [--views] [--out <ディレクトリ>]`);
+  console.log(`${why}\n使い方：pnpm shots [名前…] [--all] [--bare] [--views [--compare <前の置き場所>]] [--out <ディレクトリ>]`);
   process.exit(1);
 };
 const outArg = arg('--out', join(OUT, 'shots'));
 if (!outArg || outArg.startsWith('--')) usage('--out の後に、置き場所のディレクトリを書いてください');
 const outDir = resolve(outArg);
-const names = argv.filter((a, i) => !a.startsWith('--') && argv[i - 1] !== '--out');
+const cmpArg = arg('--compare', null);
+if (argv.includes('--compare') && (!cmpArg || cmpArg.startsWith('--')))
+  usage('--compare の後に、前に --views で写した置き場所を書いてください');
+const cmpDir = cmpArg ? resolve(cmpArg) : null;
+const names = argv.filter((a, i) => !a.startsWith('--') && argv[i - 1] !== '--out' && argv[i - 1] !== '--compare');
 const all = argv.includes('--all'),
   bare = argv.includes('--bare'),
   views = argv.includes('--views');
+if (cmpDir && !views) usage('--compare は --views と一緒に使ってください');
 if (all && names.length) usage(`--all と名前（${names.join('、')}）は一緒に使えません。どちらかにしてください`);
 mkdirSync(outDir, { recursive: true });
 
@@ -101,7 +112,32 @@ await withBrowser(async ({ browser, base }) => {
   };
   for (const e of want) {
     if (views) {
-      for (const { view, opt } of VIEWS) await shot(e, { ...opt, center: true }, `${fileBase(e)}-${view}.png`, VIEW_CLIP);
+      const boxes = {};
+      for (const { view, opt } of VIEWS) {
+        await shot(e, { ...opt, center: true }, `${fileBase(e)}-${view}.png`, VIEW_CLIP);
+        boxes[view] = await pg.evaluate(() => __test.monsterView('__gal')?.screen ?? null);
+      }
+      writeFileSync(`${fileBase(e)}-views.json`, JSON.stringify(boxes));
+      writeSheet(
+        [VIEWS.map(({ view }) => ({ file: `${fileBase(e)}-${view}.png`, rect: cropRect([boxes[view]], VIEW_CLIP) }))],
+        `${fileBase(e)}-views.png`,
+      );
+      console.log(`${fileBase(e)}-views.png`);
+      if (cmpDir) {
+        const old = join(cmpDir, basename(fileBase(e)));
+        if (!existsSync(`${old}-views.json`)) {
+          console.log(`前の写真が無い：${old}-views.json（--compare には、前に --views で写した置き場所を渡す）`);
+          process.exitCode = 1;
+          continue;
+        }
+        const oldBoxes = JSON.parse(readFileSync(`${old}-views.json`, 'utf8'));
+        const rects = Object.fromEntries(VIEWS.map(({ view }) => [view, cropRect([boxes[view], oldBoxes[view]], VIEW_CLIP)]));
+        writeSheet(
+          [old, fileBase(e)].map((b) => VIEWS.map(({ view }) => ({ file: `${b}-${view}.png`, rect: rects[view] }))),
+          `${fileBase(e)}-compare.png`,
+        );
+        console.log(`${fileBase(e)}-compare.png（上が前、下が今）`);
+      }
       continue;
     }
     const { yaw, zoom = 1, pitch = null } = BY_FORM[e.form] || DEFAULT;
