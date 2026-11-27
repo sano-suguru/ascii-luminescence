@@ -278,9 +278,7 @@ describe('生き物の形', () => {
         // 槍は見張りだけ：右腕の点が頭より上に出る
         const spear = b.filter((p) => p.part === 'armR' && p.y > H.c[1] + H.r[1]);
         expect(spear.length > 0).toBe(sentry);
-        // 腰布の色は、見張りとそうでない物で違う。槍の穂（石）は見張りだけ
-        expect(b.some((p) => p.col === (sentry ? C.clothSentry : C.cloth))).toBe(true);
-        expect(b.some((p) => p.col === (sentry ? C.cloth : C.clothSentry))).toBe(false);
+        // 槍の穂（石）は見張りだけ
         expect(b.filter((p) => p.col === C.stone).length).toBe(sentry ? 2 : 0);
       }
   });

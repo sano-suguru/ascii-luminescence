@@ -25,7 +25,7 @@ describe('移す前と同じ', () => {
       body = levelText(all),
       calls = all.flatMap((c) => c.calls);
     caseOut('level', body);
-    expect([fnv(body), body.length]).toEqual(['105f9876', 197069]);
+    expect([fnv(body), body.length]).toEqual(['2c23c1df', 197069]);
     expect(new Set(calls.map((c) => c.name).filter((n) => NAMES.includes(n)))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);
     expect(all.every((c) => c.timers.threw === 0)).toBe(true);

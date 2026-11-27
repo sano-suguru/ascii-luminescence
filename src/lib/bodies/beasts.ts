@@ -2219,10 +2219,8 @@ export const SNAP_HEAD = { c: [0, 1.37, 0.55], r: [0.13, 0.12, 0.13] } as const 
 export const SNAP_COL = {
   /** たてがみ・首の襟・鼻づら・耳・前腕・すね・足・尾の先・棍棒・槍の柄：黒に近い灰（茶の色みを抜き、毛と明るさで分ける） */
   dark: [0.16, 0.14, 0.16],
-  /** 腰布：スナップジョーは赤（砂色の毛と分ける） */
+  /** 腰布：赤（部族の色。見張りも同じ。毛と色みで分け、胴と脚の間に帯を入れる） */
   cloth: [0.8, 0.18, 0.12],
-  /** 腰布：見張りは青緑（赤茶の毛と分ける） */
-  clothSentry: [0.15, 0.55, 0.6],
   /** 牙・爪・首飾り（光のにじみで白い塊にならないように、少しくすませる） */
   bone: [0.78, 0.72, 0.58],
   /** 槍の穂：石の灰色 */
@@ -2339,14 +2337,13 @@ export function snapjawForm(ty: BodyType, sentry: boolean): Body {
     }
   }
   // 腰布：腰のまわりの帯と、前に垂れる布（胴と脚の間に、毛と違う色の帯を入れる）
-  const CLOTH = sentry ? C.clothSentry : C.cloth;
   for (let k = 0; k < 16; k++) {
     const a = (k / 16) * Math.PI * 2,
       p = snapTorsoAt(0.05, a);
-    lit(p.x * 1.12, p.y, p.z * 1.12, '=', 1, 1.0, CLOTH);
+    lit(p.x * 1.12, p.y, p.z * 1.12, '=', 1, 1.0, C.cloth);
   }
   for (let y = 0.62; y >= 0.44; y -= S * 0.7)
-    for (const x of [-0.06, 0, 0.06]) lit(x, y, T.rz(0, false) + 0.03 + (0.66 - y) * 0.2, '#', 1, 0.9, CLOTH);
+    for (const x of [-0.06, 0, 0.06]) lit(x, y, T.rz(0, false) + 0.03 + (0.66 - y) * 0.2, '#', 1, 0.9, C.cloth);
   // 短い尾（毛の房）
   for (let k = 0; k < 4; k++) {
     const f = k / 3;
@@ -2376,7 +2373,8 @@ export function snapjawForm(ty: BodyType, sentry: boolean): Body {
       lit(p.x * 0.85, p.y - 0.03, p.z + 0.03, 'v', 0.8, 1.2, C.bone);
     }
   }
-  // 小さな体は明るく描かれ（1.4 倍）、照準の先ではさらに明るくなる。灯りの近くで白い塊にならないように、目のほかは暗めにする
-  for (const p of pts) if (p.col !== C.eye) p.b *= 0.75;
+  // 小さな体は明るく描かれ（1.4 倍）、照準の先ではさらに明るくなる。灯りの近くで白い塊にならないように、目のほかは暗めにする。
+  // 一番明るい毛（胴・頭・上腕・太もも）は、さらに暗めにする（自分の灯りと部屋の灯りが重なると、毛だけが白くにじむ）
+  for (const p of pts) if (p.col !== C.eye) p.b *= p.col === FURC ? 0.6 : 0.75;
   return pts;
 }
