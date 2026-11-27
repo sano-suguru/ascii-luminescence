@@ -45,6 +45,7 @@ const reach = (pg, sel, sides = ['left', 'right', 'up', 'down']) =>
         bad = [];
       let n = 0;
       const inside = (r, x, y) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+      const shrink = (r) => ({ left: r.left + 1, right: r.right - 1, top: r.top + 1, bottom: r.bottom - 1 });
       const dist = (r, x, y) => Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));
       const all = [...panel.querySelectorAll('button')];
       for (const b of all) {
@@ -62,8 +63,9 @@ const reach = (pg, sel, sides = ['left', 'right', 'up', 'down']) =>
           // 画面の端から 2px（ブラウザが何も返さないことがある）と、パネルの見えている所の外は調べない
           if (x < 2 || y < 2 || x > innerWidth - 2 || y > innerHeight - 2 || !inside(pr, x, y)) continue;
           const hit = document.elementFromPoint(x, y)?.closest('button');
-          // 隣のボタンそのものの上なら、そのボタン（広げた範囲が、隣のボタンを覆わない）
-          const own = all.find((o) => o !== b && inside(o.getBoundingClientRect(), x, y));
+          // 隣のボタンそのものの上なら、そのボタン（広げた範囲が、隣のボタンを覆わない）。
+          // 隣のボタンの端から 1px 以内は、どちらでもよい（文字の位置の小数がブラウザの版で少し違い、端では丸め方でどちらにもなる）
+          const own = all.find((o) => o !== b && inside(shrink(o.getBoundingClientRect()), x, y));
           if (own) {
             if (hit !== own)
               bad.push(
