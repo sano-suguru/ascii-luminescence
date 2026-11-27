@@ -19,7 +19,7 @@
 //   - テスト用モード（?test=1）では動かない（時計が止まっているため）
 import { must } from './array.ts';
 import { chooseLevel, closeAltar } from './panels.ts';
-import { TEST, adv, clock, here, player, saved, ui } from './state.ts';
+import { type Mob, TEST, adv, clock, here, player, saved, ui } from './state.ts';
 import { CELL, MW, TF } from './world.ts';
 
 /** タイトルの［自動で試す］で流す周の数（およそ5分） */
@@ -306,10 +306,10 @@ function cellsAhead(n: number): number[] {
   }
   return out;
 }
-/** 一番近い生き物のほうを向く（照準は合成した指では合わせにくいので、向きだけは直に変える） */
-function faceNearest(): void {
+/** 一番近い生き物（list の中から。撃つ段は、置いた生き物だけ。階に元からいる生き物が近いと、壁の向こうのそれを向いて、置いた物に当たらないため）のほうを向く（照準は合成した指では合わせにくいので、向きだけは直に変える） */
+function faceNearest(list: readonly Mob[] = here.monsters): void {
   let best = Infinity;
-  for (const m of here.monsters) {
+  for (const m of list) {
     const d = Math.hypot(m.x - player.x, m.z - player.z);
     if (!m.dead && !m.ty.critter && d < best) {
       best = d;
@@ -367,7 +367,7 @@ export const AUTO_STEPS: Step[] = [
       const foes = here.monsters.slice(n0),
         hp0 = foes.map((m) => m.hp ?? 0);
       for (let k = 0; k < 3; k++) {
-        faceNearest();
+        faceNearest(foes);
         // 右手で溜めて放つ
         const r = el('#castR'),
           [rx, ry] = mid(r),
@@ -377,7 +377,7 @@ export const AUTO_STEPS: Step[] = [
         await wait(0.5);
         // 左手を続けて押す
         for (let j = 0; j < 5; j++) {
-          faceNearest();
+          faceNearest(foes);
           const l = el('#castL'),
             [lx, ly] = mid(l),
             g = finger(l, lx, ly);
