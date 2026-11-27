@@ -45,6 +45,7 @@ const TY_FORMS: ((ty: BodyType) => Body)[] = [
   beasts.jackalForm,
   beasts.grazerForm,
   beasts.salamanderForm,
+  beasts.iceHoundForm,
   beasts.trollForm2,
   beasts.golemForm2,
   beasts.bogForm2,
@@ -89,8 +90,8 @@ describe('生き物の形', () => {
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
     caseOut('bodies-1', all);
-    expect(all.length).toBe(3798297);
-    expect(fnv(all)).toBe('5bcbce08'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
+    expect(all.length).toBe(4197773);
+    expect(fnv(all)).toBe('415a0e8c'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
   });
   it('主と大きな生き物の形の指紋（形と、形を作る時に見た目の乱数を引く順番が、思わず変わっていない）', () => {
     let all = '';
@@ -192,15 +193,17 @@ describe('生き物の形', () => {
         expect(k).toBeGreaterThan(1.03);
         expect(k).toBeLessThan(1.2);
       }
-      // 背中の氷：どの点も背の表面（胴と同じ式）より下に埋もれない。根もとの点は表面のすぐそば（6本とも）
+      // 背中の氷：どの点も背の表面（胴と同じ式）より下に埋もれない。6本とも、根もとの奥行きに、表面のすぐそばの点がある（浮かない）
       const back = (z: number): number => {
           const r = T.ring((z - T.z0) / (T.z1 - T.z0));
           return r.cy + r.ry;
         },
         ice = b.filter((p) => p.part === 'body' && p.col === C.ice);
       for (const p of ice) expect(p.y - back(p.z)).toBeGreaterThan(-0.045);
-      const roots = ice.filter((p) => p.y - back(p.z) < 0.04);
-      expect(new Set(roots.map((p) => Math.round(p.z * 10))).size).toBeGreaterThanOrEqual(5);
+      for (let q = 0; q < 6; q++) {
+        const z = T.z(0.3 + (0.6 * q) / 5);
+        expect(ice.some((p) => Math.abs(p.z - z) < 0.04 && p.y - back(p.z) < 0.04)).toBe(true);
+      }
     }
   });
   it('氷のハウンド：本物の大きさ（0.8）で、目のまわりは頭の点を空けている（近い所の大きな文字が、斜めから見た目を隠さない。空く幅は、点の間隔が大きさで変わるので、本物の大きさで確かめる）', () => {
