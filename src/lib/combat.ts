@@ -319,8 +319,6 @@ export function rallyOnHit(m: Mob, n: number, how: string): void {
  */
 export function updateRally(dt: number): void {
   if (adv.dead) return;
-  // @ts-expect-error -- 古い JS のまま（使っていない。tools/same-code.mjs が同じ文と見るため）
-  const mn = bodyN('mend');
   if ((player.rally ?? NaN) > 0 && clock.time - (player.lastHurt || -99) > 0.6) {
     player.rally = Math.max(0, (player.rally ?? NaN) - dt * (player.rallyRate || 2));
   }
