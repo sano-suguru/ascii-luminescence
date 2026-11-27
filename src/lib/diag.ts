@@ -6,7 +6,7 @@
 // 公開する時は、capabilities に db（diag は持ち主だけが読み書き）と user を渡す（CLAUDE.md の「Artifact に公開する」）。
 import { nth } from './array.ts';
 import { sndState } from './audio.ts';
-import { autoSt } from './auto.ts';
+import { autoSt, offerAuto } from './auto.ts';
 import { placeKey } from './levels.ts';
 import { adv, fight, gear, ui } from './state.ts';
 import { setTookSink } from './took.ts';
@@ -69,6 +69,8 @@ function device(): Record<string, unknown> {
     requestFullscreen: typeof Reflect.get(el, 'requestFullscreen') === 'function',
     webkitRequestFullscreen: typeof Reflect.get(el, 'webkitRequestFullscreen') === 'function',
     pointerLock: typeof Reflect.get(el, 'requestPointerLock') === 'function',
+    // ページの URL に付いた物（Artifact のリンクに付けた物が、ゲームのページまで届くかを見るため）
+    query: location.search + location.hash,
   };
 }
 
@@ -80,6 +82,8 @@ export async function initDiag(): Promise<void> {
   if (!isUser(user) || !(await user.isOwner())) return;
   const db = await c.use('db');
   if (!isDb(db)) return;
+  // 記録が書けるので、タイトルに［自動で遊ぶ］を出す（src/lib/auto.ts）
+  offerAuto();
   const t0 = Date.now(),
     since = (): number => Math.round((Date.now() - t0) / 100) / 10;
   const doc = db.collection('diag').doc(new Date(t0).toISOString().replace(/[:.]/g, '-'));

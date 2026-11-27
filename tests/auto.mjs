@@ -67,9 +67,10 @@ await withBrowser(async ({ browser, base }) => {
       if (s.miss) errs.push(`段 ${s.k}：${s.miss}`);
       if (!(s.frames > 0)) errs.push(`段 ${s.k}：フレームを数えていない`);
     }
-    const walk = a.steps.find((s) => s.k === 'walk'),
-      look = a.steps.find((s) => s.k === 'look');
-    if (!(walk?.shut >= 1)) errs.push(`レベルアップの画面を閉じていない（${JSON.stringify(walk)}）`);
+    const look = a.steps.find((s) => s.k === 'look'),
+      // 開かせたのは歩く段の間だが、遅い時は、画面が開く前に次の段に移ることがあるので、どの段で閉じてもよい
+      shut = a.steps.reduce((n, s) => n + (s.shut ?? 0), 0);
+    if (!(shut >= 1)) errs.push(`レベルアップの画面を閉じていない（${JSON.stringify(a.steps)}）`);
     if (look?.waited !== 'hidden' || !(look.worst < 20000)) errs.push(`隠れていた間を、フレームの長さに数えた（${JSON.stringify(look)}）`);
     // できごとは新しい50件だけ残るので、終わりのほうの段を見る
     const ev = rec.events.filter((e) => e.k === 'auto').map((e) => e.v);
@@ -85,10 +86,13 @@ await withBrowser(async ({ browser, base }) => {
   if (other !== '1') errs.push('ゲームの物でない名前まで、localStorage に書けない');
   await pg.close();
 
+  // タイトルの［自動で遊ぶ］：持ち主なら出て、押すと始まる（URL に ?auto は付けない。claude.ai はリンクの ?auto をゲームのページに渡さないため）。
   // ［止める］：歩いている途中で押すと、台本が置いた指を離す（スティックが消え、記録は「止めた」）
   const st = await newPage(browser, errs, { width: 750, height: 312 });
   await st.addInitScript(fakeClaude, true);
-  await st.goto(`${base}?auto=quick`, { waitUntil: 'commit', timeout: 120000 });
+  await st.goto(base, { waitUntil: 'commit', timeout: 120000 });
+  await st.waitForSelector('#autoB', { timeout: 90000 });
+  await st.click('#autoB');
   await st.waitForFunction(() => document.getElementById('autobar')?.textContent?.includes('・walk'), null, {
     timeout: 300000,
     polling: 100,
@@ -103,7 +107,17 @@ await withBrowser(async ({ browser, base }) => {
   const sr = (await readDiag(st))?.auto;
   if (!stopped.stick) errs.push('［止める］の後も、台本のスティックが出たまま（指が離れていない）');
   if (sr?.stop !== '止めた') errs.push(`［止める］の記録が ${sr?.stop}`);
+  if (sr?.laps !== 3 || sr?.quick) errs.push(`［自動で遊ぶ］の周の数が ${sr?.laps}（3 のはず）`);
   await st.close();
+
+  // 持ち主でなければ、［自動で遊ぶ］は出ない（診断の記録が書かれる時だけ出す）
+  const guest = await newPage(browser, errs, { width: 750, height: 312 });
+  await guest.addInitScript(fakeClaude, false);
+  await guest.goto(base, { waitUntil: 'commit', timeout: 120000 });
+  await guest.waitForSelector('#enter', { timeout: 90000 });
+  await new Promise((ok) => setTimeout(ok, 2000));
+  if (await guest.evaluate(() => !!document.getElementById('autoB'))) errs.push('持ち主でないのに、［自動で遊ぶ］が出た');
+  await guest.close();
 });
 console.log('page errors:', errs.length ? errs : 'none');
 process.exit(errs.length ? 1 : 0);

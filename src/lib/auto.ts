@@ -1,7 +1,10 @@
 // 自動で遊ぶ（?auto=<周の数>）：本物の iPhone で、人が触らずに速さを確かめるため。決まった台本（AUTO_STEPS）を、ページの中で指の事件を作って、本物の時計で流す。
 // 段ごとのフレームの数・平均・一番遅い1回・遅いフレームの数を autoSt に貯め、診断の記録（src/lib/diag.ts）が欄 auto に書く（Claude が ArtifactData の道具で読む）。
 // tools/auto-run.mjs も、同じ台本をこの環境で、遅さを足して流す。
-//   ?auto=<n>：n 周（1 から 9。3周でおよそ5分）。?auto=quick：短い1周（各段を短くし、階段は1回。tests/auto.mjs が使う）
+// 始め方は2つ：
+//   - タイトルの［自動で遊ぶ］：claude.ai の Artifact の中で、持ち主が開いた時だけ出す（診断の記録が書かれる時。src/lib/diag.ts の initDiag が offerAuto を呼ぶ）。AUTO_LAPS 周。
+//     claude.ai は、Artifact のリンクに付けた ?auto をゲームのページに渡さないので、iPhone ではこちらで始める
+//   - URL の ?auto=<n>：n 周（1 から 9。3周でおよそ5分）。?auto=quick：短い1周（各段を短くし、階段は1回）。tests/auto.mjs と tools/auto-run.mjs が使う
 // 決まり：
 //   - 自動で遊んでいる間は、ゲームの保存（al_ で始まる名前）を localStorage に書かない（autoGuard。伝承・解放・見た生き物・墓・視点・音量などを、
 //     ふだん遊ぶ時の記録に残さないため。ほかの名前は書く。同じページのほかの仕組みを止めないように）。
@@ -19,6 +22,8 @@ import { chooseLevel, closeAltar } from './panels.ts';
 import { TEST, adv, clock, here, player, ui } from './state.ts';
 import { CELL, MW, TF } from './world.ts';
 
+/** タイトルの［自動で遊ぶ］で流す周の数（およそ5分） */
+export const AUTO_LAPS = 3;
 /** 1周目の探索のシード */
 export const AUTO_SEED = 202;
 /** これより長くかかった1フレームを、段の遅いフレームに数える（ミリ秒。診断の記録の slow と同じ） */
@@ -99,6 +104,10 @@ export function autoMode(search: string): { laps: number; quick: boolean } {
  */
 export function autoGuard(): void {
   if (TEST || !autoMode(location.search).laps) return;
+  guardSaves();
+}
+/** ゲームの保存（al_ で始まる名前）を localStorage に書かないようにし、自動で遊んでいる印を付ける */
+function guardSaves(): void {
   autoSt.on = true;
   const game = (k: unknown): boolean => String(k).startsWith('al_');
   try {
@@ -265,18 +274,27 @@ async function walk(sec: number, side = 0, cond?: () => boolean): Promise<boolea
   f.up();
   return hit;
 }
-/** 前のほうの床のマスを n 個（生き物を置く） */
+/**
+ * 前のほうの床のマスを n 個（生き物を置く）。前と左右斜めの3本の向きに、プレイヤーから床が続く所だけを見る（床でないマスに当たったら、その向きはそこで止める。
+ * 壁の向こうの床に置くと、撃っても壁に当たるだけになるため）
+ */
 function cellsAhead(n: number): number[] {
   const D = here.D,
     out: number[] = [];
   if (!D) return out;
-  for (let d = 3; d < 9 && out.length < n; d += 0.7) {
-    for (const s of [-1, 0, 1]) {
+  const open = [true, true, true];
+  for (let d = 0.5; d < 9 && out.length < n; d += 0.35) {
+    for (const [k, s] of [-1, 0, 1].entries()) {
+      if (!open[k]) continue;
       const a = player.yaw + s * 0.5,
         x = player.x - Math.sin(a) * d * CELL * 0.5,
         z = player.z - Math.cos(a) * d * CELL * 0.5,
         i = Math.floor(z / CELL) * MW + Math.floor(x / CELL);
-      if (D.tile[i] === TF && !out.includes(i) && out.length < n) out.push(i);
+      if (D.tile[i] !== TF) {
+        open[k] = false;
+        continue;
+      }
+      if (d >= 3 && !out.includes(i) && out.length < n) out.push(i);
     }
   }
   return out;
@@ -502,10 +520,43 @@ function resumeIfPaused(): void {
   if (ui.menuOpen && document.querySelector('#menu button[data-k="resume"]')) tap('#menu button[data-k="resume"]');
 }
 
-/** 自動で遊ぶ（ページを開いて、ゲームの用意ができてから1回。src/game/30-loop-init.js が呼ぶ）。?auto が無ければ何もしない */
+/** 古い JS から受け取った処理（initAuto が入れる。入るまではタイトルのボタンを押しても始めない） */
+let hooks: AutoHooks | null = null;
+
+/** ゲームの用意ができた時に1回（src/game/30-loop-init.js が呼ぶ）。?auto があれば、そのまま流す */
 export async function initAuto(h: AutoHooks): Promise<void> {
+  hooks = h;
   const m = autoMode(location.search);
   if (TEST || !m.laps || !autoSt.on) return;
+  await runAuto(h, m);
+}
+
+/**
+ * タイトルに［自動で遊ぶ］を出す（持ち主が Artifact を開いた時に、src/lib/diag.ts が呼ぶ）。押すと、ゲームの保存を止めて AUTO_LAPS 周流す。
+ * 迷宮に入ると隠れる（body.started）。テスト用モードと、?auto で流している時は出さない
+ */
+export function offerAuto(): void {
+  if (TEST || autoSt.on || document.getElementById('autoB')) return;
+  const st = document.createElement('style');
+  st.textContent =
+    '#autoB{position:fixed;left:calc(10px + env(safe-area-inset-left,0px));bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:21;' +
+    'font:13px "M PLUS 1 Code","BIZ UDGothic",monospace;color:#bfe4ff;background:rgba(4,3,12,.7);border:1px solid #456;border-radius:4px;padding:10px 10px}' +
+    'body.started #autoB{display:none}';
+  document.head.appendChild(st);
+  const b = document.createElement('button');
+  b.id = 'autoB';
+  b.textContent = `自動で遊ぶ（${AUTO_LAPS}周・速さを測る）`;
+  b.onclick = () => {
+    if (!hooks || autoSt.on || ui.started) return;
+    b.remove();
+    guardSaves();
+    void runAuto(hooks, { laps: AUTO_LAPS, quick: false });
+  };
+  document.body.appendChild(b);
+}
+
+/** 台本を流す */
+async function runAuto(h: AutoHooks, m: { laps: number; quick: boolean }): Promise<void> {
   autoSt.laps = m.laps;
   autoSt.quick = m.quick;
   requestAnimationFrame(tickFrame);
