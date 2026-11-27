@@ -41,7 +41,11 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
  * 一時的な作業場所で pnpm exec を走らせると、pnpm が走らせる前に依存を確かめ、記録した場所（本体）と違うので入れ直し、
  * リンクした本体の node_modules を、一時的な作業場所から見た道で張り直してしまう（作業場所を消すと、本体の three などが切れる）
  */
-export const vitestCmd = (args) => [process.execPath, [join(ROOT, 'node_modules/vitest/vitest.mjs'), 'run', ...args]];
+export const vitestCmd = (args) => {
+  const dir = join(ROOT, 'node_modules/vitest'),
+    bin = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).bin;
+  return [process.execPath, [join(dir, typeof bin === 'string' ? bin : bin.vitest), 'run', ...args]];
+};
 /** node_modules の一番上（@scope の中も）のリンクの行き先（前の版を走らせる前と後で比べ、本体の node_modules が張り直されていないか確かめる） */
 export function linkSnapshot(dir) {
   const out = {};
@@ -329,6 +333,7 @@ function main() {
   vitest(ROOT, dirs.new);
   const tmp = mkdtempSync(join(tmpdir(), 'al-case-diff-')),
     links0 = linkSnapshot(join(ROOT, 'node_modules'));
+  let moved = [];
   const git = (...a) => execFileSync('git', a, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
   try {
     git('worktree', 'add', '--detach', tmp, 'HEAD');
@@ -347,12 +352,16 @@ function main() {
       rmSync(tmp, { recursive: true, force: true });
       git('worktree', 'prune');
     }
+    // 前の版が例外で止まった時も確かめる
+    moved = linkChanges(links0, linkSnapshot(join(ROOT, 'node_modules')));
+    if (moved.length) {
+      console.error(
+        `本体の node_modules のリンクが変わった（${moved.slice(0, 5).join('・')} など ${moved.length} 個）。pnpm install --frozen-lockfile で直す`,
+      );
+      process.exitCode = 1;
+    }
   }
-  const moved = linkChanges(links0, linkSnapshot(join(ROOT, 'node_modules')));
-  if (moved.length)
-    throw new Error(
-      `本体の node_modules のリンクが変わった（${moved.slice(0, 5).join('・')} など ${moved.length}）。pnpm install --frozen-lockfile で直す`,
-    );
+  if (moved.length) return;
   const text = compareDirs(dirs.old, dirs.new);
   writeFileSync(join(out, 'summary.txt'), text);
   console.log('\n' + text + `\n（書き出しは ${dirs.old} と ${dirs.new}、まとめは ${join(out, 'summary.txt')}）`);
