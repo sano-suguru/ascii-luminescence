@@ -117,6 +117,13 @@ export function summarize(a, b) {
   return { lines, total: Math.max(A.length, B.length), paths, firsts };
 }
 
+/** 伝言の HTML から印を除いた文。< で分け、それぞれの > までを捨てる（正規表現の置き換えと違い、結果に < が残らない） */
+export const plainText = (html) =>
+  html
+    .split('<')
+    .map((p, i) => (i ? p.slice(p.indexOf('>') + 1) : p))
+    .join('');
+
 /** まとめを文にする */
 export function report(name, s, { maxPaths = 25, maxFirsts = 6 } = {}) {
   if (!s.lines) return `== ${name}：同じ（${s.total} 行）\n`;
@@ -131,12 +138,8 @@ export function report(name, s, { maxPaths = 25, maxFirsts = 6 } = {}) {
   for (const f of s.firsts.slice(0, maxFirsts)) {
     r += `    ${f.where}\n      前：${short(f.old)}\n      後：${short(f.new)}\n`;
     if (f.before) r += `      手前：${short(f.before, 160)}\n`;
-    // 呼び出しの中の違いなら、その時の伝言の終わり（何が起きた所か。例：〜を倒した）。印（HTML）を除き、残った < > も消す
-    if (f.msgs)
-      r += `      伝言：…${f.msgs
-        .replace(/<[^>]*>/g, '')
-        .replace(/[<>]/g, '')
-        .slice(-80)}\n`;
+    // 呼び出しの中の違いなら、その時の伝言の終わり（何が起きた所か。例：〜を倒した）。印（HTML）を除く
+    if (f.msgs) r += `      伝言：…${plainText(f.msgs).slice(-80)}\n`;
   }
   if (s.firsts.length > maxFirsts) r += `    …ほか ${s.firsts.length - maxFirsts} 行\n`;
   return r;

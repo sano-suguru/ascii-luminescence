@@ -1,6 +1,6 @@
 // tools/case-diff.mjs の単体テスト（場合の書き出しを比べて、まとめる所。テストを走らせる所は、本物の書き出しで手で確かめた）
 import { describe, expect, it } from 'vitest';
-import { report, summarize } from '../../tools/case-diff.mjs';
+import { plainText, report, summarize } from '../../tools/case-diff.mjs';
 import { stateFp } from './case-out.mjs';
 
 const line = (calls) => JSON.stringify(calls);
@@ -50,6 +50,11 @@ describe('場合の書き出しを比べる', () => {
     );
     expect(s.firsts[0]?.where).toBe('行0[0].mons[1]{q}.hp');
     expect([...s.paths.keys()]).toEqual(['[].mons{q}.hp', '[].mons.length']);
+  });
+  it('伝言の HTML から印を除く（入れ子や閉じていない印でも、< は残らない）', () => {
+    expect(plainText('<b style="c">q</b>ギタイムシを倒した。')).toBe('qギタイムシを倒した。');
+    expect(plainText('a<<script>b>c<d')).toBe('ab>cd'); // 閉じていない < は、その < だけを捨てる
+    expect(plainText('<scr<script>ipt>x')).not.toContain('<');
   });
   it('JSON でない行は、最初に違う文字の場所と手前を出す。行が無い時も数える', () => {
     const s = summarize('q 3fa6:35:0\nz', 'q 2415:162:0');
