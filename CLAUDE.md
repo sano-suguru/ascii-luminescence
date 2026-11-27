@@ -36,7 +36,7 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      light：灯りの計算、runes：ルーンの定義 RUNE_DEF・性質の効き目 RES・特性・反応・手の枠・ルーンの名前と色と付けられるか（表だけに頼る物）、
                      gear：手と持ち物の処理（makeRune・randomRuneType・effHand・isTwo・canPutAt・武器を持つ equipWeapon・空いた枠 freeSlotFor・墓のルーン graveRune・術の中身 specOf と型 Spec・探索の始めの手に戻す resetRunes・枠を開ける applyOpen など。状態 gear に頼る物）、progress：経験・伝承・解放・加護 BLESS（表。状態の入れ物は読まない）、
                      unlocks：解放の確かめ（unlocked・lockedOf・weaponPool。状態 saved に頼る物）と試練（trialOn）と使える伝承 loreLeft、altars：祭壇とルーンを置く（階ごとに置く placeRunesForLevel・mainPathAltars、祭壇の中身 altarFill・番人・鍛え方・泉・石碑のそばか nearStele・祭壇の画面の1行と説明、拾ったルーンを手か袋に入れる takeRune）、pickup：足元の物を拾う pickupItems・物を取る grabItem・宝物庫の褒美を取った時 vaultSprung・落石 updateRockfall・空の枠を拾った時 openSlot・伝説の物を手にした時 pickLegend、
-                     levels：階のシード levelSeed と最深部か isFinal と特別な階の場所 interAt・interAfter と、階を移る処理（新しい階 newLevel・次の場所へ進む advance・場所の名前 placeKey・階を作る generate・最深部の支度 setupFinal・最深部を進める updateFinal・王の影を立ち上がらせる spawnFinalBoss・層の名前 showStratum・部屋の出来事 initEvents・見えるマス computeFOV・階の中の出来事 checkEvents・層で強くなる strataGrowth・選ばれなかった枠 settleSlotPick・死んだ時 die・新しい探索 newRun）、monsters：生き物の処理（強さ statOf・作る makeMonster・歩いて行けるか canStep・次に向かうマス chooseNext・critterStep・猟犬が追う匂い houndScent・近くの火 fireNear・敵か hostile・攻撃の的か foe・呼び出す summon・生き物の動き updateMonster）と加護の段 BL、
+                     levels：階のシード levelSeed と最深部か isFinal と特別な階の場所 interAt・interAfter と、階を移る処理（新しい階 newLevel・次の場所へ進む advance・場所の名前 placeKey・階を作る generate・最深部の支度 setupFinal・最深部を進める updateFinal・王の影を立ち上がらせる spawnFinalBoss・層の名前 showStratum・部屋の出来事 initEvents・見えるマス computeFOV・階の中の出来事 checkEvents・層で強くなる strataGrowth・選ばれなかった枠 settleSlotPick・死んだ時 die・新しい探索 newRun）、monsters：生き物の処理（強さ statOf・作る makeMonster・歩いて行けるか canStep・次に向かうマス chooseNext・critterStep・猟犬が追う匂い houndScent・近くの火 fireNear・敵か hostile・攻撃の的か foe・呼び出す summon・生き物の動き updateMonster・視界の中でも体が描かれないか bodyUnseen（m.visible と目の慣れが使う））と加護の段 BL、
                      ground：地面と小さな生き物（小さな生き物の動き updateCritter・掃除機と修復機の仕事 machineWork・水しぶき splash・火をつける ignite・マスの絵を描画に渡す uploadCells・
                      氷が割れる crackIce・茂み tallAt・trample・硫黄が燃え上がる brimFlare・冷気 chillArea・凍らせた水が溶ける updateFrozen・階に入った時の燃える物のマス initFire・火を進める stepFire・ガスが広がる stepGas・踏み分けた茂みが戻る regrow・燃えた硫黄が戻る brimRecover）、hands：手元の武器の文字、
                      creatures：生き物の表 MTYPES（探索の途中で種類が足される）と強さの表 MSTAT、
@@ -196,9 +196,9 @@ tests/unit/view.test.mjs  カメラから見て描く・調べる処理（生き
                      迷宮の生成を変えると、この指紋も変わる）を使う
 tests/unit/motes.test.mjs  粒子を動かす処理（塵・沼のガスの粒・川のさざ波・粒子と火の粉、GPU に渡す数）の単体テスト。たくさんの場合を作る motes-cases.mjs
                      （Node で本物の迷宮を生成し、降る物・川のマス・ガスの濃さ（境の値と上限に届く沼）・火の明かり・遠い塵や天井より上の塵・動き方ごとの粒子（尽きる物・数の上限の近く）を変えて、
-                     何フレームか進める。迷宮の生成を変えると、この指紋も変わる）を使う ＋ 濃い沼でガスの粒が上限に届いても、プレイヤーに近い所から埋まるか
+                     何フレームか進める。迷宮の生成を変えると、この指紋も変わる）を使う ＋ 濃い沼でガスの粒が上限に届いても、プレイヤーに近い所から埋まるか ＋ 上限に届かない時は、ガスのあるマスごとに濃さどおりの数の粒が出るか
 tests/unit/camera.test.mjs  霧と目の慣れ・3人称の自分の姿・岩の中か・岩の断面の単体テスト。たくさんの場合を作る camera-cases.mjs（Node で本物の迷宮を生成し、層の種類と洞窟の部屋・
-                     近くの生き物と備品（溶岩・火口）・図鑑の目を合わせる段・1人称と3人称・目の高さ・速さ・転がる・カメラの位置を変える。偽の uniform を使う。迷宮の生成を変えると、この指紋も変わる）を使う ＋ 描かれない生き物（見えない・化けている・潜ったうなぎ・沼に沈んだ・3 より遠い茂みの中）を、目の慣れの明るさに数えないか
+                     近くの生き物と備品（溶岩・火口）・図鑑の目を合わせる段・1人称と3人称・目の高さ・速さ・転がる・カメラの位置を変える。偽の uniform を使う。迷宮の生成を変えると、この指紋も変わる）を使う ＋ 描かれない生き物（見えない・化けている・潜ったうなぎ・沼に沈んだ・3 より遠い茂みの中）を、目の慣れの明るさに数えないか ＋ bodyUnseen の境（うなぎ 0.08・沼 0.25・茂み 3）
 tests/unit/minimap.test.mjs  ミニマップ（キャンバスの大きさと描く処理）の単体テスト ＋ 燃えている枯れ草と飾りのマスは火、燃え尽きた枯れ草は灰で描くか。たくさんの場合を作る minimap-cases.mjs（偽の描き手が、欄に書いた値と呼んだ関数を全部記録する。
                      Node で本物の迷宮を生成し、地面・液体・扉・火・灰・毒の霧・備品・床の物・罠・鉄格子・クモの巣・生き物を散らし、見たマスと今見えているマスとプレイヤーの位置を変える。
                      迷宮の生成を変えると、この指紋も変わる）を使う

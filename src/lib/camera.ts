@@ -4,9 +4,9 @@ import { must, nth } from './array.ts';
 import { headPos } from './aim.ts';
 import { buildForm } from './bodies/build.ts';
 import { G } from './glyphs.ts';
-import { tallAt } from './ground.ts';
 import { cellLight } from './lightmap.ts';
 import { lerpAngle } from './math.ts';
+import { bodyUnseen } from './monsters.ts';
 import { AVATAR_TY } from './names.ts';
 import { dyn } from './particles.ts';
 import { clamp } from './rng.ts';
@@ -29,16 +29,8 @@ export function updateAtmosphere(dt: number): void {
   for (const m of here.monsters) {
     const d = Math.hypot(m.x - player.x, m.z - player.z);
     if (d >= 5) continue;
-    // 描かれない生き物は、目に入る明るさに数えない（近づいたのが暗さで分からないように）：見えない生き物・化けている生き物・
-    // 水に潜ったうなぎ・沼に沈んだ生き物・3 より遠い茂みの中の生き物（見えない条件は src/lib/monsters.ts の updateMonster の m.visible と同じ）
-    if (
-      m.ty.invisible ||
-      m.hidden ||
-      (m.ty.form === 'eel' && !((m.surf ?? 0) > 0.08)) ||
-      (m.ty.habitat === 'bog' && !((m.rise ?? 0) > 0.25)) ||
-      (tallAt(m.cz * MW + m.cx) && d > 3)
-    )
-      continue;
+    // 描かれない生き物（src/lib/monsters.ts の bodyUnseen。視界の外かは見ない）と化けている生き物は、目に入る明るさに数えない（近づいたのが暗さで分からないように）
+    if (m.hidden || bodyUnseen(m, d)) continue;
     B += (1 - d / 5) ** 2 * 0.7;
   }
   for (const f of here.fixtures) {

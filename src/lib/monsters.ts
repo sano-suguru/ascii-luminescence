@@ -358,6 +358,16 @@ export function summon(key: string, cell: number): Mob {
   return m;
 }
 /**
+ * 視界の中にいても、体が描かれない生き物か（プレイヤーまでの距離 dp）：見えない種類・水に潜ったうなぎ（顔を出して 0.08 を越えるまで）・
+ * 沼に沈んだ生き物（浮かび上がって 0.25 を越えるまで）・3 より遠い茂みの中の生き物。updateMonster の m.visible と、
+ * 目の慣れ（src/lib/camera.ts の updateAtmosphere）が、近くの生き物を明るさに数えるかに使う
+ */
+export const bodyUnseen = (m: Mob, dp: number): boolean =>
+  !!m.ty.invisible ||
+  (m.ty.form === 'eel' && !(m.surf > 0.08)) ||
+  (m.ty.habitat === 'bog' && !((m.rise || 0) > 0.25)) ||
+  (tallAt(m.cz * MW + m.cx) && dp > 3);
+/**
  * 生き物の動き（毎フレーム。もとは src/game/13-creatures.js）：沼と深みの物が姿を現す、見えるか、茂みと硫黄、小さな生き物、ノームの昔話、
  * 気づき（明るい所ほど遠くから）と眠りから覚める、飛ぶ物・待つ物・歩く物の動き、向きと歩き、うなぎ、膨れた物が弾ける、剣を操る者の剣、
  * 初めて見た時の伝言、近接の攻撃、重い足音、溶岩と火の猟犬の火、氷の猟犬、忘れられた獣、光の尾
@@ -391,12 +401,7 @@ export function updateMonster(m: Mob, dt: number, t: number): void {
       }
     }
   }
-  m.visible =
-    inView &&
-    !ty.invisible &&
-    (ty.form !== 'eel' || m.surf > 0.08) &&
-    (ty.habitat !== 'bog' || (m.rise || 0) > 0.25) &&
-    !(tallAt(cell) && dp > 3);
+  m.visible = inView && !bodyUnseen(m, dp);
   if (tallAt(cell) && !ty.flier && m.moving > 0.5 && mr() < dt * 0.5) trample(cell);
   if (level().surface[cell] === SF_BRIM && !ty.flier && m.moving > 0.5) brimFlare(cell);
   if (ty.critter) {

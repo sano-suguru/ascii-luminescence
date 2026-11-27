@@ -31,6 +31,53 @@ describe('移す前と同じ', () => {
 });
 
 describe('ガスの粒', () => {
+  it('上限に届かない時は、ガスのあるマスごとに、濃さどおりの数の粒が、そのマスに出る（置く順番によらない）', async () => {
+    const keep = { D: here.D, gasAny: blaze.gasAny, x: player.x, z: player.z },
+      arrays = [A.ptPos, A.ptCol, A.ptSize, A.ptGly].map((a) => [a, a.slice()]);
+    try {
+      const D = gen(await loadEnv(), 4321, PLACES[0]).level;
+      here.D = D;
+      const pcx = Math.floor(MW / 2),
+        pcz = Math.floor(MH / 2);
+      player.x = (pcx + 0.5) * CELL;
+      player.z = (pcz + 0.5) * CELL;
+      // まばらなガス（境の値も）：まわり 12 マスの四角の中と外
+      D.gas.fill(0);
+      const VALS = [0.0399, 0.04, 0.1, 0.15, 0.2, 0.35, 0.36, 0.9];
+      for (let k = 0; k < 160; k++) {
+        const cx = pcx - 14 + ((k * 7) % 29),
+          cz = pcz - 14 + ((k * 13) % 29);
+        D.gas[cz * MW + cx] = VALS[k % VALS.length];
+      }
+      blaze.gasAny = true;
+      F.updateGasPoints(1.5);
+      const want = new Map(),
+        got = new Map();
+      let total = 0;
+      for (let cz = pcz - 12; cz <= pcz + 12; cz++)
+        for (let cx = pcx - 12; cx <= pcx + 12; cx++) {
+          const v = D.gas[cz * MW + cx];
+          if (v < 0.04) continue;
+          const n = v > 0.35 ? 3 : v > 0.15 ? 2 : 1;
+          want.set(cz * MW + cx, n);
+          total += n;
+        }
+      expect(total).toBeLessThan(GAS_N);
+      for (let j = DUST_N; j < P0; j++) {
+        if (!(A.ptSize[j] > 0)) continue;
+        const c = Math.floor(A.ptPos[j * 3 + 2] / CELL) * MW + Math.floor(A.ptPos[j * 3] / CELL);
+        got.set(c, (got.get(c) ?? 0) + 1);
+      }
+      expect([...got].sort((a, b) => a[0] - b[0])).toEqual([...want].sort((a, b) => a[0] - b[0]));
+    } finally {
+      Object.assign(here, { D: keep.D });
+      blaze.gasAny = keep.gasAny;
+      player.x = keep.x;
+      player.z = keep.z;
+      for (const [a, copy] of arrays) a.set(copy);
+    }
+  });
+
   it('濃い沼で GAS_N に届いても、プレイヤーのまわりは近い所から埋まる（足元と南側も描く）', async () => {
     const keep = { D: here.D, gasAny: blaze.gasAny, x: player.x, z: player.z },
       arrays = [A.ptPos, A.ptCol, A.ptSize, A.ptGly].map((a) => [a, a.slice()]);

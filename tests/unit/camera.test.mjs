@@ -9,6 +9,7 @@ import { gfx, here, player, ui, vfx } from '../../src/lib/state.ts';
 import { CELL, MW, SF_FOLIAGE, TF } from '../../src/lib/world.ts';
 import { PLACES, gen, loadEnv } from './gen-places.ts';
 import * as F from '../../src/lib/camera.ts';
+import { bodyUnseen } from '../../src/lib/monsters.ts';
 import { cameraCases } from './camera-cases.mjs';
 import { caseOut } from './case-out.mjs';
 
@@ -98,6 +99,31 @@ describe('目の慣れ', () => {
       Object.assign(gfx, { U: keep.U, finalPass: keep.fp });
       Object.assign(vfx, { expo: keep.expo, flash: keep.flash });
       Object.assign(ui, { gallery: keep.gallery, camMode: keep.camMode });
+    }
+  });
+});
+
+describe('描かれない生き物（bodyUnseen。m.visible と目の慣れが使う）', () => {
+  it('見えない種類・うなぎ（0.08）・沼の生き物（0.25）・茂み（3）の境', async () => {
+    const keep = { D: here.D };
+    try {
+      const D = gen(await loadEnv(), 99, PLACES[0]).level;
+      here.D = D;
+      const at = (ty, extra = {}) => ({ x: 0, z: 0, cx: 5, cz: 5, ty, surf: 0, ...extra });
+      const eel = Object.values(MTYPES).find((t) => t.form === 'eel');
+      D.surface[5 * MW + 5] = 0;
+      expect(bodyUnseen(at(MTYPES['r']), 1)).toBe(false);
+      expect(bodyUnseen(at(MTYPES['P']), 1)).toBe(true);
+      expect(bodyUnseen(at(eel, { surf: 0.08 }), 1)).toBe(true);
+      expect(bodyUnseen(at(eel, { surf: 0.0801 }), 1)).toBe(false);
+      expect(bodyUnseen(at(MTYPES['B'], { rise: 0.25 }), 1)).toBe(true);
+      expect(bodyUnseen(at(MTYPES['B'], { rise: 0.2501 }), 1)).toBe(false);
+      expect(bodyUnseen(at(MTYPES['B']), 1)).toBe(true);
+      D.surface[5 * MW + 5] = SF_FOLIAGE;
+      expect(bodyUnseen(at(MTYPES['r']), 3)).toBe(false);
+      expect(bodyUnseen(at(MTYPES['r']), 3.01)).toBe(true);
+    } finally {
+      here.D = keep.D;
     }
   });
 });
