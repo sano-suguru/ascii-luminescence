@@ -14,7 +14,7 @@
 // 数の違い（後 − 前）・行ごとの最初の違い。状態は欄ごとの指紋になる（stateFp）ので、どの欄・どの生き物の欄が違うかまで見える。
 // --update が書き換えるのは、caseOut の呼び出しから 4 行以内の toEqual(…)・toBe(…) の行で、テストが期待していた値がその行の値と同じ時だけ
 // （そのほかの失敗は書き出すだけで、触らない）。1つのテストに指紋が並ぶ時（長さと指紋を別の行で確かめる、など）は、前の行が落ちると後の行まで進まないので、
-// 落ちる指紋が無くなるまで、最大 4 回走らせ直す。
+// 落ちる指紋が無くなるまで、最大 4 回走らせ直す。走らなかったファイル（構文の誤りなど）も、書き換えなかった失敗として出す。書き換えたファイルは最後に整形する。
 import { spawnSync, execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -197,7 +197,15 @@ export function applyFix(src, line, msg) {
 function update(files) {
   const json = join(ROOT, 'tests/out/case-diff/update.json');
   mkdirSync(dirname(json), { recursive: true });
+  const changed = new Set();
+  let total = 0;
+  // 書き換えた行は、値の桁が増えて行が長くなりうるので、最後に整形する
+  const finish = () => {
+    if (changed.size) spawnSync('pnpm', ['exec', 'oxfmt', ...changed], { cwd: ROOT, stdio: 'ignore' });
+  };
   for (let round = 1; round <= 4; round++) {
+    // 前の結果を読まないように、走らせる前に消す（Vitest が書かずに終わったら、止める）
+    rmSync(json, { force: true });
     const r = spawnSync(
       'pnpm',
       ['exec', 'vitest', 'run', '--reporter=json', `--outputFile=${json}`, ...files.map((f) => `tests/unit/${f}`)],
@@ -208,10 +216,17 @@ function update(files) {
       },
     );
     if (r.error) throw r.error;
+    if (!existsSync(json)) {
+      finish();
+      throw new Error(`Vitest が結果を書かずに終わった：\n${(r.stderr || r.stdout || '').slice(-2000)}`);
+    }
     const res = JSON.parse(readFileSync(json, 'utf8'));
     let fixed = 0;
     const left = [];
-    for (const f of res.testResults)
+    for (const f of res.testResults) {
+      // 読み込めなかったファイル（構文の誤り・読み込みの失敗など）は、中の結果が無く、ファイルの失敗だけが残る
+      if (f.status === 'failed' && !f.assertionResults.some((a) => a.status === 'failed'))
+        left.push(`${f.name.replace(ROOT + '/', '')}：ファイルが走らなかった\n    ${String(f.message ?? '').split('\n')[0]}`);
       for (const a of f.assertionResults) {
         if (a.status !== 'failed') continue;
         const msg = String(a.failureMessages?.[0] ?? ''),
@@ -220,19 +235,24 @@ function update(files) {
           out = at ? applyFix(src, Number(at[1]), msg.split('\n')[0] ?? '') : { why: '落ちた行が分からない' };
         if (out.src !== undefined) {
           writeFileSync(f.name, out.src);
+          changed.add(f.name);
           fixed++;
           console.log(`  書き換えた：${f.name.replace(ROOT + '/', '')}:${at?.[1]}  ${msg.split('\n')[0]}`);
         } else left.push(`${f.name.replace(ROOT + '/', '')}「${a.title}」：${out.why}\n    ${msg.split('\n')[0]}`);
       }
+    }
+    total += fixed;
     if (!fixed) {
+      finish();
       if (left.length) {
         console.log(`\n書き換えなかった失敗（${left.length}）：\n  ` + left.join('\n  '));
         process.exitCode = 1;
-      } else console.log(`指紋のテストは全部通る（${round - 1} 回書き換えた）`);
+      } else console.log(`指紋のテストは全部通る（指紋を ${total} か所書き換えた）`);
       return;
     }
   }
-  console.log('4 回書き換えても、まだ落ちる指紋がある。もう一度走らせて確かめる');
+  finish();
+  console.log(`4 回走らせ直しても、まだ落ちる指紋がある（指紋を ${total} か所書き換えた）。もう一度走らせて確かめる`);
   process.exitCode = 1;
 }
 
