@@ -41,7 +41,7 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      氷が割れる crackIce・茂み tallAt・trample・硫黄が燃え上がる brimFlare・冷気 chillArea・凍らせた水が溶ける updateFrozen・階に入った時の燃える物のマス initFire・火を進める stepFire・ガスが広がる stepGas・踏み分けた茂みが戻る regrow・燃えた硫黄が戻る brimRecover）、hands：手元の武器の文字、
                      creatures：生き物の表 MTYPES（探索の途中で種類が足される）と強さの表 MSTAT、
                      strata：層・テーマ・特別な階・支道と異界の中身・地形・群れ、noise：ノイズ（種は setNoiseSeed）、vaults：洞窟と宝物庫の絵と壁の絵 ARTS、
-                     shaders：描画のシェーダーのソースと、描画用の配列の大きさ、title：タイトルのロゴ、hud：表示の大きさ（ミニマップ・装備の画面など）、minimap：ミニマップ（キャンバスの大きさを画面の倍率に合わせる sizeMap・描く drawMap。今見えているマスの色を here.mem に覚える）、
+                     shaders：描画のシェーダーのソースと、描画用の配列の大きさ、title：タイトルのロゴ、hud：表示の大きさ（ミニマップ・装備の画面など）と頭の上の印の高さ（MARK_H・markHeight）、minimap：ミニマップ（キャンバスの大きさを画面の倍率に合わせる sizeMap・描く drawMap。今見えているマスの色を here.mem に覚える）、
                      names：名前と説明の表（見た時の説明・罠・伝説の物・図鑑の主・図鑑で眠っている間の説明 GALLERY_SLEEP・部屋の仕掛けの伝言 MACHINE_INFO）、sound：音の小さな表と道具、
                      audio：音を鳴らす（Web Audio。音の部品（タイトルを出した時に先に作って止めておく sndPrep、迷宮に入る時などに鳴らし始める sndInit、状態 sndState）・効果音・術を放つ音 castSound・まわりの音 sndUpdate。状態 SND に頼る物）、log：伝言 msg、hotbar：下の HUD renderHotbar（指の操作の [持ち替え] の出し分けも）と持ち替えられるビルド buildsHave、save：保存 saveSet・saveMeta と忘れられた獣の記録 loadBeasts・recordBeast、
                      inventory：装備の画面 renderInv（中のボタンの処理・ビルドの呼び出し applyBuild も）と、開け閉め setInv・付け替えの詠唱 startSwap、
@@ -95,13 +95,17 @@ tools/where.mjs      組み立てた JS の場所 → src/game/ のどのファ�
 tools/map.mjs        ゲーム本体の地図（ファイルごとの行の数と見出し）
 tools/serve.mjs      静的ファイルの小さなサーバー（テストでは CORS の見出しを付ける。サンドボックスの iframe は起源が null になり、付けないと JS・CSS・フォントを読めない）
 tools/shots.mjs      図鑑の生き物を、見やすい角度で写す（pnpm shots。向き・寄る引く・見下ろす角度は形ごとの表。--views で、生き物ごとに角度の一揃い（正面・斜め前・横・後ろ・上から・歩く姿・遠くの7枚）と、
-                     7枚を体のまわりで切り抜いて大きくし横に並べた1枚。--compare で、前に写した物と同じ枠で上下に並べた1枚。写真は tests/out/shots/）
+                     7枚を体のまわりで切り抜いて大きくし横に並べた1枚。--compare で、前に写した物と同じ枠で上下に並べた1枚。写真は tests/out/shots/。切り抜いて並べる処理は tools/sheet.mjs）
 tools/case-diff.mjs  指紋を取る単体テストの「場合の書き出し」を、前の版（--rev、既定 origin/main）の src/ と今の src/ で比べ、どのテストの、どの呼び出し・どの生き物の・どの欄が違うかと、
                      行ごとの最初の違いをまとめる（指紋を作り直す前に、違いがねらった所とそれに続く物だけかを確かめる。テストは書き出しの道具 tests/unit/case-out.mjs を使う。
                      まとめは tests/out/case-diff/summary.txt。2分ほど）。単体テストは tests/unit/case-diff.test.mjs
 tools/feel.mjs       手触りの試し打ち（node tools/feel.mjs [aim|walk]。人の指のくせを仮に置いた自動の操作で、750×312 のスマホの真似で課題をやらせ、設定ごとの成績を比べる。
                      狙う：見回す速さ（--look）と合わせる幅（--win。照準の助けが効く角度を比べる時に）ごとの、向きを合わせるまでの時間・行き過ぎ・持ち替え。歩く：8方向とアナログのスティックの、道なりに着くまでの時間・壁に押し当てた割合・
                      道からのずれ。指のくせの値はファイルの頭の HAND。比べ合いにだけ使い、気持ちよさは本物の指で確かめる。CI には入れない。結果は tests/out/feel/summary.json）
+tools/field.mjs      生き物を本物の階（既定は深さ 1 と 3）に置き、向かってくるところを 4m・3m・2.5m で写し、3m ほどで照準を合わせた1枚も写す（pnpm field <名前>。照準が当たると明るく描くので、ふだんは少し横を見る）。
+                     体のまわりで切り抜いて並べた <名前>-field.png。--rev <版> で、src/ だけを前の版にした一時的な作業場所でも写し、階ごとに前・今を同じ枠で上下に並べる。写真は tests/out/field/。
+                     見た目を直す時の最後の確かめ（迷宮の灯りの下では図鑑より明るく見える）。主・忘れられた獣は pnpm lords
+tools/sheet.mjs      写真を体のまわり（__test.monsterView の画面の範囲）で切り抜いて大きくし、枡に並べた1枚にする（cropRect・writeSheet。shots.mjs と field.mjs が使う）
 tools/lords.mjs      主たちを本当にいる場所（支道の奥の階・最深部）に置き、プレイヤーの目の高さから写す（pnpm lords。主の体が描かれた画面の範囲・はみ出し・
                      主の体が足した眩しい画素の割合を出す。写真・眩しい所を赤く塗った写真・summary.json は tests/out/lords/）
 tools/transitions.mjs  場面が切り替わる時の確かめ（node tools/transitions.mjs [--rate 1,4]。Artifact 版をテスト用モードでなく 750×312 で開き、偽の window.claude の持ち主として、
@@ -110,7 +114,7 @@ tools/transitions.mjs  場面が切り替わる時の確かめ（node tools/tran
                      時間は CPU で描くこの環境の値。CI には入れない（数分かかる）。記録は tests/out/transitions/）
 tools/diag-report.mjs  診断の記録を表にする（node tools/diag-report.mjs <ファイルかフォルダ…>。ArtifactData の道具の list に out_dir を付けて保存した JSON。
                      音の部品の移り変わり・かかった時間の名前ごとの回数と中央と最大・遅いフレームを近くの処理ごとに・時刻の順の一覧）
-tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ（描き方の引数 GL_ARGS）・テスト用モードのページ。newPage の device で、Playwright の端末の名前（スマホの真似）で開ける。ページはポインタロックを差し替えて止める（realLock で止めない）。環境変数 AL_PREBUILT が 1 なら、組み立て済みとして組み立てない）
+tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ（描き方の引数 GL_ARGS）・テスト用モードのページ。newPage の device で、Playwright の端末の名前（スマホの真似）で開ける。ページはポインタロックを差し替えて止める（realLock で止めない）。環境変数 AL_PREBUILT が 1 なら、組み立て済みとして組み立てない。withBrowser の root で、別の作業場所を組み立てて配信する（tools/field.mjs の --rev））
 tests/run.mjs        ブラウザのテストをまとめて走らせる（pnpm test）：テスト版と Artifact 版を1回だけ組み立て、11のテスト（画面写真の比較 visual も。一覧はおよその秒の表 SEC。tests/ に SEC にも部品の一覧 NOT_TESTS にも無い .mjs があれば止める）を同時に3つずつ走らせる（--jobs で数、名前を挙げるとそれだけ、--shard i/n で n 組に分けた i 組目だけ。分け方はおよその秒の表 SEC で、組ごとの合計が近くなるように決める）。
                      どのテストも自分のブラウザと空いているポートを使うので、ぶつからない。出力はテストごとにまとめて出す。1つが10分を越えたら止めて、それまでの出力を出す
 tests/smoke.mjs      開発用の探索で dbg が動くか ＋ 探索の始め直しで前の場所や状態が残らないか ＋ メニューの「もう一度押して確かめる」待ちが4秒で消えるか ＋ 図鑑を開いても探索の記録が変わらないか ＋ 閉じた祭壇の画面が、装備の画面やメニューを開いて閉じても、離れるまで開かないか ＋ 起きている竜を見た時の伝言 ＋ 最深部で伝説の物を3つ持つと王の影が出て、背の高さと画面への収まりが決めたとおりか、体力を減らすと二つ目の姿になり、大きさが天井に合うか ＋ 伝説の物が揃っていない時は、12階の異界を抜けても最深部に出ないか（画面写真は tests/out/）
@@ -168,7 +172,7 @@ tests/unit/fight.test.mjs  詠唱と当たり・反応・ダメージ・プレ�
                      遅れて起きることと setTimeout は、時計を進めながらここで流す。偽の画面の部品 fakeDom・偽の setTimeout fakeTimers も。迷宮の生成を変えると、この指紋も変わる）を使う
 tests/unit/step.test.mjs  詠唱と転がり・飛ぶ物と戦いの跡を進める処理・詠唱の声・剣の波を描く・火とガスと地面を進める処理・部屋の出来事と罠・神託所の手がかりの単体テスト。たくさんの場合を作る step-cases.mjs
                      （Node で本物の迷宮を生成し、両手の武器と特性と加護をいろいろにして、詠唱を始めて溜める・離す・溜めすぎる、転がる、的へ向いて撃った飛ぶ物を何歩も進める、状態異常・魔法の場・雨・毒の霧、
-                     火とガス、部屋の出来事の種類ごと（火口の噴き上がりは最後まで）、罠の種類ごとの場面を通す。迷宮の生成を変えると、この指紋も変わる）を使う
+                     火とガス、部屋の出来事の種類ごと（火口の噴き上がりは最後まで）、罠の種類ごとの場面を通す。溶岩の流れる道に通れない所があれば、場合の前提が崩れたとして止まる。迷宮の生成を変えると、この指紋も変わる）を使う
 tests/unit/pickup.test.mjs  足元の物を拾う処理・宝物庫の褒美と落石・立ち直りの光の粒・最深部（王の影）の単体テスト。たくさんの場合を作る pickup-cases.mjs
                      （Node で本物の迷宮を生成し、拾う物の種類ごとの物と生き物を置いて、拾える距離の内と外・番人が倒れる・鍛える・枠を開ける・癒す・開ける枠の数ごと・
                      番人が起きる・天井が崩れて石が当たる・光の粒が着く・王の影が二つ目の姿になり亡霊を呼ぶ、の場面を通す。迷宮の生成を変えると、この指紋も変わる）を使う
@@ -200,10 +204,11 @@ tests/unit/minimap.test.mjs  ミニマップ（キャンバスの大きさと描
                      迷宮の生成を変えると、この指紋も変わる）を使う
 tests/unit/screens.test.mjs  粒子と置く文字・頭の上の印・装備の画面の開け閉めと付け替えの詠唱・マウスを捕まえる・視点・音量の単体テスト。たくさんの場合を作る screens-cases.mjs
                      （偽の画面の部品が、したことを記録する。マウスを捕まえる時の返し方も変える）を使う
-tests/unit/bodies.test.ts  生き物の形の性質（点の座標が有限か・文字の番号が表の中か・眠った獣の形・深みの主の触手）と、src/lib/bodies/ の各生き物の形が移す前と同じ乱数で同じ形になるか（移した後で作り直したトロル・ゴーレム・クラーケンと王の影の一つ目の姿は除く）
+tests/unit/bodies.test.ts  生き物の形の性質（点の座標が有限か・文字の番号が表の中か・眠った獣の形・深みの主の触手）と、src/lib/bodies/ の各生き物の形が移す前と同じ乱数で同じ形になるか（移した後で作り直したトロル・ゴーレム・クラーケン・ギタイムシ・ヘビと王の影の一つ目の姿は除く）
 tests/unit/bodies-legacy.test.mjs  形を選んで作る処理（buildForm と見た目の特徴）・まわりの飾りと王の影の変身・図鑑の見本の獣・忘れられた獣の記録が、移す前と同じか（指紋）。
                      たくさんの場合を作る bodies-legacy-cases.mjs（全部の種類と主・古い形・年代記の獣の形、見た目の特徴を直接足す、まわりの飾りを何フレームか続けて呼ぶ、
-                     偽の Web Audio と偽の localStorage）を使う
+                     偽の Web Audio と偽の localStorage）を使う。頭の上の印の高さ（src/lib/hud.ts の MARK_H と markHeight）が、表のどの種類でも体の一番上より 0.1 から 0.7 上か
+                     （水から出入りする魚・ウナギ・クラーケン、主・忘れられた獣、印を出さない種類は除く）
 tests/unit/inline-all.test.mjs  Artifact 版の組み立て（inlineAll）が、JS と CSS を中に書き、壊れる形（</script・<!--・</style）・HTML の外に残るファイル・大きすぎる物を止めるか（出力の束の小さな偽物で）
 tests/unit/modules.test.mjs  src/lib のどのモジュールも、単独で読めるか（読み込みが輪になって、まだ作っていない値を使っていないか。ファイルごとに別の Node で読む）
 tests/unit/audio.test.mjs  音を鳴らす処理と詠唱の声（chantStart）の単体テスト（音を鳴らす所が見た目の乱数を引かないかを、src/ を構文の木で調べる sound-random-check.mjs も）。偽の Web Audio（fake-audio.mjs。作った部品・値・つなぎ方・鳴らす時刻を全部記録する。Node には Web Audio が無い）と、
@@ -252,6 +257,7 @@ pnpm shots [名前…]    # 図鑑の生き物を見やすい角度で写す（�
                       #   -views.png。--compare <前に --views で写した置き場所> で、前と今を同じ枠で上下に並べた -compare.png）
 node tools/case-diff.mjs [テストの名前…] [--rev 版]   # 指紋のテストの書き出しを、前の版の src/ と今の src/ で比べてまとめる（指紋を作り直す前に。2分ほど）
 node tools/feel.mjs [aim|walk]   # 手触りの試し打ち（見回す速さ・8方向とアナログのスティックを比べる。4分ほど。--look・--trials・--routes）
+pnpm field <名前…>    # 生き物を本物の階で、向かってくるところを距離ごとに写す（--scenes 1:202,3:7 で階、--rev origin/main で前の版と並べる。見た目を直す時の最後に。4分ほど）
 pnpm lords [場所…]    # 主たちを本当にいる場所で、目の高さから写し、大きさと眩しさを数で出す（crypt・lair・sunken・nest・snake・final。--dist で距離（既定 8））
 node tools/transitions.mjs [--rate 1,4]   # 場面が切り替わる時の確かめ（Artifact 版を本物の時計で通し、診断の記録を表にする。1つの速さで3分ほど）
 node tools/diag-report.mjs <フォルダ>     # 診断の記録（ArtifactData の道具で保存した JSON）を表にする
