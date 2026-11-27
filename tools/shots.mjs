@@ -17,9 +17,9 @@
 // 羽ばたきはゲームの時計で動き、時計は写すたびに進む。火花・炎のゆらぎは乱数で決まり、乱数の進み方は前に写した物の描き方で変わる。
 // 背景に漂う粒も、前に写した時のカメラの位置を少し引きずる。
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { PNG } from 'pngjs';
 import { basename, join, resolve } from 'node:path';
 import { withBrowser, newPage, openTest, advance, frames, arg, OUT } from '../tests/lib.mjs';
+import { cropRect, writeSheet } from './sheet.mjs';
 
 // 写し方は図鑑の形（form）ごとに決める。無い形は DEFAULT。無い欄は、図鑑が生き物の大きさから決める写し方のまま
 //   yaw：0 でこちらを向き、＋でこちらから見て右へ回る（ラジアン）
@@ -85,43 +85,6 @@ if (cmpDir && !views) usage('--compare は --views と一緒に使ってくだ�
 if (all && names.length) usage(`--all と名前（${names.join('、')}）は一緒に使えません。どちらかにしてください`);
 mkdirSync(outDir, { recursive: true });
 
-// 体のまわりの切り抜き：画面の範囲（ページの CSS の画素。いくつかあれば合わせた範囲）を、--views の写真（VIEW_CLIP）の中の正方形にする。
-// 体の大きい方の辺の 1.3 倍（と 16 画素）。小さすぎない（96 画素）・写真からはみ出さない
-const SHEET_CELL = 270;
-function cropRect(boxes) {
-  const bs = boxes.filter(Boolean);
-  if (!bs.length) return { x: 0, y: 0, side: VIEW_CLIP.width };
-  const x0 = Math.min(...bs.map((b) => b.x0)) - VIEW_CLIP.x,
-    x1 = Math.max(...bs.map((b) => b.x1)) - VIEW_CLIP.x,
-    y0 = Math.min(...bs.map((b) => b.y0)) - VIEW_CLIP.y,
-    y1 = Math.max(...bs.map((b) => b.y1)) - VIEW_CLIP.y;
-  const side = Math.round(Math.min(VIEW_CLIP.width, VIEW_CLIP.height, Math.max(96, Math.max(x1 - x0, y1 - y0) * 1.3 + 16))),
-    fit = (c, lim) => Math.round(Math.max(0, Math.min(lim - side, c - side / 2)));
-  return { x: fit((x0 + x1) / 2, VIEW_CLIP.width), y: fit((y0 + y1) / 2, VIEW_CLIP.height), side };
-}
-// 写真の行の並び（行ごとに [{ file, rect }]）を、1つの枡 SHEET_CELL に切り抜いて大きく（近い画素のまま）並べ、1枚に書く
-function writeSheet(rows, file) {
-  const cols = Math.max(...rows.map((r) => r.length)),
-    out = new PNG({ width: cols * SHEET_CELL, height: rows.length * SHEET_CELL });
-  out.data.fill(0);
-  for (let i = 3; i < out.data.length; i += 4) out.data[i] = 255;
-  rows.forEach((row, r) =>
-    row.forEach(({ file: f, rect }, c) => {
-      const img = PNG.sync.read(readFileSync(f)),
-        k = rect.side / SHEET_CELL;
-      for (let y = 0; y < SHEET_CELL; y++)
-        for (let x = 0; x < SHEET_CELL; x++) {
-          const sx = Math.min(img.width - 1, rect.x + Math.floor(x * k)),
-            sy = Math.min(img.height - 1, rect.y + Math.floor(y * k)),
-            si = (sy * img.width + sx) * 4,
-            di = ((r * SHEET_CELL + y) * out.width + c * SHEET_CELL + x) * 4;
-          for (let q = 0; q < 4; q++) out.data[di + q] = img.data[si + q] ?? 0;
-        }
-    }),
-  );
-  writeFileSync(file, PNG.sync.write(out));
-}
-
 const errs = [];
 await withBrowser(async ({ browser, base }) => {
   const pg = await newPage(browser, errs, { width: 960, height: 540, still: true });
@@ -156,7 +119,7 @@ await withBrowser(async ({ browser, base }) => {
       }
       writeFileSync(`${fileBase(e)}-views.json`, JSON.stringify(boxes));
       writeSheet(
-        [VIEWS.map(({ view }) => ({ file: `${fileBase(e)}-${view}.png`, rect: cropRect([boxes[view]]) }))],
+        [VIEWS.map(({ view }) => ({ file: `${fileBase(e)}-${view}.png`, rect: cropRect([boxes[view]], VIEW_CLIP) }))],
         `${fileBase(e)}-views.png`,
       );
       console.log(`${fileBase(e)}-views.png`);
@@ -168,7 +131,7 @@ await withBrowser(async ({ browser, base }) => {
           continue;
         }
         const oldBoxes = JSON.parse(readFileSync(`${old}-views.json`, 'utf8'));
-        const rects = Object.fromEntries(VIEWS.map(({ view }) => [view, cropRect([boxes[view], oldBoxes[view]])]));
+        const rects = Object.fromEntries(VIEWS.map(({ view }) => [view, cropRect([boxes[view], oldBoxes[view]], VIEW_CLIP)]));
         writeSheet(
           [old, fileBase(e)].map((b) => VIEWS.map(({ view }) => ({ file: `${b}-${view}.png`, rect: rects[view] }))),
           `${fileBase(e)}-compare.png`,

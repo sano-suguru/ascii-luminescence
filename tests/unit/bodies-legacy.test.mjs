@@ -9,6 +9,8 @@ import * as AURAS from '../../src/lib/bodies/auras.ts';
 import * as BUILD from '../../src/lib/bodies/build.ts';
 import { beastSamples } from '../../src/lib/bodies/lords.ts';
 import { MTYPES } from '../../src/lib/creatures.ts';
+import { markHeight } from '../../src/lib/hud.ts';
+import { mulberry32 } from '../../src/lib/rng.ts';
 import * as SAVE from '../../src/lib/save.ts';
 import { auraCases, beastRecordCases, formCases, formTypes, lookCases } from './bodies-legacy-cases.mjs';
 import { caseOut } from './case-out.mjs';
@@ -114,5 +116,30 @@ describe('移す前と同じ', () => {
     expect([cases.length, cases.some((c) => c.writes.length), cases.some((c) => c.ok && !c.writes.length)]).toEqual([60, true, true]);
     caseOut('bodies-legacy-4', all);
     expect(fp(all)).toEqual(['2f2e58ba', 41342]);
+  });
+});
+
+describe('頭の上の印', () => {
+  // 水から出入りする物（魚・ウナギ・クラーケン）は、描く高さが水の上と下で変わるので除く。主と忘れられた獣は、点の高さの式が違うので除く
+  const WATER = new Set(['fish', 'eel', 'kraken']);
+  it('表のどの種類も、印（眠っている z・気づいた !・攻撃の溜めの !）が、体の一番上より 0.1 から 0.7 上に出る（体に埋もれず、浮かない）', () => {
+    const random = Math.random,
+      bad = [];
+    let n = 0;
+    try {
+      for (const [k, ty] of Object.entries(MTYPES)) {
+        if (!ty.col || ty.dummy || ty.boss || ty.beast || ty.peaceful || ty.invisible || WATER.has(ty.form)) continue;
+        Math.random = mulberry32(1);
+        const top = Math.max(...BUILD.buildForm(ty).map((p) => p.y)) * ty.scale,
+          gap = markHeight(ty) - top;
+        n++;
+        if (!(gap >= 0.1 && gap <= 0.7)) bad.push(`${k}（${ty.name}）：体の一番上 ${top.toFixed(2)}、印 ${markHeight(ty).toFixed(2)}`);
+      }
+    } finally {
+      Math.random = random;
+    }
+    expect(n).toBeGreaterThan(25);
+    // 外れた種類は、src/lib/hud.ts の MARK_H に、その形（form）か見た目（look）の行を足すか直す
+    expect(bad).toEqual([]);
   });
 });
