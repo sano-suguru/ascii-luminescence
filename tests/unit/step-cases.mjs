@@ -819,10 +819,12 @@ export async function stepCases(F, seeds, page) {
       }
       // ---- 場面：部屋の出来事（本物の階の出来事と、種類ごとに作った物）
       initEvents();
+      // 部屋の床のマス。通れない所（目覚める前の像など）は外す（迷宮の生成と同じく、溶岩の流れる道は通れない所を通らない。
+      // 像のマスに溶岩が流れると、像が目覚めた時にマスの印が書き換わり、引いても溶岩が残る）
       const rooms = D.rooms,
         roomCells = (ri) => {
           const out2 = [];
-          for (let i = 0; i < NCELL; i++) if (D.roomOf[i] === ri && D.tile[i] === TF) out2.push(i);
+          for (let i = 0; i < NCELL; i++) if (D.roomOf[i] === ri && D.tile[i] === TF && !D.solid.has(i)) out2.push(i);
           return out2;
         };
       const goto = (i, dx = 0) => {
@@ -866,6 +868,12 @@ export async function stepCases(F, seeds, page) {
         here.events.push({ type: 'erupt', src: src2, order: cells1.slice(0, 4), state: 0, t: 0.1, k: 0 });
         if (chance(0.5)) here.fovVis[cells1[1]] = here.fovStamp;
         if (chance(0.5)) saved.LEGEND = null;
+        // 場合の前提：溶岩の流れる道（噴き上がりと部屋の出来事の流れ）に、通れない所が無い（迷宮の生成と同じ。通れない所に流れると、引いても残ることがある）。
+        // 崩れていたら、たまたま通る・落ちるのを待たず、ここで止める
+        const solidWay = here.events
+          .filter((e) => e.type === 'erupt' || e.type === 'lavaflow')
+          .flatMap((e) => e.order.filter((i) => D.solid.has(i)));
+        if (solidWay.length) throw new Error(`場合の前提が崩れた：溶岩の流れる道に通れないマス ${solidWay.join(',')}（seed ${s}）`);
         const erupts = here.events.filter((e) => e.type === 'erupt'),
           seen = new Map(erupts.map((e) => [e, new Set([e.state])]));
         // 流れる順の写し（噴き上がりの後も、並びが変わらないか）と、水のマスを1つ（引いた後に水へ戻るか）
