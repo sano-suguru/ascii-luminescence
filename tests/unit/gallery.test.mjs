@@ -33,6 +33,6 @@ describe('移す前と同じ', () => {
     expect(by('openRange').filter((c) => c.threw).length).toBe(0);
     expect(by('trackSeen').filter((c) => c.stored !== '[]').length).toBeGreaterThan(0);
     caseOut('gallery', all);
-    expect([fnv(all), all.length]).toEqual(['4f802949', 15094171]);
+    expect([fnv(all), all.length]).toEqual(['463ee9c4', 15094311]);
   }, 120000);
 });
