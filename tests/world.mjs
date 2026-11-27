@@ -28,6 +28,8 @@
 //      小さな生き物は止められない（わけの文を返す）。無い手・性質でない鍵・3つの数でない pos は受け付けない
 //  20. 反応と火が重なっても、画面が白く飛ばない（大洞窟で、5 ほど先のトロルを氷の樫の杖で凍えさせ、炎の樫の杖を当てる。蒸気の反応が起き、枯れ草が燃える。
 //      当たって 2〜8 フレームの間、画面全体の眩しい画素が 25% 以下・体の範囲の白飛びが 12% 以下）。体は当てる前より 1.1 倍を越えて明るくなり、画面の眩しい画素は増える
+//  21. 気づいた敵に照準を合わせて当てても、体が白く飛ばない（20 と同じ場所のトロルに、氷の樫の杖を両手で当てる。火は起きない。当たって光っている間の体の範囲の白飛びが 5% 以下、
+//      光り終わった後（照準の先のまま）が 2% 以下）。当たった光は残っている（当たって光っている間の体の明るさが、光り終わった後より 1.05 倍を越えて明るい）
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { PNG } from 'pngjs';
 import { withBrowser, newPage, openTest, advance, frames, aimAt, strike } from './lib.mjs';
@@ -726,72 +728,79 @@ async function glareChecks(pg, base) {
   console.log(`18：当たった時の画面の眩しい画素 ${(scr * 100).toFixed(1)}%、体の明るさ ${m0.toFixed(1)} → ${m1.toFixed(1)}`);
 }
 
-// 20：反応と火が重なった時の眩しさ（src/lib/lightmap.ts の LIT_MAX・src/lib/shaders.ts の火の明かり）
-async function reactFireGlareChecks(pg, base) {
-  // 大洞窟（床に枯れ草が多い）。樫の杖を両手に持ち、左に氷、右に炎を付け、5 ほど先の見えている床にトロルを置いて止める
+// 20・21 の用意：大洞窟（床に枯れ草が多い）で、樫の杖を両手に持ち、左に性質 elL、右に elR を付け、5 ほど先の見えている床にトロルを置いて止め、照準を合わせる。
+// うまくいかなければ、わけの文を返す
+async function trollAhead(pg, base, elL, elR) {
   await openTest(pg, base, 'seed=7&depth=3&god=1');
   await advance(pg, 2);
-  const set = await pg.evaluate(() => {
-    __test.clearAll();
-    const got = [__test.equip('L', 'orb'), __test.equip('R', 'orb'), __test.elem('L', 'ice'), __test.elem('R', 'fire')].join();
-    if (got !== 'orb,orb,ice,fire') return `手の用意ができない（${got}）`;
-    __test.fov();
-    const s = __test.state(),
-      { w, h } = __test.size(),
-      fx = -Math.sin(s.yaw),
-      fz = -Math.cos(s.yaw);
-    let best = null;
-    for (let i = 0; i < w * h; i++) {
-      const c = __test.cell(i);
-      if (!c.floor || !c.seen || c.water || c.lava) continue;
-      const dx = c.x - s.pos[0],
-        dz = c.z - s.pos[1],
-        d = Math.hypot(dx, dz);
-      if (d < 4 || d > 6) continue;
-      // 5 に近く、前にある床ほど良い
-      const score = Math.abs(d - 5) - (dx * fx + dz * fz) / d;
-      if (!best || score < best[0]) best = [score, i];
+  const set = await pg.evaluate(
+    ([elL, elR]) => {
+      __test.clearAll();
+      const got = [__test.equip('L', 'orb'), __test.equip('R', 'orb'), __test.elem('L', elL), __test.elem('R', elR)].join();
+      if (got !== `orb,orb,${elL},${elR}`) return `手の用意ができない（${got}）`;
+      __test.fov();
+      const s = __test.state(),
+        { w, h } = __test.size(),
+        fx = -Math.sin(s.yaw),
+        fz = -Math.cos(s.yaw);
+      let best = null;
+      for (let i = 0; i < w * h; i++) {
+        const c = __test.cell(i);
+        if (!c.floor || !c.seen || c.water || c.lava) continue;
+        const dx = c.x - s.pos[0],
+          dz = c.z - s.pos[1],
+          d = Math.hypot(dx, dz);
+        if (d < 4 || d > 6) continue;
+        // 5 に近く、前にある床ほど良い
+        const score = Math.abs(d - 5) - (dx * fx + dz * fz) / d;
+        if (!best || score < best[0]) best = [score, i];
+      }
+      if (!best) return 'トロルを置く床が無い';
+      __test.summon('T', best[1]);
+      __test.hold(0, {});
+      return null;
+    },
+    [elL, elR],
+  );
+  if (set) return set;
+  try {
+    await aimAt(pg, 'T');
+  } catch (e) {
+    return e.message;
+  }
+  await frames(pg, 1);
+  return null;
+}
+// 写して数える：画面全体の眩しい画素（明るさ 200 以上）の割合と、トロルの体の範囲の白飛び（3つの色がどれも 245 以上）の割合と明るさの平均（数え方は tools/glare.mjs と同じ）。
+// 体の範囲は写すたびに読み直す（当たって吹き飛んだり向きを変えたりしても、体の所で数える）。体が描かれていなければ null
+async function trollShot(pg) {
+  const box = await pg.evaluate(() => __test.monsterView('T')?.screen ?? null);
+  if (!box) return null;
+  const png = PNG.sync.read(await pg.screenshot({ timeout: 90000 }));
+  const lum = (i) => 0.2126 * png.data[i] + 0.7152 * png.data[i + 1] + 0.0722 * png.data[i + 2];
+  let scr = 0,
+    white = 0,
+    sum = 0,
+    n = 0;
+  for (let i = 0; i < png.data.length; i += 4) if (lum(i) >= 200) scr++;
+  for (let y = Math.max(0, box.y0); y < Math.min(png.height, box.y1); y++)
+    for (let x = Math.max(0, box.x0); x < Math.min(png.width, box.x1); x++) {
+      const i = (y * png.width + x) * 4;
+      n++;
+      sum += lum(i);
+      if (png.data[i] >= 245 && png.data[i + 1] >= 245 && png.data[i + 2] >= 245) white++;
     }
-    if (!best) return 'トロルを置く床が無い';
-    __test.summon('T', best[1]);
-    __test.hold(0, {});
-    return null;
-  });
+  return { scr: scr / (png.width * png.height), white: n ? white / n : 0, mean: n ? sum / n : 0 };
+}
+
+// 20：反応と火が重なった時の眩しさ（src/lib/lightmap.ts の LIT_MAX・src/lib/shaders.ts の火の明かり）
+async function reactFireGlareChecks(pg, base) {
+  const set = await trollAhead(pg, base, 'ice', 'fire');
   if (set) {
     errs.push(`20：${set}（テストの前提が崩れた）`);
     return;
   }
-  try {
-    await aimAt(pg, 'T');
-  } catch (e) {
-    errs.push(`20：${e.message}（テストの前提が崩れた）`);
-    return;
-  }
-  await frames(pg, 1);
-  const lum = (png, i) => 0.2126 * png.data[i] + 0.7152 * png.data[i + 1] + 0.0722 * png.data[i + 2];
-  // 画面全体の眩しい画素（明るさ 200 以上）の割合と、体の範囲 box の白飛び（3つの色がどれも 245 以上）の割合と明るさの平均（数え方は tools/glare.mjs と同じ）
-  const measure = (png, box) => {
-    let scr = 0,
-      white = 0,
-      sum = 0,
-      n = 0;
-    for (let i = 0; i < png.data.length; i += 4) if (lum(png, i) >= 200) scr++;
-    for (let y = Math.max(0, box.y0); y < Math.min(png.height, box.y1); y++)
-      for (let x = Math.max(0, box.x0); x < Math.min(png.width, box.x1); x++) {
-        const i = (y * png.width + x) * 4;
-        n++;
-        sum += lum(png, i);
-        if (png.data[i] >= 245 && png.data[i + 1] >= 245 && png.data[i + 2] >= 245) white++;
-      }
-    return { scr: scr / (png.width * png.height), white: n ? white / n : 0, mean: n ? sum / n : 0 };
-  };
-  // 写して数える。体の範囲は写すたびに読み直す（当たって吹き飛んだり向きを変えたりしても、体の所で数える）
-  const shot = async () => {
-    const box = await pg.evaluate(() => __test.monsterView('T')?.screen ?? null);
-    if (!box) return null;
-    return measure(PNG.sync.read(await pg.screenshot({ timeout: 90000 })), box);
-  };
-  const before = await shot();
+  const before = await trollShot(pg);
   if (!before) {
     errs.push('20：トロルの体が描かれていない（テストの前提が崩れた）');
     return;
@@ -819,7 +828,7 @@ async function reactFireGlareChecks(pg, base) {
   const after = [];
   for (let k = 0; k < 4; k++) {
     await frames(pg, 2);
-    const a = await shot();
+    const a = await trollShot(pg);
     if (!a) {
       errs.push(`20：当たって ${2 * (k + 1)} フレーム目に、トロルの体が描かれていない（テストの前提が崩れた）`);
       return;
@@ -836,6 +845,75 @@ async function reactFireGlareChecks(pg, base) {
   if (!(top('scr') > before.scr)) errs.push(`20：炎を当てても、画面の眩しい画素が増えない（${pct(before.scr)} → ${pct(top('scr'))}）`);
   console.log(
     `20：燃えているマス ${fire}、画面の眩しい画素 ${pct(before.scr)} → ${pct(top('scr'))}、体の白飛び ${pct(before.white)} → ${pct(top('white'))}、体の明るさ ${before.mean.toFixed(1)} → ${top('mean').toFixed(1)}`,
+  );
+}
+
+// 21：気づいた敵に照準を合わせて当てた時の眩しさ（src/lib/bodies/draw.ts の hitGlow・glowBoost・drawMonster1）
+async function hitGlowChecks(pg, base) {
+  // 氷の樫の杖を両手に持つ（火を起こさない）
+  const set = await trollAhead(pg, base, 'ice', 'ice');
+  if (set) {
+    errs.push(`21：${set}（テストの前提が崩れた）`);
+    return;
+  }
+  try {
+    await strike(pg, 'L', 'T');
+    await aimAt(pg, 'T');
+    await strike(pg, 'R', 'T');
+  } catch (e) {
+    errs.push(`21：${e.message}（テストの前提が崩れた）`);
+    return;
+  }
+  const mob = () => pg.evaluate(() => __test.mob(0));
+  // 当たってから 2・4・6・8 フレーム目（白く飛んでいたのは 4〜8 フレーム目）の、一番悪い値を見る
+  const hit = [];
+  for (let k = 0; k < 4; k++) {
+    await frames(pg, 2);
+    const m = await mob();
+    if (!(m?.hitT > 0)) break;
+    const a = await trollShot(pg);
+    if (!a) {
+      errs.push(`21：当たって ${2 * (k + 1)} フレーム目に、トロルの体が描かれていない（テストの前提が崩れた）`);
+      return;
+    }
+    hit.push(a);
+  }
+  if (hit.length < 2) {
+    errs.push(`21：当たって光っている間に ${hit.length} 回しか写せない（テストの前提が崩れた）`);
+    return;
+  }
+  // 光り終わったフレーム（照準の先のまま、気づいている。弾けた粒が引くと白さも引くので、すぐ写す）
+  for (let k = 0; k < 15 && (await mob())?.hitT > 0; k++) await frames(pg, 1);
+  // 当たって吹き飛び、照準から外れていたら、合わせ直してから写す
+  if (!(await mob())?.aimed)
+    try {
+      await aimAt(pg, 'T');
+      await frames(pg, 1);
+    } catch (e) {
+      errs.push(`21：${e.message}（テストの前提が崩れた）`);
+      return;
+    }
+  const m = await mob();
+  if (!(m && m.hitT === 0 && m.aimed && m.glow > 1.5)) {
+    errs.push(`21：光り終わった後、気づいたトロルが照準の先にいない（テストの前提が崩れた。${JSON.stringify(m)}）`);
+    return;
+  }
+  const after = await trollShot(pg);
+  if (!after) {
+    errs.push('21：光り終わった後、トロルの体が描かれていない（テストの前提が崩れた）');
+    return;
+  }
+  const top = (k) => Math.max(...hit.map((a) => a[k]));
+  const pct = (v) => `${(v * 100).toFixed(1)}%`;
+  if (top('white') > 0.05)
+    errs.push(`21：気づいたトロルに氷の樫の杖を当てると、当たって光っている間に体の範囲の ${pct(top('white'))} が白く飛ぶ（上限 5%）`);
+  if (after.white > 0.02) errs.push(`21：光り終わった後も、照準の先の気づいたトロルの体の範囲の ${pct(after.white)} が白く飛ぶ（上限 2%）`);
+  if (!(top('mean') > after.mean * 1.05))
+    errs.push(
+      `21：当たって光っている間の体が、光り終わった後より明るくない（明るさの平均 ${top('mean').toFixed(1)}、後 ${after.mean.toFixed(1)}）`,
+    );
+  console.log(
+    `21：体の白飛び 当たって光っている間 ${pct(top('white'))}・光り終わった後 ${pct(after.white)}、体の明るさ ${top('mean').toFixed(1)} → ${after.mean.toFixed(1)}、画面の眩しい画素 ${pct(top('scr'))}`,
   );
 }
 
@@ -1023,6 +1101,7 @@ await withBrowser(async ({ browser, base }) => {
   await debrisChecks(pg, base);
   await glareChecks(pg, base);
   await reactFireGlareChecks(pg, base);
+  await hitGlowChecks(pg, base);
   await sceneToolChecks(pg, base);
 });
 console.log('page errors:', errs.length ? errs : 'none');
