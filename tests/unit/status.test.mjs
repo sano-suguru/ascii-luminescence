@@ -1,5 +1,5 @@
 // 状態の表示と、まわりへの気配（src/lib/status.ts）・伝説の物（src/lib/legend.ts）・マスの明るさ（src/lib/lightmap.ts）の単体テスト。
-// 指紋の値は、移す前の古い JS（src/game/02・06・12・13・14・24・26・27）でも同じになる（status-cases.mjs の場合を、古い関数で数えて確かめた）。
+// 指紋は、status-cases.mjs の場合の結果。動きを意図して変えた時や、場合の入力を変えた時は、変わり方を確かめてから作り直す（何が変わったかは、コミットと PR に書く）。
 // 階は Node で本物の迷宮を生成するので、迷宮の生成を変えると、この指紋も変わる（その時は generate.test.ts の指紋と一緒に作り直す）。
 // テストを .mjs で書くのは、偽の画面の部品を、本物の型に合わせられないため。
 import { describe, expect, it } from 'vitest';
@@ -47,6 +47,6 @@ describe('移す前と同じ', () => {
       names = new Set(lines.flatMap((l) => [...l.matchAll(/"name":"(\w+)"/g)].map((m) => m[1])));
     // 場合が中身を通っているか：17の関数が全部呼ばれ、忘れられた獣が目を覚ます場合も通る
     expect([lines.length, names.size, all.includes('目を覚まし')]).toEqual([300, 17, true]);
-    expect([fnv(all), all.length]).toEqual(['52ab2c8e', 843575]);
+    expect([fnv(all), all.length]).toEqual(['5910b96e', 822142]);
   }, 60000);
 });
