@@ -1,6 +1,6 @@
 // カメラから見て描く・調べる処理の単体テスト：生き物を描く処理（src/lib/bodies/draw.ts）・罠と鉄格子を描く処理（fixtures.ts の drawTraps）・
 // 見た時の説明（look.ts）・灯りの揺らぎと灯りを描画に渡す配列（lightmap.ts の flicker・updateLights）・照準（aim.ts）。
-// 指紋の値は、移す前の古い JS（src/game/13・14・18・19・20・22・28・29）でも同じになる（view-cases.mjs の場合を、古い関数で数えて確かめた）。
+// 指紋は、view-cases.mjs の場合の結果。動きを意図して変えた時や、場合の入力を変えた時は、変わり方を確かめてから作り直す（何が変わったかは、コミットと PR に書く）。
 // 階は Node で本物の迷宮を生成するので、迷宮の生成を変えると、この指紋も変わる（その時は generate.test.ts の指紋と一緒に作り直す）。
 // テストを .mjs で書くのは、偽の画面の部品・偽のカメラ・偽の Web Audio を、本物の型に合わせられないため。
 import { readFileSync } from 'node:fs';
@@ -44,7 +44,7 @@ describe('移す前と同じ', () => {
     const all = await viewCases({ ...AIM, ...DRAW, ...FIX, ...LM, ...LOOK }, 240),
       body = viewText(all),
       calls = all.flatMap((c) => c.calls);
-    expect([fnv(body), body.length]).toEqual(['2d78fa6c', 61046369]);
+    expect([fnv(body), body.length]).toEqual(['dc121ed8', 59838390]);
     // 場合が中身を通っているか：18の関数が全部呼ばれ、文字を置き、粒子を出し、どれも止まらない
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.dn > 0).length).toBeGreaterThan(2000);

@@ -236,7 +236,9 @@ export async function levelCases(F, seeds, page) {
         locked: chance(0.5),
         invOpen: false,
         camMode: 'fps',
+        hintSeq: 0,
       });
+      edge.hint = 0;
       here.lastStratum = null;
       here.showroomGen = false;
       saved.META = { lore: chance(0.5) ? 0 : Math.floor(r() * 100), spent: 0, unl: [], grave: null, trials: chance(0.3) ? ['dusk'] : [] };

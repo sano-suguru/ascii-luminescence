@@ -19,13 +19,13 @@ const SEC = {
   visual: 86,
   frame: 84,
   gallery: 74,
+  world: 60,
   title: 52,
   touch: 40,
   determinism: 30,
-  world: 27,
   inventory: 18,
   levels: 14,
-  panels: 11,
+  panels: 17,
 };
 // tests/ の .mjs のうち、ここで走らせない物（テストの部品と、pnpm check が走らせる glyphs）。これと SEC のどちらにも無いファイルがあれば止める
 const NOT_TESTS = ['lib', 'run', 'reach', 'gallery-specimens', 'glyphs', 'page-fakes'];

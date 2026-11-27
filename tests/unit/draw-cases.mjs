@@ -221,7 +221,7 @@ export async function drawCases(F, seeds) {
         if (chance(0.2)) w.touchT = r() * 200;
         D.webAt.set(w.i, w);
       }
-      // 火（燃えている一覧には、同じマスが2回入ることも、火の消えたマスもある）・凍ったマス・投げた火花・火の明かり
+      // 火（燃えている一覧には、同じマスが2回入ることも、火の消えたマスもある）・凍ったマス・火の明かり
       blaze.fire = new Float32Array(NCELL);
       blaze.fireLight = new Float32Array(NCELL);
       blaze.burning = [];
@@ -234,7 +234,6 @@ export async function drawCases(F, seeds) {
       }
       blaze.frozen = new Map();
       for (let k = 0; k < 5; k++) blaze.frozen.set(cellNear(px, pz, 50), { t: chance(0.2) ? 5 : r() * 10, liq: 0, surf: 0 });
-      blaze.spark = chance(0.4) ? { x: px + r() * 4, y: 1 + r(), z: pz + r() * 4, vx: 0, vy: 0, vz: 0, t: 0 } : null;
       // 床の物：泉・墓（ルーンつき）・伝説の物
       for (let k = 0; k < 6; k++) {
         const i = cellNear(px, pz, 40),

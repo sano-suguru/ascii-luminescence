@@ -1,5 +1,5 @@
 // 火と術の跡を描く（もとは src/game/15-sound-fire.js の drawFire、26-spells-hud.js の drawFrozen、24-goal.js の addBolt・sparkCrown・drawBoltFx、
-// 20-chant-hits.js の drawZones・drawWave）：燃えているマスの炎と投げた火花、凍らせた水、たどれる稲妻（ぎざぎざの線がちらつき、遅れて落ちる稲妻を順に起こす）、
+// 20-chant-hits.js の drawZones・drawWave）：燃えているマスの炎、凍らせた水、たどれる稲妻（ぎざぎざの線がちらつき、遅れて落ちる稲妻を順に起こす）、
 // 当たった生き物の頭の火花の輪、床の目印と魔法の場、剣が飛ばす風の刃。毎フレーム、世界の中に文字を置き（dyn）、粒子を出す（spawn）。
 // 状態の入れ物 blaze（火）・fight（稲妻・目印）・vfx（稲妻の光り）・player に頼る。呼ぶのは古い JS の描画（30-loop-init.js の tick と
 // 22-world-hints.js の drawRunesWorld）と、稲妻を出す処理（20-chant-hits.js・26-spells-hud.js）。
@@ -16,7 +16,7 @@ import { elemCol } from './runes.ts';
 import { type Monster, type Proj, blaze, fight, player, vfx } from './state.ts';
 import { CELL, MW, cpos } from './world.ts';
 
-/** 燃えているマスの炎（34 より遠いマスは描かない。ときどき火の粉を出す）と、投げた火花 */
+/** 燃えているマスの炎（34 より遠いマスは描かない。ときどき火の粉を出す） */
 export function drawFire(t: number, dt: number): void {
   for (const i of blaze.burning) {
     const f = blaze.fire[i] ?? NaN;
@@ -59,7 +59,6 @@ export function drawFire(t: number, dt: number): void {
         0,
       );
   }
-  if (blaze.spark) dyn(blaze.spark.x, blaze.spark.y, blaze.spark.z, G('*'), 0.32, 3.4, 2.2, 0.9);
 }
 
 /** 凍らせた水のマス（30 より遠いマスは描かない。溶けかけの5秒は、ひびが入る） */

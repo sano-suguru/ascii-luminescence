@@ -104,6 +104,8 @@ export interface Ui {
   noticeMsgT: Record<string, number>;
   /** 画面の下の一言（同じ時は書き直さない） */
   hintHTML: string;
+  /** 画面の下の一言を出した回数（showHint のたびに増える。後から別の一言が出たかを見分ける。src/lib/status.ts の clearHint） */
+  hintSeq: number;
   /** メニューの「タイトルへ」「新しい探索」の、もう一度押して確かめる待ちが終わる時刻（待っていなければ 0） */
   titleArm: number;
   newRunArm: number;
@@ -170,6 +172,7 @@ export const ui: Ui = {
   helpT: 0,
   noticeMsgT: {},
   hintHTML: '',
+  hintSeq: 0,
   titleArm: 0,
   newRunArm: 0,
   dbgOpen: false,
@@ -245,6 +248,8 @@ export interface Adv {
   /** この探索の年代記（探索のシード HIST_SEED から、迷宮を作る時に作る。まだ作っていなければ null） */
   HIST: History | null;
   HIST_SEED: number;
+  /** 枠を選ぶ祭壇の組の名前に付けた数（組の名前を探索の中で重ねないため。src/lib/pickup.ts の openSlot） */
+  slotPickN: number;
 }
 export const adv: Adv = {
   runSeed: 0,
@@ -258,6 +263,7 @@ export const adv: Adv = {
   hpShown: -1,
   HIST: null,
   HIST_SEED: -1,
+  slotPickN: 0,
 };
 
 /** 指の操作の入力（src/lib/touchpad.ts が書き、src/lib/player.ts が読む） */
@@ -420,17 +426,7 @@ export const gear: Gear = {
   humNode: null,
 };
 
-/** 投げた火花（火打ち石。当たった所に火がつく） */
-export interface Spark {
-  x: number;
-  y: number;
-  z: number;
-  vx: number;
-  vy: number;
-  vz: number;
-  t: number;
-}
-/** 火と地面のマス（マスごとの火・燃える物・灰になったか・マスの変わり方の種類・火の明かり・匂い）と、燃えているマスの一覧・ガス・投げた火花。階に入るたびに作り直す（火・燃える物・灰・マスの変わり方・明かりと燃えているマスは src/lib/ground.ts の initFire、匂い・ガス・火花は src/lib/levels.ts の newLevel） */
+/** 火と地面のマス（マスごとの火・燃える物・灰になったか・マスの変わり方の種類・火の明かり・匂い）と、燃えているマスの一覧・ガス。階に入るたびに作り直す（火・燃える物・灰・マスの変わり方・明かりと燃えているマスは src/lib/ground.ts の initFire、匂い・ガスは src/lib/levels.ts の newLevel） */
 export interface Blaze {
   /** マスごとの火の強さ */
   fire: Float32Array;
@@ -448,7 +444,6 @@ export interface Blaze {
   burning: number[];
   /** どこかにガスがあるか */
   gasAny: boolean;
-  spark: Spark | null;
   /** 凍らせた水のマス（マス → 溶けるまでの秒・元の液体・元の床）。src/lib/ground.ts の chillArea・updateFrozen */
   frozen: Map<number, { t: number; liq: number; surf: number }>;
   /** 踏み分けた背の高い草や茸のマスと、踏んだゲームの時刻（src/lib/ground.ts の trample が足し、src/lib/ground.ts の regrow が元に戻す。newLevel が空にする） */
@@ -471,7 +466,6 @@ export const blaze: Blaze = {
   scent: new Float32Array(NCELL),
   burning: [],
   gasAny: false,
-  spark: null,
   frozen: new Map(),
   trampled: [],
   fireSrc: [],
@@ -628,8 +622,20 @@ export interface Fight {
   boltFx: Bolt[];
   /** 少しずつ遅れて落ちる稲妻（t 秒後に fn。済んだら done） */
   zapQueue: { t: number; fn: () => void; done?: boolean }[];
-  /** 立ち直りの光の粒（当てた生き物から手元へ飛ぶ。src/lib/combat.ts の rallyOnHit が足し、21-altars-heal.js の updateRally が動かす） */
+  /** 立ち直りの光の粒（当てた生き物から手元へ飛ぶ。src/lib/combat.ts の rallyOnHit が足し、updateRally が動かす） */
   rallyMotes: RallyMote[];
+  /** 立ち直りの光の粒が着いた音を最後に鳴らした時刻（ゲームの時刻 clock.time。src/lib/combat.ts の updateRally） */
+  rallyChime: number;
+  /** 宝物庫の天井が崩れている間の落石（src/lib/pickup.ts の vaultSprung が始め、updateRockfall が進める。無ければ null） */
+  rockfall: Rockfall | null;
+}
+/** 落石（経った秒 t、崩れる秒 dur、石が落ちうる床のマス cells、落ちている石 rocks（位置・落ち始めてからの秒・落ちきったか）、次の石までの秒 next） */
+export interface Rockfall {
+  t: number;
+  dur: number;
+  cells: number[];
+  rocks: { x: number; z: number; t: number; hit?: boolean }[];
+  next: number;
 }
 /** 立ち直りの光の粒（出た所 x0・y0・z0、経った秒 t（初めは負で、少し遅れて出る）、飛ぶ秒 dur、戻す体力 amt、色 c、揺れの位相 wob） */
 export interface RallyMote {
@@ -641,6 +647,8 @@ export interface RallyMote {
   amt: number;
   c: readonly number[];
   wob: number;
+  /** 着いて体力を戻したか（src/lib/combat.ts の updateRally） */
+  done?: boolean;
 }
 export const fight: Fight = {
   projs: [],
@@ -658,6 +666,8 @@ export const fight: Fight = {
   boltFx: [],
   zapQueue: [],
   rallyMotes: [],
+  rallyChime: 0,
+  rockfall: null,
 };
 
 /** 階を移る途中（out：暗くなって出ていく、in：明るくなって入る。go は行き先の種類） */
@@ -698,6 +708,8 @@ export interface LevelExtra {
   pit?: Uint8Array;
   /** マス → クモの巣（src/lib/ground.ts の initFire が作る） */
   webAt?: Map<number, Web>;
+  /** 番人が倒れて光を灯した祭壇（祭壇の組 grp か、組が無ければマス。src/lib/pickup.ts の pickupItems が、はじめて灯した時に作る） */
+  lit?: Set<string | number>;
   /** 先にある物の手がかり（はじめて読んだ時に作る。src/lib/omens.ts の omenOf） */
   omen?: Omen;
   /** 封じられた階段のうなり声を、次に鳴らせるゲームの時刻と、封が解けた伝言を出したか（src/lib/omens.ts の drawStairSeal） */
@@ -782,9 +794,11 @@ export interface Monster {
   goalT?: number;
   /** 当たって光る残りの秒 */
   hitT?: number;
-  /** 体の明るさ（生き物の処理が入れる）と、心臓を見せるか（王の影。24-goal.js の spawnFinalBoss） */
+  /** 体の明るさ（生き物の処理が入れる）と、心臓を見せるか（王の影。src/lib/levels.ts の spawnFinalBoss） */
   glow?: number;
   heartOn?: boolean;
+  /** 宝物庫の番人（褒美を取った時に目を覚ました物。src/lib/pickup.ts の vaultSprung が入れる。今はどこも読まない） */
+  guardian?: boolean;
   /** ここから下は、描く処理（src/lib/bodies/draw.ts）と見た時の説明（src/lib/look.ts）・灯り（src/lib/lightmap.ts の updateLights）が読む欄。
    * 生き物の表の鍵（'final' は王の影）と、揺れの位相 ph・歩きの位相 walk・警戒 alert（src/lib/monsters.ts の makeMonster が入れる） */
   key?: string;
@@ -1011,7 +1025,7 @@ export type RoomEvent =
 /** 最深部の状態：一番高い天井のマス c0（王の影が現れる所）、王の影 boss と、現れるまで・呼び出すまでの秒、着いた時の伝言を出したか */
 export interface FinalState {
   c0: number;
-  boss: Monster | null;
+  boss: Mob | null;
   bossT: number;
   summonT: number;
   said: boolean;
@@ -1159,9 +1173,10 @@ export const stealth: Stealth = { lum: 0, level: 1, range: 8, sneak: false, hudK
 export const lantern = { r: 8.2, k: 1 };
 /**
  * 状態の表示の数（見たマスの割合 explored と、速さの表示：描いた文字の数 glyphCount・描いた区切りの文字の数 chunksDrawn・
- * 1秒あたりのフレームの数 pfFps と、それを数える途中のフレームの数 pfFrames と秒 pfT）。丸ごと入れ替えない
+ * 1秒あたりのフレームの数 pfFps と、それを数える途中のフレームの数 pfFrames と秒 pfT）と、
+ * 立ち直りの表示の数 rallyShown（変わった時だけ状態の表示を描き直すため。src/lib/combat.ts の updateRally）。丸ごと入れ替えない
  */
-export const hudInfo = { explored: 0, glyphCount: 0, chunksDrawn: 0, pfFrames: 0, pfT: 0, pfFps: 0 };
+export const hudInfo = { explored: 0, glyphCount: 0, chunksDrawn: 0, pfFrames: 0, pfT: 0, pfFps: 0, rallyShown: -1 };
 /** 描く物の数：このフレームに置いた文字の数 dn（src/lib/particles.ts の dyn）と、生きている粒子の数 pN（spawn・killP） */
 export interface Buf {
   dn: number;
@@ -1243,7 +1258,7 @@ export const cellData = new Uint8Array(NCELL * 4);
 /** 薄い氷のマスに乗っていた秒（マス → 秒。src/lib/ground.ts の crackIce。src/lib/levels.ts の newLevel が階ごとに空にする）。丸ごと入れ替えない */
 export const iceT = new Map<number, number>();
 /** 灯りを描画に渡す配列（src/lib/lightmap.ts の updateLights が毎フレーム書き、05-renderer.js の U が描画に渡す）。丸ごと入れ替えない。
- * SL：階の灯りの色と強さ（灯り1つに3つ）、DLP：動く灯りの位置と届く距離（1つに4つ。0番は手元の灯り、最後は稲妻か火花）、DLC：動く灯りの色（1つに3つ） */
+ * SL：階の灯りの色と強さ（灯り1つに3つ）、DLP：動く灯りの位置と届く距離（1つに4つ。0番は手元の灯り、最後は稲妻の光り）、DLC：動く灯りの色（1つに3つ） */
 export const SL = new Float32Array(NSL * 3),
   DLP = new Float32Array(NDL * 4),
   DLC = new Float32Array(NDL * 3);
@@ -1262,5 +1277,5 @@ export const dust = {
   g: new Float32Array(DUST_N),
   s: new Float32Array(DUST_N),
 };
-/** 通れない所に押し当てている間の記録（押した秒 t・何に当たっているか k・離してからの秒 idle）。丸ごと入れ替えない */
-export const edge = { t: 0, k: '', idle: 0 };
+/** 通れない所に押し当てている間の記録（押した秒 t・何に当たっているか k・離してからの秒 idle・塞がれた時の一言を出した番号 hint（showHint が返す））。丸ごと入れ替えない */
+export const edge = { t: 0, k: '', idle: 0, hint: 0 };

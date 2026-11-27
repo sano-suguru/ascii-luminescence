@@ -4,7 +4,7 @@ import { must, nth } from './array.ts';
 import { msg } from './log.ts';
 import { SND_LV, SND_NAME } from './sound.ts';
 import { SND, adv, ui } from './state.ts';
-import { isPaused, showHint } from './status.ts';
+import { flashHint, isPaused } from './status.ts';
 
 /**
  * 捕まえる遊び方（一度でも捕まえていて、捕まえられないと決めていない）で、探索中なのにマウスが外れているか
@@ -86,6 +86,5 @@ export function sndToggle(): void {
   SND.lv = (SND.lv + 1) % SND_LV.length;
   SND.on = nth(SND_LV, SND.lv) > 0;
   if (SND.master) SND.master.gain.setTargetAtTime(nth(SND_LV, SND.lv), must(SND.ctx, 'SND.ctx').currentTime, 0.25);
-  showHint('音量：' + nth(SND_NAME, SND.lv));
-  setTimeout(() => showHint(''), 1200);
+  flashHint('音量：' + nth(SND_NAME, SND.lv), 1200);
 }

@@ -55,7 +55,7 @@ function tick(raw,draw){
   inPhase('world',()=>{ regrow(); brimRecover(dt); if(!adv.dead){ updateTraps(dt); updateSearch(dt); } updateLife(dt); });
   inPhase('lights',()=>{ updateLights(t); updateAtmosphere(dt); });
   buf.dn=0; inPhase('fixtures',()=>drawFixtures(t,dt)); inPhase('doors',()=>drawDoors(t,dt)); inPhase('fire',()=>drawFire(t,dt)); inPhase('webs',()=>drawWebs(t)); inPhase('traps',()=>drawTraps(t));
-  inPhase('swing',()=>drawSwing()); inPhase('hands',()=>drawViewWeapons(t)); inPhase('omens',()=>drawOmens(t,dt)); inPhase('runes',()=>{ drawRunesWorld(t); updateAltarPanel(); drawArrows(); drawLegendWorld(t); });
+  inPhase('swing',()=>drawSwing()); inPhase('hands',()=>drawViewWeapons(t)); inPhase('omens',()=>drawOmens(t,dt)); inPhase('runes',()=>{ drawRunesWorld(t); updateAltarPanel(); drawArrows(); drawLegendWorld(t); }); inPhase('rockfall',()=>{ if(!here.trans)updateRockfall(dt); }); // 階を移り始めたら、石は落ちず、当たらない（新しい階で newLevel が消す）
   inPhase('bolt',()=>drawBoltFx(t,dt)); inPhase('gallery',()=>drawGallery(t)); inPhase('frozen',()=>drawFrozen(t)); inPhase('castfx',()=>drawCastFx(t));
   inPhase('avatar',()=>{ if(ui.camMode==='tps'&&here.D&&!ui.gallery){ updateAvatar(dt); drawMonster0(avatar,t); drawSection(); } }); for(const m of here.monsters)inMobPhase('mob draw',m,()=>drawMonster(m,t)); flushDyn();
   inPhase('particles',()=>updateParticles(dt,t));
@@ -121,6 +121,9 @@ if(TEST)window.__test={
   // cold around a cell (r in world units, as an ice spell), and how many times a cell is in the list of burning cells
   chill(i,r){ chillArea((i%MW+0.5)*CELL,(((i/MW)|0)+0.5)*CELL,r); },
   burning(i){ return blaze.burning.filter(j=>j===i).length; },
+  // 落石：on なら、プレイヤーのまわり（3マス）の床で、宝物庫の天井が崩れた時と同じ落石を始める。今の落石（経った秒・落ちている石の数。無ければ null）を返す
+  rockfall(on){ if(on){ const cx=Math.floor(player.x/CELL), cz=Math.floor(player.z/CELL), cells=[]; for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){ const x=cx+dx, z=cz+dz; if(x<0||x>=MW||z<0||z>=MH)continue; const c=z*MW+x; if(here.D.tile[c]===TF)cells.push(c); } fight.rockfall={t:0,dur:9,cells,rocks:[],next:0.2}; }
+    const R=fight.rockfall; return R?{t:+R.t.toFixed(4),rocks:R.rocks.length}:null; },
   // lingering things of this level (fields, delayed hits, rains, marks on the floor, a beam being fired, lightning, lightning still to fall and its flash):
   // put one of each where the player stands, made to do nothing for 60 s (a field and a rain with no element, a beam whose first shot is 60 s away),
   // and count them. It also sets both hands' trigger wait to 60 s (it belongs to the run, not to the level: a new run sets it back to 0)

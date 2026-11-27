@@ -6,43 +6,12 @@
 // ---------------------------------------------------------------- swamp gas
 // ガスが広がる時の作業の配列 gasTmp は src/lib/state.ts の blaze（src/game/imports.mjs で読む）
 // ---------------------------------------------------------------- fire (after Brogue: spreads through flammable terrain, ignites gas)
-let sparkCD=0;
 // FIRE_TYPES は src/lib/world.ts（src/game/imports.mjs で読む）
 // initFire は src/lib/ground.ts（src/game/imports.mjs で読む）
 // 火をつける ignite は src/lib/ground.ts（src/game/imports.mjs で読む）
-// boom は src/lib/combat.ts（src/game/imports.mjs で読む）
 // 火を1歩進める stepFire は src/lib/ground.ts（src/game/imports.mjs で読む）
 // マスの火・灰・変わり方を描画に渡す uploadCells は src/lib/ground.ts（src/game/imports.mjs で読む）
 // 火を描く drawFire は src/lib/fx.ts（src/game/imports.mjs で読む）
-let sparks=3, sparkRegen=0; const SPARK_MAX=3;
-function updateSparkHud(){ renderStatus(); }
-function throwSpark(){
-  if(sparks<=0){ showHint('火花を使い切った。少し待てば、また溜まる'); sparkCD=0.6; return; }
-  sparks--; sparkRegen=0; updateSparkHud(); sWhoosh();
-  const cp=Math.cos(player.pitch), dx=-Math.sin(player.yaw)*cp, dy=Math.sin(player.pitch), dz=-Math.cos(player.yaw)*cp;
-  blaze.spark={x:gfx.camera.position.x+dx*0.4,y:gfx.camera.position.y-0.15+dy*0.4,z:gfx.camera.position.z+dz*0.4,vx:dx*13,vy:dy*13+2.2,vz:dz*13,t:0};
-  sparkCD=0.6;
-}
-function updateSpark(dt){
-  if(!blaze.spark)return;
-  const s2=blaze.spark; s2.t+=dt; s2.vy-=9.8*dt;
-  const nx=s2.x+s2.vx*dt, ny=s2.y+s2.vy*dt, nz=s2.z+s2.vz*dt;
-  const cx=Math.floor(nx/CELL), cz=Math.floor(nz/CELL), i=cz*MW+cx;
-  if(mr()<0.8)spawn(s2.x,s2.y,s2.z,(mr()-0.5)*0.4,(mr()-0.5)*0.4,(mr()-0.5)*0.4,0.5+mr()*0.4,G(mpick(['.','\''])),0.08,2.6,1.5,0.5,0);
-  let hit=-1;
-  if(cx<0||cz<0||cx>=MW||cz>=MH||s2.t>4){ blaze.spark=null; return; }
-  if(here.D.tile[i]===TW||here.D.tile[i]===TX)hit=Math.floor(s2.z/CELL)*MW+Math.floor(s2.x/CELL);
-  else if(ny<0.03&&here.D.tile[i]!==TC)hit=i;
-  else if(ny>here.D.ceil[i])hit=i;
-  if(hit<0){ s2.x=nx; s2.y=ny; s2.z=nz; return; }
-  for(let q=0;q<12;q++){ const a=mr()*6.28; spawn(s2.x,Math.max(0.05,s2.y),s2.z,Math.cos(a)*1.2,0.4+mr()*1.2,Math.sin(a)*1.2,0.5+mr()*0.5,G(mpick(['*','.','\''])),0.12,3,1.6,0.5,0); }
-  let lit=false;
-  for(const j of [hit,hit+1,hit-1,hit+MW,hit-MW]){ if(j<0||j>=NCELL)continue; if(here.D.gas[j]>0.1){ ignite(j,1,true); boom(j); lit=true; } else if(blaze.fuel[j]>0&&j===hit){ ignite(j,0.6,false); lit=true; } }
-  makeNoise(s2.x,s2.z,6,0.45);
-  if(lit)sCrackleBurst(s2.x,s2.z);
-  if(lit&&blaze.burning.length<4)msg('<b style="color:#ffb347">^</b>火花が燃え移り、炎が広がり始めた。');
-  blaze.spark=null;
-}
 // initEvents は src/lib/levels.ts（src/game/imports.mjs で読む）
 // cpos は src/lib/world.ts（src/game/imports.mjs で読む）
 // 生き物を呼び出す summon は src/lib/monsters.ts（src/game/imports.mjs で読む）

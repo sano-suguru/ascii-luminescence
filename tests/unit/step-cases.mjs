@@ -873,10 +873,11 @@ export async function stepCases(F, seeds, page) {
           ice = erupts[0].order[5],
           grass = erupts[0].order[3];
         D.liquid[wet] = LQ_WATER;
-        // 凍らせた水（液体は仮の 0、本当の中身は blaze.frozen）と、踏み分けた草（印 20 と、生え戻りの一覧）
+        // 凍らせた水（液体は仮の 0、本当の中身は blaze.frozen）と、踏み分けた草（液体の無い床に、印 20 と、生え戻りの一覧）
         blaze.frozen.set(ice, { t: 999, liq: LQ_WATER, surf: D.surface[ice] });
         D.liquid[ice] = 0;
         D.surface[ice] = SF_ICE;
+        D.liquid[grass] = 0;
         blaze.cellFlag[grass] = 20;
         blaze.trampled.push([grass, clock.time]);
         // 流れる道のマスで、初めから溶岩でない物（引き終えたら、どれも溶岩でなくなる）

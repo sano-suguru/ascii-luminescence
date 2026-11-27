@@ -29,13 +29,15 @@
 // （tools/state-move.mjs の stateMove）をしてから比べる。--auto-state は、それを自分で見つける（古い JS から消えた変数の名前 X で、
 // src/lib/state.ts の入れ物の欄として初めの値を書いてある物。CI はこれを使う。詳しくは detectStates）。
 // 古い JS から消えた名前で、古い JS でも使われていなかった物と、今はどこからも使われていない物（呼ぶ所も一緒に消した物）は、
-// 消しただけなので「消した」として出し、止めない（なので、移す時は名前を変えない。変えると「消した」に見えて比べない）。古い JS から消えた名前で、渡した .ts のどれにも無い物は「比べていない」として出す（これも 1 で終わる）。
+// 消しただけなので「消した」として出し、止めない（今も使っているかは、古い JS では名前がどの宣言を指すかで見る（gameUses。局所の同じ名前・欄の名前・コメントは数えない）。
+// src/lib の .ts では文字で見る）。なので、移す時は名前を変えない。変えると「消した」に見えて比べない）。古い JS から消えた名前で、渡した .ts のどれにも無い物は「比べていない」として出す（これも 1 で終わる）。
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, relative } from 'node:path';
+import * as eslintScope from 'eslint-scope';
 import { parseAst } from 'vite';
-import { gameParts } from './game-source.mjs';
+import { gameParts, gameSource } from './game-source.mjs';
 import { stateMove } from './state-move.mjs';
 
 const root = join(import.meta.dirname, '..');
@@ -658,6 +660,29 @@ export function wasUnused(oldGame, old, name) {
     own = count(d.text.slice(firstPos(d.node) - d.base, lastPos(d.node) - d.base));
   return all - own === 0;
 }
+/**
+ * 古い JS（dir の src/game/ をつないだ物）の中で、名前 names のうち、名前として使っている物（eslint-scope で見分ける）。
+ * 包みの一番外の宣言か、imports.mjs で読んだ名前か、どこにも無い名前を指す所だけを数える
+ * （同じ名前の局所の変数・引数を指す所と、欄の名前・コメント・文字列は数えない）
+ */
+export function gameUses(dir, names) {
+  const ast = parseAst(gameSource({ dir }), { lang: 'js' });
+  // oxc の位置（start・end）を、eslint-scope が読む range に写す
+  const walk = (n) => {
+    if (!n || typeof n !== 'object') return;
+    if (Array.isArray(n)) return n.forEach(walk);
+    if (typeof n.type === 'string' && typeof n.start === 'number') n.range = [n.start, n.end];
+    for (const k in n) if (k !== 'range') walk(n[k]);
+  };
+  walk(ast);
+  const sm = eslintScope.analyze(ast, { ecmaVersion: 2024, sourceType: 'module', fallback: 'iteration' }),
+    outer = (sc) => sc.type === 'module' || (sc.type === 'function' && sc.upper?.type === 'module'),
+    used = new Set();
+  for (const sc of sm.scopes)
+    for (const r of sc.references)
+      if (names.has(r.identifier.name) && (!r.resolved || outer(r.resolved.scope))) used.add(r.identifier.name);
+  return used;
+}
 /** 正規表現の中で、文字をそのままの意味にする（記号を全部逃がす） */
 const escapeRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /** 文 text の中で、名前 name を使っているか（欄の名前 a.name の name は数えない。文字で数えるので、コメントや文字列にあれば「使っている」になる） */
@@ -810,8 +835,12 @@ if (process.argv[1] && import.meta.filename === process.argv[1]) {
   // 消しただけなので止めない（名前を変えて移すと、ここで「消した」に見えてしまうので、移す時は名前を変えない）
   const unchecked = [...goneAll].filter((k) => !compared.has(k)),
     oldGame = withStates(rawOld, states),
-    nowText = [...nowGame.values(), ...libFiles().map((f) => readFileSync(join(root, f), 'utf8'))].join('\n'),
-    deleted = unchecked.filter((k) => wasUnused(oldGame, old, k) || !referenced(nowText, k)),
+    // 今も使っているか：古い JS は名前がどの宣言を指すかで（局所の同じ名前は別の物）、src/lib の .ts は文字で見る
+    gameUsed = gameUses(join(root, 'src/game'), new Set(unchecked)),
+    libText = libFiles()
+      .map((f) => readFileSync(join(root, f), 'utf8'))
+      .join('\n'),
+    deleted = unchecked.filter((k) => wasUnused(oldGame, old, k) || !(gameUsed.has(k) || referenced(libText, k))),
     gone = unchecked.filter((k) => !deleted.includes(k));
   if (deleted.length) console.log(`\n消した（古い JS でも使われていなかったか、今はどこからも使われていない）：${deleted.join('、')}`);
   if (gone.length) console.log(`\n比べていない（古い JS から消えたが、渡した .ts に無い）：${gone.join('、')}`);
