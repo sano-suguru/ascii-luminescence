@@ -6,7 +6,7 @@
 // これらは出来事ごとの乱数（keyedRand）や、生き物ごとの見た目の乱数の並び（makeMonster）で決めるので、粒子を1つ足すような見た目だけの変更では変わらないはず。
 // それと、世界を組み立てる間（buildWorld。像の形を作る所も）は、見た目の乱数 mr() を引かないか（__test.worldDraws）。
 // もう1つ：tick の段の終わりごとに見た目の乱数を余分に引いても（__test.tickNoise）、tick の外で余分に引いても、戦いと生き物の動き・伝言・画面写真が変わらないか。
-// tick は段ごと・生き物ごとに、鍵の並び（keyedRand）を読むので、ある段で引く回数が変わっても、後の段と次の tick は変わらないはず（src/game/30-loop-init.js の inPhase）。
+// tick は段ごと・生き物ごとに、鍵の並び（keyedRand）を読むので、ある段で引く回数が変わっても、後の段と次の tick は変わらないはず（src/lib/loop.ts の inPhase）。
 // もう1つ：描くだけの段（手元の武器 hands・振った線 swing・生き物の描画 mob draw）を止めても（__test.skipPhase）、戦いと生き物の動き・伝言が変わらないか
 // （画面写真は、止めた物が描かれないので比べない）。止めた段の分の乱数を引かなくなっても、ほかの段は自分の並びを読むので、変わらないはず。
 import pixelmatch from 'pixelmatch';

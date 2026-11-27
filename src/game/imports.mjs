@@ -7,6 +7,8 @@ import { makeHistory } from '../lib/history.ts';
 import { G, RAMP_CH, RUNESET, RUNE_CHARS, SWAPSET, WG } from '../lib/glyphs.ts';
 import { R, RI, keyedRand, mpick, mr, pick, rand, roll, setSoundRand, shuffle, sndRand, withVisualRand } from '../lib/random.ts';
 import { dragonSleepForm } from '../lib/bodies/beasts.ts';
+import { applySize, frame, setQuality, testTick, tick, withTestCam } from '../lib/loop.ts';
+import { buildAtlas, cullChunks, flushDyn, makeWater } from '../lib/render.ts';
 import { drawGallery, galleryDrag, galleryHold, galleryReset, galleryView, galleryWheel, galleryZoom, openBestiary, openRange, renderGallery, showBeast, trackSeen, updateGallery } from '../lib/gallery.ts';
 import { beastSamples, beastSleep, SHADOW_KING_SC, shadowKingScale } from '../lib/bodies/lords.ts';
 import {
@@ -88,7 +90,7 @@ import { awardLore, graveCandidates, graveRows, loreRows, resultPlace, runLore, 
 // three.js（r147）と光のにじみなどの部品 T、霧の色 fogCol
 import { T, fogCol } from '../lib/three.ts';
 import { buildWorld, setFog, updateWater } from '../lib/build.ts';
-import { DLC, DLP, SL, SND, adv, beamHold, blaze, buf, cellData, clock, fight, gear, gfx, here, hudInfo, iceT, keys, lantern, placeMem, player, saved, stealth, ui, vfx, vmKick, edge, TEST } from '../lib/state.ts';
+import { DLC, DLP, SL, SND, adv, beamHold, blaze, buf, cellData, clock, fight, gear, gfx, here, hudInfo, iceT, keys, lantern, placeMem, player, saved, stealth, ui, vfx, vmKick, edge, TEST, TEST_STEP, TESTQ, tickNoise, skipPhases } from '../lib/state.ts';
 import { initFitIntro } from '../lib/layout.ts';
 import { byInput, confirmTap, homeHint, initTouch } from '../lib/touch.ts';
 import { TUNE, initTouchpad, releaseTouch } from '../lib/touchpad.ts';

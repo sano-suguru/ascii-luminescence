@@ -44,7 +44,7 @@ export function menuRows(menu) {
   return out;
 }
 
-/** 画質の移り変わり（src/game/30-loop-init.js の setQuality が took に書く物：解像度を変えた applySize と、光のにじみだけ変えた quality。
+/** 画質の移り変わり（src/lib/loop.ts の setQuality が took に書く物：解像度を変えた applySize と、光のにじみだけ変えた quality。
  *  理由 why は auto（下げた）・back（下げても速くならず戻して止めた）・hold（比べる前に数えるのが途切れて戻した）） */
 export function qualitySteps(took = []) {
   return took

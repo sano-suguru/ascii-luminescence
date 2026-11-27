@@ -14,16 +14,21 @@ import { type Rune } from './runes.ts';
 import type {
   BufferAttribute,
   BufferGeometry,
+  InstancedBufferAttribute,
+  InstancedBufferGeometry,
   DataTexture,
   Mesh,
   Scene,
   ShaderMaterial,
   Sphere,
   Texture,
-  Vector3,
   WebGLRenderer,
 } from 'three';
+import { Euler, Matrix4, Vector3 } from 'three';
 import type { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import type { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import type { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import type { QualityRun } from './quality.ts';
 import { DUST_N } from './shaders.ts';
 import { NCELL, NDL, NSL } from './world.ts';
 
@@ -47,13 +52,38 @@ export const TEST = (() => {
 })();
 
 /** 時計（ゲームの時刻。止めている間・テスト用モードで進めない間は進まない。溜めている間・ヒットストップ中はゆっくり進む） */
-export interface Clock {
-  /** ゲームが始まってからの秒（30-loop-init.js の tick が進める） */
-  time: number;
-  /** tick が進んだ回数（止めている間に描き直さない時は数えない）。tick の段ごとの見た目の乱数の鍵にする（30-loop-init.js の inPhase・inMobPhase） */
-  frame: number;
+/** テスト用モードの時計（ゲームの時計を ms 進め、その間に来る setTimeout・setInterval を流す advance と、本物の setTimeout。00-test-mode.js が作る） */
+export interface TestClock {
+  advance(ms: number): void;
+  realTimeout: (fn: () => void, ms: number) => number;
 }
-export const clock: Clock = { time: 0, frame: 0 };
+export interface Clock {
+  /** ゲームが始まってからの秒（src/lib/loop.ts の tick が進める） */
+  time: number;
+  /** tick が進んだ回数（止めている間に描き直さない時は数えない）。tick の段ごとの見た目の乱数の鍵にする（src/lib/loop.ts の inPhase・inMobPhase） */
+  frame: number;
+  /** 前のフレームの時刻（秒。src/lib/loop.ts の frame） */
+  last: number;
+  /** 見えるマスを数え直すまでと、ミニマップを描き直すまでの溜め（秒） */
+  fovT: number;
+  mapT: number;
+  /** 画質を決めるために数えている秒・フレームの時間の和・数（src/lib/quality.ts）と、数え始めるまで様子を見ている秒 */
+  perfT: number;
+  perfAcc: number;
+  perfN: number;
+  warm: number;
+  /** テスト用モードの時計（テスト用モードでない時は null。00-test-mode.js がその場で入れる） */
+  TESTCLK: TestClock | null;
+}
+export const clock: Clock = { time: 0, frame: 0, last: 0, fovT: 0, mapT: 0, perfT: 0, perfAcc: 0, perfN: 0, warm: 0, TESTCLK: null };
+/** テスト用モードの1歩の秒（ゲームの1/30秒） */
+export const TEST_STEP = 1 / 30;
+/** テスト用モードの __test.frames(n) が描いて進める残りの数と、終わった時に呼ぶ物。丸ごと入れ替えない */
+export const TESTQ: { n: number; done: (() => void) | null } = { n: 0, done: null };
+/** テスト用モードの __test.tickNoise(n)：tick のどの段も、終わりに見た目の乱数を n 回余分に引く。丸ごと入れ替えない */
+export const tickNoise = { n: 0 };
+/** テスト用モードの __test.skipPhase(names) で止めた tick の段の名前（その段を飛ばす）。丸ごと入れ替えない */
+export const skipPhases = new Set<string>();
 
 /** 揺れと光り（画面の揺れ、画面の光り、ダメージを受けた時と回復した時の光り、稲妻の光り）と、目の慣れ expo（画面の明るさに掛ける。src/lib/camera.ts の updateAtmosphere が、まわりの明るさに合わせてゆっくり変える）と、
  * 階の場所ごとの空気 ambK（分かれ道は明るく、階段へ向かう道は暗く。src/lib/camera.ts の updateSectionAir）と、詠唱している間に画面をゆっくりにする見た目の強さ slowFx（0 から 1。src/lib/chantfx.ts の updateCross） */
@@ -1352,10 +1382,15 @@ export interface Buf {
 export const buf: Buf = { dn: 0, pN: 0 };
 /** three.js のカメラのうち、TypeScript が使う欄だけ（本物は 05-renderer.js が作る PerspectiveCamera。位置と向きは src/lib/player.ts が set で書く） */
 export interface CameraView {
-  readonly position: { readonly x: number; readonly y: number; readonly z: number; set(x: number, y: number, z: number): unknown };
-  readonly rotation: { set(x: number, y: number, z: number): unknown };
-  /** 画面の横と縦の比（本物のカメラだけにある。手元の武器を細い画面で縮める src/lib/held.ts が読む） */
-  readonly aspect?: number;
+  readonly position: Vector3;
+  readonly rotation: Euler;
+  /** 画面の横と縦の比（手元の武器を細い画面で縮める src/lib/held.ts が読む）と、縦の画角（度） */
+  aspect: number;
+  readonly fov: number;
+  readonly projectionMatrix: Matrix4;
+  readonly matrixWorldInverse: Matrix4;
+  updateProjectionMatrix(): void;
+  updateMatrixWorld(): void;
 }
 /** three.js の、マスの火・灰・変わり方を描画に渡す絵（DataTexture）のうち、TypeScript が書く欄だけ（本物は 05-renderer.js が作る。中身は cellData） */
 export interface CellTex {
@@ -1381,6 +1416,25 @@ export interface Gfx {
   occMat: ShaderMaterial | undefined;
   /** 画面の最後の後処理（露出・熱のゆらぎ・水中・傷の赤み・詠唱の間の色） */
   finalPass: ShaderPass | null;
+  /** 描く細かさ（画面の倍率。遅い端末では src/lib/quality.ts が下げる）と、作り直した大きさ（'横x縦@細かさ'。src/lib/loop.ts の applySize） */
+  pixelRatio: number;
+  sizedAs: string;
+  /** 後処理をつなぐ部品と、光のにじみ（遅い端末では切る） */
+  composer: EffectComposer | null;
+  bloom: UnrealBloomPass | null;
+  /** 画質を下げる途中の状態（src/lib/quality.ts の stepQuality） */
+  qRun: QualityRun;
+  /** 置いた文字を描く形と、その属性（位置・色・大きさなど。src/lib/render.ts の flushDyn が数を渡す）と、置いた文字と粒子の部品 */
+  dynGeo: InstancedBufferGeometry | null;
+  aPos: InstancedBufferAttribute | null;
+  aCol: InstancedBufferAttribute | null;
+  aPar: InstancedBufferAttribute | null;
+  dynMat: ShaderMaterial | undefined;
+  ptMat: ShaderMaterial | undefined;
+  /** 水面 */
+  waterMesh: Mesh | null;
+  /** テスト用モードの __test.cam で置いたカメラ（位置 pos・見る点 at・置いた時の階 lvl。null ならふだんどおり。src/lib/loop.ts の withTestCam） */
+  testCam: { pos: [number, number, number]; at: [number, number, number]; lvl: Level | null } | null;
   /** 階の文字を区切りごとにまとめた物（区切りの文字の数 count と、区切りを包む球 sphere。球で、見えない区切りを描かない）と、壁の向こうを隠す板（src/lib/build.ts の buildWorld が作る） */
   chunks: { mesh: Mesh; count: number; sphere: Sphere }[];
   occMesh: Mesh | null;
@@ -1416,7 +1470,18 @@ export interface Uniforms {
   uAmb: { value: number };
 }
 export const gfx: Gfx = {
-  camera: { position: { x: 0, y: 0, z: 0, set: () => undefined }, rotation: { set: () => undefined } },
+  // 仮のカメラ（本物の PerspectiveCamera は、作る時に Math.random を引くので、05-renderer.js がテスト用モードの乱数の入れ替えの後に作る。
+  // Vector3・Euler・Matrix4 は乱数を引かない）
+  camera: {
+    position: new Vector3(),
+    rotation: new Euler(),
+    aspect: 1,
+    fov: 74,
+    projectionMatrix: new Matrix4(),
+    matrixWorldInverse: new Matrix4(),
+    updateProjectionMatrix: () => undefined,
+    updateMatrixWorld: () => undefined,
+  },
   cellTex: { needsUpdate: false },
   drawBodyOnly: false,
   renderer: undefined,
@@ -1426,6 +1491,19 @@ export const gfx: Gfx = {
   staticMat: undefined,
   occMat: undefined,
   finalPass: null,
+  pixelRatio: 1,
+  sizedAs: '',
+  composer: null,
+  bloom: null,
+  qRun: { q: { pr: 1, bloom: true }, prev: null, done: false },
+  dynGeo: null,
+  aPos: null,
+  aCol: null,
+  aPar: null,
+  dynMat: undefined,
+  ptMat: undefined,
+  waterMesh: null,
+  testCam: null,
   chunks: [],
   occMesh: null,
   waterTex: null,

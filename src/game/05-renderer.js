@@ -3,8 +3,8 @@ gfx.canvas=document.getElementById('gl');
 try{ gfx.renderer=new T.WebGLRenderer({canvas:gfx.canvas,antialias:false,powerPreference:'high-performance',stencil:false}); }
 catch(e){ errEl.textContent='WebG Lを初期化できませんでした。ハードウェアアクセラレーションを有効にしてください。'.replace('WebG L','WebGL'); return; }
 const isGL2=gfx.renderer.capabilities.isWebGL2;
-let pixelRatio=Math.min(window.devicePixelRatio||1,1.5);
-gfx.renderer.setPixelRatio(pixelRatio);
+gfx.pixelRatio=Math.min(window.devicePixelRatio||1,1.5);
+gfx.renderer.setPixelRatio(gfx.pixelRatio);
 gfx.renderer.setSize(window.innerWidth,window.innerHeight,false);
 gfx.scene=new T.Scene();
 gfx.camera=new T.PerspectiveCamera(74,window.innerWidth/window.innerHeight,0.05,110);
@@ -12,14 +12,14 @@ gfx.camera.rotation.order='YXZ';
 // fogCol は src/lib/three.ts（src/game/imports.mjs で読む）
 gfx.renderer.setClearColor(new T.Color(fogCol.x,fogCol.y,fogCol.z),1);
 
-const rt=new T.WebGLRenderTarget(window.innerWidth*pixelRatio,window.innerHeight*pixelRatio,{type:T.HalfFloatType,samples:isGL2?4:0});
-const composer=new T.EffectComposer(gfx.renderer,rt);
-composer.setPixelRatio(pixelRatio);
-composer.setSize(window.innerWidth,window.innerHeight);
-composer.addPass(new T.RenderPass(gfx.scene,gfx.camera));
-const bloom=new T.UnrealBloomPass(new T.Vector2(window.innerWidth,window.innerHeight),0.8,0.55,0.76);
-[bloom.renderTargetBright,...bloom.renderTargetsHorizontal,...bloom.renderTargetsVertical].forEach(t=>{ if(t)t.texture.type=T.HalfFloatType; });
-composer.addPass(bloom);
+const rt=new T.WebGLRenderTarget(window.innerWidth*gfx.pixelRatio,window.innerHeight*gfx.pixelRatio,{type:T.HalfFloatType,samples:isGL2?4:0});
+gfx.composer=new T.EffectComposer(gfx.renderer,rt);
+gfx.composer.setPixelRatio(gfx.pixelRatio);
+gfx.composer.setSize(window.innerWidth,window.innerHeight);
+gfx.composer.addPass(new T.RenderPass(gfx.scene,gfx.camera));
+gfx.bloom=new T.UnrealBloomPass(new T.Vector2(window.innerWidth,window.innerHeight),0.8,0.55,0.76);
+[gfx.bloom.renderTargetBright,...gfx.bloom.renderTargetsHorizontal,...gfx.bloom.renderTargetsVertical].forEach(t=>{ if(t)t.texture.type=T.HalfFloatType; });
+gfx.composer.addPass(gfx.bloom);
 const FinalShader={
   uniforms:{tDiffuse:{value:null},uTime:{value:0},uRes:{value:new T.Vector2(1,1)},uExposure:{value:1.1},uFade:{value:1},uHeat:{value:0},uSwim:{value:0},uHurt:{value:0},uSlow:{value:0},uTint:{value:new T.Vector3(1,1,1)}},
   vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
@@ -49,7 +49,7 @@ const FinalShader={
     }`
 };
 gfx.finalPass=new T.ShaderPass(FinalShader);
-composer.addPass(gfx.finalPass);
+gfx.composer.addPass(gfx.finalPass);
 
 // GLSL_COMMON（古い JS は使わない）・STATIC_VS・WATER_VS・WATER_FS・GLYPH_FS・DYN_VS・PT_VS・PT_FS は src/lib/shaders.ts（src/game/imports.mjs で読む）
 
@@ -63,37 +63,20 @@ gfx.U={
   uCamP:{value:new T.Vector3()}, uCutP:{value:new T.Vector3()}, uCut:{value:0},
   uFogDen:{value:0.05}, uFogColor:{value:fogCol}, uScale:{value:600}, uRamp:{value:new Float32Array([...RAMP_CH].map(c=>c.charCodeAt(0)-32))}, uAmb:{value:1}
 };
-let dynMat, ptMat;
 
 // ---------------------------------------------------------------- glyph atlas
-function buildAtlas(){
-  const AC=128, c=document.createElement('canvas'); c.width=16*AC; c.height=7*AC;
-  const x=c.getContext('2d');
-  x.fillStyle='#fff'; x.strokeStyle='#fff'; x.textAlign='center'; x.textBaseline='middle';
-  x.font=`800 ${Math.round(AC*0.74)}px "JetBrains Mono","DejaVu Sans Mono",Menlo,Consolas,monospace`;
-  x.lineWidth=AC*0.03; x.lineJoin='round';
-  for(let i=1;i<95;i++){ const ch=String.fromCharCode(32+i), cx=(i%16+0.5)*AC, cy=(Math.floor(i/16)+0.5)*AC+AC*0.03; x.fillText(ch,cx,cy); x.strokeText(ch,cx,cy); }
-  x.font=`500 ${Math.round(AC*0.8)}px ${RUNE_FONT}`; x.lineWidth=AC*0.035;
-  for(let k=0;k<RUNE_CHARS.length;k++){ const cx=(k+0.5)*AC, cy=6.5*AC+AC*0.02; x.fillText(RUNE_CHARS[k],cx,cy); x.strokeText(RUNE_CHARS[k],cx,cy); }
-  const tex=new T.CanvasTexture(c);
-  tex.generateMipmaps=true; tex.minFilter=T.LinearMipmapLinearFilter; tex.magFilter=T.LinearFilter;
-  tex.anisotropy=Math.min(8,gfx.renderer.capabilities.getMaxAnisotropy()); tex.needsUpdate=true;
-  return tex;
-}
+// 文字の絵の表を作る buildAtlas は src/lib/render.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- dynamic glyph billboards
 // 置く文字の配列 dPos・dCol・dPar と、文字を置く dyn は src/lib/particles.ts、置いた数 buf.dn は src/lib/state.ts（src/game/imports.mjs で読む）
-const dynGeo=new T.InstancedBufferGeometry();
-{ const pg=new T.PlaneGeometry(1,1); dynGeo.index=pg.index; dynGeo.setAttribute('position',pg.attributes.position); dynGeo.setAttribute('uv',pg.attributes.uv); }
-const aPos=new T.InstancedBufferAttribute(dPos,3).setUsage(T.DynamicDrawUsage);
-const aCol=new T.InstancedBufferAttribute(dCol,3).setUsage(T.DynamicDrawUsage);
-const aPar=new T.InstancedBufferAttribute(dPar,4).setUsage(T.DynamicDrawUsage);
-dynGeo.setAttribute('iPos',aPos); dynGeo.setAttribute('iCol',aCol); dynGeo.setAttribute('iP',aPar);
-dynGeo.instanceCount=0;
-function flushDyn(){
-  dynGeo.instanceCount=buf.dn;
-  for(const [a,s] of [[aPos,3],[aCol,3],[aPar,4]]){ a.updateRange.offset=0; a.updateRange.count=Math.max(1,buf.dn*s); a.needsUpdate=true; }
-}
+gfx.dynGeo=new T.InstancedBufferGeometry();
+{ const pg=new T.PlaneGeometry(1,1); gfx.dynGeo.index=pg.index; gfx.dynGeo.setAttribute('position',pg.attributes.position); gfx.dynGeo.setAttribute('uv',pg.attributes.uv); }
+gfx.aPos=new T.InstancedBufferAttribute(dPos,3).setUsage(T.DynamicDrawUsage);
+gfx.aCol=new T.InstancedBufferAttribute(dCol,3).setUsage(T.DynamicDrawUsage);
+gfx.aPar=new T.InstancedBufferAttribute(dPar,4).setUsage(T.DynamicDrawUsage);
+gfx.dynGeo.setAttribute('iPos',gfx.aPos); gfx.dynGeo.setAttribute('iCol',gfx.aCol); gfx.dynGeo.setAttribute('iP',gfx.aPar);
+gfx.dynGeo.instanceCount=0;
+// 置いた文字の数を描画に渡す flushDyn は src/lib/render.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- particles
 // 粒子の配列 ptPos・ptCol・ptSize・ptGly は src/lib/particles.ts、描く形 gfx.ptGeo と属性 gfx.bpPos などは src/lib/state.ts（ここでその場で入れる）、粒子を動かす updateParticles は src/lib/motes.ts（src/game/imports.mjs で読む）
