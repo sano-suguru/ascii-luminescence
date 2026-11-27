@@ -113,7 +113,7 @@ const SNAKE_EYE: Color = [1, 0.82, 0.25];
 export const SNAKE = {
   rad: (t: number): number => 0.014 + 0.084 * Math.pow(Math.min(1, t / 0.5), 0.8) - 0.045 * smooth(0.6, 1, t),
   spine: (t: number): Vec3 => [
-    0.2 * Math.sin(Math.PI * 2.2 * t + 0.4) * (1 - smooth(0.6, 1, t)),
+    0.32 * Math.sin(Math.PI * 2.2 * t + 0.4) * (1 - smooth(0.6, 1, t)),
     SNAKE.rad(t) + 0.42 * smooth(0.66, 1, t),
     -1.0 + 1.36 * t,
   ],
@@ -233,7 +233,7 @@ export function snakeForm(ty: BodyType): Body {
   put(0, SNAKE.cy(1), SNAKE.z(1) + 0.01, 0, 0.3, 1, BACK_R, C);
   // 目：頭の横の上寄り（断面の楕円の角度 (0.8, 0.6) のところ）の表面から、面の向きに 0.012 外
   for (const sd of [-1, 1]) {
-    const h = 0.45,
+    const h = 0.5,
       w = SNAKE.w(h),
       hh = SNAKE.hh(h),
       ca = 0.8,
@@ -246,7 +246,7 @@ export function snakeForm(ty: BodyType): Body {
       SNAKE.cy(h) + sa * hh + (out * sa) / hh / nl,
       SNAKE.z(h),
       'o',
-      S * 0.7,
+      S * 0.85,
       1.2,
       SNAKE.eye,
       'slither',

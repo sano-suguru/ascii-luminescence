@@ -23,7 +23,7 @@ describe('移す前と同じ', () => {
     const all = await levelCases({ ...LEVELS, ...BUILD, ...GROUND, ...PART, updatePlayer, hurtPlayer }, 5, fakeDom()),
       body = levelText(all),
       calls = all.flatMap((c) => c.calls);
-    expect([fnv(body), body.length]).toEqual(['01852c8f', 196749]);
+    expect([fnv(body), body.length]).toEqual(['44ed70fa', 196749]);
     expect(new Set(calls.map((c) => c.name).filter((n) => NAMES.includes(n)))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);
     expect(all.every((c) => c.timers.threw === 0)).toBe(true);
