@@ -57,21 +57,21 @@ describe('指紋（思わず変わっていないか）', () => {
       ).size,
     ).toBe(7);
     caseOut('bodies-legacy-1', all);
-    expect(fp(all)).toEqual(['23e5ba4b', 434]);
+    expect(fp(all)).toEqual(['54e8436c', 189]);
   });
   it('図鑑の見本の獣', () => {
     expect(fp(JSON.stringify(beastSamples()))).toEqual(['1039558f', 1402]);
   });
-  it('形（表の全部の種類と主、作り直していない主の形と古い形、年代記の獣20と見本、壁の像、王の影。444種類×3つのシード）の指紋', () => {
+  it('形（表の全部の種類と主、作り直していない主の形と古い形、年代記の獣20と見本、壁の像、王の影。413種類×3つのシード）の指紋', () => {
     const types = formTypes(beastSamples(), 20),
       all = formCases(BUILD, types, 3),
       lines = all.split('\n');
     // 場合が中身を通っているか：ほとんどの種類が違う形になり、飾りを断る形（noExtra）もある
-    expect(lines.length).toBe(444);
-    expect(new Set(lines.map((l) => l.split(' ')[1]?.split(':')[0])).size).toBeGreaterThan(430);
+    expect(lines.length).toBe(413);
+    expect(new Set(lines.map((l) => l.split(' ')[1]?.split(':')[0])).size).toBeGreaterThan(400);
     expect(lines.some((l) => l.includes(':1 '))).toBe(true);
     caseOut('bodies-legacy-2', all);
-    expect(fp(all)).toEqual(['f9dd7a95', 25212]);
+    expect(fp(all)).toEqual(['ceadb771', 23527]);
   }, 60000);
   it('まわりの飾り・姿を変える途中・王の影の変身（880の場合）の指紋', () => {
     const all = auraCases({ ...AURAS, buildForm: BUILD.buildForm }, 880),

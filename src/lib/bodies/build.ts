@@ -1,6 +1,6 @@
 // 生き物の形を作る（もとは src/game/07-bodies-lords.js・09-bodies-creatures.js・10-bodies-beast.js）。
 // buildForm が、種類（MTYPES の1つ）の form・look から形を選んで作り、見た目の特徴（extraLook）を足す。
-// 人型と四つ足の形と、種類ごとの見た目の特徴（lookHumanoid・shapeHumanoid・lookQuad・humanoid2）もここにある。
+// 人型と四つ足の形と、種類ごとの見た目の特徴（lookHumanoid・shapeHumanoid・humanoid2）もここにある。
 // addLooks は、表 MTYPES に見た目（look など）を書き足す（古い JS の 07-bodies-lords.js が、読み込む時に呼ぶ）。
 // 形を作る時に mr()（見た目の乱数）を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
 import { lookup } from '../array.ts';
@@ -177,47 +177,6 @@ export function shapeHumanoid(pts: Body, look: string | null | undefined): void 
     }
   }
 }
-/** 古い四つ足の上に、見た目ごとの特徴を足す */
-export function lookQuad(look: string | null | undefined, pts: Body, add: Add, _L: string): void {
-  const mv = (parts: readonly string[], f: (p: Body[number]) => void): void => moveParts(pts, parts, f);
-  const legStretch = (top: number, k: number): void => {
-    mv(['legL', 'legR'], (p) => {
-      p.y = top - (p.piv - p.y) * k;
-      p.piv = top;
-    });
-  };
-  if (look === 'rat') {
-    mv(['body', 'head', 'core', 'tail'], (p) => {
-      p.y *= 0.72;
-    });
-    legStretch(0.27, 0.75);
-    for (let k = 3; k < 9; k++) add(0, 0.33 - k * 0.02, -0.42 - k * 0.12, mpick(['~', '-']), 0.09, 0.85, 'tail', k);
-  } else if (look === 'jackal') {
-    mv(['body', 'head', 'core', 'tail'], (p) => {
-      p.y += 0.14;
-    });
-    legStretch(0.5, 1.4);
-    for (const sd of [-1, 1]) add(sd * 0.07, 0.86, 0.42, '^', 0.11, 1.3, 'head');
-  } else if (look === 'grazer') {
-    mv(['head', 'core'], (p) => {
-      p.y -= 0.14;
-      p.z += 0.06;
-    });
-    for (let k = 0; k < 7; k++) {
-      const z = -0.3 + k * 0.1;
-      for (let j = -1; j <= 1; j++) add(j * 0.08, 0.6 + 0.04 * Math.cos(j), z, mpick(['o', '%', '"']), 0.12, 1.2, 'body');
-    }
-  } else if (look === 'salamander') {
-    mv(['body', 'head', 'core', 'tail'], (p) => {
-      p.y *= 0.62;
-      p.z *= 1.35;
-    });
-    legStretch(0.24, 0.7);
-    for (let k = 3; k < 8; k++) add(0, 0.3 - k * 0.02, -0.56 - k * 0.12, mpick(['~', '=']), 0.1, 0.9, 'tail', k);
-    for (let k = 0; k < 6; k++) add((mr() - 0.5) * 0.1, 0.42 + mr() * 0.08, -0.35 + k * 0.14, '^', 0.13, 2.6, 'body');
-  }
-}
-
 /** 表 MTYPES に、見た目（look）・機械の形・猟犬の尾と色を書き足す。古い JS（07-bodies-lords.js）が、読み込む時に1回呼ぶ */
 export function addLooks(): void {
   for (const [k, v] of Object.entries({
@@ -698,7 +657,6 @@ export function buildForm0(ty: FormType): Body {
       ] as const)
         for (let k = 0; k < 3; k++) add(sx * 0.12, 0.33 - k * 0.13, sz, mpick(['|', '!', L]), 0.12, 0.9, part, 0.36, sz);
       for (let k = 0; k < 3; k++) add(0, 0.48 + k * 0.05, -0.42 - k * 0.12, mpick(['~', '-', L]), 0.11, 0.9, 'tail', k);
-      lookQuad(ty.look, pts, add, L);
       break;
     case 'bat':
       fib(5, 0.1, 0, 0, 0, ['v', '*'], 0.13, 1.3, 'body');
