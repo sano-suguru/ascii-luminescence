@@ -1,7 +1,10 @@
 // 構文の木で、移した関数と移す前の古い関数を比べる道具（tools/same-code.mjs）の単体テスト。
 // 規則ごとに「同じと言う物」と「違うと言う物」を小さな見本で確かめ、写し漏れ・係数・比べ方・乱数を引く順番の違いを見つけることも確かめる。
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { boxFields, compareSources, detectStates, legacyDecls, referenced, wasUnused } from '../../tools/same-code.mjs';
+import { boxFields, compareSources, detectStates, gameUses, legacyDecls, referenced, wasUnused } from '../../tools/same-code.mjs';
 
 /** 古い JS の文 oldJs と新しい .ts の文 newTs を比べ、関数ごとの違いの数・人が確かめる一覧・比べた名前を返す */
 function cmp(oldJs, newTs, imported = new Map()) {
@@ -312,6 +315,33 @@ describe('使っていない物を消しただけか（wasUnused）', () => {
   });
   it('古い JS に無い名前は「使っていない」と言わない', () => {
     expect(wasUnused(game, old, 'none')).toBe(false);
+  });
+});
+
+describe('古い JS で、今も名前として使っているか（gameUses）', () => {
+  it('一番外の宣言・imports.mjs の名前・どこにも無い名前を指す所だけ（局所の同じ名前・欄の名前・コメント・文字列は数えない）', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'same-code-uses-'));
+    try {
+      writeFileSync(join(dir, 'imports.mjs'), "import { imp } from './x.ts';\n");
+      writeFileSync(
+        join(dir, '01-a.js'),
+        [
+          'let top=0;',
+          'function f(){ const local=1, gone=2; return {gone, local, top}; }',
+          '// gone note',
+          "const o={ note: 'gone' }; o.gone=1;",
+          'imp(); lost();',
+          '',
+        ].join('\n'),
+      );
+      expect([...gameUses(dir, new Set(['top', 'gone', 'note', 'imp', 'lost', 'none']))].sort((a, b) => a.localeCompare(b))).toEqual([
+        'imp',
+        'lost',
+        'top',
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 
