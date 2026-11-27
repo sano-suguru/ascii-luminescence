@@ -8,7 +8,7 @@ import { G, RAMP_CH, RUNESET, RUNE_CHARS, SWAPSET, WG } from '../lib/glyphs.ts';
 import { R, RI, keyedRand, mpick, mr, pick, rand, roll, setSoundRand, shuffle, sndRand, withVisualRand } from '../lib/random.ts';
 import { dragonSleepForm } from '../lib/bodies/beasts.ts';
 import { applySize, frame, setQuality, testTick, tick, withTestCam } from '../lib/loop.ts';
-import { buildAtlas, cullChunks, flushDyn, makeWater } from '../lib/render.ts';
+import { buildAtlas, cullChunks, flushDyn, initRenderer, makeWater } from '../lib/render.ts';
 import { drawGallery, galleryDrag, galleryHold, galleryReset, galleryView, galleryWheel, galleryZoom, openBestiary, openRange, renderGallery, showBeast, trackSeen, updateGallery } from '../lib/gallery.ts';
 import { beastSamples, beastSleep, SHADOW_KING_SC, shadowKingScale } from '../lib/bodies/lords.ts';
 import {
