@@ -22,6 +22,8 @@
 //      同時にたくさん倒れても、崩れる体の数は上限（12）を越えて残らない
 //  18. 敵に攻撃を当てても、画面が白く飛ばない（トロルに照準を合わせ、すぐ近くで小剣を当てる。光っている間の画面全体の眩しい画素が 25% 以下）。
 //      当たった光は残っている（体の範囲の明るさが、当てる前より 1.1 倍を越えて上がる）。数え方は tools/glare.mjs（pnpm glare）と同じ
+//  19. 場面を作る道具：__test.elem で手に性質を付け替えられる（下の HUD の手の名前に出る）。__test.hold で止めた生き物は、すぐ隣でも歩かず攻撃せず、言った向きへ回り、
+//      放すとまた動く。__test.cam で目と同じ所に置いたカメラは目と同じに写し、後ろへ下げると、見ている点を真ん中にしたまま小さく写す。null で目に戻る
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { PNG } from 'pngjs';
 import { withBrowser, newPage, openTest, advance, frames, aimAt, strike } from './lib.mjs';
@@ -720,6 +722,128 @@ async function glareChecks(pg, base) {
   console.log(`18：当たった時の画面の眩しい画素 ${(scr * 100).toFixed(1)}%、体の明るさ ${m0.toFixed(1)} → ${m1.toFixed(1)}`);
 }
 
+async function sceneToolChecks(pg, base) {
+  await openTest(pg, base, 'seed=202&depth=1');
+  await advance(pg, 2);
+  // 性質：付けると手の名前に出て、別の性質を付けると入れ替わる。null で外れる。無い鍵は受け付けない
+  const el = await pg.evaluate(() => {
+    __test.equip('R', 'bolt');
+    const hb = () => document.getElementById('hotbar').textContent;
+    const a = __test.elem('R', 'fire'),
+      fire = hb(),
+      b = __test.elem('R', 'ice'),
+      ice = hb(),
+      c = __test.elem('R', null),
+      none = hb();
+    return { a, b, c, fire, ice, none, bad: __test.elem('R', 'blade') };
+  });
+  if (el.a !== 'fire' || !el.fire.includes('炎の')) errs.push(`19：右手に炎を付けても、手の名前に炎が出ない（${el.a}・${el.fire}）`);
+  if (el.b !== 'ice' || !el.ice.includes('氷の') || el.ice.includes('炎の'))
+    errs.push(`19：炎を氷に付け替えられない（${el.b}・${el.ice}）`);
+  if (el.c !== null || el.none.includes('炎の') || el.none.includes('氷の')) errs.push(`19：性質を外せない（${el.c}・${el.none}）`);
+  if (!String(el.bad).startsWith('no such element')) errs.push(`19：性質でない鍵を受け付けた（${el.bad}）`);
+  // 止める：プレイヤーのすぐ隣のトロルを、プレイヤーから見て横を向かせて止める。3 秒たっても動かず、体力も減らず、言った向きを向く
+  const put = await pg.evaluate(() => {
+    __test.clearAll();
+    __test.fov();
+    const s = __test.state(),
+      { w, h } = __test.size();
+    let best = null;
+    for (let i = 0; i < w * h; i++) {
+      const c = __test.cell(i);
+      if (!c.floor || !c.seen) continue;
+      const d = Math.abs(Math.hypot(c.x - s.pos[0], c.z - s.pos[1]) - 1.6);
+      if (!best || d < best[0]) best = [d, i];
+    }
+    if (!best) return null;
+    __test.summon('T', best[1]);
+    __test.hold(0, { yaw: 1.2 });
+    const m0 = __test.mob(0);
+    __test.advance(3);
+    const m1 = __test.mob(0),
+      s1 = __test.state();
+    __test.hold(0, null);
+    __test.advance(4);
+    const m2 = __test.mob(0),
+      s2 = __test.state();
+    return { m0, m1, m2, hp0: s.hp, hp1: s1.hp, hp2: s2.hp };
+  });
+  if (!put) errs.push('19：トロルを置く床が無い（テストの前提が崩れた）');
+  else {
+    const { m0, m1, m2, hp0, hp1, hp2 } = put,
+      turn = Math.abs(Math.atan2(Math.sin(m1.yaw - 1.2), Math.cos(m1.yaw - 1.2)));
+    if (Math.hypot(m1.x - m0.x, m1.z - m0.z) > 0.01)
+      errs.push(`19：止めたトロルが歩いた（${JSON.stringify([m0.x, m0.z])} → ${JSON.stringify([m1.x, m1.z])}）`);
+    if (hp1 < hp0) errs.push(`19：止めたトロルが攻撃した（体力 ${hp0} → ${hp1}）`);
+    if (turn > 0.05) errs.push(`19：止めたトロルが、言った向き 1.2 を向かない（${m1.yaw}）`);
+    if (!(hp2 < hp1 || Math.hypot(m2.x - m1.x, m2.z - m1.z) > 0.1)) errs.push(`19：放したトロルが、動きも攻撃もしない`);
+  }
+  // カメラ：トロルを 5 マスほど先に置いて止め、目からトロルの体の真ん中を見る（dbg.look）。目と同じ所に置いたカメラで同じ点を見ると、同じに写る。
+  // 3 後ろへ下げると、真ん中は同じ所のまま小さく写る。null で目に戻ると、置く前と同じに写る
+  const cam = await pg.evaluate(() => {
+    __test.clearAll();
+    const s = __test.state(),
+      { w, h } = __test.size();
+    let best = null;
+    for (let i = 0; i < w * h; i++) {
+      const c = __test.cell(i);
+      if (!c.floor || !c.seen) continue;
+      const d = Math.abs(Math.hypot(c.x - s.pos[0], c.z - s.pos[1]) - 5);
+      if (!best || d < best[0]) best = [d, i];
+    }
+    if (!best) return null;
+    __test.summon('T', best[1]);
+    // 向きを決めて止め、気づき終わるまで進める（気づく度合いで明るさが変わるので）
+    __test.hold(0, { yaw: 0.5 });
+    __test.advance(4);
+    const m = __test.mob(0);
+    dbg.look(m.x, 1.2, m.z);
+    return true;
+  });
+  if (!cam) {
+    errs.push('19：トロルを 5 マス先に置く床が無い（テストの前提が崩れた）');
+    return;
+  }
+  await frames(pg, 2);
+  const view = async () => {
+    await frames(pg, 2);
+    const v = await pg.evaluate(() => __test.monsterView('T'));
+    return v && v.screen ? { x: (v.screen.x0 + v.screen.x1) / 2, y: (v.screen.y0 + v.screen.y1) / 2, h: v.screen.y1 - v.screen.y0 } : null;
+  };
+  const v0 = await view();
+  // 目の位置（揺れの無い時の、カメラの位置）と、見ている点
+  const eye = await pg.evaluate(() => {
+    const c = __test.cam(),
+      m = __test.mob(0);
+    return { pos: c.pos, at: [m.x, 1.2, m.z] };
+  });
+  await pg.evaluate((eye) => __test.cam(eye), eye);
+  const v1 = await view();
+  const back = await pg.evaluate((eye) => {
+    const [x, y, z] = eye.pos,
+      [ax, , az] = eye.at,
+      d = Math.hypot(ax - x, az - z);
+    return __test.cam({ pos: [x - ((ax - x) / d) * 3, y, z - ((az - z) / d) * 3], at: eye.at });
+  }, eye);
+  const v2 = await view();
+  await pg.evaluate(() => __test.cam(null));
+  const v3 = await view();
+  const near = (a, b, px) => a && b && Math.abs(a.x - b.x) <= px && Math.abs(a.y - b.y) <= px;
+  if (!back) errs.push('19：__test.cam がカメラの指定を返さない');
+  if (!near(v0, v1, 2))
+    errs.push(`19：目と同じ所に置いたカメラで、写り方が変わる（目 ${JSON.stringify(v0)}、置いたカメラ ${JSON.stringify(v1)}）`);
+  // 下げると小さく写り、見ている点（画面の真ん中）からのずれも、同じ割合で縮む（体の範囲の真ん中は、見ている点の真上とは限らないので）
+  const k = v0 && v2 ? v2.h / v0.h : 0;
+  if (!(k > 0 && k < 0.85) || Math.abs(v2.x - 480 - (v0.x - 480) * k) > 6 || Math.abs(v2.y - 270 - (v0.y - 270) * k) > 6)
+    errs.push(
+      `19：3 後ろへ下げたカメラで、小さく写らないか、写る所が見ている点からずれる（目 ${JSON.stringify(v0)}、下げたカメラ ${JSON.stringify(v2)}）`,
+    );
+  if (!near(v0, v3, 2)) errs.push(`19：__test.cam(null) で目に戻らない（置く前 ${JSON.stringify(v0)}、戻した後 ${JSON.stringify(v3)}）`);
+  console.log(
+    `19：トロルの写る所 目 ${JSON.stringify(v0)}・同じ所のカメラ ${JSON.stringify(v1)}・3 下げたカメラ ${JSON.stringify(v2)}・戻した後 ${JSON.stringify(v3)}`,
+  );
+}
+
 await withBrowser(async ({ browser, base }) => {
   const pg = await newPage(browser, errs);
   await doorChecks(pg, base);
@@ -735,6 +859,7 @@ await withBrowser(async ({ browser, base }) => {
   await rockfallChecks(pg, base);
   await debrisChecks(pg, base);
   await glareChecks(pg, base);
+  await sceneToolChecks(pg, base);
 });
 console.log('page errors:', errs.length ? errs : 'none');
 process.exit(errs.length ? 1 : 0);

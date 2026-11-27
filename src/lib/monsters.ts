@@ -450,6 +450,8 @@ export function updateMonster(m: Mob, dt: number, t: number): void {
   let moving = 0;
   if (m.sleep) {
     moving = 0;
+  } else if (m.hold) {
+    moving = m.hold.walk ? 1 : 0;
   } else if (ty.flier) {
     // erratic flight: picks a new heading every fraction of a second; circles the player once it notices them
     m.flitT -= dt;
@@ -527,7 +529,11 @@ export function updateMonster(m: Mob, dt: number, t: number): void {
   m.moving += (moving - m.moving) * Math.min(1, dt * 5);
   m.yaw = lerpAngle(
     m.yaw,
-    (m.alert > 0.3 || (ty.peaceful && dp < 4)) && !ty.flier && ty.form !== 'eel' ? Math.atan2(dxp, dzp) : m.dirYaw,
+    m.hold && m.hold.yaw !== undefined
+      ? m.hold.yaw
+      : (m.alert > 0.3 || (ty.peaceful && dp < 4)) && !ty.flier && ty.form !== 'eel'
+        ? Math.atan2(dxp, dzp)
+        : m.dirYaw,
     1 - Math.exp(-dt * (ty.flier ? 8 : 3)),
   );
   m.walk += dt * m.moving * ty.speed * 5.5;
@@ -644,7 +650,7 @@ export function updateMonster(m: Mob, dt: number, t: number): void {
       msg(`<b style="color:${css(c)}">?</b>何かが、すぐ近くで空気を揺らしている……。`);
     }
   }
-  monsterStrike(m, dt, dp);
+  if (!m.hold) monsterStrike(m, dt, dp);
   if ((m.hitT ?? NaN) > 0) m.hitT = (m.hitT ?? NaN) - dt;
   if (ty.heavy && !m.sleep && m.moving > 0.4 && dp < 16) {
     m.stepT = (m.stepT || 0) + dt * m.moving * ty.speed * 1.6;

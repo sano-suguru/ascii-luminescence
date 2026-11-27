@@ -43,6 +43,11 @@ const tickRandOn=()=>{ const g=ui.gallery; return !(g&&g.mode==='beast'&&g.m); }
 const skipPhases=new Set();
 const inPhase=(name,fn)=>skipPhases.has(name)?undefined:tickRandOn()?keyedPhase(keyedRand('tick '+name,adv.runSeed,clock.frame),fn):fn();
 const inMobPhase=(name,m,fn)=>skipPhases.has(name)?undefined:tickRandOn()?keyedPhase(keyedRand('tick '+name,levelSeed(),m.seq,clock.frame),fn):fn();
+// テスト用モードの __test.cam で置いたカメラ（{pos, at}。null ならふだんどおり、プレイヤーの目か3人称のカメラ）。プレイヤーの段の後に置き直す。
+// 1人称のままだと、術はカメラの所から出る（照準の元 aimOrigin が1人称ではカメラの位置なので）。プレイヤーの姿を写して撃つ時は tps で3人称にする
+let testCam=null, testCamPrev=null; // testCamPrev：cam の tps で3人称にする前の視点（戻す時に使う）
+const placeTestCam=()=>{ const [x,y,z]=testCam.pos, [ax,ay,az]=testCam.at; gfx.camera.position.set(x,y,z);
+  gfx.camera.rotation.set(Math.atan2(ay-y,Math.hypot(ax-x,az-z)),Math.atan2(-(ax-x),-(az-z)),0); };
 function tick(raw,draw){
   if(isPaused()&&ui.started){ if(frame.stillDrawn)return; frame.stillDrawn=true; } else frame.stillDrawn=false; clock.frame++; const dt=isPaused()?0:clamp(raw,0,0.05)*timeScale();
   clock.time+=dt; const t=clock.time;
@@ -52,7 +57,7 @@ function tick(raw,draw){
     if(here.trans.phase==='out'){ here.fade=1-here.trans.t/0.8; if(here.trans.t>=0.8){ if(here.trans.run)newRun(); else { if(here.trans.regen)adv.runSeed=(Math.random()*1e9)>>>0; else advance(here.trans.go); newLevel(); } here.trans={phase:'in',t:0}; here.fade=0; } }
     else { here.fade=here.trans.t/1.3; if(here.trans.t>=1.3){ here.trans=null; here.fade=1; } }
   } else here.fade=Math.min(1,here.fade+dt*0.8); });
-  inPhase('player',()=>{ updatePlayer(dt); updateStealth(dt); updateStatuses(dt); });
+  inPhase('player',()=>{ updatePlayer(dt); updateStealth(dt); updateStatuses(dt); }); if(testCam)placeTestCam();
   for(const m of here.monsters)if(!m.galShow&&!m.ty.dummy)inMobPhase('mob',m,()=>updateMonster(m,dt*monTimeK(m),t));
   if(here.monsters.some(m=>m.dead))here.monsters=here.monsters.filter(m=>!m.dead);
   hudInfo.pfFrames++; hudInfo.pfT+=raw; if(hudInfo.pfT>=0.5){ hudInfo.pfFps=Math.round(hudInfo.pfFrames/hudInfo.pfT); hudInfo.pfFrames=0; hudInfo.pfT=0; if(ui.perfOn)renderStatus(); }
@@ -127,6 +132,20 @@ if(TEST)window.__test={
   // hold a weapon (a RUNE_DEF key such as 'blade', 'bolt', 'orb'), and press / release a hand's button ('L' or 'R')
   open(t){ if(!['slotL','slotR','body'].includes(t))return 'no such slot: '+t; applyOpen(t); return t; },
   equip(h,type){ if(!RUNE_DEF[type]||RUNE_DEF[type].cat!=='atk')return 'no such weapon: '+type; equipWeapon(h,makeRune(type)); renderHotbar(); return type; },
+  // 手 h（'L'・'R'）に性質（RUNE_DEF の性質の鍵：'fire'・'ice'・'thunder'・'poison'）を付ける。手の性質のルーンを外してから、空いた枠に入れる。
+  // 付けた性質を返す（無い鍵・入る枠が無い時は、わけの文）。null なら性質のルーンを外すだけ
+  elem(h,type){ if(type!==null&&(!RUNE_DEF[type]||RUNE_DEF[type].cat!=='elem'))return 'no such element: '+type; const H=gear.hands[h], n=H.slotN||2;
+    for(let i=0;i<n;i++){ const r=H.slots[i]; if(r&&RUNE_DEF[r.type].cat==='elem')slotSet(h,'s'+i,null); }
+    let put=type===null; if(!put){ const ru=makeRune(type); for(let i=0;i<n&&!put;i++)if(!H.slots[i]&&canPutAt(h,i,ru)){ slotSet(h,'s'+i,ru); put=true; } }
+    syncHands(); renderHotbar(); return put?type:'no free slot: '+h; },
+  // n 番目（0 から。state().monsters の順）の生き物を、その場に止める（{yaw, walk}：yaw は向く向き（体の向き m.yaw と同じ、atan2(x の差, z の差)。無ければ今の向きのまま）、
+  // walk なら足踏みする。止めている間は歩かず、攻撃もしない。気づく・当たってひるむ・吹き飛ぶ・燃えるなどは、ふだんどおり）。null で放す。止めたかを返す
+  hold(n,o){ const m=here.monsters[n]; if(!m)return false; m.hold=o?{...(o.yaw!==undefined?{yaw:o.yaw}:{}),walk:!!o.walk}:null; return true; },
+  // カメラを pos（[x,y,z]）に置いて at（[x,y,z]）を見る（毎 tick 置き直す）。tps が真なら3人称にして、プレイヤーの姿も描く（術はプレイヤーから出る）。
+  // null で元に戻す（3人称にしていたら、前の視点に戻す）。今のカメラの指定を返す。引数なしなら何も変えず、今のカメラの位置と向き {pos, yaw, pitch} を返す
+  cam(o){ if(o===undefined){ const p=gfx.camera.position; return {pos:[p.x,p.y,p.z],yaw:gfx.camera.rotation.y,pitch:gfx.camera.rotation.x}; }
+    if(o){ if(o.tps&&ui.camMode!=='tps'){ testCamPrev=ui.camMode; ui.camMode='tps'; ui.camPos=null; } testCam={pos:o.pos.slice(),at:o.at.slice()}; placeTestCam(); }
+    else { testCam=null; if(testCamPrev!==null){ ui.camMode=testCamPrev; ui.camPos=null; testCamPrev=null; } } return testCam; },
   // true when the hand started charging, or attacked at once (a weapon with no charge, such as the short sword)
   press(h){ const r0=player.recover||0; beginCast(h); return !!gear.castSt||(player.recover||0)>r0; },
   release(h){ releaseCast(h); },
@@ -242,7 +261,7 @@ if(TEST)window.__test={
   // knock creature n (counted from 0, as in state().monsters) back with speed kx kz, as a hit's knockback does
   knock(n,kx,kz){ const m=here.monsters[n]; if(!m)return false; m.st=m.st||{}; m.kx=kx; m.kz=kz; return true; },
   // creature n's cell, the cell it walks to, its body scale, position and knockback speed
-  mob(n){ const m=here.monsters[n]; return m?{cx:m.cx,cz:m.cz,tx:m.tx,tz:m.tz,scale:m.ty.scale,x:m.x,z:m.z,kx:m.kx||0,kz:m.kz||0,hitT:Math.max(0,m.hitT||0),glow:m.glow,alert:m.alert,aimed:m===ui.aimMon}:null; },
+  mob(n){ const m=here.monsters[n]; return m?{cx:m.cx,cz:m.cz,tx:m.tx,tz:m.tz,scale:m.ty.scale,x:m.x,z:m.z,yaw:m.yaw,kx:m.kx||0,kz:m.kz||0,hitT:Math.max(0,m.hitT||0),glow:m.glow,alert:m.alert,aimed:m===ui.aimMon}:null; },
   // every place a run can visit, for generation checks
   places(){ return [...Array.from({length:FINAL_DEPTH},(_,i)=>({depth:i+1})), ...Object.keys(SPECIALS).map(k=>({inter:k})),
     ...Object.values(BRANCHES).flatMap(B=>Array.from({length:B.len},(_,i)=>({branch:B.key,lvl:i+1}))), ...Object.values(REALMS).map(R=>({realm:R.key,depth:R.minD+2}))]; },
