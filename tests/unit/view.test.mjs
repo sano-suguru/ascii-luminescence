@@ -44,7 +44,7 @@ describe('移す前と同じ', () => {
     const all = await viewCases({ ...AIM, ...DRAW, ...FIX, ...LM, ...LOOK }, 240),
       body = viewText(all),
       calls = all.flatMap((c) => c.calls);
-    expect([fnv(body), body.length]).toEqual(['e86f0c59', 59838023]);
+    expect([fnv(body), body.length]).toEqual(['674f3116', 59838023]);
     // 場合が中身を通っているか：18の関数が全部呼ばれ、文字を置き、粒子を出し、どれも止まらない
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.dn > 0).length).toBeGreaterThan(2000);

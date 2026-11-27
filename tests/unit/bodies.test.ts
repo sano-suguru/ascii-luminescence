@@ -138,6 +138,30 @@ describe('生き物の形', () => {
       expect([axis('legL'), axis('legR')]).toEqual([new Set(['0.62,0']), new Set(['0.62,0'])]);
     }
   });
+  it('ゴブリンの呪術師：腕の点（袖・手・杖も）はどれも肩を、足の点は腰を軸に回る。明るさ b は 1.8 まで。縁取りと背中の印は、衣の表面のすぐ外', () => {
+    for (const ty of TYS) {
+      const b = seeded(() => beasts.conjurerForm(ty)),
+        axis = (part: string) => new Set(b.filter((p) => p.part === part).map((p) => `${p.piv},${p.pz}`));
+      expect([axis('armL'), axis('armR')]).toEqual([new Set(['1.04,0.14']), new Set(['1.04,0.14'])]);
+      expect([axis('legL'), axis('legR')]).toEqual([new Set(['0.62,0.05']), new Set(['0.62,0.05'])]);
+      for (const p of b) expect(p.b).toBeLessThanOrEqual(1.8);
+      expect(new Set(b.map((p) => p.part))).toEqual(new Set(['body', 'head', 'armL', 'armR', 'legL', 'legR']));
+      // 衣の表面からの距離（外が正。体を作ったのと同じ式 CONJ_ROBE で、点の高さと向きの所の表面と比べる）
+      const R = beasts.CONJ_ROBE,
+        out = (p: { x: number; y: number; z: number }): number => {
+          const f = (p.y - R.y0) / (R.y1 - R.y0),
+            a = Math.atan2((p.z - R.z(f)) / R.rz(f, p.z < R.z(f)), p.x / R.rx(f)),
+            s = beasts.conjRobeAt(f, a);
+          return Math.hypot(p.x, p.z - R.z(f)) - Math.hypot(s.x, s.z - R.z(f));
+        };
+      const deco = b.filter((p) => p.part === 'body' && p.s < 0.95 * nth(b, 0).s);
+      expect(deco.length).toBeGreaterThan(60);
+      for (const p of deco) {
+        expect(out(p)).toBeGreaterThan(0.005);
+        expect(out(p)).toBeLessThan(0.05);
+      }
+    }
+  });
   it('クラーケン：水面より下に点が無く、目と斑点は頭の表面のすぐ外（埋もれず、浮かない）。明るさ b は 1.8 まで。腕は揺れる触手（tent）だけ', () => {
     const H = beasts.krakenHead,
       K = beasts.KRAKEN;
