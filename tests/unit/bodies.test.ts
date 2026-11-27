@@ -93,8 +93,8 @@ describe('生き物の形', () => {
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
     caseOut('bodies-1', all);
-    expect(all.length).toBe(6686068);
-    expect(fnv(all)).toBe('f94374ff'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
+    expect(all.length).toBe(6686018);
+    expect(fnv(all)).toBe('8f27705a'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
   });
   it('主と大きな生き物の形の指紋（形と、形を作る時に見た目の乱数を引く順番が、思わず変わっていない）', () => {
     let all = '';
@@ -249,14 +249,15 @@ describe('生き物の形', () => {
         expect([p.piv, p.pz]).toEqual([ax.piv, ax.pz]);
         expect(p.part).toBe(p.z > 0 === p.x < 0 ? 'legL' : 'legR');
       }
-      // 尾：付け根より後ろで、piv は付け根から、その輪の真ん中までの距離（点と付け根の距離から、輪の半径より離れない）。先は付け根より下
+      // 尾：付け根（最初の輪の真ん中）から後ろへ伸び、piv は付け根から、その輪の真ん中までの距離（付け根で 0。点と付け根の距離から、輪の半径より離れない）。先は付け根より下
       const tail = b.filter((q) => q.part === 'tailw'),
         [, ry0, rz0] = B.tailRoot;
       expect(tail.length).toBeGreaterThan(20);
       for (const p of tail) {
-        expect(p.z).toBeLessThan(rz0);
+        expect(p.z).toBeLessThan(rz0 + 0.09);
         expect(Math.abs(Math.hypot(p.x, p.y - ry0, p.z - rz0) - p.piv)).toBeLessThan(0.1);
       }
+      expect(Math.min(...tail.map((p) => p.piv))).toBe(0);
       expect(Math.min(...tail.map((p) => p.y))).toBeLessThan(ry0 - 0.3);
       // 目：頭の表面のすぐ外（埋もれず、浮かない）
       const eyes = b.filter((p) => p.col === C.eye);

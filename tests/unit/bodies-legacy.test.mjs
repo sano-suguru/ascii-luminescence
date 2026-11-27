@@ -71,7 +71,7 @@ describe('指紋（思わず変わっていないか）', () => {
     expect(new Set(lines.map((l) => l.split(' ')[1]?.split(':')[0])).size).toBeGreaterThan(400);
     expect(lines.some((l) => l.includes(':1 '))).toBe(true);
     caseOut('bodies-legacy-2', all);
-    expect(fp(all)).toEqual(['c87f8600', 23533]);
+    expect(fp(all)).toEqual(['f67b215e', 23533]);
   }, 60000);
   it('まわりの飾り・姿を変える途中・王の影の変身（880の場合）の指紋', () => {
     const all = auraCases({ ...AURAS, buildForm: BUILD.buildForm }, 880),

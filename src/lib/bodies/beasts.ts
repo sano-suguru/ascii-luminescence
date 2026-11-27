@@ -252,7 +252,7 @@ export const jackalBody = {
   /** 背の黒い鞍の前と後ろの端の奥行き */
   saddle: [0.3, -0.36] as const,
   /** 尾の付け根の所 */
-  tailRoot: [0, 0.72, -0.4] satisfies Vec3,
+  tailRoot: [0, 0.72, -0.46] satisfies Vec3,
 };
 /** ジャッカルの脚の付け根（肩と腰）。脚の点は、これを軸に回る */
 export const JACKAL_SHOULDER = { piv: 0.74, pz: 0.2 },
@@ -310,19 +310,23 @@ export function jackalForm(ty: BodyType): Body {
       const f = (k * 0.618) % 1,
         z = zAt(clamp(d0 + (f - 0.5) * (len / nz), 0, len)),
         { rx, ry } = B.at(z),
-        slope = (B.at(z - 0.02).rx + B.at(z - 0.02).ry - B.at(z + 0.02).rx - B.at(z + 0.02).ry) / 0.08,
         a = (k / n) * Math.PI * 2 + i * 0.5,
+        cs = Math.cos(a),
         sn = Math.sin(a),
         [x, y] = B.surf(z, a),
-        l = Math.hypot(Math.cos(a) / rx, sn / ry),
+        l = Math.hypot(cs / rx, sn / ry),
+        // 面の向きの奥行きの分：輪の式（横の半径・縦の半径・真ん中の高さ）の、奥行きでの変わり方から出す（首は真ん中の高さが急に下りるので、高さの変わり方も入れる）
+        zA = B.at(z + 0.02),
+        zB = B.at(z - 0.02),
+        nzr = -((cs * cs * (zA.rx - zB.rx)) / rx + (sn * (zA.cy - zB.cy)) / ry + (sn * sn * (zA.ry - zB.ry)) / ry) / 0.04,
         part = z > B.headZ ? 'head' : 'body',
         // 鞍：肩から尻までの背。真ん中ほど脇へ広い
         sw = z < B.saddle[0] && z > B.saddle[1] ? Math.sin((Math.PI * (B.saddle[0] - z)) / (B.saddle[0] - B.saddle[1])) : 0,
         saddle = sn > 0.75 - 0.6 * sw && sw > 0.15,
         // 喉と胸と腹（頭では、鼻づらの下と頬）
         under = z > B.headZ ? sn < -0.2 : z > 0.22 ? sn < -0.1 : sn < -0.55;
-      if (saddle) put(x, y, z, Math.cos(a) / rx / l, sn / ry / l, slope, DARK, f < 0.15 ? C.silver : C.saddle, part);
-      else put(x, y, z, Math.cos(a) / rx / l, sn / ry / l, slope, under ? CREAM : PELT, under ? C.cream : C.tawny, part);
+      if (saddle) put(x, y, z, cs / rx / l, sn / ry / l, nzr / l, DARK, f < 0.15 ? C.silver : C.saddle, part);
+      else put(x, y, z, cs / rx / l, sn / ry / l, nzr / l, under ? CREAM : PELT, under ? C.cream : C.tawny, part);
     }
   }
   // 鼻：鼻先の黒
@@ -355,7 +359,17 @@ export function jackalForm(ty: BodyType): Body {
         for (const face of [1, -1]) {
           const o = face * 0.01,
             col = face < 0 ? C.tawny : edge ? C.saddle : C.cream;
-          put(x + nx * o, y, zz + nzz * o, nx * face, 0.2, nzz * face, face > 0 && edge ? DARK : face > 0 ? CREAM : PELT, col, 'head');
+          put(
+            x + nx * o,
+            y,
+            zz + nzz * o,
+            nx * face,
+            0.2 * face,
+            nzz * face,
+            face > 0 && edge ? DARK : face > 0 ? CREAM : PELT,
+            col,
+            'head',
+          );
         }
       }
     }
@@ -415,7 +429,7 @@ export function jackalForm(ty: BodyType): Body {
   for (let j = 0; j <= TN; j++) {
     const f = j / TN,
       y = ry0 - 0.36 * f,
-      z = rz0 - 0.06 - 0.3 * Math.sin(f * 1.3),
+      z = rz0 - 0.3 * Math.sin(f * 1.3),
       r = 0.035 + 0.05 * Math.sin(Math.PI * Math.min(1, f * 1.1)),
       n = Math.max(5, Math.round((2 * Math.PI * r) / (S * 0.7))),
       tip = f > 0.78;

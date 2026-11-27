@@ -32,6 +32,6 @@ describe('移す前と同じ', () => {
     expect(new Set(st.map((s) => s.gfx[0])).size).toBeGreaterThan(3);
     expect(calls.filter((c) => c.log.includes('"render"')).length).toBeGreaterThan(100);
     caseOut('loop', all);
-    expect([fnv(all), all.length]).toEqual(['eb74047c', 22570268]);
+    expect([fnv(all), all.length]).toEqual(['4ff7dc8f', 22570268]);
   }, 180000);
 });
