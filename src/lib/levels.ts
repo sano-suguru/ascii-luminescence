@@ -561,6 +561,7 @@ export function newLevel(seedOverride?: number): void {
   fight.laters = [];
   fight.rains = [];
   fight.marks = [];
+  fight.debris = [];
   fight.beamRun = null;
   fight.boltFx = [];
   fight.zapQueue = [];

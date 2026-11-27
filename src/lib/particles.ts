@@ -16,7 +16,10 @@ export const dPos = new Float32Array(DYN_MAX * 3),
   dCol = new Float32Array(DYN_MAX * 3),
   dPar = new Float32Array(DYN_MAX * 4);
 
-/** 文字を1つ置く（g は文字の絵の表の番号、mode は描き方、yaw は向き。数が DYN_MAX に達していれば置かない） */
+/**
+ * 文字を1つ置く（g は文字の絵の表の番号、yaw は向き。数が DYN_MAX に達していれば置かない）。
+ * mode は描き方：0 はこちらを向く、1 から 1.5 未満は床に寝かせる（1 を越えた分は、文字の上を起こす角度のラジアン）、それより上は立てる
+ */
 export function dyn(
   x: number,
   y: number,
