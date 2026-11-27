@@ -393,7 +393,7 @@ export async function panelCases(makeF, seeds, page, mocked) {
           won: adv.won,
           runSeed: adv.runSeed,
           place: [here.depth, here.branch, here.realm, here.inter, here.arrive, here.trans, placeMem.size],
-          player: [player.hp, player.atkCd, player.swing, player.fireT, player.fall, player.rally],
+          player: [player.hp, player.swing, player.fireT, player.fall, player.rally],
           vfx: [vfx.hurtFlash, vfx.zapFlash],
           castSt: gear.castSt,
           swapSt: gear.swapSt,

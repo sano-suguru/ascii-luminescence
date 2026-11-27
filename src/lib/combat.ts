@@ -314,7 +314,7 @@ export function rallyOnHit(m: Mob, n: number, how: string): void {
   }
 }
 /**
- * 命の一歩を dt 秒進める（もとは src/game/18-level-player.js）：攻撃の間と振った線の残りを減らし、立ち直りを進め、体力の表示を描き直し、傷の光りを薄める。
+ * 命の一歩を dt 秒進める（もとは src/game/18-level-player.js）：振った線の残りを減らし、立ち直りを進め、体力の表示を描き直し、傷の光りを薄める。
  * 0.5秒ごとに、火の中にいるプレイヤーと生き物（小さな生き物・溶岩に住む物・飛ぶ物は除く）が焼ける
  */
 export function updateLife(dt: number): void {
