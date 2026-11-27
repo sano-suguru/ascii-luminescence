@@ -2,7 +2,7 @@
 // 自動で遊ぶ（?auto。src/lib/auto.ts）のテスト：短い台本（?auto=quick）を、テスト用モードでなく（本物の時計で）流し、
 // ページのエラーが無い・全部の段を通る・うまくいかなかった段が無い・診断の記録の欄 auto と、段の名前のできごとが書かれる・
 // ゲームの保存（al_ で始まる名前）を localStorage に書かない（死んだ時の伝承・視点・表示の切り替えなども）・ほかの名前は書ける、を確かめる。
-// 流している途中に、レベルアップの画面を開かせ（開発用モードの dbg.exp。1つ目を選んで進むか）、ページが隠れたことにする（隠れていた間を、
+// 流している途中に、レベルアップの画面を開かせ（開発用モードの dbg.exp。1つ目を選んで進むか）、ページが12秒隠れたことにする（隠れていた間を、
 // 戻った最初のフレームの長さに数えないか）。もう1つのページでは、歩いている途中で［止める］を押し、台本の指が離れるか（スティックが消えるか）を見る。
 // 本物の時計で動くので、この環境（CPU で描くので遅い）では2分ほどかかる。待つのは、台本が終わるまで（最大 5 分）
 import { withBrowser, newPage } from './lib.mjs';
@@ -31,9 +31,9 @@ await withBrowser(async ({ browser, base }) => {
   // 歩いている間に、レベルアップの画面を開かせる（ゲームが止まるので、閉じないと、ゲームの時刻で待つ所が終わらない）
   await at('walk');
   await pg.evaluate(() => dbg.exp(500));
-  // 見回している間に、4秒隠れたことにする
+  // 見回している間に、12秒隠れたことにする（ふつうのフレームより十分長く。CI のランナーで3つ同時に走ると、ふつうのフレームも7秒ほどかかることがある）
   await at('look');
-  // （本物の端末では、隠れている間はフレームが来ない。それを真似て、隠れたことを知らせてから4秒フレームを止め、戻ったことを知らせる）
+  // （本物の端末では、隠れている間はフレームが来ない。それを真似て、隠れたことを知らせてから12秒フレームを止め、戻ったことを知らせる）
   await pg.evaluate(() => {
     const vis = (v) => {
       Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => v });
@@ -41,7 +41,7 @@ await withBrowser(async ({ browser, base }) => {
       document.dispatchEvent(new Event('visibilitychange'));
     };
     vis('hidden');
-    for (const t = performance.now(); performance.now() - t < 4000;);
+    for (const t = performance.now(); performance.now() - t < 12000;);
     vis('visible');
     delete document.visibilityState;
     delete document.hidden;
@@ -70,10 +70,11 @@ await withBrowser(async ({ browser, base }) => {
     const walk = a.steps.find((s) => s.k === 'walk'),
       look = a.steps.find((s) => s.k === 'look');
     if (!(walk?.shut >= 1)) errs.push(`レベルアップの画面を閉じていない（${JSON.stringify(walk)}）`);
-    if (look?.waited !== 'hidden' || !(look.worst < 3000)) errs.push(`隠れていた間を、フレームの長さに数えた（${JSON.stringify(look)}）`);
+    if (look?.waited !== 'hidden' || !(look.worst < 10000)) errs.push(`隠れていた間を、フレームの長さに数えた（${JSON.stringify(look)}）`);
     // できごとは新しい50件だけ残るので、終わりのほうの段を見る
     const ev = rec.events.filter((e) => e.k === 'auto').map((e) => e.v);
-    if (!ev.includes('die') || !ev.includes('done')) errs.push(`段の名前のできごとが無い（${ev.join(',')}）`);
+    // （終わったことは a.done で見る。'done' のできごとは、0.25秒ごとの見回りが書くので、読んだ時にはまだ無いことがある）
+    if (!ev.includes('die')) errs.push(`段の名前のできごとが無い（${ev.join(',')}）`);
     // 自動の指の事件は、メニューの押し方に数えない
     if (rec.menu.length) errs.push(`自動で押したメニューを、人の押し方に数えた（${JSON.stringify(rec.menu)}）`);
   }
