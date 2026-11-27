@@ -142,6 +142,7 @@ const LIQUIDS = [0, 0, 0, LQ_DEEP, LQ_BOG, LQ_LAVA, LQ_WATER];
 const SCENES = [
   'spring',
   'vault',
+  'grave',
   'peaceful',
   'hidden',
   'critter',
@@ -793,6 +794,18 @@ export async function viewCases(F, seeds) {
           vault: true,
           ev: pick(['guard', 'collapse']),
           rune: { uid: 5, type: pick(RUNE_TYPES.atk) },
+        });
+        aimAt(x, 0.55, z, 1.5);
+        run('look', [], 2);
+      } else if (scene === 'grave') {
+        const i = floorAt(() => chance(0.1)),
+          [x, z] = cpos(i);
+        D.items.push({
+          i,
+          kind: 'grave',
+          taken: false,
+          g: chance(0.7) ? { k: 'x', depth: Math.floor(r() * 12), cause: chance(0.6) ? '大蛇' : '', item: null } : undefined,
+          rune: { uid: 6, type: pick(RUNE_TYPES.atk) },
         });
         aimAt(x, 0.55, z, 1.5);
         run('look', [], 2);
