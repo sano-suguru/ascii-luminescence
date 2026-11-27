@@ -88,7 +88,7 @@ export function formTypes(samples, hist) {
   }
   const base = MTYPES['L'];
   for (const form of [...BOSS_FORMS, ...OLD_FORMS])
-    for (const look of [undefined, null, ...EXTRA_LOOKS, 'kobold', 'rat', 'houndF'])
+    for (const look of [undefined, null, ...EXTRA_LOOKS, 'kobold', 'rat'])
       out.push([`${form}/${look}`, { ...base, form, look, boss: true }]);
   for (let s = 1; s <= hist; s++) out.push([`beast${s}`, makeBeastType(makeHistory(s * 7919), s * 104729)]);
   samples.forEach((b, i) => out.push([`sample${i}`, { ch: 'X', form: 'beast', ...b }]));
@@ -129,8 +129,6 @@ export function lookCases(F) {
     'rat',
     'jackal',
     'grazer',
-    'houndF',
-    'houndL',
     'salamander',
     'nope',
     undefined,

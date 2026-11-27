@@ -493,7 +493,7 @@ export function houndAura(m: Mon & { form: Body }, _t: number): void {
     );
   }
   if (h === 'ice' && mr() < 0.12) {
-    // 鼻先（形の中の奥行き 0.98・高さ 0.99。beasts.ts の iceHoundForm）から吐く
+    // 鼻先（形の中の奥行き 0.98・高さ 0.99。beasts.ts の houndBody）から吐く
     const lz = 0.98 * sc;
     const ice = mr() < 0.15;
     spawn(
@@ -525,7 +525,8 @@ export function houndAura(m: Mon & { form: Body }, _t: number): void {
       const k = (1 - age / 0.5) * 0.5,
         c2 = Math.cos(gh.yaw),
         s2 = Math.sin(gh.yaw);
-      for (let i = 0; i < m.form.length; i += 2) {
+      // 4つに1つの点だけ（体の点は300ほどあり、残像3つで描く文字が増えすぎる。まばらな方が残像らしい）
+      for (let i = 0; i < m.form.length; i += 4) {
         const p = nth(m.form, i);
         if (p.part === 'orbit') continue;
         const lx = p.x * sc,
