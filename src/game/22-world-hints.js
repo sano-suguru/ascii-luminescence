@@ -22,6 +22,10 @@ function arrowTargets(){ const out=[]; if(!here.D||!ui.started||adv.dead)return 
 function inPlainSight(t){ if(t.d>22)return false; const [ox,oy,oz]=aimOrigin(), [vx,vy,vz]=viewDir(), dx=t.x-ox, dz=t.z-oz, dy=0.9-oy, L=Math.hypot(dx,dy,dz)||1;
   if((dx*vx+dy*vy+dz*vz)/L<Math.cos(0.5))return false; return losClear(ox,oy,oz,t.x,0.9,t.z); }
 let arrowsDrawn=false;
+// where the line at the bottom (#hotbar) starts, in CSS pixels (-1: hidden), kept until it or the window changes size, so the page's layout is not read every tick
+// (reading it right after the status or the log was written makes the browser lay the page out again). Without ResizeObserver it is read every time
+let hotbarTop=null; const hotbarWatch=!!(hotbarEl&&window.ResizeObserver);
+if(hotbarWatch){ new ResizeObserver(()=>{ hotbarTop=null; }).observe(hotbarEl); addEventListener('resize',()=>{ hotbarTop=null; }); }
 // the dial lies on a floor in front of you, seen from above at a slant: what is ahead points away into the dial, what is behind comes toward you.
 // The slant follows the look up and down, but only between ARROW_TILT (radians above the floor), so the dial never leaves the screen or turns into a flat circle
 const ARROW_TILT=[0.55,1.15], ARROW_TILT0=0.8;
@@ -32,26 +36,25 @@ function drawArrows(){ if(!arrowCtx)return; const W=Math.round(arrowCv.clientWid
   // a point (u to the right, v ahead) on the dial's floor, seen from Dv away at the slant e: its place on the screen
   const e=clamp(ARROW_TILT0-player.pitch,ARROW_TILT[0],ARROW_TILT[1]), ce=Math.cos(e), se=Math.sin(e), Dv=800*k;
   // the lowest a tip mark may reach: just above the line at the bottom (#hotbar), wherever it is now; the bottom of the screen when it is hidden
-  const hb=hotbarEl?hotbarEl.getBoundingClientRect():null, floorY=hb&&hb.height>0?hb.top*devicePixelRatio-6*k:H;
+  let top=hotbarTop; if(top===null){ const hb=hotbarEl?hotbarEl.getBoundingClientRect():null; top=hb&&hb.height>0?hb.top:-1; if(hotbarWatch)hotbarTop=top; }
+  const floorY=top<0?H:top*devicePixelRatio-6*k;
   const proj=(u,v)=>{ const dp=Dv/(Dv+v*ce); return [ox+u*dp,oy-v*se*dp]; };
   c.textAlign='center'; c.textBaseline='middle'; c.lineJoin='round';
-  // a glyph lying on the dial at (u,v), its line of writing along (du,dv); flat=false stands it up, only as large as its distance makes it
-  const glyph=(ch,u,v,du,dv,size,rgb,alpha,bold,flat)=>{ const [x,y]=proj(u,v); c.save();
-    if(flat){ const [ax,ay]=proj(u+du,v+dv), [bx,by]=proj(u+dv,v-du); c.setTransform(ax-x,ay-y,bx-x,by-y,x,y); }
-    else{ const s=Dv/(Dv+v*ce); c.setTransform(s,0,0,s,x,y); }
+  // a glyph lying on the dial at (u,v), its line of writing along (du,dv)
+  const glyph=(ch,u,v,du,dv,size,rgb,alpha,bold)=>{ const [x,y]=proj(u,v), [ax,ay]=proj(u+du,v+dv), [bx,by]=proj(u+dv,v-du); c.save(); c.setTransform(ax-x,ay-y,bx-x,by-y,x,y);
     c.font=`${bold?'bold ':''}${size}px ${FONT}`;
     c.lineWidth=Math.max(2,size*0.28); c.strokeStyle='rgba(4,3,10,0.85)'; c.strokeText(ch,0,0);
     c.shadowColor=`rgba(${rgb},${(alpha*0.9).toFixed(2)})`; c.shadowBlur=size*0.6; c.fillStyle=`rgba(${rgb},${alpha.toFixed(2)})`; c.fillText(ch,0,0); c.restore(); };
   // a faint shadow on the floor under the dial, and the ring the arrows spread from
-  { const [cx,cy]=proj(0,0), [,ty]=proj(0,r0*2.2), [,by]=proj(0,-r0*2.2), [lx]=proj(-r0*2.2,0); c.save(); c.translate(cx,(ty+by)/2); c.scale(1,(by-ty)/2/(cx-lx));
+  { const [cx]=proj(0,0), [,ty]=proj(0,r0*2.2), [,by]=proj(0,-r0*2.2), [lx]=proj(-r0*2.2,0); c.save(); c.translate(cx,(ty+by)/2); c.scale(1,(by-ty)/2/(cx-lx));
     const g=c.createRadialGradient(0,0,0,0,0,cx-lx); g.addColorStop(0,'rgba(4,3,10,0.6)'); g.addColorStop(1,'rgba(4,3,10,0)'); c.fillStyle=g; c.beginPath(); c.arc(0,0,cx-lx,0,Math.PI*2); c.fill(); c.restore(); }
-  for(let q=0;q<24;q++){ const a=q/24*Math.PI*2; glyph('·',Math.cos(a)*r0*0.72,Math.sin(a)*r0*0.72,Math.cos(a),Math.sin(a),19*k,'215,205,250',0.75,false,true); }
+  for(let q=0;q<24;q++){ const a=q/24*Math.PI*2; glyph('·',Math.cos(a)*r0*0.72,Math.sin(a)*r0*0.72,Math.cos(a),Math.sin(a),19*k,'215,205,250',0.75,false); }
   for(const t of ts){ const dx=t.x-player.x, dz=t.z-player.z, th=Math.atan2(dx*rx+dz*rz,dx*fx+dz*fz), su=Math.sin(th), sv=Math.cos(th);
     const near=clamp(1-(t.d-3)/37,0,1), len=(30+120*(1-near))*k, size=(18+10*near)*k, alpha=0.62+0.35*near, rgb=t.col.map(v=>Math.round(v*255)).join(',');
     const step=size*0.42, thick=near>0.5, body=thick?'=':'-', ms=(17+5*near)*k, tipR=n=>r0+n*step+size*0.85;
     // what is behind comes toward you: an arrow too long for the room above the line at the bottom is cut shorter
     let n=Math.max(1,Math.round(len/step)); while(n>1&&proj(su*tipR(n),sv*tipR(n))[1]>floorY-ms)n--;
-    for(let i=0;i<n;i++)glyph(i===n-1?'>':body,su*(r0+i*step),sv*(r0+i*step),su,sv,size,rgb,alpha,thick,true);
+    for(let i=0;i<n;i++)glyph(i===n-1?'>':body,su*(r0+i*step),sv*(r0+i*step),su,sv,size,rgb,alpha,thick);
     // the mark at the tip: larger, standing up on a faint dark disc, the same size however far into the dial it is, to be read at a glance
     const [mx,my]=proj(su*tipR(n),sv*tipR(n));
     c.beginPath(); c.arc(mx,my,ms*0.7,0,Math.PI*2); c.fillStyle='rgba(6,4,14,0.55)'; c.fill(); c.lineWidth=1.2*k; c.strokeStyle=`rgba(${rgb},${(alpha*0.6).toFixed(2)})`; c.stroke();
