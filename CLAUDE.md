@@ -42,7 +42,7 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      strata：層・テーマ・特別な階・支道と異界の中身・地形・群れ、noise：ノイズ（種は setNoiseSeed）、vaults：洞窟と宝物庫の絵と壁の絵 ARTS、
                      shaders：描画のシェーダーのソースと、描画用の配列の大きさ、title：タイトルのロゴ、hud：表示の大きさ（ミニマップ・装備の画面など）、minimap：ミニマップ（キャンバスの大きさを画面の倍率に合わせる sizeMap・描く drawMap。今見えているマスの色を here.mem に覚える）、
                      names：名前と説明の表（見た時の説明・罠・伝説の物・図鑑の主・図鑑で眠っている間の説明 GALLERY_SLEEP・部屋の仕掛けの伝言 MACHINE_INFO）、sound：音の小さな表と道具、
-                     audio：音を鳴らす（Web Audio。音の部品・効果音・術を放つ音 castSound・まわりの音 sndUpdate。状態 SND に頼る物）、log：伝言 msg、hotbar：下の HUD renderHotbar（指の操作の [持ち替え] の出し分けも）と持ち替えられるビルド buildsHave、save：保存 saveSet・saveMeta と忘れられた獣の記録 loadBeasts・recordBeast、
+                     audio：音を鳴らす（Web Audio。音の部品（タイトルを出した時に先に作って止めておく sndPrep、迷宮に入る時などに鳴らし始める sndInit、状態 sndState）・効果音・術を放つ音 castSound・まわりの音 sndUpdate。状態 SND に頼る物）、log：伝言 msg、hotbar：下の HUD renderHotbar（指の操作の [持ち替え] の出し分けも）と持ち替えられるビルド buildsHave、save：保存 saveSet・saveMeta と忘れられた獣の記録 loadBeasts・recordBeast、
                      inventory：装備の画面 renderInv（中のボタンの処理・ビルドの呼び出し applyBuild も）と、開け閉め setInv・付け替えの詠唱 startSwap、
                      panels：レベルアップの画面（選択肢 levelChoices・開く openLevelUp・選ぶ chooseLevel）と祭壇の画面（開く openAltar・閉じる closeAltar・選ぶ chooseAltar・毎フレーム開け閉めする updateAltarPanel）。どちらも #altarp に描き、指なら選択肢は2回押して決める（confirmTap）、
                      menu：メニュー（描く renderMenu・開け閉め setMenu・項目を押した menuAct・確かめ待ちを4秒で戻す menuArmReset。指で遊ぶ時は、操作の案内・年代記・魔導書をメニューの中に開く）とタイトルへ戻る returnToTitle、
@@ -51,8 +51,10 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      layout：画面の大きさに合わせる（タイトルの枠を zoom で縮めて画面に収める fitIntro。指で遊ぶ時のパネル（装備・メニュー・祭壇とレベルアップ・結果）も、[装備] [メニュー] の下から画面の下までに縮め、入らない分は中を送る fitPanels。下限 FIT_MIN）、
                      touch：指で遊ぶ時の土台（指で触れたら指の遊び方 setTouch。指の後にブラウザが出すマウスの事件を止める（iPhone は pointerdown の preventDefault で止まらないので、指の事件から COMPAT_MS 以内のマウスの事件も止める）。タッチのボタン [全画面] [装備] [メニュー] initTouch。パネルの選択肢を指で押した時の2段階（1回目で選んで説明、2回目で決める）confirmTap。操作の説明を遊び方で書き分ける byInput。ゲームのマウスの処理より先に 16-view-input.js が呼ぶ）、
                      touchpad：指の操作（試して合わせる値 TUNE（見回す速さ look・アナログか analog。アナログなら倒し具合を thumb.stick に入れ、src/lib/player.ts がキーの代わりに向きと速さに使う）・左半分に触れた所に出るスティックで移動・右半分のドラッグで見回す・[右手] [左手] で詠唱・[持ち替え]（ビルドを2つ以上保存した時だけ出る）・[回避] initTouchpad。描く画面は touch-action を既定のままにし、touchmove の preventDefault で送りと拡大を止める。touch-action: none の上で指を動かすと、Chromium は直後のボタンのタップを click にしないため）、
-                     diag：診断の記録（claude.ai の Artifact の中で、持ち主が開いた時だけ、端末・速さ・できごと（開け閉め・溜めている手・飛ぶ物があるか・ボタンと描く画面を押した）・エラーを Artifact のデータベースの diag に書く initDiag。
-                     Claude が ArtifactData の道具で読む。window.claude.use が無い所では何もしない）、
+                     diag：診断の記録（claude.ai の Artifact の中で、持ち主が開いた時だけ、端末・速さ・できごと（開け閉め・溜めている手・飛ぶ物があるか・音の部品の状態（先に作った部品も。記録を始めた時の状態も書く）・ボタンと描く画面を押した）・
+                     場面が切り替わる時の処理にかかった時間・遅いフレーム・エラーを Artifact のデータベースの diag に書く initDiag。
+                     Claude が ArtifactData の道具で読む。window.claude.use が無い所では何もしない）、took：かかった時間を診断の記録に渡す took（記録していない時は何もしない。
+                     levels.ts などが diag.ts を直に読むと輪になるので、間に置く）、
                      screens：マウスを捕まえる tryLock（指で遊んでいる間は捕まえにいかない）・失敗した時 lockFailed（一度も捕まえていないか、最後に捕まえてから3回続けて失敗したら（外れてから1.5秒の間の分は数えない）、捕まえられないと決め、ドラッグの案内を1回出す。それまでは、次のクリックでまた捕まえる。Esc のキーを処理している間 ui.escKey は捕まえにいかない）・捕まえる遊び方で探索中なのにマウスが外れているか lockLost・描く画面を押した時に、lockLost なら捕まえ直すだけにする relockClick・外れた時にメニューを開くか menuOnUnlock（止まっている画面が開いていない時だけ）・「クリックで視点操作に戻る」の一言 updateResume（lockLost の時だけ出す。止まっている間・死んだ時・タイトルでは CSS が隠す）・視点 setCamMode・音量 sndToggle、particles：粒子を出す spawn・消す killP と、世界の中に文字を置く dyn（配列も）と、漂う塵を置く initDust・respawnDust、legend：今の探索の伝説の物 getLegend と状態の表示の1行・伝説の物の読み方（legendOfBranch・legendAll・descentSealed）と世界の中に描く drawLegendWorld と神託所の手がかり oracleLegendHints、
                      lightmap：マスの明るさ cellLight と天井の高さ ceilAt・灯りの揺らぎ flicker と灯りを描画に渡す配列を書き直す updateLights（状態に頼る。灯りの計算そのものは light）、
                      fixtures：階に置いてある物を描く（灯りの備品 drawFixtures・扉 drawDoors・泉 drawSprings・墓 drawGraves・クモの巣 drawWebs・罠と鉄格子 drawTraps）と巣に触れた時 webTouch、
@@ -67,9 +69,9 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      chant：詠唱と転がり（ゲームの時間の速さ timeScale・溜め始める beginCast・溜めが散る fizzle・放つ releaseCast・溜めを進める updateCast・転がる startRoll）、
                      projs：飛ぶ物と、毎フレーム続く戦いの跡を進める（飛ぶ物 updateProjs と光の月が弾ける moonBurst、状態異常 updateStatuses・生き物の時間の速さ monTimeK、
                      遅れて起きることと魔法の場 updateZones・雨 updateRains、毒の霧に火が届く cloudsMeetFire）、events：部屋の出来事を進める updateEvents と罠（踏んだ時 triggerTrap・見つける・網・鉄格子のレバー updateTraps）、
-                     results：結果の画面（場所・伝承 runLore・awardLore・loreRows・墓に遺す物 graveCandidates・graveRows・saveGrave・勝った時 victory）、
+                     results：結果の画面（場所・伝承 runLore・awardLore・loreRows・墓に遺す物 graveCandidates・graveRows・saveGrave・勝った時 victory・結果の画面から暗くして新しい探索へ startNewRun）、
                      player：プレイヤーの動き updatePlayer・通れない所の当たり判定 solidAt・3人称のカメラ placeThirdPerson、
-                     build：世界の組み立て（階の文字 buildWorld・霧の色 setFog・水面の絵 updateWater）、three：three.js と後処理の部品 T と霧の色 fogCol（作る時に乱数を引く物は置かない）
+                     build：世界の組み立て（階の文字 buildWorld（文字を置く間の作業用の配列は、階ごとに作らず使い回す。持ち続けるのは13万字分だけで、それより多い階では組み立ての間だけ伸ばす）・霧の色 setFog・水面の絵 updateWater）、three：three.js と後処理の部品 T と霧の色 fogCol（作る時に乱数を引く物は置かない）
 src/lib/state.ts     ゲームの状態の入れ物（分野ごと：clock＝時計（ゲームの時刻 time と、tick が進んだ回数 frame）、blaze＝火と地面のマス（fire・fuel・burnt・scent・凍らせた水 frozen・踏み分けた茂み trampled など）、fight＝戦い（飛ぶ物 projs・光線・毒の霧・魔法の場・遅れて起きること・雨・床の目印・ヒットストップ・稲妻・宝物庫の落石 rockfall など）、vfx＝揺れと光り、ui＝画面の開け閉め（started・camMode・invOpen・ミニマップのキャンバス mapC と描き手 mctx・レベルアップの選択肢 lvlOpts・近くの祭壇 altarNear・プレイヤーが閉じた祭壇 altarDismissed・メニューの中に開いている物 menuPage・タイトルで選んだ始める深さ startDepth・タイトルの画面 introEl・装備の画面で選んでいるルーン packSel・下の一言 hintHTML とそれを出した回数 hintSeq・メニューの確かめ待ち・マウスを捕まえられないと決めたか plFailed・一度でも捕まえたか lockedOnce・最後に捕まえてから捕まえようとした回数 lockTries・最後に外れた時刻 unlockedAt・Esc のキーを処理している間か escKey・指で遊んでいるか touch・指でパネルの選択肢を1回押して選んだだけの物 tapArm・3人称のカメラの位置 camPos・装備の画面を開けた時の両手 packSnap・照準の先の生き物 aimMon・見た時の説明 lookPend・lookPendT・lookHTML と出す所 lookEl・炎から逃げた・叫んだ・草を食べる物が驚いた伝言の時刻と旗 fleeMsgT・shriekMsgT・grazeMsg・照準の先を探した時刻と生き物 aimT・crossMon・墓に遺せる物 graveCands・graveSel・開発用の godMode・茂みの伝言の旗 tallMsg など）、gfx＝描画の部品（three.js のカメラ camera とマスの絵 cellTex（TS の側の型は、TS が使う欄だけ）、場面 scene・描画する部品 renderer・分け合う値 U・後処理 finalPass・文字の部品 staticMat・occMat・区切りごとの文字 chunks・隠す板 occMesh・水面の絵 waterTex・waterLTex・霧の濃さの基 fogBase。本当の値は 05-renderer.js・06-world.js・30-loop-init.js がその場で入れる）と、生き物の体だけを描くか drawBodyOnly、adv＝今の探索（runSeed・lvl・dead・年代記 HIST など）、gear＝手と詠唱（hands・bag・castSt など）、here＝今いる場所と階の中身（D・depth・branch・monsters・見えたマス・部屋の出来事 events・川のマス riverCells・最深部の状態 finalSt・その階で一度だけの巣・修復機・硫黄の伝言の旗 webMsg・brimMsg・その階で作った生き物の数 mobSeq・着いた階段のマス lockCell・入った部屋 visitedRooms・前の階の層 lastStratum など。monsters の型は makeMonster が必ず入れる欄を必ずある物にした Mob）、saved＝保存する記録（META・BOOK・RSEEN・SEEN・DEVALL と、今の探索の伝説の物 LEGEND）、player・指の操作の入力 thumb（アナログのスティックの倒し具合 stick）・placeMem・伝言の一覧 msgs・音 SND・忍び足 stealth・手元の灯り lantern・表示の数 hudInfo（今の階の見たマスの割合 explored・速さの表示の数・立ち直りの表示の数 rallyShown）・押しているキー keys・描く物の数 buf（置いた文字の数 dn・生きている粒子の数 pN）・灯りを描画に渡す配列 SL・DLP・DLC・マスの絵の中身 cellData・薄い氷に乗っていた秒 iceT・漂う塵 dust・通れない所に押し当てた記録 edge・手元の武器が跳ねた時刻 vmKick・光線を撃ち続けた記録 beamHold。古い JS は clock.time・vfx.shake・ui.started・gfx.camera のように欄で読み書きする。player から keys までと SL・DLP・DLC・cellData・iceT・dust・edge・vmKick・beamHold は丸ごと入れ替えないので名前のまま。buf は入れ物）
 src/lib/generate.ts  迷宮の生成（generateLevel。「入力 → 結果」の形。入力 GenInput・古い JS の物 GenEnv・結果 GenResult と、部屋 Room などの型）
 src/lib/bodies/*.ts  生き物の形（draw：生き物を描く drawMonster・drawMonster1・drawMonster0 と深みの主の触手 drawTentacles とクラーケンの立ち上がる腕 krakenArms、build：種類から形を選んで作る buildForm と、人型・四つ足の見た目の特徴、表 MTYPES に見た目を書き足す addLooks、kit：点の型と道具 q2・q3、
@@ -95,11 +97,20 @@ tools/feel.mjs       手触りの試し打ち（node tools/feel.mjs [aim|walk]�
                      道からのずれ。指のくせの値はファイルの頭の HAND。比べ合いにだけ使い、気持ちよさは本物の指で確かめる。CI には入れない。結果は tests/out/feel/summary.json）
 tools/lords.mjs      主たちを本当にいる場所（支道の奥の階・最深部）に置き、プレイヤーの目の高さから写す（pnpm lords。主の体が描かれた画面の範囲・はみ出し・
                      主の体が足した眩しい画素の割合を出す。写真・眩しい所を赤く塗った写真・summary.json は tests/out/lords/）
-tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ・テスト用モードのページ。newPage の device で、Playwright の端末の名前（スマホの真似）で開ける。ページはポインタロックを差し替えて止める（realLock で止めない）。環境変数 AL_PREBUILT が 1 なら、組み立て済みとして組み立てない）
+tools/transitions.mjs  場面が切り替わる時の確かめ（node tools/transitions.mjs [--rate 1,4]。Artifact 版をテスト用モードでなく 750×312 で開き、偽の window.claude の持ち主として、
+                     迷宮に入る → 階段で3回下りる → 死ぬ → ［新しい探索へ］ → 画面の向きを変えて戻す、を本物の時計で通す。書かれた診断の記録を diag-report.mjs の表で出し、
+                     自動再生を許さないブラウザの真似で音の部品が押した時に動き出すか・かかった時間が場面ごとに書かれるか・同じ大きさの resize で作り直さないかを確かめる。
+                     時間は CPU で描くこの環境の値。CI には入れない（数分かかる）。記録は tests/out/transitions/）
+tools/diag-report.mjs  診断の記録を表にする（node tools/diag-report.mjs <ファイルかフォルダ…>。ArtifactData の道具の list に out_dir を付けて保存した JSON。
+                     音の部品の移り変わり・かかった時間の名前ごとの回数と中央と最大・遅いフレームを近くの処理ごとに・時刻の順の一覧）
+tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ（描き方の引数 GL_ARGS）・テスト用モードのページ。newPage の device で、Playwright の端末の名前（スマホの真似）で開ける。ページはポインタロックを差し替えて止める（realLock で止めない）。環境変数 AL_PREBUILT が 1 なら、組み立て済みとして組み立てない）
 tests/run.mjs        ブラウザのテストをまとめて走らせる（pnpm test）：テスト版と Artifact 版を1回だけ組み立て、11のテスト（画面写真の比較 visual も。一覧はおよその秒の表 SEC。tests/ に SEC にも部品の一覧 NOT_TESTS にも無い .mjs があれば止める）を同時に3つずつ走らせる（--jobs で数、名前を挙げるとそれだけ、--shard i/n で n 組に分けた i 組目だけ。分け方はおよその秒の表 SEC で、組ごとの合計が近くなるように決める）。
                      どのテストも自分のブラウザと空いているポートを使うので、ぶつからない。出力はテストごとにまとめて出す。1つが10分を越えたら止めて、それまでの出力を出す
 tests/smoke.mjs      開発用の探索で dbg が動くか ＋ 探索の始め直しで前の場所や状態が残らないか ＋ メニューの「もう一度押して確かめる」待ちが4秒で消えるか ＋ 図鑑を開いても探索の記録が変わらないか ＋ 閉じた祭壇の画面が、装備の画面やメニューを開いて閉じても、離れるまで開かないか ＋ 起きている竜を見た時の伝言 ＋ 最深部で伝説の物を3つ持つと王の影が出て、背の高さと画面への収まりが決めたとおりか、体力を減らすと二つ目の姿になり、大きさが天井に合うか ＋ 伝説の物が揃っていない時は、12階の異界を抜けても最深部に出ないか（画面写真は tests/out/）
-tests/title.mjs      タイトルの画面（どれもテスト用モードでない時のページ）：タイトルの画面が出るか ＋ 開発用モードのまま読み直した時・保存が使えない時のタイトル（画面写真は tests/out/）
+tests/title.mjs      タイトルの画面（どれもテスト用モードでない時のページ）：タイトルの画面が出るか ＋ 開発用モードのまま読み直した時・保存が使えない時のタイトル ＋
+                     自動再生を許さないブラウザの真似で、音の部品がタイトルでは動かず、［迷宮に入る］を押すと動き出すか（診断の記録で見る）（画面写真は tests/out/）
+tests/page-fakes.mjs  テストと道具の部品：偽の window.claude（fakeClaude）・自動再生を許さないブラウザの音の部品の真似（strictAudio。本物の操作の事件を処理している間に作るか resume した時だけ動く。
+                     navigator.userActivation は Playwright の evaluate も操作として数えるので使わない）・診断の記録を今すぐ書かせて読む readDiag
 tests/frame.mjs      サンドボックス付きの iframe の中（allow-scripts だけ。claude.ai の Artifact より厳しく、localStorage にさわると SecurityError、ポインタロックは断られる）で、
                      タイトル → 探索 → ドラッグで見回す → Esc でメニュー → レベルアップ → 祭壇 → 死 → 始め直し → タイトル → 図鑑 → 探索が、ページのエラーなしで通るか ＋
                      requestPointerLock が無い・呼んでも何も起きない・音の部品を作れないブラウザ（初めに動く台本で作る）でも、Esc でメニューが開き、ドラッグで見回せるか ＋
@@ -112,7 +123,7 @@ tests/touch.mjs      指で遊ぶ時の土台（スマホの真似で、テス�
                      本物の大きさ 750×312 で：左下の伝言と下の HUD が重ならない・初めて指で入った時の一言・メニュー・装備の画面・レベルアップ・祭壇・結果の画面が画面に収まる（装備の画面は中を送れて、
                      中を書き直しても送った所が残り、袋のルーンを選ぶと、はめられる枠が見える所まで送る）・メニューの中に開く操作の案内と魔導書・ビルドを2つ保存すると [持ち替え] が出て持ち替える（溜めている間は持ち替えない）・
                      レベルアップと祭壇の間は [装備] [メニュー] が隠れる・指の時の案内の文言 ＋
-                     診断の記録：偽の window.claude で、持ち主なら端末・できごと・速さを書き、持ち主でなければ書かないか・書き込みの途中に頼まれた分も後で書くか
+                     診断の記録：偽の window.claude（tests/page-fakes.mjs）で、持ち主なら端末・できごと・速さ・かかった時間・遅いフレーム（40件を越えたら短い物から捨てる）を書き、持ち主でなければ書かないか・書き込みの途中に頼まれた分も後で書くか
 tests/gallery.mjs    図鑑：全部の生き物を立つ・歩く・眠るの姿で出して、例外・描いた文字の数・NaN を確かめる ＋ 図鑑を手で動かす（ホイールで寄る・引く、ドラッグで回す・見下ろす、離すとしばらく止まってまた回る、R と ← → で戻る、ドラッグが外れる、背の高い生き物に寄ると狙う点が上がる） ＋ ほかの所で見た目の乱数を余分に引いても、前に別の生き物を出しても、図鑑の写真（画面写真の比較の4体）が変わらないか（違えば、3つのページの画面写真を tests/out/gallery-rand/ に残す。走らせるたびに空にする） ＋ 出してすぐ __test.galleryDraw で覗いても、後の描いた物が変わらないか
 tests/gallery-specimens.mjs  画面写真の比較で写す図鑑の4体と写し方（visual.mjs と gallery.mjs が使う）
 tests/world.mjs      世界とのやり取り：扉・火・氷と冷気・小さな生き物（修復機・清掃機・猟犬）がマスや扉を変える処理（扉が視界を遮る・燃え尽きる・修復機が作り直す、階に残る物が階を移ると消える、猟犬が匂いの無いマスを追わない、硫黄・氷・冷気と火、薄い氷に乗っていた秒が階を移ると0に戻る、火口が噴き上がって溶岩が流れ、引き、また噴き上がる、溶岩の上に立つ生き物がいない・引き始める前に生き物のいないマスの穴が残らない、吹き飛ばされた生き物が溶岩の手前で止まる、攻撃を転がってかわすとかわした時の加護が効き、ただ転がっただけでは効かない、宝物庫の落石がゲームの時刻で進む（溜めている間は半分、止まっている間は進まない、階段を下りて暗くなり始めたら進まない）・階を移ると消える）。生き物は全部消してから、要る物だけ置く
@@ -225,6 +236,8 @@ pnpm shots [名前…]    # 図鑑の生き物を見やすい角度で写す（�
                       #   --views で生き物ごとに角度の一揃いの7枚（枠を隠し、真ん中の 540×540。形や色を直す時に。例：pnpm shots トロル --views））
 node tools/feel.mjs [aim|walk]   # 手触りの試し打ち（見回す速さ・8方向とアナログのスティックを比べる。4分ほど。--look・--trials・--routes）
 pnpm lords [場所…]    # 主たちを本当にいる場所で、目の高さから写し、大きさと眩しさを数で出す（crypt・lair・sunken・nest・snake・final。--dist で距離（既定 8））
+node tools/transitions.mjs [--rate 1,4]   # 場面が切り替わる時の確かめ（Artifact 版を本物の時計で通し、診断の記録を表にする。1つの速さで3分ほど）
+node tools/diag-report.mjs <フォルダ>     # 診断の記録（ArtifactData の道具で保存した JSON）を表にする
 node tests/visual.mjs --update [--only 場面]   # 基準の画像を作り直す（見た目を意図して変えた時だけ）
 node tests/levels.mjs --seed 202               # 1つのシードだけ（--seeds 100 で数を変える）
 node tests/smoke.mjs --prod                    # 公開用の版（dist/）で起動（JetBrains Mono の所の日本語はシステムのフォント）。タイトルの画面は node tests/title.mjs --prod
@@ -237,7 +250,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 ```
 - **Artifact に公開する**：`pnpm build:artifact` の後、Artifact の道具で `.build/artifact/index.html` を公開する。
   診断の記録（src/lib/diag.ts）のため、capabilities は `{db: {rules: [{path: "diag", read: "owner", write: "owner"}]}, user: {}}`（一度渡せば、上げ直す時に省くと、そのまま残る）。
-  記録は、ArtifactData の道具の list で、コレクション diag を読む（開くたびに1件。端末 device・速さ fps（10秒ごとの平均 avg と一番遅い1回 min と、その時にいる場所 place。探索中だけで、タイトル・図鑑・試しの間では null）・できごと events・エラー errors）。公開先の URL は https://claude.ai/artifact/QJStjdouDGtGtEBFBStU3d 。
+  記録は、ArtifactData の道具の list で、コレクション diag を読む（開くたびに1件。端末 device・速さ fps（10秒ごとの平均 avg と一番遅い1回 min と、その時にいる場所 place。探索中だけで、タイトル・図鑑・試しの間では null）・できごと events・場面が切り替わる時の処理にかかった時間 took（名前 k と ms。newLevel は生成 gen と組み立て build の内訳、applySize は理由 why と大きさ）・100ms を越えた1フレーム slow（ms・place と、その前の1秒にあったできごとか処理の名前 near。溜めている手・飛ぶ物・音の部品の旗の変化は near に数えない。40件を越えたら短い物から捨てる）・エラー errors）。読んだ記録は `out_dir` に保存して、`node tools/diag-report.mjs` で表にする。公開先の URL は https://claude.ai/artifact/QJStjdouDGtGtEBFBStU3d 。
   上げ直す時は、その URL を `url` に渡す（渡さないと別の Artifact になる。初めは非公開で、見せる相手はユーザーが共有の画面で決める）。公開は外に出す操作なので、ユーザーに確かめてから。
 - **依存を足す・上げる時**：`pnpm add -D --save-exact 名前@版`（確認が出る）。公開から24時間未満の版は入らない（pnpm-workspace.yaml）。
   インストール時にスクリプトを動かす依存は、中身を確かめてから `pnpm approve-builds` で許可する。npm で入れない（権限で止めている）。
@@ -256,6 +269,8 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
   例外は tests/title.mjs だけ。1つ目の「テスト用モードでない時に、タイトルの画面が出るか」は、ゲームを止めて進められないので、背景の迷宮を描いたフレームが2つ進むのを待つ。
   2つ目・3つ目（開発用モードのまま読み直した時・保存が使えない時のタイトル）も、`?test=1` を付けずにページを開く（テスト用モードは開発用モードを必ずオンにするので、
   その場面を作れない）。待つのはタイトルが出るまでだけで、時間がたつのは待たない。
+  4つ目（音の部品）だけは、本物の音の部品と時計が要るので（テスト用モードの音の部品はいつも動いている扱い）、診断の記録が始まるまでの 1.5 秒と、
+  ［迷宮に入る］を押してから音の部品が動いたと記録されるまで（できごとを 0.25 秒ごとに見るので、0.3 秒ごとに最大 6 秒）を、実時間で待つ。
   画面写真には `timeout: 90000` を付ける。
 - three.js（r147）は、npm の `three` を組み立てに入れる（`src/game/imports.mjs` で読み、`00-test-mode.js` で画面の後処理の4つの部品（EffectComposer・RenderPass・ShaderPass・光のにじみの UnrealBloomPass）と一緒に `T` にする）。CDN からは読まない。
 - フォントも、npm の @fontsource を組み立てに入れる（`src/main.js` で読む。Google Fonts は読まない）。テスト版（`vite build --mode test`。テストが自分で組み立てる）も同じ。
@@ -427,7 +442,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 | 28-camera-player | 霧と目の慣れ（updateAtmosphere：霧の濃さ・露出・溶岩の近くの熱のゆらぎ・水中の見え方）。プレイヤーの動き updatePlayer と3人称のカメラ placeThirdPerson は src/lib/player.ts。視点を変える setCamMode は src/lib/screens.ts、3人称のカメラの位置 camPos は src/lib/state.ts の ui、AVATAR_TY は src/lib/names.ts。頭の位置 headPos と、攻撃や投げた物が出る所 aimOrigin は src/lib/aim.ts |
 | 29-look | 見た時の説明を出す所 ui.lookEl を document から読む。見た時の説明 look は src/lib/look.ts、説明の表と lookLine は src/lib/names.ts |
 | 30-loop-init | 大きさ、メインループ（frame・tick。tick の段ごとの見た目の乱数 inPhase・inMobPhase）、テスト用の `__test`、初期化（init）。ゲームの時刻 time は src/lib/state.ts の clock |
-結果の画面は `die()` / `victory()` / `newRun()`、タイトルは `buildIntroPanel()` / `buildUnlockPanel()`。
+結果の画面は `die()` / `victory()` / `newRun()`（結果の画面のボタンと Enter・R は `startNewRun()`。暗くして、真っ暗になった時に tick が newRun を呼ぶ）、タイトルは `buildIntroPanel()` / `buildUnlockPanel()`。
 
 ## 落とし穴
 - **宣言の順番（TDZ）**：`buildIntroPanel()` はスクリプトの途中で呼ばれる。そこで使う古い JS の `let`/`const` は、それより前で宣言すること。

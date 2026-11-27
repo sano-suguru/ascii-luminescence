@@ -708,6 +708,8 @@ export interface Trans {
   t: number;
   regen?: boolean;
   go?: string;
+  /** 真っ暗になったら、新しい探索を始める（src/lib/levels.ts の startNewRun） */
+  run?: boolean;
 }
 /** 今の階に、古い JS が後から足す欄（型は、使う処理を移す時に足す） */
 export interface LevelExtra {
@@ -1144,7 +1146,7 @@ export interface SoundLoops {
   drone?: DroneLoop;
 }
 /** 音（音量の段 lv・音の仕組み ctx と、その部品・鳴り続ける音 L・まわりの音の様子 env）。丸ごと入れ替えないので、古い JS は今までどおり SND.lv のように読む。
- * 部品は、最初に音を鳴らす時（src/lib/audio.ts の sndInit）に作る */
+ * 部品は、タイトルを出した時に先に作り（src/lib/audio.ts の sndPrep）、最初に音を鳴らす時（sndInit）にここへ入れる */
 export interface SoundState {
   /** 音量の段（src/lib/sound.ts の SND_LV の番号） */
   lv: number;
@@ -1154,7 +1156,7 @@ export interface SoundState {
   inp: GainNode | null;
   wet: GainNode | null;
   noise: AudioBuffer | null;
-  /** 鳴り続ける音（地鳴り・水・火・風・低い音）。src/lib/audio.ts の sndInit が作る */
+  /** 鳴り続ける音（地鳴り・水・火・風・低い音）。src/lib/audio.ts の sndPrep か sndInit が作る */
   L: SoundLoops;
   /** まわりの音の様子を数え直すまでの秒 */
   envT: number;
