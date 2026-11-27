@@ -1,9 +1,6 @@
 // ---------------------------------------------------------------- lore (points kept between runs), unlocks, the last run's grave, trials
 // META_DEF・UNLOCKS は src/lib/progress.ts（src/game/imports.mjs で読む）
 function loadMeta(){ try{ return Object.assign({},META_DEF,JSON.parse(localStorage.getItem('al_meta')||'{}')); }catch(e){ return Object.assign({},META_DEF); } }
-saved.META=loadMeta();
-// developer mode (al_dev) is read here, before the title is built below (the title's trials row depends on it)
-try{ saved.DEVALL=localStorage.getItem('al_dev')==='1'; }catch(e){}
 // 記録 META を保存する saveMeta は src/lib/save.ts、解放の確かめ（unlocked・lockedOf・weaponPool）は src/lib/unlocks.ts（src/game/imports.mjs で読む）
 // loreLeft は src/lib/unlocks.ts（src/game/imports.mjs で読む）
 // 試練を選んでいるか trialOn は src/lib/unlocks.ts（古い JS は読まない）
@@ -53,12 +50,17 @@ function buildIntroPanel(){
   for(const b of el.querySelectorAll('button.sl[data-d]'))b.addEventListener('click',()=>{ ui.startDepth=+b.dataset.d; for(const o of el.querySelectorAll('button.sl[data-d]')){ const on=o===b; o.classList.toggle('on',on); o.querySelector('.mk').innerHTML=on?'&gt;':' '; } });
   const si=document.getElementById('seedIn'); if(si)si.value=seedKeep;
 }
-buildIntroPanel();
-initFitIntro();
 // 後から（持ち主と分かった時・ゲームの用意ができた時）タイトルを描き直す。シードの欄に打っている間は、離れてから
 // （描き直すと欄が作り直され、iPhone では打っている途中にキーボードが閉じるため）
 function redrawIntroLater(){ const si=document.getElementById('seedIn'); if(si&&document.activeElement===si){ si.addEventListener('blur',()=>buildIntroPanel(),{once:true}); return; } buildIntroPanel(); }
 
+// タイトルの画面を用意する：記録を読み、タイトルを描き、[迷宮に入る] を受け取る
+function initIntro(){
+saved.META=loadMeta();
+// developer mode (al_dev) is read here, before the title is built below (the title's trials row depends on it)
+try{ saved.DEVALL=localStorage.getItem('al_dev')==='1'; }catch(e){}
+buildIntroPanel();
+initFitIntro();
 // the title panel can be rebuilt, so its [迷宮に入る] is caught on the panel itself
 document.getElementById('intropanel').addEventListener('click',e=>{
   if(!(e.target&&e.target.closest&&e.target.closest('#enter')))return;
@@ -75,38 +77,14 @@ document.getElementById('intropanel').addEventListener('click',e=>{
   if(regen)newLevel();
   ui.started=true; document.body.classList.add('started'); if(here.D)showStratum(here.D.stratum); if(ui.touch)touchTip(); else { setHelp(true); ui.helpT=25; } ui.introEl.classList.add('gone'); gfx.canvas.focus(); tryLock(); updateResume(); took('start',t0);
 });
+}
+initIntro();
 // 指で遊ぶ時は、始めに操作の案内（キーボードの説明）を出さず、初めて指で迷宮に入った時だけ、左下の伝言に一言を出す（記録 META の touchTip で1回だけ。
 // 階に入った時の伝言の後に出るよう、1.5秒待つ）
 function touchTip(){ if(saved.META.touchTip)return; saved.META.touchTip=true; saveMeta(); setTimeout(()=>msg('<b style="color:#bfe4ff">?</b>左半分で動く・右半分で見回す。くわしくはメニューの「操作の案内」'),1500); }
-gfx.canvas.addEventListener('contextmenu',e=>e.preventDefault());
-// the bestiary: the wheel moves in and out, a drag with the left button turns the creature and moves the camera up and down (galleryWheel, galleryDrag)
-gfx.canvas.addEventListener('wheel',e=>{ if(!(ui.gallery&&ui.gallery.mode==='beast'))return; e.preventDefault(); galleryWheel(e.deltaY*(e.deltaMode===1?33:e.deltaMode===2?400:1)); },{passive:false});
-gfx.canvas.addEventListener('mousedown',e=>{ if(!(ui.gallery&&ui.gallery.mode==='beast')||e.button!==0)return; ui.gallery.drag={x:e.clientX,y:e.clientY}; galleryView(); });
-// the left button let go where no mouseup reaches (another window took the focus): the drag ends
-window.addEventListener('mousemove',e=>{ const g=ui.gallery; if(!g||!g.drag)return; if(!(e.buttons&1)){ g.drag=null; galleryView(); return; } galleryDrag(e.clientX-g.drag.x,e.clientY-g.drag.y); g.drag.x=e.clientX; g.drag.y=e.clientY; });
-window.addEventListener('mouseup',e=>{ const g=ui.gallery; if(!g||!g.drag||e.button!==0)return; g.drag=null; galleryView(); });
-window.addEventListener('blur',()=>{ const g=ui.gallery; if(!g||!g.drag)return; g.drag=null; galleryView(); });
-window.addEventListener('mousedown',e=>{
-  if(!ui.menuOpen&&!ui.invOpen)return;
-  if(ui.dbgOpen){ if(!(e.target&&e.target.closest&&e.target.closest('#dbgp'))){ e.preventDefault(); e.stopPropagation(); setDbg(false); } return; }
-  const inside=e.target&&e.target.closest&&e.target.closest('#menu,#pack');
-  if(inside)return;
-  e.preventDefault(); e.stopPropagation();
-  if(ui.menuOpen){ setMenu(false); if(!ui.plFailed)tryLock(); }
-  if(ui.invOpen)setInv(false);
-},true);
-gfx.canvas.addEventListener('wheel',e=>{ if(!ui.started||isPaused()||!gear.hands)return; e.preventDefault(); nextBuild(); },{passive:false});
 // 次のビルドに持ち替える（ホイールと、指の操作の [持ち替え]。続けて回した時は 0.35 秒あける）。buildsHave は src/lib/hotbar.ts
 function nextBuild(){ if(!ui.started||isPaused()||!gear.hands)return; const have=buildsHave(); if(!have.length||clock.time-(gfx.canvas.wheelT||-9)<0.35)return; gfx.canvas.wheelT=clock.time;
   const pos=Math.max(0,have.indexOf(gear.buildIdx)), next=have[(pos+1)%have.length]; const prev=snapHands(); if(applyBuild(next)){ startSwap(prev); flashHint(`ビルド${next+1}`,900); } renderHotbar(); }
-gfx.canvas.addEventListener('mousedown',e=>{ if(!ui.started||isPaused())return; if(relockClick()){ gfx.canvas.focus(); return; } if(e.button===2){ beginCast('R'); return; } if(ui.locked&&e.button===0){ beginCast('L'); return; } if(e.button===0){ ui.downAt=[e.clientX,e.clientY]; beginCast('L'); } ui.dragging=true; ui.lmx=e.clientX; ui.lmy=e.clientY; if(!ui.locked)tryLock(); gfx.canvas.focus(); updateResume(); });
-window.addEventListener('mouseup',e=>{ if(gear.hands){ if(e.button===0)releaseCast('L'); if(e.button===2)releaseCast('R'); } ui.downAt=null; ui.dragging=false; updateResume(); });
-window.addEventListener('mousemove',e=>{
-  if(!ui.started)return;
-  if(ui.locked){ player.yaw-=e.movementX*0.0022; player.pitch-=e.movementY*0.0022; }
-  else if(ui.dragging){ player.yaw-=(e.clientX-ui.lmx)*0.0045; player.pitch-=(e.clientY-ui.lmy)*0.0045; ui.lmx=e.clientX; ui.lmy=e.clientY; }
-  player.pitch=clamp(player.pitch,-1.35,1.35);
-});
 // Esc：捕まえていない時は、メニューを開け閉めする。Esc で閉じた時は捕まえない（下の ui.escKey）。捕まえる遊び方なら、その後は
 // 「クリックで視点操作に戻る」が出て、次のクリックで捕まえる（relockClick）。レベルアップの画面では何もしない
 function onKeyDown(e){
@@ -141,6 +119,34 @@ function toggleMenu(){
   if(ui.lvlOpen||!ui.started||adv.dead)return;
   setMenu(!ui.menuOpen);
 }
+// マウスとキーの処理を用意する（診断の記録もここで始める）
+function initInput(){
+gfx.canvas.addEventListener('contextmenu',e=>e.preventDefault());
+// the bestiary: the wheel moves in and out, a drag with the left button turns the creature and moves the camera up and down (galleryWheel, galleryDrag)
+gfx.canvas.addEventListener('wheel',e=>{ if(!(ui.gallery&&ui.gallery.mode==='beast'))return; e.preventDefault(); galleryWheel(e.deltaY*(e.deltaMode===1?33:e.deltaMode===2?400:1)); },{passive:false});
+gfx.canvas.addEventListener('mousedown',e=>{ if(!(ui.gallery&&ui.gallery.mode==='beast')||e.button!==0)return; ui.gallery.drag={x:e.clientX,y:e.clientY}; galleryView(); });
+// the left button let go where no mouseup reaches (another window took the focus): the drag ends
+window.addEventListener('mousemove',e=>{ const g=ui.gallery; if(!g||!g.drag)return; if(!(e.buttons&1)){ g.drag=null; galleryView(); return; } galleryDrag(e.clientX-g.drag.x,e.clientY-g.drag.y); g.drag.x=e.clientX; g.drag.y=e.clientY; });
+window.addEventListener('mouseup',e=>{ const g=ui.gallery; if(!g||!g.drag||e.button!==0)return; g.drag=null; galleryView(); });
+window.addEventListener('blur',()=>{ const g=ui.gallery; if(!g||!g.drag)return; g.drag=null; galleryView(); });
+window.addEventListener('mousedown',e=>{
+  if(!ui.menuOpen&&!ui.invOpen)return;
+  if(ui.dbgOpen){ if(!(e.target&&e.target.closest&&e.target.closest('#dbgp'))){ e.preventDefault(); e.stopPropagation(); setDbg(false); } return; }
+  const inside=e.target&&e.target.closest&&e.target.closest('#menu,#pack');
+  if(inside)return;
+  e.preventDefault(); e.stopPropagation();
+  if(ui.menuOpen){ setMenu(false); if(!ui.plFailed)tryLock(); }
+  if(ui.invOpen)setInv(false);
+},true);
+gfx.canvas.addEventListener('wheel',e=>{ if(!ui.started||isPaused()||!gear.hands)return; e.preventDefault(); nextBuild(); },{passive:false});
+gfx.canvas.addEventListener('mousedown',e=>{ if(!ui.started||isPaused())return; if(relockClick()){ gfx.canvas.focus(); return; } if(e.button===2){ beginCast('R'); return; } if(ui.locked&&e.button===0){ beginCast('L'); return; } if(e.button===0){ ui.downAt=[e.clientX,e.clientY]; beginCast('L'); } ui.dragging=true; ui.lmx=e.clientX; ui.lmy=e.clientY; if(!ui.locked)tryLock(); gfx.canvas.focus(); updateResume(); });
+window.addEventListener('mouseup',e=>{ if(gear.hands){ if(e.button===0)releaseCast('L'); if(e.button===2)releaseCast('R'); } ui.downAt=null; ui.dragging=false; updateResume(); });
+window.addEventListener('mousemove',e=>{
+  if(!ui.started)return;
+  if(ui.locked){ player.yaw-=e.movementX*0.0022; player.pitch-=e.movementY*0.0022; }
+  else if(ui.dragging){ player.yaw-=(e.clientX-ui.lmx)*0.0045; player.pitch-=(e.clientY-ui.lmy)*0.0045; ui.lmx=e.clientX; ui.lmy=e.clientY; }
+  player.pitch=clamp(player.pitch,-1.35,1.35);
+});
 // 診断の記録（claude.ai の Artifact の中で、持ち主が開いた時だけ。src/lib/diag.ts）
 // 持ち主と分かったら、タイトルを描き直す（［開発用モード］と［自動で試す］を出す）
 void initDiag(()=>redrawIntroLater());
@@ -150,4 +156,5 @@ window.addEventListener('keyup',e=>{ keys[e.code]=false; });
 window.addEventListener('blur',()=>{ for(const k in keys)keys[k]=false; ui.dragging=false; });
 // ページが隠れたら（アプリの切り替えなど）、押しているキーと指を離したことにし、溜めている詠唱を散らし、探索中ならメニューを開いて止める（src/lib/screens.ts の menuOnHide）
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden)return; for(const k in keys)keys[k]=false; ui.dragging=false; releaseTouch(); if(menuOnHide())setMenu(true); });
-
+}
+initInput();

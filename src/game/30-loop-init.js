@@ -6,6 +6,8 @@
 window.addEventListener('resize',()=>{ applySize('resize'); sizeMap(); });
 
 // ---------------------------------------------------------------- test hooks (only with ?test=1; see the test mode block at the top)
+// テスト用モードの時だけ、window.__test を置く
+function initTestApi(){
 if(TEST)window.__test={
   step:TEST_STEP,
   ready(){ return clock.testBoot===true&&!!here.D; },
@@ -196,6 +198,8 @@ if(TEST)window.__test={
       const L=generate(levelSeed(),here.depth); L.place=placeLabel(); L.final=here.depth===FINAL_DEPTH&&!here.branch&&!here.realm&&!here.inter; return L; }
     finally{ ({runSeed:adv.runSeed,depth:here.depth,branch:here.branch,realm:here.realm,inter:here.inter}=keep); } },
 };
+}
+initTestApi();
 
 // ---------------------------------------------------------------- init
 async function init(){
@@ -218,6 +222,10 @@ async function init(){
   sndPrep();
   requestAnimationFrame(frame);
 }
+// ゲームを始める（テスト用モードでは、用意ができたら URL の指定を当てて、__test.ready に知らせる）
+function start(){
 if(TEST)init().then(()=>{ dbgUrl(); clock.testBoot=true; }).catch(e=>{ console.error(e); clock.testBoot='error: '+e; });
 else { init().then(()=>initAuto({ toStairs:()=>dbg.to('stairs'), clear:()=>{ dbg.clear(); }, hurt:n=>{ dbg.hurt(n); }, summon:(k,i)=>{ summon(k,i); }, title:()=>redrawIntroLater() })).catch(e=>console.error(e));
   setTimeout(()=>{ try{ dbgUrl(); }catch(e){ console.error(e); } },400); }
+}
+start();

@@ -1,7 +1,9 @@
 // ---------------------------------------------------------------- renderer & post
+// 描画の部品を作る。WebGL を作れなかった時は、わけを出して false を返す（呼ぶ所が、ゲームの用意をそこでやめる）
+function initRenderer(){
 gfx.canvas=document.getElementById('gl');
 try{ gfx.renderer=new T.WebGLRenderer({canvas:gfx.canvas,antialias:false,powerPreference:'high-performance',stencil:false}); }
-catch(e){ ui.errEl.textContent='WebG Lを初期化できませんでした。ハードウェアアクセラレーションを有効にしてください。'.replace('WebG L','WebGL'); return; }
+catch(e){ ui.errEl.textContent='WebG Lを初期化できませんでした。ハードウェアアクセラレーションを有効にしてください。'.replace('WebG L','WebGL'); return false; }
 const isGL2=gfx.renderer.capabilities.isWebGL2;
 gfx.pixelRatio=Math.min(window.devicePixelRatio||1,1.5);
 gfx.renderer.setPixelRatio(gfx.pixelRatio);
@@ -86,3 +88,6 @@ gfx.ptGeo.setAttribute('position',gfx.bpPos); gfx.ptGeo.setAttribute('aCol',gfx.
 // dust は src/lib/state.ts（src/game/imports.mjs で読む）
 // 粒子の配列 P と、粒子を出す spawn・消す killP は src/lib/particles.ts、生きている数 buf.pN は src/lib/state.ts（src/game/imports.mjs で読む）
 
+return true;
+}
+if(!initRenderer())return;

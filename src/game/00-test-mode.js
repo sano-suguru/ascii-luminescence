@@ -3,7 +3,7 @@
 // The game does not step by itself: window.__test.frames(n) draws n frames, __test.advance(sec) steps without drawing.
 // テスト用モードか TEST は src/lib/state.ts（src/game/imports.mjs で読む）
 // テスト用モードの1歩の秒 TEST_STEP は src/lib/state.ts（src/game/imports.mjs で読む）
-clock.TESTCLK=TEST?(()=>{
+function installTestMode(){
   const q=new URLSearchParams(location.search), sd=Number(q.get('seed'))>>>0||1;
   let a=(sd^0x9e3779b9)>>>0; Math.random=()=>{ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; };
   let now=0, nextId=1; const timers=new Map(); const realTimeout=window.setTimeout.bind(window);
@@ -28,7 +28,8 @@ clock.TESTCLK=TEST?(()=>{
       // like a real browser: one failing timer is reported (a page error) and the others still run
       if(typeof e.fn==='function')try{ e.fn(...e.args); }catch(err){ queueMicrotask(()=>{ throw err; }); } }
     now=end; }, realTimeout };
-})():null;
+}
+clock.TESTCLK=TEST?installTestMode():null;
 ui.errEl=document.getElementById('err');
 // three.js と、光のにじみなどの部品 T は src/lib/three.ts（src/game/imports.mjs で読む）
 // 自動で試す（?auto）間は、localStorage に書かない（保存の処理より先に。src/lib/auto.ts）
