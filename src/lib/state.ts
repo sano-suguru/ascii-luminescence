@@ -57,6 +57,8 @@ export const vfx: Vfx = { shake: 0, flash: 0, hurtFlash: 0, hpFlash: 0, zapFlash
 export interface Gallery {
   mode: 'beast' | 'range';
 }
+/** レベルアップの選択肢の1つ（恩恵 k か、ルーン ru） */
+export type LevelOpt = { kind: 'bless'; k: string } | { kind: 'rune'; ru: Rune };
 /** 画面の開け閉め（探索が始まったか、1人称・3人称、マウスを捕まえているか、各画面が開いているか、表示の量、図鑑と試しの間） */
 export interface Ui {
   /** 探索が始まったか（タイトルの画面を閉じたか） */
@@ -85,8 +87,18 @@ export interface Ui {
   camMode: string;
   /** レベルアップの画面 */
   lvlOpen: boolean;
+  /** レベルアップの画面を開いた時刻（performance.now の値。開いてすぐのクリックは選ばない。指で選ぶ時の、開くたびに変わる鍵 confirmTap）と、今の選択肢（src/lib/panels.ts） */
+  lvlOpenT: number;
+  lvlOpts: LevelOpt[];
   /** 祭壇の画面 */
   altarOpen: boolean;
+  /** 祭壇の画面を開いた時刻（performance.now の値。指で選ぶ時の、開くたびに変わる鍵 confirmTap） */
+  altarOpenT: number;
+  /** プレイヤーが閉じた祭壇の組（離れるまで、また開かない。src/lib/panels.ts の updateAltarPanel。無ければ null） */
+  altarDismissed: string | null;
+  /** 祭壇で選んで、置き場所を待っている物と、祭壇の画面の鍵（今はどこも読まない。src/lib/panels.ts の chooseAltar が戻すだけ） */
+  altarSel: { grp: string; slot: number } | null;
+  altarPanelKey: string;
   /** 今いる近くの、灯った祭壇の組（祭壇の真ん中の台から1.5より近い時。無ければ null。祭壇の画面が開いている間は、開いた時の組のまま） */
   altarNear: string | null;
   /** 装備の画面で選んでいるルーン（袋から選んだ物か、手の枠 h・s から選んだ物。無ければ null） */
@@ -106,6 +118,12 @@ export interface Ui {
   hintHTML: string;
   /** 画面の下の一言を出した回数（showHint のたびに増える。後から別の一言が出たかを見分ける。src/lib/status.ts の clearHint） */
   hintSeq: number;
+  /** 指で遊ぶ時に、メニューの中に開いている物（'help' 操作の案内・'chron' 年代記・'book' 魔導書。'' ならメニューの一覧。src/lib/menu.ts） */
+  menuPage: string;
+  /** タイトルの画面で選んだ、始める深さ（開発用モードの「開始する層」。ふだんは 1） */
+  startDepth: number;
+  /** タイトルの画面（16-view-input.js で document から読む） */
+  introEl: HTMLElement | null;
   /** メニューの「タイトルへ」「新しい探索」の、もう一度押して確かめる待ちが終わる時刻（待っていなければ 0） */
   titleArm: number;
   newRunArm: number;
@@ -162,7 +180,13 @@ export const ui: Ui = {
   tapArm: '',
   camMode: 'fps',
   lvlOpen: false,
+  lvlOpenT: 0,
+  lvlOpts: [],
   altarOpen: false,
+  altarOpenT: 0,
+  altarDismissed: null,
+  altarSel: null,
+  altarPanelKey: '',
   altarNear: null,
   packSel: null,
   packHover: null,
@@ -173,6 +197,9 @@ export const ui: Ui = {
   noticeMsgT: {},
   hintHTML: '',
   hintSeq: 0,
+  menuPage: '',
+  startDepth: 1,
+  introEl: null,
   titleArm: 0,
   newRunArm: 0,
   dbgOpen: false,
@@ -206,6 +233,8 @@ export interface Lvl {
   pending: number;
   bless: Record<string, number>;
   strata: Set<string>;
+  /** 初めてのレベルアップの選択肢を出したか（初めは、恩恵を行いに結び付いた物から選ぶ。src/lib/panels.ts の levelChoices） */
+  firstDone?: boolean;
 }
 /** 探索の記録（倒した数・始めた時刻）。後から足される欄（maxDepth・cause など）は、使う処理を移す時に型を足す */
 export interface RunStats {
@@ -292,6 +321,8 @@ export interface Player {
   roll?: { t: number; dx: number; dz: number } | null;
   /** 武器を振った残りの秒（0.22 から減る）と、振りの線の色（無ければ決まった色）、波を撃つ途中か（その間は振りの線を描かない） */
   swing?: number;
+  /** 素手の攻撃の間の残りの秒（今は書く所が無く、src/lib/combat.ts の updateLife が減らすだけ） */
+  atkCd?: number;
   swingCol?: readonly number[] | undefined;
   swingWave?: boolean;
   /** 網に掛かった残りの秒（src/lib/events.ts の罠） */
@@ -795,8 +826,6 @@ export interface Monster {
   /** 体の明るさ（生き物の処理が入れる）と、心臓を見せるか（王の影。src/lib/levels.ts の spawnFinalBoss） */
   glow?: number;
   heartOn?: boolean;
-  /** 宝物庫の番人（褒美を取った時に目を覚ました物。src/lib/pickup.ts の vaultSprung が入れる。今はどこも読まない） */
-  guardian?: boolean;
   /** ここから下は、描く処理（src/lib/bodies/draw.ts）と見た時の説明（src/lib/look.ts）・灯り（src/lib/lightmap.ts の updateLights）が読む欄。
    * 生き物の表の鍵（'final' は王の影）と、揺れの位相 ph・歩きの位相 walk・警戒 alert（src/lib/monsters.ts の makeMonster が入れる） */
   key?: string;

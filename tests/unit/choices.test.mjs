@@ -1,15 +1,15 @@
-// 選択肢の乱数の単体テスト：祭壇の中身（src/lib/altars.ts の altarFill）とレベルアップの選択肢（src/game/18-level-player.js の levelChoices）は、
+// 選択肢の乱数の単体テスト：祭壇の中身（src/lib/altars.ts の altarFill）とレベルアップの選択肢（src/lib/panels.ts の levelChoices）は、
 // 見た目の乱数（mr・Math.random）を引かず、出来事ごとに keyedRand で作った乱数で決める（祭壇は階のシードと祭壇のマス、レベルアップは探索のシードと何レベル目か）。
 //   - 見た目の乱数を1回も引かない（Math.random を、呼ばれたら止まる物に入れ替えて確かめる）
 //   - 鍵が同じなら、見た目の乱数をどれだけ進めても、ほかの出来事をどの順番で起こしても、同じ選択肢になる
 //   - 選び方は変えていない：見た目の乱数で選んでいた時と同じ乱数を渡すと、同じ選択肢になる（レベルアップの指紋は、乱数を分ける前の古い JS で出した値。
 //     祭壇は altars.test.mjs の指紋で確かめる）
-// レベルアップの選択肢はまだ古い JS にあるので、tools/legacy-eval.mjs で本物を取り出す。テストの中で作る小さな階を、生成の結果の型に合わせられないので .mjs で書く
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { legacyValues } from '../../tools/legacy-eval.mjs';
+// テストの中で作る小さな階を、生成の結果の型に合わせられないので .mjs で書く
+import { afterEach, describe, expect, it } from 'vitest';
 import { altarFill, placeAltar } from '../../src/lib/altars.ts';
 import { makeRune } from '../../src/lib/gear.ts';
 import { levelSeed } from '../../src/lib/levels.ts';
+import { levelChoices } from '../../src/lib/panels.ts';
 import { BLESS, UNLOCKS } from '../../src/lib/progress.ts';
 import { keyedRand } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
@@ -71,11 +71,6 @@ const levelScene = (s) => {
 const showLevel = (out) => JSON.stringify(out.map((o) => (o.kind === 'bless' ? o.k : [o.ru.type, Boolean(o.ru.strong)])));
 
 describe('レベルアップの選択肢', () => {
-  let levelChoices;
-  beforeAll(async () => {
-    ({ levelChoices } = await legacyValues(['levelChoices']));
-  });
-
   it('見た目の乱数を引かず、見た目の乱数をどれだけ進めても同じ選択肢になる（200の場合）', () => {
     for (let s = 1; s <= 200; s++) {
       levelScene(s);

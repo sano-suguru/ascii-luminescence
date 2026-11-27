@@ -51,7 +51,6 @@ export function vaultSprung(it: Item): void {
       m.aware = 1;
       m.noticed = true;
       m.alert = 1;
-      m.guardian = true;
       here.monsters.push(m);
       for (let q = 0; q < 24; q++) {
         const a = mr() * 6.28;
