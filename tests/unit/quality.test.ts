@@ -11,7 +11,7 @@ describe('nextQuality', () => {
     expect(nextQuality(QUALITY.slow, { pr: 1.5, bloom: true })).toBeNull();
     expect(nextQuality(Number.NaN, { pr: 1.5, bloom: true })).toBeNull();
   });
-  it('遅ければ、描く細かさを1段ずつ下限まで下げ、その後で光のにじみを切り、それ以上は変えない', () => {
+  it('遅ければ、描く細かさを 1 まで下げ、次に光のにじみを切り、最後に下限まで下げ、それ以上は変えない', () => {
     let q: Quality = { pr: 1.5, bloom: true };
     const steps: Quality[] = [];
     for (let n = 0; n < 10; n++) {
@@ -20,17 +20,18 @@ describe('nextQuality', () => {
       steps.push(next);
       q = next;
     }
-    expect(steps.map((s) => [+s.pr.toFixed(2), s.bloom])).toEqual([
+    expect(steps.map((s) => [s.pr, s.bloom])).toEqual([
       [1.3, true],
       [1.1, true],
-      [0.9, true],
-      [0.7, true],
-      [0.5, true],
-      [0.5, false],
+      [1, true],
+      [1, false],
+      [0.8, false],
+      [0.75, false],
     ]);
   });
-  it('画素の比が 1 の端末も、下限で止まる', () => {
-    expect(nextQuality(slow, { pr: 0.6, bloom: true })).toEqual({ pr: QUALITY.floor, bloom: true });
+  it('画素の比が 1 の端末は、まず光のにじみを切る。下限より細かさが低い端末は、細かさを上げない', () => {
+    expect(nextQuality(slow, { pr: 1, bloom: true })).toEqual({ pr: 1, bloom: false });
+    expect(nextQuality(slow, { pr: 0.6, bloom: false })).toBeNull();
     expect(nextQuality(slow, { pr: QUALITY.floor, bloom: false })).toBeNull();
   });
 });

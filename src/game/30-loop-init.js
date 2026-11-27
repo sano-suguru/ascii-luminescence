@@ -94,6 +94,8 @@ if(TEST)window.__test={
   // give every blessing at level n (default 1), so a level-up offers their next level (shown with II)
   // 指の操作の、試して合わせる値を変える（{look, analog}。src/lib/touchpad.ts の TUNE。tools/feel.mjs が使う）
   touchTune(o){ Object.assign(TUNE,o||{}); return {...TUNE}; },
+  // the quality the frame loop lowers on a slow device (src/lib/quality.ts; tests keep it fixed): pr is the pixel ratio, bloom whether the glow is drawn. Returns what it is now
+  quality(q){ if(q){ if(q.pr!==undefined)pixelRatio=q.pr; if(q.bloom!==undefined)bloom.enabled=q.bloom; applySize('auto'); } return {pr:pixelRatio,bloom:bloom.enabled}; },
   bless(n=1){ for(const k in BLESS)adv.lvl.bless[k]=n; return Object.keys(BLESS).length; },
   // how many columns the panels count for a piece of text (visW)
   width(text){ return visW(text); },
