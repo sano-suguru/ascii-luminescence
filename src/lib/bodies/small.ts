@@ -230,25 +230,25 @@ export function crabForm(ty: BodyType): Body {
   for (const sd of [-1, 1]) {
     lit(sd * 0.09, 0.31, 0.51, 'o', 0.8, 1.4, EYE, 'head');
     lit(sd * 0.05, 0.2, 0.56, sd < 0 ? '(' : ')', 0.8, 1.1, LEG, 'head');
-    // 触角：上へ立ち上がってから前へ
-    stroke([sd * 0.05, 0.35, 0.5], [sd * 0.16, 0.56, 0.66], LEG, 1.1, 0.8, 'head', undefined, S * 0.5);
-    stroke([sd * 0.16, 0.56, 0.66], [sd * 0.3, 0.6, 0.92], LEG, 1.1, 0.8, 'head', undefined, S * 0.5);
+    // 触角：上へ立ち上がってから前へ長く伸びる（遠くから見ても、前がどちらか分かり、虫に見えるように）
+    stroke([sd * 0.05, 0.35, 0.5], [sd * 0.16, 0.6, 0.7], LEG, 1.3, 0.9, 'head', undefined, S * 0.45);
+    stroke([sd * 0.16, 0.6, 0.7], [sd * 0.32, 0.66, 1.0], LEG, 1.3, 0.9, 'head', undefined, S * 0.45);
   }
-  // 脚：胸の横から3対。ひざは背の高さまで上がり、足先は外へ広がる。前の脚は前へ、後ろの脚は後ろへ。
+  // 脚：胸の横から3対。短く、ひざは胴の高さまで（ひざを高く上げて外へ広く開くと、蜘蛛に見える）。すねは外へ傾ける（真下へ下ろすと、箱を柱で支えた台に見える）。前の脚は前へ、真ん中は横へ、後ろの脚は後ろへ。
   // 歩く時は、それぞれの付け根（高さ HIP_Y・奥行き hz）を軸に回る。左右で互い違い（3本ずつ）に動く
   // 脚ごとに、付け根の奥行き hz・ひざの横 kx と奥行き kz・足先の横 fx と奥行き fz
   const HIP_Y = 0.28,
     LEGS: readonly (readonly [number, number, number, number, number])[] = [
-      [0.3, 0.34, 0.46, 0.56, 0.7],
-      [0.24, 0.4, 0.22, 0.68, 0.2],
-      [0.18, 0.36, -0.1, 0.62, -0.42],
+      [0.3, 0.28, 0.48, 0.46, 0.74],
+      [0.24, 0.34, 0.2, 0.58, 0.14],
+      [0.18, 0.3, -0.16, 0.5, -0.5],
     ];
   for (const sd of [-1, 1])
     LEGS.forEach(([hz, kx, kz, fx, fz], l) => {
       const part = (l % 2 === 0) === sd > 0 ? 'legL' : 'legR',
         ex = { piv: HIP_Y, pz: hz },
         hip: Vec3 = [sd * 0.13, HIP_Y, hz],
-        knee: Vec3 = [sd * kx, 0.42, kz],
+        knee: Vec3 = [sd * kx, 0.36, kz],
         foot: Vec3 = [sd * fx, 0.02, fz];
       stroke(hip, knee, LEG, 1.2, 0.85, part, ex, S * 0.6);
       stroke(knee, foot, LEG, 1.2, 0.85, part, ex, S * 0.6);
