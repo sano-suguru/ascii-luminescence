@@ -6,7 +6,6 @@ import type { Color } from './color.ts';
 import { type Side, isTwo } from './gear.ts';
 import { G } from './glyphs.ts';
 import {
-  type V,
   type V3,
   VM_BRIGHT,
   VM_FIST,
@@ -100,18 +99,16 @@ export function drawViewWeapons(t: number): void {
     const pv = M.pivot,
       cs = Math.cos(th),
       sn = Math.sin(th);
-    const put = (x: number, y: number, z: number, g: string, part: string, sz: number, bri?: number): V3 => {
-      let lx = x - nth(pv, 0),
+    // 形の点を、振る・突く時の回り（軸 pv のまわりに th）・揺れと動き（dx dy dz）・左右の入れ替えを通して、世界の中の点にする
+    const place = (x: number, y: number, z: number): V3 => {
+      const lx = x - nth(pv, 0),
         ly = y - nth(pv, 1);
       const rx = lx * cs - ly * sn + nth(pv, 0),
         ry = lx * sn + ly * cs + nth(pv, 1);
-      let X = rx + dx,
-        Y = ry + dy,
-        Z = z + dz;
-      if (mirror) {
-        X = -X;
-        g = VM_MIRROR[g] || g;
-      }
+      return W(mirror ? -(rx + dx) : rx + dx, ry + dy, z + dz);
+    };
+    const put = (x: number, y: number, z: number, g: string, part: string, sz: number, bri?: number): V3 => {
+      if (mirror) g = VM_MIRROR[g] || g;
       const base: Color = VM_PART[part] || [0.8, 0.8, 0.8],
         tk = el ? VM_TINT[part] || 0 : 0,
         bb =
@@ -120,7 +117,7 @@ export function drawViewWeapons(t: number): void {
           (part === 'head' || part === 'glow' ? glow : 1) *
           (part === 'edge' && swingP >= 0 ? 1.7 : 1) *
           (part === 'head' || part === 'glow' || part === 'edge' ? calmHot : calm);
-      const p = W(X, Y, Z);
+      const p = place(x, y, z);
       dyn(
         p[0],
         p[1],
@@ -190,8 +187,8 @@ export function drawViewWeapons(t: number): void {
         );
       }
     if (el && mr() < 0.08 * (1 + chant * 3)) {
-      const hp: V = M.head || (M.kind === 'sword' ? [0.2, 0.0, 0.86] : [0.15, -0.19, 0.88]);
-      const p = W((mirror ? -1 : 1) * (nth(hp, 0) + dx), nth(hp, 1) + dy, nth(hp, 2) + dz),
+      // 火花は、武器の先（剣の刃先・弓の握り・弩の矢の先・杖の頭・素手の指先）から、文字と同じ回りと動きで出す
+      const p = place(nth(M.tip, 0), nth(M.tip, 1), nth(M.tip, 2)),
         g2 = el === 'fire' ? '^' : el === 'ice' ? '*' : el === 'thunder' ? '/' : '%';
       spawn(
         p[0],

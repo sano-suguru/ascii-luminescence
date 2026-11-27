@@ -19,8 +19,10 @@ interface VmBase {
   two?: boolean;
   /** 突く剣（振らずに前へ出す） */
   thrust?: boolean;
-  /** 杖の頭（性質の火花が出る所。星の杖は、ここを光が回る） */
+  /** 杖の頭（星の杖は、ここを光が回る） */
   head?: V3;
+  /** 性質の火花が出る所（武器の先） */
+  tip: V;
   orbit?: boolean;
 }
 /** 弓：弦の両端 top・bot、握り grip、弦を引かない時の真ん中 rest と引ききった時 draw */
@@ -140,13 +142,15 @@ export const VM_MODELS = ((): Record<string, VmModel> => {
   const M: Record<string, VmModel> = {};
   {
     const o: Pt[] = [],
-      F = sword(o, S(0.66, -1.12, 0.47), S(0.42, -0.42, 0.82), 0.13, 0.27, 0.026, 0.075, false);
-    M['blade'] = { kind: 'sword', pivot: F, pts: o };
+      T = S(0.42, -0.42, 0.82),
+      F = sword(o, S(0.66, -1.12, 0.47), T, 0.13, 0.27, 0.026, 0.075, false);
+    M['blade'] = { kind: 'sword', pivot: F, tip: T, pts: o };
   }
   {
     const o: Pt[] = [],
-      F = sword(o, S(0.66, -1.12, 0.47), S(0.38, -0.34, 0.9), 0.12, 0.24, 0.011, 0.04, false);
-    M['dash'] = { kind: 'sword', thrust: true, pivot: F, pts: o };
+      T = S(0.38, -0.34, 0.9),
+      F = sword(o, S(0.66, -1.12, 0.47), T, 0.12, 0.24, 0.011, 0.04, false);
+    M['dash'] = { kind: 'sword', thrust: true, pivot: F, tip: T, pts: o };
   }
   {
     const o: Pt[] = [],
@@ -154,7 +158,7 @@ export const VM_MODELS = ((): Record<string, VmModel> => {
       T = S(0.32, -0.28, 0.95);
     fist(o, L3(P0, T, 0.06), 0.06);
     const F = sword(o, P0, T, 0.15, 0.25, 0.05, 0.12, true);
-    M['gsword'] = { kind: 'sword', two: true, pivot: F, pts: o };
+    M['gsword'] = { kind: 'sword', two: true, pivot: F, tip: T, pts: o };
   }
   // bows: upright, a little left of the middle; the limbs bend away from you, the string toward you; the left fist on the grip
   const bow = (tall: boolean): VmBow => {
@@ -165,7 +169,7 @@ export const VM_MODELS = ((): Record<string, VmModel> => {
     curve(o, g, S(-0.3, tall ? -0.2 : -0.28, 0.78), top, 'wood', 0.032);
     curve(o, g, S(-0.3, -1.2, 0.79), bot, 'wood', 0.032);
     fist(o, [g[0] + 0.004, g[1], g[2] - 0.01], -0.05);
-    return { kind: 'bow', two: true, pivot: g, top, bot, grip: g, rest: S(-0.31, -0.6, 0.6), draw: S(0.12, -0.8, 0.46), pts: o };
+    return { kind: 'bow', two: true, pivot: g, tip: g, top, bot, grip: g, rest: S(-0.31, -0.6, 0.6), draw: S(0.12, -0.8, 0.46), pts: o };
   };
   M['bolt'] = bow(false);
   M['rain'] = bow(true);
@@ -179,7 +183,7 @@ export const VM_MODELS = ((): Record<string, VmModel> => {
     stroke(o, S(0.6, -0.73, 0.78), S(0.38, -0.75, 0.64), 'string', 0.022);
     stroke(o, S(0.385, -0.7, 0.64), S(0.355, -0.62, 0.9), 'glow', 0.028);
     o.push([...S(0.352, -0.61, 0.91), '>', 'glow', 0.034]);
-    M['rapid'] = { kind: 'xbow', pivot: S(0.48, -0.85, 0.6), pts: o };
+    M['rapid'] = { kind: 'xbow', pivot: S(0.48, -0.85, 0.6), tip: S(0.352, -0.61, 0.91), pts: o };
   }
   // staffs: only the upper shaft and the head come into view; the hands hold it below
   const staff = (head: string): VmOther => {
@@ -209,7 +213,7 @@ export const VM_MODELS = ((): Record<string, VmModel> => {
       }
       o.push([...h, '*', 'glow', 0.05 * K]);
     }
-    return { kind: 'staff', pivot: S(0.52, -0.85, 0.6), head: h, orbit: head === 'star', pts: o };
+    return { kind: 'staff', pivot: S(0.52, -0.85, 0.6), head: h, tip: h, orbit: head === 'star', pts: o };
   };
   M['orb'] = staff('orb');
   M['beam'] = staff('beam');
@@ -220,7 +224,7 @@ export const VM_MODELS = ((): Record<string, VmModel> => {
     stroke(o, S(0.5, -1.5, 0.5), [h[0] - 0.01, h[1] - 0.1, h[2]], 'wood', 0.036);
     ring(o, h, 0.15, 1.15, 5.13, 11, 'head', 0.05, '(');
     ring(o, [h[0] - 0.03, h[1], h[2]], 0.11, 1.5, 4.78, 7, 'glow', 0.034, '(');
-    M['mstaff'] = { kind: 'staff', two: true, pivot: S(0.44, -0.8, 0.6), head: h, pts: o };
+    M['mstaff'] = { kind: 'staff', two: true, pivot: S(0.44, -0.8, 0.6), head: h, tip: h, pts: o };
   }
   // bare hands: an open hand of a few large glyphs, fingers up
   {
@@ -245,7 +249,7 @@ export const VM_MODELS = ((): Record<string, VmModel> => {
       );
     stroke(o, [c[0] - 0.07, c[1] - 0.008, c[2]], [c[0] - 0.15, c[1] + 0.065, c[2] + 0.01], 'knuckle', 0.028);
     stroke(o, [c[0] + 0.02, c[1] - 0.05, c[2] - 0.01], [c[0] + 0.09, c[1] - 0.42, c[2] - 0.12], 'arm', 0.05, '%', 1.1);
-    M['bare'] = { kind: 'bare', pivot: c, pts: o };
+    M['bare'] = { kind: 'bare', pivot: c, tip: [c[0] + 0.005, c[1] + 0.19, c[2] + 0.012], pts: o };
   }
   return M;
 })();
