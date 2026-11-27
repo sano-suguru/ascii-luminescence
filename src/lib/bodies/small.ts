@@ -163,8 +163,7 @@ export function shroomForm(ty: BodyType): Body {
   return pts;
 }
 
-// ギタイムシ：巻物に化ける虫。背中に、開いた巻物（両側に巻いた軸・字の並ぶ紙）を背負う。
-// 頭は前に低く、長い触角が前へ伸びる。6本の脚は、ひざが背の高さまで上がってから床へ下りる
+// ギタイムシ：巻物に化ける虫。背中に、開いた巻物（両側に巻いた軸・字の並ぶ紙）を背負う。頭は前に低く、長い触角が前へ伸びる
 export function crabForm(ty: BodyType): Body {
   const { S, pts, put, lit, stroke, ell } = q3({ scale: ty.scale * 1.5 }),
     SHELL: Color = [0.42, 0.28, 0.17],
