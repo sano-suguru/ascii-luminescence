@@ -36,6 +36,8 @@ import { buildLogo } from '../lib/title.ts';
 import { buildIntroPanel, initIntro, redrawIntroLater } from '../lib/intro.ts';
 import { dbg, dbgUrl, initDbg } from '../lib/debug.ts';
 import { initInput, initPointer } from '../lib/input.ts';
+import { initTestApi } from '../lib/testapi.ts';
+import { start } from '../lib/boot.ts';
 import { DYN_VS, GLYPH_FS, PT_FS, PT_VS, STATIC_VS, WATER_FS, WATER_VS } from '../lib/shaders.ts';
 import { ALTAR_W, MARK_H } from '../lib/hud.ts';
 import { drawMap, sizeMap } from '../lib/minimap.ts';
