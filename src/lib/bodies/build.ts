@@ -17,7 +17,9 @@ import {
   dragonForm,
   golemForm2,
   grazerForm,
+  fireHoundForm,
   iceHoundForm,
+  lightHoundForm,
   jackalForm,
   krakenForm2,
   lichForm,
@@ -173,7 +175,7 @@ export function shapeHumanoid(pts: Body, look: string | null | undefined): void 
     }
   }
 }
-/** 古い四つ足の上に、見た目ごとの特徴を足す（炎と光の猟犬も。氷の猟犬は作り直した形 iceHoundForm） */
+/** 古い四つ足の上に、見た目ごとの特徴を足す */
 export function lookQuad(look: string | null | undefined, pts: Body, add: Add, _L: string): void {
   const mv = (parts: readonly string[], f: (p: Body[number]) => void): void => moveParts(pts, parts, f);
   const legStretch = (top: number, k: number): void => {
@@ -202,51 +204,6 @@ export function lookQuad(look: string | null | undefined, pts: Body, add: Add, _
     for (let k = 0; k < 7; k++) {
       const z = -0.3 + k * 0.1;
       for (let j = -1; j <= 1; j++) add(j * 0.08, 0.6 + 0.04 * Math.cos(j), z, mpick(['o', '%', '"']), 0.12, 1.2, 'body');
-    }
-  } else if (look && look.startsWith('hound')) {
-    mv(['body', 'head', 'core', 'tail'], (p) => {
-      p.y += 0.1;
-    });
-    legStretch(0.46, 1.3);
-    for (let k = 0; k < 3; k++) add(0, 0.66 - k * 0.02, 0.56 + k * 0.07, k === 2 ? '>' : '=', 0.11, 1.3, 'head');
-    for (const sd of [-1, 1]) for (let k = 0; k < 2; k++) add(sd * 0.07, 0.8 + k * 0.04, 0.4 - k * 0.08, '<', 0.1, 1.3, 'head');
-    const lit2 = (x: number, y: number, z: number, ch: string, s: number, b: number, col: Color, part?: string, extra?: Extra): void =>
-      mLit(pts, x, y, z, ch, s, b, col, part, extra);
-    if (look === 'houndF') {
-      // 首から背中へ立つ炎のたてがみ（根元は深い赤、先は黄色がかった白）。暗い体のひびに、燃えさしが光る
-      for (let k = 0; k < 10; k++) {
-        const z = 0.5 - k * 0.085,
-          h = 0.2 + 0.14 * Math.sin(k * 0.9 + 0.6) * (k < 6 ? 1 : 0.6),
-          n = 4;
-        for (let q = 0; q < n; q++) {
-          const f = q / (n - 1);
-          lit2(
-            (mr() - 0.5) * 0.05,
-            0.72 + h * f,
-            z - 0.03 * f,
-            '^',
-            0.13 + 0.03 * (1 - f),
-            1.6 + 1.0 * f,
-            [1.0, 0.25 + 0.6 * f, 0.06 + 0.5 * f * f],
-            'flame',
-            {
-              fh: f,
-            },
-          );
-        }
-      }
-      for (let k = 0; k < 6; k++) {
-        const sd = k % 2 ? 1 : -1;
-        lit2(sd * 0.16, 0.48 + mr() * 0.12, -0.2 + k * 0.08, mpick(['/', '\\']), 0.11, 2.2, [1.0, 0.35, 0.1]);
-      }
-      for (const sd of [-1, 1]) lit2(sd * 0.05, 0.74, 0.56, '*', 0.09, 3.4, [1.0, 0.6, 0.2], 'head');
-    }
-    if (look === 'houndL') {
-      // 光でできた猟犬：体じゅうが明るく、目はランプのよう、胸に光の芯
-      for (const p of pts) p.b *= 1.6;
-      for (const sd of [-1, 1]) lit2(sd * 0.05, 0.74, 0.56, '*', 0.1, 4.0, [1.0, 1.0, 0.9], 'head');
-      lit2(0, 0.55, 0.3, '*', 0.2, 3.6, [1.0, 0.95, 0.7], 'body');
-      lit2(0, 0.55, 0.3, 'o', 0.28, 1.6, [1.0, 0.9, 0.6], 'body');
     }
   } else if (look === 'salamander') {
     mv(['body', 'head', 'core', 'tail'], (p) => {
@@ -286,7 +243,8 @@ export function addLooks(): void {
   lookup(MTYPES, 'Rc').form = 'cleaner';
   lookup(MTYPES, 'Re').form = 'repairer';
   lookup(MTYPES, 'Rw').form = 'watcher';
-  // 火と氷の猟犬：体を暗くして、炎と氷を目立たせる（氷の猟犬の形 iceHoundForm は点ごとに色を持つので、体には使わない）。灯りは元の色のまま
+  // 猟犬：形（beasts.ts の fireHoundForm・iceHoundForm・lightHoundForm）は点ごとに色を持つので、種類の色は体には使わない（照準の先の足もとの輪などに使う）。
+  // 火と氷の猟犬は種類の色を暗くし、灯りは元の色のまま
   const Zf = lookup(MTYPES, 'Zf'),
     Zi = lookup(MTYPES, 'Zi'),
     Zl = lookup(MTYPES, 'Zl');
@@ -651,7 +609,9 @@ const BY_FORM: Readonly<Record<string, FormOf>> = {
     jackal: jackalForm,
     grazer: grazerForm,
     salamander: salamanderForm,
+    houndF: fireHoundForm,
     houndI: iceHoundForm,
+    houndL: lightHoundForm,
   },
   BY_SMALL: Readonly<Record<string, FormOf>> = {
     jelly: jellyForm,

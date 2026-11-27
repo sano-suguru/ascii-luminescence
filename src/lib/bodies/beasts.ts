@@ -4,7 +4,22 @@ import type { Color } from '../color.ts';
 import { G } from '../glyphs.ts';
 import { clamp } from '../rng.ts';
 import { mpick, mr } from '../random.ts';
-import { type Body, type BodyType, type Extra, type Ramp, type Vec3, FUR, MUD, SCALE, SKINR, STONE, q2, q3, strokeCh } from './kit.ts';
+import {
+  type Body,
+  type BodyType,
+  type Extra,
+  type Kit3,
+  type Ramp,
+  type Vec3,
+  FUR,
+  MUD,
+  SCALE,
+  SKINR,
+  STONE,
+  q2,
+  q3,
+  strokeCh,
+} from './kit.ts';
 
 type Leg = readonly [number, number, string];
 
@@ -189,7 +204,7 @@ export function salamanderForm(ty: BodyType): Body {
   return pts;
 }
 
-/** 氷のハウンドの胴（形の中の奥行き z での、背の高さ・腹の高さ・横の半径）。体の点と、背中の氷の位置を、同じ式から出す */
+/** 猟犬の胴（3匹で同じ。形の中の奥行き z での、背の高さ・腹の高さ・横の半径）。体の点と、背の飾り（氷・炎）と脇腹の飾り（ひび・光の筋）の位置を、同じ式から出す */
 export const houndTorso = {
   /** 尻の端と胸の端の奥行き */
   z0: -0.44,
@@ -228,14 +243,14 @@ export const houndTorso = {
   /** 割合 u の奥行き */
   z: (u: number): number => houndTorso.z0 + (houndTorso.z1 - houndTorso.z0) * u,
 };
-/** 氷のハウンドの首（胸の上から前へ立ち上がる管）：根もと a・先 b と、それぞれの半径 */
+/** 猟犬の首（3匹で同じ。胸の上から前へ立ち上がる管）：根もと a・先 b と、それぞれの半径 */
 export const houndNeck = { a: [0, 0.84, 0.3], b: [0, 1.04, 0.56], r0: 0.1, r1: 0.078 } as const satisfies {
   a: Vec3;
   b: Vec3;
   r0: number;
   r1: number;
 };
-/** 氷のハウンドの頭（楕円）の真ん中 c と半径 r。頭の点と、目・耳の位置を、同じ式から出す */
+/** 猟犬の頭（3匹で同じ。楕円）の真ん中 c と半径 r。頭の点と、目・耳の位置を、同じ式から出す */
 export const houndHead = { c: [0, 1.07, 0.63], r: [0.11, 0.1, 0.13] } as const satisfies { c: Vec3; r: Vec3 };
 /** 頭の表面の、向き（nx, ny, nz）の所（長さは 1 にしてから、半径を掛ける）。out は表面から外へ出す割合 */
 export const houndHeadAt = (nx: number, ny: number, nz: number, out = 1): Vec3 => {
@@ -257,18 +272,34 @@ export const HOUND_ICE = {
   eye: [0.45, 1.0, 1.0],
 } as const satisfies Record<string, Color>;
 
-// ice hound: a lean hunting dog. A deep chest and tucked waist, a neck rising to a long head with pointed ears,
-// legs bent at the hock behind. A ridge of ice shards runs along the spine from the neck to the haunch, and frost whitens the chest and paws
-export function iceHoundForm(ty: BodyType): Body {
-  // 細かい点で作る（道具の点の大きさと間隔 S は、大きさ scale に反比例する。四つ足は小さいので、そのままだと胴が数個の文字になる）
-  const { S, pts, put, lit, stroke, ell, tube } = q3({ scale: ty.scale * 1.6 }),
-    C = HOUND_ICE,
+/** 猟犬の体の色と文字（3匹で同じ体を、色で分ける） */
+export interface HoundCoat {
+  /** 背と脇と頭の上 */
+  fur: Color;
+  /** 胸と腹と鼻づらと脚の先と尾の先 */
+  under: Color;
+  nose: Color;
+  eye: Color;
+  /** 背と脇の文字と、胸と腹の文字（暗い → 明るい） */
+  pelt: Ramp;
+  belly: Ramp;
+  /** 目の明るさ */
+  eyeB: number;
+}
+/** 猟犬の体を作る道具（細かい点で作る。道具の点の大きさと間隔 S は、大きさ scale に反比例する。四つ足は小さいので、そのままだと胴が数個の文字になる） */
+export const houndKit = (ty: BodyType): Kit3 => q3({ scale: ty.scale * 1.6 });
+/** 猟犬の目の向き（頭の真ん中から、左右は sd を掛ける） */
+export const HOUND_EYE_DIR = [0.75, 0.5, 0.45] as const;
+
+// hound: a lean hunting dog. A deep chest and tucked waist, a neck rising to a long head with pointed ears,
+// legs bent at the hock behind. The three hounds share this body and differ in coat and ornaments
+/** 3匹の猟犬が同じに持つ体（脚・胴・首・頭・尾）。飾りは、同じ道具 kit で、この後に足す */
+export function houndBody(kit: Kit3, C: HoundCoat): void {
+  const { S, lit, stroke, ell, tube, put } = kit,
     T = houndTorso,
     NK = houndNeck,
-    // 光の当たらない側（腹と、横から見た向こう側）も見えるように、いちばん暗い文字も点（.）にしない
-    FROSTY: Ramp = [':', ':', '%', '#', '#'],
-    PELT: Ramp = [':', '"', '%', '#', '#'],
-    ICE: Ramp = [':', '/', '|', '^', '^'];
+    PELT = C.pelt,
+    BELLY = C.belly;
   // 脚：前脚は肩（高さ 0.82）、後脚は腰（高さ 0.8）を軸に回る。前の左と後ろの右が同じ向きに振れる
   const FRONT = 0.82,
     HIP = 0.8;
@@ -277,20 +308,20 @@ export function iceHoundForm(ty: BodyType): Body {
       rp = sd < 0 ? 'legR' : 'legL',
       fx = { piv: FRONT, pz: 0.3 },
       rx = { piv: HIP, pz: -0.32 };
-    // 前脚：まっすぐで細い。先は霜で白い
+    // 前脚：まっすぐで細い。先は腹の色
     tube([sd * 0.1, 0.78, 0.3], [sd * 0.09, 0.4, 0.32], 0.055, 0.04, PELT, C.fur, fp, fx);
-    tube([sd * 0.09, 0.4, 0.32], [sd * 0.09, 0.07, 0.31], 0.036, 0.032, FROSTY, C.frost, fp, fx);
+    tube([sd * 0.09, 0.4, 0.32], [sd * 0.09, 0.07, 0.31], 0.036, 0.032, BELLY, C.under, fp, fx);
     // 後脚：太いもも、後ろへ折れるかかと、前へ下りる足
     tube([sd * 0.1, 0.78, -0.32], [sd * 0.11, 0.48, -0.24], 0.08, 0.05, PELT, C.fur, rp, rx, 0.15);
     tube([sd * 0.11, 0.48, -0.24], [sd * 0.1, 0.22, -0.4], 0.045, 0.035, PELT, C.fur, rp, rx);
-    tube([sd * 0.1, 0.22, -0.4], [sd * 0.1, 0.07, -0.36], 0.034, 0.032, FROSTY, C.frost, rp, rx);
+    tube([sd * 0.1, 0.22, -0.4], [sd * 0.1, 0.07, -0.36], 0.034, 0.032, BELLY, C.under, rp, rx);
     // 足：前へ向いた爪先
     for (const [z0, part, ex] of [
       [0.31, fp, fx],
       [-0.36, rp, rx],
     ] as const) {
-      lit(sd * 0.09, 0.03, z0 + 0.04, 'm', 0.9, 1.0, C.frost, part, ex);
-      lit(sd * 0.09, 0.03, z0 + 0.1, '.', 0.7, 1.0, C.frost, part, ex);
+      lit(sd * 0.09, 0.03, z0 + 0.04, 'm', 0.9, 1.0, C.under, part, ex);
+      lit(sd * 0.09, 0.03, z0 + 0.1, '.', 0.7, 1.0, C.under, part, ex);
     }
   }
   // 胴：尻から胸へ、らせんに点を置く（輪ごとに同じ奥行きに並べると、横から見て縦の縞になる）。1周ごとに奥行きを1段進め、段の数は等しい間隔で割る
@@ -307,7 +338,7 @@ export function iceHoundForm(ty: BodyType): Body {
         a = (k / n) * Math.PI * 2,
         ca = Math.cos(a),
         sa = Math.sin(a),
-        // 胸と腹は霜の白、背と脇は青
+        // 胸と腹は腹の色、背と脇は毛の色
         under = sa < -0.35 || (u > 0.72 && sa < 0.3);
       put(
         ca * rx,
@@ -316,23 +347,23 @@ export function iceHoundForm(ty: BodyType): Body {
         (ca / Math.max(rx, 0.01)) * cp,
         (sa / Math.max(ry, 0.01)) * cp,
         nz * 8,
-        under ? FROSTY : PELT,
-        under ? C.frost : C.fur,
+        under ? BELLY : PELT,
+        under ? C.under : C.fur,
       );
     }
   }
   // 首：胸の上から、前へ立ち上がる
-  tube(NK.a, NK.b, NK.r0, NK.r1, PELT, (_x, oy) => (oy < -0.3 ? C.frost : C.fur), 'head');
-  // 頭：上は青く、下は白い丸い頭と、前へ細る白い鼻づら（鼻筋だけ青い）。黒い鼻
+  tube(NK.a, NK.b, NK.r0, NK.r1, PELT, (_x, oy) => (oy < -0.3 ? C.under : C.fur), 'head');
+  // 頭：上は毛の色、下は腹の色の丸い頭と、前へ細る鼻づら（鼻筋だけ毛の色）。鼻
   {
     const H = houndHead;
     // 目のまわりは頭の点を空ける（近い所の大きな文字が、斜めから見た目を隠す）
-    const EYE_DIR = [0.75, 0.5, 0.45] as const,
+    const EYE_DIR = HOUND_EYE_DIR,
       el = Math.hypot(...EYE_DIR),
       nearEye = (nx: number, ny: number, nz: number): boolean =>
         (Math.abs(nx) * EYE_DIR[0] + ny * EYE_DIR[1] + nz * EYE_DIR[2]) / el > 0.85;
-    ell(H.c, H.r[0], H.r[1], H.r[2], PELT, (_x, ny) => (ny < -0.25 ? C.frost : C.fur), 'head', null, nearEye);
-    tube([0, 1.03, 0.75], [0, 0.98, 0.95], 0.068, 0.04, FROSTY, (_x, oy) => (oy > 0.7 ? C.fur : C.frost), 'head');
+    ell(H.c, H.r[0], H.r[1], H.r[2], PELT, (_x, ny) => (ny < -0.25 ? C.under : C.fur), 'head', null, nearEye);
+    tube([0, 1.03, 0.75], [0, 0.98, 0.95], 0.068, 0.04, BELLY, (_x, oy) => (oy > 0.7 ? C.fur : C.under), 'head');
     lit(0, 0.985, 0.98, 'o', 0.8, 1.0, C.nose, 'head');
     for (const sd of [-1, 1]) {
       // とがった耳：頭の上の後ろから、後ろへ寝た三角（根もとは2本、先で1つになる）
@@ -343,7 +374,7 @@ export function iceHoundForm(ty: BodyType): Body {
       // 目：頭の前の上の横寄り（鼻づらの根もとに隠れない所）、表面のすぐ外
       const y = houndHeadAt(sd * EYE_DIR[0], EYE_DIR[1], EYE_DIR[2], 1.1);
       // 点（.）は小さすぎて近くでも読めないので、詰まった文字にする
-      lit(y[0], y[1], y[2], 'o', 0.75, 1.8, C.eye, 'head');
+      lit(y[0], y[1], y[2], 'o', 0.75, C.eyeB, C.eye, 'head');
     }
   }
   // 尾：尻から下へ垂れ、先が少し上がる。先ほど大きく揺れる
@@ -353,8 +384,28 @@ export function iceHoundForm(ty: BodyType): Body {
       y = 0.8 - 0.4 * f + 0.14 * f * f * f,
       z = -0.42 - 0.32 * f,
       r = 0.045 * (1 - 0.5 * f);
-    for (const o of [-1, 1]) lit(o * r, y, z, mpick(['%', '"']), 0.9, 1.1, f > 0.8 ? C.frost : C.fur, 'tail', { piv: k * 0.35 });
+    for (const o of [-1, 1]) lit(o * r, y, z, mpick(['%', '"']), 0.9, 1.1, f > 0.8 ? C.under : C.fur, 'tail', { piv: k * 0.35 });
   }
+}
+
+// ice hound: the hound body in blue with frost-white underparts. A ridge of ice shards runs along the spine from the neck to the haunch
+export function iceHoundForm(ty: BodyType): Body {
+  const kit = houndKit(ty),
+    { pts, lit, tube } = kit,
+    C = HOUND_ICE,
+    T = houndTorso,
+    NK = houndNeck,
+    ICE: Ramp = [':', '/', '|', '^', '^'];
+  // 光の当たらない側（腹と、横から見た向こう側）も見えるように、いちばん暗い文字も点（.）にしない
+  houndBody(kit, {
+    fur: C.fur,
+    under: C.frost,
+    nose: C.nose,
+    eye: C.eye,
+    pelt: [':', '"', '%', '#', '#'],
+    belly: [':', ':', '%', '#', '#'],
+    eyeB: 1.8,
+  });
   // 背中の氷：首の付け根から腰まで、背骨に沿って後ろへ傾いた結晶が並ぶ。根もとは背の表面（胴と同じ式）
   const NS = 6;
   for (let q = 0; q < NS; q++) {
@@ -384,6 +435,204 @@ export function iceHoundForm(ty: BodyType): Body {
       lit(0, y + 0.115, z - 0.07, '^', 0.75, 1.3, C.ice, 'head');
     }
   }
+  return pts;
+}
+
+/** 炎のハウンドの色 */
+export const HOUND_FIRE = {
+  /** 背と脇と頭の上：煤けた黒に近い赤（自分の灯りの橙に照らされるので、暗くしておく） */
+  fur: [0.2, 0.07, 0.05],
+  /** 胸と腹と鼻づらと脚の先：熾火の赤 */
+  ember: [0.75, 0.22, 0.06],
+  /** 脇腹のひび：明るい橙 */
+  crack: [1.0, 0.55, 0.15],
+  /** 鼻：黒 */
+  nose: [0.1, 0.05, 0.03],
+  /** 目：黄色 */
+  eye: [1.0, 0.9, 0.35],
+} as const satisfies Record<string, Color>;
+/** 炎のたてがみの根もと（首の上の5つと、背の7つ）：位置と、炎の高さ（不揃い） */
+export function fireManeRoots(): { at: Vec3; h: number }[] {
+  const T = houndTorso,
+    NK = houndNeck,
+    dy = NK.b[1] - NK.a[1],
+    dz = NK.b[2] - NK.a[2],
+    L = Math.hypot(dy, dz),
+    oy = dz / L,
+    oz = -dy / L,
+    out: { at: Vec3; h: number }[] = [];
+  // 首：管の、上で後ろ向きの面（首の向きに直角）。高さと間隔は不揃いにする（揃えると、止まった姿が縞の帯に見える）
+  for (const [f, h] of [
+    [0.9, 0.1],
+    [0.72, 0.17],
+    [0.5, 0.12],
+    [0.33, 0.2],
+    [0.1, 0.16],
+  ] as const) {
+    const r = NK.r0 + (NK.r1 - NK.r0) * f;
+    out.push({ at: [0, NK.a[1] + dy * f + oy * r, NK.a[2] + dz * f + oz * r], h });
+  }
+  // 背：肩から腰へ、だんだん低くなる（これも不揃いに）
+  for (const [u, h] of [
+    [0.89, 0.26],
+    [0.8, 0.17],
+    [0.74, 0.23],
+    [0.64, 0.13],
+    [0.57, 0.18],
+    [0.47, 0.1],
+    [0.4, 0.12],
+  ] as const) {
+    const { cy, ry } = T.ring(u);
+    out.push({ at: [0, cy + ry, T.z(u)], h });
+  }
+  return out;
+}
+
+// fire hound: the hound body in sooty red with ember-glowing underparts. A mane of flame runs from the nape down the back,
+// glowing cracks split the flanks, and the tail ends in a flame
+export function fireHoundForm(ty: BodyType): Body {
+  const kit = houndKit(ty),
+    { pts, lit } = kit,
+    C = HOUND_FIRE,
+    T = houndTorso;
+  houndBody(kit, {
+    fur: C.fur,
+    under: C.ember,
+    nose: C.nose,
+    eye: C.eye,
+    pelt: [':', '"', '%', '#', '#'],
+    belly: [':', ':', '%', '#', '#'],
+    // 自分の灯りの橙に照らされて、1.8 では光のにじみが顔を隠す
+    eyeB: 1.5,
+  });
+  // 炎のたてがみ：根もとは深い赤、先は黄色。先ほど揺れ、走ると後ろへなびく（part 'flame'）。左右に少しずらした2本で厚みを出す。
+  // 2本目の高さと、後ろへの傾きは炎ごとに変える（揃うと縞に見える）
+  fireManeRoots().forEach(({ at, h }, k) => {
+    const n = 5,
+      h2 = nth([0.55, 0.9, 0.7], k % 3),
+      lean = nth([0.3, 0.55, 0.42, 0.65], k % 4);
+    for (const ox of [-0.025, 0.025])
+      for (let q = 0; q < n; q++) {
+        const f = q / (n - 1),
+          hh = h * (ox < 0 ? 1 : h2);
+        lit(
+          at[0] + ox * (1 - f),
+          at[1] + hh * f,
+          at[2] - hh * lean * f,
+          '^',
+          1.1 - 0.4 * f,
+          1.2 + 0.3 * f,
+          [1.0, 0.18 + 0.5 * f, 0.04 + 0.2 * f * f],
+          'flame',
+          {
+            fh: f,
+          },
+        );
+      }
+  });
+  // 脇腹のひび：胴の表面のすぐ外に、上から下へ折れ曲がる細い橙の線（左右に2本ずつ。縞に見えないよう、長さと位置をずらす）
+  for (const sd of [-1, 1])
+    for (const [u, a0, n] of [
+      [0.3, 0.35, 3],
+      [0.62, 0.6, 4],
+    ] as const) {
+      for (let q = 0; q < n; q++) {
+        const a = a0 - q * 0.32,
+          uu = u + (q % 2 ? 0.04 : -0.02),
+          { cy, ry, rx } = T.ring(uu);
+        lit(sd * Math.cos(a) * rx * 1.08, cy + Math.sin(a) * ry * 1.08, T.z(uu), q % 2 ? '\\' : '/', 0.65, 1.4, C.crack, 'body');
+      }
+    }
+  // 尾の先の炎
+  for (let q = 0; q < 3; q++)
+    lit(0, 0.56 + q * 0.05, -0.75 - q * 0.02, '^', 0.85 - q * 0.15, 1.3 + q * 0.2, [1.0, 0.45 + q * 0.2, 0.12], 'tail', { piv: 9 * 0.35 });
+  return pts;
+}
+
+/** 光のハウンドの色 */
+export const HOUND_LIGHT = {
+  /** 背と脇と頭の上：金 */
+  fur: [0.9, 0.62, 0.18],
+  /** 胸と腹と鼻づらと脚の先と、胴の輪郭の線（背と腹の線・尻と胸の端）：淡い金 */
+  pale: [1.0, 0.88, 0.55],
+  /** 脇腹から後ろへ流れる光の筋 */
+  ray: [1.0, 0.9, 0.55],
+  /** 鼻：鼻づらと同じ淡い金（暗い鼻は、光の体に合わない） */
+  nose: [1.0, 0.88, 0.55],
+  /** 目：青みの白（金の体と分かれるように） */
+  eye: [0.75, 0.95, 1.0],
+} as const satisfies Record<string, Color>;
+/** 光のハウンドの光の筋（左右に3本ずつ）：横 x・高さ y、始まりと終わりの奥行き z0・z1、点の数 n。始まりは胴の表面のすぐ外 */
+export function lightStreaks(S: number): { x: number; y: number; z0: number; z1: number; n: number }[] {
+  const T = houndTorso,
+    out: { x: number; y: number; z0: number; z1: number; n: number }[] = [];
+  for (const sd of [-1, 1])
+    for (const [u, a, z1] of [
+      [0.62, 0.55, -0.9],
+      [0.5, 0.05, -1.1],
+      [0.38, -0.45, -0.85],
+    ] as const) {
+      const { cy, ry, rx } = T.ring(u),
+        z0 = T.z(u);
+      out.push({
+        x: sd * Math.cos(a) * rx * 1.12,
+        y: cy + Math.sin(a) * ry * 1.12,
+        z0,
+        z1,
+        n: Math.max(3, Math.round((z0 - z1) / (S * 0.7))),
+      });
+    }
+  return out;
+}
+
+/** 光のハウンドの胴で、輪郭として濃く残す輪（尻から胸への割合。尻と胸の端だけ。間に輪を置くと、横から見て縦の縞になる） */
+export const LIGHT_RINGS = [0.06, 0.94] as const;
+
+// light hound: the hound body in gold, made of light. The torso is see-through between its outline lines, streaks of light stream back from the flanks, the hindquarters fade out,
+// and the tail ends in a star
+export function lightHoundForm(ty: BodyType): Body {
+  const kit = houndKit(ty),
+    { pts, lit, S } = kit,
+    C = HOUND_LIGHT;
+  houndBody(kit, {
+    fur: C.fur,
+    under: C.pale,
+    nose: C.nose,
+    eye: C.eye,
+    pelt: [':', '"', '%', '#', '#'],
+    belly: [':', ':', '%', '#', '#'],
+    eyeB: 1.5,
+  });
+  // 透けた胴：輪郭の線（背と腹の線と、尻と胸の端の輪）だけを淡い金の明るい点で残し、間は半分に減らして細く暗い文字にする（脚・首・頭・尾はそのまま）
+  {
+    const T = houndTorso,
+      keep: Body = [];
+    let n = 0;
+    for (const p of pts) {
+      if (p.part !== 'body') {
+        keep.push(p);
+        continue;
+      }
+      const u = (p.z - T.z0) / (T.z1 - T.z0),
+        r = T.ring(u),
+        sa = (p.y - r.cy) / Math.max(r.ry, 0.01);
+      if (Math.abs(sa) > 0.85 || LIGHT_RINGS.some((v) => Math.abs(u - v) < 0.035))
+        keep.push(Object.assign(p, { col: C.pale, b: Math.min(1.6, p.b * 1.2) }));
+      else if (n++ % 2 === 0) keep.push(Object.assign(p, { g: G(':'), b: p.b * 0.7 }));
+    }
+    pts.length = 0;
+    pts.push(...keep);
+  }
+  // 後ろへ行くほど薄れる（光でできた体が、走った跡の残像へほどけていく）
+  for (const p of pts) if (p.z < -0.05) p.b *= 1 - 0.45 * Math.min(1, (-0.05 - p.z) / 0.7);
+  // 光の筋：脇腹の表面のすぐ外から、後ろへ流れる横の線（尻を越えて、先ほど薄れる）
+  for (const st of lightStreaks(S))
+    for (let q = 0; q < st.n; q++) {
+      const f = q / Math.max(1, st.n - 1);
+      lit(st.x, st.y, st.z0 - (st.z0 - st.z1) * f, '-', 0.9, 1.3 - 0.8 * f, C.ray, 'body');
+    }
+  // 尾の先の星
+  lit(0, 0.57, -0.76, '*', 0.9, 1.7, C.pale, 'tail', { piv: 9 * 0.35 });
   return pts;
 }
 
