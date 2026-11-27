@@ -32,6 +32,60 @@ const tapEnter = async (pg) => {
   if (!b) throw new Error('#enter が見えない');
   await pg.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
 };
+/**
+ * パネル sel の行のボタンの押せる範囲（src/index.html の body.touch の ::after・::before）：見えている各ボタンの真ん中がそのボタンになり、
+ * 文字の外 3px（sides の向き）を押しても、そのボタンか、その点に同じかもっと近い隣のボタンになるか（隣のボタンそのものの上なら、隣のボタンになるか）。広げた範囲で、パネルが横に送れるようにならないか
+ */
+const reach = (pg, sel, sides = ['left', 'right', 'up', 'down']) =>
+  pg.evaluate(
+    ([s, sides]) => {
+      const panel = document.querySelector(s),
+        pr = panel.getBoundingClientRect(),
+        bad = [];
+      let n = 0;
+      const inside = (r, x, y) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+      const dist = (r, x, y) => Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));
+      const all = [...panel.querySelectorAll('button')];
+      for (const b of all) {
+        const r = b.getBoundingClientRect();
+        if (!(r.width > 0) || getComputedStyle(b).pointerEvents === 'none') continue;
+        if (r.top < Math.max(0, pr.top) || r.bottom > Math.min(innerHeight, pr.bottom) || r.left < 0 || r.right > innerWidth) continue;
+        n++;
+        const name = b.textContent.trim().slice(0, 10),
+          cx = (r.left + r.right) / 2,
+          cy = (r.top + r.bottom) / 2;
+        if (document.elementFromPoint(cx, cy)?.closest('button') !== b) bad.push(`${name}：真ん中が別の物`);
+        const pts = { left: [r.left - 3, cy], right: [r.right + 3, cy], up: [cx, r.top - 3], down: [cx, r.bottom + 3] };
+        for (const side of sides) {
+          const [x, y] = pts[side];
+          // 画面の端から 2px（ブラウザが何も返さないことがある）と、パネルの見えている所の外は調べない
+          if (x < 2 || y < 2 || x > innerWidth - 2 || y > innerHeight - 2 || !inside(pr, x, y)) continue;
+          const hit = document.elementFromPoint(x, y)?.closest('button');
+          // 隣のボタンそのものの上なら、そのボタン（広げた範囲が、隣のボタンを覆わない）
+          const own = all.find((o) => o !== b && inside(o.getBoundingClientRect(), x, y));
+          if (own) {
+            if (hit !== own)
+              bad.push(
+                `${name}：${side} の外 3px は ${own.textContent.trim().slice(0, 10)} の上なのに ${hit ? hit.textContent.trim().slice(0, 10) : 'ボタンでない'}`,
+              );
+            continue;
+          }
+          // そのボタンか、その点に同じかもっと近いボタン（同じ行に1字の間で並ぶボタンは、間を後のボタンが取る）
+          if (hit === b || (hit && dist(hit.getBoundingClientRect(), x, y) <= 3)) continue;
+          bad.push(`${name}：${side} の外 3px が ${hit ? hit.textContent.trim().slice(0, 10) : 'ボタンでない'}`);
+        }
+      }
+      return { n, bad, wide: panel.scrollWidth > panel.clientWidth + 1 ? [panel.scrollWidth, panel.clientWidth] : null };
+    },
+    [sel, sides],
+  );
+const reaches = async (pg, sel, what, sides) => {
+  const r = await reach(pg, sel, sides);
+  if (!r.n) errs.push(`押せる範囲：${what}に見えているボタンが無い（テストの前提が崩れた）`);
+  if (r.bad.length)
+    errs.push(`押せる範囲：${what}のボタンの押せる範囲が広がっていない（${r.n} 個のうち：${r.bad.slice(0, 6).join('、')}）`);
+  if (r.wide) errs.push(`押せる範囲：${what}が横に送れるようになった（${r.wide.join('/')}）`);
+};
 await withBrowser(async ({ browser, base }) => {
   // ---------------------------------------------------------------- 1. タイトルの枠が画面に収まる
   for (const device of ['iPhone SE', 'iPhone 13', 'Pixel 7', 'iPhone SE landscape', 'iPhone 13 landscape', 'Pixel 7 landscape']) {
@@ -472,6 +526,9 @@ await withBrowser(async ({ browser, base }) => {
       if (f.zoom < FIT_MIN - 1e-6) errs.push(`狭い画面：${what}を ${FIT_MIN} 倍より小さく縮めた（${f.zoom}）`);
       return f;
     };
+    // タイトル（指で触れてから。指の遊び方になる）
+    await pg.touchscreen.tap(5, 5);
+    await reaches(pg, '#intropanel', 'タイトル');
     await tapEnter(pg);
     await advance(pg, 2);
     if (!(await text('#log')).includes('左半分で動く')) errs.push('狭い画面：初めて指で入った時の一言が出ない');
@@ -479,6 +536,7 @@ await withBrowser(async ({ browser, base }) => {
     // メニューと、メニューの中に開く操作の案内（[戻る] で一覧に戻る）
     await tap('#menuB');
     await fits('#menu', 'メニュー');
+    await reaches(pg, '#menu', 'メニュー', ['right']);
     await tap('#menu button[data-k="help"]');
     await fits('#menu', 'メニューの中の操作の案内');
     let t = await text('#menu');
@@ -515,6 +573,7 @@ await withBrowser(async ({ browser, base }) => {
     await E(() => dbg.give('runes'));
     await tap('#packB');
     let f = await fits('#pack', '装備の画面');
+    await reaches(pg, '#pack', '装備の画面');
     if (!(f.sh > f.ch)) errs.push(`狭い画面：装備の画面が送れない（テストの前提が崩れた。${JSON.stringify(f)}）`);
     if (!(await text('#pack')).includes('続けて2回押すと自動ではめる')) errs.push('狭い画面：装備の画面の案内が、指の言い方でない');
     // 手のルーンの枠にはめられる、袋のルーン（押して、光る枠ができる物）を探す
@@ -604,6 +663,7 @@ await withBrowser(async ({ browser, base }) => {
     await E(() => dbg.exp(400));
     await advance(pg, 0.6);
     f = await fits('#altarp', 'レベルアップの画面');
+    await reaches(pg, '#altarp', 'レベルアップの画面');
     if (f.bar) errs.push('狭い画面：レベルアップの画面の間も、[装備] [メニュー] が出ている');
     if (!(await text('#altarp')).includes('1回押すと説明が出る')) errs.push('狭い画面：レベルアップの画面の案内が、指の言い方でない');
     for (let i = 0; i < 20 && (await E(() => document.getElementById('altarp').classList.contains('open'))); i++) {
@@ -622,6 +682,7 @@ await withBrowser(async ({ browser, base }) => {
       errs.push('狭い画面：祭壇の画面が開かない（テストの前提が崩れた）');
     else {
       f = await fits('#altarp', '祭壇の画面');
+      await reaches(pg, '#altarp', '祭壇の画面');
       if (f.bar) errs.push('狭い画面：祭壇の画面の間も、[装備] [メニュー] が出ている');
       if (!(await text('#altarp')).includes('1回押すと説明、もう1回で決まる')) errs.push('狭い画面：祭壇の画面の案内が、指の言い方でない');
       await tap('#altarp button[data-cancel]');
@@ -633,7 +694,10 @@ await withBrowser(async ({ browser, base }) => {
     await advance(pg, 3);
     if (!(await E(() => document.getElementById('death').classList.contains('show'))))
       errs.push('狭い画面：結果の画面が出ない（テストの前提が崩れた）');
-    else await fits('#death', '結果の画面');
+    else {
+      await fits('#death', '結果の画面');
+      await reaches(pg, '#death', '結果の画面');
+    }
     await pg.context().close();
   }
 
@@ -667,6 +731,7 @@ await withBrowser(async ({ browser, base }) => {
       if (top !== 'gl') await new Promise((ok) => setTimeout(ok, 200));
     }
     if (top !== 'gl') errs.push(`図鑑を指で：描く画面の上に ${top} がある`);
+    await reaches(pg, '#gal', '図鑑');
     await pg.screenshot({ path: 'tests/out/touch-gallery.png', timeout: 90000 });
     // 1本指のドラッグで回る（横に 80px で 0.8 ラジアン）。触れている間は、ひとりでに回らない
     let a = await draw();

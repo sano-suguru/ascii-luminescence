@@ -52,6 +52,14 @@ body.touch.started:not(.over):not(.paused) #tctl{display:block;}
 body.touch #log .m:nth-last-child(n+3){display:none;}
 /* 指で遊ぶ時のパネル（装備・メニュー・祭壇とレベルアップ・結果）：画面に入るまで縮め、入らない分は中を送る（src/lib/layout.ts の fitPanels） */
 body.touch #pack,body.touch #menu,body.touch #altarp.open,body.touch #death{overflow-y:auto;overscroll-behavior:contain;}
+/* 指で遊ぶ時、パネルの行のボタンの押せる範囲を広げる（文字の大きさと並びは変えない）。::after がまわりに広げた範囲（左右は1字。同じ行のボタンの間の2字を半分ずつ分ける）、::before がボタンそのものの範囲。
+   ::before を上の層に置くので、広げた範囲が隣のボタンに重なっても、隣のボタンそのものを押した時は隣のボタンになる */
+body.touch :is(#pack,#altarp,#death,#gal,#intropanel) button{position:relative;}
+body.touch :is(#pack,#altarp,#death,#gal,#intropanel) button::after{content:'';position:absolute;inset:-.45em -1ch;z-index:1;}
+body.touch :is(#pack,#altarp,#death,#gal,#intropanel) button::before{content:'';position:absolute;inset:0;z-index:2;}
+/* メニューの行は、::before を選んだ印（>）に使い、行が隙間なく並ぶので、右へだけ広げる（後の行は上に重なるので、隣の行を覆わない。広げすぎると、一番長い行でパネルが横に送れるようになる） */
+body.touch #menu button.row{position:relative;}
+body.touch #menu button.row::after{content:'';position:absolute;top:0;bottom:0;left:0;right:-4ch;}
 #stick{position:fixed;z-index:11;width:96px;height:96px;margin:-48px 0 0 -48px;border:1px solid rgba(140,134,189,.5);border-radius:50%;pointer-events:none;}
 #knob{position:absolute;left:30px;top:30px;width:36px;height:36px;border-radius:50%;background:rgba(200,190,255,.35);}
 #altarp button.row.armed{color:#ffe9c8;text-shadow:0 0 8px rgba(255,170,80,.7);}
