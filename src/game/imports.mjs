@@ -11,8 +11,8 @@ import { beastSamples, beastSleep, SHADOW_KING_SC, shadowKingScale } from '../li
 import {
   BASE_H, BRANCHES, CELL, CH_D, CHUNK, CXN, CZN, D4, EYE, FOGS, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MH, MW, NCELL, NDL, NSL, PR, PROPHECIES,
   REALMS, SF_BRIM, SF_DEAD, SF_FOLIAGE, SF_FUNGFOR, SF_GRASS, SF_HAY, SF_ICE, SF_LUMEN, SF_MUD, SF_OBSIDIAN, SF_RUBBLE, TC, TF, TP,
-  TW, TX, VAULT_WALL_H, FINAL_DEPTH, VEIN_COL, VEIN_NAME, blocksWalk, cpos, FIRE_TYPES, } from '../lib/world.ts';
-import { LANTERN, topLights } from '../lib/light.ts';
+  TW, TX, VAULT_WALL_H, FINAL_DEPTH, VEIN_NAME, blocksWalk, cpos, FIRE_TYPES, } from '../lib/world.ts';
+import { topLights } from '../lib/light.ts';
 import { flowW, jagged, lerpAngle, mCenter, sstep, turnDir } from '../lib/math.ts';
 import { css } from '../lib/color.ts';
 import {
@@ -31,11 +31,12 @@ import { ARTS, VAULTS } from '../lib/vaults.ts';
 import { generateLevel } from '../lib/generate.ts';
 import { LOGO_ART, TITLE_LINES } from '../lib/title.ts';
 import { DUST_N, DYN_VS, GAS_N, GLYPH_FS, P0, PT_FS, PT_TOTAL, PT_VS, STATIC_VS, WATER_FS, WATER_VS } from '../lib/shaders.ts';
-import { ALTAR_W, MARK_H, MCH, MCW, MMC, MMR, MPAD, tone } from '../lib/hud.ts';
-import { AVATAR_TY, BRANCH_HINT, DECO_K, DECO_NAMES, DUMMY_KINDS, FIX_NAMES, GALLERY_SLEEP, LEGEND_KINDS, LEGEND_ORDER, LORD_GAL, MACHINE_INFO, TRAP_INFO, lookLine, mname } from '../lib/names.ts';
+import { ALTAR_W, MARK_H } from '../lib/hud.ts';
+import { drawMap, sizeMap } from '../lib/minimap.ts';
+import { AVATAR_TY, BRANCH_HINT, DECO_K, DECO_NAMES, DUMMY_KINDS, FIX_NAMES, GALLERY_SLEEP, LEGEND_KINDS, LEGEND_ORDER, LORD_GAL, MACHINE_INFO, lookLine, mname } from '../lib/names.ts';
 import { CHANT_STEPS, SND_NAME, VOWELS, sEnv } from '../lib/sound.ts';
 import {
-  castSound, sAlarm, sBoom, sBubble, sChime, sCreak, sDist, sHiss, sHowl, sndInit, sndReady, sndUpdate, sNoise, sOut, sRumble, sSplash, sSqueak, sTone, sWhoosh,
+  castSound, sAlarm, sBoom, sBubble, sChime, sCreak, sDist, sHiss, sHowl, sndInit, sndPrep, sndReady, sndUpdate, sNoise, sOut, sRumble, sSplash, sSqueak, sTone, sWhoosh,
 } from '../lib/audio.ts';
 import {
   altarDetail, altarFill, altarLine, altarOpts, guardedNow, placeAltar, placeChosen, placeRunesForLevel, takeRune, vaultArea,
@@ -77,7 +78,7 @@ import {
 import { placeThirdPerson, solidAt, updatePlayer } from '../lib/player.ts';
 import { beginCast, releaseCast, startRoll, timeScale, updateCast } from '../lib/chant.ts';
 import { cloudsMeetFire, monTimeK, updateProjs, updateStatuses } from '../lib/projs.ts';
-import { awardLore, graveCandidates, graveRows, loreRows, resultPlace, runLore, saveGrave, victory } from '../lib/results.ts';
+import { awardLore, graveCandidates, graveRows, loreRows, resultPlace, runLore, saveGrave, startNewRun, victory } from '../lib/results.ts';
 // three.js（r147）と光のにじみなどの部品 T、霧の色 fogCol
 import { T, fogCol } from '../lib/three.ts';
 import { buildWorld, setFog, updateWater } from '../lib/build.ts';
@@ -86,5 +87,6 @@ import { initFitIntro } from '../lib/layout.ts';
 import { byInput, confirmTap, initTouch } from '../lib/touch.ts';
 import { TUNE, initTouchpad } from '../lib/touchpad.ts';
 import { initDiag } from '../lib/diag.ts';
+import { took } from '../lib/took.ts';
 import { closeAltar, updateAltarPanel } from '../lib/panels.ts';
 import { returnToTitle, setMenu } from '../lib/menu.ts';

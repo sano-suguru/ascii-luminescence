@@ -13,6 +13,7 @@ import * as OM from '../../src/lib/omens.ts';
 import { adv } from '../../src/lib/state.ts';
 import { BASE_H } from '../../src/lib/world.ts';
 import { drawCases } from './draw-cases.mjs';
+import { caseOut } from './case-out.mjs';
 
 const fnv = (s) => {
   let h = 0x811c9dc5;
@@ -58,6 +59,7 @@ describe('移す前と同じ', () => {
       new Set(['drawOmens', 'omenSound', 'drawFixtures', 'drawStairSeal']),
     );
     expect(calls.filter((c) => c.threw).length).toBeLessThan(5);
+    caseOut('draw', all);
     expect([fnv(all), all.length]).toEqual(['d9ea2cb8', 5561079]);
   }, 60000);
 });

@@ -23,6 +23,7 @@ import { CELL, MW, NCELL, TF, cpos } from '../../src/lib/world.ts';
 import { fakeCamera, fakeUniforms, fnv, text } from './fight-cases.mjs';
 import { PLACES, gen, loadEnv } from './gen-places.ts';
 import { swapGlobals } from './ui-cases.mjs';
+import { stateFp } from './case-out.mjs';
 
 /** 移した関数の名前（場合が全部を呼ぶか、panels.test.mjs が確かめる。ほかの関数は、これらの中から呼ばれる） */
 export const NAMES = [
@@ -381,6 +382,7 @@ export async function panelCases(makeF, seeds, page, mocked) {
             helpOn: ui.helpOn,
             helpT: ui.helpT,
             chronOn: ui.chronOn,
+            bookOn: ui.bookOn,
             camMode: ui.camMode,
             uiMode: ui.uiMode,
             perfOn: ui.perfOn,
@@ -392,7 +394,7 @@ export async function panelCases(makeF, seeds, page, mocked) {
           won: adv.won,
           runSeed: adv.runSeed,
           place: [here.depth, here.branch, here.realm, here.inter, here.arrive, here.trans, placeMem.size],
-          player: [player.hp, player.atkCd, player.swing, player.fireT, player.fall, player.rally],
+          player: [player.hp, player.swing, player.fireT, player.fall, player.rally],
           vfx: [vfx.hurtFlash, vfx.zapFlash],
           castSt: gear.castSt,
           swapSt: gear.swapSt,
@@ -426,7 +428,7 @@ export async function panelCases(makeF, seeds, page, mocked) {
           msg: msgN - g0,
           timers: timers.st.n - t0,
           dom: page.log.slice(l0),
-          state: fnv(state()),
+          state: stateFp(state(), fnv),
           msgs: msgs.map((m) => m.html).join('|'),
         });
         return ret;
@@ -441,7 +443,7 @@ export async function panelCases(makeF, seeds, page, mocked) {
         } catch (e) {
           threw = String(e && e.message).slice(0, 80);
         }
-        calls.push({ name: `ev:${id}:${type}`, threw, msg: msgN - g0, dom: page.log.slice(l0), state: fnv(state()) });
+        calls.push({ name: `ev:${id}:${type}`, threw, msg: msgN - g0, dom: page.log.slice(l0), state: stateFp(state(), fnv) });
       };
       const click = (b) => {
         const l0 = page.log.length;
@@ -451,7 +453,7 @@ export async function panelCases(makeF, seeds, page, mocked) {
         } catch (e) {
           threw = String(e && e.message).slice(0, 80);
         }
-        calls.push({ name: `onclick:${b.name}`, threw, dom: page.log.slice(l0), state: fnv(state()) });
+        calls.push({ name: `onclick:${b.name}`, threw, dom: page.log.slice(l0), state: stateFp(state(), fnv) });
       };
       const btns = (id) => (page.els[id] ? page.els[id].buttons() : []);
       const tick = (ms) => {

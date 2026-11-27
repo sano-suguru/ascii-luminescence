@@ -134,6 +134,56 @@ export function quadIndex(cnt: number): Uint16Array | Uint32Array {
   for (let a = 0; a < cnt; a++) for (let v = 0; v < 6; v++) idx[a * 6 + v] = a * 4 + nth(QUAD_IDX, v);
   return idx;
 }
+/** 1つの階に置ける文字の数の上限 */
+const GLYPH_CAP = 360000;
+/** 文字を置く間の、文字ごとの値（置き方の行列・文字・色・光り・灯り・区切り・高さ）。cap は入る文字の数 */
+interface GlyphWork {
+  cap: number;
+  M: Float32Array;
+  GL: Float32Array;
+  CO: Float32Array;
+  EM: Float32Array;
+  LI: Float32Array;
+  LW: Float32Array;
+  CK: Int16Array;
+  PY: Float32Array;
+}
+const makeWork = (cap: number): GlyphWork => ({
+  cap,
+  M: new Float32Array(cap * 16),
+  GL: new Float32Array(cap),
+  CO: new Float32Array(cap * 3),
+  EM: new Float32Array(cap * 4),
+  LI: new Float32Array(cap * 3),
+  LW: new Float32Array(cap * 3),
+  CK: new Int16Array(cap),
+  PY: new Float32Array(cap),
+});
+/** 入りきらなくなった時に、倍の大きさ（上限 GLYPH_CAP）にして、書いた n 個を写す */
+function growWork(w: GlyphWork, n: number): GlyphWork {
+  const g = makeWork(Math.min(GLYPH_CAP, w.cap * 2));
+  g.M.set(w.M.subarray(0, n * 16));
+  g.GL.set(w.GL.subarray(0, n));
+  g.CO.set(w.CO.subarray(0, n * 3));
+  g.EM.set(w.EM.subarray(0, n * 4));
+  g.LI.set(w.LI.subarray(0, n * 3));
+  g.LW.set(w.LW.subarray(0, n * 3));
+  g.CK.set(w.CK.subarray(0, n));
+  g.PY.set(w.PY.subarray(0, n));
+  return g;
+}
+/**
+ * 文字を置く間の作業用の配列。階を組み立てるたびには作らず、使い回す（上限の大きさで毎回作ると約46MB になり、0 で埋める時間とごみ集めで、
+ * 階を移る時に止まる時間が長くなるため）。持ち続けるのは 13万字分（約17MB）の baseWork だけ。それより文字の多い階では、組み立ての間だけ
+ * 倍の大きさに伸ばし（growWork）、組み立てが終わったら手放す（スマホのメモリを、大きい階の分まで持ち続けないため）。
+ * 文字ごとの値は push が全部書き、読むのは書いた n 個だけなので、前の階の値が残っていても使わない
+ */
+const baseWork = makeWork(1 << 17);
+let glyphWork = baseWork;
+/** 次の組み立てだけ、作業用の配列を、入る文字の数 cap の物にする（単体テストで、伸ばす処理を通すため。level-cases.mjs） */
+export function resetGlyphWork(cap: number): void {
+  glyphWork = makeWork(cap);
+}
 /** GPU に送った後の、区切りの頂点の値の代わり（中身の無い配列） */
 const SENT = new Float32Array(0);
 /**
@@ -163,15 +213,7 @@ export function buildWorld(): void {
   }
   const { tile, liquid, surface, roomOf, rooms, lights, ceil } = level();
   setNoiseSeed(level().noiseSeed);
-  const cap = 360000;
-  const M = new Float32Array(cap * 16),
-    GL = new Float32Array(cap),
-    CO = new Float32Array(cap * 3),
-    EM = new Float32Array(cap * 4),
-    LI = new Float32Array(cap * 3),
-    LW = new Float32Array(cap * 3);
-  const CK = new Int16Array(cap),
-    PY = new Float32Array(cap);
+  let { cap, M, GL, CO, EM, LI, LW, CK, PY } = glyphWork;
   let n = 0;
   const occ: number[] = [];
   const m4 = new T.Matrix4(),
@@ -197,7 +239,11 @@ export function buildWorld(): void {
     ny: number,
     nz: number,
   ) => {
-    if (n >= cap) return;
+    if (n >= cap) {
+      if (cap >= GLYPH_CAP) return;
+      glyphWork = growWork(glyphWork, n);
+      ({ cap, M, GL, CO, EM, LI, LW, CK, PY } = glyphWork);
+    }
     e.set(ex, ey, 0, 'YXZ');
     q.setFromEuler(e);
     p.set(x, y, z);
@@ -2610,4 +2656,5 @@ export function buildWorld(): void {
   gfx.occMesh.frustumCulled = false;
   must(gfx.scene).add(gfx.occMesh);
   hudInfo.glyphCount = n;
+  glyphWork = baseWork;
 }

@@ -61,6 +61,7 @@ import {
 import { fakeAudioClass } from './fake-audio.mjs';
 import { PLACES, gen, loadEnv } from './gen-places.ts';
 import { swapGlobals } from './ui-cases.mjs';
+import { stateFp } from './case-out.mjs';
 
 /** 移した関数の名前（場合が全部を呼ぶか、fight.test.mjs が確かめる） */
 export const NAMES = [
@@ -655,7 +656,7 @@ export async function fightCases(F, seeds, page) {
           snd: sndN - s0,
           msg: msgN - g0,
           timers: timers.st.n - t0,
-          state: fnv(state()),
+          state: stateFp(state(), fnv),
           msgs: msgs.map((m) => m.html).join('|'),
         });
         return ret;
@@ -1047,6 +1048,21 @@ export async function fightCases(F, seeds, page) {
         page.hide.delete('death');
         adv.won = true;
         call('victory');
+        // 勝った時の画面の［新しい探索へ］（指で遊ぶ時はキーが無いので押して進む）：暗くし始める（真っ暗になった時に tick が newRun を呼ぶ）
+        {
+          adv.won = false;
+          here.trans = null;
+          here.fade = 1;
+          call('victory');
+          const el = page.els['death'];
+          if (!el || !el.onclick) throw new Error('勝った時の画面に、押した時の処理が無い');
+          el.onclick({ target: { closest: () => ({ id: 'other' }) } });
+          const before = here.trans;
+          el.onclick({ target: { closest: () => ({ id: 'newRunB' }) } });
+          if (before !== null || !here.trans || !here.trans.run || here.trans.t !== 0)
+            throw new Error(`勝った時の画面の［新しい探索へ］で暗くし始めない（${JSON.stringify(here.trans)}）`);
+          here.trans = null;
+        }
         adv.won = false;
         adv.dead = false;
         saved.LEGEND = null;

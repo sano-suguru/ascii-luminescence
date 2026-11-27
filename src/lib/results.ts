@@ -8,6 +8,7 @@ import { LEGEND_KINDS, LEGEND_ORDER } from './names.ts';
 import { UNLOCKS } from './progress.ts';
 import { type Rune, serRune, thingLabel } from './runes.ts';
 import { saveMeta } from './save.ts';
+import { clamp } from './rng.ts';
 import { adv, gear, here, keys, clock, player, saved, ui } from './state.ts';
 import { placeLabel } from './status.ts';
 import { STRATA } from './strata.ts';
@@ -160,9 +161,25 @@ export function victory(): void {
     f('|'),
     `${f('|')}  ${must(adv.HIST).civ.name}の地の底に、ひとつの灯りがともった。`,
     f('|'),
-    `${f('|')}  <b>[Enter]</b> 新しい探索へ`,
+    `${f('|')}  <button class="row" id="newRunB"><b>[Enter]</b> 新しい探索へ</button>`,
     f('+---'),
   ]);
+  // 指で遊ぶ時はキーが無いので、［新しい探索へ］を押して進む（死んだ時の画面と同じ）
+  el.onclick = (e) => {
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品（死んだ時の画面 die と同じ読み方）
+    const b = (e.target as Element).closest && (e.target as Element).closest('button');
+    if (b && b.id === 'newRunB') startNewRun();
+  };
   el.classList.add('show', 'won');
   for (let k = 0; k < 4; k++) setTimeout(() => sChime(player.x, player.z, 0.5), k * 380);
+}
+/**
+ * 結果の画面から新しい探索へ（［新しい探索へ］・Enter・R）：結果の画面を消し、暗くして、真っ暗になった時に newRun する（src/game/30-loop-init.js の tick。newRun は src/lib/levels.ts）。
+ * 新しい階を作るのは重く、スマホでは何百ミリ秒も止まるので、止まるのを真っ暗な間にする。階を移る途中なら、今の暗さから続けて暗くする
+ */
+export function startNewRun(): void {
+  if (here.trans?.run) return;
+  const el = document.getElementById('death');
+  if (el) el.classList.remove('show', 'won');
+  here.trans = { phase: 'out', t: clamp((1 - here.fade) * 0.8, 0, 0.8), run: true };
 }

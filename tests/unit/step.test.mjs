@@ -13,6 +13,7 @@ import * as LEGEND from '../../src/lib/legend.ts';
 import * as PROJS from '../../src/lib/projs.ts';
 import { fakeDom, fnv } from './fight-cases.mjs';
 import { NAMES, stepCases, stepText } from './step-cases.mjs';
+import { caseOut } from './case-out.mjs';
 
 describe('移す前と同じ', () => {
   it('詠唱と転がり・飛ぶ物と戦いの跡・火とガス・部屋の出来事と罠（8の場合、23の関数）の指紋', { timeout: 120000 }, async () => {
@@ -20,7 +21,8 @@ describe('移す前と同じ', () => {
       all = await stepCases(F, 8, fakeDom()),
       body = stepText(all),
       calls = all.flatMap((c) => c.calls);
-    expect([fnv(body), body.length]).toEqual(['ef6e2194', 2571708]);
+    caseOut('step', body);
+    expect([fnv(body), body.length]).toEqual(['4b85293c', 2626649]);
     // 場合が中身を通っているか：23の関数が全部呼ばれ、どれも止まらない。見た目の乱数・音の乱数・伝言・setTimeout・音の部品を使う呼び出しもある
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);

@@ -96,9 +96,6 @@ export interface Ui {
   altarOpenT: number;
   /** プレイヤーが閉じた祭壇の組（離れるまで、また開かない。src/lib/panels.ts の updateAltarPanel。無ければ null） */
   altarDismissed: string | null;
-  /** 祭壇で選んで、置き場所を待っている物と、祭壇の画面の鍵（今はどこも読まない。src/lib/panels.ts の chooseAltar が戻すだけ） */
-  altarSel: { grp: string; slot: number } | null;
-  altarPanelKey: string;
   /** 今いる近くの、灯った祭壇の組（祭壇の真ん中の台から1.5より近い時。無ければ null。祭壇の画面が開いている間は、開いた時の組のまま） */
   altarNear: string | null;
   /** 装備の画面で選んでいるルーン（袋から選んだ物か、手の枠 h・s から選んだ物。無ければ null） */
@@ -124,6 +121,9 @@ export interface Ui {
   startDepth: number;
   /** タイトルの画面（16-view-input.js で document から読む） */
   introEl: HTMLElement | null;
+  /** ミニマップのキャンバス mapC と、その 2D の描き手 mctx（16-view-input.js で document から読む。src/lib/minimap.ts が描く） */
+  mapC: HTMLCanvasElement | null;
+  mctx: CanvasRenderingContext2D | null;
   /** メニューの「タイトルへ」「新しい探索」の、もう一度押して確かめる待ちが終わる時刻（待っていなければ 0） */
   titleArm: number;
   newRunArm: number;
@@ -131,6 +131,8 @@ export interface Ui {
   dbgOpen: boolean;
   /** 年代記の画面 */
   chronOn: boolean;
+  /** 魔導書を案内の欄 #help に出しているか（マウスの時。メニューの「魔導書」で切り替え、操作の案内・年代記を出すと閉じる） */
+  bookOn: boolean;
   /** 表示の量（0：全部、1：少し、2：なし） */
   uiMode: number;
   /** 速さの表示 */
@@ -185,8 +187,6 @@ export const ui: Ui = {
   altarOpen: false,
   altarOpenT: 0,
   altarDismissed: null,
-  altarSel: null,
-  altarPanelKey: '',
   altarNear: null,
   packSel: null,
   packHover: null,
@@ -200,10 +200,13 @@ export const ui: Ui = {
   menuPage: '',
   startDepth: 1,
   introEl: null,
+  mapC: null,
+  mctx: null,
   titleArm: 0,
   newRunArm: 0,
   dbgOpen: false,
   chronOn: false,
+  bookOn: false,
   uiMode: 0,
   perfOn: false,
   gallery: null,
@@ -321,8 +324,6 @@ export interface Player {
   roll?: { t: number; dx: number; dz: number } | null;
   /** 武器を振った残りの秒（0.22 から減る）と、振りの線の色（無ければ決まった色）、波を撃つ途中か（その間は振りの線を描かない） */
   swing?: number;
-  /** 素手の攻撃の間の残りの秒（今は書く所が無く、src/lib/combat.ts の updateLife が減らすだけ） */
-  atkCd?: number;
   swingCol?: readonly number[] | undefined;
   swingWave?: boolean;
   /** 網に掛かった残りの秒（src/lib/events.ts の罠） */
@@ -707,6 +708,8 @@ export interface Trans {
   t: number;
   regen?: boolean;
   go?: string;
+  /** 真っ暗になったら、新しい探索を始める（src/lib/levels.ts の startNewRun） */
+  run?: boolean;
 }
 /** 今の階に、古い JS が後から足す欄（型は、使う処理を移す時に足す） */
 export interface LevelExtra {
@@ -1143,7 +1146,7 @@ export interface SoundLoops {
   drone?: DroneLoop;
 }
 /** 音（音量の段 lv・音の仕組み ctx と、その部品・鳴り続ける音 L・まわりの音の様子 env）。丸ごと入れ替えないので、古い JS は今までどおり SND.lv のように読む。
- * 部品は、最初に音を鳴らす時（src/lib/audio.ts の sndInit）に作る */
+ * 部品は、タイトルを出した時に先に作り（src/lib/audio.ts の sndPrep）、最初に音を鳴らす時（sndInit）にここへ入れる */
 export interface SoundState {
   /** 音量の段（src/lib/sound.ts の SND_LV の番号） */
   lv: number;
@@ -1153,7 +1156,7 @@ export interface SoundState {
   inp: GainNode | null;
   wet: GainNode | null;
   noise: AudioBuffer | null;
-  /** 鳴り続ける音（地鳴り・水・火・風・低い音）。src/lib/audio.ts の sndInit が作る */
+  /** 鳴り続ける音（地鳴り・水・火・風・低い音）。src/lib/audio.ts の sndPrep か sndInit が作る */
   L: SoundLoops;
   /** まわりの音の様子を数え直すまでの秒 */
   envT: number;

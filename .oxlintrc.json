@@ -81,6 +81,11 @@
       "globals": { "__test": "readonly", "dbg": "readonly" }
     },
     {
+      // 場面が切り替わる時の確かめ：テスト用モードでないページの page.evaluate の中で、dbg と画面の部品（document・window）を使う
+      "files": ["tools/transitions.mjs"],
+      "globals": { "dbg": "readonly", "document": "readonly", "window": "readonly" }
+    },
+    {
       // ゲーム本体：src/game/*.js をつないだもの（tools/lint-game.mjs が書き出して調べる）。
       // ブラウザで動く。THREE は src/game/imports.mjs で npm の three から読む。
       "files": [".build/lint/*.js"],

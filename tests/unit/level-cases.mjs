@@ -8,6 +8,7 @@
 // 書き換えた状態と、document・window・localStorage・performance・setTimeout・Math.random・音の乱数は、終わったら元に戻す。
 import { sndInit } from '../../src/lib/audio.ts';
 import { addLooks } from '../../src/lib/bodies/build.ts';
+import { resetGlyphWork } from '../../src/lib/build.ts';
 import { MTYPES } from '../../src/lib/creatures.ts';
 import { getLegend } from '../../src/lib/legend.ts';
 import { P } from '../../src/lib/particles.ts';
@@ -42,6 +43,7 @@ import { BRANCHES, CELL, FINAL_DEPTH, MH, MW, NCELL, REALMS, SF_HAY, TF, TP } fr
 import { fakeAudioClass } from './fake-audio.mjs';
 import { fakeCamera, fakeDom, fakeTimers, fakeUniforms, hashArr } from './fight-cases.mjs';
 import { swapGlobals } from './ui-cases.mjs';
+import { stateFp } from './case-out.mjs';
 
 /** 移した関数の名前（場合が全部を呼ぶか、level.test.mjs が確かめる） */
 export const NAMES = [
@@ -331,7 +333,7 @@ export async function levelCases(F, seeds, page) {
           snd: sndN - s0,
           msg: msgN - g0,
           timers: timers.st.n - t0,
-          state: fnv(state()),
+          state: stateFp(state(), fnv),
           msgs: msgs.map((m) => m.html).join('|'),
         });
         return ret;
@@ -610,6 +612,8 @@ export async function levelCases(F, seeds, page) {
         }
         if (chance(0.15) || k === 1) call('setupFinal');
         if (k === 0 && s % 2 === 0) call('generate', (r() * 1e9) >>> 0, here.depth);
+        // 作業用の配列が小さい時に、伸ばしながら組み立てても、同じ世界になる（使い回した時と、指紋が同じ）
+        if (k === 2 && s === 1) resetGlyphWork(1000);
         if (chance(0.1) || k === 2) call('buildWorld');
         flush();
       }
@@ -629,8 +633,10 @@ export async function levelCases(F, seeds, page) {
           if (ui.graveCands.length) el.onclick(btn({ gv: '1' }, ''));
           el.onclick(btn({}, 'other'));
           if (chance(0.7)) {
+            // ［新しい探索へ］は暗くし始めるだけ（startNewRun）。真っ暗になった時に tick が呼ぶ newRun を、ここで呼ぶ
             el.onclick(btn({}, 'newRunB'));
-            calls.push({ name: 'newRunB', state: fnv(state()) });
+            calls.push({ name: 'newRunB', state: stateFp(state(), fnv) });
+            if (here.trans && here.trans.run) call('newRun');
           }
         }
         flush();

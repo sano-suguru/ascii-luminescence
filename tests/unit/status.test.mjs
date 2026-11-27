@@ -8,6 +8,7 @@ import * as LM from '../../src/lib/lightmap.ts';
 import * as ST from '../../src/lib/status.ts';
 import { here, ui } from '../../src/lib/state.ts';
 import { statusCases } from './status-cases.mjs';
+import { caseOut } from './case-out.mjs';
 
 const fnv = (s) => {
   let h = 0x811c9dc5;
@@ -47,6 +48,7 @@ describe('移す前と同じ', () => {
       names = new Set(lines.flatMap((l) => [...l.matchAll(/"name":"(\w+)"/g)].map((m) => m[1])));
     // 場合が中身を通っているか：17の関数が全部呼ばれ、忘れられた獣が目を覚ます場合も通る
     expect([lines.length, names.size, all.includes('目を覚まし')]).toEqual([300, 17, true]);
+    caseOut('status', all);
     expect([fnv(all), all.length]).toEqual(['5910b96e', 822142]);
   }, 60000);
 });
