@@ -46,12 +46,12 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      audio：音を鳴らす（Web Audio。音の部品（タイトルを出した時に先に作って止めておく sndPrep、迷宮に入る時などに鳴らし始める sndInit、状態 sndState）・効果音・術を放つ音 castSound・まわりの音 sndUpdate。状態 SND に頼る物）、log：伝言 msg、hotbar：下の HUD renderHotbar（指の操作の [持ち替え] の出し分けも）と持ち替えられるビルド buildsHave、save：保存 saveSet・saveMeta と忘れられた獣の記録 loadBeasts・recordBeast、
                      inventory：装備の画面 renderInv（中のボタンの処理・ビルドの呼び出し applyBuild も）と、開け閉め setInv・付け替えの詠唱 startSwap、
                      panels：レベルアップの画面（選択肢 levelChoices・開く openLevelUp・選ぶ chooseLevel）と祭壇の画面（開く openAltar・閉じる closeAltar・選ぶ chooseAltar・毎フレーム開け閉めする updateAltarPanel）。どちらも #altarp に描き、指なら選択肢は2回押して決める（confirmTap）、
-                     menu：メニュー（描く renderMenu・開け閉め setMenu・項目を押した menuAct・確かめ待ちを4秒で戻す menuArmReset。指で遊ぶ時は、操作の案内・年代記・魔導書をメニューの中に開く）とタイトルへ戻る returnToTitle、
+                     menu：メニュー（描く renderMenu・開け閉め setMenu・項目を押した menuAct・確かめ待ちを4秒で戻す menuArmReset。指で遊ぶ時は、操作の案内・年代記・魔導書をメニューの中に開き、見回す速さの項目も出す）とタイトルへ戻る returnToTitle、
                      status：状態の表示 renderStatus・明るさと気配 updateStealth・年代記・操作の案内・魔導書（枠の行 chronRows・helpRows・bookRows。操作の案内は指で遊ぶ時は指の操作の説明）・表示の量・見つかった時 onNoticed・物音 makeNoise・
                      立ち止まって調べる updateSearch・止まっているか isPaused・場所の名前 placeLabel・下の一言 showHint（自分で消す一言は flashHint、出した一言だけ消すのは clearHint）・頭の上の印 drawMark、
                      layout：画面の大きさに合わせる（タイトルの枠を zoom で縮めて画面に収める fitIntro。指で遊ぶ時のパネル（装備・メニュー・祭壇とレベルアップ・結果）も、[装備] [メニュー] の下から画面の下までに縮め、入らない分は中を送る fitPanels。下限 FIT_MIN）、
                      touch：指で遊ぶ時の土台（指で触れたら指の遊び方 setTouch。指の後にブラウザが出すマウスの事件を止める（iPhone は pointerdown の preventDefault で止まらないので、指の事件から COMPAT_MS 以内のマウスの事件も止める）。タッチのボタン [全画面] [装備] [メニュー] initTouch。パネルの選択肢を指で押した時の2段階（1回目で選んで説明、2回目で決める）confirmTap。操作の説明を遊び方で書き分ける byInput。指で遊んでいて縦向きの間は、探索を止めて横にする案内 #turn を出す updatePortrait。タイトルにホーム画面に置く案内を出すか homeHint（iPhone・iPad の Safari で、指で触れる端末で、ホーム画面から開いていない時だけ）。遊び方が変わった時に古い JS が文言を書き直す処理（initTouch の changed。図鑑の案内）。ゲームのマウスの処理より先に 16-view-input.js が呼ぶ）、
-                     touchpad：指の操作（試して合わせる値 TUNE（見回す速さ look・アナログか analog。アナログなら倒し具合を thumb.stick に入れ、src/lib/player.ts がキーの代わりに向きと速さに使う）・左半分に触れた所に出るスティックで移動・右半分のドラッグで見回す・[右手] [左手] で詠唱・[持ち替え]（ビルドを2つ以上保存した時だけ出る）・[回避]・図鑑では1本指のドラッグで回し・見下ろし、2本指でつまんで寄る・引く initTouchpad。ページが隠れた時に、触れている指を離したことにする releaseTouch。描く画面は touch-action を既定のままにし、touchmove の preventDefault で送りと拡大を止める。touch-action: none の上で指を動かすと、Chromium は直後のボタンのタップを click にしないため）、
+                     touchpad：指の操作（試して合わせる値 TUNE（見回す速さ look（メニューで遅い・ふつう・速いから選ぶ段 LOOK・cycleLook。選んだ段は al_look に残す）・アナログか analog。アナログなら倒し具合を thumb.stick に入れ、src/lib/player.ts がキーの代わりに向きと速さに使う）・左半分に触れた所に出るスティックで移動・右半分のドラッグで見回す・[右手] [左手] で詠唱・[持ち替え]（ビルドを2つ以上保存した時だけ出る）・[回避]・図鑑では1本指のドラッグで回し・見下ろし、2本指でつまんで寄る・引く initTouchpad。ページが隠れた時に、触れている指を離したことにする releaseTouch。描く画面は touch-action を既定のままにし、touchmove の preventDefault で送りと拡大を止める。touch-action: none の上で指を動かすと、Chromium は直後のボタンのタップを click にしないため）、
                      diag：診断の記録（claude.ai の Artifact の中で、持ち主が開いた時だけ、端末・速さ・できごと（開け閉め・溜めている手・飛ぶ物があるか・音の部品の状態（先に作った部品も。記録を始めた時の状態も書く）・ボタンと描く画面を押した）・
                      場面が切り替わる時の処理にかかった時間・遅いフレーム・エラーを Artifact のデータベースの diag に書く initDiag。
                      Claude が ArtifactData の道具で読む。window.claude.use が無い所では何もしない）、took：かかった時間を診断の記録に渡す took（記録していない時は何もしない。
@@ -128,7 +128,7 @@ tests/touch.mjs      指で遊ぶ時の土台（スマホの真似で、テス�
                      指の操作（CDP の Input.dispatchTouchEvent で2本の指）：スティックで進む・離すと止まる・右半分で見回す・同時に・拡大されない・見回した直後もボタンが効く・
                      [右手] で溜めて、ずらすと見回し、離すと終わる・指を取り逃しても終わる・[回避]・ページが隠れるとメニューが開いて止まり、触れている指は離したことになる・メニューの間は動かない・レベルアップと祭壇は2回押して決まる ＋
                      本物の大きさ 750×312 で：左下の伝言と下の HUD が重ならない・初めて指で入った時の一言・メニュー・装備の画面・レベルアップ・祭壇・結果の画面が画面に収まる（装備の画面は中を送れて、
-                     中を書き直しても送った所が残り、袋のルーンを選ぶと、はめられる枠が見える所まで送る）・メニューの中に開く操作の案内と魔導書・ビルドを2つ保存すると [持ち替え] が出て持ち替える（溜めている間は持ち替えない）・
+                     中を書き直しても送った所が残り、袋のルーンを選ぶと、はめられる枠が見える所まで送る）・メニューの中に開く操作の案内と魔導書・メニューの見回す速さ（押すと段が回り、開き直したページにも残る）・ビルドを2つ保存すると [持ち替え] が出て持ち替える（溜めている間は持ち替えない）・
                      レベルアップと祭壇の間は [装備] [メニュー] が隠れる・指の時の案内の文言 ＋ 縦向きの間は探索を止めて横にする案内を出す（タイトルとマウスの時は出さない。縦のまま死んでも、結果の画面から新しい探索へ進める）＋ ホーム画面に置く案内（iPhone の Safari で、ホーム画面から開いていない時だけ。指で触れない端末では出さない）＋ iPhone の横向きの切り欠きとホームの棒（CDP で safe-area-inset を真似る）を、端の表示とボタンが避けるか ＋
                      図鑑を指で動かす（1本指で回す・2本指でつまんで寄る・[向きを戻す]・背の低い画面で枠が画面の上半分に掛からない・マウスで開いた後に指で触ると案内が変わる・離れた知らせを取り逃した指が残っても回せる）＋
                      診断の記録：偽の window.claude（tests/page-fakes.mjs）で、持ち主なら端末・できごと・速さ・かかった時間・遅いフレーム（40件を越えたら短い物から捨てる）を書き、持ち主でなければ書かないか・書き込みの途中に頼まれた分も後で書くか
@@ -420,7 +420,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 
 ## 保存データ（localStorage）
 `al_meta`（伝承・解放・墓・試練・指で遊ぶ時の始めの一言を出したか）、`al_book`（魔導書：記した反応）、`al_beasts`（忘れられた獣）、
-`al_runes`（見たルーン）、`al_seen`（見た生き物）、`al_cam`（1人称/3人称）、`al_dev`（開発用モード）
+`al_runes`（見たルーン）、`al_seen`（見た生き物）、`al_cam`（1人称/3人称）、`al_look`（指で遊ぶ時の見回す速さの段）、`al_dev`（開発用モード）
 
 ## ゲーム本体の地図（src/game/）
 ファイルは名前の順につながる（後のファイルは、前のファイルの変数や関数を使える。トップレベルで実行する文は順番に気をつける）。

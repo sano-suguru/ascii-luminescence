@@ -18,6 +18,7 @@ import { BLESS, META_DEF } from '../../src/lib/progress.ts';
 import { setSoundRand } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 import { RUNE_TYPES, TRAITS } from '../../src/lib/runes.ts';
+import { TUNE } from '../../src/lib/touchpad.ts';
 import { SND, adv, blaze, clock, fight, gear, gfx, here, hudInfo, msgs, placeMem, player, saved, ui, vfx } from '../../src/lib/state.ts';
 import { CELL, MW, NCELL, TF, cpos } from '../../src/lib/world.ts';
 import { fakeCamera, fakeUniforms, fnv, text } from './fight-cases.mjs';
@@ -162,6 +163,7 @@ function fire(page, e, type, target) {
 export async function panelCases(makeF, seeds, page, mocked) {
   const env = await loadEnv(),
     out = [];
+  const keepLook = TUNE.look;
   const keep = {
     here: { ...here },
     adv: { ...adv },
@@ -604,7 +606,7 @@ export async function panelCases(makeF, seeds, page, mocked) {
       call('updateLife', 0.3);
       adv.dead = false;
       // ---- 場面：メニュー（マウスと指、全部の項目。確かめ待ちは4秒で戻る）
-      const ITEMS = ['resume', 'pack', 'help', 'chron', 'book', 'cam', 'ui', 'snd', 'perf', 'new', 'title', 'back'];
+      const ITEMS = ['resume', 'pack', 'help', 'chron', 'book', 'cam', 'ui', 'snd', 'look', 'perf', 'new', 'title', 'back'];
       for (const touch of [false, true, false]) {
         ui.touch = touch;
         call('setMenu', true);
@@ -638,6 +640,7 @@ export async function panelCases(makeF, seeds, page, mocked) {
     }
   } finally {
     console.error = keepErr;
+    TUNE.look = keepLook;
     restoreGlobals();
     delete msgs.push;
     Math.random = keep.random;

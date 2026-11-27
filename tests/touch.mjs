@@ -486,6 +486,26 @@ await withBrowser(async ({ browser, base }) => {
       errs.push(`狭い画面：操作の案内が、指の操作の説明でない（${t.slice(0, 120)}）`);
     await tap('#menu button[data-k="back"]');
     if (!(await text('#menu')).includes('探索を続ける')) errs.push('狭い画面：操作の案内の [戻る] で、メニューの一覧に戻らない');
+    // 見回す速さ：押すたびに ふつう → 速い → 遅い → ふつう と回り、選んだ段は残って、開き直したページでも使う（src/lib/touchpad.ts の LOOK）
+    {
+      const lookOf = () => E(() => __test.touchTune().look);
+      const label = () => text('#menu button[data-k="look"]');
+      if (!(await label()).includes('見回す速さ：ふつう') || (await lookOf()) !== 0.005)
+        errs.push(`見回す速さ：初めがふつうでない（${await label()}、${await lookOf()}）`);
+      await tap('#menu button[data-k="look"]');
+      if (!(await label()).includes('見回す速さ：速い') || (await lookOf()) !== 0.007)
+        errs.push(`見回す速さ：押しても速くならない（${await label()}、${await lookOf()}）`);
+      const pg2 = await pg.context().newPage();
+      await openTest(pg2, base, 'seed=202');
+      const kept = await pg2.evaluate(() => __test.touchTune().look);
+      await pg2.close();
+      if (kept !== 0.007) errs.push(`見回す速さ：選んだ段が、開き直したページに残らない（${kept}）`);
+      await tap('#menu button[data-k="look"]');
+      if (!(await label()).includes('見回す速さ：遅い') || (await lookOf()) !== 0.0035)
+        errs.push(`見回す速さ：速いの次が遅いでない（${await label()}、${await lookOf()}）`);
+      await tap('#menu button[data-k="look"]');
+      await fits('#menu', '見回す速さの段を足したメニュー');
+    }
     await tap('#menu button[data-k="book"]');
     if (!(await text('#menu')).includes('魔導書')) errs.push('狭い画面：メニューの「魔導書」が、メニューの中に開かない');
     await tap('#menuB');

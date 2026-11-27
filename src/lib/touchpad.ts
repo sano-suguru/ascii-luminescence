@@ -5,7 +5,7 @@
 // 図鑑で生き物を見ている間は、描く画面の1本指のドラッグで生き物を回し・見下ろし（マウスのドラッグと同じ）、2本指でつまむと寄る・引く（ホイールと同じ）。
 // 描く画面と指の操作のボタンは touch-action を既定のままにし、touchmove の preventDefault で、ブラウザの送りと拡大を止める
 // （touch-action: none の上で指を動かすと、Chromium はその直後のボタンのタップを click にしない。[メニュー] などが1回効かなくなる）
-import { must } from './array.ts';
+import { must, nth } from './array.ts';
 import { beginCast, releaseCast, startRoll } from './chant.ts';
 import type { Side } from './gear.ts';
 import { clamp } from './rng.ts';
@@ -20,6 +20,39 @@ export const STICK = { dead: 10, run: 46, max: 44 };
  * analog：true なら、スティックを倒し具合で動く（thumb.stick。倒し具合が速さになる）。false なら、倒した向きを WASD に置き換える（8方向、歩くか走るか）
  */
 export const TUNE = { look: 0.005, analog: false };
+/**
+ * メニューで選べる見回す速さ（TUNE.look）と名前。手触りの試し打ち（node tools/feel.mjs aim）で、0.0035 より遅いと指の持ち替えが増え、
+ * 0.007 より速いと、合うまでの時間は縮まずに行き過ぎが増えたので、その間にした。選んだ段は localStorage の al_look に、段の番号で残す
+ */
+export const LOOK = { speeds: [0.0035, 0.005, 0.007], names: ['遅い', 'ふつう', '速い'] };
+/** 今の見回す速さの段（TUNE.look に一番近い物） */
+export function lookLevel(): number {
+  let best = 0;
+  LOOK.speeds.forEach((v, i) => {
+    if (Math.abs(v - TUNE.look) < Math.abs(nth(LOOK.speeds, best) - TUNE.look)) best = i;
+  });
+  return best;
+}
+/** 見回す速さを次の段にして（遅い・ふつう・速いの順に回る）、残す（残せなくても続ける） */
+export function cycleLook(): void {
+  const i = (lookLevel() + 1) % LOOK.speeds.length;
+  TUNE.look = nth(LOOK.speeds, i);
+  try {
+    localStorage.setItem('al_look', String(i));
+  } catch {
+    // 残せない時（プライベートモードなど）は、残さないだけ
+  }
+}
+/** 残した見回す速さの段を読む（無い・読めない・表に無い番号なら、そのまま） */
+function loadLook(): void {
+  try {
+    const v = LOOK.speeds[Number(localStorage.getItem('al_look') ?? NaN)];
+    if (v !== undefined) TUNE.look = v;
+  } catch {
+    // 読めない時は、ふつうのまま
+  }
+}
+
 /** スティックが押すキー（離す時に、これだけを戻す） */
 const MOVE_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft'];
 
@@ -114,6 +147,7 @@ function spread(): number {
 
 /** 指の操作を用意する（ページを開いた時に1回） */
 export function initTouchpad(act: PadActions): void {
+  loadLook();
   const gl = must(document.getElementById('gl'), '#gl'),
     stickEl = must(document.getElementById('stick'), '#stick');
   // 指を動かした時の、ブラウザの送りと拡大を止める（上の説明。touch-action: none は使わない）
