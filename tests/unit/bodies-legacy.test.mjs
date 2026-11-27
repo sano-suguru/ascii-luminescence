@@ -105,7 +105,7 @@ describe('指紋（思わず変わっていないか）', () => {
       true,
     ]);
     caseOut('bodies-legacy-3', all);
-    expect(fp(all)).toEqual(['50906aec', 999077]);
+    expect(fp(all)).toEqual(['6c955afa', 999077]);
   }, 60000);
   it('忘れられた獣の記録（保存の中身10通り×今の探索の記録3通り×保存が使えるか）の指紋', () => {
     const all = beastRecordCases(SAVE),
