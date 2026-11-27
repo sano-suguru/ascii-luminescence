@@ -1,4 +1,5 @@
-// 霧と目の慣れ、3人称の自分の姿と、カメラと自分の間の岩の断面（もとは src/game/28-camera-player.js の updateAtmosphere・updateAvatar・rockAt・drawSection）。
+// 霧と目の慣れ、3人称の自分の姿と、カメラと自分の間の岩の断面（もとは src/game/28-camera-player.js の updateAtmosphere・updateAvatar・rockAt・drawSection）と、
+// 階の場所ごとの空気（22-world-hints.js の updateSectionAir）。
 // 3人称のカメラを置く placeThirdPerson は src/lib/player.ts。
 import { must, nth } from './array.ts';
 import { headPos } from './aim.ts';
@@ -127,4 +128,21 @@ export function drawSection(): void {
       dyn(px, py, pz, G(hsh < 3 ? '#' : hsh < 5 ? '%' : ':'), 0.38, b * 1.25, b * 1.1, b * 1.35);
     }
   }
+}
+
+// the air of each part of a level: the crossroads a little brighter, the way to the stairs a little darker and quieter
+/** 階の場所ごとの空気（もとは src/game/22-world-hints.js）：分かれ道は少し明るく、階段へ向かう道の終わりの3割は少し暗く。まわりの明るさ uAmb をゆっくり合わせる */
+export function updateSectionAir(dt: number): void {
+  if (!here.D || !here.D.prof) return;
+  const pc = ((player.z / CELL) | 0) * MW + ((player.x / CELL) | 0);
+  let k = 1;
+  if (level().hub && level().roomOf[pc] === must(level().hub, '分かれ道 here.D.hub').ri) k = 1.25;
+  else if (
+    level().dS &&
+    (level().pathL ?? NaN) > 0 &&
+    (must(level().dS, '階段までの距離 here.D.dS')[pc] ?? NaN) > (level().pathL ?? NaN) * 0.7
+  )
+    k = 0.85;
+  vfx.ambK += (k - vfx.ambK) * Math.min(1, dt * 1.2);
+  must(gfx.U, '分け合う値 gfx.U').uAmb.value = level().prof.ambient * vfx.ambK;
 }
