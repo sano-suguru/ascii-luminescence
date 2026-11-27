@@ -235,7 +235,7 @@ if(TEST)window.__test={
   // knock creature n (counted from 0, as in state().monsters) back with speed kx kz, as a hit's knockback does
   knock(n,kx,kz){ const m=here.monsters[n]; if(!m)return false; m.st=m.st||{}; m.kx=kx; m.kz=kz; return true; },
   // creature n's cell, the cell it walks to, its body scale, position and knockback speed
-  mob(n){ const m=here.monsters[n]; return m?{cx:m.cx,cz:m.cz,tx:m.tx,tz:m.tz,scale:m.ty.scale,x:m.x,z:m.z,kx:m.kx||0,kz:m.kz||0}:null; },
+  mob(n){ const m=here.monsters[n]; return m?{cx:m.cx,cz:m.cz,tx:m.tx,tz:m.tz,scale:m.ty.scale,x:m.x,z:m.z,kx:m.kx||0,kz:m.kz||0,hitT:Math.max(0,m.hitT||0),glow:m.glow,alert:m.alert,aimed:m===ui.aimMon}:null; },
   // every place a run can visit, for generation checks
   places(){ return [...Array.from({length:FINAL_DEPTH},(_,i)=>({depth:i+1})), ...Object.keys(SPECIALS).map(k=>({inter:k})),
     ...Object.values(BRANCHES).flatMap(B=>Array.from({length:B.len},(_,i)=>({branch:B.key,lvl:i+1}))), ...Object.values(REALMS).map(R=>({realm:R.key,depth:R.minD+2}))]; },
