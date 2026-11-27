@@ -11,7 +11,6 @@ import type { LoreResult } from './results.ts';
 import type { Debris } from './debris.ts';
 import type { Body, Glyph } from './bodies/kit.ts';
 import { type Rune } from './runes.ts';
-import type { AVATAR_TY } from './names.ts';
 import type {
   BufferAttribute,
   BufferGeometry,
@@ -76,23 +75,9 @@ export interface Gallery {
   /** 生き物を出した後、目の慣れと霧をすぐ合わせるまでの段（1：カメラを置くのを待つ、2：次の一歩で src/lib/camera.ts の updateAtmosphere が合わせて 0 にする） */
   settle?: number;
 }
-/** 3人称の時の自分の姿（src/lib/camera.ts の updateAvatar が作って動かし、30-loop-init.js が drawMonster0 で描く） */
-export interface Avatar {
-  ty: typeof AVATAR_TY;
-  form: Body;
-  x: number;
-  z: number;
-  y: number;
-  yaw: number;
-  walk: number;
-  moving: number;
-  ph: number;
-  glow: number;
-  surf: number;
-}
 /** レベルアップの選択肢の1つ（恩恵 k か、ルーン ru） */
 export type LevelOpt = { kind: 'bless'; k: string } | { kind: 'rune'; ru: Rune };
-/** 画面の開け閉め（探索が始まったか、1人称・3人称、マウスを捕まえているか、各画面が開いているか、表示の量、図鑑と試しの間） */
+/** 画面の開け閉め（探索が始まったか、マウスを捕まえているか、各画面が開いているか、表示の量、図鑑と試しの間） */
 export interface Ui {
   /** 探索が始まったか（タイトルの画面を閉じたか） */
   started: boolean;
@@ -122,8 +107,6 @@ export interface Ui {
   owner: boolean;
   /** 指でパネルの選択肢を1回押して、選んだだけの物（2回目で決める。src/lib/touch.ts の confirmTap。無ければ ''） */
   tapArm: string;
-  /** 1人称（'fps'）か3人称 */
-  camMode: string;
   /** レベルアップの画面 */
   lvlOpen: boolean;
   /** レベルアップの画面を開いた時刻（performance.now の値。開いてすぐのクリックは選ばない。指で選ぶ時の、開くたびに変わる鍵 confirmTap）と、今の選択肢（src/lib/panels.ts） */
@@ -192,10 +175,6 @@ export interface Ui {
   gallery: Gallery | null;
   /** マウスを捕まえられないと決めたか（決めた後は捕まえようとしない。捕まえていない時は、ドラッグで視点を動かし、Esc でメニューを開く） */
   plFailed: boolean;
-  /** 3人称のカメラの位置（x・y・z。少しずつ狙う位置へ寄せる。視点を変えた時と始めは null で、狙う位置から始める） */
-  camPos: number[] | null;
-  /** 3人称の時の自分の姿（初めて3人称で描く時に作る） */
-  avatar: Avatar | null;
   /** 装備の画面を開けた時の両手（handsKey の key と、写し snap）。閉じた時に変わっていれば、付け替えの詠唱をする。閉じている間は null */
   packSnap: { key: string; snap: HandsSnap } | null;
   /** 照準の先の生き物（src/lib/look.ts の look が毎フレーム入れ直す。src/lib/bodies/draw.ts の drawMonster1 が、明るく描いて輪を足す）。無ければ null */
@@ -238,7 +217,6 @@ export const ui: Ui = {
   devSeen: false,
   owner: false,
   tapArm: '',
-  camMode: 'fps',
   lvlOpen: false,
   lvlOpenT: 0,
   lvlOpts: [],
@@ -276,8 +254,6 @@ export const ui: Ui = {
   perfOn: false,
   gallery: null,
   plFailed: false,
-  camPos: null,
-  avatar: null,
   packSnap: null,
   aimMon: null,
   lookPend: '',

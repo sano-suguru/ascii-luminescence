@@ -165,8 +165,6 @@ export async function stepCases(F, seeds, page) {
         started: true,
         gallery: null,
         godMode: false,
-        camMode: 'fps',
-        camPos: null,
         invOpen: false,
         menuOpen: false,
         dbgOpen: false,

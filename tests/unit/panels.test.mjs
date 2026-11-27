@@ -45,7 +45,7 @@ describe('移す前と同じ', () => {
       body = panelText(all),
       calls = all.flatMap((c) => c.calls);
     caseOut('panels', body);
-    expect([fnv(body), body.length]).toEqual(['387478d9', 1522994]);
+    expect([fnv(body), body.length]).toEqual(['8cc3f1be', 1499663]);
     // 場合が中身を通っているか：移した関数が全部呼ばれ、どれも止まらず、待たせた処理も止まらない
     expect(new Set(calls.map((c) => c.name).filter((n) => NAMES.includes(n)))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).map((c) => [c.name, c.threw])).toEqual([]);

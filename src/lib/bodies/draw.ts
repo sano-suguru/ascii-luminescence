@@ -25,7 +25,7 @@ import {
   shadowAura,
   spiderAura,
 } from './auras.ts';
-import { KRAKEN, KRAKEN_SINK, KRAKEN_WATER, dragonSleepForm, krakenHead } from './beasts.ts';
+import { KRAKEN, KRAKEN_SINK, KRAKEN_WATER, dragonSleepForm, krakenHead, tailSwish } from './beasts.ts';
 import type { Body } from './kit.ts';
 import { beastSleep } from './lords.ts';
 
@@ -141,7 +141,7 @@ const HIT_GLOW = 2.4;
 /** 照準の先の明るさの倍率 */
 const AIM_GLOW = 1.9;
 /**
- * 明るくする倍率 k を、画面での見かけの大きさ（体の大きさ ÷ カメラからの床の上の距離。3人称ではカメラが後ろに下がるので小さく見える）で弱めた物。見かけが BIG[0] までは k のまま、BIG[1] で増やす分を BIG[2] 倍にする
+ * 明るくする倍率 k を、画面での見かけの大きさ（体の大きさ ÷ カメラからの床の上の距離）で弱めた物。見かけが BIG[0] までは k のまま、BIG[1] で増やす分を BIG[2] 倍にする
  * （大きな体がすぐ近くで画面を覆うと、同じ倍率でも光のにじみで画面が白く飛ぶため。トロルが 1.8 の所で見かけ 0.89）
  */
 const BIG = [0.4, 0.9, 0.25] as const;
@@ -267,6 +267,11 @@ export function drawMonster0(m: Mon, t: number): void {
       }
       case 'flame': {
         const f = p.fh || 0;
+        // 尾の先の炎（サラマンダー）は、尾と一緒に振れ、歩く時は体と一緒に上下する（piv は尾の付け根からの距離。ほかの炎は 0）
+        if (p.piv) {
+          lx += tailSwish(m, t, p.piv);
+          ly += bob;
+        }
         ly += (Math.sin(t * 9 + p.ph) * 0.03 + 0.02) * f;
         lz -= (m.moving || 0) * 0.1 * f;
         lx += Math.sin(t * 6 + p.ph * 2) * 0.015 * f;
@@ -294,6 +299,11 @@ export function drawMonster0(m: Mon, t: number): void {
       }
       case 'eelw':
         lx += Math.sin(t * 4 - p.z * 3.5 + m.ph) * 0.09 * (0.4 + Math.max(0, 0.8 - p.z));
+        break;
+      // 尾（サラマンダー）：付け根では動かず、先ほど大きく左右に振れる（piv は付け根からの距離）。歩く時は体と一緒に上下する
+      case 'tailw':
+        lx += tailSwish(m, t, p.piv);
+        ly += bob;
         break;
       case 'slither':
         lx += Math.sin(t * 5 - p.z * 5 + m.ph) * 0.05 * (0.3 + Math.max(0, 0.6 - p.z));

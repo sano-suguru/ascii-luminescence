@@ -6,7 +6,6 @@
 import { MTYPES } from '../../src/lib/creatures.ts';
 import { makeHistory } from '../../src/lib/history.ts';
 import { makeBeastType } from '../../src/lib/bodies/lords.ts';
-import { AVATAR_TY } from '../../src/lib/names.ts';
 import { P, dCol, dPar, dPos } from '../../src/lib/particles.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 import { P_MAX } from '../../src/lib/shaders.ts';
@@ -92,7 +91,6 @@ export function formTypes(samples, hist) {
       out.push([`${form}/${look}`, { ...base, form, look, boss: true }]);
   for (let s = 1; s <= hist; s++) out.push([`beast${s}`, makeBeastType(makeHistory(s * 7919), s * 104729)]);
   samples.forEach((b, i) => out.push([`sample${i}`, { ch: 'X', form: 'beast', ...b }]));
-  out.push(['avatar', AVATAR_TY]);
   out.push(['statue', { ch: '&', form: 'humanoid' }]);
   out.push(['final', { ...base, ch: '&', look: null, form: 'shadowking', sk: 'final', scale: 3, col: [0.62, 0.48, 1.0], boss: true }]);
   out.push(['sw', { ...MTYPES['s'], sk: 'sw', name: '蛇顎' }]);

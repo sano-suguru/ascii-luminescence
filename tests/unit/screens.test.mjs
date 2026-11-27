@@ -28,24 +28,18 @@ describe('移す前と同じ', () => {
     caseOut('screens-1', all);
     expect([fnv(all), all.length]).toEqual(['04640061', 87148]);
   });
-  it('頭の上の印・装備の画面の開け閉め・付け替えの詠唱・マウスを捕まえる・視点・音量（300の場合）の指紋', async () => {
+  it('頭の上の印・装備の画面の開け閉め・付け替えの詠唱・マウスを捕まえる・音量（300の場合）の指紋', async () => {
     const all = await screenCases({ ...INV, ...ST, ...SC }, 300, fakeScreen()),
       has = (k) => all.includes(k),
       cases = all.split('\n').map((l) => JSON.parse(l)),
       calls = cases.flatMap((c) => c.calls),
       gs = new Set(calls.flatMap((c) => c.gs ?? []));
-    // 場合が中身を通っているか：7つの関数が全部呼ばれ、マウスを捕まえる時の返し方の全部、音量を変える、マウスを放す、視点を保存する場合も通る
-    expect(new Set(calls.map((c) => c.f)).size).toBe(7);
+    // 場合が中身を通っているか：6つの関数が全部呼ばれ、マウスを捕まえる時の返し方の全部、音量を変える、マウスを放す場合も通る
+    expect(new Set(calls.map((c) => c.f)).size).toBe(6);
     expect(
-      [
-        '["rpl","throw"]',
-        '["rpl","plain"]',
-        '["rpl?","none"]',
-        '["rpl","ok"]',
-        '"setTargetAtTime"',
-        '"exitPointerLock"',
-        '"al_cam"',
-      ].filter((k) => !has(k)),
+      ['["rpl","throw"]', '["rpl","plain"]', '["rpl?","none"]', '["rpl","ok"]', '"setTargetAtTime"', '"exitPointerLock"'].filter(
+        (k) => !has(k),
+      ),
     ).toEqual([]);
     // 頭の上の印は z・!・? の3つとも出る
     expect(['z', '!', '?'].filter((c) => !gs.has(G(c)))).toEqual([]);
@@ -59,7 +53,7 @@ describe('移す前と同じ', () => {
       cases.some((c) => c.calls.some((x) => x.grew === 16) && c.log.some((e) => e[1] === 'start')),
     ]).toEqual([true, true, true, true]);
     caseOut('screens-2', all);
-    expect([fnv(all), all.length]).toEqual(['3a50cb68', 765115]);
+    expect([fnv(all), all.length]).toEqual(['f2402f31', 777851]);
   });
 });
 

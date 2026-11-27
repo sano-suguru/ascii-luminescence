@@ -2,7 +2,7 @@
 // 22-world-hints.js の drawGraves、13-creatures.js の drawWebs・webTouch）：灯りの備品（火鉢・水晶・たいまつ・階段など）、扉（近づくと開く）、
 // 泉、墓、クモの巣（触れると震え、燃えると落ちる）、罠と鉄格子（18-level-player.js の drawTraps）。毎フレーム、世界の中に文字を置き（dyn）、粒子を出す（spawn）。
 // 床と台と祭壇のルーン・石碑・宝物庫の兆しと、光線・飛ぶ物・詠唱と付け替えのルーン（22-world-hints.js の drawRunesWorld）。
-// 状態の入れ物 here（今の階）・player・blaze（火）・clock・ui（1人称か3人称か）・gfx（カメラの位置。読むだけ）・fight（光線・飛ぶ物）・gear（溜めと付け替え）に頼る。
+// 状態の入れ物 here（今の階）・player・blaze（火）・clock・ui・gfx（カメラの位置。読むだけ）・fight（光線・飛ぶ物）・gear（溜めと付け替え）に頼る。
 // 呼ぶのは古い JS の描画（30-loop-init.js の tick。泉と墓はこのファイルの drawRunesWorld も）と、
 // プレイヤーの動き（src/lib/player.ts の updatePlayer が webTouch）。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
@@ -20,7 +20,7 @@ import { clamp, mulberry32 } from './rng.ts';
 import { mpick, mr } from './random.ts';
 import { RUNE_DEF, TIER_COL, elemCol, runeCol } from './runes.ts';
 import { TRAP_INFO } from './names.ts';
-import { blaze, clock, fight, gear, gfx, here, player, ui } from './state.ts';
+import { blaze, clock, fight, gear, gfx, here, player } from './state.ts';
 import { drawStairSeal } from './omens.ts';
 import { makeNoise } from './status.ts';
 import { CELL, CH_D, LQ_LAVA, MW, NCELL, cpos } from './world.ts';
@@ -1433,7 +1433,7 @@ export function webTouch(i: number): boolean {
 
 /**
  * 罠と鉄格子を描く（もとは src/game/18-level-player.js の drawTraps）：見つかった罠（30 より遠い物は描かない。作動した物は暗い）、
- * 鉄格子の宝物庫の格子（開くほど上がる）と壁のレバー、網に掛かっている間の網（3人称では体のまわり、1人称では目の前）
+ * 鉄格子の宝物庫の格子（開くほど上がる）と壁のレバー、網に掛かっている間の目の前の網
  */
 export function drawTraps(t: number): void {
   for (const tr of level().traps || []) {
@@ -1484,13 +1484,7 @@ export function drawTraps(t: number): void {
     dyn(wx, 1.3, wz, G('#'), 0.4, 0.6, 0.55, 0.5);
     dyn(wx - G2.ld[0] * 0.08, 1.45, wz - G2.ld[1] * 0.08, G(G2.open ? '\\' : '/'), 0.42, 1.4, 1.1, 0.5);
   }
-  if ((player.netT ?? NaN) > 0 && ui.camMode === 'tps') {
-    for (let k = 0; k < 16; k++) {
-      const a = (k / 16) * Math.PI * 2 + clock.time * 0.3;
-      for (let y = 0.3; y < 1.9; y += 0.32)
-        dyn(player.x + Math.cos(a) * 0.55, y, player.z + Math.sin(a) * 0.55, G(k % 2 ? '+' : '#'), 0.16, 0.6, 0.55, 0.65);
-    }
-  } else if ((player.netT ?? NaN) > 0) {
+  if ((player.netT ?? NaN) > 0) {
     const fx = -Math.sin(player.yaw),
       fz = -Math.cos(player.yaw),
       rx = Math.cos(player.yaw),
@@ -1721,7 +1715,7 @@ export function drawRunesWorld(t: number): void {
         const a = t * 2 + (j / rs.length) * Math.PI * 2;
         dyn(
           player.x + Math.cos(a) * 0.9,
-          (ui.camMode === 'tps' ? 1.0 : player.eye - 0.5) + Math.sin(t * 3 + j) * 0.08,
+          player.eye - 0.5 + Math.sin(t * 3 + j) * 0.08,
           player.z + Math.sin(a) * 0.9,
           G(must(lookup(RUNE_DEF, ru.type).ch, 'ルーンの文字')),
           0.2,

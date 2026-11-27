@@ -12,10 +12,11 @@ import { dyn, spawn } from '../particles.ts';
 import { clamp } from '../rng.ts';
 import { mpick, mr, sndRand, withMobRand } from '../random.ts';
 import { sEnv } from '../sound.ts';
-import { type Monster, SND, adv, clock, here, player, ui, vfx } from '../state.ts';
+import { type Monster, SND, adv, clock, here, player, vfx } from '../state.ts';
 import { BASE_H, CELL, MW } from '../world.ts';
 import { buildForm } from './build.ts';
 import type { Body } from './kit.ts';
+import { salaBody, tailSwish } from './beasts.ts';
 import { shadowSerpentScale } from './bosses.ts';
 import { KRAKEN_T } from './lords.ts';
 
@@ -340,13 +341,12 @@ export function transformShadow(b: Monster & { form: Body }): void {
 }
 
 /**
- * 縦に立つ輪の上の点（その輪の面の中の横の位置 w、前後の位置 z）を、輪の面が目（カメラ。1人称ではプレイヤー、3人称では後ろのカメラ ui.camPos）の方を
+ * 縦に立つ輪の上の点（その輪の面の中の横の位置 w、前後の位置 z）を、輪の面が目（プレイヤー）の方を
  * 向くように回した、体の向きでの x と z。目が真上にいる時は回さない（13-creatures.js の drawMonster0 の halo と同じ回し方）
  */
 const faceEye = (m: Mon, w: number, z: number): readonly [number, number] => {
-  const tps = ui.camMode === 'tps' && ui.camPos,
-    ex = (tps ? (ui.camPos?.[0] ?? player.x) : player.x) - m.x,
-    ez = (tps ? (ui.camPos?.[2] ?? player.z) : player.z) - m.z,
+  const ex = player.x - m.x,
+    ez = player.z - m.z,
     el = Math.hypot(ex, ez),
     cm = Math.cos(m.yaw),
     sm = Math.sin(m.yaw),
@@ -538,17 +538,19 @@ export function houndAura(m: Mon & { form: Body }, _t: number): void {
   }
 }
 
-/** サラマンダー：尾の先から、ときどき火の粉 */
-export function salamanderAura(m: Mon, _t: number): void {
+/** サラマンダー：尾の先の炎から、ときどき火の粉（尾と一緒に振れる） */
+export function salamanderAura(m: Mon, t: number): void {
   if (toPlayer(m) > 24 || mr() > 0.08) return;
   const sc = m.ty.scale || 1,
     cy = Math.cos(m.yaw),
     sy = Math.sin(m.yaw),
-    lz = -1.3 * sc;
+    lz = salaBody.z0 * sc,
+    lx = tailSwish(m, t, salaBody.tailZ - salaBody.z0) * sc;
   spawn(
-    m.x + lz * sy,
-    0.12,
-    m.z + lz * cy,
+    m.x + lx * cy + lz * sy,
+    // 歩く時は、炎と一緒に上下する（drawMonster0 の bob と同じ）
+    0.12 + Math.abs(Math.sin(m.walk ?? 0)) * 0.04 * (m.moving || 0) * sc,
+    m.z - lx * sy + lz * cy,
     (mr() - 0.5) * 0.2,
     -0.1,
     (mr() - 0.5) * 0.2,
