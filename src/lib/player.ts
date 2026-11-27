@@ -1,7 +1,6 @@
-// プレイヤーの動き（もとは src/game/28-camera-player.js・16-view-input.js）：通れない所の当たり判定、3人称のカメラ、歩く・泳ぐ・滑る・転がる・
+// プレイヤーの動き（もとは src/game/28-camera-player.js・16-view-input.js）：通れない所の当たり判定、歩く・泳ぐ・滑る・転がる・
 // 突進、通れない所の一言、生き物に押されること、カメラ。状態の入れ物 player・here・ui・gfx・edge・keys に頼る。
 import { must } from './array.ts';
-import { headPos, viewDir } from './aim.ts';
 import { sRumble, sSplash } from './audio.ts';
 import { dashCuts } from './combat.ts';
 import { webTouch } from './fixtures.ts';
@@ -62,26 +61,6 @@ export function solidAt(x: number, z: number, r: number): boolean {
       }
     }
   return false;
-}
-/** 3人称のカメラを、頭の後ろの少し右へ寄せる（ゆっくり追う。揺れ sk。カメラと頭の間の壁を描かないように、描画に渡す。もとは src/game/28-camera-player.js） */
-export function placeThirdPerson(dt: number, sk: number): void {
-  const h = headPos(),
-    [dx, dy, dz] = viewDir(),
-    rx = Math.cos(player.yaw),
-    rz = -Math.sin(player.yaw);
-  const tx = h[0] - dx * 4.0 + rx * 0.5,
-    ty = Math.max(0.4, h[1] - dy * 4.0 + 0.5),
-    tz = h[2] - dz * 4.0 + rz * 0.5;
-  if (!ui.camPos) ui.camPos = [tx, ty, tz];
-  const k = Math.min(1, dt * 14);
-  ui.camPos[0] = must(ui.camPos[0]) + (tx - must(ui.camPos[0])) * k;
-  ui.camPos[1] = must(ui.camPos[1]) + (ty - must(ui.camPos[1])) * k;
-  ui.camPos[2] = must(ui.camPos[2]) + (tz - must(ui.camPos[2])) * k;
-  gfx.camera.position.set(must(ui.camPos[0]) + (mr() - 0.5) * sk, must(ui.camPos[1]) + (mr() - 0.5) * sk, must(ui.camPos[2]));
-  gfx.camera.rotation.set(player.pitch, player.yaw, 0);
-  must(gfx.U).uCamP.value.set(must(ui.camPos[0]), must(ui.camPos[1]), must(ui.camPos[2]));
-  must(gfx.U).uCutP.value.set(h[0], h[1] - 0.25, h[2]);
-  must(gfx.U).uCut.value = 1;
 }
 /**
  * プレイヤーの動き（毎フレーム）：歩く・泳ぐ（深い水・沼・浅い水・泥で遅く、網で止まる）・氷で滑る・突進・転がる、通れない所の一言と裂け目の縁、
@@ -244,10 +223,6 @@ export function updatePlayer(dt: number): void {
     const pci = Math.floor(player.z / CELL) * MW + Math.floor(player.x / CELL),
       deep = level().liquid[pci] === LQ_DEEP && !level().bridge[pci];
     player.eye += ((deep ? 0.62 : EYE) - player.eye) * Math.min(1, dt * 3);
-  }
-  if (ui.camMode === 'tps') {
-    placeThirdPerson(dt, sk);
-    return;
   }
   must(gfx.U).uCut.value = 0;
   gfx.camera.position.set(

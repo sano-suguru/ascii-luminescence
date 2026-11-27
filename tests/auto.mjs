@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 自動で試す（?auto。src/lib/auto.ts）のテスト：短い台本（?auto=quick）を、テスト用モードでなく（本物の時計で）流し、
 // ページのエラーが無い・全部の段を通る・うまくいかなかった段が無い・診断の記録の欄 auto と、段の名前のできごとが書かれる・
-// ゲームの保存（al_ で始まる名前）を localStorage に書かない（死んだ時の伝承・視点・表示の切り替えなども）・ほかの名前は書ける、を確かめる。
+// ゲームの保存（al_ で始まる名前）を localStorage に書かない（死んだ時の伝承・表示の切り替えなども）・ほかの名前は書ける、を確かめる。
 // 流している途中に、レベルアップの画面を開かせ（開発用モードの dbg.exp。1つ目を選んで進むか）、ページが25秒隠れたことにする（隠れていた間を、
 // 戻った最初のフレームの長さに数えないか）。もう1つのページでは、歩いている途中で［止める］を押し、台本の指が離れるか（スティックが消えるか）を見る。
 // 本物の時計で動くので、この環境（CPU で描くので遅い）では2分ほどかかる。待つのは、台本が終わるまで（最大 5 分）
@@ -17,7 +17,6 @@ await withBrowser(async ({ browser, base }) => {
   await pg.addInitScript(() => {
     if (!sessionStorage.getItem('seeded')) {
       sessionStorage.setItem('seeded', '1');
-      localStorage.setItem('al_cam', 'fps');
       // 開発用モード（途中でレベルアップさせる dbg.exp のため。自動で試す間も、オンにはしない）
       localStorage.setItem('al_dev', '1');
     }

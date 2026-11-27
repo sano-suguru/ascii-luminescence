@@ -350,7 +350,7 @@ export function updateRally(dt: number): void {
     player.rally = Math.max(0, (player.rally ?? NaN) - dt * (player.rallyRate || 2));
   }
   const tx = player.x,
-    ty = ui.camMode === 'tps' ? 1.0 : player.eye - 0.35,
+    ty = player.eye - 0.35,
     tz = player.z;
   for (const p of fight.rallyMotes) {
     p.t += dt;

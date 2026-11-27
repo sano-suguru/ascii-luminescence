@@ -6,7 +6,7 @@ import { resetRunes } from './gear.ts';
 import { renderHotbar } from './hotbar.ts';
 import { setInv } from './inventory.ts';
 import { newLevel, newRun } from './levels.ts';
-import { setCamMode, sndToggle, tryLock } from './screens.ts';
+import { sndToggle, tryLock } from './screens.ts';
 import { SND_NAME } from './sound.ts';
 import { SND, adv, gear, here, placeMem, player, ui, vfx } from './state.ts';
 import { bookRows, chronRows, cycleUi, helpRows, isPaused, renderBook, renderChron, renderStatus, setHelp } from './status.ts';
@@ -42,7 +42,6 @@ export function renderMenu(): void {
     ['help', `操作の案内`],
     ['chron', '年代記'],
     ['book', '魔導書'],
-    ['cam', `視点：${ui.camMode === 'tps' ? '三人称' : '一人称'}`],
     ['ui', `表示：${nth(['通常', '最小', 'なし'], ui.uiMode)}`],
     ['snd', `音量：${nth(SND_NAME, SND.lv)}`],
     // 指で遊ぶ時だけ（マウスの見回す速さは変わらない）
@@ -110,9 +109,6 @@ export function menuAct(k: string | undefined): void {
       if (ui.bookOn) renderBook();
       el.classList.toggle('off', !ui.bookOn);
     }
-    renderMenu();
-  } else if (k === 'cam') {
-    setCamMode(ui.camMode === 'tps' ? 'fps' : 'tps');
     renderMenu();
   } else if (k === 'ui') {
     cycleUi();

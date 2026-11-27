@@ -1,5 +1,5 @@
 // テストの道具：粒子と世界の中に置く文字（src/lib/particles.ts）・頭の上の印（status.ts の drawMark）・装備の画面の開け閉めと付け替えの詠唱
-// （inventory.ts の setInv・startSwap）・マウスを捕まえる・視点・音量（screens.ts）を、たくさんの場合で呼び、配列の中身と数・状態の変わり方・
+// （inventory.ts の setInv・startSwap）・マウスを捕まえる・音量（screens.ts）を、たくさんの場合で呼び、配列の中身と数・状態の変わり方・
 // 画面の部品にしたこと（偽の画面の部品が記録する）を、1つの文字列にまとめる。screens.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
 // F は関数をまとめた物。粒子の場合（particleCases）は、F の配列（P・dPos・dCol・dPar）を読む。ほかの場合（screenCases）は、粒子と文字を
 // 本物の src/lib/particles.ts に置く物として、その配列を読む。
@@ -170,7 +170,7 @@ export function fakeScreen() {
 }
 
 /**
- * 頭の上の印・装備の画面の開け閉め・付け替えの詠唱・マウスを捕まえる・視点・音量。page は fakeScreen() の偽の画面（古い関数を取り出す前に
+ * 頭の上の印・装備の画面の開け閉め・付け替えの詠唱・マウスを捕まえる・音量。page は fakeScreen() の偽の画面（古い関数を取り出す前に
  * document に入れておき、すべての場合で同じ物を使う）。場合ごとに、生き物・両手・袋・石碑と祭壇・画面の開け閉めをシードの乱数で作り、関数を4つ続けて呼ぶ。
  * 呼び終わったら、捨てられた Promise の後始末（マウスを捕まえられなかった時）と、setTimeout で待たせた物を流してから記録する
  */
@@ -256,8 +256,6 @@ export async function screenCases(F, seeds, page) {
           locked: r() < 0.5,
           plFailed: r() < 0.2,
           started: r() < 0.85,
-          camMode: pick(['fps', 'tps']),
-          camPos: r() < 0.5 ? [1, 2, 3] : null,
           packSel: r() < 0.3 ? { ru: rune(), from: 'bag' } : null,
           packHover: r() < 0.3 ? rune() : null,
           packSnap: null,
@@ -320,10 +318,6 @@ export async function screenCases(F, seeds, page) {
           } else if (k < 0.78) {
             F.updateResume();
             calls.push({ f: 'updateResume' });
-          } else if (k < 0.89) {
-            const m = pick(['fps', 'tps']);
-            F.setCamMode(m);
-            calls.push({ f: 'setCamMode', m });
           } else {
             F.sndToggle();
             calls.push({ f: 'sndToggle' });
@@ -342,8 +336,6 @@ export async function screenCases(F, seeds, page) {
             ui: {
               invOpen: ui.invOpen,
               plFailed: ui.plFailed,
-              camMode: ui.camMode,
-              camPos: ui.camPos,
               packSnap: ui.packSnap && ui.packSnap.key,
               packSel: !!ui.packSel,
               packHover: !!ui.packHover,

@@ -1,4 +1,4 @@
-// 霧と目の慣れ・3人称の自分の姿・岩の断面（src/lib/camera.ts の updateAtmosphere・updateAvatar・rockAt・drawSection）の単体テスト。
+// 霧と目の慣れ・岩の中か（src/lib/camera.ts の updateAtmosphere・rockAt）の単体テスト。
 // 指紋は、camera-cases.mjs の場合の結果（移す前の古い JS と、バイトまで同じだった値）。動きを意図して変えた時や、場合の入力を変えた時は、
 // 変わり方を確かめてから作り直す（何が変わったかは、コミットと PR に書く）。
 // 階は Node で本物の迷宮を生成するので、迷宮の生成を変えると、この指紋も変わる（その時は generate.test.ts の指紋と一緒に作り直す）。
@@ -20,15 +20,15 @@ const fnv = (s) => {
 };
 
 describe('移す前と同じ', () => {
-  it('霧と目の慣れ・自分の姿・岩の断面（40の場合）の指紋', { timeout: 60000 }, async () => {
+  it('霧と目の慣れ・岩の中か（40の場合）の指紋', { timeout: 60000 }, async () => {
     const body = await cameraCases(F, 40);
     caseOut('camera', body);
-    expect([fnv(body), body.length]).toEqual(['b117d656', 78384]);
-    // 場合が中身を通っているか：熱のゆらぎ・水中の見え方・図鑑で目をすぐ合わせる・岩の断面を描く
+    expect([fnv(body), body.length]).toEqual(['dc804780', 45018]);
+    // 場合が中身を通っているか：熱のゆらぎ・水中の見え方・図鑑で目をすぐ合わせる・岩の中の点と外の点
     expect(body).toMatch(/ heat=0\.\d*[1-9]/);
     expect(body).toMatch(/ swim=0\.\d/);
     expect(body).toMatch(/ settle=0$/m);
-    expect(body).toMatch(/^section f0 n=[1-9]/m);
+    expect(body).toMatch(/^rock [01]*1[01]*0|^rock [01]*0[01]*1/m);
   });
 });
 
@@ -46,7 +46,6 @@ describe('目の慣れ', () => {
       expo: vfx.expo,
       flash: vfx.flash,
       gallery: ui.gallery,
-      camMode: ui.camMode,
     };
     try {
       const D = gen(await loadEnv(), 99, PLACES[0]).level;
@@ -57,7 +56,7 @@ describe('目の慣れ', () => {
       player.x = ((pc % MW) + 0.5) * CELL;
       player.z = (Math.floor(pc / MW) + 0.5) * CELL;
       Object.assign(player, { eye: 1.62 });
-      Object.assign(ui, { gallery: null, camMode: 'fps' });
+      Object.assign(ui, { gallery: null });
       const fp = { uniforms: { uExposure: { value: 1 }, uHeat: { value: 0 }, uSwim: { value: 0 } } };
       Object.assign(gfx, { U: { uFogDen: { value: 0.05 } }, finalPass: fp });
       // 1 フレームだけ進めた露出（同じ所から始める）
@@ -98,7 +97,7 @@ describe('目の慣れ', () => {
       Object.assign(player, { x: keep.x, z: keep.z, eye: keep.eye });
       Object.assign(gfx, { U: keep.U, finalPass: keep.fp });
       Object.assign(vfx, { expo: keep.expo, flash: keep.flash });
-      Object.assign(ui, { gallery: keep.gallery, camMode: keep.camMode });
+      Object.assign(ui, { gallery: keep.gallery });
     }
   });
 });

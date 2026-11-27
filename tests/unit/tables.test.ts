@@ -220,7 +220,6 @@ describe('タイトル・文字の並び・シェーダー・小さな関数：�
       NM.BRANCH_HINT,
       NM.LORD_GAL,
       NM.DUMMY_KINDS,
-      NM.AVATAR_TY,
       SND.SND_LV,
       SND.SND_NAME,
       SND.VOWELS,
@@ -231,7 +230,7 @@ describe('タイトル・文字の並び・シェーダー・小さな関数：�
       W.FIRE_TYPES,
       LANTERN,
     ]);
-    expect(fingerprint(v)).toEqual(['74fea312', 3205]);
+    expect(fingerprint(v)).toEqual(['5e53bc19', 3094]);
   });
   it('小さな関数（たくさんの入力で）', () => {
     const out: unknown[] = [];
