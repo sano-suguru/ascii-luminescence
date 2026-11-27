@@ -134,8 +134,13 @@ export function drawMonster(m: Mon, t: number): void {
 }
 /** 生き物を描く（続き）：深みの主の触手とクラーケンの立ち上がる腕、遠い小さな生き物は描かない、照準の先の生き物は明るく描いて足もとに輪を足す */
 export function drawMonster1(m: Mon, t: number): void {
-  if (m.ty.habitat === 'deep' && Math.hypot(m.x - player.x, m.z - player.z) < 44)
+  if (m.ty.habitat === 'deep' && Math.hypot(m.x - player.x, m.z - player.z) < 44) {
+    // 照準の先なら、体と同じく明るく（クラーケンの立ち上がる腕は m.glow を読む）
+    const g0 = m.glow;
+    if (m === ui.aimMon && !m.hidden) m.glow *= 1.9;
     (m.ty.form === 'kraken' ? krakenArms : drawTentacles)(m, t);
+    m.glow = g0;
+  }
   if (m.ty.critter && Math.hypot(m.x - player.x, m.z - player.z) > 30) return;
   if (m === ui.aimMon && !m.hidden) {
     const g0 = m.glow;
@@ -227,7 +232,8 @@ export function drawMonster0(m: Mon, t: number): void {
       case 'tent': {
         const q = p.piv || 0;
         lx += Math.sin(t * 0.8 + q * 0.45 + (p.ti || 0) * 1.7) * 0.012 * q;
-        ly += Math.cos(t * 0.7 + q * 0.5 + (p.ti || 0)) * 0.008 * q;
+        // クラーケンの水の上の腕は、上下には少しだけ（水面より下に沈まないように）
+        ly += Math.cos(t * 0.7 + q * 0.5 + (p.ti || 0)) * 0.008 * q * (ty.form === 'kraken' ? 0.2 : 1);
         break;
       }
       case 'ap': {
