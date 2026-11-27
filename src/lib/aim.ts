@@ -1,8 +1,8 @@
-// 照準と線（もとは src/game/28-camera-player.js の headPos・aimOrigin、20-chant-hits.js の viewDir・groundPoint・reflectDir、18-level-player.js の hittable、
+// 照準と線（もとは src/game/28-camera-player.js の aimOrigin、20-chant-hits.js の viewDir・groundPoint・reflectDir、18-level-player.js の hittable、
 // 22-world-hints.js の handUp・aimPoint・centerPoint・castPoint・handPoint・aimTarget・assistPoint・shotFrame、19-hands-runes.js の drawSwing、
 // 26-spells-hud.js の doorBlock・losClear・beamFrame）：目の位置と見ている向き、攻撃や投げた物が出る所、照準の先の点と生き物、狙いを助ける点、撃つ所と向き、
 // 手の前の点、詠唱の円の位置、武器を振った線、閉じた扉・見通し・地面に落とす所・跳ね返る向き。
-// 状態の入れ物 player・ui（1人称か3人称か。照準の先を探した時刻 aimT と生き物 crossMon は読み書きする）・gfx（カメラの位置。読むだけ）・here（今の階）・clock に頼る。
+// 状態の入れ物 player・ui（照準の先を探した時刻 aimT と生き物 crossMon は読み書きする）・gfx（カメラの位置。読むだけ）・here（今の階）・clock に頼る。
 import { must, nth } from './array.ts';
 import { G } from './glyphs.ts';
 import { dyn } from './particles.ts';
@@ -15,14 +15,10 @@ import { CELL, MH, MW, NCELL, TW, TX } from './world.ts';
 const level = () => must(here.D, '今の階 here.D');
 type V3 = [number, number, number];
 
-/** 頭の位置（3人称の時の、体の頭。転がっている間は低くなる） */
-export function headPos(): V3 {
-  return [player.x, player.eye + 0.05 - (player.roll ? Math.sin((Math.PI * player.roll.t) / 0.32) * 0.55 : 0), player.z];
-}
-// where attacks and thrown things start: the eye in first person, the head of the avatar in third person
-/** 攻撃や投げた物が出る所：1人称では目（カメラ）、3人称では体の頭 */
+// where attacks and thrown things start: the eye
+/** 攻撃や投げた物が出る所：目（カメラ） */
 export function aimOrigin(): V3 {
-  return ui.camMode === 'tps' ? headPos() : [gfx.camera.position.x, gfx.camera.position.y, gfx.camera.position.z];
+  return [gfx.camera.position.x, gfx.camera.position.y, gfx.camera.position.z];
 }
 /** 見ている向き（長さ1） */
 export function viewDir(): V3 {

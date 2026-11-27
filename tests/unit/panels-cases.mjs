@@ -290,7 +290,6 @@ export async function panelCases(makeF, seeds, page, mocked) {
         godMode: false,
         touch: false,
         tapArm: '',
-        camMode: chance(0.5) ? 'tps' : 'fps',
         uiMode: 0,
         perfOn: false,
         invOpen: false,
@@ -385,7 +384,6 @@ export async function panelCases(makeF, seeds, page, mocked) {
             helpT: ui.helpT,
             chronOn: ui.chronOn,
             bookOn: ui.bookOn,
-            camMode: ui.camMode,
             uiMode: ui.uiMode,
             perfOn: ui.perfOn,
             lockTries: ui.lockTries,
@@ -606,7 +604,7 @@ export async function panelCases(makeF, seeds, page, mocked) {
       call('updateLife', 0.3);
       adv.dead = false;
       // ---- 場面：メニュー（マウスと指、全部の項目。確かめ待ちは4秒で戻る）
-      const ITEMS = ['resume', 'pack', 'help', 'chron', 'book', 'cam', 'ui', 'snd', 'look', 'perf', 'new', 'title', 'back'];
+      const ITEMS = ['resume', 'pack', 'help', 'chron', 'book', 'ui', 'snd', 'look', 'perf', 'new', 'title', 'back'];
       for (const touch of [false, true, false]) {
         ui.touch = touch;
         call('setMenu', true);

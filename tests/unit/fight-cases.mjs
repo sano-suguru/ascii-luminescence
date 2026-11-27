@@ -122,7 +122,6 @@ export const NAMES = [
   'graveRows',
   'victory',
   'solidAt',
-  'placeThirdPerson',
   'updatePlayer',
   'updateMonster',
 ];
@@ -436,8 +435,6 @@ export async function fightCases(F, seeds, page) {
         started: true,
         gallery: null,
         godMode: chance(0.1),
-        camMode: chance(0.3) ? 'tps' : 'fps',
-        camPos: chance(0.5) ? null : [0, 2, 0],
         invOpen: false,
         tallMsg: chance(0.3),
         aimT: -9,
@@ -643,7 +640,6 @@ export async function fightCases(F, seeds, page) {
             graveCands: ui.graveCands.map((x) => x.uid),
             graveSel: ui.graveSel,
             tallMsg: ui.tallMsg,
-            camPos: ui.camPos,
           },
           hands: gear.hands,
           bag: gear.bag.map((x) => x.uid),
@@ -1162,7 +1158,6 @@ export async function fightCases(F, seeds, page) {
           const ci = Math.floor(player.z / CELL) * MW + Math.floor(player.x / CELL);
           D.liquid[ci] = LQ_DEEP;
           D.bridge[ci] = 0;
-          ui.camMode = 'fps';
           keys.KeyW = true;
           for (let q = 0; q < 8; q++) call('updatePlayer', 0.25);
           keys.KeyW = false;
@@ -1192,9 +1187,8 @@ export async function fightCases(F, seeds, page) {
         keys.KeyW = false;
         D.webAt = new Map();
       }
-      // ---- 場面：プレイヤーの動き（キー・水・氷・泥・網・突進・転がり・通れない所・生き物に押される・3人称）
+      // ---- 場面：プレイヤーの動き（キー・水・氷・泥・網・突進・転がり・通れない所・生き物に押される）
       tidy();
-      ui.camMode = chance(0.4) ? 'tps' : 'fps';
       for (let st = 0; st < 30; st++) {
         for (const k of ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft'])
           keys[k] = chance(0.3);
@@ -1213,7 +1207,6 @@ export async function fightCases(F, seeds, page) {
         const dt = pick([1 / 30, 0.1, 0.25]);
         call('updatePlayer', dt);
         if (chance(0.2)) call('solidAt', player.x + (r() - 0.5) * 2, player.z + (r() - 0.5) * 2, pick([0.3, 0.5]));
-        if (chance(0.1)) call('placeThirdPerson', dt, r() * 0.1);
         tick(dt);
       }
       // 裂け目の縁・溶岩・鉄格子・結晶に押し当てる

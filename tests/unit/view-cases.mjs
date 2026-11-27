@@ -507,7 +507,6 @@ export async function viewCases(F, seeds) {
         lookPend: '',
         lookPendT: 0,
         lookHTML: chance(0.1) ? 'old' : '',
-        camMode: chance(0.3) ? 'tps' : 'fps',
       });
       if (chance(0.05)) here.trans = { phase: 'out', t: 0, regen: false };
       Object.assign(player, { x: px, z: pz, eye: 1.62, yaw: r() * 6.28, pitch: (r() - 0.5) * 2 });
@@ -674,7 +673,6 @@ export async function viewCases(F, seeds) {
           ],
         ],
         ['updateLights', tm],
-        ['headPos', () => []],
         ['aimOrigin', () => []],
         ['viewDir', () => []],
         ['hittable', () => [someMon() || { ty: {} }]],
@@ -755,7 +753,6 @@ export async function viewCases(F, seeds) {
         player.swingWave = chance(0.2);
         player.swingCol = chance(0.5) ? [r(), r(), r()] : undefined;
         player.netT = chance(0.3) ? pick([0, r() * 3]) : undefined;
-        if (chance(0.2)) ui.camMode = ui.camMode === 'tps' ? 'fps' : 'tps';
         const [name, args, times = 1, aims = false] = pick(ops);
         if (aims || chance(0.3)) {
           const tg = targets();

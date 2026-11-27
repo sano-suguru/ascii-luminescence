@@ -12,7 +12,7 @@ import { dyn, spawn } from '../particles.ts';
 import { clamp } from '../rng.ts';
 import { mpick, mr, sndRand, withMobRand } from '../random.ts';
 import { sEnv } from '../sound.ts';
-import { type Monster, SND, adv, clock, here, player, ui, vfx } from '../state.ts';
+import { type Monster, SND, adv, clock, here, player, vfx } from '../state.ts';
 import { BASE_H, CELL, MW } from '../world.ts';
 import { buildForm } from './build.ts';
 import type { Body } from './kit.ts';
@@ -340,13 +340,12 @@ export function transformShadow(b: Monster & { form: Body }): void {
 }
 
 /**
- * 縦に立つ輪の上の点（その輪の面の中の横の位置 w、前後の位置 z）を、輪の面が目（カメラ。1人称ではプレイヤー、3人称では後ろのカメラ ui.camPos）の方を
+ * 縦に立つ輪の上の点（その輪の面の中の横の位置 w、前後の位置 z）を、輪の面が目（プレイヤー）の方を
  * 向くように回した、体の向きでの x と z。目が真上にいる時は回さない（13-creatures.js の drawMonster0 の halo と同じ回し方）
  */
 const faceEye = (m: Mon, w: number, z: number): readonly [number, number] => {
-  const tps = ui.camMode === 'tps' && ui.camPos,
-    ex = (tps ? (ui.camPos?.[0] ?? player.x) : player.x) - m.x,
-    ez = (tps ? (ui.camPos?.[2] ?? player.z) : player.z) - m.z,
+  const ex = player.x - m.x,
+    ez = player.z - m.z,
     el = Math.hypot(ex, ez),
     cm = Math.cos(m.yaw),
     sm = Math.sin(m.yaw),

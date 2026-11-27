@@ -28,7 +28,7 @@ import { CELL, MW, NCELL, TW, TX } from './world.ts';
 
 /** 手元の武器を描く（1人称で、探索中だけ。t はゲームの時刻） */
 export function drawViewWeapons(t: number): void {
-  if (ui.camMode === 'tps' || !ui.started || adv.dead || !gear.hands || !here.D) return;
+  if (!ui.started || adv.dead || !gear.hands || !here.D) return;
   if (ui.gallery && ui.gallery.mode === 'beast') return;
   const [f, r, u] = handUp(),
     [ex, ey, ez] = aimOrigin();

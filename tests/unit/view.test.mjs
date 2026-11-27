@@ -28,7 +28,6 @@ const NAMES = [
   'look',
   'flicker',
   'updateLights',
-  'headPos',
   'aimOrigin',
   'viewDir',
   'hittable',
@@ -46,7 +45,7 @@ describe('移す前と同じ', () => {
       body = viewText(all),
       calls = all.flatMap((c) => c.calls);
     caseOut('view', body);
-    expect([fnv(body), body.length]).toEqual(['749e429f', 74489454]);
+    expect([fnv(body), body.length]).toEqual(['cceac5ea', 82241299]);
     // 場合が中身を通っているか：18の関数が全部呼ばれ、文字を置き、粒子を出し、どれも止まらない
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.dn > 0).length).toBeGreaterThan(2000);

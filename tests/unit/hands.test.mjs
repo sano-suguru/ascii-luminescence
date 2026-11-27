@@ -24,7 +24,7 @@ describe('指紋', () => {
   it('手元の武器の表と描く処理（400の場合）の指紋', { timeout: 60000 }, async () => {
     const body = await handsCases({ ...H, ...W }, 400);
     caseOut('hands', body);
-    expect([fnv(body), body.length]).toEqual(['ed3858c3', 4006074]);
+    expect([fnv(body), body.length]).toEqual(['0d92268a', 4251322]);
     // 場合が中身を通っているか：描かずに戻る・描く・性質の火花が出る
     expect(body).toMatch(/ dn=0 pN=0 /);
     expect(body).toMatch(/ dn=[1-9]\d* pN=0 /);
@@ -41,7 +41,7 @@ describe('性質の火花', () => {
       hands: gear.hands,
       castSt: gear.castSt,
       player: { ...player },
-      ui: { camMode: ui.camMode, started: ui.started, gallery: ui.gallery },
+      ui: { started: ui.started, gallery: ui.gallery },
       dead: adv.dead,
       cam: gfx.camera,
       time: clock.time,
@@ -52,7 +52,7 @@ describe('性質の火花', () => {
       here.D = { tile: new Uint8Array(NCELL).fill(TF), doorAt: new Int16Array(NCELL).fill(-1), doors: [] };
       Object.assign(player, { x: 50, z: 50, yaw: 0, pitch: 0, eye: 1.6, vx: 0, vz: 0, swing: opt.swing ?? 0, swingH: opt.swingH });
       gfx.camera = { position: { x: 50, y: 1.6, z: 50, set: () => undefined }, rotation: { set: () => undefined }, aspect: 16 / 9 };
-      Object.assign(ui, { camMode: 'fps', started: true, gallery: null });
+      Object.assign(ui, { started: true, gallery: null });
       adv.dead = false;
       clock.time = 10;
       vmKick.L = vmKick.R = -9;

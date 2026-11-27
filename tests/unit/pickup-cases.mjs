@@ -149,7 +149,6 @@ export async function pickupCases(makeF, seeds, page) {
         started: true,
         gallery: null,
         godMode: false,
-        camMode: chance(0.5) ? 'tps' : 'fps',
         invOpen: chance(0.3),
         menuOpen: false,
         altarOpen: false,

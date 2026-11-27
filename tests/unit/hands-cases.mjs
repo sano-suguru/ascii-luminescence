@@ -4,7 +4,7 @@
 // 1つの場合では、プレイヤーを床のマス・マップの外に置き、壁・閉じた扉・開いた扉・燃え尽きた扉・マップの外へ、いろいろな距離で向け（手元の武器が縮む所）、
 // 画面の横と縦の比・両手の武器（全部の種類、武器が無い、表に無い種類、両手持ち）・性質・詠唱（どちらの手か・溜めの途中・弦を引く手が出る 0.05 の前後・溜めきって持ち続ける・要る時間 0）・
 // 振る（swing の 0 から 0.22 の前後と、どちらの手か）・撃った跳ね（vmKick の 0.16 秒の境の前後・0 の時刻・昔）・速さ・時刻を変えて、drawViewWeapons を呼ぶ。
-// 描かずに戻る分かれ道（3人称・始まる前・死んだ・手が無い・階が無い・図鑑で獣を出している間。試しの間では描く）も通す。
+// 描かずに戻る分かれ道（始まる前・死んだ・手が無い・階が無い・図鑑で獣を出している間。試しの間では描く）も通す。
 // 記録するのは、置いた文字の全部（位置・色・文字と大きさ。丸めない）・出した粒子の全部・その後の見た目の乱数1つと、表（形・色・明るさ・握った手）の JSON。
 // テストを .mjs で書くのは、偽のカメラを本物の型に合わせられないため。書き換えた状態は、終わったら元に戻す。
 import { dCol, dPar, dPos, P } from '../../src/lib/particles.ts';
@@ -42,7 +42,7 @@ export async function handsCases(F, seeds) {
     here: { D: here.D },
     player: { ...player },
     gear: { hands: gear.hands, castSt: gear.castSt },
-    ui: { camMode: ui.camMode, started: ui.started, gallery: ui.gallery },
+    ui: { started: ui.started, gallery: ui.gallery },
     adv: { dead: adv.dead },
     clock: { time: clock.time },
     gfx: { camera: gfx.camera },
@@ -172,11 +172,10 @@ export async function handsCases(F, seeds) {
       vmKick.R = kickOf();
       const t = R() < 0.5 ? clock.time : R() * 20;
       // 分かれ道
-      Object.assign(ui, { camMode: 'fps', started: true, gallery: null });
+      Object.assign(ui, { started: true, gallery: null });
       adv.dead = false;
       const br = s % 23;
-      if (br === 1) ui.camMode = 'tps';
-      else if (br === 2) ui.started = false;
+      if (br === 2) ui.started = false;
       else if (br === 3) adv.dead = true;
       else if (br === 4) gear.hands = null;
       else if (br === 5) here.D = null;
