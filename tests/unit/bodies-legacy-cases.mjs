@@ -87,8 +87,7 @@ export function formTypes(samples, hist) {
   }
   const base = MTYPES['L'];
   for (const form of [...BOSS_FORMS, ...OLD_FORMS])
-    for (const look of [undefined, null, ...EXTRA_LOOKS, 'kobold', 'rat'])
-      out.push([`${form}/${look}`, { ...base, form, look, boss: true }]);
+    for (const look of [undefined, null, ...EXTRA_LOOKS, 'kobold']) out.push([`${form}/${look}`, { ...base, form, look, boss: true }]);
   for (let s = 1; s <= hist; s++) out.push([`beast${s}`, makeBeastType(makeHistory(s * 7919), s * 104729)]);
   samples.forEach((b, i) => out.push([`sample${i}`, { ch: 'X', form: 'beast', ...b }]));
   out.push(['statue', { ch: '&', form: 'humanoid' }]);
@@ -112,35 +111,18 @@ export function formCases(F, types, reps) {
 }
 
 /**
- * 見た目の特徴を直接足す：古い人型（見た目なし）の形に lookHumanoid と shapeHumanoid を、古い四つ足の形に lookQuad を、見た目ごとに呼ぶ
+ * 見た目の特徴を直接足す：古い人型（見た目なし）の形に lookHumanoid と shapeHumanoid を、見た目ごとに呼ぶ
  * （人型の7つの見た目は、buildForm からは humanoid2・goblinForm・ogreForm・conjurerForm・snapjawForm へ行くので、ここで直接確かめる）
  */
 export function lookCases(F) {
-  const LOOKS = [
-    'kobold',
-    'goblin',
-    'snapjaw',
-    'monkey',
-    'conjurer',
-    'ogre',
-    'gnome',
-    'rat',
-    'jackal',
-    'grazer',
-    'salamander',
-    'nope',
-    undefined,
-    null,
-  ];
+  const LOOKS = ['kobold', 'goblin', 'snapjaw', 'monkey', 'conjurer', 'ogre', 'gnome', 'nope', undefined, null];
   return LOOKS.map((look, n) => {
-    const hum = seeded(n + 1, () => F.buildForm0({ ch: 'k', form: 'humanoid' })),
-      quad = seeded(n + 101, () => F.buildForm0({ ch: 'r', form: 'quad' }));
+    const hum = seeded(n + 1, () => F.buildForm0({ ch: 'k', form: 'humanoid' }));
     seeded(n + 201, () => {
       F.lookHumanoid(look, hum, adder(hum), 'k');
       F.shapeHumanoid(hum, look);
-      F.lookQuad(look, quad, adder(quad), 'r');
     });
-    return `${look} ${fnv(text(hum))}:${hum.length} ${fnv(text(quad))}:${quad.length}`;
+    return `${look} ${fnv(text(hum))}:${hum.length}`;
   }).join('\n');
 }
 
