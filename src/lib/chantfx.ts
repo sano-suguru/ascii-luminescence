@@ -2,7 +2,7 @@
 // 手へ集まる光、術が飛ぶ道（まっすぐか弧。跳ね返りも）と落ちる所、道の先の生き物を挟む括弧、照準の文字（溜めると性質のルーンが寄り、生き物を捉えると ‹·› になる）と、
 // 詠唱している間に画面をゆっくりにする見た目。
 // 状態の入れ物 gear（溜めている手）・here（今の階と生き物）・player・ui・vfx・gfx（後処理の uniform）・clock に頼る。
-// 呼ぶのは古い JS（30-loop-init.js の tick の段 'castfx' で drawCastFx、段 'cross' で updateCross）。照準の文字は #cross（22-world-hints.js が ui.crossEl に入れる）に書く。
+// 呼ぶのは src/lib/loop.ts の tick（段 'castfx' で drawCastFx、段 'cross' で updateCross）。照準の文字は #cross（22-world-hints.js が ui.crossEl に入れる）に書く。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
 import { lookup, must, nth } from './array.ts';
 import { aimOrigin, aimTarget, beamFrame, castPoint, handUp, reflectDir, shotFrame } from './aim.ts';

@@ -174,7 +174,7 @@ export function victory(): void {
   for (let k = 0; k < 4; k++) setTimeout(() => sChime(player.x, player.z, 0.5), k * 380);
 }
 /**
- * 結果の画面から新しい探索へ（［新しい探索へ］・Enter・R）：結果の画面を消し、暗くして、真っ暗になった時に newRun する（src/game/30-loop-init.js の tick。newRun は src/lib/levels.ts）。
+ * 結果の画面から新しい探索へ（［新しい探索へ］・Enter・R）：結果の画面を消し、暗くして、真っ暗になった時に newRun する（src/lib/loop.ts の tick。newRun は src/lib/levels.ts）。
  * 新しい階を作るのは重く、スマホでは何百ミリ秒も止まるので、止まるのを真っ暗な間にする。階を移る途中なら、今の暗さから続けて暗くする
  */
 export function startNewRun(): void {

@@ -7,12 +7,13 @@ import { describe, expect, it } from 'vitest';
 import { boxFields, compareSources, detectStates, gameUses, legacyDecls, referenced, wasUnused } from '../../tools/same-code.mjs';
 
 /** 古い JS の文 oldJs と新しい .ts の文 newTs を比べ、関数ごとの違いの数・人が確かめる一覧・比べた名前を返す */
-function cmp(oldJs, newTs, imported = new Map()) {
+function cmp(oldJs, newTs, imported = new Map(), importedNow = new Map()) {
   const { results, review, compared } = compareSources(
     legacyDecls(new Map([['01-a.js', oldJs]])),
     [{ file: 'src/lib/a.ts', text: newTs }],
     null,
     imported,
+    importedNow,
   );
   return { n: Object.fromEntries(results.map((r) => [r.name, r.diffs.length])), review, compared: [...compared], results };
 }
@@ -290,6 +291,13 @@ describe('違うと言う物', () => {
   it('違いの場所（古い文と新しい文の行）を出す', () => {
     const r = cmp(`function f(a){\n  g(a);\n  h(a*2);\n}`, `export function f(a) {\n  g(a);\n  h(a * 3);\n}`);
     expect(r.results[0].diffs).toEqual([{ old: '2', new: '3', oldLine: 3, newLine: 3 }]);
+  });
+  it('古い JS が今の imports.mjs で別のファイルから読んでいる名前は、このファイルの同じ名前の物とは比べない', () => {
+    const old = `function frame(t){ return t+1; }`,
+      ts = `const frame = (s: string) => '<b>' + s + '</b>';\nexport function box(s: string) { return frame(s); }\n`;
+    expect(cmp(old, ts, new Map(), new Map([['frame', 'src/lib/loop.ts']])).compared).toEqual([]);
+    // 読んでいるファイルの物なら比べる
+    expect(cmp(old, ts, new Map(), new Map([['frame', 'src/lib/a.ts']])).n).toEqual({ frame: 1 });
   });
   it('古い JS に無い名前は比べない', () => {
     expect(cmp(`function f(){}`, `export function f() {}\nexport function g() { return 1; }`).compared).toEqual(['f']);

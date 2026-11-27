@@ -8,7 +8,7 @@ ui.arrowCv=document.getElementById('arrows'); ui.arrowCtx=ui.arrowCv?ui.arrowCv.
 // (reading it right after the status or the log was written makes the browser lay the page out again). Without ResizeObserver it is read every time
 ui.hotbarWatch=!!(ui.hotbarEl&&window.ResizeObserver);
 if(ui.hotbarWatch){ new ResizeObserver(()=>{ ui.hotbarTop=null; }).observe(ui.hotbarEl); addEventListener('resize',()=>{ ui.hotbarTop=null; }); }
-// 階の場所ごとの空気 updateSectionAir は src/lib/camera.ts（30-loop-init.js の tick の段 'lights' が、ゲームの時間で呼ぶ）
+// 階の場所ごとの空気 updateSectionAir は src/lib/camera.ts（src/lib/loop.ts の tick の段 'lights' が、ゲームの時間で呼ぶ）
 // 墓を描く drawGraves と、床のルーン・台・祭壇・石碑と術の跡を描く drawRunesWorld は src/lib/fixtures.ts（src/game/imports.mjs で読む）
 
 // ---------------------------------------------------------------- 詠唱の見た目

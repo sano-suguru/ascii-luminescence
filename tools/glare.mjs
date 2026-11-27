@@ -4,7 +4,7 @@
 //   pnpm glare ゴブリン ヘビ       図鑑の名前（表の鍵でもよい）で選ぶ
 //   --weapons blade,bolt           使う武器（RUNE_DEF の攻撃の鍵）
 //   --scene 1:202                  写す階（深さ:シード）
-//   --hide hands,swing             tick の段（src/game/30-loop-init.js の inPhase の名前。生き物の体は 'mob draw'、剣の波は飛ぶ物の 'projs'）を止めた時も撃って写し、
+//   --hide hands,swing             tick の段（src/lib/loop.ts の inPhase の名前。生き物の体は 'mob draw'、剣の波は飛ぶ物の 'projs'）を止めた時も撃って写し、
 //                                  止めない時と並べて出す（何が光っているかを切り分ける時に。__test.skipPhase）
 //   --out <ディレクトリ>           置き場所（既定 tests/out/glare/）
 // 写す物：生き物をプレイヤーの前に置いて照準を合わせ（照準の先は明るく描く。tests/lib.mjs の aimAt）、当てる前の1枚を写す。それから右手で撃ち（strike）、
