@@ -300,7 +300,7 @@ export function drawMonster0(m: Mon, t: number): void {
       case 'eelw':
         lx += Math.sin(t * 4 - p.z * 3.5 + m.ph) * 0.09 * (0.4 + Math.max(0, 0.8 - p.z));
         break;
-      // 尾（サラマンダー）：付け根では動かず、先ほど大きく左右に振れる（piv は付け根からの距離）。歩く時は体と一緒に上下する
+      // 尾（サラマンダー・ネズミ）：付け根では動かず、先ほど大きく左右に振れる（piv は付け根からの距離）。歩く時は体と一緒に上下する
       case 'tailw':
         lx += tailSwish(m, t, p.piv);
         ly += bob;
@@ -317,10 +317,12 @@ export function drawMonster0(m: Mon, t: number): void {
           lz += Math.cos(t * 37 + p.ph) * 0.012;
         }
         break;
+      // 鼻先とひげ（ネズミ）：止まっている間はくんくん前後に動き、歩く時は体と一緒に上下する
       case 'snout':
         if (!(m.moving > 0.3)) {
           lz += Math.sin(t * 14 + m.ph) * 0.012;
         }
+        ly += bob;
         break;
       case 'graze': {
         const g2 = Math.max(0, Math.sin(t * 0.9 + m.ph));
