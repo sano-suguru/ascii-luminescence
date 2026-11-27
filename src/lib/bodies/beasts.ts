@@ -2183,7 +2183,7 @@ export function conjurerForm(ty: BodyType): Body {
   return pts;
 }
 
-/** スナップジョーの胴（腰から肩まで）の形。f は腰 0 から肩 1。胴の点と、斑点・たてがみ・腰布は、この同じ式から置く */
+/** スナップジョーの胴（腰から肩まで）の形。f は腰 0 から肩 1。胴の点と、たてがみ・腰布・首飾りは、この同じ式から置く */
 export const SNAP_TORSO = {
   y0: 0.66,
   y1: 1.26,
@@ -2215,31 +2215,25 @@ export const SNAP_MANE: readonly (readonly [number, number])[] = [
 ];
 /** スナップジョーの頭（楕円）の真ん中 c と半径 r。頭の点と、目・耳の位置を、同じ式から出す */
 export const SNAP_HEAD = { c: [0, 1.37, 0.55], r: [0.13, 0.12, 0.13] } as const satisfies { c: Vec3; r: Vec3 };
-/** スナップジョーの色（毛の色は種類の色 ty.col） */
+/** スナップジョーの色（毛の色は種類の色 ty.col）。部分ごとに、毛と色みか明るさがはっきり違う色にする（似た茶色ばかりだと、体が一つの塊に見える） */
 export const SNAP_COL = {
-  /** 斑点・たてがみ・鼻の先：焦げ茶 */
-  dark: [0.14, 0.08, 0.05],
-  /** 鼻づら：くすんだ茶 */
-  muzzle: [0.24, 0.16, 0.11],
-  /** 腹とあごの下：薄い砂色 */
-  pale: [1, 0.92, 0.74],
-  /** 牙と爪（光のにじみで白い塊にならないように、少しくすませる） */
-  bone: [0.8, 0.74, 0.6],
-  /** 骨の棍棒（体より目立たないように、牙より暗い） */
-  club: [0.58, 0.5, 0.38],
+  /** たてがみ・首の襟・鼻づら・耳・前腕・すね・足・尾の先・棍棒・槍の柄：黒に近い灰（茶の色みを抜き、毛と明るさで分ける） */
+  dark: [0.16, 0.14, 0.16],
+  /** 腰布：スナップジョーは赤（砂色の毛と分ける） */
+  cloth: [0.8, 0.18, 0.12],
+  /** 腰布：見張りは青緑（赤茶の毛と分ける） */
+  clothSentry: [0.15, 0.55, 0.6],
+  /** 牙・爪・首飾り（光のにじみで白い塊にならないように、少しくすませる） */
+  bone: [0.78, 0.72, 0.58],
+  /** 槍の穂：石の灰色 */
+  stone: [0.6, 0.64, 0.7],
   /** 目：琥珀 */
   eye: [1, 0.72, 0.25],
-  /** 腰布 */
-  cloth: [0.5, 0.32, 0.2],
-  /** 槍の柄 */
-  wood: [0.55, 0.4, 0.24],
-  /** 槍の穂（石） */
-  stone: [0.72, 0.74, 0.78],
 } as const satisfies Record<string, Color>;
 
 // snapjaw: a hyena-headed beast-man. Hunched: high shoulders with a dark mane down the neck and back, a low waist,
-// spotted fur. A long dark muzzle with the jaw hanging open over its teeth, round ears, long arms ending in claws,
-// and beast legs bent back at the hock. A bone club; the sentry carries a spear instead, and a necklace of teeth
+// tawny fur. A long dark muzzle with the jaw hanging open over its teeth, round ears, long arms ending in claws,
+// and beast legs bent back at the hock. A wooden club; the sentry carries a spear instead, and a necklace of teeth
 export function snapjawForm(ty: BodyType, sentry: boolean): Body {
   // 人ほどの体なので、点を細かくする（文字の大きさを決める scale を、種類の 1.6 倍にする）
   const { S, pts, put, lit, stroke, ell, tube } = q3({ scale: ty.scale * 1.6 }),
@@ -2255,13 +2249,11 @@ export function snapjawForm(ty: BodyType, sentry: boolean): Body {
     ell(...a);
     for (let i = n0; i < pts.length; i++) Object.assign(nth(pts, i), ex);
   };
-  // 斑点の模様（胴の表面の f と角 a で決める）
-  const spot = (f: number, a: number): boolean => Math.sin(a * 5 + f * 13) * Math.sin(a * 3 - f * 11 + 1) > 0.5;
   // 脚：太ももは前へ、すねは後ろへ、かかとから先の長い足（獣の脚）
   for (const sd of [-1, 1]) {
     const part = sd < 0 ? 'legL' : 'legR';
     tube([sd * 0.12, 0.72, 0], [sd * 0.18, 0.46, 0.12], 0.1, 0.07, HAIR, FURC, part, HIP, 0.15);
-    tube([sd * 0.18, 0.46, 0.12], [sd * 0.17, 0.2, -0.05], 0.065, 0.045, HAIR, C.muzzle, part, HIP);
+    tube([sd * 0.18, 0.46, 0.12], [sd * 0.17, 0.2, -0.05], 0.065, 0.045, HAIR, C.dark, part, HIP);
     tube([sd * 0.17, 0.2, -0.05], [sd * 0.17, 0.05, 0.1], 0.045, 0.04, HAIR, C.dark, part, HIP);
     for (const o of [-1, 0, 1]) lit(sd * 0.17 + o * 0.035, 0.02, 0.16, 'v', 0.8, 0.85, C.bone, part, HIP);
   }
@@ -2274,10 +2266,8 @@ export function snapjawForm(ty: BodyType, sentry: boolean): Body {
         n = Math.max(8, Math.round((2 * Math.PI * Math.max(T.rx(f), T.rz(f, true))) / st));
       for (let k = 0; k < n; k++) {
         const a = (k / n) * Math.PI * 2 + j * 0.4,
-          p = snapTorsoAt(f, a),
-          s = Math.sin(a),
-          col = s > 0.8 && f < 0.45 ? C.pale : spot(f, a) ? C.dark : FURC;
-        put(p.x, p.y, p.z, p.nx, p.ny, p.nz, HAIR, col);
+          p = snapTorsoAt(f, a);
+        put(p.x, p.y, p.z, p.nx, p.ny, p.nz, HAIR, FURC);
       }
     }
   }
@@ -2304,11 +2294,11 @@ export function snapjawForm(ty: BodyType, sentry: boolean): Body {
     lit(Math.cos(a) * 0.15, 1.27 + 0.03 * Math.sin(a), 0.31 + Math.sin(a) * 0.12, '%', 1.1, 1.0, C.dark, 'head');
   }
   // 頭：幅の広い頭と、長く太い暗い鼻づら（先は焦げ茶）。下あごは開いて垂れ、牙が見える
-  ell(H.c, H.r[0], H.r[1], H.r[2], HAIR, (_x, ny) => (ny < -0.4 ? C.pale : FURC), 'head');
-  tube([0, hy - 0.01, hz + 0.1], [0, hy - 0.07, hz + 0.3], 0.08, 0.055, HAIR, C.muzzle, 'head');
+  ell(H.c, H.r[0], H.r[1], H.r[2], HAIR, () => FURC, 'head');
+  tube([0, hy - 0.01, hz + 0.1], [0, hy - 0.07, hz + 0.3], 0.08, 0.055, HAIR, C.dark, 'head');
   tube([0, hy - 0.07, hz + 0.3], [0, hy - 0.08, hz + 0.38], 0.055, 0.045, HAIR, C.dark, 'head');
   lit(0, hy - 0.06, hz + 0.42, 'o', 0.7, 0.9, C.dark, 'head');
-  tube([0, hy - 0.12, hz + 0.06], [0, hy - 0.24, hz + 0.26], 0.05, 0.035, HAIR, C.muzzle, 'head');
+  tube([0, hy - 0.12, hz + 0.06], [0, hy - 0.24, hz + 0.26], 0.05, 0.035, HAIR, C.dark, 'head');
   // 牙：上あごの下の縁と、下あごの上の縁
   for (const o of [-1, 1]) {
     lit(o * 0.035, hy - 0.11, hz + 0.18, 'v', 0.7, 0.9, C.bone, 'head');
@@ -2325,7 +2315,7 @@ export function snapjawForm(ty: BodyType, sentry: boolean): Body {
     lit(H.c[0] + nx * H.r[0] * 1.08, hy + ny * H.r[1] * 1.08, hz + nz * H.r[2] * 1.08, '.', 1, 1.4, C.eye, 'head');
   }
   // 丸い耳：頭の上の左右に立つ。暗い色（明るい頭の上で、耳の形が見える）
-  for (const sd of [-1, 1]) lit(sd * 0.11, hy + 0.15, hz - 0.05, 'n', 1.1, 1.2, C.muzzle, 'head');
+  for (const sd of [-1, 1]) lit(sd * 0.11, hy + 0.15, hz - 0.05, 'n', 1.1, 1.2, C.dark, 'head');
   // たてがみ：頭の後ろから、首の上と肩の上を通って、背の真ん中まで（SNAP_MANE の線）。線から上と後ろへ立てる
   for (let i = 0; i + 1 < SNAP_MANE.length; i++) {
     const a = nth(SNAP_MANE, i),
@@ -2348,14 +2338,15 @@ export function snapjawForm(ty: BodyType, sentry: boolean): Body {
       }
     }
   }
-  // 腰布：腰のまわりの帯と、前に垂れる布
+  // 腰布：腰のまわりの帯と、前に垂れる布（胴と脚の間に、毛と違う色の帯を入れる）
+  const CLOTH = sentry ? C.clothSentry : C.cloth;
   for (let k = 0; k < 16; k++) {
     const a = (k / 16) * Math.PI * 2,
       p = snapTorsoAt(0.05, a);
-    lit(p.x * 1.12, p.y, p.z * 1.12, '=', 1, 1.0, C.cloth);
+    lit(p.x * 1.12, p.y, p.z * 1.12, '=', 1, 1.0, CLOTH);
   }
   for (let y = 0.62; y >= 0.44; y -= S * 0.7)
-    for (const x of [-0.06, 0, 0.06]) lit(x, y, T.rz(0, false) + 0.03 + (0.66 - y) * 0.2, '#', 1, 0.9, C.cloth);
+    for (const x of [-0.06, 0, 0.06]) lit(x, y, T.rz(0, false) + 0.03 + (0.66 - y) * 0.2, '#', 1, 0.9, CLOTH);
   // 短い尾（毛の房）
   for (let k = 0; k < 4; k++) {
     const f = k / 3;
@@ -2365,17 +2356,17 @@ export function snapjawForm(ty: BodyType, sentry: boolean): Body {
   for (const sd of [-1, 1]) {
     const part = sd < 0 ? 'armL' : 'armR';
     tube([sd * 0.28, 1.2, 0.22], [sd * 0.38, 0.95, 0.3], 0.08, 0.06, HAIR, FURC, part, SHOULDER, 0.1);
-    tube([sd * 0.38, 0.95, 0.3], [sd * 0.35, 0.7, 0.42], 0.06, 0.05, HAIR, C.muzzle, part, SHOULDER);
+    tube([sd * 0.38, 0.95, 0.3], [sd * 0.35, 0.7, 0.42], 0.06, 0.05, HAIR, C.dark, part, SHOULDER);
     ellAt(SHOULDER, [sd * 0.35, 0.66, 0.44], 0.06, 0.06, 0.06, HAIR, () => C.dark, part);
     for (const o of [-1, 0, 1]) lit(sd * 0.35 + o * 0.03, 0.58, 0.47, '|', 0.7, 0.85, C.bone, part, SHOULDER);
   }
   if (!sentry) {
-    // 骨の棍棒：右手に握り、先は前の下へ
-    tube([0.35, 0.68, 0.46], [0.38, 0.34, 0.74], 0.03, 0.035, HAIR, C.club, 'armR', SHOULDER);
-    ellAt(SHOULDER, [0.385, 0.3, 0.77], 0.07, 0.06, 0.07, HAIR, () => C.club, 'armR');
+    // 木の棍棒：右手に握り、先は前の下へ（焦げ茶。明るい色だと、体より棒が目立つ）
+    tube([0.35, 0.68, 0.46], [0.38, 0.34, 0.74], 0.03, 0.035, HAIR, C.dark, 'armR', SHOULDER);
+    ellAt(SHOULDER, [0.385, 0.3, 0.77], 0.07, 0.06, 0.07, HAIR, () => C.dark, 'armR');
   } else {
     // 槍：右手に立てて持つ。石の穂
-    stroke([0.35, 0.42, 0.47], [0.35, 1.62, 0.47], C.wood, 1.0, 0.9, 'armR', SHOULDER);
+    stroke([0.35, 0.42, 0.47], [0.35, 1.62, 0.47], C.dark, 1.0, 0.9, 'armR', SHOULDER);
     lit(0.35, 1.68, 0.47, 'A', 1, 1.2, C.stone, 'armR', SHOULDER);
     lit(0.35, 1.76, 0.47, '^', 1, 1.3, C.stone, 'armR', SHOULDER);
     // 牙の首飾り：首の根もとの前に

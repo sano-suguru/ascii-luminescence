@@ -266,17 +266,22 @@ describe('生き物の形', () => {
           expect(k).toBeGreaterThan(1.03);
           expect(k).toBeLessThan(1.2);
         }
-        // たてがみの根もと（胴の高さにある、背の真ん中の暗い #）
-        const mane = b.filter((p) => p.part === 'body' && p.col === C.dark && p.g === G('#') && p.y < T.y1);
+        // たてがみの根もと（胴の高さにある、背中の側の暗い #。胴の真ん中より後ろの物だけ）
+        const mane = b.filter(
+          (p) => p.part === 'body' && p.col === C.dark && p.g === G('#') && p.y < T.y1 && p.z < T.z((p.y - T.y0) / (T.y1 - T.y0)),
+        );
         expect(mane.length).toBeGreaterThanOrEqual(4);
         for (const p of mane) {
           expect(out(p)).toBeGreaterThan(0.005);
           expect(out(p)).toBeLessThan(0.05);
         }
-        // 槍（石の穂）は見張りだけ。頭より上に出る
-        const spear = b.filter((p) => p.col === C.stone);
-        expect(spear.length).toBe(sentry ? 2 : 0);
-        for (const p of spear) expect(p.y).toBeGreaterThan(H.c[1] + H.r[1]);
+        // 槍は見張りだけ：右腕の点が頭より上に出る
+        const spear = b.filter((p) => p.part === 'armR' && p.y > H.c[1] + H.r[1]);
+        expect(spear.length > 0).toBe(sentry);
+        // 腰布の色は、見張りとそうでない物で違う。槍の穂（石）は見張りだけ
+        expect(b.some((p) => p.col === (sentry ? C.clothSentry : C.cloth))).toBe(true);
+        expect(b.some((p) => p.col === (sentry ? C.cloth : C.clothSentry))).toBe(false);
+        expect(b.filter((p) => p.col === C.stone).length).toBe(sentry ? 2 : 0);
       }
   });
   it('クラーケン：水面より下に点が無く、目と斑点は頭の表面のすぐ外（埋もれず、浮かない）。明るさ b は 1.8 まで。腕は揺れる触手（tent）だけ', () => {
