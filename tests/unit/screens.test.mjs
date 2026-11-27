@@ -10,7 +10,7 @@ import * as PT from '../../src/lib/particles.ts';
 import * as SC from '../../src/lib/screens.ts';
 import * as ST from '../../src/lib/status.ts';
 import { G } from '../../src/lib/glyphs.ts';
-import { adv, msgs, ui } from '../../src/lib/state.ts';
+import { SND, adv, msgs, ui } from '../../src/lib/state.ts';
 import { fakeScreen, particleCases, screenCases } from './screens-cases.mjs';
 import { caseOut } from './case-out.mjs';
 
@@ -59,7 +59,7 @@ describe('移す前と同じ', () => {
       cases.some((c) => c.calls.some((x) => x.grew === 16) && c.log.some((e) => e[1] === 'start')),
     ]).toEqual([true, true, true, true]);
     caseOut('screens-2', all);
-    expect([fnv(all), all.length]).toEqual(['ef3016e5', 763699]);
+    expect([fnv(all), all.length]).toEqual(['3a50cb68', 765115]);
   });
 });
 
@@ -230,6 +230,36 @@ describe('マウスを捕まえるのに失敗した時（lockFailed）', () => 
     } finally {
       Object.assign(ui, keep);
       adv.dead = dead;
+    }
+  });
+});
+
+describe('音量の段を残す（al_snd）', () => {
+  it('残した段を読み、無い・表に無い・読めない時は初めの段のまま（回した時に書くのは、上の指紋の stored が見る）', () => {
+    const keepLs = globalThis.localStorage,
+      keep = { lv: SND.lv, on: SND.on };
+    const store = new Map();
+    globalThis.localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)) };
+    try {
+      const read = (v) => {
+        Object.assign(SND, { lv: 1, on: true });
+        if (v === undefined) store.delete('al_snd');
+        else store.set('al_snd', v);
+        SC.loadSndLevel();
+        return [SND.lv, SND.on];
+      };
+      expect(read('3')).toEqual([3, false]);
+      expect(read('0')).toEqual([0, true]);
+      for (const v of [undefined, '', '4', '-1', '1.5', 'x']) expect(read(v)).toEqual([1, true]);
+      globalThis.localStorage = {
+        getItem: () => {
+          throw new Error('SecurityError');
+        },
+      };
+      expect(read('3')).toEqual([1, true]);
+    } finally {
+      globalThis.localStorage = keepLs;
+      Object.assign(SND, keep);
     }
   });
 });

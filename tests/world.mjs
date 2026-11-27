@@ -20,8 +20,11 @@
 //  16. 宝物庫の落石は、ゲームの時刻で進む（溜めている間は半分の速さ、止まっている間は進まない）。階段を下りて暗くなり始めたら進まず、階を移ると消える
 //  17. 倒れた生き物は崩れて、体の文字が床に積もる（残す文字の数の上限・光とみなしてすぐ消す文字は半分より少ない・床より下に沈まない・高い塔にならない・倒れた所の近く）。しばらくすると全部消え、
 //      同時にたくさん倒れても、崩れる体の数は上限（12）を越えて残らない
+//  18. 敵に攻撃を当てても、画面が白く飛ばない（トロルに照準を合わせ、すぐ近くで小剣を当てる。光っている間の画面全体の眩しい画素が 25% 以下）。
+//      当たった光は残っている（体の範囲の明るさが、当てる前より 1.1 倍を越えて上がる）。数え方は tools/glare.mjs（pnpm glare）と同じ
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
-import { withBrowser, newPage, openTest, advance } from './lib.mjs';
+import { PNG } from 'pngjs';
+import { withBrowser, newPage, openTest, advance, frames } from './lib.mjs';
 
 const errs = [];
 
@@ -638,6 +641,97 @@ async function debrisChecks(pg, base) {
   else if (many[1] > 12) errs.push(`17：同時に14体倒すと、3秒たっても崩れる体が ${many[1]} 個残る（上限は12）`);
 }
 
+// 18：敵に攻撃を当てた時の眩しさ（src/lib/bodies/draw.ts の glowBoost・src/lib/fx.ts の drawWave）
+async function glareChecks(pg, base) {
+  await openTest(pg, base, 'seed=202&depth=1&god=1');
+  await advance(pg, 2);
+  // トロルを 1.8 マスほど先の見えている床に置き、小剣を右手に持つ
+  const ok = await pg.evaluate(() => {
+    __test.equip('R', 'blade');
+    __test.clearAll();
+    __test.fov();
+    const s = __test.state(),
+      { w, h } = __test.size();
+    let best = null;
+    for (let i = 0; i < w * h; i++) {
+      const c = __test.cell(i);
+      if (!c.floor || !c.seen) continue;
+      const d = Math.abs(Math.hypot(c.x - s.pos[0], c.z - s.pos[1]) - 1.8);
+      if (!best || d < best[0]) best = [d, i];
+    }
+    if (!best) return false;
+    __test.summon('T', best[1]);
+    return true;
+  });
+  if (!ok) {
+    errs.push('18：トロルを置く床が無い（テストの前提が崩れた）');
+    return;
+  }
+  const aim = () =>
+    pg.evaluate(() => {
+      const m = __test.state().monsters[0],
+        v = __test.monsterView(m[0]);
+      dbg.look(m[1], v && v.world ? (v.world.y0 + v.world.y1) / 2 : 0.5, m[2]);
+      return m[3];
+    });
+  // 照準の先の生き物は 0.1 秒ごとに探し直すので、照準の先になるまで進める
+  let aimed = false;
+  for (let k = 0; k < 12 && !aimed; k++) {
+    await aim();
+    await advance(pg, 1 / 30);
+    aimed = await pg.evaluate(() => __test.mob(0).aimed);
+  }
+  if (!aimed) {
+    errs.push('18：トロルが照準の先にならない（テストの前提が崩れた）');
+    return;
+  }
+  const hp0 = await aim();
+  await frames(pg, 1);
+  const box = await pg.evaluate(() => __test.monsterView(__test.state().monsters[0][0])?.screen ?? null);
+  if (!box) {
+    errs.push('18：トロルの体が描かれていない（テストの前提が崩れた）');
+    return;
+  }
+  const before = PNG.sync.read(await pg.screenshot({ timeout: 90000 }));
+  // 小剣は押した時に当たる。当たった次のフレームを描いて写す（光るのは 0.2 秒ほど）
+  await pg.evaluate(() => __test.press('R'));
+  const hp1 = await pg.evaluate(() => __test.state().monsters[0][3]);
+  await pg.evaluate(() => __test.release('R'));
+  if (!(hp1 < hp0)) {
+    errs.push(`18：小剣がトロルに当たらない（テストの前提が崩れた。体力 ${hp0} → ${hp1}）`);
+    return;
+  }
+  await frames(pg, 1);
+  const lit = await pg.evaluate(() => __test.mob(0).hitT);
+  const hit = PNG.sync.read(await pg.screenshot({ timeout: 90000 }));
+  if (!(lit > 0)) {
+    errs.push(`18：写した時に、トロルが当たって光っていない（テストの前提が崩れた。hitT ${lit}）`);
+    return;
+  }
+  const lum = (png, i) => 0.2126 * png.data[i] + 0.7152 * png.data[i + 1] + 0.0722 * png.data[i + 2];
+  const bright = (png) => {
+    let n = 0;
+    for (let i = 0; i < png.data.length; i += 4) if (lum(png, i) >= 200) n++;
+    return n / (png.width * png.height);
+  };
+  const mean = (png) => {
+    let s = 0,
+      n = 0;
+    for (let y = box.y0; y < box.y1; y++)
+      for (let x = box.x0; x < box.x1; x++) {
+        s += lum(png, (y * png.width + x) * 4);
+        n++;
+      }
+    return n ? s / n : 0;
+  };
+  const scr = bright(hit),
+    m0 = mean(before),
+    m1 = mean(hit);
+  if (scr > 0.25) errs.push(`18：トロルに小剣を当てると、画面の ${(scr * 100).toFixed(1)}% が眩しい画素になる（上限 25%）`);
+  if (!(m1 > m0 * 1.1)) errs.push(`18：トロルに小剣を当てても、体が明るくならない（明るさの平均 ${m0.toFixed(1)} → ${m1.toFixed(1)}）`);
+  console.log(`18：当たった時の画面の眩しい画素 ${(scr * 100).toFixed(1)}%、体の明るさ ${m0.toFixed(1)} → ${m1.toFixed(1)}`);
+}
+
 await withBrowser(async ({ browser, base }) => {
   const pg = await newPage(browser, errs);
   await doorChecks(pg, base);
@@ -652,6 +746,7 @@ await withBrowser(async ({ browser, base }) => {
   await knockLavaChecks(pg, base);
   await rockfallChecks(pg, base);
   await debrisChecks(pg, base);
+  await glareChecks(pg, base);
 });
 console.log('page errors:', errs.length ? errs : 'none');
 process.exit(errs.length ? 1 : 0);
