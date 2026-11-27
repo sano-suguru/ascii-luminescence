@@ -51,12 +51,23 @@ await withBrowser(async ({ browser, base }) => {
     polling: 500,
   });
   console.log(`台本が終わるまで ${((Date.now() - t0) / 1000).toFixed(0)} 秒`);
-  // 終わった印は、10秒ごとの書き込みを待たずに、その場で書く（終わってすぐページを閉じても残るように）。readDiag で書かせる前に、書いた物を見る
-  const doneWritten = await pg
-    .waitForFunction(() => (window.__sets || []).some((x) => x.d?.auto?.done), null, { timeout: 2000, polling: 100 })
-    .then(() => true)
-    .catch(() => false);
-  if (!doneWritten) errs.push('自動で試し終えたのに、終わった印をすぐ書いていない');
+  // 終わった印は、10秒ごとの書き込みを待たずに、その場で書く（終わってすぐページを閉じても残るように）。readDiag で書かせる前に、書いた物を見る。
+  // 実時間では比べない（CI では1フレームに数秒かかることがある）。終わった印を書いた最初の記録で、終わったできごとの時刻と書いた時刻（どちらも記録の時計）を比べる
+  // （その場で書けば同じ見回りの中なので同じ。10秒ごとの書き込みまで待つと、たいてい離れる）
+  const doneGap = await pg
+    .waitForFunction(
+      () => {
+        const x = (window.__sets || []).find((x) => x.d?.auto?.done)?.d;
+        const ev = x?.events.findLast((e) => e.k === 'auto' && e.v === 'done');
+        return x && ev ? { gap: x.saved - ev.t } : null; // 0 は偽なので、オブジェクトで返す
+      },
+      null,
+      { timeout: 60000, polling: 200 },
+    )
+    .then(async (h) => (await h.jsonValue()).gap)
+    .catch(() => null);
+  if (doneGap === null || doneGap > 0.2)
+    errs.push(`自動で試し終えたのに、終わった印をすぐ書いていない（終わってから書くまで ${doneGap} 秒）`);
   const rec = await readDiag(pg);
   const a = rec?.auto;
   if (!a) errs.push('診断の記録に auto の欄が無い');
