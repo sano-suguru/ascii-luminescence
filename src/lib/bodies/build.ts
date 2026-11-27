@@ -558,6 +558,7 @@ export function buildForm0(ty: FormType): Body {
     const F = BY_FORM[ty.form];
     if (F) return F(ty);
   }
+  // 主（boss）の四つ足は、見た目があっても、下の古い四つ足の形（見た目の特徴は足さない）になる。今の主に四つ足はいない
   if (ty.form === 'quad') {
     const F = ty.look === undefined || ty.look === null ? undefined : BY_QUAD_LOOK[ty.look];
     if (F && !ty.boss) return F(ty);
