@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 自動で遊ぶ（?auto。src/lib/auto.ts）のテスト：短い台本（?auto=quick）を、テスト用モードでなく（本物の時計で）流し、
+// 自動で試す（?auto。src/lib/auto.ts）のテスト：短い台本（?auto=quick）を、テスト用モードでなく（本物の時計で）流し、
 // ページのエラーが無い・全部の段を通る・うまくいかなかった段が無い・診断の記録の欄 auto と、段の名前のできごとが書かれる・
 // ゲームの保存（al_ で始まる名前）を localStorage に書かない（死んだ時の伝承・視点・表示の切り替えなども）・ほかの名前は書ける、を確かめる。
 // 流している途中に、レベルアップの画面を開かせ（開発用モードの dbg.exp。1つ目を選んで進むか）、ページが25秒隠れたことにする（隠れていた間を、
@@ -13,12 +13,12 @@ await withBrowser(async ({ browser, base }) => {
   // 本物の端末（iPhone の横向き、claude.ai のアプリの中）と同じ大きさ
   const pg = await newPage(browser, errs, { width: 750, height: 312 });
   await pg.addInitScript(fakeClaude, true);
-  // 前から残っている記録（自動で遊んでも変わらないはず）
+  // 前から残っている記録（自動で試しても変わらないはず）
   await pg.addInitScript(() => {
     if (!sessionStorage.getItem('seeded')) {
       sessionStorage.setItem('seeded', '1');
       localStorage.setItem('al_cam', 'fps');
-      // 開発用モード（途中でレベルアップさせる dbg.exp のため。自動で遊ぶ間も、オンにはしない）
+      // 開発用モード（途中でレベルアップさせる dbg.exp のため。自動で試す間も、オンにはしない）
       localStorage.setItem('al_dev', '1');
     }
   });
@@ -46,7 +46,7 @@ await withBrowser(async ({ browser, base }) => {
     delete document.visibilityState;
     delete document.hidden;
   });
-  await pg.waitForFunction(() => document.getElementById('autobar')?.textContent?.includes('遊び終えた'), null, {
+  await pg.waitForFunction(() => document.getElementById('autobar')?.textContent?.includes('試し終えた'), null, {
     timeout: 300000,
     polling: 500,
   });
@@ -67,9 +67,10 @@ await withBrowser(async ({ browser, base }) => {
       if (s.miss) errs.push(`段 ${s.k}：${s.miss}`);
       if (!(s.frames > 0)) errs.push(`段 ${s.k}：フレームを数えていない`);
     }
-    const walk = a.steps.find((s) => s.k === 'walk'),
-      look = a.steps.find((s) => s.k === 'look');
-    if (!(walk?.shut >= 1)) errs.push(`レベルアップの画面を閉じていない（${JSON.stringify(walk)}）`);
+    const look = a.steps.find((s) => s.k === 'look'),
+      // 開かせたのは歩く段の間だが、遅い時は、画面が開く前に次の段に移ることがあるので、どの段で閉じてもよい
+      shut = a.steps.reduce((n, s) => n + (s.shut ?? 0), 0);
+    if (!(shut >= 1)) errs.push(`レベルアップの画面を閉じていない（${JSON.stringify(a.steps)}）`);
     if (look?.waited !== 'hidden' || !(look.worst < 20000)) errs.push(`隠れていた間を、フレームの長さに数えた（${JSON.stringify(look)}）`);
     // できごとは新しい50件だけ残るので、終わりのほうの段を見る
     const ev = rec.events.filter((e) => e.k === 'auto').map((e) => e.v);
@@ -85,17 +86,24 @@ await withBrowser(async ({ browser, base }) => {
   if (other !== '1') errs.push('ゲームの物でない名前まで、localStorage に書けない');
   await pg.close();
 
+  // タイトルの［自動で試す］：持ち主なら、持ち主と分かった後に［開発用モード］の真下に出て、押すと始まる（URL に ?auto は付けない。claude.ai はリンクの ?auto をゲームのページに渡さないため）。
   // ［止める］：歩いている途中で押すと、台本が置いた指を離す（スティックが消え、記録は「止めた」）
   const st = await newPage(browser, errs, { width: 750, height: 312 });
   await st.addInitScript(fakeClaude, true);
-  await st.goto(`${base}?auto=quick`, { waitUntil: 'commit', timeout: 120000 });
+  await st.goto(base, { waitUntil: 'commit', timeout: 120000 });
+  await st.waitForSelector('#intropanel #autoB', { timeout: 90000 });
+  if (!(await st.evaluate(() => !!document.getElementById('galDev')))) errs.push('持ち主なのに、［開発用モード］が出ない');
+  await st.click('#autoB');
+  // 押すと、［自動で試す］と［開発用モード］は隠れる（流している間に開発用モードを変えると、台本の中身が変わるため）
+  const left = await st.evaluate(() => ['autoB', 'galDev'].filter((id) => document.getElementById(id)));
+  if (left.length) errs.push(`［自動で試す］を押した後も、開発用の物が出ている（${left.join('・')}）`);
   await st.waitForFunction(() => document.getElementById('autobar')?.textContent?.includes('・walk'), null, {
     timeout: 300000,
     polling: 100,
   });
   await st.waitForFunction(() => !document.getElementById('stick').hidden, null, { timeout: 60000, polling: 100 });
   await st.click('#autoStop');
-  await st.waitForFunction(() => document.getElementById('autobar')?.textContent?.includes('遊び終えた'), null, {
+  await st.waitForFunction(() => document.getElementById('autobar')?.textContent?.includes('試し終えた'), null, {
     timeout: 120000,
     polling: 200,
   });
@@ -103,7 +111,26 @@ await withBrowser(async ({ browser, base }) => {
   const sr = (await readDiag(st))?.auto;
   if (!stopped.stick) errs.push('［止める］の後も、台本のスティックが出たまま（指が離れていない）');
   if (sr?.stop !== '止めた') errs.push(`［止める］の記録が ${sr?.stop}`);
+  if (sr?.laps !== 3 || sr?.quick) errs.push(`［自動で試す］の周の数が ${sr?.laps}（3 のはず）`);
+  if (sr?.dev !== false || sr?.depth !== 1)
+    errs.push(`［自動で試す］の記録の開発用モードと始める深さが ${sr?.dev}・${sr?.depth}（false・1 のはず）`);
   await st.close();
+
+  // 共有された Artifact を持ち主でない人が開いた時は、［自動で試す］も［開発用モード］も出ない（遊ぶ人に開発用の物を見せない）
+  const guest = await newPage(browser, errs, { width: 750, height: 312 });
+  await guest.addInitScript(fakeClaude, false);
+  await guest.goto(base, { waitUntil: 'commit', timeout: 120000 });
+  await guest.waitForSelector('#enter', { timeout: 90000 });
+  // 持ち主かの答えが出てから見る（答えが出る前に見ると、出ていなくて当たり前になる）。ゲームの用意ができた時の描き直しも待つ
+  // （テスト用モードでないので、用意ができた印は無い。答えの後に描いたフレームを2つと、1秒）
+  await guest.evaluate(async () => {
+    await (await window.claude.use('user')).isOwner();
+    for (let n = 0; n < 2; n++) await new Promise((ok) => requestAnimationFrame(ok));
+  });
+  await new Promise((ok) => setTimeout(ok, 1000));
+  const shown = await guest.evaluate(() => ['autoB', 'galDev'].filter((id) => document.getElementById(id)));
+  if (shown.length) errs.push(`持ち主でないのに、開発用の物が出た（${shown.join('・')}）`);
+  await guest.close();
 });
 console.log('page errors:', errs.length ? errs : 'none');
 process.exit(errs.length ? 1 : 0);

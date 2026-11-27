@@ -19,8 +19,13 @@ function buildUnlockPanel(){ const el=document.getElementById('intropanel'); if(
   for(const b of el.querySelectorAll('button[data-unl]'))b.addEventListener('click',()=>{ const u=UNLOCKS.find(x=>x.id===b.dataset.unl); if(!u||unlocked(u.id)||u.cost>loreLeft())return; saved.META.unl=[...(saved.META.unl||[]),u.id]; saved.META.spent=(saved.META.spent||0)+u.cost; saveMeta(); sndInit(); sChime(0,0,0.5); buildUnlockPanel(); }); }
 function buildIntroPanel(){
   const devOn=saved.DEVALL; if(!devOn)ui.startDepth=1; const seedKeep=(document.getElementById('seedIn')||{}).value||'';
+  // 開発用の物（［開発用モード］・［自動で試す］）は、遊ぶ人には出さない。［開発用モード］は、このページで一度でも開発用モードがオンだった時（?dev=1・al_dev が残っている）か、
+  // Artifact の持ち主の時だけ（Artifact では ?dev=1 が届かない）。［自動で試す］は持ち主の時だけ（src/lib/auto.ts の canOfferAuto）
+  // 自動で試している間は、どちらも出さない（開発用モードを変えると、台本の中身が変わるため）
+  if(devOn)ui.devSeen=true; const devBtn=(ui.devSeen||ui.owner)&&!autoSt.on, autoBtn=canOfferAuto();
   const el=document.getElementById('intropanel'); if(!el)return; const f=t=>`<span class="f">${t}</span>`;
   if(introMode==='unlock'){ buildUnlockPanel(); return; }
+  const galRow=`${f('|')} <button class="sl" id="galB" type="button">[ 図鑑 ]</button>  <button class="sl" id="galR" type="button">[ 試しの間 ]</button>   `;
   // 指で触る端末（スマホなど）では、キーボードの操作の一覧を出さない（使えない操作で、背の低い画面ではタイトルが収まらなくなるため）
   const coarse=!!(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches);
   const keyList=[['WASD','移動'],['マウス','視点'],['左クリック','左手'],['右クリック','右手'],['ホイール','ビルド切替'],['Space','回避'],['Shift','走る'],['Tab','装備'],['Esc','メニュー']];
@@ -37,17 +42,23 @@ function buildIntroPanel(){
     ...(UNLOCKS.some(u=>u.kind==='trial'&&unlocked(u.id))?[`${f('|')} 試練 `+UNLOCKS.filter(u=>u.kind==='trial'&&unlocked(u.id)).map(u=>`<button class="sl${(saved.META.trials||[]).includes(u.t)?' on':''}" type="button" data-trial="${u.t}"><span class="mk">${(saved.META.trials||[]).includes(u.t)?'&gt;':' '}</span> ${u.name.replace(/試練|「|」/g,'')}</button>`).join('  '),f('|')]:[]),
     `${f('|')} 伝承 <b style="color:#ffe3a0">${loreLeft()}</b> <span class="lab">（累計 ${saved.META.lore||0}）</span>  <button class="sl" id="unlockB" type="button">[ 解放 ]</button>`,f('|'),
     `${f('|')}               <button id="enter" type="button">[ 迷宮に入る ]</button>`,f('|'),
-    `${f('|')} <button class="sl" id="galB" type="button">[ 図鑑 ]</button>  <button class="sl" id="galR" type="button">[ 試しの間 ]</button>   <button class="sl" id="galDev" type="button">[開発用モード：${devOn?'オン':'オフ'}]</button>`,f('+---')]);
+    galRow+(devBtn?`<button class="sl" id="galDev" type="button">[開発用モード：${devOn?'オン':'オフ'}]</button>`:''),
+    // ［自動で試す］は［開発用モード］の真下に並べる
+    ...(autoBtn?[`${f('|')}${' '.repeat(visW(galRow)-1)}<button class="sl" id="autoB" type="button">[ 自動で試す ]</button>`]:[]),f('+---')]);
   document.getElementById('galB').addEventListener('click',()=>{ sndInit(); openBestiary(); });
   document.getElementById('unlockB').addEventListener('click',()=>{ introMode='unlock'; buildIntroPanel(); });
   for(const b of el.querySelectorAll('button[data-trial]'))b.addEventListener('click',()=>{ const k=b.dataset.trial, T=new Set(saved.META.trials||[]); if(T.has(k))T.delete(k); else T.add(k); saved.META.trials=[...T]; saveMeta(); buildIntroPanel(); });
   document.getElementById('galR').addEventListener('click',()=>openRange());
-  document.getElementById('galDev').addEventListener('click',()=>{ saved.DEVALL=!saved.DEVALL; try{ localStorage.setItem('al_dev',saved.DEVALL?'1':'0'); }catch(er){} buildIntroPanel(); });
+  if(autoBtn)document.getElementById('autoB').addEventListener('click',()=>startAuto());
+  if(devBtn)document.getElementById('galDev').addEventListener('click',()=>{ saved.DEVALL=!saved.DEVALL; try{ localStorage.setItem('al_dev',saved.DEVALL?'1':'0'); }catch(er){} buildIntroPanel(); });
   for(const b of el.querySelectorAll('button.sl[data-d]'))b.addEventListener('click',()=>{ ui.startDepth=+b.dataset.d; for(const o of el.querySelectorAll('button.sl[data-d]')){ const on=o===b; o.classList.toggle('on',on); o.querySelector('.mk').innerHTML=on?'&gt;':' '; } });
   const si=document.getElementById('seedIn'); if(si)si.value=seedKeep;
 }
 buildIntroPanel();
 initFitIntro();
+// 後から（持ち主と分かった時・ゲームの用意ができた時）タイトルを描き直す。シードの欄に打っている間は、離れてから
+// （描き直すと欄が作り直され、iPhone では打っている途中にキーボードが閉じるため）
+function redrawIntroLater(){ const si=document.getElementById('seedIn'); if(si&&document.activeElement===si){ si.addEventListener('blur',()=>buildIntroPanel(),{once:true}); return; } buildIntroPanel(); }
 
 // the title panel can be rebuilt, so its [迷宮に入る] is caught on the panel itself
 document.getElementById('intropanel').addEventListener('click',e=>{
@@ -133,7 +144,8 @@ function toggleMenu(){
   setMenu(!ui.menuOpen);
 }
 // 診断の記録（claude.ai の Artifact の中で、持ち主が開いた時だけ。src/lib/diag.ts）
-void initDiag();
+// 持ち主と分かったら、タイトルを描き直す（［開発用モード］と［自動で試す］を出す）
+void initDiag(()=>redrawIntroLater());
 // Esc のキーを処理している間は、マウスを捕まえにいかない（ui.escKey。Esc のキーで掛けたロックは、ブラウザがすぐ外し、外れた事件でメニューが開いてしまうため）
 window.addEventListener('keydown',e=>{ ui.escKey=e.code==='Escape'; try{ onKeyDown(e); } finally{ ui.escKey=false; } });
 window.addEventListener('keyup',e=>{ keys[e.code]=false; });

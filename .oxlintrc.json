@@ -81,12 +81,12 @@
       "globals": { "__test": "readonly", "dbg": "readonly" }
     },
     {
-      // 場面が切り替わる時の確かめ：テスト用モードでないページの page.evaluate の中で、dbg と画面の部品（document・window）を使う
-      "files": ["tools/transitions.mjs"],
+      // 場面が切り替わる時の確かめとタイトルを写す道具：テスト用モードでないページの page.evaluate の中で、dbg と画面の部品（document・window）を使う
+      "files": ["tools/transitions.mjs", "tools/title-shots.mjs"],
       "globals": { "dbg": "readonly", "document": "readonly", "window": "readonly" }
     },
     {
-      // 自動で遊ぶ台本をこの環境で流す道具：ページに差し込む見かけの時計（addInitScript）と page.evaluate の中で、ブラウザの名前を使う
+      // 自動で試す台本をこの環境で流す道具：ページに差し込む見かけの時計（addInitScript）と page.evaluate の中で、ブラウザの名前を使う
       "files": ["tools/auto-run.mjs"],
       "globals": { "document": "readonly", "window": "readonly", "requestAnimationFrame": "readonly" }
     },

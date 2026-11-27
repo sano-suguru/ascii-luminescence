@@ -1,9 +1,12 @@
-// 自動で遊ぶ（?auto=<周の数>）：本物の iPhone で、人が触らずに速さを確かめるため。決まった台本（AUTO_STEPS）を、ページの中で指の事件を作って、本物の時計で流す。
+// 自動で試す（?auto=<周の数>）：本物の iPhone で、人が触らずに速さを確かめるため。決まった台本（AUTO_STEPS）を、ページの中で指の事件を作って、本物の時計で流す。
 // 段ごとのフレームの数・平均・一番遅い1回・遅いフレームの数を autoSt に貯め、診断の記録（src/lib/diag.ts）が欄 auto に書く（Claude が ArtifactData の道具で読む）。
 // tools/auto-run.mjs も、同じ台本をこの環境で、遅さを足して流す。
-//   ?auto=<n>：n 周（1 から 9。3周でおよそ5分）。?auto=quick：短い1周（各段を短くし、階段は1回。tests/auto.mjs が使う）
+// 始め方は2つ：
+//   - タイトルの［自動で試す］：claude.ai の Artifact の中で、持ち主が開いた時だけ、［開発用モード］の下に出す（診断の記録が書かれる時。src/lib/diag.ts の initDiag が ui.owner を入れる）。AUTO_LAPS 周。
+//     claude.ai は、Artifact のリンクに付けた ?auto をゲームのページに渡さないので、iPhone ではこちらで始める
+//   - URL の ?auto=<n>：n 周（1 から 9。3周でおよそ5分）。?auto=quick：短い1周（各段を短くし、階段は1回）。tests/auto.mjs と tools/auto-run.mjs が使う
 // 決まり：
-//   - 自動で遊んでいる間は、ゲームの保存（al_ で始まる名前）を localStorage に書かない（autoGuard。伝承・解放・見た生き物・墓・視点・音量などを、
+//   - 自動で試している間は、ゲームの保存（al_ で始まる名前）を localStorage に書かない（autoGuard。伝承・解放・見た生き物・墓・視点・音量などを、
 //     ふだん遊ぶ時の記録に残さないため。ほかの名前は書く。同じページのほかの仕組みを止めないように）。
 //     開発用モードはオンにしない（?dev=1 は al_dev を書き残す）。生き物を置く・階段の前へ移る・体力を減らすのは、古い JS の dbg の中身を直に呼ぶ（AutoHooks）
 //   - 探索のシードは、1周目だけ AUTO_SEED（毎回同じ迷宮で、前の結果と比べるため）。死んで［新しい探索へ］を押した後は、ゲームが選ぶ
@@ -16,9 +19,11 @@
 //   - テスト用モード（?test=1）では動かない（時計が止まっているため）
 import { must } from './array.ts';
 import { chooseLevel, closeAltar } from './panels.ts';
-import { TEST, adv, clock, here, player, ui } from './state.ts';
+import { type Mob, TEST, adv, clock, here, player, saved, ui } from './state.ts';
 import { CELL, MW, TF } from './world.ts';
 
+/** タイトルの［自動で試す］で流す周の数（およそ5分） */
+export const AUTO_LAPS = 3;
 /** 1周目の探索のシード */
 export const AUTO_SEED = 202;
 /** これより長くかかった1フレームを、段の遅いフレームに数える（ミリ秒。診断の記録の slow と同じ） */
@@ -34,6 +39,8 @@ export interface AutoHooks {
   hurt: (n: number) => void;
   /** 生き物を置く */
   summon: (key: string, cell: number) => void;
+  /** タイトルを描き直す（［自動で試す］を出す・隠す。src/game/17-meta.js の redrawIntroLater。シードの欄に打っている間は、離れてから） */
+  title: () => void;
 }
 
 /** 1つの段の数 */
@@ -55,7 +62,7 @@ export interface AutoStep {
   shut?: number;
 }
 
-/** 自動で遊ぶ様子（診断の記録が書く） */
+/** 自動で試す様子（診断の記録が書く） */
 export const autoSt: {
   on: boolean;
   quick: boolean;
@@ -65,6 +72,8 @@ export const autoSt: {
   done: boolean;
   stop: string;
   wakeLock: string;
+  dev: boolean;
+  depth: number;
   steps: AutoStep[];
 } = {
   on: false,
@@ -78,10 +87,13 @@ export const autoSt: {
   stop: '',
   /** Wake Lock：'ok'・断られた理由・'none'（無い） */
   wakeLock: '',
+  /** 始めた時に開発用モードがオンだったか（オンだと全部が解放済みになり、同じシードでも迷宮と祭壇の中身が変わる）と、タイトルで選んだ始める深さ */
+  dev: false,
+  depth: 1,
   steps: [],
 };
 
-/** URL から、自動で遊ぶか（周の数。quick は 1）と、短い台本かを読む */
+/** URL から、自動で試すか（周の数。quick は 1）と、短い台本かを読む */
 export function autoMode(search: string): { laps: number; quick: boolean } {
   let v: string | null = null;
   try {
@@ -94,11 +106,15 @@ export function autoMode(search: string): { laps: number; quick: boolean } {
 }
 
 /**
- * 自動で遊ぶなら、ゲームの保存（al_ で始まる名前）を localStorage に書かないようにする。保存の処理より先に（src/game/00-test-mode.js が、ゲームの古い JS の初めに）呼ぶ。
+ * 自動で試すなら、ゲームの保存（al_ で始まる名前）を localStorage に書かないようにする。保存の処理より先に（src/game/00-test-mode.js が、ゲームの古い JS の初めに）呼ぶ。
  * 読むのはそのまま（ふだんの視点・見回す速さで遊ぶ）
  */
 export function autoGuard(): void {
   if (TEST || !autoMode(location.search).laps) return;
+  guardSaves();
+}
+/** ゲームの保存（al_ で始まる名前）を localStorage に書かないようにし、自動で試している印を付ける */
+function guardSaves(): void {
   autoSt.on = true;
   const game = (k: unknown): boolean => String(k).startsWith('al_');
   try {
@@ -265,26 +281,35 @@ async function walk(sec: number, side = 0, cond?: () => boolean): Promise<boolea
   f.up();
   return hit;
 }
-/** 前のほうの床のマスを n 個（生き物を置く） */
+/**
+ * 前のほうの床のマスを n 個（生き物を置く）。前と左右斜めの3本の向きに、プレイヤーから床が続く所だけを見る（床でないマスに当たったら、その向きはそこで止める。
+ * 壁の向こうの床に置くと、撃っても壁に当たるだけになるため）
+ */
 function cellsAhead(n: number): number[] {
   const D = here.D,
     out: number[] = [];
   if (!D) return out;
-  for (let d = 3; d < 9 && out.length < n; d += 0.7) {
-    for (const s of [-1, 0, 1]) {
+  const open = [true, true, true];
+  for (let d = 0.5; d < 9 && out.length < n; d += 0.35) {
+    for (const [k, s] of [-1, 0, 1].entries()) {
+      if (!open[k]) continue;
       const a = player.yaw + s * 0.5,
         x = player.x - Math.sin(a) * d * CELL * 0.5,
         z = player.z - Math.cos(a) * d * CELL * 0.5,
         i = Math.floor(z / CELL) * MW + Math.floor(x / CELL);
-      if (D.tile[i] === TF && !out.includes(i) && out.length < n) out.push(i);
+      if (D.tile[i] !== TF) {
+        open[k] = false;
+        continue;
+      }
+      if (d >= 3 && !out.includes(i) && out.length < n) out.push(i);
     }
   }
   return out;
 }
-/** 一番近い生き物のほうを向く（照準は合成した指では合わせにくいので、向きだけは直に変える） */
-function faceNearest(): void {
+/** 一番近い生き物（list の中から。撃つ段は、置いた生き物だけ。階に元からいる生き物が近いと、壁の向こうのそれを向いて、置いた物に当たらないため）のほうを向く（照準は合成した指では合わせにくいので、向きだけは直に変える） */
+function faceNearest(list: readonly Mob[] = here.monsters): void {
   let best = Infinity;
-  for (const m of here.monsters) {
+  for (const m of list) {
     const d = Math.hypot(m.x - player.x, m.z - player.z);
     if (!m.dead && !m.ty.critter && d < best) {
       best = d;
@@ -342,7 +367,7 @@ export const AUTO_STEPS: Step[] = [
       const foes = here.monsters.slice(n0),
         hp0 = foes.map((m) => m.hp ?? 0);
       for (let k = 0; k < 3; k++) {
-        faceNearest();
+        faceNearest(foes);
         // 右手で溜めて放つ
         const r = el('#castR'),
           [rx, ry] = mid(r),
@@ -352,7 +377,7 @@ export const AUTO_STEPS: Step[] = [
         await wait(0.5);
         // 左手を続けて押す
         for (let j = 0; j < 5; j++) {
-          faceNearest();
+          faceNearest(foes);
           const l = el('#castL'),
             [lx, ly] = mid(l),
             g = finger(l, lx, ly);
@@ -441,8 +466,8 @@ function showBar(): void {
   }
   const s = autoSt;
   bar.innerHTML = s.done
-    ? `自動で遊び終えた（${s.laps}周${s.stop ? `・${s.stop}` : ''}）。記録は書いた`
-    : `自動で遊んでいる ${s.lap}/${s.laps}周・${s.step} <button id="autoStop" style="font:inherit;color:inherit;background:#234;border:1px solid #567;padding:0 6px">止める</button>`;
+    ? `自動で試し終えた（${s.laps}周${s.stop ? `・${s.stop}` : ''}）。記録は書いた`
+    : `自動で試している ${s.lap}/${s.laps}周・${s.step} <button id="autoStop" style="font:inherit;color:inherit;background:#234;border:1px solid #567;padding:0 6px">止める</button>`;
   const b = document.getElementById('autoStop');
   if (b) b.onclick = () => (stopAsked = true);
 }
@@ -502,12 +527,41 @@ function resumeIfPaused(): void {
   if (ui.menuOpen && document.querySelector('#menu button[data-k="resume"]')) tap('#menu button[data-k="resume"]');
 }
 
-/** 自動で遊ぶ（ページを開いて、ゲームの用意ができてから1回。src/game/30-loop-init.js が呼ぶ）。?auto が無ければ何もしない */
+/** 古い JS から受け取った処理（initAuto が入れる。入るまではタイトルに［自動で試す］を出さない） */
+let hooks: AutoHooks | null = null;
+
+/** ゲームの用意ができた時に1回（src/game/30-loop-init.js が呼ぶ）。?auto があれば、そのまま流す */
 export async function initAuto(h: AutoHooks): Promise<void> {
+  hooks = h;
+  // 持ち主と分かった方が先なら、ここで［自動で試す］を出す
+  if (canOfferAuto()) h.title();
   const m = autoMode(location.search);
   if (TEST || !m.laps || !autoSt.on) return;
+  await runAuto(h, m);
+}
+
+/**
+ * タイトルに［自動で試す］を出すか（持ち主が Artifact を開き、診断の記録が書ける時。ゲームの用意ができてから（initAuto の後）。
+ * テスト用モードと、もう流している時は出さない）
+ */
+export function canOfferAuto(): boolean {
+  return ui.owner && !TEST && !autoSt.on && hooks !== null;
+}
+/** タイトルの［自動で試す］を押した時（src/game/17-meta.js）。ゲームの保存を止めて AUTO_LAPS 周流す */
+export function startAuto(): void {
+  if (!hooks || !canOfferAuto() || ui.started) return;
+  guardSaves();
+  void runAuto(hooks, { laps: AUTO_LAPS, quick: false });
+  // ［自動で試す］と［開発用モード］を隠す（流している間に開発用モードを変えると、台本の中身が変わるため）
+  hooks.title();
+}
+
+/** 台本を流す */
+async function runAuto(h: AutoHooks, m: { laps: number; quick: boolean }): Promise<void> {
   autoSt.laps = m.laps;
   autoSt.quick = m.quick;
+  autoSt.dev = saved.DEVALL;
+  autoSt.depth = ui.startDepth;
   requestAnimationFrame(tickFrame);
   document.addEventListener('visibilitychange', () => {
     // 隠れている間はフレームが来ないので、戻った最初のフレームの間に隠れていた間が入る。数え直す

@@ -1,8 +1,8 @@
-// 自動で遊ぶ（src/lib/auto.ts）の単体テスト：URL の読み方
+// 自動で試す（src/lib/auto.ts）の単体テスト：URL の読み方
 import { describe, expect, it } from 'vitest';
 import { AUTO_STEPS, autoMode } from '../../src/lib/auto.ts';
 
-describe('自動で遊ぶ', () => {
+describe('自動で試す', () => {
   it('?auto の読み方', () => {
     expect(autoMode('?auto=1')).toEqual({ laps: 1, quick: false });
     expect(autoMode('?auto=3&x=1')).toEqual({ laps: 3, quick: false });

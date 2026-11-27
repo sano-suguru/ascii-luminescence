@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// タイトルの画面のテスト（どれもテスト用モードでない時のページ）：タイトルの画面が出るか、開発用モードのまま読み直した時・保存が使えない時のタイトル、
+// タイトルの画面のテスト（どれもテスト用モードでない時のページ）：タイトルの画面が出るか（遊ぶ人には開発用の物を出さない）、開発用モードのまま読み直した時・保存が使えない時（持ち主として開く）のタイトル、
 // 自動再生を許さないブラウザで、音の部品がタイトルでは動かず、迷宮に入ると動き出すか（診断の記録で見る）。
 // テスト用モードではないので、ゲームを止めて進められない。待つのは、タイトルが出るまでと、背景の迷宮を描いたフレームが2つ進むまでだけ。ページのエラーを確かめ、画面写真を tests/out/ に保存。
 //   node tests/title.mjs          テスト版（.build/test/。既定）
@@ -26,6 +26,9 @@ await withBrowser(
         }),
     );
     await pg.screenshot({ path: join(OUT, 'title.png'), timeout: 90000 });
+    // 遊ぶ人（開発用モードがオフで、Artifact の持ち主でない）には、開発用の物を出さない
+    const devShown = await pg.evaluate(() => ['galDev', 'autoB'].filter((id) => document.getElementById(id)));
+    if (devShown.length) errs.push(`遊ぶ人のタイトルに、開発用の物が出た（${devShown.join('・')}）`);
     await pg.close(); // テスト用モードでないので、開いたままだと、メインループが描き続けて重い
 
     // 2. 開発用モードをオンにしたまま（localStorage の al_dev が '1'）、?dev=1 も ?test=1 も付けずにページを読み直しても、
@@ -43,8 +46,10 @@ await withBrowser(
     if (!title.includes('試練'))
       errs.push('開発用モードのまま読み直したのに、タイトルに試練の行が出ない（開発用モードではすべて解放済みのはず）');
     await dev.close();
-    // 3. localStorage が使えない時（保存を止めたブラウザ）も、開発用モードのボタンを押すと、表示が「オン」に変わる
+    // 3. localStorage が使えない時（保存を止めたブラウザ）も、開発用モードのボタンを押すと、表示が「オン」に変わる。
+    //    ボタンは Artifact の持ち主にだけ出る（偽の window.claude の持ち主。持ち主と分かった後にタイトルを描き直して出す）。押してオフに戻しても、ボタンは残る
     const blocked = await newPage(browser, errs);
+    await blocked.addInitScript(fakeClaude, true);
     await blocked.addInitScript(() => {
       const no = () => {
         throw new Error('storage blocked');
@@ -57,6 +62,9 @@ await withBrowser(
     await blocked.evaluate(() => document.getElementById('galDev').click());
     const label = await blocked.evaluate(() => document.getElementById('galDev').innerText);
     if (!label.includes('オン')) errs.push(`保存が使えない時、開発用モードを押しても表示が「オン」にならない：${label}`);
+    await blocked.evaluate(() => document.getElementById('galDev').click());
+    const off = await blocked.evaluate(() => document.getElementById('galDev')?.innerText ?? '');
+    if (!off.includes('オフ')) errs.push(`開発用モードをオフに戻すと、ボタンが消えるか「オフ」にならない：${off}`);
     await blocked.close();
     // 4. 自動再生を許さないブラウザ（iPhone の Safari など。tests/page-fakes.mjs の strictAudio で真似る）：音の部品はタイトルを出した時に先に作るが（src/lib/audio.ts の sndPrep）、
     //    動かない。［迷宮に入る］を押すと、押した中で動かし始める（sndInit）。本物の時計なので、診断の記録（偽の window.claude の持ち主）の

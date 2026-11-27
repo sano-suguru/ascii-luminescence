@@ -116,6 +116,10 @@ export interface Ui {
   touch: boolean;
   /** 指で遊んでいて、画面が縦向きか（探索中は止めて、横にする案内を出す。src/lib/touch.ts の updatePortrait） */
   portrait: boolean;
+  /** タイトルに［開発用モード］を出すか（このページで一度でも開発用モードがオンだった時。オフに戻しても、そのページの間は出す。src/game/17-meta.js） */
+  devSeen: boolean;
+  /** claude.ai の Artifact の持ち主が開き、診断の記録が書けるか（src/lib/diag.ts の initDiag が分かった時に入れる。タイトルに［開発用モード］と［自動で試す］を出す） */
+  owner: boolean;
   /** 指でパネルの選択肢を1回押して、選んだだけの物（2回目で決める。src/lib/touch.ts の confirmTap。無ければ ''） */
   tapArm: string;
   /** 1人称（'fps'）か3人称 */
@@ -231,6 +235,8 @@ export const ui: Ui = {
   escKey: false,
   touch: false,
   portrait: false,
+  devSeen: false,
+  owner: false,
   tapArm: '',
   camMode: 'fps',
   lvlOpen: false,

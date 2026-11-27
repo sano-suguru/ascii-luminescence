@@ -2,8 +2,8 @@
 // 診断の記録（src/lib/diag.ts が Artifact のデータベースの diag に書く物）を、読みやすい表にする。
 //   node tools/diag-report.mjs <ファイルかフォルダ…>   JSON のファイル（ArtifactData の道具の list に out_dir を付けて保存した物）か、それを入れたフォルダ
 // 記録ごとに：端末、音の部品の状態の移り変わり、場面が切り替わる時の処理にかかった時間（名前ごとの回数・中央・最大）、
-// 遅いフレーム（近くにあった処理の名前ごと）、メニューの押し方、自動で遊んだ段の表（?auto）、画質の移り変わり、時刻の順の一覧（かかった時間と遅いフレーム）を出す。
-//   node tools/diag-report.mjs --compare <前.json> <今.json>   自動で遊んだ段を、前と今で並べる（tools/auto-run.mjs も使う）
+// 遅いフレーム（近くにあった処理の名前ごと）、メニューの押し方、自動で試した段の表（?auto）、画質の移り変わり、時刻の順の一覧（かかった時間と遅いフレーム）を出す。
+//   node tools/diag-report.mjs --compare <前.json> <今.json>   自動で試した段を、前と今で並べる（tools/auto-run.mjs も使う）
 // tools/transitions.mjs も、自分で作った記録をこれで出す
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -52,11 +52,11 @@ export function qualitySteps(took = []) {
     .map((r) => ({ t: r.t, why: r.why, what: r.k === 'applySize' ? `解像度 ${r.pr}` : `光のにじみ ${r.bloom ? 'あり' : 'なし'}` }));
 }
 
-/** 自動で遊んだ段の表（src/lib/auto.ts の記録 auto） */
+/** 自動で試した段の表（src/lib/auto.ts の記録 auto） */
 export function autoRows(a) {
   if (!a) return [];
   const out = [
-    `自動で遊んだ：${a.lap}/${a.laps}周${a.quick ? '（短い台本）' : ''}・${a.done ? '終わった' : `途中（${a.step}）`}${a.stop ? `・${a.stop}` : ''}・Wake Lock ${a.wakeLock || '-'}`,
+    `自動で試した：${a.lap}/${a.laps}周${a.quick ? '（短い台本）' : ''}・${a.done ? '終わった' : `途中（${a.step}）`}${a.stop ? `・${a.stop}` : ''}・Wake Lock ${a.wakeLock || '-'}${a.dev ? `・開発用モード（始めた深さ ${a.depth}）` : ''}`,
     `  ${pad('周', 4)}${pad('段', 8)}${pad('秒', 7)}${pad('フレーム', 9)}${pad('平均fps', 9)}${pad('最長ms', 8)}${pad('遅い', 6)}ほか`,
   ];
   for (const s of a.steps || [])
@@ -66,7 +66,7 @@ export function autoRows(a) {
   return out;
 }
 
-/** 2つの記録（前・今）の、自動で遊んだ段を並べて比べる（周と段の名前で合わせる） */
+/** 2つの記録（前・今）の、自動で試した段を並べて比べる（周と段の名前で合わせる） */
 export function compareRows(prev, cur) {
   const key = (s) => `${s.lap}:${s.k}`,
     old = new Map((prev?.auto?.steps || []).map((s) => [key(s), s]));
