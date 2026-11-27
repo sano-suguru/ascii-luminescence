@@ -1,6 +1,6 @@
 // src/lib/quality.ts の単体テスト（速さに合わせて画質を下げる段の決め方と、下げても速くならない時に戻すか）
 import { describe, expect, it } from 'vitest';
-import { QUALITY, nextQuality, stepQuality, type Quality, type QualityRun } from '../../src/lib/quality.ts';
+import { QUALITY, holdQuality, nextQuality, stepQuality, type Quality, type QualityRun } from '../../src/lib/quality.ts';
 
 const slow = 1 / 30,
   fast = 1 / 60;
@@ -90,5 +90,24 @@ describe('stepQuality', () => {
       [1.3, true],
       [1.5, true],
     ]);
+  });
+});
+
+describe('holdQuality', () => {
+  it('下げた1段の比べが済む前に途切れたら、その1段を戻し、次に遅ければ下げ直して比べる', () => {
+    let r: QualityRun = stepQuality(1 / 30, { q: { pr: 1.5, bloom: true }, prev: null, done: false });
+    expect(r.q).toEqual({ pr: 1.3, bloom: true });
+    r = holdQuality(r);
+    expect(r).toEqual({ q: { pr: 1.5, bloom: true }, prev: null, done: false });
+    r = stepQuality(1 / 30, r);
+    expect(r.q).toEqual({ pr: 1.3, bloom: true });
+    r = stepQuality(1 / 30, r);
+    expect(r).toEqual({ q: { pr: 1.5, bloom: true }, prev: null, done: true });
+  });
+  it('比べが済んでいる時・止めた後は変えない', () => {
+    const settled: QualityRun = { q: { pr: 1.1, bloom: true }, prev: null, done: false };
+    expect(holdQuality(settled)).toBe(settled);
+    const done: QualityRun = { q: { pr: 1.5, bloom: true }, prev: { q: { pr: 1.5, bloom: true }, avg: 0.03 }, done: true };
+    expect(holdQuality(done)).toBe(done);
   });
 });

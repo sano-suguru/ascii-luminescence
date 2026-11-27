@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------- sizing
-// why：何のために（'init'・'resize'・速さに合わせて解像度を下げた 'auto'・下げても速くならず戻した 'back'）。大きさと解像度が前と同じなら、作り直さない
+// why：何のために（'init'・'resize'・速さに合わせて解像度を下げた 'auto'・下げても速くならず戻した 'back'・比べる前に数えるのが途切れて戻した 'hold'）。大きさと解像度が前と同じなら、作り直さない
 // （iOS は、画面の向きを変えると、同じ大きさの resize を続けて出すことがある。作り直すと、描く物の大きさを全部取り直すため）
 let sizedAs='';
 function applySize(why){
@@ -76,11 +76,16 @@ function tick(raw,draw){
   if(TEST)return; // keep the resolution fixed in tests
   // 速さに合わせて画質を下げる（src/lib/quality.ts）。数えるのは探索中だけ（階を移る途中・止まっている間・タイトルと図鑑は数えない。
   // 階を作る一瞬の遅れで下がらないように）。数えないフレームが来たら、そこから3秒は様子を見てから数え直す
-  if(!ui.started||here.trans||isPaused()||document.hidden){ warm=perfT=perfAcc=perfN=0; return; }
+  if(!ui.started||here.trans||isPaused()||document.hidden){ warm=perfT=perfAcc=perfN=0; if(qRun.prev){ qRun=holdQuality(qRun); setQuality(qRun.q,'hold'); } return; }
   warm+=raw; if(warm>3){ perfAcc+=raw; perfN++; perfT+=raw;
     if(perfT>QUALITY.span){ qRun=stepQuality(perfAcc/perfN,{...qRun,q:{pr:pixelRatio,bloom:bloom.enabled}}); perfT=perfAcc=perfN=0;
-      const q=qRun.q, why=qRun.done?'back':'auto';
-      if(q.pr!==pixelRatio||q.bloom!==bloom.enabled){ const pr0=pixelRatio; pixelRatio=q.pr; bloom.enabled=q.bloom; if(q.pr!==pr0)applySize(why); else took('quality',performance.now(),{bloom:q.bloom,why}); } } }
+      setQuality(qRun.q,qRun.done?'back':'auto'); } }
+}
+// 画質を q にする。変えたら、作り直した直後の遅いフレームを次の比べに数えないように、3秒おいてから数え直す
+function setQuality(q,why){
+  if(q.pr===pixelRatio&&q.bloom===bloom.enabled)return;
+  const pr0=pixelRatio; pixelRatio=q.pr; bloom.enabled=q.bloom; warm=perfT=perfAcc=perfN=0;
+  if(q.pr!==pr0)applySize(why); else took('quality',performance.now(),{bloom:q.bloom,why});
 }
 
 // ---------------------------------------------------------------- test hooks (only with ?test=1; see the test mode block at the top)
