@@ -86,8 +86,8 @@ describe('生き物の形', () => {
       const b = seeded(() => lords.beastForm(spec));
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
-    expect(all.length).toBe(3403425);
-    expect(fnv(all)).toBe('3187aa4f'); // トロル・ゴーレム・クラーケン・吸血コウモリ（trollForm2・golemForm2・krakenForm2・batForm）を除き、移す前の実装で出した値と同じ（この4つは移した後で作り直した。作り直した王の影の一つ目の姿は、下の別のテスト）
+    expect(all.length).toBe(3403560);
+    expect(fnv(all)).toBe('6755825d'); // トロル・ゴーレム・クラーケン・吸血コウモリ（trollForm2・golemForm2・krakenForm2・batForm）を除き、移す前の実装で出した値と同じ（この4つは移した後で作り直した。作り直した王の影の一つ目の姿は、下の別のテスト）
   });
   it('主と大きな生き物の形：TypeScript に移す前と、同じ乱数で同じ形になる', () => {
     let all = '';

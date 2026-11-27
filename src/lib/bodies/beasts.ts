@@ -812,6 +812,7 @@ export function batForm(ty: BodyType): Body {
     EAR: Color = [0.85, 0.42, 0.5],
     BONE: Color = [0.72, 0.42, 0.44],
     MEM: Color = [0.58, 0.12, 0.22],
+    MEM_D: Color = [0.36, 0.07, 0.15],
     EDGE: Color = [0.85, 0.28, 0.36],
     FURR: Ramp = ['%', '%', '"', '%', '#'];
   // 楕円の毛皮：高さを等しく割った行ごとの輪（skip が真の所は描かない）
@@ -950,16 +951,17 @@ export function batForm(ty: BodyType): Body {
     bone(el, wr, '-', 1, 1);
     for (const tp of tips) bone(wr, tp, '-', 0.85, 1);
     // 膜：三角ごとに埋める。真ん中ほど少し下がる（平らな面が目の高さで1本の線に重ならないように）。
-    // 後ろの縁になる三角（4つ目の値が真）は、辺 B-C が A の方へ弧を描いてへこむ（へこみの外は描かず、弧の上に縁を置く）
-    const tris: readonly (readonly [P2, P2, P2, boolean])[] = [
-      [wr, tip(0), tip(1), true],
-      [wr, tip(1), tip(2), true],
-      [wr, tip(2), tip(3), true],
-      [sh, wr, tip(3), false],
-      [sh, tip(3), root, true],
-      [sh, el, wr, false],
+    // 後ろの縁になる三角（4つ目の値が真）は、辺 B-C が A の方へ弧を描いてへこむ（へこみの外は描かず、弧の上に縁を置く）。
+    // 指の間の膜は、隣どうしで色の濃さを変える（膜を正面から見た時に、境の指の骨が読めるように）
+    const tris: readonly (readonly [P2, P2, P2, boolean, Color])[] = [
+      [wr, tip(0), tip(1), true, MEM],
+      [wr, tip(1), tip(2), true, MEM_D],
+      [wr, tip(2), tip(3), true, MEM],
+      [sh, wr, tip(3), false, MEM_D],
+      [sh, tip(3), root, true, MEM_D],
+      [sh, el, wr, false, MEM],
     ];
-    for (const [A, B, C, trailing] of tris) {
+    for (const [A, B, C, trailing, mc] of tris) {
       const st = S * 0.72,
         // 辺 B-C の上の f の所の、へこみの深さ
         bow = (f: number) => (trailing ? 0.22 * Math.hypot(C[0] - B[0], C[1] - B[1]) * Math.sin(Math.PI * f) : 0),
@@ -977,7 +979,7 @@ export function batForm(ty: BodyType): Body {
           if (sum >= 0.92 || 1 - sum < bow(f) / L + (trailing ? 0.06 : 0)) continue;
           const r = A[0] + (B[0] - A[0]) * u + (C[0] - A[0]) * v,
             z = A[1] + (B[1] - A[1]) * u + (C[1] - A[1]) * v;
-          W(r, z, mpick(['%', '#', '%', '&']), 0.8 + 0.15 * mr(), MEM, 1, -0.05 * 4 * u * v);
+          W(r, z, mpick(['%', '#', '%', '&']), 0.45 + 0.1 * mr(), mc, 1, -0.05 * 4 * u * v);
         }
       if (!trailing) continue;
       const n = Math.max(2, Math.round(Math.hypot(C[0] - B[0], C[1] - B[1]) / (S * 0.7)));
