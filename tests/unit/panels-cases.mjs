@@ -278,6 +278,9 @@ export async function panelCases(makeF, seeds, page, mocked) {
         bodyOpen: Math.floor(r() * 3),
         slotPend: null,
       };
+      // ui は、場合ごとに丸ごと初めの値に戻してから、場合の値を入れる（関数が使う欄を、場合の間で持ち越さないため）
+      for (const f of Object.keys(ui)) if (!(f in keep.ui)) delete ui[f];
+      Object.assign(ui, keep.ui);
       Object.assign(ui, {
         started: true,
         gallery: null,

@@ -9,7 +9,7 @@
 //   nth(a, i) → a[i]、lookup(o, k) → o[k]：範囲の外や無い欄では止まる（元は undefined）
 //   o['k'] → o.k（k が名前にできる文字の時。両方に当てる）
 //   must(x, '…') → x：x が null・undefined の時は止まる（元はその先で止まるか、黙って進む）
-//   cssOf(c) → css(c)：表から読んだ色を css にする。色が無い・3つより少ない時は止まる（元は NaN の色か、その先で止まる。src/lib/color.ts）
+//   cssOf(c) → css(c)：表から読んだ色を css にする。色が無い・3つより少ない時は止まる（元は NaN の色か、その先で止まる）。そのファイルが cssOf を ./color.ts から読んでいる時だけ
 //   level() → here.D：そのファイルの level が () => must(here.D, …) の時だけ
 //   x ?? NaN → x：算術（- * / % **、もう片方が数と分かる +）・大小の比べ方・単項の - +・Math.* の引数の中だけ（undefined も NaN も同じ結果になる所）。
 //     null は undefined と結果が違う（null * 2 は 0）が、道具は型を見ないので見分けられない。値が null にならない所でだけ ?? NaN を書くこと
@@ -146,7 +146,7 @@ function undo(n, ctx) {
       return member(undo(x.arguments[0], ctx), undo(x.arguments[1], ctx), true);
     }
     if (isCall(x, 'must') && x.arguments.length >= 1) return (ctx.hit('must'), undo(x.arguments[0], ctx));
-    if (isCall(x, 'cssOf') && x.arguments.length === 1)
+    if (ctx.cssOfIsColor && isCall(x, 'cssOf') && x.arguments.length === 1)
       return (ctx.hit('cssOf'), { ...x, callee: ident('css'), arguments: [undo(x.arguments[0], ctx)] });
     if (ctx.levelIsHereD && isCall(x, 'level') && x.arguments.length === 0)
       return (ctx.hit('level'), member(ident('here'), ident('D'), false));
@@ -557,6 +557,13 @@ export function compareSources(old, files, only = null, imported = new Map()) {
       lv.params.length === 0 &&
       isCall(lv.body, 'must') &&
       show(lv.body.arguments[0]) === 'here.D';
+    // cssOf が ./color.ts から読んだ物か（自分で定めた同じ名前の物には、規則を当てない）
+    const cssOfIsColor = ast.body.some(
+      (st) =>
+        st.type === 'ImportDeclaration' &&
+        st.source.value === './color.ts' &&
+        st.specifiers.some((sp) => sp.type === 'ImportSpecifier' && sp.local.name === 'cssOf' && sp.imported.name === 'cssOf'),
+    );
     // ファイルの一番外の別名（古い JS に無い名前で、初めの値が名前だけの const。ファイルのどこでも書き換えない物）
     const tops = [...NEW].filter(
       ([k, v]) =>
@@ -579,7 +586,7 @@ export function compareSources(old, files, only = null, imported = new Map()) {
           : [];
       }),
     );
-    const ctx = { hit, levelIsHereD };
+    const ctx = { hit, levelIsHereD, cssOfIsColor };
     for (const [name, nd] of NEW) {
       const od = old.get(name);
       // only を渡したら、その名前だけ（古い JS から消えた名前。今も古い JS にある同じ名前の別の物と取り違えないため）

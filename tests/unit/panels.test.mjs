@@ -27,21 +27,11 @@ vi.mock('../../src/lib/inventory.ts', async (orig) => {
 });
 
 const SEEDS = 24;
-// 関数を返す（古い JS では包みの一番外の変数・関数の欄だった物を、場合ごとに初めに戻す）
+// 関数を返す（ui は panelCases が場合ごとに初めの値に戻す。ここでは、ページの部品と、関数の欄 menuAct.book を入れ直す）
 const makeF = async () => {
   const P = await import('../../src/lib/panels.ts'),
     M = await import('../../src/lib/menu.ts'),
     C = await import('../../src/lib/combat.ts');
-  Object.assign(ui, {
-    lvlOpenT: 0,
-    lvlOpts: [],
-    altarOpenT: 0,
-    altarDismissed: null,
-    altarSel: null,
-    altarPanelKey: '',
-    menuPage: '',
-    startDepth: 1,
-  });
   ui.introEl = document.getElementById('intro');
   M.menuAct.book = undefined;
   return { ...P, ...M, updateLife: C.updateLife };

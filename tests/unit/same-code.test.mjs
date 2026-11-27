@@ -43,10 +43,21 @@ describe('同じと言う物', () => {
     expect(cmp(`function f(o,v){ o.lord=v; }`, `export function f(o, v) { o['lord'] = v; }`).n).toEqual({ f: 0 });
     expect(cmp(`function f(o,v){ o['a-b']=v; }`, `export function f(o, v) { o.ab = v; }`).n).not.toEqual({ f: 0 });
   });
-  it('cssOf(c) は css(c) に戻す（ほかの関数の名前や、引数の違いは戻さない）', () => {
-    expect(cmp(`function f(r){ return css(runeCol(r)); }`, `export function f(r) { return cssOf(runeCol(r)); }`).n).toEqual({ f: 0 });
-    expect(cmp(`function f(r){ return css(runeCol(r)); }`, `export function f(r) { return cssOf(elemCol(r)); }`).n).toEqual({ f: 1 });
-    expect(cmp(`function f(r){ return hsl(runeCol(r)); }`, `export function f(r) { return cssOf(runeCol(r)); }`).n).toEqual({ f: 1 });
+  it('cssOf(c) は、./color.ts から読んだ時だけ css(c) に戻す（ほかの関数の名前や、引数の違いは戻さない）', () => {
+    const imp = `import { cssOf } from './color.ts';\n`;
+    expect(cmp(`function f(r){ return css(runeCol(r)); }`, `${imp}export function f(r) { return cssOf(runeCol(r)); }`).n).toEqual({ f: 0 });
+    expect(cmp(`function f(r){ return css(runeCol(r)); }`, `${imp}export function f(r) { return cssOf(elemCol(r)); }`).n).toEqual({ f: 1 });
+    expect(cmp(`function f(r){ return hsl(runeCol(r)); }`, `${imp}export function f(r) { return cssOf(runeCol(r)); }`).n).toEqual({ f: 1 });
+    // 自分で定めた cssOf や、別のファイルから読んだ cssOf には当てない
+    expect(
+      cmp(`function f(r){ return css(runeCol(r)); }`, `const cssOf = (c) => hsl(c);\nexport function f(r) { return cssOf(runeCol(r)); }`).n,
+    ).toEqual({ f: 1 });
+    expect(
+      cmp(
+        `function f(r){ return css(runeCol(r)); }`,
+        `import { cssOf } from './other.ts';\nexport function f(r) { return cssOf(runeCol(r)); }`,
+      ).n,
+    ).toEqual({ f: 1 });
   });
   it('level() は、そのファイルの level が () => must(here.D, …) の時だけ here.D に戻す', () => {
     const old = `function f(){ return here.D.stairs; }`;
