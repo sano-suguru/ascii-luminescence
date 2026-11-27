@@ -75,7 +75,7 @@ for (const plan of ['quad', 'serpent', 'centipede', 'moth'])
     SPECS.push({ plan, kind: plan === 'quad' ? '竜' : '獣', legs: 6, wings, ...(wings ? { eyes: 5 } : {}), glyphs: ['#', '%', '&'] });
 
 describe('生き物の形', () => {
-  it('TypeScript に移す前と、同じ乱数で同じ形になる（見た目の乱数を引く順番が変わっていない）', () => {
+  it('形の指紋（形と、形を作る時に見た目の乱数を引く順番が、思わず変わっていない）', () => {
     let all = '';
     for (const f of TY_FORMS)
       for (const ty of TYS) {
@@ -90,9 +90,9 @@ describe('生き物の形', () => {
     }
     caseOut('bodies-1', all);
     expect(all.length).toBe(3798297);
-    expect(fnv(all)).toBe('5bcbce08'); // トロル・ゴーレム・クラーケン・ギタイムシ・ヘビ・吸血コウモリ（trollForm2・golemForm2・krakenForm2・crabForm・snakeForm・batForm）を除き、移す前の実装で出した値と同じ（この6つは移した後で作り直した。作り直した王の影の一つ目の姿は、下の別のテスト）
+    expect(fnv(all)).toBe('5bcbce08'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
   });
-  it('主と大きな生き物の形：TypeScript に移す前と、同じ乱数で同じ形になる', () => {
+  it('主と大きな生き物の形の指紋（形と、形を作る時に見た目の乱数を引く順番が、思わず変わっていない）', () => {
     let all = '';
     for (const ty of TYS) {
       all += JSON.stringify(seeded(() => beasts.dragonForm(ty)));
@@ -101,7 +101,7 @@ describe('生き物の形', () => {
     for (const f of BOSS_FORMS) all += JSON.stringify(seeded(f));
     caseOut('bodies-2', all);
     expect(all.length).toBe(1792099);
-    expect(fnv(all)).toBe('7a018410'); // 移す前の実装で出した値から、蜘蛛の女王とナーガの女王の明るさ b だけを 0.6 倍（BOSS_DIM）にした値
+    expect(fnv(all)).toBe('7a018410');
   });
   it('どの点も、座標が有限で、文字の番号が文字の絵の表の中にあり、体のどこかが決まっている', () => {
     const bodies = [
