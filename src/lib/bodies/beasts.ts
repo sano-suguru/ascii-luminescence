@@ -777,7 +777,7 @@ interface Ellipsoid {
   r: Vec3;
 }
 /** 吸血コウモリの体の寸法（形の中の座標。体の真ん中が原点で、前が +z。テストも同じ値で表面からの距離を数える） */
-export const BAT: { body: Ellipsoid; head: Ellipsoid; wingY: number; wingTilt: number; eye: Color; fang: Color } = {
+export const BAT: { body: Ellipsoid; head: Ellipsoid; wingY: number; wingTilt: number; wingRoot: number; eye: Color; fang: Color } = {
   /** 胴 */
   body: { c: [0, 0, -0.03], r: [0.1, 0.095, 0.16] },
   /** 頭 */
@@ -786,6 +786,8 @@ export const BAT: { body: Ellipsoid; head: Ellipsoid; wingY: number; wingTilt: n
   wingY: 0.03,
   /** 翼の面の傾き（後ろへ 1 進むと、この分下がる） */
   wingTilt: 0.5,
+  /** 翼の根もとの、体の真ん中からの距離（胴の横の半径より少し内。膜が胴に付いて見える） */
+  wingRoot: 0.09,
   eye: [1, 0.22, 0.2],
   fang: [0.95, 0.92, 0.85],
 };
@@ -925,7 +927,7 @@ export function batForm(ty: BodyType): Body {
   // 翼の面は、後ろほど低く傾ける（前から見ても膜の面と後ろの縁の弧が見える。傾けないと、前からは1本の線になる）
   const WY = BAT.wingY,
     TILT = BAT.wingTilt,
-    sh: P2 = [0.09, 0.03],
+    sh: P2 = [BAT.wingRoot, 0.03],
     el: P2 = [0.26, 0.11],
     wr: P2 = [0.44, 0.13],
     tips: readonly P2[] = [
@@ -934,7 +936,7 @@ export function batForm(ty: BodyType): Body {
       [0.62, -0.37],
       [0.38, -0.35],
     ],
-    root: P2 = [0.09, -0.2];
+    root: P2 = [BAT.wingRoot, -0.2];
   const tip = (i: number): P2 => nth(tips, i);
   for (const sd of [-1, 1]) {
     const W = (r: number, z: number, ch: string, b: number, col: Color, s2 = 1, dy = 0) =>

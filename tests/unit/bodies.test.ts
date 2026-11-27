@@ -1,10 +1,11 @@
 // src/lib/bodies/ の単体テスト（生き物の形）
-import { nth } from '../../src/lib/array.ts';
+import { lookup, nth } from '../../src/lib/array.ts';
 import { afterEach, describe, expect, it } from 'vitest';
 import * as beasts from '../../src/lib/bodies/beasts.ts';
 import * as bosses from '../../src/lib/bodies/bosses.ts';
 import { type Body, type BodyType } from '../../src/lib/bodies/kit.ts';
 import { hsl2rgb } from '../../src/lib/color.ts';
+import { MTYPES } from '../../src/lib/creatures.ts';
 import { G } from '../../src/lib/glyphs.ts';
 import * as lords from '../../src/lib/bodies/lords.ts';
 import * as small from '../../src/lib/bodies/small.ts';
@@ -239,15 +240,22 @@ describe('生き物の形', () => {
       for (const e of eyes)
         for (const p of b.filter((q) => q.part === 'head' && q.col !== B.eye && q.col !== B.fang))
           expect(Math.hypot(p.x - e.x, p.y - e.y, p.z - e.z)).toBeGreaterThan(0.04);
-      // 翼：左右とも同じ数。根もとは胴の横（胴の半径のあたり）から、先は胴より十分に外。ただし照準が当たる球（aim.ts の aimPoint：0.42 + 0.35 × scale）の中
+      // 翼：左右とも同じ数。根もとは胴の横の半径より少し内（膜が胴に付いて見える）、先は胴より十分に外
       const wing = b.filter((p) => p.part === 'wing'),
         rs = wing.map((p) => p.r ?? NaN);
       expect(wing.filter((p) => p.sd === -1).length).toBe(wing.filter((p) => p.sd === 1).length);
       expect(wing.every((p) => p.sd === -1 || p.sd === 1)).toBe(true);
-      expect(Math.min(...rs)).toBeCloseTo(B.body.r[0], 1);
+      expect(Math.min(...rs)).toBe(B.wingRoot);
+      expect(B.wingRoot).toBeLessThan(B.body.r[0]);
+      expect(B.wingRoot).toBeGreaterThan(B.body.r[0] * 0.8);
       expect(Math.max(...rs)).toBeGreaterThan(0.7);
-      expect(Math.max(...rs)).toBeLessThan(0.42 + 0.35);
     }
+    // 本物の大きさで、翼の先（形の座標 × 大きさ）は、攻撃が当たる球（aim.ts の aimPoint・projs.ts：0.42 + 0.35 × 大きさ）の中
+    const sc = lookup(MTYPES, 'v').scale,
+      tip = Math.max(
+        ...seeded(() => beasts.batForm({ scale: sc, col: [0.9, 0.25, 0.38] })).map((p) => (p.part === 'wing' ? (p.r ?? NaN) : 0)),
+      );
+    expect(tip * sc).toBeLessThan(0.42 + 0.35 * sc);
   });
   it('ヘビ：点はどれも胴のうねり（slither）か舌（tongue）。明るさ b は 1.8 まで。目は頭の表面のすぐ外（埋もれず、浮かない）。頭は首より幅が広い', () => {
     const H = small.SNAKE;
