@@ -108,7 +108,7 @@ export function krakenArms(m: Mon, t: number): void {
   });
 }
 
-/** 生き物を描く：近接の攻撃を溜めている間は頭の上に !、当たって光っている間は3倍の明るさで描く（__test.hideMonster で隠した物は描かない） */
+/** 生き物を描く：近接の攻撃を溜めている間は頭の上に !、当たって光っている間は HIT_GLOW 倍の明るさで描く（__test.hideMonster で隠した物は描かない） */
 export function drawMonster(m: Mon, t: number): void {
   if (m.drawHide) return; // __test.hideMonster: not drawn for a moment (its light stays)
   if ((m.wind ?? NaN) > 0) {
@@ -129,26 +129,34 @@ export function drawMonster(m: Mon, t: number): void {
   }
   if ((m.hitT ?? NaN) > 0) {
     const g0 = m.glow;
-    m.glow *= 3;
-    drawMonster1(m, t);
+    m.glow *= HIT_GLOW;
+    drawMonster1(m, t, true);
     m.glow = g0;
     return;
   }
   drawMonster1(m, t);
 }
-/** 生き物を描く（続き）：深みの主の触手とクラーケンの立ち上がる腕、遠い小さな生き物は描かない、照準の先の生き物は明るく描いて足もとに輪を足す */
-export function drawMonster1(m: Mon, t: number): void {
+/** 当たって光っている間の明るさの倍率。照準の先の倍率 AIM_GLOW とは掛け合わせない（掛け合わせると、光のにじみで体が白く飛ぶ。pnpm glare で数える） */
+const HIT_GLOW = 2.4;
+/** 照準の先の明るさの倍率 */
+const AIM_GLOW = 1.9;
+/**
+ * 生き物を描く（続き）：深みの主の触手とクラーケンの立ち上がる腕、遠い小さな生き物は描かない、照準の先の生き物は明るく描いて足もとに輪を足す
+ * （hit が真なら、当たって光っている間なので、照準の先でも明るさは重ねず、輪だけを足す）
+ */
+export function drawMonster1(m: Mon, t: number, hit = false): void {
+  const aimK = hit ? 1 : AIM_GLOW;
   if (m.ty.habitat === 'deep' && Math.hypot(m.x - player.x, m.z - player.z) < 44) {
     // 照準の先なら、体と同じく明るく（クラーケンの立ち上がる腕は m.glow を読む）
     const g0 = m.glow;
-    if (m === ui.aimMon && !m.hidden) m.glow *= 1.9;
+    if (m === ui.aimMon && !m.hidden) m.glow *= aimK;
     (m.ty.form === 'kraken' ? krakenArms : drawTentacles)(m, t);
     m.glow = g0;
   }
   if (m.ty.critter && Math.hypot(m.x - player.x, m.z - player.z) > 30) return;
   if (m === ui.aimMon && !m.hidden) {
     const g0 = m.glow;
-    m.glow *= 1.9;
+    m.glow *= aimK;
     drawMonster0(m, t);
     m.glow = g0;
     const sc = m.ty.scale,
