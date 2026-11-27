@@ -88,10 +88,28 @@ export function setCamMode(m: string): void {
   }
 }
 
-/** 音量を次の段にする（大・中・小・オフの順に回る）。音を鳴らし始めていれば、0.25秒かけて変える。画面の下に1.2秒（実時間）出す */
+/** 残した音量の段を読む（ページを開いた時に1回。無い・読めない・表に無い番号なら、初めの段のまま） */
+export function loadSndLevel(): void {
+  try {
+    const s = localStorage.getItem('al_snd'),
+      v = s !== null && /^\d$/.test(s) ? Number(s) : -1;
+    if (v >= 0 && v < SND_LV.length) {
+      SND.lv = v;
+      SND.on = nth(SND_LV, v) > 0;
+    }
+  } catch {
+    // 読めない時（サンドボックスなど）は、初めの段のまま
+  }
+}
+/** 音量を次の段にする（大・中・小・オフの順に回る）。音を鳴らし始めていれば、0.25秒かけて変える。画面の下に1.2秒（実時間）出す。選んだ段は al_snd に残す（残せなくても続ける） */
 export function sndToggle(): void {
   SND.lv = (SND.lv + 1) % SND_LV.length;
   SND.on = nth(SND_LV, SND.lv) > 0;
+  try {
+    localStorage.setItem('al_snd', String(SND.lv));
+  } catch {
+    // 残せない時は、残さないだけ
+  }
   if (SND.master) SND.master.gain.setTargetAtTime(nth(SND_LV, SND.lv), must(SND.ctx, 'SND.ctx').currentTime, 0.25);
   flashHint('音量：' + nth(SND_NAME, SND.lv), 1200);
 }

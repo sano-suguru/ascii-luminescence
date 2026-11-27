@@ -58,7 +58,7 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      場面が切り替わる時の処理にかかった時間・遅いフレーム・エラーを Artifact のデータベースの diag に書く initDiag。
                      Claude が ArtifactData の道具で読む。window.claude.use が無い所では何もしない）、took：かかった時間を診断の記録に渡す took（記録していない時は何もしない。
                      levels.ts などが diag.ts を直に読むと輪になるので、間に置く）、
-                     screens：マウスを捕まえる tryLock（指で遊んでいる間は捕まえにいかない）・失敗した時 lockFailed（一度も捕まえていないか、最後に捕まえてから3回続けて失敗したら（外れてから1.5秒の間の分は数えない）、捕まえられないと決め、ドラッグの案内を1回出す。それまでは、次のクリックでまた捕まえる。Esc のキーを処理している間 ui.escKey は捕まえにいかない）・捕まえる遊び方で探索中なのにマウスが外れているか lockLost・描く画面を押した時に、lockLost なら捕まえ直すだけにする relockClick・外れた時にメニューを開くか menuOnUnlock・ページが隠れた時（アプリの切り替えなど。指で遊ぶ時はマウスが外れないので、こちらで止める）にメニューを開くか menuOnHide（どちらも探索中で、止まっている画面が開いていない時だけ）・「クリックで視点操作に戻る」の一言 updateResume（lockLost の時だけ出す。止まっている間・死んだ時・タイトルでは CSS が隠す）・視点 setCamMode・音量 sndToggle、particles：粒子を出す spawn・消す killP と、世界の中に文字を置く dyn（配列も。描き方 mode は、こちらを向く・床に寝かせる（1 を越えた分は文字を起こす角度）・立てる）と、漂う塵を置く initDust・respawnDust と、描く粒子の配列 ptPos・ptCol・ptSize・ptGly、motes：粒子を動かす（塵・沼のガスの粒 updateGasPoints・川のさざ波 riverFX・粒子と火の粉を動かして GPU に渡す数を書く updateParticles）、camera：霧と目の慣れ updateAtmosphere・3人称の自分の姿 updateAvatar・岩の中か rockAt・カメラと自分の間の岩の断面 drawSection、
+                     screens：マウスを捕まえる tryLock（指で遊んでいる間は捕まえにいかない）・失敗した時 lockFailed（一度も捕まえていないか、最後に捕まえてから3回続けて失敗したら（外れてから1.5秒の間の分は数えない）、捕まえられないと決め、ドラッグの案内を1回出す。それまでは、次のクリックでまた捕まえる。Esc のキーを処理している間 ui.escKey は捕まえにいかない）・捕まえる遊び方で探索中なのにマウスが外れているか lockLost・描く画面を押した時に、lockLost なら捕まえ直すだけにする relockClick・外れた時にメニューを開くか menuOnUnlock・ページが隠れた時（アプリの切り替えなど。指で遊ぶ時はマウスが外れないので、こちらで止める）にメニューを開くか menuOnHide（どちらも探索中で、止まっている画面が開いていない時だけ）・「クリックで視点操作に戻る」の一言 updateResume（lockLost の時だけ出す。止まっている間・死んだ時・タイトルでは CSS が隠す）・視点 setCamMode・音量 sndToggle（選んだ段は al_snd に残し、ページを開いた時に loadSndLevel で読む）、particles：粒子を出す spawn・消す killP と、世界の中に文字を置く dyn（配列も。描き方 mode は、こちらを向く・床に寝かせる（1 を越えた分は文字を起こす角度）・立てる）と、漂う塵を置く initDust・respawnDust と、描く粒子の配列 ptPos・ptCol・ptSize・ptGly、motes：粒子を動かす（塵・沼のガスの粒 updateGasPoints・川のさざ波 riverFX・粒子と火の粉を動かして GPU に渡す数を書く updateParticles）、camera：霧と目の慣れ updateAtmosphere・3人称の自分の姿 updateAvatar・岩の中か rockAt・カメラと自分の間の岩の断面 drawSection、
                      debris：倒れた生き物が崩れる（倒れた時の体を写し取る crumble。文字が上から順に外れて落ち、床に寝て小山に積もり、1つずつ縮んで消える。動かして描く updateDebris は tick の段 debris。
                      ばらつきは生き物ごとの鍵の乱数 keyedRand('fall'…) で先に決め、見た目の乱数 mr() は引かない。数の上限：1体に残す文字は、ふつう120・主と大きな物250・試しの間の的40、崩れる体は12・残る文字は全体で3000。テスト用の様子 debrisInfo）、legend：今の探索の伝説の物 getLegend と状態の表示の1行・伝説の物の読み方（legendOfBranch・legendAll・descentSealed）と世界の中に描く drawLegendWorld と神託所の手がかり oracleLegendHints、
                      lightmap：マスの明るさ cellLight と天井の高さ ceilAt・灯りの揺らぎ flicker と灯りを描画に渡す配列を書き直す updateLights（状態に頼る。灯りの計算そのものは light）、
@@ -438,7 +438,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 
 ## 保存データ（localStorage）
 `al_meta`（伝承・解放・墓・試練・指で遊ぶ時の始めの一言を出したか）、`al_book`（魔導書：記した反応）、`al_beasts`（忘れられた獣）、
-`al_runes`（見たルーン）、`al_seen`（見た生き物）、`al_cam`（1人称/3人称）、`al_look`（指で遊ぶ時の見回す速さの段）、`al_dev`（開発用モード）
+`al_runes`（見たルーン）、`al_seen`（見た生き物）、`al_cam`（1人称/3人称）、`al_look`（指で遊ぶ時の見回す速さの段）、`al_snd`（音量の段）、`al_dev`（開発用モード）
 
 ## ゲーム本体の地図（src/game/）
 ファイルは名前の順につながる（後のファイルは、前のファイルの変数や関数を使える。トップレベルで実行する文は順番に気をつける）。

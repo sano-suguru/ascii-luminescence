@@ -61,7 +61,7 @@ import { loadBeasts, recordBeast, saveMeta, saveSet } from '../lib/save.ts';
 import { BL, canStep, chooseNext, fireNear, foe, hostile, makeMonster, statOf, summon, updateMonster } from '../lib/monsters.ts';
 import { brimFlare, brimRecover, chillArea, crackIce, ignite, initFire, regrow, splash, stepFire, stepGas, tallAt, trample, updateCritter, updateFrozen, uploadCells } from '../lib/ground.ts';
 import { updateEvents, updateTraps } from '../lib/events.ts';
-import { lockFailed, menuOnHide, menuOnUnlock, relockClick, setCamMode, sndToggle, tryLock, updateResume } from '../lib/screens.ts';
+import { loadSndLevel, lockFailed, menuOnHide, menuOnUnlock, relockClick, setCamMode, sndToggle, tryLock, updateResume } from '../lib/screens.ts';
 import { addLooks } from '../lib/bodies/build.ts';
 import { bogAura, dragonAura, drawMorph, houndAura, krakenAura, lichAura, nagaAura, salamanderAura, shadowAura, spiderAura, transformShadow } from '../lib/bodies/auras.ts';
 import { P, dCol, dPar, dPos, dyn, initDust, ptCol, ptGly, ptPos, ptSize, spawn } from '../lib/particles.ts';
