@@ -17,6 +17,7 @@
 //  11. 縦向き：探索中だけ、止めて横にする案内を出し、横に戻すと続く・縦のまま死んでも結果の画面から新しい探索へ進める（タイトルと、マウスで遊んでいる時は出さない）
 //  12. ホーム画面に置く案内：iPhone の Safari で、ホーム画面から開いていない時だけタイトルに出る（指で触れない端末では出ない）
 //  13. iPhone の横向きの切り欠きとホームの棒（safe-area-inset の真似）：端の表示とボタンが、その分を避けるか
+//  14. 開発用モードでない時のタイトルが、ホーム画面に置く案内と試練が出ても、スマホの横向き（iPhone 13 横・750×312）で送らずに収まる
 //   7. 診断の記録（src/lib/diag.ts）：偽の window.claude（Artifact の中の真似）で、持ち主なら端末・できごと・速さ・かかった時間・遅いフレームを db に書き、持ち主でなければ書かない。
 //      書き込みの途中に頼まれた分（ページが隠れた時）も、途中の分が終わってから書く
 import { FIT_MIN } from '../src/lib/layout.ts';
@@ -897,6 +898,49 @@ await withBrowser(async ({ browser, base }) => {
       errs.push(
         `ホーム画面の案内：navigator.standalone が ${standalone}${touchless ? '・指で触れない端末' : ''}の時に、案内が${has ? '出た' : '出ない'}`,
       );
+    await pg.context().close();
+  }
+
+  // ---------------------------------------------------------------- 14. 開発用モードでない時のタイトルが、スマホの横向きで送らずに収まる
+  // （ホーム画面に置く案内と試練の両方が出る、行の一番多い場合。テスト用モードは開発用モードをオンにするので、[開発用モード] を押してオフにする）
+  for (const { what, opts, standalone } of [
+    { what: 'iPhone 13 横の Safari（ホーム画面に置く案内が出る）', opts: { device: 'iPhone 13 landscape' }, standalone: false },
+    { what: '750×312（Claude のアプリの中）', opts: null, standalone: undefined },
+  ]) {
+    const pg = opts
+      ? await newPage(browser, errs, opts)
+      : await (await browser.newContext({ viewport: { width: 750, height: 312 }, hasTouch: true, isMobile: true })).newPage();
+    if (!opts) pg.on('pageerror', (e) => errs.push(String(e.stack || e).slice(0, 600)));
+    if (standalone !== undefined)
+      await pg.addInitScript(
+        (v) => Object.defineProperty(Navigator.prototype, 'standalone', { configurable: true, get: () => v }),
+        standalone,
+      );
+    await pg.addInitScript(() => localStorage.setItem('al_meta', JSON.stringify({ unl: ['t_dusk', 't_fury'] })));
+    await openTest(pg, base, 'seed=202');
+    await pg.evaluate(() => document.getElementById('galDev').click());
+    await pg.evaluate(() => document.fonts.ready);
+    const m = await pg.evaluate(() => {
+      const it = document.getElementById('intro'),
+        p = document.getElementById('intropanel'),
+        t = p.innerText;
+      return {
+        sh: it.scrollHeight,
+        ch: it.clientHeight,
+        enter: document.getElementById('enter').getBoundingClientRect().bottom,
+        zoom: Number(p.style.zoom || 1),
+        dev: t.includes('開始する層'),
+        home: t.includes('ホーム画面に追加'),
+        trial: t.includes('猛り'),
+      };
+    });
+    if (m.dev || !m.trial || m.home !== (standalone === false))
+      errs.push(`タイトルの収まり：${what}の前提が崩れた（開発用 ${m.dev}、試練 ${m.trial}、ホーム画面の案内 ${m.home}）`);
+    if (m.sh > m.ch || m.enter > m.ch)
+      errs.push(
+        `タイトルの収まり：${what}で、タイトルを送らないと［迷宮に入る］まで見えない（${m.sh}/${m.ch}、［迷宮に入る］の下 ${m.enter}、倍率 ${m.zoom}）`,
+      );
+    console.log(`タイトルの収まり：${what}：倍率 ${m.zoom.toFixed(2)}、${m.sh}/${m.ch}`);
     await pg.context().close();
   }
 

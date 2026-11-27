@@ -199,6 +199,8 @@ body:not(.started) #hud{opacity:0;}
   transition:opacity 1.1s ease;}
 #intro.gone{opacity:0;pointer-events:none;}
 @media (max-height:520px){ #intro{justify-content:flex-start;gap:14px;} #intro p{font-size:12px;} }
+/* スマホの横向き（背が 312〜360px ほど）：まわりの余白と間を詰めて、ホーム画面に置く案内と試練が出ても、［迷宮に入る］まで送らずに見えるようにする */
+@media (max-height:420px){ #intro{padding:8px 24px;gap:6px;} }
 #intro h1{margin:0;font-weight:800;font-size:clamp(26px,5.6vw,74px);letter-spacing:.2em;line-height:1.1;color:#f3efff;}
 #intro h1 span{display:inline-block;animation:glow 5.5s ease-in-out infinite;}
 @keyframes glow{
