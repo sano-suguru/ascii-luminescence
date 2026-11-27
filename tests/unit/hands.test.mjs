@@ -73,6 +73,7 @@ describe('性質の火花', () => {
     } finally {
       Object.assign(here, { D: keep.D });
       Object.assign(gear, { hands: keep.hands, castSt: keep.castSt });
+      for (const k of Object.keys(player)) if (!(k in keep.player)) delete player[k];
       Object.assign(player, keep.player);
       Object.assign(ui, keep.ui);
       adv.dead = keep.dead;
@@ -101,9 +102,8 @@ describe('性質の火花', () => {
   });
   it.each([0.2, 0.11, 0.01])('剣を振っている途中（swing %s）も、火花は刃先から出る', (swing) => {
     for (const w of ['blade', 'dash', 'gsword']) {
-      const L = { uid: 1, type: w === 'gsword' ? w : 'bolt' },
+      const L = { uid: 1, type: w === 'gsword' ? w : 'orb' },
         R = w === 'gsword' ? L : { uid: 2, type: w };
-      if (w !== 'gsword') L.type = 'orb';
       for (const g of sparkGap(L, R, { swing, swingH: 'R' })) expect(g).toBeLessThan(0.04);
     }
   });
