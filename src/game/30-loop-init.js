@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------- sizing
-// why：何のために（'init'・'resize'・速さに合わせて解像度を下げた 'auto'）。大きさと解像度が前と同じなら、作り直さない
+// why：何のために（'init'・'resize'・速さに合わせて解像度を下げた 'auto'・下げても速くならず戻した 'back'）。大きさと解像度が前と同じなら、作り直さない
 // （iOS は、画面の向きを変えると、同じ大きさの resize を続けて出すことがある。作り直すと、描く物の大きさを全部取り直すため）
 let sizedAs='';
 function applySize(why){
@@ -18,6 +18,8 @@ window.addEventListener('resize',()=>{ applySize('resize'); sizeMap(); });
 
 // ---------------------------------------------------------------- main loop
 let last=0, fovT=0, mapT=0, perfT=0, perfAcc=0, perfN=0, warm=0;
+// 画質を下げる途中の状態（src/lib/quality.ts の stepQuality。q は数えるたびに今の値で置き換える）
+let qRun={q:{pr:1,bloom:true},prev:null,done:false};
 function frame(nowMs){
   requestAnimationFrame(frame);
   if(TEST){ if(TESTQ.n>0){ TESTQ.n--; try{ testTick(true); } finally{ if(!TESTQ.n&&TESTQ.done){ const d=TESTQ.done; TESTQ.done=null; d(); } } } return; }
@@ -76,8 +78,9 @@ function tick(raw,draw){
   // 階を作る一瞬の遅れで下がらないように）。数えないフレームが来たら、そこから3秒は様子を見てから数え直す
   if(!ui.started||here.trans||isPaused()||document.hidden){ warm=perfT=perfAcc=perfN=0; return; }
   warm+=raw; if(warm>3){ perfAcc+=raw; perfN++; perfT+=raw;
-    if(perfT>QUALITY.span){ const q=nextQuality(perfAcc/perfN,{pr:pixelRatio,bloom:bloom.enabled}); perfT=perfAcc=perfN=0;
-      if(q){ const pr0=pixelRatio; pixelRatio=q.pr; bloom.enabled=q.bloom; if(q.pr!==pr0)applySize('auto'); else took('quality',performance.now(),{bloom:q.bloom}); } } }
+    if(perfT>QUALITY.span){ qRun=stepQuality(perfAcc/perfN,{...qRun,q:{pr:pixelRatio,bloom:bloom.enabled}}); perfT=perfAcc=perfN=0;
+      const q=qRun.q, why=qRun.done?'back':'auto';
+      if(q.pr!==pixelRatio||q.bloom!==bloom.enabled){ const pr0=pixelRatio; pixelRatio=q.pr; bloom.enabled=q.bloom; if(q.pr!==pr0)applySize(why); else took('quality',performance.now(),{bloom:q.bloom,why}); } } }
 }
 
 // ---------------------------------------------------------------- test hooks (only with ?test=1; see the test mode block at the top)
