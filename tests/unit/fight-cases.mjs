@@ -422,6 +422,7 @@ export async function fightCases(F, seeds, page) {
         locked: chance(0.5),
         helpOn: false,
         noticeMsgT: {},
+        hintSeq: 0,
       });
       Object.assign(here, { finalSt: null, trans: null, lockCell: -1 });
       clock.time = 20 + r() * 100;
@@ -462,7 +463,7 @@ export async function fightCases(F, seeds, page) {
       });
       Object.assign(vmKick, { L: -9, R: -9 });
       for (const h of ['L', 'R']) Object.assign(beamHold[h], { hold: 0, last: -9 });
-      Object.assign(edge, { t: 0, k: '', idle: 0 });
+      Object.assign(edge, { t: 0, k: '', idle: 0, hint: 0 });
       for (const k of Object.keys(keys)) delete keys[k];
       gfx.camera = fakeCamera();
       gfx.U = fakeUniforms();

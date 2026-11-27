@@ -104,6 +104,8 @@ export interface Ui {
   noticeMsgT: Record<string, number>;
   /** 画面の下の一言（同じ時は書き直さない） */
   hintHTML: string;
+  /** 画面の下の一言を出した回数（showHint のたびに増える。後から別の一言が出たかを見分ける。src/lib/status.ts の clearHint） */
+  hintSeq: number;
   /** メニューの「タイトルへ」「新しい探索」の、もう一度押して確かめる待ちが終わる時刻（待っていなければ 0） */
   titleArm: number;
   newRunArm: number;
@@ -170,6 +172,7 @@ export const ui: Ui = {
   helpT: 0,
   noticeMsgT: {},
   hintHTML: '',
+  hintSeq: 0,
   titleArm: 0,
   newRunArm: 0,
   dbgOpen: false,
@@ -1284,5 +1287,5 @@ export const dust = {
   g: new Float32Array(DUST_N),
   s: new Float32Array(DUST_N),
 };
-/** 通れない所に押し当てている間の記録（押した秒 t・何に当たっているか k・離してからの秒 idle）。丸ごと入れ替えない */
-export const edge = { t: 0, k: '', idle: 0 };
+/** 通れない所に押し当てている間の記録（押した秒 t・何に当たっているか k・離してからの秒 idle・塞がれた時の一言を出した番号 hint（showHint が返す））。丸ごと入れ替えない */
+export const edge = { t: 0, k: '', idle: 0, hint: 0 };
