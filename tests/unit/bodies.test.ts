@@ -93,8 +93,8 @@ describe('生き物の形', () => {
       all += JSON.stringify(b) + JSON.stringify(lords.beastSleep(b, { spec }));
     }
     caseOut('bodies-1', all);
-    expect(all.length).toBe(6406085);
-    expect(fnv(all)).toBe('2858ee1a'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
+    expect(all.length).toBe(6943778);
+    expect(fnv(all)).toBe('ef6888ee'); // 王の影の一つ目の姿は、この指紋に入れず、下の別のテストで確かめる
   });
   it('主と大きな生き物の形の指紋（形と、形を作る時に見た目の乱数を引く順番が、思わず変わっていない）', () => {
     let all = '';
@@ -224,6 +224,63 @@ describe('生き物の形', () => {
         expect(Math.min(...ear)).toBeGreaterThan(0.95);
         expect(Math.min(...ear)).toBeLessThan(1.25);
         expect(Math.max(...ear)).toBeGreaterThan(1.8);
+      }
+    }
+  });
+  it('ジャッカル：前脚の点は肩を、後脚の点は腰を軸に回る。尾の点は付け根からの距離を piv に持つ。目は頭の表面のすぐ外、耳は頭の上に高く立つ。背の鞍は背の上だけ。明るさ b は 1.4 まで（小さな生き物）', () => {
+    const B = beasts.jackalBody,
+      C = beasts.JACKAL;
+    // 体の表面からの割合（体を作ったのと同じ式。1 が表面）
+    const bodyK = (p: { x: number; y: number; z: number }): number => {
+      const r = B.at(p.z);
+      return Math.hypot(p.x / r.rx, (p.y - r.cy) / r.ry);
+    };
+    for (const ty of [...TYS, { scale: 0.85, col: [1.0, 0.74, 0.36] } satisfies BodyType]) {
+      const b = seeded(() => beasts.jackalForm(ty));
+      for (const p of b) {
+        expect(p.b).toBeLessThanOrEqual(1.4);
+        expect(['body', 'head', 'tailw', 'legL', 'legR']).toContain(p.part);
+      }
+      // 脚：前（z > 0）の点は肩の軸、後ろの点は腰の軸。前の左と後ろの右が同じ part（同じ向きに振れる）
+      const legs = b.filter((q) => q.part === 'legL' || q.part === 'legR');
+      expect(legs.length).toBeGreaterThan(0);
+      for (const p of legs) {
+        const ax = p.z > 0 ? beasts.JACKAL_SHOULDER : beasts.JACKAL_HIP;
+        expect([p.piv, p.pz]).toEqual([ax.piv, ax.pz]);
+        expect(p.part).toBe(p.z > 0 === p.x < 0 ? 'legL' : 'legR');
+      }
+      // 尾：付け根より後ろで、piv は付け根から、その輪の真ん中までの距離（点と付け根の距離から、輪の半径より離れない）。先は付け根より下
+      const tail = b.filter((q) => q.part === 'tailw'),
+        [, ry0, rz0] = B.tailRoot;
+      expect(tail.length).toBeGreaterThan(20);
+      for (const p of tail) {
+        expect(p.z).toBeLessThan(rz0);
+        expect(Math.abs(Math.hypot(p.x, p.y - ry0, p.z - rz0) - p.piv)).toBeLessThan(0.1);
+      }
+      expect(Math.min(...tail.map((p) => p.y))).toBeLessThan(ry0 - 0.3);
+      // 目：頭の表面のすぐ外（埋もれず、浮かない）
+      const eyes = b.filter((p) => p.col === C.eye);
+      expect(eyes.length).toBe(2);
+      for (const p of eyes) {
+        expect(bodyK(p)).toBeGreaterThan(1.03);
+        expect(bodyK(p)).toBeLessThan(1.2);
+      }
+      // 耳：左右それぞれ、頭の後ろ（奥行き 0.4 から 0.56）の、頭の表面より外の点。根もとは表面のすぐそば（浮かない）で、上は表面から高く立つ
+      for (const sd of [-1, 1]) {
+        const ear = b.filter(
+          (p) => p.part === 'head' && Math.sign(p.x) === sd && p.z > 0.4 && p.z < 0.56 && p.y > B.at(p.z).cy && bodyK(p) > 1.2,
+        );
+        expect(ear.length).toBeGreaterThan(10);
+        expect(Math.min(...ear.map((p) => p.y - (B.at(p.z).cy + B.at(p.z).ry)))).toBeLessThan(0.05);
+        expect(Math.max(...ear.map((p) => p.y - (B.at(p.z).cy + B.at(p.z).ry)))).toBeGreaterThan(0.15);
+      }
+      // 背の鞍：肩から尻の間の、背の上の半分だけ
+      const saddle = b.filter((p) => p.col === C.saddle || p.col === C.silver);
+      expect(saddle.filter((p) => p.part === 'body').length).toBeGreaterThan(10);
+      for (const p of saddle.filter((q) => q.part === 'body')) {
+        expect(p.z).toBeLessThan(B.saddle[0]);
+        expect(p.z).toBeGreaterThan(B.saddle[1]);
+        expect(p.y).toBeGreaterThan(B.at(p.z).cy);
       }
     }
   });
