@@ -121,6 +121,9 @@ export interface Ui {
   startDepth: number;
   /** タイトルの画面（16-view-input.js で document から読む） */
   introEl: HTMLElement | null;
+  /** ミニマップのキャンバス mapC と、その 2D の描き手 mctx（16-view-input.js で document から読む。src/lib/minimap.ts が描く） */
+  mapC: HTMLCanvasElement | null;
+  mctx: CanvasRenderingContext2D | null;
   /** メニューの「タイトルへ」「新しい探索」の、もう一度押して確かめる待ちが終わる時刻（待っていなければ 0） */
   titleArm: number;
   newRunArm: number;
@@ -197,6 +200,8 @@ export const ui: Ui = {
   menuPage: '',
   startDepth: 1,
   introEl: null,
+  mapC: null,
+  mctx: null,
   titleArm: 0,
   newRunArm: 0,
   dbgOpen: false,
