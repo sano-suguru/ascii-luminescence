@@ -1,7 +1,7 @@
 // 先にある物の手がかり（もとは src/game/22-world-hints.js）：言葉では告げず、近くで感じ取るだけの物。
 // 下り階段から漏れる物（次の層・特別な階・支道の奥）、支道の入口のまわりの跡、異界の門の光、それぞれの小さな音。封じられた階段の封も描く。
 // 状態の入れ物 here（今いる場所と階）・adv（探索のシード）・player・clock・ui（図鑑）に頼る。呼ぶのは古い JS の描画（30-loop-init.js の tick と
-// 22-world-hints.js の drawRunesWorld）と、見た時の説明（29-look.js）・階段の封（18-level-player.js・30-loop-init.js）。
+// src/lib/fixtures.ts の drawRunesWorld）と、見た時の説明（29-look.js）・階段の封（18-level-player.js・30-loop-init.js）。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。次に音を鳴らせる時刻は、音の乱数 sndRand で決める（見た目の乱数とは別の並び）。
 import { lookup, must } from './array.ts';
 import { sBubble, sChime, sDrip, sHiss, sRumble, sndReady } from './audio.ts';

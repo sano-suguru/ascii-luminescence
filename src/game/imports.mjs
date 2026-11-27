@@ -54,7 +54,9 @@ import {
 } from '../lib/status.ts';
 import { descentSealed, drawLegendWorld, getLegend, legendAll, legendOfBranch } from '../lib/legend.ts';
 import { ceilAt, updateLights } from '../lib/lightmap.ts';
-import { drawDoors, drawFixtures, drawGraves, drawSprings, drawTraps, drawWebs, webTouch } from '../lib/fixtures.ts';
+import { drawDoors, drawFixtures, drawGraves, drawRunesWorld, drawSprings, drawTraps, drawWebs, webTouch } from '../lib/fixtures.ts';
+import { drawArrows } from '../lib/arrows.ts';
+import { drawCastFx, updateCross } from '../lib/chantfx.ts';
 import { addBolt, drawBoltFx, drawFire, drawFrozen, drawWave, drawZones, sparkCrown } from '../lib/fx.ts';
 import { BRANCH_OMEN, REALM_OMEN, SPECIAL_OMEN, STRATUM_OMEN, drawOmens, drawStairSeal, omenOf, stairsGuarded } from '../lib/omens.ts';
 import { loadBeasts, recordBeast, saveMeta, saveSet } from '../lib/save.ts';

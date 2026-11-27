@@ -373,7 +373,7 @@ describe('音を鳴らす所が、見た目の乱数を引かない（src/ を�
       .map((name) => ({ name, text: readFileSync(join(SRC, name), 'utf8') }));
     const r = soundRandomCheck(files, audioNames);
     // 古い JS の音を鳴らす関数も見つけている（本体が if(!sndReady())return で始まる関数）
-    expect(r.sound).toEqual(expect.arrayContaining(['castSound', 'chantStart', 'humStart', 'omenSound', 'sShriek', 'sDrip', 'sChime']));
+    expect(r.sound).toEqual(expect.arrayContaining(['castSound', 'chantStart', 'omenSound', 'sShriek', 'sDrip', 'sChime']));
     expect(r.bad).toEqual([]);
     // audio.ts（コメントを除く。詠唱の声も入る）は丸ごと調べる：見た目の乱数を、どんな形でも使わない（音だけの処理の外の形も、変数に入れてから渡す形も）
     expect(/\b(mr|mpick)\b|Math\.random/.test(audioText.replace(/^\s*(\/\/|\*).*$/gm, ''))).toBe(false);

@@ -325,6 +325,8 @@ export interface Item {
   elitePrize?: boolean;
   /** 宝物庫の褒美を取った時に起きること（'guard'：番人が目を覚ます、'collapse'：天井が崩れる） */
   ev?: string;
+  /** 宝物庫の褒美のまわりの床のマス（褒美が部屋に無い時に、兆しを描く所。src/lib/fixtures.ts の drawRunesWorld が初めて描く時に作る） */
+  area?: { cells: number[] };
   /** 墓の記録（kind が 'grave' の物） */
   g?: Grave;
   /** 伝説の物の種類（kind が 'legend' の物。LEGEND_ORDER の candle・bell・mirror）と、落ちたゲームの時刻 */
