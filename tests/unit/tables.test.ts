@@ -195,7 +195,7 @@ describe('タイトル・文字の並び・シェーダー・小さな関数：�
       SH.PT_TOTAL,
       SH.P0,
     ];
-    expect(fingerprint(v)).toEqual(['8b71b190', 12795]);
+    expect(fingerprint(v)).toEqual(['8e3421e7', 12927]);
   });
   it('表示の大きさ・名前と説明・音・ルーンの表', () => {
     const v = asJson([
@@ -230,7 +230,7 @@ describe('タイトル・文字の並び・シェーダー・小さな関数：�
       W.FIRE_TYPES,
       LANTERN,
     ]);
-    expect(fingerprint(v)).toEqual(['5e53bc19', 3094]);
+    expect(fingerprint(v)).toEqual(['93b01801', 3107]);
   });
   it('小さな関数（たくさんの入力で）', () => {
     const out: unknown[] = [];

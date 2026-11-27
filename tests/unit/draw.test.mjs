@@ -60,6 +60,6 @@ describe('移す前と同じ', () => {
     );
     expect(calls.filter((c) => c.threw).length).toBeLessThan(5);
     caseOut('draw', all);
-    expect([fnv(all), all.length]).toEqual(['d9ea2cb8', 5561079]);
+    expect([fnv(all), all.length]).toEqual(['b8811601', 5561079]);
   }, 60000);
 });

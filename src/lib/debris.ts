@@ -6,7 +6,7 @@ import { must, nth } from './array.ts';
 import { drawMonster0, drawTentacles, krakenArms } from './bodies/draw.ts';
 import type { Body } from './bodies/kit.ts';
 import { levelSeed } from './levels.ts';
-import { cellLight } from './lightmap.ts';
+import { cellLight, litScale } from './lightmap.ts';
 import { dCol, dPar, dPos, dyn } from './particles.ts';
 import { DYN_MAX } from './shaders.ts';
 import { keyedRand, withVisualRand } from './random.ts';
@@ -277,10 +277,12 @@ function stepOne(d: Debris, dt: number): void {
   d.t += dt;
   const t = d.t,
     far = Math.hypot(d.x0 - player.x, d.z0 - player.z) > 44;
+  // 足すまわりの明かりは、体と同じく強い所で頭打ちにする（src/lib/lightmap.ts の LIT_MAX）
   const lit = cellLight(d.x0, d.z0),
-    l0 = lit[0] * 0.12,
-    l1 = lit[1] * 0.12,
-    l2 = lit[2] * 0.12;
+    lk = 0.12 * litScale(lit),
+    l0 = lit[0] * lk,
+    l1 = lit[1] * lk,
+    l2 = lit[2] * lk;
   for (let i = 0; i < d.n; i++) {
     let st = nth(d.st, i);
     if (st === GONE) continue;

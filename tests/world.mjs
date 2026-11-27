@@ -26,6 +26,8 @@
 //      放すとまた動く。__test.cam で目と同じ所に置いたカメラは目と同じに写し、前へ出すと、見ている点を真ん中にしたまま大きく写す。null で目に戻る。
 //      岩の中（地図の外・天井より上）には置かない。ほかの階へ移ると目に戻る。置いている間も、ゲームの一歩の間のカメラは目のまま（術はプレイヤーから出て、当たる）。
 //      小さな生き物は止められない（わけの文を返す）。無い手・性質でない鍵・3つの数でない pos は受け付けない
+//  20. 反応と火が重なっても、画面が白く飛ばない（大洞窟で、5 ほど先のトロルを氷の樫の杖で凍えさせ、炎の樫の杖を当てる。蒸気の反応が起き、枯れ草が燃える。
+//      当たって 2〜8 フレームの間、画面全体の眩しい画素が 25% 以下・体の範囲の白飛びが 12% 以下）。体は当てる前より 1.1 倍を越えて明るくなり、画面の眩しい画素は増える
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { PNG } from 'pngjs';
 import { withBrowser, newPage, openTest, advance, frames, aimAt, strike } from './lib.mjs';
@@ -724,6 +726,119 @@ async function glareChecks(pg, base) {
   console.log(`18：当たった時の画面の眩しい画素 ${(scr * 100).toFixed(1)}%、体の明るさ ${m0.toFixed(1)} → ${m1.toFixed(1)}`);
 }
 
+// 20：反応と火が重なった時の眩しさ（src/lib/lightmap.ts の LIT_MAX・src/lib/shaders.ts の火の明かり）
+async function reactFireGlareChecks(pg, base) {
+  // 大洞窟（床に枯れ草が多い）。樫の杖を両手に持ち、左に氷、右に炎を付け、5 ほど先の見えている床にトロルを置いて止める
+  await openTest(pg, base, 'seed=7&depth=3&god=1');
+  await advance(pg, 2);
+  const set = await pg.evaluate(() => {
+    __test.clearAll();
+    const got = [__test.equip('L', 'orb'), __test.equip('R', 'orb'), __test.elem('L', 'ice'), __test.elem('R', 'fire')].join();
+    if (got !== 'orb,orb,ice,fire') return `手の用意ができない（${got}）`;
+    __test.fov();
+    const s = __test.state(),
+      { w, h } = __test.size(),
+      fx = -Math.sin(s.yaw),
+      fz = -Math.cos(s.yaw);
+    let best = null;
+    for (let i = 0; i < w * h; i++) {
+      const c = __test.cell(i);
+      if (!c.floor || !c.seen || c.water || c.lava) continue;
+      const dx = c.x - s.pos[0],
+        dz = c.z - s.pos[1],
+        d = Math.hypot(dx, dz);
+      if (d < 4 || d > 6) continue;
+      // 5 に近く、前にある床ほど良い
+      const score = Math.abs(d - 5) - (dx * fx + dz * fz) / d;
+      if (!best || score < best[0]) best = [score, i];
+    }
+    if (!best) return 'トロルを置く床が無い';
+    __test.summon('T', best[1]);
+    __test.hold(0, {});
+    return null;
+  });
+  if (set) {
+    errs.push(`20：${set}（テストの前提が崩れた）`);
+    return;
+  }
+  try {
+    await aimAt(pg, 'T');
+  } catch (e) {
+    errs.push(`20：${e.message}（テストの前提が崩れた）`);
+    return;
+  }
+  await frames(pg, 1);
+  const lum = (png, i) => 0.2126 * png.data[i] + 0.7152 * png.data[i + 1] + 0.0722 * png.data[i + 2];
+  // 画面全体の眩しい画素（明るさ 200 以上）の割合と、体の範囲 box の白飛び（3つの色がどれも 245 以上）の割合と明るさの平均（数え方は tools/glare.mjs と同じ）
+  const measure = (png, box) => {
+    let scr = 0,
+      white = 0,
+      sum = 0,
+      n = 0;
+    for (let i = 0; i < png.data.length; i += 4) if (lum(png, i) >= 200) scr++;
+    for (let y = Math.max(0, box.y0); y < Math.min(png.height, box.y1); y++)
+      for (let x = Math.max(0, box.x0); x < Math.min(png.width, box.x1); x++) {
+        const i = (y * png.width + x) * 4;
+        n++;
+        sum += lum(png, i);
+        if (png.data[i] >= 245 && png.data[i + 1] >= 245 && png.data[i + 2] >= 245) white++;
+      }
+    return { scr: scr / (png.width * png.height), white: n ? white / n : 0, mean: n ? sum / n : 0 };
+  };
+  // 写して数える。体の範囲は写すたびに読み直す（当たって吹き飛んだり向きを変えたりしても、体の所で数える）
+  const shot = async () => {
+    const box = await pg.evaluate(() => __test.monsterView('T')?.screen ?? null);
+    if (!box) return null;
+    return measure(PNG.sync.read(await pg.screenshot({ timeout: 90000 })), box);
+  };
+  const before = await shot();
+  if (!before) {
+    errs.push('20：トロルの体が描かれていない（テストの前提が崩れた）');
+    return;
+  }
+  // 氷で凍えさせてから炎を当てる（蒸気の反応が起き、炎の玉は当たった所の枯れ草に火をつける）
+  try {
+    await strike(pg, 'L', 'T');
+    await aimAt(pg, 'T');
+    await strike(pg, 'R', 'T');
+  } catch (e) {
+    errs.push(`20：${e.message}（テストの前提が崩れた）`);
+    return;
+  }
+  const fire = await pg.evaluate(() => {
+    const { w, h } = __test.size();
+    let n = 0;
+    for (let i = 0; i < w * h; i++) if (__test.cell(i).fire > 0) n++;
+    return n;
+  });
+  if (fire < 4) {
+    errs.push(`20：炎の玉を当てても、燃えているマスが ${fire} 個（テストの前提が崩れた。4 個以上のはず）`);
+    return;
+  }
+  // 当たってから 2・4・6・8 フレーム目（白く飛んでいたのは 4〜6 フレーム目）の、一番悪い値を見る
+  const after = [];
+  for (let k = 0; k < 4; k++) {
+    await frames(pg, 2);
+    const a = await shot();
+    if (!a) {
+      errs.push(`20：当たって ${2 * (k + 1)} フレーム目に、トロルの体が描かれていない（テストの前提が崩れた）`);
+      return;
+    }
+    after.push(a);
+  }
+  const top = (k) => Math.max(...after.map((a) => a[k]));
+  const pct = (v) => `${(v * 100).toFixed(1)}%`;
+  if (top('scr') > 0.25) errs.push(`20：凍えたトロルに炎を当てると、画面の ${pct(top('scr'))} が眩しい画素になる（上限 25%）`);
+  if (top('white') > 0.12) errs.push(`20：凍えたトロルに炎を当てると、体の範囲の ${pct(top('white'))} が白く飛ぶ（上限 12%）`);
+  // 手応えは残る：体は当てる前より明るく、火で画面の眩しい所は増える
+  if (!(top('mean') > before.mean * 1.1))
+    errs.push(`20：凍えたトロルに炎を当てても、体が明るくならない（明るさの平均 ${before.mean.toFixed(1)} → ${top('mean').toFixed(1)}）`);
+  if (!(top('scr') > before.scr)) errs.push(`20：炎を当てても、画面の眩しい画素が増えない（${pct(before.scr)} → ${pct(top('scr'))}）`);
+  console.log(
+    `20：燃えているマス ${fire}、画面の眩しい画素 ${pct(before.scr)} → ${pct(top('scr'))}、体の白飛び ${pct(before.white)} → ${pct(top('white'))}、体の明るさ ${before.mean.toFixed(1)} → ${top('mean').toFixed(1)}`,
+  );
+}
+
 async function sceneToolChecks(pg, base) {
   await openTest(pg, base, 'seed=202&depth=1');
   await advance(pg, 2);
@@ -907,6 +1022,7 @@ await withBrowser(async ({ browser, base }) => {
   await rockfallChecks(pg, base);
   await debrisChecks(pg, base);
   await glareChecks(pg, base);
+  await reactFireGlareChecks(pg, base);
   await sceneToolChecks(pg, base);
 });
 console.log('page errors:', errs.length ? errs : 'none');

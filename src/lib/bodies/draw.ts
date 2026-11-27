@@ -7,7 +7,7 @@
 import { lookup, must, nth } from '../array.ts';
 import { G, SWAPSET } from '../glyphs.ts';
 import { MARK_H, markHeight } from '../hud.ts';
-import { cellLight } from '../lightmap.ts';
+import { cellLight, litScale } from '../lightmap.ts';
 import { dyn, spawn } from '../particles.ts';
 import { clamp } from '../rng.ts';
 import { mr, withMobRand } from '../random.ts';
@@ -234,7 +234,9 @@ export function drawMonster0(m: Mon, t: number): void {
   const near = clamp(dp / 3.5, 0.45, 1);
   const swing = Math.sin(m.walk) * 0.55 * m.moving,
     bob = Math.abs(Math.sin(m.walk)) * 0.04 * m.moving;
-  const lit = cellLight(m.x, m.z);
+  const lit = cellLight(m.x, m.z),
+    // 体に足すまわりの明かりは、強い所で頭打ちにする（src/lib/lightmap.ts の LIT_MAX）
+    litK = 0.12 * litScale(lit);
   const eelArc = ty.form === 'eel' ? Math.sin(Math.PI * (m.surf ?? NaN)) : 0;
   // クラーケンは、水から出ている度合い rise に合わせて沈み、水面より下になる点は描かない（沈んでいる間は外套の上だけ）
   const sink = ty.form === 'kraken' ? KRAKEN_SINK * (1 - clamp(m.rise || 0, 0, 1)) : 0;
@@ -300,7 +302,7 @@ export function drawMonster0(m: Mon, t: number): void {
       case 'eelw':
         lx += Math.sin(t * 4 - p.z * 3.5 + m.ph) * 0.09 * (0.4 + Math.max(0, 0.8 - p.z));
         break;
-      // 尾（サラマンダー）：付け根では動かず、先ほど大きく左右に振れる（piv は付け根からの距離）。歩く時は体と一緒に上下する
+      // 尾（サラマンダー・ネズミ）：付け根では動かず、先ほど大きく左右に振れる（piv は付け根からの距離）。歩く時は体と一緒に上下する
       case 'tailw':
         lx += tailSwish(m, t, p.piv);
         ly += bob;
@@ -317,10 +319,12 @@ export function drawMonster0(m: Mon, t: number): void {
           lz += Math.cos(t * 37 + p.ph) * 0.012;
         }
         break;
+      // 鼻先とひげ（ネズミ）：止まっている間はくんくん前後に動き、歩く時は体と一緒に上下する
       case 'snout':
         if (!(m.moving > 0.3)) {
           lz += Math.sin(t * 14 + m.ph) * 0.012;
         }
+        ly += bob;
         break;
       case 'graze': {
         const g2 = Math.max(0, Math.sin(t * 0.9 + m.ph));
@@ -548,7 +552,7 @@ export function drawMonster0(m: Mon, t: number): void {
     const jx = fj ? (mr() - 0.5) * fj : 0,
       jy = fj ? (mr() - 0.5) * fj : 0,
       jz = fj ? (mr() - 0.5) * fj : 0;
-    dyn(wx + jx, wy + jy, wz + jz, g, p.s * sc * sb, cc[0] * k + lit[0] * 0.12, cc[1] * k + lit[1] * 0.12, cc[2] * k + lit[2] * 0.12, 0, 0);
+    dyn(wx + jx, wy + jy, wz + jz, g, p.s * sc * sb, cc[0] * k + lit[0] * litK, cc[1] * k + lit[1] * litK, cc[2] * k + lit[2] * litK, 0, 0);
   }
   if (!gfx.drawBodyOnly) drawMark(m, t, dp);
   // 霊剣：切っ先を上にした小さな剣（刃・鍔・柄・柄頭）。鍔は、剣が回る向きに張る
