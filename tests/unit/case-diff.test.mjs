@@ -1,6 +1,9 @@
 // tools/case-diff.mjs の単体テスト（場合の書き出しを比べて、まとめる所。テストを走らせる所は、本物の書き出しで手で確かめた）
 import { describe, expect, it } from 'vitest';
-import { applyFix, plainText, report, summarize } from '../../tools/case-diff.mjs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { applyFix, linkChanges, linkSnapshot, plainText, report, summarize, vitestCmd } from '../../tools/case-diff.mjs';
 import { stateFp } from './case-out.mjs';
 
 const line = (calls) => JSON.stringify(calls);
@@ -116,5 +119,33 @@ describe('落ちた指紋を書き換える（--update）', () => {
         .why,
     ).toBe('caseOut のすぐ後（4 行以内）の行ではない');
     expect(applyFix(src, 3, 'TypeError: x is undefined').why).toBe('指紋の失敗の文ではない');
+  });
+});
+
+describe('前の版を走らせる所', () => {
+  // 一時的な作業場所で pnpm exec を走らせると、pnpm が依存を入れ直し、リンクした本体の node_modules を張り直すので、pnpm を通さない
+  it('Vitest は pnpm を通さず、本体の Vitest を Node で直に動かす', () => {
+    const [cmd, args] = vitestCmd(['tests/unit/a.test.mjs']);
+    expect(cmd).toBe(process.execPath);
+    expect(existsSync(args[0])).toBe(true);
+    expect(args.slice(1)).toEqual(['run', 'tests/unit/a.test.mjs']);
+    expect([cmd, ...args].some((a) => /(^|\/)pnpm/.test(a))).toBe(false);
+  });
+  it('node_modules のリンクが張り直されたら、その名前を出す', () => {
+    const d = mkdtempSync(join(tmpdir(), 'al-links-'));
+    try {
+      mkdirSync(join(d, '.pnpm/a'), { recursive: true });
+      mkdirSync(join(d, '@s'));
+      symlinkSync('.pnpm/a', join(d, 'three'));
+      symlinkSync('../.pnpm/a', join(d, '@s/x'));
+      const a = linkSnapshot(d);
+      expect(a).toEqual({ three: '.pnpm/a', '@s/x': '../.pnpm/a' });
+      expect(linkChanges(a, linkSnapshot(d))).toEqual([]);
+      rmSync(join(d, 'three'));
+      symlinkSync('../../tmp/x/.pnpm/a', join(d, 'three'));
+      expect(linkChanges(a, linkSnapshot(d))).toEqual(['three']);
+    } finally {
+      rmSync(d, { recursive: true, force: true });
+    }
   });
 });

@@ -10,18 +10,57 @@
 // しくみ：今の作業場所でテストを走らせ、次に、一時的な作業場所（git worktree。tests/ は今の物を写し、src/ だけを --rev の版にする）で走らせる。
 // どちらも環境変数 AL_CASES_OUT を渡すので、テストは指紋の元の文を書き出す（tests/unit/case-out.mjs。その時は指紋のテストが落ちるが、成否は見ない）。
 // 書き出しは tests/out/case-diff/old/・new/、まとめは tests/out/case-diff/summary.txt。
+// Vitest は pnpm を通さずに走らせる（vitestCmd）。前の版を走らせた後に、本体の node_modules のリンクが変わっていたら止める（linkSnapshot）。
 // まとめ：テストごとに、違う行の数・違う所（場所を一般にした道すじ。配列の要素は、呼び出しなら [名前]、生き物なら {鍵}）ごとの数と、
 // 数の違い（後 − 前）・行ごとの最初の違い。状態は欄ごとの指紋になる（stateFp）ので、どの欄・どの生き物の欄が違うかまで見える。
 // --update が書き換えるのは、caseOut の呼び出しから 4 行以内の toEqual(…)・toBe(…) の行で、テストが期待していた値がその行の値と同じ時だけ
 // （そのほかの失敗は書き出すだけで、触らない）。1つのテストに指紋が並ぶ時（長さと指紋を別の行で確かめる、など）は、前の行が落ちると後の行まで進まないので、
 // 落ちる指紋が無くなるまで、最大 4 回走らせ直す。走らなかったファイル（構文の誤りなど）も、書き換えなかった失敗として出す。書き換えたファイルは最後に整形する。
 import { spawnSync, execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  readlinkSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+/**
+ * Vitest を走らせる命令（pnpm を通さず、本体の node_modules の Vitest を Node で直に動かす）。
+ * 一時的な作業場所で pnpm exec を走らせると、pnpm が走らせる前に依存を確かめ、記録した場所（本体）と違うので入れ直し、
+ * リンクした本体の node_modules を、一時的な作業場所から見た道で張り直してしまう（作業場所を消すと、本体の three などが切れる）
+ */
+export const vitestCmd = (args) => {
+  const dir = join(ROOT, 'node_modules/vitest'),
+    bin = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).bin;
+  return [process.execPath, [join(dir, typeof bin === 'string' ? bin : bin.vitest), 'run', ...args]];
+};
+/** node_modules の一番上（@scope の中も）のリンクの行き先（前の版を走らせる前と後で比べ、本体の node_modules が張り直されていないか確かめる） */
+export function linkSnapshot(dir) {
+  const out = {};
+  const walk = (d, pre) => {
+    for (const n of readdirSync(d)) {
+      const p = join(d, n);
+      if (lstatSync(p).isSymbolicLink()) out[pre + n] = readlinkSync(p);
+      else if (n.startsWith('@') && !pre) walk(p, n + '/');
+    }
+  };
+  walk(dir, '');
+  return out;
+}
+/** 2つの linkSnapshot の違う名前 */
+export const linkChanges = (a, b) => [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((k) => a[k] !== b[k]).sort();
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const isMob = (v) => isObj(v) && typeof v.key === 'string' && 'ty' in v;
@@ -206,15 +245,11 @@ function update(files) {
   for (let round = 1; round <= 4; round++) {
     // 前の結果を読まないように、走らせる前に消す（Vitest が書かずに終わったら、止める）
     rmSync(json, { force: true });
-    const r = spawnSync(
-      'pnpm',
-      ['exec', 'vitest', 'run', '--reporter=json', `--outputFile=${json}`, ...files.map((f) => `tests/unit/${f}`)],
-      {
-        cwd: ROOT,
-        encoding: 'utf8',
-        maxBuffer: 1 << 28,
-      },
-    );
+    const r = spawnSync(...vitestCmd(['--reporter=json', `--outputFile=${json}`, ...files.map((f) => `tests/unit/${f}`)]), {
+      cwd: ROOT,
+      encoding: 'utf8',
+      maxBuffer: 1 << 28,
+    });
     if (r.error) throw r.error;
     if (!existsSync(json)) {
       finish();
@@ -285,7 +320,7 @@ function main() {
   for (const d of Object.values(dirs)) mkdirSync(d, { recursive: true });
   const vitest = (cwd, dir) => {
     const t0 = Date.now(),
-      r = spawnSync('pnpm', ['exec', 'vitest', 'run', ...files.map((f) => `tests/unit/${f}`)], {
+      r = spawnSync(...vitestCmd(files.map((f) => `tests/unit/${f}`)), {
         cwd,
         env: { ...process.env, AL_CASES_OUT: dir },
         encoding: 'utf8',
@@ -296,7 +331,9 @@ function main() {
   };
   console.log(`今の版（作業場所のまま）：${files.length} のテストを走らせる`);
   vitest(ROOT, dirs.new);
-  const tmp = mkdtempSync(join(tmpdir(), 'al-case-diff-'));
+  const tmp = mkdtempSync(join(tmpdir(), 'al-case-diff-')),
+    links0 = linkSnapshot(join(ROOT, 'node_modules'));
+  let moved = [];
   const git = (...a) => execFileSync('git', a, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
   try {
     git('worktree', 'add', '--detach', tmp, 'HEAD');
@@ -315,7 +352,16 @@ function main() {
       rmSync(tmp, { recursive: true, force: true });
       git('worktree', 'prune');
     }
+    // 前の版が例外で止まった時も確かめる
+    moved = linkChanges(links0, linkSnapshot(join(ROOT, 'node_modules')));
+    if (moved.length) {
+      console.error(
+        `本体の node_modules のリンクが変わった（${moved.slice(0, 5).join('・')} など ${moved.length} 個）。pnpm install --frozen-lockfile で直す`,
+      );
+      process.exitCode = 1;
+    }
   }
+  if (moved.length) return;
   const text = compareDirs(dirs.old, dirs.new);
   writeFileSync(join(out, 'summary.txt'), text);
   console.log('\n' + text + `\n（書き出しは ${dirs.old} と ${dirs.new}、まとめは ${join(out, 'summary.txt')}）`);
