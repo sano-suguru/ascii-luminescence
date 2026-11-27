@@ -6,9 +6,9 @@
 // 公開する時は、capabilities に db（diag は持ち主だけが読み書き）と user を渡す（CLAUDE.md の「Artifact に公開する」）。
 import { nth } from './array.ts';
 import { sndState } from './audio.ts';
-import { autoSt, offerAuto } from './auto.ts';
+import { autoSt } from './auto.ts';
 import { placeKey } from './levels.ts';
-import { adv, fight, gear, ui } from './state.ts';
+import { adv, fight, gear, saved, ui } from './state.ts';
 import { setTookSink } from './took.ts';
 
 interface ClaudeLike {
@@ -71,19 +71,22 @@ function device(): Record<string, unknown> {
     pointerLock: typeof Reflect.get(el, 'requestPointerLock') === 'function',
     // ページの URL に付いた物（Artifact のリンクに付けた物が、ゲームのページまで届くかを見るため）
     query: location.search + location.hash,
+    // 開いた時に開発用モードがオンだったか（オンだと全部が解放済みになり、自動で試す台本の中身が変わるため）
+    dev: saved.DEVALL,
   };
 }
 
-/** 記録を始める（ページを開いた時に1回）。持ち主かを確かめてから動く */
-export async function initDiag(): Promise<void> {
+/** 記録を始める（ページを開いた時に1回）。持ち主かを確かめてから動く。持ち主と分かったら onOwner を呼ぶ（タイトルを描き直すため） */
+export async function initDiag(onOwner: () => void): Promise<void> {
   const c: unknown = Reflect.get(window, 'claude');
   if (!isClaude(c)) return;
   const user = await c.use('user');
   if (!isUser(user) || !(await user.isOwner())) return;
   const db = await c.use('db');
   if (!isDb(db)) return;
-  // 記録が書けるので、タイトルに［自動で遊ぶ］を出す（src/lib/auto.ts）
-  offerAuto();
+  // 記録が書けるので、タイトルに［開発用モード］と［自動で試す］を出す（タイトルを描き直すのは、呼んだ src/game/17-meta.js）
+  ui.owner = true;
+  onOwner();
   const t0 = Date.now(),
     since = (): number => Math.round((Date.now() - t0) / 100) / 10;
   const doc = db.collection('diag').doc(new Date(t0).toISOString().replace(/[:.]/g, '-'));

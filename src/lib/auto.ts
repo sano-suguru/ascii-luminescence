@@ -2,7 +2,7 @@
 // 段ごとのフレームの数・平均・一番遅い1回・遅いフレームの数を autoSt に貯め、診断の記録（src/lib/diag.ts）が欄 auto に書く（Claude が ArtifactData の道具で読む）。
 // tools/auto-run.mjs も、同じ台本をこの環境で、遅さを足して流す。
 // 始め方は2つ：
-//   - タイトルの［自動で遊ぶ］：claude.ai の Artifact の中で、持ち主が開いた時だけ出す（診断の記録が書かれる時。src/lib/diag.ts の initDiag が offerAuto を呼ぶ）。AUTO_LAPS 周。
+//   - タイトルの［自動で試す］：claude.ai の Artifact の中で、持ち主が開いた時だけ、［開発用モード］の下に出す（診断の記録が書かれる時。src/lib/diag.ts の initDiag が ui.owner を入れる）。AUTO_LAPS 周。
 //     claude.ai は、Artifact のリンクに付けた ?auto をゲームのページに渡さないので、iPhone ではこちらで始める
 //   - URL の ?auto=<n>：n 周（1 から 9。3周でおよそ5分）。?auto=quick：短い1周（各段を短くし、階段は1回）。tests/auto.mjs と tools/auto-run.mjs が使う
 // 決まり：
@@ -22,7 +22,7 @@ import { chooseLevel, closeAltar } from './panels.ts';
 import { TEST, adv, clock, here, player, ui } from './state.ts';
 import { CELL, MW, TF } from './world.ts';
 
-/** タイトルの［自動で遊ぶ］で流す周の数（およそ5分） */
+/** タイトルの［自動で試す］で流す周の数（およそ5分） */
 export const AUTO_LAPS = 3;
 /** 1周目の探索のシード */
 export const AUTO_SEED = 202;
@@ -459,8 +459,8 @@ function showBar(): void {
   }
   const s = autoSt;
   bar.innerHTML = s.done
-    ? `自動で遊び終えた（${s.laps}周${s.stop ? `・${s.stop}` : ''}）。記録は書いた`
-    : `自動で遊んでいる ${s.lap}/${s.laps}周・${s.step} <button id="autoStop" style="font:inherit;color:inherit;background:#234;border:1px solid #567;padding:0 6px">止める</button>`;
+    ? `自動で試し終えた（${s.laps}周${s.stop ? `・${s.stop}` : ''}）。記録は書いた`
+    : `自動で試している ${s.lap}/${s.laps}周・${s.step} <button id="autoStop" style="font:inherit;color:inherit;background:#234;border:1px solid #567;padding:0 6px">止める</button>`;
   const b = document.getElementById('autoStop');
   if (b) b.onclick = () => (stopAsked = true);
 }
@@ -531,28 +531,15 @@ export async function initAuto(h: AutoHooks): Promise<void> {
   await runAuto(h, m);
 }
 
-/**
- * タイトルに［自動で遊ぶ］を出す（持ち主が Artifact を開いた時に、src/lib/diag.ts が呼ぶ）。押すと、ゲームの保存を止めて AUTO_LAPS 周流す。
- * 迷宮に入ると隠れる（body.started）。テスト用モードと、?auto で流している時は出さない
- */
-export function offerAuto(): void {
-  if (TEST || autoSt.on || document.getElementById('autoB')) return;
-  const st = document.createElement('style');
-  st.textContent =
-    '#autoB{position:fixed;left:calc(10px + env(safe-area-inset-left,0px));bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:21;' +
-    'font:13px "M PLUS 1 Code","BIZ UDGothic",monospace;color:#bfe4ff;background:rgba(4,3,12,.7);border:1px solid #456;border-radius:4px;padding:10px 10px}' +
-    'body.started #autoB{display:none}';
-  document.head.appendChild(st);
-  const b = document.createElement('button');
-  b.id = 'autoB';
-  b.textContent = `自動で遊ぶ（${AUTO_LAPS}周・速さを測る）`;
-  b.onclick = () => {
-    if (!hooks || autoSt.on || ui.started) return;
-    b.remove();
-    guardSaves();
-    void runAuto(hooks, { laps: AUTO_LAPS, quick: false });
-  };
-  document.body.appendChild(b);
+/** タイトルに［自動で試す］を出すか（持ち主が Artifact を開き、診断の記録が書ける時。テスト用モードと、もう流している時は出さない） */
+export function canOfferAuto(): boolean {
+  return ui.owner && !TEST && !autoSt.on;
+}
+/** タイトルの［自動で試す］を押した時（src/game/17-meta.js）。ゲームの保存を止めて AUTO_LAPS 周流す */
+export function startAuto(): void {
+  if (!hooks || !canOfferAuto() || ui.started) return;
+  guardSaves();
+  void runAuto(hooks, { laps: AUTO_LAPS, quick: false });
 }
 
 /** 台本を流す */

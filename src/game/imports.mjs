@@ -89,7 +89,7 @@ import { DLC, DLP, SL, SND, adv, beamHold, blaze, buf, cellData, clock, fight, g
 import { initFitIntro } from '../lib/layout.ts';
 import { byInput, confirmTap, homeHint, initTouch } from '../lib/touch.ts';
 import { TUNE, initTouchpad, releaseTouch } from '../lib/touchpad.ts';
-import { autoGuard, initAuto } from '../lib/auto.ts';
+import { autoGuard, canOfferAuto, initAuto, startAuto } from '../lib/auto.ts';
 import { initDiag } from '../lib/diag.ts';
 import { took } from '../lib/took.ts';
 import { closeAltar, updateAltarPanel } from '../lib/panels.ts';

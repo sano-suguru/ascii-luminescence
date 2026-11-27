@@ -81,8 +81,8 @@
       "globals": { "__test": "readonly", "dbg": "readonly" }
     },
     {
-      // 場面が切り替わる時の確かめ：テスト用モードでないページの page.evaluate の中で、dbg と画面の部品（document・window）を使う
-      "files": ["tools/transitions.mjs"],
+      // 場面が切り替わる時の確かめとタイトルを写す道具：テスト用モードでないページの page.evaluate の中で、dbg と画面の部品（document・window）を使う
+      "files": ["tools/transitions.mjs", "tools/title-shots.mjs"],
       "globals": { "dbg": "readonly", "document": "readonly", "window": "readonly" }
     },
     {
