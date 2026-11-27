@@ -314,6 +314,33 @@ export function rallyOnHit(m: Mob, n: number, how: string): void {
   }
 }
 /**
+ * 命の一歩を dt 秒進める（もとは src/game/18-level-player.js）：攻撃の間と振った線の残りを減らし、立ち直りを進め、体力の表示を描き直し、傷の光りを薄める。
+ * 0.5秒ごとに、火の中にいるプレイヤーと生き物（小さな生き物・溶岩に住む物・飛ぶ物は除く）が焼ける
+ */
+export function updateLife(dt: number): void {
+  if (adv.dead) return;
+  player.atkCd = Math.max(0, (player.atkCd || 0) - dt);
+  player.swing = Math.max(0, (player.swing || 0) - dt);
+  updateRally(dt);
+  if (Math.round(player.hp) !== adv.hpShown) {
+    adv.hpShown = Math.round(player.hp);
+    renderStatus();
+  }
+  vfx.hurtFlash = Math.max(0, vfx.hurtFlash - dt * 1.6);
+  // fire hurts whoever stands in it
+  const pc = Math.floor(player.z / CELL) * MW + Math.floor(player.x / CELL);
+  player.fireT = (player.fireT || 0) + dt;
+  if (player.fireT > 0.5) {
+    player.fireT = 0;
+    if ((blaze.fire[pc] ?? NaN) > 0.1) hurtPlayer(2, '炎');
+    for (const m of here.monsters) {
+      if (m.dead || m.ty.critter || m.ty.habitat === 'lava') continue;
+      const ci = m.cz * MW + m.cx;
+      if ((blaze.fire[ci] ?? NaN) > 0.1 && !m.ty.flier) damageMonster(m, 3, 'fire');
+    }
+  }
+}
+/**
  * 立ち直りを dt 秒進める：しばらく傷を受けなければ、取り戻せる分が消えていく。光の粒は手元へ飛び、着いたら体力を戻す（音は間をあけて鳴らす）。
  * 取り戻せる分か光りが変わった時だけ、状態の表示を描き直す
  */
