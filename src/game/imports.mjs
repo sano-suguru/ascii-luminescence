@@ -23,7 +23,7 @@ import {
 } from '../lib/gear.ts';
 import { BLESS, META_DEF, UNLOCKS, expNeed, expOf } from '../lib/progress.ts';
 import { MTYPES } from '../lib/creatures.ts';
-import { VM_K, VM_MIRROR, VM_ST, vmGlyph, vmGlyphS } from '../lib/hands.ts';
+import { drawViewWeapons } from '../lib/held.ts';
 import {
   SPECIALS, STRATA, } from '../lib/strata.ts';
 import { setNoiseSeed, vnoise } from '../lib/noise.ts';
