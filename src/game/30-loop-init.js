@@ -158,7 +158,7 @@ if(TEST)window.__test={
   summon(key,i,{unseen=false}={}){ if(!MTYPES[key])return 'no such creature: '+key; const m=summon(key,i); if(unseen)m.seen=false; return here.monsters.length; },
   // the bestiary, opened from the title (as its button does) if it is not open: every entry in order, n counted from 1
   gallery(){ if(!(ui.gallery&&ui.gallery.mode==='beast')){ if(ui.started)return 'the bestiary opens from the title'; openBestiary(); }
-    return ui.gallery.list.map((e,i)=>({n:i+1,key:e.key,name:e.ty.name,form:e.ty.form})); },
+    return ui.gallery.list.map((e,i)=>({n:i+1,key:e.key,name:e.ty.name,form:e.ty.form,scale:e.ty.scale})); },
   // show entry n held still: yaw 0 faces the camera, + turns it to the right as seen from the camera; pose 'stand' | 'walk' | 'sleep'.
   // zoom (0.5-3, default 1) divides the camera's distance: 2 is half as far, so the creature looks bigger (the room still bounds it, and a zoom in stops outside the body).
   // pitch (-0.3 to 1.3 radians) moves the camera up around the creature, under the ceiling: 0 looks from the side, + looks down from above (left out: the height the bestiary works out from the creature's size).

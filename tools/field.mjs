@@ -7,7 +7,7 @@
 //                                  その作業場所の src/ 以外（vite.config.mjs など）は、最後のコミットの物。まだコミットしていない src/ の外の変更は、前の版には入らない）
 //   --out <ディレクトリ>           置き場所（既定 tests/out/field/）
 //   --kill [1,4,10,30,90,240,330]  距離ごとの写真の代わりに、倒して時間を追って写す（倒れ方を直す時に）。数は倒してからのフレーム数（1/30 秒。小さい順）
-// 写す物（階ごと）：生き物を 6 マスほど先の、見えている床に置き、向かってくるところを 4m・3m・2.5m で写す（照準が当たると明るく描くので、
+// 写す物（階ごと）：生き物を 6m ほど先の、見えている床に置き、向かってくるところを 4m・3m・2.5m で写す（照準が当たると明るく描くので、
 // いつも少し横を見る）。もう1枚、3m ほどの所で照準を合わせて写す（照準の先は明るさが 1.9 倍になる。白い塊にならないか）。
 // 写真は <名前>-<深さ>-<距離>.png（照準を合わせた物は -aim）と、体のまわりで切り抜いて並べた1枚 <名前>-field.png
 // （行が階、列が 4m・3m・2.5m・照準。--rev の時は、階ごとに前・今の2行で、同じ枠で切り抜く）。
@@ -61,7 +61,7 @@ if (!names.length) usage('写す生き物の名前を書いてください');
 mkdirSync(outDir, { recursive: true });
 
 /** 1つの階で、1つの生き物を写す。写真のファイルと体の範囲を、距離（と 'aim'）ごとに返す。来なかった距離は null */
-async function shootScene(browser, base, key, { depth, seed }, prefix, errs) {
+async function shootScene(browser, base, { key, scale }, { depth, seed }, prefix, errs) {
   const pageErrs = [];
   const pg = await newPage(browser, pageErrs, { width: W, height: H, still: true });
   await openTest(pg, base, `seed=${seed}&depth=${depth}&god=1`);
@@ -69,21 +69,10 @@ async function shootScene(browser, base, key, { depth, seed }, prefix, errs) {
   // --kill：倒すと照準の先が床に移り、床の説明（#look）と行く先の矢印（#arrows）が、積もった文字の上に重なるので隠す
   if (kill) await pg.addStyleTag({ content: '#look, #arrows { visibility: hidden !important; }' });
   const got = {};
-  // --kill：倒す距離は体の大きさに合わせる（大きな物は、近いと画面を覆い、床に積もる文字が画面の下の外に出る）。大きさは、足元に一度置いて読む
-  const scale = kill
-    ? await pg.evaluate((key) => {
-        __test.clearAll();
-        const s = __test.state(),
-          { w } = __test.size();
-        __test.summon(key, Math.floor(s.pos[1] / 2) * w + Math.floor(s.pos[0] / 2));
-        const v = __test.monsterView(key);
-        __test.clearAll();
-        return v ? v.scale : 1;
-      }, key)
-    : 1;
+  // --kill：倒す距離は体の大きさ（図鑑の一覧の scale）に合わせる（大きな物は、近いと画面を覆い、床に積もる文字が画面の下の外に出る）
   const killAt = Math.max(KILL_AT, scale * KILL_K),
     far = kill ? Math.max(6, killAt + 2) : 6;
-  // 置き直して試す：見えている床で、far（6 マス）ほど先の物を、近い順に
+  // 置き直して試す：見えている床で、far（ふだんは 6m）ほど先の物を、近い順に
   const cells = await pg.evaluate((far) => {
     __test.clearAll();
     __test.fov();
@@ -187,7 +176,7 @@ async function shootScene(browser, base, key, { depth, seed }, prefix, errs) {
     walked.push(`${d}m`);
     if (!kill && d === 3 && !got.aim && (await lookAt(true)) !== null) await snap('aim');
   }
-  if (kill) console.log(`${prefix}：${killAt}m で倒した`);
+  if (kill && got.before) console.log(`${prefix}：${killAt}m で倒した`);
   if (walked.length) console.log(`${prefix}：近づいて来ないので、プレイヤーが寄って写した（${walked.join('・')}）`);
   const missing = TAGS.filter((t) => !got[t]);
   if (missing.length) errs.push(`${prefix}：写せなかった（${missing.join('・')}。生き物がいないか、その距離に床が無い）`);
@@ -196,6 +185,8 @@ async function shootScene(browser, base, key, { depth, seed }, prefix, errs) {
   return got;
 }
 
+/** 生き物の鍵ごとの体の大きさ（初めに写す今の版の、図鑑の一覧から） */
+const scales = {};
 /** 作業場所 root で組み立てたゲームで、全部の生き物と階を写す。返り値は [図鑑の名前][階] ごとの写真 */
 async function shootAll(root, tag, errs) {
   const res = {};
@@ -215,9 +206,11 @@ async function shootAll(root, tag, errs) {
           continue;
         }
         res[e.name] = [];
+        // 体の大きさは、今の版の一覧の物を前の版（--rev）にも使う（前と今を同じ距離で倒す。前の版の一覧には scale が無いことがある）
+        const scale = (scales[e.key] ??= e.scale ?? 1);
         for (const sc of scenes) {
           const prefix = join(outDir, `${e.name.replace(/[\\/:*?"<>|（）\s]/g, '_')}-${sc.depth}${tag}`);
-          res[e.name].push(await shootScene(browser, base, e.key, sc, prefix, errs));
+          res[e.name].push(await shootScene(browser, base, { key: e.key, scale }, sc, prefix, errs));
           console.log(`${e.name} 深さ ${sc.depth}${tag ? `（${tag.slice(1)}）` : ''}：写した`);
         }
       }
@@ -229,12 +222,18 @@ async function shootAll(root, tag, errs) {
 
 /** 写す物の名前（列の順）。--kill の時は、倒す直前と、倒してからのフレーム数 */
 const TAGS = kill ? ['before', ...kill.map((k) => `k${k}`)] : [...DISTS.map((d) => `${d}m`), 'aim'];
-/** 倒した後は体が無く範囲を取れないので、倒す直前の体の範囲を、真ん中を変えずに広げて使う（床に散る文字も入るように） */
-const widen = (r) => {
+/**
+ * 切り抜く枠。--kill の時は、倒した後は体が無く範囲を取れないので、倒す直前の体の範囲の正方形を 1.6 倍に広げる（床に散る文字も入るように）。
+ * 広げる真ん中は、体の範囲の真ん中（cropRect が画面の端に寄せて動かした後の正方形の真ん中ではなく）
+ */
+const crop = (boxes) => {
+  const r = cropRect(boxes, CLIP),
+    bs = boxes.filter(Boolean);
   if (!kill) return r;
   const side = Math.round(Math.min(W, H, r.side * 1.6)),
-    fit = (c, lim) => Math.round(Math.max(0, Math.min(lim - side, c - side / 2)));
-  return { x: fit(r.x + r.side / 2, W), y: fit(r.y + r.side / 2, H), side };
+    fit = (c, lim) => Math.round(Math.max(0, Math.min(lim - side, c - side / 2))),
+    mid = (k0, k1, at) => (bs.length ? (Math.min(...bs.map((b) => b[k0])) + Math.max(...bs.map((b) => b[k1]))) / 2 : at);
+  return { x: fit(mid('x0', 'x1', r.x + r.side / 2), W), y: fit(mid('y0', 'y1', r.y + r.side / 2), H), side };
 };
 const errs = [];
 const now = await shootAll(ROOT, '', errs);
@@ -262,7 +261,7 @@ for (const want of Object.keys(now)) {
   const rowsOf = (shots, boxesFrom) =>
     TAGS.map((t, c) => {
       const s = shots[t];
-      return { file: s ? s.file : null, rect: widen(cropRect(boxesFrom(t, c), CLIP)) };
+      return { file: s ? s.file : null, rect: crop(boxesFrom(t, c)) };
     });
   const rows = [];
   scenes.forEach((_, i) => {
