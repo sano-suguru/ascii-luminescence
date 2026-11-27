@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ui } from '../../src/lib/state.ts';
 import { fnv } from './fight-cases.mjs';
 import { NAMES, panelCases, panelDom, panelText } from './panels-cases.mjs';
+import { swapGlobals } from './ui-cases.mjs';
 
 // ここで移さない重い処理は、呼んだ時の記録だけ取る（新しい階・新しい探索・装備の画面の開け閉め。どれも古い関数と新しい関数の両方から、同じ入れ替えた物が呼ばれる）
 const mocked = vi.hoisted(() => []);
@@ -27,13 +28,12 @@ vi.mock('../../src/lib/inventory.ts', async (orig) => {
 });
 
 const SEEDS = 24;
-// 関数を返す（ui は panelCases が場合ごとに初めの値に戻す。ここでは、ページの部品と、関数の欄 menuAct.book を入れ直す）
+// 関数を返す（ui は panelCases が場合ごとに初めの値に戻す。ここでは、タイトルの画面の部品を入れ直す）
 const makeF = async () => {
   const P = await import('../../src/lib/panels.ts'),
     M = await import('../../src/lib/menu.ts'),
     C = await import('../../src/lib/combat.ts');
   ui.introEl = document.getElementById('intro');
-  M.menuAct.book = undefined;
   return { ...P, ...M, updateLife: C.updateLife };
 };
 
@@ -44,10 +44,41 @@ describe('移す前と同じ', () => {
     const all = await panelCases(makeF, SEEDS, panelDom(), mocked),
       body = panelText(all),
       calls = all.flatMap((c) => c.calls);
-    expect([fnv(body), body.length]).toEqual(['ac825f3e', 1518447]);
+    expect([fnv(body), body.length]).toEqual(['01828bb9', 1527250]);
     // 場合が中身を通っているか：移した関数が全部呼ばれ、どれも止まらず、待たせた処理も止まらない
     expect(new Set(calls.map((c) => c.name).filter((n) => NAMES.includes(n)))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).map((c) => [c.name, c.threw])).toEqual([]);
     expect(all.every((c) => c.timers === 0)).toBe(true);
+  });
+});
+
+describe('魔導書', () => {
+  it('操作の案内・年代記を出した後でも、メニューの「魔導書」を1回押すと魔導書が出る', async () => {
+    const M = await import('../../src/lib/menu.ts'),
+      S = await import('../../src/lib/status.ts'),
+      page = panelDom(),
+      keep = { ...ui },
+      restore = swapGlobals({ document: page.document, performance: { now: () => 0 } });
+    try {
+      const help = () => page.document.getElementById('help'),
+        shown = () => !help().classList.contains('off') && help().innerHTML.includes('魔導書');
+      const before = {
+        メニューの操作の案内: () => M.menuAct('help'),
+        メニューの年代記: () => M.menuAct('chron'),
+        '? キーの操作の案内': () => S.setHelp(true),
+        '案内を消す（タイトルに戻る時など）': () => S.setHelp(false),
+      };
+      for (const [name, f] of Object.entries(before)) {
+        Object.assign(ui, { started: true, touch: false, helpOn: false, chronOn: false, bookOn: false });
+        M.menuAct('book');
+        expect(shown(), `${name}の前`).toBe(true);
+        f();
+        M.menuAct('book');
+        expect(shown(), `${name}の後`).toBe(true);
+      }
+    } finally {
+      restore();
+      Object.assign(ui, keep);
+    }
   });
 });

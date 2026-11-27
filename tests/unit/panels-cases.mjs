@@ -381,6 +381,7 @@ export async function panelCases(makeF, seeds, page, mocked) {
             helpOn: ui.helpOn,
             helpT: ui.helpT,
             chronOn: ui.chronOn,
+            bookOn: ui.bookOn,
             camMode: ui.camMode,
             uiMode: ui.uiMode,
             perfOn: ui.perfOn,

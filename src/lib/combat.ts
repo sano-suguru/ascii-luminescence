@@ -319,7 +319,6 @@ export function rallyOnHit(m: Mob, n: number, how: string): void {
  */
 export function updateLife(dt: number): void {
   if (adv.dead) return;
-  player.atkCd = Math.max(0, (player.atkCd || 0) - dt);
   player.swing = Math.max(0, (player.swing || 0) - dt);
   updateRally(dt);
   if (Math.round(player.hp) !== adv.hpShown) {
