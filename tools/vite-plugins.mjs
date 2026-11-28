@@ -2,7 +2,6 @@
 //   testPage(outDir) テスト版：JetBrains Mono を指定した所の日本語も、決まったフォント（M PLUS 1 Code）で描く面を足す（cjkFallback。
 //                    どのマシンでも同じ文字の形になる）。three.js とフォントは、公開用もテスト版も npm から組み立てに入れる
 //   privateMaps(dir) ソースマップを出力の外（.build/maps/）へ移す。公開物には入れない（tools/where.mjs とテストだけが読む）
-//   noCssStub()      ページの中の <style> から Vite が作る、空の JS モジュールを消す
 //   fontCss()        @fontsource の CSS を絞る：古い形式（woff）の候補を外し、BIZ UDGothic は補いの文字（BIZ_CHARS）を含む面だけ残す
 //   homeScreen()     公開用：ホーム画面に置けるようにする（Web アプリの宣言 manifest.webmanifest とアイコンを出し、HTML から読む）
 //   inlineAll()      Artifact 版：JS と CSS を index.html の中に書き込み、HTML 1つにする（フォントは vite.config.mjs が CSS の data URI にする）。
@@ -12,20 +11,6 @@ import { join, relative, resolve } from 'node:path';
 import { BIZ_CHARS } from '../src/lib/text.ts';
 
 const root = join(import.meta.dirname, '..');
-
-// ページの中の <style> を、Vite は一度 CSS のモジュール（index.html?html-proxy&inline-css…）として扱い、中身を HTML に戻す。
-// 残ったモジュールは空の文字列を返すだけの JS になる（var index_html_html_proxy_… = ""）。使っていないコードを消さない設定
-// （vite.config.mjs の rolldownOptions）なので、そのまま出力に残ってしまう。中身を HTML に戻した後なので、空にしてよい
-export function noCssStub() {
-  return {
-    name: 'no-css-stub',
-    apply: 'build',
-    transform: {
-      order: 'post',
-      handler: (_code, id) => (/[?&]html-proxy&inline-css/.test(id) ? { code: '', map: null } : null),
-    },
-  };
-}
 
 // @fontsource の CSS を絞る（公開用もテスト版も同じ）。
 // - 面ごとに src: url(….woff2) format('woff2'), url(….woff) format('woff') と2つの形式を書いている。woff は woff2 を読めない古いブラウザ向けで、

@@ -115,7 +115,7 @@ src/lib/bodies/*.ts  生き物の形（draw：生き物を描く drawMonster・d
                      auras：主と一部の生き物のまわりの飾り（lichAura など）・王の影の変身 transformShadow・姿を変える途中 drawMorph）
 tsconfig.json        TypeScript 7 の設定（strict・noUncheckedIndexedAccess・exactOptionalPropertyTypes など）。対象は src/lib/ と tests/unit/*.ts
 vite.config.mjs      組み立て（Vite 8）。公開用は dist/、テスト用（--mode test）は .build/test/、claude.ai の Artifact 用（--mode artifact）は .build/artifact/index.html
-tools/vite-plugins.mjs  Vite のプラグイン：testPage（テスト版。JetBrains Mono を指定した所の日本語を決まったフォントで描く面 cjkFallback を足す）・privateMaps（ソースマップを公開物の外へ）・noCssStub（ページの <style> から作られる空のモジュールを消す）・fontCss（@fontsource の CSS を絞る：woff を外し、BIZ UDGothic は BIZ_CHARS を含む面だけ）・homeScreen（公開用：ホーム画面に置くための宣言 manifest.webmanifest とアイコンを出し、HTML から読む。display は standalone）・inlineAll（Artifact 版：JS と CSS を HTML の中に書き込み、HTML 1つにする。16MB 手前の ARTIFACT_MAX を越えたら止める）
+tools/vite-plugins.mjs  Vite のプラグイン：testPage（テスト版。JetBrains Mono を指定した所の日本語を決まったフォントで描く面 cjkFallback を足す）・privateMaps（ソースマップを公開物の外へ）・fontCss（@fontsource の CSS を絞る：woff を外し、BIZ UDGothic は BIZ_CHARS を含む面だけ）・homeScreen（公開用：ホーム画面に置くための宣言 manifest.webmanifest とアイコンを出し、HTML から読む。display は standalone）・inlineAll（Artifact 版：JS と CSS を HTML の中に書き込み、HTML 1つにする。16MB 手前の ARTIFACT_MAX を越えたら止める）
 tools/icons.mjs      ホーム画面のアイコン src/icons/icon-192.png・icon-512.png を作る（タイトルのロゴの光る「A」。絵を変える時だけ走らせ、PNG を git に入れる）
 tools/sourcemap.mjs  ソースマップを読む小さな道具（tools/where.mjs と tests/lib.mjs のエラーの場所と、単体テスト build.test.mjs が使う）
 tools/check.mjs      pnpm check の中身：構文と lint・型・整形・単体テスト・使う文字・組み立てを同時に走らせる（単体テストを先にし、ほかの段は優先度を下げて空いたコアで。通った段は1行、落ちた段は出力を全部出す）
@@ -285,7 +285,7 @@ tests/unit/bodies-legacy.test.mjs  形を選んで作る処理（buildForm と�
 tests/unit/auto.test.ts  自動で試す（src/lib/auto.ts）の URL の読み方と、台本の段の並び
 tests/unit/diag-report.test.mjs  診断の記録の表（tools/diag-report.mjs）の単体テスト（メニューの押し方の数え方・画質の移り変わり・前と今の比べ方）
 tests/unit/inline-all.test.mjs  Artifact 版の組み立て（inlineAll）が、JS と CSS を中に書き、壊れる形（</script・<!--・</style）・HTML の外に残るファイル・大きすぎる物を止めるか（出力の束の小さな偽物で）
-tests/unit/build.test.mjs  組み立ての単体テスト：ソースマップを読む道具（tools/sourcemap.mjs）・公開用と同じ設定の Vite の組み立て（ソースマップを出力に残さない・関数を1つも消さない（src/lib の関数の名前と比べる）・組み立てた JS の関数の名前が src/lib の同じ場所に戻る・ホーム画面に置く宣言）・src/ にでたらめな比べる関数での並べ替えが無いか
+tests/unit/build.test.mjs  組み立ての単体テスト：ソースマップを読む道具（tools/sourcemap.mjs）・公開用と同じ設定の Vite の組み立て（ソースマップを出力に残さない・組み立てた JS の関数の名前が src/lib の同じ場所に戻る・ホーム画面に置く宣言）・src/ にでたらめな比べる関数での並べ替えが無いか
 tests/unit/modules.test.mjs  src/lib のどのモジュールも、単独で読めるか（読み込みが輪になって、まだ作っていない値を使っていないか。ファイルごとに別の Node で読む）
 tests/unit/audio.test.mjs  音を鳴らす処理と詠唱の声（chantStart）の単体テスト（音を鳴らす所が見た目の乱数を引かないかを、src/ を構文の木で調べる sound-random-check.mjs も）。偽の Web Audio（fake-audio.mjs。作った部品・値・つなぎ方・鳴らす時刻を全部記録する。Node には Web Audio が無い）と、
                      たくさんの場合を作る audio-cases.mjs を使う
@@ -306,13 +306,12 @@ wrangler.jsonc       Cloudflare Workers（静的アセット）の設定。公�
 docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 ```
 組み立ては Vite 8。入口は `src/index.html` → `src/main.js` → `src/lib/boot.ts`。公開物は `dist/index.html` と `dist/assets/index-<hash>.js`。
-- Vite（Rolldown）は TypeScript の型を外し、JS を書き直して出す（字下げ・引用符・`undefined`→`void 0` など。縮めはしない。コメントは消える）。なので、組み立てた JS の行は元のファイルと違う。
+- Vite（Rolldown）は TypeScript の型を外し、JS を書き直して出す（字下げ・引用符・`undefined`→`void 0` など。縮めはしない。コメントは `/** */` の物だけ残る）。使っていないコードは消え、一部の数や文字列の定数は使う所に値で書き込まれる（Rolldown の既定）。なので、組み立てた JS の行は元のファイルと違う。
   場所はソースマップで戻す。ソースマップは**公開しない**ので、出力には残さず `.build/maps/<mode>/` に移している（privateMaps）。
 - 開発用サーバー（`pnpm dev`）は、src/ が変わるとページを読み直す（ゲームは HMR に対応していない）。テスト用モード（`?test=1`）は時計が止まっていて
   Vite の読み直し（setTimeout を使う）が動かないので、src/main.js が、開発用サーバーの時だけ「すぐ読み直す」処理を置いている。
 - Artifact 版（`--mode artifact`）は、公開用と同じ組み立ての、フォントを CSS の data URI にし（`assetsInlineLimit`）、JS と CSS を `index.html` の中に書き込んだ物（inlineAll）。
   Artifact は外から読める物が決まっていて、同じ所に置いたファイルを読めるかは決まりに無いため、HTML 1つにしている（約7MB）。ソースマップは出さない（中に書くと行が合わない）。
-- 使っていない関数も消さない（`vite.config.mjs` の `rolldownOptions`。Vite は minify: false でも、使っていないコードを消す設定を渡すため）。
 `dist/` と `.build/` は生成物なので git に入れない。直接編集もしない（権限で止めている）。
 
 ## 組み立て・実行・テスト（Node 26・pnpm 12）
@@ -394,7 +393,6 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
   配列と表は src/lib/array.ts の `nth`・`lookup`、無いかもしれない値は `must` で読む（無ければその場で止まる）。範囲の外や無い欄を
   わざと読む所は、無い時の扱いをその場で書く（`?? 0` など）。どうしても要る所だけ `oxlint-disable-next-line` と理由。
   本物の型に合わせられない偽物を使うテスト（音の偽の Web Audio など）は、`as` を使わないように .mjs で書く（その分、型では確かめない）。
-- 関数の多重定義（同じ名前の function を型ごとに並べる書き方）は使わない。組み立てた JS では1つになり、ソースマップのテスト（build.test.mjs）の関数の数が合わなくなる。
 - **モジュールを読んだ時には何もしない**：一番外で、Math.random を引く物・DOM を読む物を作らない（読む順番はモジュールのつながりで決まり、
   テスト用モードの入れ替え（src/lib/boot.ts の boot の初め）より前になる）。読んだ時に値を覚える書き方（`const mr=Math.random` など）も、
   入れ替えより前の値を覚えてしまうので、呼んだ時に読む形にする（`mr = () => Math.random()`）。作る時に Math.random を引く物（three.js の Scene・Mesh・Material などは uuid を作る）は、
