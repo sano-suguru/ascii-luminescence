@@ -290,7 +290,7 @@ pnpm-workspace.yaml  pnpm のサプライチェーン対策（公開24時間未�
 wrangler.jsonc       Cloudflare Workers（静的アセット）の設定。公開は dist/
 .claude/settings.json  権限と hooks
 .github/workflows/ci.yml  確かめるだけの CI。pnpm check（ジョブ static）と、ブラウザのテストと画面写真の比較
-                     （ジョブ browser。2台のランナーに --shard で半分ずつ。Chromium は headless shell だけ入れる）を別のランナーで同時に走らせ、ジョブ check が結果をまとめる（ブランチの保護で必須にするのは check だけでよい）。どれも違えば失敗
+                     （ジョブ browser。3台のランナーに --shard で3分の1ずつ。Chromium は headless shell だけ入れる）を別のランナーで同時に走らせ、ジョブ check が結果をまとめる（ブランチの保護で必須にするのは check だけでよい）。どれも違えば失敗
 .github/workflows/dependency-review.yml  PR で増える依存の脆弱性とライセンス
 .github/workflows/codeql.yml  CodeQL（JavaScript の静的解析。PR と毎週）
 .github/dependabot.yml  依存の更新の PR（Dependabot。毎週。公開から1日たった版だけ。three.js と Playwright は minor 以上を手で上げる）

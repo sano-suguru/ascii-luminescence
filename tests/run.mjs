@@ -9,7 +9,7 @@
 //   node tests/run.mjs              全部（同時に3つまで）
 //   node tests/run.mjs --jobs 2     同時に走らせる数（1 以上の整数）
 //   node tests/run.mjs smoke world  名前を挙げた物だけ（ほかの指定 --prod・--update などは受け付けない。1つずつ node tests/smoke.mjs --prod のように走らせる）
-//   node tests/run.mjs --shard 1/2  n 組に分けた i 組目だけ（CI が2台のランナーで分けて走らせる）。分け方は SEC のおよその秒で、組ごとの合計が近くなるように決める
+//   node tests/run.mjs --shard 1/2  n 組に分けた i 組目だけ（CI が3台のランナーで分けて走らせる）。分け方は SEC のおよその秒で、組ごとの合計が近くなるように決める
 import { spawn } from 'node:child_process';
 import { appendFileSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
