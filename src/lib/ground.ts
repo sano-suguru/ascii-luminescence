@@ -19,7 +19,7 @@ import { mname } from './names.ts';
 import { spawn } from './particles.ts';
 import { mpick, mr } from './random.ts';
 import { sEnv } from './sound.ts';
-import { type Mob, SND, blaze, cellData, clock, gfx, here, iceT, player, stealth, ui, vfx } from './state.ts';
+import { type Mob, type MonStatus, SND, blaze, cellData, clock, gfx, here, iceT, player, stealth, ui, vfx } from './state.ts';
 import {
   CELL,
   D4,
@@ -406,6 +406,12 @@ export function brimFlare(i: number): void {
     msg('<b style="color:#ffd04a">*</b>足元の硫黄が、ぼっと燃え上がった！ しばらくすると、また燃えるようになる。');
   }
 }
+/** 生き物の状態 st を sec 秒冷えさせる（今の残りより長い時だけ。その時は、足元の氷の輪の分母 chillFull も sec にする） */
+export function chillMob(st: MonStatus, sec: number): void {
+  if (sec <= (st.chill ?? 0)) return;
+  st.chill = sec;
+  st.chillFull = sec;
+}
 /** 冷気（x・z のまわり r）：火を消し、水を25秒凍らせる（凍ったマスの水面は描かない。凍らせた水の上の生き物は冷える。凍っている所は25秒に戻す）。凍らせた時は音を鳴らす */
 export function chillArea(x: number, z: number, r: number): void {
   const cx = Math.floor(x / CELL),
@@ -436,8 +442,7 @@ export function chillArea(x: number, z: number, r: number): void {
         froze = true;
         for (const m of here.monsters) {
           if (m.dead || m.cx !== cx + dx || m.cz !== cz + dz) continue;
-          const s2 = m.st || (m.st = {});
-          s2.chill = Math.max(s2.chill || 0, 4);
+          chillMob(m.st || (m.st = {}), 4);
         }
       } else if (blaze.frozen.has(i)) must(blaze.frozen.get(i), '凍らせた水').t = 25;
     }

@@ -60,6 +60,6 @@ describe('指紋', () => {
     );
     expect(calls.filter((c) => c.threw).length).toBeLessThan(5);
     caseOut('draw', all);
-    expect([fnv(all), all.length]).toEqual(['b8811601', 5561079]);
+    expect([fnv(all), all.length]).toEqual(['7ad9abf2', 5561100]);
   }, 60000);
 });

@@ -1,22 +1,24 @@
 #!/usr/bin/env node
 // 氷の武器で敵を凍えさせる場面と、水を凍らせる場面を、時間を追って写す（テスト版を組み立てて、テスト用モードで）。
 // 凍る見た目（src/lib/combat.ts の applyElem の氷、src/lib/ground.ts の chillArea・updateFrozen、src/lib/fx.ts の drawFrozen、生き物の冷え st.chill の描き方）を直す時に使う。
-//   pnpm frost                      既定（蛇の穴の水場、シード202。トロルを、床の上と水の中で）
+//   pnpm frost                      既定（蛇の穴の水場、シード202。トロルを、床の上と水の中で。それと薄い氷）
 //   pnpm frost ゴブリン             生き物を図鑑の名前（表の鍵でもよい）で選ぶ
-//   --cases floor,water             写す場合（floor：水から離れた床に立つ物に当てる。water：水の中に立つ物に当て、まわりの水が凍って解けるまで）
-//   --scene 4:202                   写す階（深さ:シード。URL の指定そのもの seed=202&branch=snake でもよい）
+//   --cases floor,water,thin        写す場合（floor：水から離れた床に立つ物に当てる。water：水の中に立つ物に当て、まわりの水が凍って解けるまで。
+//                                   thin：氷の洞窟（realm=ice&seed=202）の薄い氷を踏み割り、4 離れた所へ戻って、割れた所を写す。生き物と武器は使わない）
+//   --scene 4:202                   floor・water を写す階（深さ:シード。URL の指定そのもの seed=202&branch=snake でもよい）
 //   --n 1                           置く数（当てる1体を含む。1〜7。書かなければ floor は 1、water は 3）
 //   --weapon bolt                   右手の武器（RUNE_DEF の攻撃の鍵）。性質は氷にする
 //   --at 0,0.1,1,…                  当たってから写す時刻（ゲームの秒。書かなければ場合ごとの既定）
 //   --views eye,high                写す見え方（eye：目の高さ・high：真上に近い高い所・side：横。tests/lib.mjs の sceneCam）
 //   --hud                           画面に重ねた表示も写す（ふだんは隠す）
 //   --hide particles,…              tick の段を止めて写す（__test.skipPhase）
-//   --rev <版>                      前の版（例 origin/main）とも同じ場面・同じカメラで写し、6枚ごとに前（上）と今（下）を並べる（tools/zap.mjs と同じ）
+//   --rev <版>                      前の版（例 origin/main）とも同じ場面・同じカメラで写し、6枚ごとに前（上）と今（下）を並べる（tools/zap.mjs と同じ。
+//                                   同じ所に置くために、テスト用モードの道具 src/lib/testapi.ts は今の物を使う。前の版に無い物を読むようになったら、前の版では組み立てが止まる）
 //   --out <ディレクトリ>            置き場所（既定 tests/out/frost/）
 // 写真は <場合>-<見え方>[-old]-<before|tNN.N>.png（画面全体）と、置いた所のまわりを切り抜いて時間の順に並べた <場合>-<見え方>.png（行ごとに6枚）。
 // 数は summary.json：写した時刻ごとの、置いた生き物の体力と冷えの残りの秒（st.chill）と、凍らせた水のマスの数と残りの秒の範囲（__test.frozen）。
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { withBrowser, newPage, openTest, advance, frames, aimAt, strike, waterScene, sceneCam, arg, OUT, ROOT } from '../tests/lib.mjs';
@@ -44,15 +46,17 @@ const scene = opt('--scene') ?? 'seed=202&branch=snake',
 const query = scene.includes('=') ? scene : `seed=${seed}&depth=${depth}`;
 if (!scene.includes('=') && !(depth >= 1 && depth <= 13 && seed >= 0))
   usage('--scene は 深さ:シード（深さは 1 から 13）か、URL の指定（seed=202&branch=snake）');
-const cases = (opt('--cases') ?? 'floor,water').split(',');
-if (!cases.every((c) => ['floor', 'water'].includes(c))) usage('--cases は floor・water から');
+const cases = (opt('--cases') ?? 'floor,water,thin').split(',');
+if (!cases.every((c) => ['floor', 'water', 'thin'].includes(c))) usage('--cases は floor・water・thin から');
 const nOpt = opt('--n');
 if (nOpt !== null && !(Number(nOpt) >= 1 && Number(nOpt) <= 7)) usage('--n は 1 から 7');
 // 場合ごとの既定の写す時刻：床は冷えが切れるまで（1回の当たりで 2.5 秒ほど）、水は凍らせた水が解けるまで（25 秒）
 const AT = {
   floor: [0, 0.1, 0.3, 0.6, 1, 1.5, 2, 2.3, 2.6, 3, 3.5, 4.5],
   water: [0, 0.1, 0.3, 1, 2.5, 4, 6, 10, 15, 19, 20, 21, 22, 23, 24, 24.6, 25.2, 26.5],
+  thin: [0, 1, 3],
 };
+const THIN_QUERY = 'realm=ice&seed=202';
 const atOpt = opt('--at')?.split(',').map(Number);
 if (atOpt && !atOpt.every((v, i) => v >= 0 && (i === 0 || v > atOpt[i - 1]))) usage('--at は 0 以上の、増えていく秒の並び');
 const weapon = opt('--weapon') ?? 'bolt';
@@ -81,7 +85,7 @@ async function shootAll(root, suffix) {
             fail = (why) => errs.push(`${name}${suffix}：${why}`);
           const pageErrs = [];
           const pg = await newPage(browser, pageErrs, { width: W, height: H, still: true });
-          await openTest(pg, base, `${query}&god=1`);
+          await openTest(pg, base, `${kase === 'thin' ? THIN_QUERY : query}&god=1`);
           if (!hud) await pg.addStyleTag({ content: 'body > :not(#gl) { visibility: hidden !important; }' });
           if (hide.length) {
             const got = await pg.evaluate((h) => __test.skipPhase(h), hide);
@@ -89,7 +93,10 @@ async function shootAll(root, suffix) {
           }
           await advance(pg, 2);
           const count = Number(nOpt ?? (kase === 'floor' ? 1 : 3));
-          const s = await waterScene(pg, { key, count, dry: false, weapon, elem: 'ice', floor: kase === 'floor' });
+          const s =
+            kase === 'thin'
+              ? await thinScene(pg)
+              : await waterScene(pg, { key, count, dry: false, weapon, elem: 'ice', floor: kase === 'floor' });
           if (s.err) {
             fail(s.err);
             await pg.close();
@@ -97,7 +104,7 @@ async function shootAll(root, suffix) {
           }
           await advance(pg, 0.5);
           try {
-            await aimAt(pg, key);
+            if (kase !== 'thin') await aimAt(pg, key);
           } catch (e) {
             fail(e.message);
             await pg.close();
@@ -148,7 +155,24 @@ async function shootAll(root, suffix) {
           await snap('before');
           let t0;
           try {
-            await strike(pg, 'R', key);
+            if (kase === 'thin') {
+              // 薄い氷に乗って割り（0.85 秒）、立っていた所へ戻って、割れた所を見る
+              const broke = await pg.evaluate(
+                ([x, z, i]) => {
+                  dbg.step(x, z);
+                  for (let k = 0; k < 60 && !__test.cell(i).water; k++) __test.advance(1 / 30);
+                  return __test.cell(i).water;
+                },
+                [...s.cells[0], s.cell],
+              );
+              if (!broke) throw new Error('薄い氷が割れない');
+              await pg.evaluate((s) => {
+                dbg.step(...s.stand);
+                // 戻った直後に向きを変えても、水から上がる処理が向きを戻すので、少し進めてから向く
+                __test.advance(0.3);
+                dbg.look(s.cells[0][0], 0, s.cells[0][1]);
+              }, s);
+            } else await strike(pg, 'R', key);
             t0 = await pg.evaluate(() => __test.state().time);
           } catch (e) {
             fail(e.message);
@@ -173,6 +197,27 @@ async function shootAll(root, suffix) {
   return got;
 }
 
+/** 薄い氷の場面：薄い氷のマス（上下左右も薄い氷）と、そこから 4 離れた薄い氷でない床で、薄い氷が見える所に立つ。生き物は全部消す */
+function thinScene(pg) {
+  return pg.evaluate(() => {
+    __test.clearAll();
+    const { w, h } = __test.size(),
+      cs = [];
+    for (let i = 0; i < w * h; i++) cs.push({ i, ...__test.cell(i) });
+    for (const t of cs.filter((c) => c.thin)) {
+      if (![-1, 1, -w, w].every((d) => cs[t.i + d]?.thin)) continue;
+      for (const st of cs.filter((c) => c.floor && !c.thin && Math.abs(Math.hypot(c.x - t.x, c.z - t.z) - 4) < 0.3)) {
+        dbg.step(st.x, st.z);
+        __test.fov();
+        if (!__test.cell(t.i).seen) continue;
+        dbg.look(t.x, 0, t.z);
+        return { ok: true, stand: [st.x, st.z], cells: [[t.x, t.z]], cell: t.i };
+      }
+    }
+    return { err: '薄い氷が見える所が無い' };
+  });
+}
+
 const now = await shootAll(ROOT, '');
 let old = null;
 if (rev) {
@@ -181,8 +226,9 @@ if (rev) {
   try {
     git('worktree', 'add', '--detach', tmp, 'HEAD');
     rmSync(join(tmp, 'src'), { recursive: true, force: true });
-    // 前の版の src/ と組み立て。場面を作る道具（tests/lib.mjs）は今の物を使う
+    // 前の版の src/ と組み立て。場面を作る道具（tests/lib.mjs と src/lib/testapi.ts）は今の物を使う
     execFileSync('git', ['checkout', rev, '--', 'src', 'vite.config.mjs', 'tools'], { cwd: tmp, stdio: 'ignore' });
+    copyFileSync(join(ROOT, 'src/lib/testapi.ts'), join(tmp, 'src/lib/testapi.ts'));
     symlinkSync(join(ROOT, 'node_modules'), join(tmp, 'node_modules'));
     old = await shootAll(tmp, '-old');
   } finally {

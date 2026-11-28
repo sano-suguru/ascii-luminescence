@@ -11,7 +11,7 @@ import { cellLight, litScale } from '../lightmap.ts';
 import { dyn, spawn } from '../particles.ts';
 import { clamp } from '../rng.ts';
 import { mr, withMobRand } from '../random.ts';
-import { type Monster, clock, gfx, player, ui } from '../state.ts';
+import { type Mob, clock, gfx, player, ui } from '../state.ts';
 import { drawMark } from '../status.ts';
 import {
   bogAura,
@@ -30,7 +30,7 @@ import type { Body } from './kit.ts';
 import { beastSleep } from './lords.ts';
 
 /** 描く生き物（src/lib/monsters.ts の makeMonster が、足もとの高さ・向き・揺れと歩きの位相・歩いている度合い・明るさ・形を必ず入れる） */
-type Mon = Monster & { y: number; yaw: number; ph: number; walk: number; moving: number; glow: number; form: Body };
+type Mon = Mob & { y: number; yaw: number; ph: number; walk: number; moving: number; glow: number; form: Body };
 
 // the deep lord's tentacles: columns of glyphs rising out of the water around the body, swaying
 /** 深みの主の触手：体のまわりの水から立ち上がり、揺れる文字の柱（水から出ている度合い rise が小さい時は描かない） */
@@ -151,6 +151,51 @@ function glowBoost(m: Mon, k: number): number {
     f = clamp((size - BIG[0]) / (BIG[1] - BIG[0]), 0, 1);
   return 1 + (k - 1) * (1 - (1 - BIG[2]) * f);
 }
+/** 凍えた体の色（青白い霜の色。明るさは元の色に合わせて変えない） */
+export const FROST_COL = [0.62, 0.86, 1.16] as const;
+/** 体の色を霜の色に寄せる強さの山 */
+export const FROST_TINT = 0.6;
+/** 冷えの残りの秒がこれより短くなると、霜の色を元の色へ戻していく */
+export const FROST_FADE = 1;
+/** 体の色を霜の色に寄せる強さ（凍えていなければ 0。残りが FROST_FADE 秒を切ると 0 へ下がる） */
+export function frostK(m: Mob): number {
+  const ch = m.st?.chill ?? 0;
+  return ch > 0 && !m.dead ? FROST_TINT * clamp(ch / FROST_FADE, 0, 1) : 0;
+}
+/** 色 c を、強さ k で霜の色に寄せる（霜の色は、c の3つの平均の明るさにそろえてから混ぜる） */
+export function frostCol(c: readonly number[], k: number): [number, number, number] {
+  const lum = (nth(c, 0) + nth(c, 1) + nth(c, 2)) / 3,
+    fl = (FROST_COL[0] + FROST_COL[1] + FROST_COL[2]) / 3,
+    f = (j: 0 | 1 | 2) => nth(c, j) * (1 - k) + (FROST_COL[j] * lum * k) / fl;
+  return [f(0), f(1), f(2)];
+}
+/** 足元の氷の輪の文字の数 */
+export const CHILL_RING = 12;
+/**
+ * 凍えた生き物の足元の氷の輪：床に寝かせた CHILL_RING 個の文字。冷えの残りの割合（残りの秒 ÷ 冷えが付いた時の秒）の数だけ明るい *、使い終わった所は暗い . にする。
+ * 真上から見て時計回りに、1つずつ暗くなる。最後の1つは、残りが 0.6 秒を切ると瞬く。置いた明るい文字の数を返す（凍えていなければ何も置かず 0）
+ */
+export function drawChillRing(m: Mob, t: number): number {
+  const st = m.st,
+    ch = st?.chill ?? 0;
+  if (!st || ch <= 0 || m.dead || m.hidden || m.ty.invisible) return 0;
+  const lit = Math.min(CHILL_RING, Math.ceil((CHILL_RING * ch) / Math.max(ch, st.chillFull ?? ch) - 1e-6)),
+    sc = m.ty.scale,
+    r = 0.55 * sc + 0.2,
+    y = (m.y ?? 0) + 0.04,
+    blink = ch < 0.6 ? 0.5 + 0.5 * Math.sin(t * 18) : 1;
+  for (let k = 0; k < CHILL_RING; k++) {
+    // 真上から見て 12 時の所から時計回りに並べ、残っている分は先頭から数える
+    const a = -Math.PI / 2 + (k / CHILL_RING) * Math.PI * 2,
+      x = m.x + Math.cos(a) * r,
+      z = m.z + Math.sin(a) * r;
+    if (k < lit) {
+      const b = k === lit - 1 ? blink : 1;
+      dyn(x, y, z, G('*'), 0.24, 0.9 * b, 1.25 * b, 1.7 * b, 1, -a);
+    } else dyn(x, y, z, G('.'), 0.16, 0.18, 0.26, 0.38, 1);
+  }
+  return lit;
+}
 /**
  * 生き物を描く（続き）：深みの主の触手とクラーケンの立ち上がる腕、遠い小さな生き物は描かない、照準の先の生き物と当たって光っている生き物は明るく描き、照準の先なら足もとに輪を足す。
  * 明るくする倍率は、当たって光る倍率 hitK と照準の先の倍率 AIM_GLOW の大きい方で（掛け合わせない）、見かけが大きいほど弱め、気づいている度合いの明るさ m.glow に掛けずに足す
@@ -168,6 +213,7 @@ export function drawMonster1(m: Mon, t: number, hitK = 1): void {
   if (!far) drawMonster0(m, t);
   m.glow = g0;
   if (far) return;
+  if (!gfx.drawBodyOnly) drawChillRing(m, t);
   if (aimed) {
     const sc = m.ty.scale,
       c = m.ty.col;
@@ -235,6 +281,7 @@ export function drawMonster0(m: Mon, t: number): void {
     // 体に足すまわりの明かりは、強い所で頭打ちにする（src/lib/lightmap.ts の LIT_MAX）
     litK = 0.12 * litScale(lit);
   const eelArc = ty.form === 'eel' ? Math.sin(Math.PI * (m.surf ?? NaN)) : 0;
+  const fr = frostK(m);
   // クラーケンは、水から出ている度合い rise に合わせて沈み、水面より下になる点は描かない（沈んでいる間は外套の上だけ）
   const sink = ty.form === 'kraken' ? KRAKEN_SINK * (1 - clamp(m.rise || 0, 0, 1)) : 0;
   for (const p of m.drawForm || m.form) {
@@ -544,7 +591,7 @@ export function drawMonster0(m: Mon, t: number): void {
       if (dp > 14) continue;
       k *= 0.12;
     }
-    const cc = p.col || c;
+    const cc = fr > 0 ? frostCol(p.col || c, fr) : p.col || c;
     if (p.part === 'flame') g = G(nth(['^', "'", '^', '*'], ((t * 12 + p.ph * 3) | 0) % 4));
     const jx = fj ? (mr() - 0.5) * fj : 0,
       jy = fj ? (mr() - 0.5) * fj : 0,

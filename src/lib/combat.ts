@@ -9,7 +9,7 @@ import { css } from './color.ts';
 import { RIPPLE_SPEED, WATER_ZAP_Y, addBolt, addRipple, shockRise, sparkCrown } from './fx.ts';
 import { type Spec, bodyN, type Side, atkType, isTwo, specOf, turnElem } from './gear.ts';
 import { G } from './glyphs.ts';
-import { chillArea, ignite } from './ground.ts';
+import { chillArea, chillMob, ignite } from './ground.ts';
 import { getLegend, legendOfBranch } from './legend.ts';
 import { msg } from './log.ts';
 import { foe, BL, hostile, statOf } from './monsters.ts';
@@ -251,8 +251,7 @@ export function coldSnap(x: number, z: number, r: number): void {
   for (const m of here.monsters) {
     if (m.dead || m.ty.critter) continue;
     if (Math.hypot(m.x - x, m.z - z) < r + 0.3 * m.ty.scale) {
-      const st = m.st || (m.st = {});
-      st.chill = Math.max(st.chill || 0, 4);
+      chillMob(m.st || (m.st = {}), 4);
     }
   }
   for (let q = 0; q < 28; q++) {
@@ -1202,7 +1201,7 @@ export function applyElem(m: Mob, el: string, sp: Spec, base: number): void {
   } else if (el === 'ice') {
     if ((st.burn ?? NaN) > 0) react('steam', m, sp, base);
     else if ((st.poison ?? NaN) > 0) react('frostbite', m, sp, base);
-    if (!m.dead) st.chill = Math.max(st.chill || 0, 2.5 * durK);
+    if (!m.dead) chillMob(st, 2.5 * durK);
     if (clock.time - (m.iceT || -9) >= 0.5) {
       m.iceT = clock.time;
       chillArea(m.x, m.z, 0.9 * areaK);
@@ -1237,7 +1236,7 @@ export function applyElem(m: Mob, el: string, sp: Spec, base: number): void {
       zapLine(from, nx, must(elemCol(el)), el);
       const s2 = nx.st || (nx.st = {});
       if (el === 'fire') s2.burn = Math.max(s2.burn || 0, 2 * durK);
-      else if (el === 'ice') s2.chill = Math.max(s2.chill || 0, 1.8 * durK);
+      else if (el === 'ice') chillMob(s2, 1.8 * durK);
       else if (el === 'poison') s2.poison = Math.max(s2.poison || 0, 3.5 * durK);
       from = nx;
     }
@@ -1319,7 +1318,7 @@ export function react(kind: string, m: Mob, sp: Spec, base: number): void {
     }
   } else if (kind === 'frostbite') {
     st.poison = (st.poison || 0) * 2 + 3;
-    st.chill = Math.max(st.chill || 0, 2);
+    chillMob(st, 2);
     burst(['*', '.'], [1.2, 2.6, 1.8], 24, 1.6);
   } else if (kind === 'contagion') {
     around(4 * areaK, (o) => {
