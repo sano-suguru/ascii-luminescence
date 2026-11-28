@@ -703,18 +703,6 @@ function seeRune(t: string): void {
     saveSet('al_runes', saved.RSEEN);
   }
 }
-/** 拾ったルーン ru の行き先の名前（体の枠・空いた手・手のルーンの枠。どこも空いていなければ袋） */
-export function runeDest(ru: Rune): string {
-  const cat = lookup(RUNE_DEF, ru.type).cat,
-    hs = hands();
-  if (cat === 'body') return freeBody() !== undefined ? '身の護符の枠へ' : '袋へ';
-  if (cat === 'atk') {
-    const h = (['R', 'L'] as const).find((x) => !hs[x].atk);
-    return h ? `${h === 'L' ? '左' : '右'}手へ` : '袋へ';
-  }
-  const p = freeSlotFor(ru);
-  return p ? `${p[0] === 'L' ? '左' : '右'}手のルーンの枠へ` : '袋へ';
-}
 /** 祭壇の選択肢 o の説明の5行（祭壇の画面の下に出す。HTML の文字列。o が無ければ、案内の1行） */
 export function altarDetail(o: Item | null | undefined): string[] {
   if (!o) return [`<span class="lab">${byInput('選択肢にマウスを乗せると', '選択肢を押すと')}、ここに説明が出る</span>`, '', '', '', ''];

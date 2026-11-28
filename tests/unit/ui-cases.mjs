@@ -156,7 +156,6 @@ export function uiCases(F, seeds, clearLog, page) {
               },
             ],
             ['detailLines', () => [r() < 0.1 ? null : rune()]],
-            ['runeDest', () => [rune()]],
             ['altarDetail', () => [r() < 0.1 ? null : pick(here.D.items)]],
             ['altarOpts', () => []],
             ['mergeMod', () => [r() < 0.7 ? rune('mod') : rune()]],

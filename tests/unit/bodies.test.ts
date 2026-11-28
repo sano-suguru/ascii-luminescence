@@ -12,6 +12,15 @@ import * as small from '../../src/lib/bodies/small.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 import { caseOut } from './case-out.mjs';
 
+/** 楕円 e（真ん中 c・半径 r）の表面からの点 p の距離（外が正。半径で割った距離から近似する） */
+const ellipsoidOut = (e: { c: readonly number[]; r: readonly number[] }, p: { x: number; y: number; z: number }): number => {
+  const dx = (p.x - nth(e.c, 0)) / nth(e.r, 0),
+    dy = (p.y - nth(e.c, 1)) / nth(e.r, 1),
+    dz = (p.z - nth(e.c, 2)) / nth(e.r, 2),
+    k = Math.hypot(dx, dy, dz);
+  return ((k - 1) * Math.hypot(dx * nth(e.r, 0), dy * nth(e.r, 1), dz * nth(e.r, 2))) / (k || 1);
+};
+
 const random = Math.random;
 afterEach(() => {
   Math.random = random;
@@ -616,8 +625,8 @@ describe('生き物の形', () => {
         fangs = b.filter((p) => p.col === B.fang);
       expect(eyes.length).toBe(2);
       expect(fangs.length).toBe(2);
-      for (const p of eyes) expect(beasts.batOut(B.head, p)).toBeGreaterThan(0.01);
-      for (const p of eyes) expect(beasts.batOut(B.head, p)).toBeLessThan(0.04);
+      for (const p of eyes) expect(ellipsoidOut(B.head, p)).toBeGreaterThan(0.01);
+      for (const p of eyes) expect(ellipsoidOut(B.head, p)).toBeLessThan(0.04);
       for (const e of eyes)
         for (const p of b.filter((q) => q.part === 'head' && q.col !== B.eye && q.col !== B.fang))
           expect(Math.hypot(p.x - e.x, p.y - e.y, p.z - e.z)).toBeGreaterThan(0.04);

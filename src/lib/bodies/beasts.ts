@@ -1699,16 +1699,6 @@ export const BAT: { body: Ellipsoid; head: Ellipsoid; wingY: number; wingTilt: n
   eye: [1, 0.22, 0.2],
   fang: [0.95, 0.92, 0.85],
 };
-/** 楕円 e の表面からの距離（外が正。半径で割った距離から近似する） */
-export const batOut = (e: Ellipsoid, p: { x: number; y: number; z: number }): number => {
-  const [cx, cy, cz] = e.c,
-    [rx, ry, rz] = e.r,
-    dx = (p.x - cx) / rx,
-    dy = (p.y - cy) / ry,
-    dz = (p.z - cz) / rz,
-    k = Math.hypot(dx, dy, dz);
-  return ((k - 1) * Math.hypot(dx * rx, dy * ry, dz * rz)) / (k || 1);
-};
 
 // vampire bat: a furry egg of a body with a round head, tall pointed ears (pink inside), red eyes, a pug nose and two white fangs.
 // The wings are membranes stretched over the long arm and four fingers, with a scalloped trailing edge, drawn in the wing's own plane

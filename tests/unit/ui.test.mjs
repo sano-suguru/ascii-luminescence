@@ -109,19 +109,19 @@ describe('装備の画面の作り直し', () => {
 });
 
 describe('指紋', () => {
-  it('伝言・下の HUD・手の枠・保存・ルーンの説明・拾ったルーンを入れる処理（800の場合、18の関数）の指紋', () => {
+  it('伝言・下の HUD・手の枠・保存・ルーンの説明・拾ったルーンを入れる処理（800の場合、17の関数）の指紋', () => {
     const page = fakePage(),
       all = uiCases(F, 800, () => (msgs.length = 0), page),
       lines = all.split('\n'),
       names = new Set(lines.flatMap((l) => [...l.matchAll(/"name":"(\w+)"/g)].map((m) => m[1])));
-    // 場合が中身を通っているか：18の関数が全部呼ばれ、伝言・下の HUD・保存が書かれる
+    // 場合が中身を通っているか：17の関数が全部呼ばれ、伝言・下の HUD・保存が書かれる
     expect([
       lines.length,
       names.size,
       lines.filter((l) => /"hotbar":"<span/.test(l)).length > 100,
       lines.filter((l) => /"stored":\[\[/.test(l)).length > 100,
-    ]).toEqual([800, 18, true, true]);
+    ]).toEqual([800, 17, true, true]);
     caseOut('ui', all);
-    expect([fnv(all), all.length]).toEqual(['ee346472', 937701]);
+    expect([fnv(all), all.length]).toEqual(['106740cf', 963568]);
   });
 });

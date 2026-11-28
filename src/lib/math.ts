@@ -7,13 +7,6 @@ export const sstep = (a: number, b: number, x: number): number => {
   const t = clamp((x - a) / (b - a), 0, 1);
   return t * t * (3 - 2 * t);
 };
-/** 角度の差 a - b を、-PI から PI に収める */
-export const angDiff = (a: number, b: number): number => {
-  let d = a - b;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return d;
-};
 /** 角度 a から b へ、近い向きに k だけ進める */
 export const lerpAngle = (a: number, b: number, k: number): number => {
   let d = b - a;

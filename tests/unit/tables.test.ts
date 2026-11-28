@@ -6,7 +6,7 @@ import * as GL from '../../src/lib/glyphs.ts';
 import { VM_MIRROR, vmGlyph, vmGlyphS } from '../../src/lib/hands.ts';
 import * as HUD from '../../src/lib/hud.ts';
 import { LANTERN, type Light, computeVis, topLights } from '../../src/lib/light.ts';
-import { angDiff, flowW, jagged, lerpAngle, mCenter, sstep, turnDir } from '../../src/lib/math.ts';
+import { flowW, jagged, lerpAngle, mCenter, sstep, turnDir } from '../../src/lib/math.ts';
 import * as NM from '../../src/lib/names.ts';
 import { META_DEF, UNLOCKS, expNeed, expOf } from '../../src/lib/progress.ts';
 import { roll } from '../../src/lib/random.ts';
@@ -149,8 +149,7 @@ describe('経験', () => {
 });
 
 describe('小さな道具', () => {
-  it('角度：差は -PI から PI、近い向きに回る', () => {
-    expect(angDiff(0.1, Math.PI * 2)).toBeCloseTo(0.1);
+  it('角度：近い向きに回る', () => {
     expect(lerpAngle(3, -3, 0.5)).toBeCloseTo(Math.PI, 1);
     const d = turnDir([1, 0.5, 0], Math.PI / 2);
     expect(d[0]).toBeCloseTo(0);
@@ -225,12 +224,11 @@ describe('タイトル・文字の並び・シェーダー・小さな関数：�
       SND.VOWELS,
       SND.CHANT_STEPS,
       R.RALLY_FROM,
-      R.WEAPON,
       R.SLEEP_MULT,
       W.FIRE_TYPES,
       LANTERN,
     ]);
-    expect(fingerprint(v)).toEqual(['93b01801', 3107]);
+    expect(fingerprint(v)).toEqual(['702a2db', 3055]);
   });
   it('小さな関数（たくさんの入力で）', () => {
     const out: unknown[] = [];
@@ -251,14 +249,11 @@ describe('タイトル・文字の並び・シェーダー・小さな関数：�
           jagged(p3(), p3(), r()),
           NM.mname({ ty: { col: p3(), name: '名', ch: 'a' } }),
           NM.lookLine('*', p3(), 'n', 'd'),
-          R.sp_elem([null, undefined, {}, { sp: null }, { sp: {} }, { sp: { elem: 'fire' } }][s % 6]),
         );
       }
-      for (const a of ['fire', 'ice', 'poison', 'thunder', 'blade'])
-        for (const b of ['fire', 'ice', 'poison', 'thunder', 'blade']) out.push(R.reactionOf(a, b));
     } finally {
       Math.random = saved;
     }
-    expect(fingerprint(out)).toEqual(['747f2e3b', 199889]);
+    expect(fingerprint(out)).toEqual(['65f4301b', 198535]);
   });
 });

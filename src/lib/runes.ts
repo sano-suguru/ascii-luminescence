@@ -211,27 +211,11 @@ export function emptyChip(cat: string, attrs: string): string {
   return `<button class="row rs empty" ${attrs}><span class="mk"> </span><span class="dim">${br[0]} 空き ${br[1]}</span></button>`;
 }
 
-// ---------------------------------------------------------------- 術の性質と反応・立て直し・素手・ルーンの定義
-/** 術 sp が性質（elem）を持つか */
-export const sp_elem = (p: { sp?: { elem?: unknown } | null } | null | undefined): boolean => !!(p && p.sp && p.sp.elem);
-/** 二つの性質の反応の名前（無ければ null） */
-export function reactionOf(a: string, b: string): string | null {
-  const k = [a, b].sort().join('+');
-  const table: Readonly<Record<string, string>> = {
-    'fire+ice': 'steam',
-    'fire+poison': 'blast',
-    'fire+thunder': 'overload',
-    'ice+thunder': 'shatter',
-    'ice+poison': 'frostbite',
-    'poison+thunder': 'contagion',
-  };
-  return table[k] || null;
-}
+// ---------------------------------------------------------------- 立て直し・眠っている相手・ルーンの定義
 /** 立て直し（rally）で体力が戻る、当たりの種類 */
 export const RALLY_FROM = new Set(['blade', 'magic', 'fire', 'thunder', 'poison', 'ice']);
-/** 素手の時の短剣と、眠っている相手への倍率 */
-export const WEAPON = { name: '短剣', min: 3, max: 5, cd: 0.45, reach: 2.2 },
-  SLEEP_MULT = 3;
+/** 眠っている相手への倍率 */
+export const SLEEP_MULT = 3;
 
 /** ルーンの定義（武器・性質・発動・効き方・護符など） */
 export interface RuneDef {
