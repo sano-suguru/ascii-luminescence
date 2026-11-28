@@ -179,6 +179,41 @@ export const canStep = (m: Stepper, i: number): boolean =>
               ? level().tile[i] === TF && level().liquid[i] === LQ_DEEP
               : level().tile[i] === TF && !blocksWalk(must(level().liquid[i], '液体')) && !level().solid.has(i));
 /**
+ * 生き物 m が、マス starts のどれかから上下左右に（canStep のマスを）歩いて、各マスへ何歩で行けるか（行けないマスと limit 歩より先は -1）。
+ * 始めのマスは 0 歩（歩けるかは見ない）。掃除機と修復機が、行ける仕事を選び、仕事の所への道を選ぶのに使う
+ */
+export function walkSteps(m: Stepper, starts: readonly number[], limit: number): Int16Array {
+  const d = new Int16Array(NCELL).fill(-1),
+    q: number[] = [];
+  for (const s of starts)
+    if (s >= 0 && s < NCELL && d[s] === -1) {
+      d[s] = 0;
+      q.push(s);
+    }
+  for (let h = 0; h < q.length; h++) {
+    const c = nth(q, h),
+      dc = d[c] ?? 0;
+    if (dc >= limit) continue;
+    const cx = c % MW;
+    for (const [dx, dz] of D4) {
+      if (cx + dx < 0 || cx + dx >= MW) continue; // 行の端で回り込まない
+      const j = c + dz * MW + dx;
+      if (j < 0 || j >= NCELL || d[j] !== -1 || !canStep(m, j)) continue;
+      d[j] = dc + 1;
+      q.push(j);
+    }
+  }
+  return d;
+}
+/** 掃除機と修復機が、仕事を選ぶ・仕事の所へ歩く時に数える歩数の上限（掃除機は20、修復機は40） */
+export const jobReach = (m: Stepper): number => (m.ty.critter === 'engineer' ? 40 : 20);
+/** 掃除機と修復機が仕事をする所のマス（掃除機は仕事のマス、修復機は扉の両側のマス） */
+export const jobCells = (m: Stepper, job: number): number[] => {
+  if (m.ty.critter !== 'engineer') return [job];
+  const d = nth(level().doors, job);
+  return [d.i, d.j];
+};
+/**
  * 生き物 m が次のマスに着いた時、次に向かうマスを選ぶ（ときどき立ち止まる）。近くに火があれば逃げる。
  * 向かう所は、気づいた敵ならプレイヤー、呼ばれた所、見回りの道、野営の火、猟犬なら匂い（光の猟犬は灯り）、群れの頭の順。無ければ、なるべくまっすぐ歩き回る
  */
@@ -280,7 +315,30 @@ export function chooseNext(m: Mob): void {
   m.tx = m.cx + ch[0];
   m.tz = m.cz + ch[1];
 }
-/** 小さな生き物 m が次のマスに着いた時、次に向かうマスを選ぶ。逃げる時はプレイヤーから遠く、掃除機・修復機は仕事の所へ、草を食べる物は光る苔へ、ほかはなるべくまっすぐ */
+/**
+ * 掃除機・修復機 m が仕事の所へ向かう、歩数が一番少ない隣の向き（opts から選ぶ。歩数が同じなら opts の順）。仕事が無ければ null。
+ * 仕事の所へもう行けなければ（火が回った・鉄格子が閉じた・吹き飛ばされたなど）、仕事を手放して null（次に探す時に選び直す）
+ */
+function jobStep(m: Mob, opts: readonly (readonly [number, number])[]): readonly [number, number] | null {
+  if ((m.ty.critter !== 'cleaner' && m.ty.critter !== 'engineer') || m.job === undefined || m.job < 0) return null;
+  const steps = walkSteps(
+    m,
+    jobCells(m, m.job).filter((i) => canStep(m, i)),
+    jobReach(m),
+  );
+  let best = null,
+    bd = 1e9;
+  for (const d of opts) {
+    const s = steps[(m.cz + d[1]) * MW + m.cx + d[0]] ?? -1;
+    if (s >= 0 && s < bd) {
+      bd = s;
+      best = d;
+    }
+  }
+  if (!best) m.job = -1;
+  return best;
+}
+/** 小さな生き物 m が次のマスに着いた時、次に向かうマスを選ぶ。逃げる時はプレイヤーから遠く、掃除機・修復機は仕事の所へ道なりに、草を食べる物は光る苔へ、ほかはなるべくまっすぐ */
 export function critterStep(m: Mob, away: boolean): void {
   const opts = [];
   for (const d of D4) {
@@ -288,7 +346,7 @@ export function critterStep(m: Mob, away: boolean): void {
     if (canStep(m, i)) opts.push(d);
   }
   if (!opts.length) return;
-  let ch;
+  let ch = null;
   if (away) {
     let bd = -1;
     for (const d of opts) {
@@ -298,26 +356,16 @@ export function critterStep(m: Mob, away: boolean): void {
         ch = d;
       }
     }
-  } else if ((m.ty.critter === 'cleaner' || m.ty.critter === 'engineer') && (m.job ?? NaN) >= 0) {
-    const [gx, gz] =
-      m.ty.critter === 'engineer'
-        ? [nth(level().doors, must(m.job, '仕事 job')).bx, nth(level().doors, must(m.job, '仕事 job')).bz]
-        : cpos(must(m.job, '仕事 job'));
-    let bd = 1e9;
-    for (const d of opts) {
-      const dd = Math.hypot((m.cx + d[0] + 0.5) * CELL - gx, (m.cz + d[1] + 0.5) * CELL - gz) + mr() * 0.5;
-      if (dd < bd) {
-        bd = dd;
-        ch = d;
-      }
+  } else ch = jobStep(m, opts);
+  if (!ch) {
+    if (m.ty.critter === 'grazer') {
+      const moss = opts.filter((d) => level().surface[(m.cz + d[1]) * MW + m.cx + d[0]] === SF_LUMEN);
+      ch = moss.length && mr() < 0.8 ? nth(moss, Math.floor(mr() * moss.length)) : nth(opts, Math.floor(mr() * opts.length));
+    } else {
+      const fwd = opts.find((o) => o[0] === m.dir[0] && o[1] === m.dir[1]);
+      const nrev = opts.filter((o) => !(o[0] === -m.dir[0] && o[1] === -m.dir[1]));
+      ch = fwd && mr() < 0.6 ? fwd : nrev.length ? nth(nrev, Math.floor(mr() * nrev.length)) : nth(opts, 0);
     }
-  } else if (m.ty.critter === 'grazer') {
-    const moss = opts.filter((d) => level().surface[(m.cz + d[1]) * MW + m.cx + d[0]] === SF_LUMEN);
-    ch = moss.length && mr() < 0.8 ? nth(moss, Math.floor(mr() * moss.length)) : nth(opts, Math.floor(mr() * opts.length));
-  } else {
-    const fwd = opts.find((o) => o[0] === m.dir[0] && o[1] === m.dir[1]);
-    const nrev = opts.filter((o) => !(o[0] === -m.dir[0] && o[1] === -m.dir[1]));
-    ch = fwd && mr() < 0.6 ? fwd : nrev.length ? nth(nrev, Math.floor(mr() * nrev.length)) : nth(opts, 0);
   }
   m.dir = must(ch, '向き ch');
   m.tx = m.cx + must(ch, '向き ch')[0];
