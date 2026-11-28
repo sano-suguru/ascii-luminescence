@@ -94,7 +94,7 @@ export async function initDiag(onOwner: () => void): Promise<void> {
   if (!isUser(user) || !(await user.isOwner())) return;
   const db = await c.use('db');
   if (!isDb(db)) return;
-  // 記録が書けるので、タイトルに［開発用モード］と［自動で試す］を出す（タイトルを描き直すのは、呼んだ src/game/17-meta.js）
+  // 記録が書けるので、タイトルに［開発用モード］と［自動で試す］を出す（タイトルを描き直すのは、呼んだ src/lib/input.ts の initInput が渡す redrawIntroLater）
   ui.owner = true;
   try {
     onOwner();

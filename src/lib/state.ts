@@ -42,7 +42,7 @@ export interface ZapFlash {
   r: number;
 }
 
-/** テスト用モード（?test=1）か（src/game/00-test-mode.js が時計と乱数を入れ替える。読めない時は違う） */
+/** テスト用モード（?test=1）か（src/lib/testmode.ts の installTestMode が時計と乱数を入れ替える。読めない時は違う） */
 export const TEST = (() => {
   try {
     return new URLSearchParams(location.search).get('test') === '1';
@@ -51,7 +51,7 @@ export const TEST = (() => {
   }
 })();
 
-/** テスト用モードの時計（ゲームの時計を ms 進め、その間に来る setTimeout・setInterval を流す advance と、本物の setTimeout。00-test-mode.js が作る） */
+/** テスト用モードの時計（ゲームの時計を ms 進め、その間に来る setTimeout・setInterval を流す advance と、本物の setTimeout。src/lib/testmode.ts の installTestMode が作る） */
 export interface TestClock {
   advance(ms: number): void;
   realTimeout: (fn: () => void, ms: number) => number;
@@ -74,8 +74,22 @@ export interface Clock {
   warm: number;
   /** テスト用モードの時計（テスト用モードでない時は null。00-test-mode.js がその場で入れる） */
   TESTCLK: TestClock | null;
+  /** テスト用モードで、用意ができたか（true）、用意の途中で止まったわけ（'error: …'）、まだか（false）。__test.ready・error が読む */
+  testBoot: boolean | string;
 }
-export const clock: Clock = { time: 0, frame: 0, last: 0, fovT: 0, mapT: 0, perfT: 0, perfAcc: 0, perfN: 0, warm: 0, TESTCLK: null };
+export const clock: Clock = {
+  time: 0,
+  frame: 0,
+  last: 0,
+  fovT: 0,
+  mapT: 0,
+  perfT: 0,
+  perfAcc: 0,
+  perfN: 0,
+  warm: 0,
+  TESTCLK: null,
+  testBoot: false,
+};
 /** テスト用モードの1歩の秒（ゲームの1/30秒） */
 export const TEST_STEP = 1 / 30;
 /** テスト用モードの __test.frames(n) が描いて進める残りの数と、終わった時に呼ぶ物。丸ごと入れ替えない */
@@ -211,11 +225,21 @@ export interface Ui {
   unlockedAt: number;
   /** Esc のキーを処理している間か（その間は tryLock が捕まえにいかない） */
   escKey: boolean;
+  /** エラーを出す所 #err（00-test-mode.js がその場で入れる。WebGL を作れなかった時に書く） */
+  errEl: HTMLElement | null;
+  /** マウスを捕まえていない時に、描く画面を押してドラッグしているか と、前のマウスの位置（見回す） */
+  dragging: boolean;
+  lmx: number;
+  lmy: number;
+  /** 左のボタンを押した所（書くだけで、読む所は無い） */
+  downAt: [number, number] | null;
+  /** タイトルの画面に出している物（'main'：タイトル、'unlock'：解放の画面） */
+  introMode: 'main' | 'unlock';
   /** 指で遊んでいるか（指で触れたら true、マウスを動かしたら false。src/lib/touch.ts。この間は tryLock が捕まえにいかない） */
   touch: boolean;
   /** 指で遊んでいて、画面が縦向きか（探索中は止めて、横にする案内を出す。src/lib/touch.ts の updatePortrait） */
   portrait: boolean;
-  /** タイトルに［開発用モード］を出すか（このページで一度でも開発用モードがオンだった時。オフに戻しても、そのページの間は出す。src/game/17-meta.js） */
+  /** タイトルに［開発用モード］を出すか（このページで一度でも開発用モードがオンだった時。オフに戻しても、そのページの間は出す。src/lib/intro.ts の buildIntroPanel） */
   devSeen: boolean;
   /** claude.ai の Artifact の持ち主が開き、診断の記録が書けるか（src/lib/diag.ts の initDiag が分かった時に入れる。タイトルに［開発用モード］と［自動で試す］を出す） */
   owner: boolean;
@@ -328,6 +352,12 @@ export const ui: Ui = {
   lockTries: 0,
   unlockedAt: -1e9,
   escKey: false,
+  errEl: null,
+  dragging: false,
+  lmx: 0,
+  lmy: 0,
+  downAt: null,
+  introMode: 'main',
   touch: false,
   portrait: false,
   devSeen: false,
@@ -1146,7 +1176,7 @@ export interface Here {
   fade: number;
   /** 図鑑の見本の階を作っているか */
   showroomGen: boolean;
-  /** 今の階の中身（generate.ts の generateLevel の結果）。初期化（30-loop-init.js の init）で1つ目の階を作るまでは null。古い JS が後から足す欄は LevelExtra（まだ型の無い hub などは、使う処理を移す時に足す） */
+  /** 今の階の中身（generate.ts の generateLevel の結果）。初期化（src/lib/boot.ts の init）で1つ目の階を作るまでは null。古い JS が後から足す欄は LevelExtra（まだ型の無い hub などは、使う処理を移す時に足す） */
   D: (Level & LevelExtra) | null;
   /** 見たことのあるマス（階に入るたびに作り直す。src/lib/levels.ts の newLevel） */
   explored: Uint8Array;
@@ -1275,7 +1305,7 @@ export interface Legend {
 }
 /** 保存する記録（localStorage）：伝承・解放・墓・試練 META、魔導書に記した反応 BOOK、見たルーン RSEEN、見た生き物 SEEN、開発用モード DEVALL、
  * それと今の探索の伝説の物 LEGEND（これは保存しない）。
- * 本当の初めの値は、古い JS が localStorage から読んでその場で入れる（META・DEVALL は 17-meta.js、BOOK は 19-hands-runes.js、
+ * 本当の初めの値は、古い JS が localStorage から読んでその場で入れる（META・DEVALL は src/lib/intro.ts の initIntro、BOOK は 19-hands-runes.js、
  * SEEN・RSEEN は 25-gallery.js）。ここの値は仮 */
 export interface Saved {
   META: Meta;
@@ -1380,7 +1410,7 @@ export interface Buf {
   pN: number;
 }
 export const buf: Buf = { dn: 0, pN: 0 };
-/** three.js のカメラのうち、TypeScript が使う欄だけ（本物は 05-renderer.js が作る PerspectiveCamera。位置と向きは src/lib/player.ts が set で書く） */
+/** three.js のカメラのうち、TypeScript が使う欄だけ（本物は src/lib/render.ts の initRenderer が作る PerspectiveCamera。位置と向きは src/lib/player.ts が set で書く） */
 export interface CameraView {
   readonly position: Vector3;
   readonly rotation: Euler;
@@ -1392,26 +1422,26 @@ export interface CameraView {
   updateProjectionMatrix(): void;
   updateMatrixWorld(): void;
 }
-/** three.js の、マスの火・灰・変わり方を描画に渡す絵（DataTexture）のうち、TypeScript が書く欄だけ（本物は 05-renderer.js が作る。中身は cellData） */
+/** three.js の、マスの火・灰・変わり方を描画に渡す絵（DataTexture）のうち、TypeScript が書く欄だけ（本物は src/lib/render.ts の initRenderer が作る。中身は cellData） */
 export interface CellTex {
   needsUpdate: boolean;
 }
-/** 描画の部品（three.js の物）と描き方の切り替え：カメラ camera とマスの絵 cellTex（本当の値は 05-renderer.js がその場で入れる。ここの値は仮）と、
+/** 描画の部品（three.js の物）と描き方の切り替え：カメラ camera とマスの絵 cellTex（本当の値は src/lib/render.ts の initRenderer がその場で入れる。ここの値は仮）と、
  * 生き物の体だけを描くか drawBodyOnly（まわりの飾り・強い個体の輪・頭の上の印を描かない。__test.monsterView だけが入れる） */
 export interface Gfx {
   camera: CameraView;
   cellTex: CellTex;
   drawBodyOnly: boolean;
-  /** ここから下は、05-renderer.js・30-loop-init.js がその場で入れる three.js の物（水面は 30-loop-init.js が呼ぶ src/lib/render.ts の makeWater）（入れるまでは null・undefined か空）。
+  /** ここから下は、src/lib/render.ts の initRenderer と src/lib/boot.ts の init がその場で入れる three.js の物（水面は init が呼ぶ src/lib/render.ts の makeWater）（入れるまでは null・undefined か空）。
    * 描画する部品（WebGL を使えない時は作れず、ゲームは始まらない） */
   renderer: WebGLRenderer | undefined;
-  /** 描く画面（#gl。05-renderer.js が document から読む） */
+  /** 描く画面（#gl。src/lib/render.ts の initRenderer が document から読む） */
   canvas: HTMLCanvasElement | null;
-  /** 描く物を入れる場面（05-renderer.js が作る。three.js は物を作る時に Math.random を引くので、テスト用モードの乱数の入れ替えの後に作る） */
+  /** 描く物を入れる場面（src/lib/render.ts の initRenderer が作る。three.js は物を作る時に Math.random を引くので、テスト用モードの乱数の入れ替えの後に作る） */
   scene: Scene | null;
   /** 描画の全部の部品が分け合う値（シェーダーの uniform） */
   U: Uniforms | null;
-  /** 階の文字の部品（30-loop-init.js の init が作る）と、壁の向こうを隠す板の部品 */
+  /** 階の文字の部品（src/lib/boot.ts の init が作る）と、壁の向こうを隠す板の部品 */
   staticMat: ShaderMaterial | undefined;
   occMat: ShaderMaterial | undefined;
   /** 画面の最後の後処理（露出・熱のゆらぎ・水中・傷の赤み・詠唱の間の色） */
@@ -1438,20 +1468,20 @@ export interface Gfx {
   /** 階の文字を区切りごとにまとめた物（区切りの文字の数 count と、区切りを包む球 sphere。球で、見えない区切りを描かない）と、壁の向こうを隠す板（src/lib/build.ts の buildWorld が作る） */
   chunks: { mesh: Mesh; count: number; sphere: Sphere }[];
   occMesh: Mesh | null;
-  /** 水面の絵（マスごとの水の深さ・流れ・湖か・藻と、灯りの番号と重み。src/lib/render.ts の makeWater（30-loop-init.js の init が呼ぶ）が作り、src/lib/build.ts の updateWater が書く） */
+  /** 水面の絵（マスごとの水の深さ・流れ・湖か・藻と、灯りの番号と重み。src/lib/render.ts の makeWater（src/lib/boot.ts の init が呼ぶ）が作り、src/lib/build.ts の updateWater が書く） */
   waterTex: DataTexture | null;
   waterLTex: DataTexture | null;
   /** その階の霧の濃さの基 */
   fogBase: number;
   /** 粒子（塵・ガス・そのほか）を描く形と、その位置・色・大きさ・文字の属性（中身は src/lib/particles.ts の ptPos・ptCol・ptSize・ptGly。
-   * 05-renderer.js が作り、src/lib/motes.ts の updateParticles が描く数を書く） */
+   * src/lib/render.ts の initRenderer が作り、src/lib/motes.ts の updateParticles が描く数を書く） */
   ptGeo: BufferGeometry | null;
   bpPos: BufferAttribute | null;
   bpCol: BufferAttribute | null;
   bpSize: BufferAttribute | null;
   bpGly: BufferAttribute | null;
 }
-/** 描画の部品が分け合う値（シェーダーの uniform。05-renderer.js が作る） */
+/** 描画の部品が分け合う値（シェーダーの uniform。src/lib/render.ts の initRenderer が作る） */
 export interface Uniforms {
   uCell: { value: unknown };
   uCollT: { value: number };
@@ -1470,7 +1500,7 @@ export interface Uniforms {
   uAmb: { value: number };
 }
 export const gfx: Gfx = {
-  // 仮のカメラ（本物の PerspectiveCamera は、作る時に Math.random を引くので、05-renderer.js がテスト用モードの乱数の入れ替えの後に作る。
+  // 仮のカメラ（本物の PerspectiveCamera は、作る時に Math.random を引くので、src/lib/render.ts の initRenderer がテスト用モードの乱数の入れ替えの後に作る。
   // Vector3・Euler・Matrix4 は乱数を引かない）
   camera: {
     position: new Vector3(),
@@ -1519,7 +1549,7 @@ export const gfx: Gfx = {
 export const cellData = new Uint8Array(NCELL * 4);
 /** 薄い氷のマスに乗っていた秒（マス → 秒。src/lib/ground.ts の crackIce。src/lib/levels.ts の newLevel が階ごとに空にする）。丸ごと入れ替えない */
 export const iceT = new Map<number, number>();
-/** 灯りを描画に渡す配列（src/lib/lightmap.ts の updateLights が毎フレーム書き、05-renderer.js の U が描画に渡す）。丸ごと入れ替えない。
+/** 灯りを描画に渡す配列（src/lib/lightmap.ts の updateLights が毎フレーム書き、src/lib/render.ts の initRenderer が作る U が描画に渡す）。丸ごと入れ替えない。
  * SL：階の灯りの色と強さ（灯り1つに3つ）、DLP：動く灯りの位置と届く距離（1つに4つ。0番は手元の灯り、最後は稲妻の光り）、DLC：動く灯りの色（1つに3つ） */
 export const SL = new Float32Array(NSL * 3),
   DLP = new Float32Array(NDL * 4),

@@ -70,7 +70,7 @@ describe('ソースマップ', () => {
     const wrap = lines.indexOf('(function(){') + 1,
       skip = new Set([wrap, wrap + 1, lines.length - 1, lines.length]);
     let checked = 0;
-    for (let n = 1; n <= lines.length; n += 13)
+    for (let n = 1; n <= lines.length; n++)
       for (const m of lines[n - 1].matchAll(/[A-Za-z_$][\w$]*/g)) {
         if (skip.has(n)) continue;
         const p = originalPosition(map, n, m.index);
@@ -79,7 +79,7 @@ describe('ソースマップ', () => {
         expect(src.slice(p.column, p.column + m[0].length)).toBe(m[0]);
         checked++;
       }
-    expect(checked).toBeGreaterThan(1000);
+    expect(checked).toBeGreaterThan(500);
     expect(wrap).toBeGreaterThan(1); // 包みの前に imports.mjs の import の文がある
     expect(originalPosition(map, wrap, 0)).toBeNull(); // 包みの行
     expect(originalPosition(map, 1, 0)?.source).toMatch(/src\/game\/imports\.mjs$/);
