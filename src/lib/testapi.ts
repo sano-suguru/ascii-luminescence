@@ -297,7 +297,7 @@ export function initTestApi(): void {
         releaseCast(h);
       },
       // the doors of this level (cell i, the room cell j next to it, how open o, burnt away), a cell (its middle x z, floor to stand on, seen now, explored, ash,
-      // sulphur or ice floor, thin ice and the seconds stood on it, water, lava, bog, tall plants, fire, fuel), the size of the map, setting a cell on fire (gas: as burning gas does, leaving a little fuel),
+      // sulphur or ice floor, thin ice and the seconds stood on it, water, lava, bog, tall plants, the water surface drawn there (its depth in the water picture; 0 for none), fire, fuel), the size of the map, setting a cell on fire (gas: as burning gas does, leaving a little fuel),
       // and putting a creature (an MTYPES key such as 'Re') on a cell
       doors() {
         return level().doors.map((d) => ({ i: d.i, j: d.j, o: +d.o.toFixed(3), gone: !!d.gone }));
@@ -318,6 +318,7 @@ export function initTestApi(): void {
           lava: level().liquid[i] === LQ_LAVA,
           bog: level().liquid[i] === LQ_BOG,
           tall: tallAt(i),
+          wave: gfx.waterTex ? (gfx.waterTex.image.data[i * 4] ?? 0) : 0,
           fire: +(blaze.fire[i] || 0).toFixed(3),
           fuel: +(blaze.fuel[i] || 0).toFixed(3),
         };

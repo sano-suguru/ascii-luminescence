@@ -8,10 +8,10 @@
 //      発動のルーンの待ち時間は、新しい探索を始めると0に戻る。遅れて起きることの中の例外は、テスト用モードではページのエラーになる
 //   6. 猟犬は、匂いの無いマスを追わない（ページを開いてすぐの、ゲームの時刻が40秒より前も）
 //   7. 硫黄の床は、燃え尽きても硫黄のまま残り、しばらくすると灰の印が消えて、また燃えるようになる
-//   8. 火で氷が溶けて水に戻ると、そのマスの火は消える（水の上で燃えず、灰の印も付かない）
+//   8. 火で氷が溶けて水に戻ると、そのマスの火は消える（水の上で燃えず、灰の印も付かない）。凍っている間はそのマスの水面を描かず、解けるとまた描く
 //   9. 冷気は、マップの端で反対側の端に届かない
 //  10. 消してすぐまた火がついたマスは、燃えているマスの一覧に1回だけ入る
-//  11. 薄い氷に乗っていた秒は、階を移ると0に戻る（前の階の同じ番号のマスの秒が残らない）
+//  11. 薄い氷を踏み割ると、そのマスに水面を描く。薄い氷に乗っていた秒は、階を移ると0に戻る（前の階の同じ番号のマスの秒が残らない）
 //  12. 火山の異界の火口は、噴き上がると溶岩が流れ出し（状態 1）、しばらく待って（2）引き（3）、また待って（0）噴き上がる
 //  13. 加護の身軽な詠唱と返しの一撃は、敵の攻撃を転がってかわすと効き始める（ただ転がっただけでは効かない）
 //  14. 火口の溶岩は、生き物のいるマスにも、生き物が歩いて向かっているマスにも流れない（溶岩の上に立つ生き物がいない）。
@@ -270,10 +270,13 @@ async function chillChecks(pg, base) {
   const w = await findCell(pg, 'water');
   if (w < 0) errs.push('8：水のマスが無い（テストの前提が崩れた）');
   else {
+    const wave0 = await pg.evaluate((i) => __test.cell(i).wave, w);
+    if (!(wave0 > 0)) errs.push(`8：凍らせる前の水のマスに、水面が描かれていない（${wave0}。テストの前提が崩れた）`);
     await pg.evaluate((i) => __test.chill(i, 1), w);
-    const iced = await pg.evaluate((i) => __test.cell(i).ice, w);
-    if (!iced) errs.push('8：冷気で水が凍らない（テストの前提が崩れた）');
+    const iced = await pg.evaluate((i) => __test.cell(i), w);
+    if (!iced.ice) errs.push('8：冷気で水が凍らない（テストの前提が崩れた）');
     else {
+      if (iced.wave !== 0) errs.push(`8：凍った水のマスに、水面が描かれたまま（${iced.wave}）`);
       await pg.evaluate((i) => __test.ignite(i, true), w); // 燃えるガスのように、燃える物を少し残す
       let melted = null;
       for (let n = 0; n < 30 && !melted; n++) {
@@ -285,6 +288,7 @@ async function chillChecks(pg, base) {
       else {
         if (melted.fire > 0) errs.push(`8：氷が溶けて水に戻っても、そのマスが燃えている（火 ${melted.fire}）`);
         if (melted.fuel > 0) errs.push(`8：氷が溶けて水に戻っても、そのマスに燃える物が残っている（${melted.fuel}）`);
+        if (melted.wave !== wave0) errs.push(`8：氷が溶けて水に戻っても、水面が元に戻らない（${wave0} → ${melted.wave}）`);
         await advance(pg, 1);
         if (await pg.evaluate((i) => __test.cell(i).burnt, w)) errs.push('8：水に戻ったマスに、灰の印が付いた');
       }
@@ -341,6 +345,12 @@ async function thinIceChecks(pg, base) {
     errs.push(`11：薄い氷に乗っても、乗っていた秒が増えない（${before}。テストの前提が崩れた）`);
     return;
   }
+  const iceWave = await pg.evaluate((i) => __test.cell(i).wave, t);
+  if (iceWave !== 0) errs.push(`11：割れる前の薄い氷のマスに、水面が描かれている（${iceWave}）`);
+  await advance(pg, 1); // 割れる
+  const broke = await pg.evaluate((i) => __test.cell(i), t);
+  if (!broke.water) errs.push('11：薄い氷に 1.3 秒乗っても割れない（テストの前提が崩れた）');
+  else if (!(broke.wave > 0)) errs.push(`11：薄い氷が割れて水になったのに、水面が描かれない（${broke.wave}）`);
   await pg.evaluate(() => dbg.go(2));
   await advance(pg, 0.5);
   const after = await pg.evaluate((i) => __test.cell(i).iceT, t);

@@ -9,6 +9,7 @@
 import { must, nth } from './array.ts';
 import { sBubble, sChime, sCrackleBurst, sDist, sHiss, sNoise, sOut, sShriek, sSplash, sSqueak, sTone, sndReady } from './audio.ts';
 import { type Color, css } from './color.ts';
+import { updateWaterCell } from './build.ts';
 import { boom } from './combat.ts';
 import { G } from './glyphs.ts';
 import { msg } from './log.ts';
@@ -349,6 +350,8 @@ export function crackIce(i: number, dt: number): void {
     level().thin[i] = 0;
     blaze.cellFlag[i] = 50;
     uploadCells();
+    // 割れた所に水面を出す（残った氷の文字は、マスの変わり方 50 で水に浮いて揺れる）
+    updateWaterCell(i);
     sSplash(0.45);
     vfx.shake = Math.max(vfx.shake, 0.15);
     msg('<b style="color:#6ab4ff">~</b>氷が割れ、冷たい水に足が沈んだ。');
@@ -403,7 +406,7 @@ export function brimFlare(i: number): void {
     msg('<b style="color:#ffd04a">*</b>足元の硫黄が、ぼっと燃え上がった！ しばらくすると、また燃えるようになる。');
   }
 }
-/** 冷気（x・z のまわり r）：火を消し、水を25秒凍らせる（凍らせた水の上の生き物は冷える。凍っている所は25秒に戻す）。凍らせた時は音を鳴らす */
+/** 冷気（x・z のまわり r）：火を消し、水を25秒凍らせる（凍ったマスの水面は描かない。凍らせた水の上の生き物は冷える。凍っている所は25秒に戻す）。凍らせた時は音を鳴らす */
 export function chillArea(x: number, z: number, r: number): void {
   const cx = Math.floor(x / CELL),
     cz = Math.floor(z / CELL),
@@ -428,6 +431,7 @@ export function chillArea(x: number, z: number, r: number): void {
         blaze.frozen.set(i, { t: 25, liq: lq, surf: must(level().surface[i], '床') });
         level().liquid[i] = 0;
         level().surface[i] = SF_ICE;
+        updateWaterCell(i);
         ch = true;
         froze = true;
         for (const m of here.monsters) {
@@ -457,6 +461,7 @@ export function updateFrozen(dt: number): void {
       blaze.fire[i] = 0;
       blaze.fuel[i] = 0;
       blaze.frozen.delete(i);
+      updateWaterCell(i);
       ch = true;
       const [x, z] = cpos(i);
       for (let q = 0; q < 8; q++) {
