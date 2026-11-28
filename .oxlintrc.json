@@ -45,7 +45,7 @@
   },
   "overrides": [
     {
-      // TypeScript に移した物（src/lib/）とその単体テスト。名前が定義されているかは tsc が確かめる
+      // ゲーム（src/lib/）とその単体テスト。名前が定義されているかは tsc が確かめる
       "files": ["**/*.ts", "**/*.d.mts"],
       "rules": {
         "no-undef": "off",
@@ -56,6 +56,11 @@
         "typescript/no-non-null-assertion": "error",
         "typescript/consistent-type-assertions": ["error", { "assertionStyle": "never" }]
       }
+    },
+    {
+      // ページの入口。ブラウザで動く
+      "files": ["src/main.js"],
+      "env": { "browser": true }
     },
     {
       // 道具・テスト・hooks（Node の ESM）
