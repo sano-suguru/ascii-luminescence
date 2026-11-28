@@ -10,7 +10,7 @@ import { drawMonster, drawMonster0, drawTentacles } from './bodies/draw.ts';
 import { buildWorld } from './build.ts';
 import { openBestiary, showBeast } from './gallery.ts';
 import { applyOpen, canPutAt, equipWeapon, makeRune, slotSet, syncHands } from './gear.ts';
-import { chillArea, ignite } from './ground.ts';
+import { chillArea, ignite, tallAt } from './ground.ts';
 import { renderHotbar } from './hotbar.ts';
 import { computeFOV, generate, interAt, levelSeed } from './levels.ts';
 import { ceilAt } from './lightmap.ts';
@@ -49,7 +49,22 @@ import { SPECIALS } from './strata.ts';
 import { visW } from './text.ts';
 import { T } from './three.ts';
 import { TUNE } from './touchpad.ts';
-import { BRANCHES, blocksWalk, CELL, FINAL_DEPTH, LQ_DEEP, LQ_LAVA, LQ_WATER, MW, MH, REALMS, SF_BRIM, SF_ICE, TF } from './world.ts';
+import {
+  BRANCHES,
+  blocksWalk,
+  CELL,
+  FINAL_DEPTH,
+  LQ_BOG,
+  LQ_DEEP,
+  LQ_LAVA,
+  LQ_WATER,
+  MW,
+  MH,
+  REALMS,
+  SF_BRIM,
+  SF_ICE,
+  TF,
+} from './world.ts';
 
 /** __test の中で、this から呼ぶ物（ほかの欄は、置いた物の型のまま） */
 interface TestApi {
@@ -282,7 +297,7 @@ export function initTestApi(): void {
         releaseCast(h);
       },
       // the doors of this level (cell i, the room cell j next to it, how open o, burnt away), a cell (its middle x z, floor to stand on, seen now, explored, ash,
-      // sulphur or ice floor, thin ice and the seconds stood on it, water, lava, fire, fuel), the size of the map, setting a cell on fire (gas: as burning gas does, leaving a little fuel),
+      // sulphur or ice floor, thin ice and the seconds stood on it, water, lava, bog, tall plants, fire, fuel), the size of the map, setting a cell on fire (gas: as burning gas does, leaving a little fuel),
       // and putting a creature (an MTYPES key such as 'Re') on a cell
       doors() {
         return level().doors.map((d) => ({ i: d.i, j: d.j, o: +d.o.toFixed(3), gone: !!d.gone }));
@@ -301,6 +316,8 @@ export function initTestApi(): void {
           iceT: iceT.get(i) || 0,
           water: level().liquid[i] === LQ_WATER || level().liquid[i] === LQ_DEEP,
           lava: level().liquid[i] === LQ_LAVA,
+          bog: level().liquid[i] === LQ_BOG,
+          tall: tallAt(i),
           fire: +(blaze.fire[i] || 0).toFixed(3),
           fuel: +(blaze.fuel[i] || 0).toFixed(3),
         };
@@ -697,8 +714,13 @@ export function initTestApi(): void {
               glow: m.glow,
               alert: m.alert,
               aimed: m === ui.aimMon,
+              st: { ...m.st },
             }
           : null;
+      },
+      // the water frozen by cold: cell, seconds left, and the liquid it was
+      frozen() {
+        return [...blaze.frozen].map(([i, f]) => ({ i, t: f.t, liq: f.liq }));
       },
       // every place a run can visit, for generation checks
       places() {

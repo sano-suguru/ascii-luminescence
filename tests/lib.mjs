@@ -216,16 +216,17 @@ export const nearAltar = (pg) =>
     dbg.step(ax + (px - ax) * k, az + (pz - az) * k);
     return true;
   });
-// 雷が水を伝わる場面（tools/zap.mjs と tests/world.mjs の 22 が使う）：右手を雷の武器 weapon にし、生き物を全部消して、水のマスが固まっている所に、鍵 key の生き物を count 体
+// 生き物を水の中に置く場面（tools/zap.mjs・tools/frost.mjs と tests/world.mjs が使う）：右手を武器 weapon にして性質 elem（書かなければ雷）を付け、生き物を全部消して、水のマスが固まっている所に、鍵 key の生き物を count 体
 // （当てる1体 target と、そのまわり 1.6〜4.5 の、互いに 1.4 以上離れた水のマス。dry なら水の外にも1体）置いて止め（__test.hold）、プレイヤーを当てる1体から 3.5〜5.5 離れた
 // 水でない床（水の外の1体から 2.5 以上離れた所）に立たせる。置いた物が全部見える所を選ぶ。{ok, stand, target, cells（置いた順。dry の1体は最後）, dry} か {err} を返す
-export const waterScene = (pg, { key, count, dry, weapon }) =>
+// floor なら、水のマスの代わりに、水から 2.5 以上離れた、まわりの8マスも床のマスに置く（dry は使わない）
+export const waterScene = (pg, { key, count, dry, weapon, elem = 'thunder', floor: onFloor = false }) =>
   pg.evaluate(
-    ([key, count, dry, weapon]) => {
+    ([key, count, dry, weapon, elem, onFloor]) => {
       const eq = __test.equip('R', weapon);
       if (eq !== weapon) return { err: `武器 ${weapon}：${eq}` };
-      const el = __test.elem('R', 'thunder');
-      if (el !== 'thunder') return { err: `雷：${el}` };
+      const el = __test.elem('R', elem);
+      if (el !== elem) return { err: `性質 ${elem}：${el}` };
       __test.clearAll();
       const { w, h } = __test.size(),
         cells = [];
@@ -233,9 +234,14 @@ export const waterScene = (pg, { key, count, dry, weapon }) =>
         const c = __test.cell(i);
         cells.push({ i, ...c });
       }
-      const water = cells.filter((c) => c.water && c.floor),
+      const d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z),
+        wet = cells.filter((c) => c.water && c.floor),
         floor = cells.filter((c) => c.floor),
-        d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+        // floor の時は、まわりの8マスも床の所（狭い通路の行き止まりに置かない）
+        open = (c) => [-1, 0, 1].every((dz) => [-1, 0, 1].every((dx) => cells[c.i + dx + dz * w]?.floor)),
+        water = onFloor
+          ? floor.filter((c) => !c.water && !c.ice && !c.lava && !c.bog && !c.tall && open(c) && wet.every((w) => d(w, c) >= 2.5))
+          : wet;
       for (const t of water) {
         // まわりの水：互いに 1.4 以上離れた物を、近い順に選ぶ
         const near = water.filter((c) => c !== t && d(c, t) >= 1.6 && d(c, t) <= 4.5).sort((a, b) => d(a, t) - d(b, t)),
@@ -260,7 +266,40 @@ export const waterScene = (pg, { key, count, dry, weapon }) =>
           return { ok: true, stand: [s.x, s.z], target: [t.x, t.z], cells: all.map((c) => [c.x, c.z]), dry: !!dryCell };
         }
       }
-      return { err: `水の中に ${count} 体を置ける所が無い` };
+      return { err: `${onFloor ? '床' : '水の中'}に ${count} 体を置ける所が無い` };
     },
-    [key, count, dry, weapon],
+    [key, count, dry, weapon, elem, onFloor],
+  );
+// 場面（waterScene の結果 s）を、置いたカメラで写す所に置く（tools/zap.mjs・tools/frost.mjs が使う）。view は high（置いた物の真ん中の、プレイヤー側の少し手前の高い所から、ほぼ真下を見る）か
+// side（置いた物の真ん中から見て、プレイヤーの向きを 40〜120 度回した横から、目の高さで見る）。置けたら __test.cam の結果、どこも見通せなければ目に戻して null
+export const sceneCam = (pg, s, view) =>
+  pg.evaluate(
+    ([s, view]) => {
+      const [px, pz] = s.stand,
+        mx = s.cells.reduce((a, c) => a + c[0], 0) / s.cells.length,
+        mz = s.cells.reduce((a, c) => a + c[1], 0) / s.cells.length,
+        dl = Math.hypot(mx - px, mz - pz) || 1,
+        ux = (mx - px) / dl,
+        uz = (mz - pz) / dl,
+        tries = [];
+      if (view === 'high')
+        for (const y of [7, 6, 5, 4.2, 3.6, 3, 2.6]) for (const back of [1.5, 2.5, 0.8]) tries.push([mx - ux * back, y, mz - uz * back]);
+      else
+        for (const deg of [90, -90, 60, -60, 120, -120, 40, -40])
+          for (const d of [6, 5, 4.2])
+            for (const y of [1.6, 2.2]) {
+              const a = (deg * Math.PI) / 180;
+              tries.push([mx - (ux * Math.cos(a) - uz * Math.sin(a)) * d, y, mz - (ux * Math.sin(a) + uz * Math.cos(a)) * d]);
+            }
+      for (const pos of tries) {
+        // 置いた物から 3 より近い所には置かない（体で前が塞がる）
+        if (view === 'side' && s.cells.some(([x, z]) => Math.hypot(x - pos[0], z - pos[2]) < 3)) continue;
+        const r = __test.cam({ pos, at: [mx, 0.4, mz] });
+        if (typeof r !== 'string' && r.clear) return r;
+      }
+      // どこも見通せなければ、最後に置いたカメラを外して目に戻す
+      __test.cam(null);
+      return null;
+    },
+    [s, view],
   );

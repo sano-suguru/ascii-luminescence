@@ -21,7 +21,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { withBrowser, newPage, openTest, advance, frames, aimAt, strike, waterScene, arg, OUT, ROOT } from '../tests/lib.mjs';
+import { withBrowser, newPage, openTest, advance, frames, aimAt, strike, waterScene, sceneCam, arg, OUT, ROOT } from '../tests/lib.mjs';
 import { cropRect, writeSheet } from './sheet.mjs';
 import { MTYPES } from '../src/lib/creatures.ts';
 
@@ -98,38 +98,7 @@ async function shootAll(root, suffix) {
           continue;
         }
         if (view !== 'eye') {
-          const placed = await pg.evaluate(
-            ([s, view]) => {
-              const [px, pz] = s.stand,
-                mx = s.cells.reduce((a, c) => a + c[0], 0) / s.cells.length,
-                mz = s.cells.reduce((a, c) => a + c[1], 0) / s.cells.length,
-                dl = Math.hypot(mx - px, mz - pz) || 1,
-                ux = (mx - px) / dl,
-                uz = (mz - pz) / dl,
-                tries = [];
-              // high：置いた物の真ん中の、プレイヤー側の少し手前の高い所から、ほぼ真下を見る。side：置いた物の真ん中から見て、プレイヤーの向きを 40〜120 度回した横から、目の高さで見る
-              if (view === 'high')
-                for (const y of [7, 6, 5, 4.2, 3.6, 3, 2.6])
-                  for (const back of [1.5, 2.5, 0.8]) tries.push([mx - ux * back, y, mz - uz * back]);
-              else
-                for (const deg of [90, -90, 60, -60, 120, -120, 40, -40])
-                  for (const d of [6, 5, 4.2])
-                    for (const y of [1.6, 2.2]) {
-                      const a = (deg * Math.PI) / 180;
-                      tries.push([mx - (ux * Math.cos(a) - uz * Math.sin(a)) * d, y, mz - (ux * Math.sin(a) + uz * Math.cos(a)) * d]);
-                    }
-              for (const pos of tries) {
-                // 置いた物から 3 より近い所には置かない（体で前が塞がる）
-                if (view === 'side' && s.cells.some(([x, z]) => Math.hypot(x - pos[0], z - pos[2]) < 3)) continue;
-                const r = __test.cam({ pos, at: [mx, 0.4, mz] });
-                if (typeof r !== 'string' && r.clear) return r;
-              }
-              // どこも見通せなければ、最後に置いたカメラを外して目に戻す
-              __test.cam(null);
-              return null;
-            },
-            [s, view],
-          );
+          const placed = await sceneCam(pg, s, view);
           if (!placed) errs.push(`${view}${suffix}：カメラを置けない（目の高さで写す）`);
           else console.log(`${view}：カメラ ${placed.pos.map((v) => v.toFixed(1)).join(',')}`);
         }
