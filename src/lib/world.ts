@@ -72,8 +72,6 @@ export const PROPHECIES: string[] = [
   '灯りを絞れ。闇は、見つからぬ者の味方だ。',
   '火は草を走り、沼の息はそれを待っている。',
 ];
-/** 特別な階（どこからも呼ばれていない。いつも null を返す） */
-export const specialAt = (_d: number): null => null;
 
 // branches (after DCSS): short side-dungeons that leave the main path and rejoin it one level further down
 /** 支道（本道から分かれる短い道）。at は入口が出る深さの範囲 */

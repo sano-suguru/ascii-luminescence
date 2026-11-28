@@ -601,8 +601,6 @@ export const runeShort = (ru: Rune): string => {
   const d = lookup(RUNE_DEF, ru.type);
   return d.cat === 'mod' ? `${d.sh} +${modVal(ru)}${d.unit === '%' ? '%' : ''}` : d.short || d.name;
 };
-/** ルーンの定義の名前 */
-export const runeLabel = (ru: Rune): string => lookup(RUNE_DEF, ru.type).name;
 /** 手の名前（性質の前置きと武器の名前。武器が無ければ素手） */
 export function handName(H: { atk: Rune | null; elem?: Rune | null | undefined }): string {
   if (!H.atk) return H.elem ? `${lookup(RUNE_DEF, H.elem.type).pre}素手` : '素手';

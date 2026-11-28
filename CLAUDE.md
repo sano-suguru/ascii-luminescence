@@ -306,7 +306,7 @@ wrangler.jsonc       Cloudflare Workers（静的アセット）の設定。公�
 docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 ```
 組み立ては Vite 8。入口は `src/index.html` → `src/main.js` → `src/lib/boot.ts`。公開物は `dist/index.html` と `dist/assets/index-<hash>.js`。
-- Vite（Rolldown）は TypeScript の型を外し、JS を書き直して出す（字下げ・引用符・`undefined`→`void 0` など。縮めはしない。コメントは `/** */` の物だけ残る）。使っていないコードは消え、一部の数や文字列の定数は使う所に値で書き込まれる（Rolldown の既定）。なので、組み立てた JS の行は元のファイルと違う。
+- Vite（Rolldown）は TypeScript の型を外し、JS を書き直して出す（字下げ・引用符・`undefined`→`void 0` など。縮めはしない。コメントは `/** */` の物と、ファイルの境の印 `// src/lib/….ts` だけ残る）。使っていないコードは消え、一部の数や文字列の定数は使う所に値で書き込まれる（Rolldown の既定）。なので、組み立てた JS の行は元のファイルと違う。
   場所はソースマップで戻す。ソースマップは**公開しない**ので、出力には残さず `.build/maps/<mode>/` に移している（privateMaps）。
 - 開発用サーバー（`pnpm dev`）は、src/ が変わるとページを読み直す（ゲームは HMR に対応していない）。テスト用モード（`?test=1`）は時計が止まっていて
   Vite の読み直し（setTimeout を使う）が動かないので、src/main.js が、開発用サーバーの時だけ「すぐ読み直す」処理を置いている。
@@ -505,7 +505,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
   BIZ UDGothic で補っている（全角2マス。補ってよい文字の一覧は src/lib/text.ts の `BIZ_CHARS`。組み立ては、それを含む BIZ UDGothic の面だけ入れる）。新しい記号を使う時は、M PLUS 1 Code にあるかを
   `pnpm check`（tests/glyphs.mjs）で確かめ、無ければ別の文字にするか、`BIZ_CHARS` と visW に足す。
   Ⅱ などは、BIZ UDGothic にも無いので使わない（II にする）。
-- **使っていない物を消す時**：図鑑や dbg から文字列で呼ばれていないかと、右の値を作る時に乱数を引いていないかを確かめる。
+- **使っていない物を消す時**：右の値を作る時に乱数を引いていないかを確かめる（消すと、後に続く乱数の並びがずれる）。
 - **sed の区切り文字**：差し込む文に `|`（`||` など）があると壊れる。置き換えは Python で行う方が安全。
 - **/bin/sh**：`mkdir -p a/{b,c}` は展開されない。
 - **混ぜる**：`.sort(() => rand() - 0.5)` は使わず、`shuffle(配列, 乱数)`（src/lib/random.ts）を使う。でたらめな値を返す比べる関数での並びは
