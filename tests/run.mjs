@@ -13,23 +13,24 @@
 import { spawn } from 'node:child_process';
 import { appendFileSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { StringDecoder } from 'node:string_decoder';
 import { build } from 'vite';
 import { ROOT } from './lib.mjs';
 
-// 走らせるテストの一覧と、速い CI のランナーでかかるおよその秒（テストを足したらここにも足す。足し忘れは、下の NOT_TESTS と比べて止める。組に分ける時と、走らせる順番に使う。長くかかる物から始め、短い物が後ろで隙間を埋める）
+// 走らせるテストの一覧と、CI のランナーで3つ同時に走らせた時のおよその秒（CI が上げる tests/out/run/<名前>.log の頭の秒。テストを足したらここにも足す。足し忘れは、下の NOT_TESTS と比べて止める。組に分ける時と、走らせる順番に使う。長くかかる物から始め、短い物が後ろで隙間を埋める）
 const SEC = {
-  smoke: 114,
-  visual: 86,
-  frame: 84,
-  gallery: 74,
-  world: 60,
-  title: 52,
-  touch: 40,
-  auto: 90,
-  determinism: 30,
-  inventory: 18,
-  levels: 14,
-  panels: 17,
+  smoke: 260,
+  world: 210,
+  auto: 185,
+  frame: 145,
+  touch: 120,
+  title: 105,
+  visual: 95,
+  gallery: 85,
+  determinism: 55,
+  panels: 28,
+  inventory: 27,
+  levels: 12,
 };
 // tests/ の .mjs のうち、ここで走らせない物（テストの部品と、pnpm check が走らせる glyphs）。これと SEC のどちらにも無いファイルがあれば止める
 const NOT_TESTS = ['lib', 'run', 'reach', 'gallery-specimens', 'glyphs', 'page-fakes'];
@@ -126,12 +127,24 @@ const run = (name) =>
       },
       LIMIT_MIN * 60 * 1000,
     );
-    const take = (d) => {
-      out.push(d);
-      tryLog(() => appendFileSync(log, d));
+    // 行の頭に、テストを始めてからの秒を付ける（CI でどの段が遅いかを見るため。smoke・frame は段の始めに「■ 段」の行を出す）。
+    // 出力の切れ目は行や文字の途中にもあるので、流れ（標準出力と標準エラー）ごとに文字を組み立て、行の頭かを覚える
+    const stamp = () => {
+      const dec = new StringDecoder('utf8');
+      let atHead = true;
+      return (d) => {
+        const s = dec.write(d);
+        if (!s) return;
+        const at = `[${((Date.now() - t) / 1000).toFixed(1).padStart(6)}s] `;
+        const body = s.replace(/\n(?=.)/gs, `\n${at}`);
+        const b = Buffer.from((atHead ? at : '') + body);
+        atHead = s.endsWith('\n');
+        out.push(b);
+        tryLog(() => appendFileSync(log, b));
+      };
     };
-    ch.stdout.on('data', take);
-    ch.stderr.on('data', take);
+    ch.stdout.on('data', stamp());
+    ch.stderr.on('data', stamp());
     ch.on('close', (code, signal) => {
       clearTimeout(timer);
       const sec = ((Date.now() - t) / 1000).toFixed(1),

@@ -2,7 +2,7 @@
 // 自動で試す（?auto。src/lib/auto.ts）のテスト：短い台本（?auto=quick）を、テスト用モードでなく（本物の時計で）流し、
 // ページのエラーが無い・全部の段を通る・うまくいかなかった段が無い・診断の記録の欄 auto と、段の名前のできごとが書かれる・
 // ゲームの保存（al_ で始まる名前）を localStorage に書かない（死んだ時の伝承・表示の切り替えなども）・ほかの名前は書ける、を確かめる。
-// 流している途中に、レベルアップの画面を開かせ（開発用モードの dbg.exp。1つ目を選んで進むか）、ページが25秒隠れたことにする（隠れていた間を、
+// 流している途中に、レベルアップの画面を開かせ（開発用モードの dbg.exp。1つ目を選んで進むか）、ページが25秒隠れたことにする（時計を進めて真似る。隠れていた間を、
 // 戻った最初のフレームの長さに数えないか）。もう1つのページでは、歩いている途中で［止める］を押し、台本の指が離れるか（スティックが消えるか）を見る。
 // 本物の時計で動くので、この環境（CPU で描くので遅い）では2分ほどかかる。待つのは、台本が終わるまで（最大 5 分）
 import { withBrowser, newPage } from './lib.mjs';
@@ -32,7 +32,9 @@ await withBrowser(async ({ browser, base }) => {
   await pg.evaluate(() => dbg.exp(500));
   // 見回している間に、25秒隠れたことにする（ふつうのフレームより十分長く。CI のランナーで3つ同時に走ると、ふつうのフレームも9秒ほどかかることがある）
   await at('look');
-  // （本物の端末では、隠れている間はフレームが来ない。それを真似て、隠れたことを知らせてから25秒フレームを止め、戻ったことを知らせる）
+  // （本物の端末では、隠れている間はフレームが来ない。それを真似て、隠れたことを知らせ、フレームを挟まずに performance.now を25秒進め、戻ったことを知らせる。
+  // 台本はフレームの長さを performance.now で測るので、戻った最初のフレームの長さに25秒が入る。本当に25秒待たないのは、同時に走るほかのテストの CPU を取らないため。
+  // ゲームの時計（rAF の時刻）は進まないが、ここで確かめるのは台本の数え方だけ）
   await pg.evaluate(() => {
     const vis = (v) => {
       Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => v });
@@ -40,7 +42,8 @@ await withBrowser(async ({ browser, base }) => {
       document.dispatchEvent(new Event('visibilitychange'));
     };
     vis('hidden');
-    for (const t = performance.now(); performance.now() - t < 25000;);
+    const now = performance.now.bind(performance);
+    performance.now = () => now() + 25000;
     vis('visible');
     delete document.visibilityState;
     delete document.hidden;

@@ -13,6 +13,7 @@ await withBrowser(
   async ({ browser, base }) => {
     const pg = await newPage(browser, errs);
     // 1. テスト用モードで、開発用の探索（すべて解放済み、dbg が使える）
+    console.log('■ 1');
     await openTest(pg, base, 'seed=202&depth=3&god=1');
     await advance(pg, 2); // 階に入った時の明るくなる演出（約1.25秒）を終わらせる
     await frames(pg, 2);
@@ -27,6 +28,7 @@ await withBrowser(
     await pg.screenshot({ path: join(OUT, 'run.png'), timeout: 90000 });
 
     // 2. 特別な階（大広間）で死んで、Enter で新しい探索を始めると、深さ1から（特別な階は残らない）
+    console.log('■ 2');
     await pg.evaluate(() => dbg.inter('bigroom'));
     await advance(pg, 2);
     const inBig = await pg.evaluate(() => dbg.info());
@@ -40,6 +42,7 @@ await withBrowser(
       errs.push(`新しい探索が深さ1の普通の階で始まっていない：${JSON.stringify(again).slice(0, 160)}`);
 
     // 3. 階段を下りて暗くなる途中に死んで、すぐ Enter で始め直しても、深さ1から（階を移る途中が残って深さ2へ動かない）
+    console.log('■ 3');
     await pg.evaluate(() => dbg.go(3));
     await advance(pg, 2);
     await pg.evaluate(() => {
@@ -62,6 +65,7 @@ await withBrowser(
     if (afterStairs.depth !== 1) errs.push(`下りる途中に死んだ後の新しい探索が深さ1で始まっていない：深さ${afterStairs.depth}`);
 
     // 4. 試しの間からメニューで新しい探索を始めると、試しの間でない探索（攻撃を受けると体力が減る）になる（試しの間のままだと、体力が減らない）
+    console.log('■ 4');
     const menu = async (k) => {
       await pg.evaluate((k) => document.querySelector(`#menu button.row[data-k="${k}"]`).click(), k);
       await advance(pg, 0.1);
@@ -85,6 +89,7 @@ await withBrowser(
     if (!(hp1 < hp0)) errs.push(`試しの間から始めた新しい探索で、体力が減らない：体力 ${hp0} → ${hp1}`);
 
     // 5. メニューの「新しい探索」の、もう一度押して確かめる待ちは、4秒で消える（メニューを開いていて、ゲームの時刻が止まっていても）
+    console.log('■ 5');
     await pg.keyboard.press('Escape');
     await advance(pg, 0.1);
     await menu('new');
@@ -107,6 +112,7 @@ await withBrowser(
     }
 
     // 6. タイトルから図鑑を開いても、探索の記録の「届いた深さ」は変わらない（図鑑の見本の部屋は深さ4。部屋を作る間も、図鑑の中だと分かっていること）
+    console.log('■ 6');
     await pg.keyboard.press('Escape');
     await advance(pg, 0.1);
     await menu('title');
@@ -122,6 +128,7 @@ await withBrowser(
     await advance(pg, 0.5);
 
     // 7. 祭壇の画面を閉じると、祭壇から離れて、また近づくまで開かない（装備の画面やメニューを開いて閉じても、開かない）
+    console.log('■ 7');
     const al = await newPage(browser, errs);
     await openTest(al, base, 'seed=202&depth=3&god=1');
     await advance(al, 2);
@@ -175,6 +182,7 @@ await withBrowser(
     await al.close();
 
     // 8. 探索の中で、起きている竜を初めて見た時の伝言は、起きている時の文（眠っている時の文ではない）
+    console.log('■ 8');
     const dr = await newPage(browser, errs);
     await openTest(dr, base, 'seed=202&depth=9&god=1');
     await advance(dr, 2);
@@ -220,6 +228,7 @@ await withBrowser(
     await dr.close();
 
     // 9. 最深部：伝説の物を3つ持つと、少しして王の影が出る（持っていない間は出ない）。背の高さは約7（天井より低い）で、8離れて見ると全身が画面に収まる。
+    console.log('■ 9');
     // どこでも攻撃が当たり、体力を半分より減らすと二つ目の姿になる。大きさは一つ目のまま（天井が低い所だけ縮む）で、天井より低い
     const fin = await newPage(browser, errs);
     await openTest(fin, base, 'seed=202&depth=13&god=1');
@@ -275,6 +284,7 @@ await withBrowser(
     await fin.close();
 
     // 10. 最深部の1つ上の階（12）の異界の門から入り、異界を抜けて下りる：伝説の物が3つ揃っていなければ12階の門に戻され（最深部には出ない）、揃っていれば最深部（13）に出る
+    console.log('■ 10');
     const rl = await newPage(browser, errs);
     await openTest(rl, base, 'seed=202&depth=12&god=1');
     await advance(rl, 1);
