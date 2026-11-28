@@ -12,7 +12,6 @@ const LINT = ['tools', 'tests', '.claude/hooks', 'src/main.js', 'src/lib', 'vite
 // 長い物から始める（単体テストが一番長い）
 const STEPS = [
   ['単体テスト', bin('vitest'), ['run']],
-  ['lint（src/game）', process.execPath, ['tools/lint-game.mjs', '--quiet']],
   ['lint', bin('oxlint'), ['--type-aware', '-c', '.oxlintrc.json', ...LINT, '--quiet']],
   ['型', bin('tsc'), ['-p', '.']],
   ['整形', bin('oxfmt'), ['--check']],

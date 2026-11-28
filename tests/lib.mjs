@@ -1,5 +1,5 @@
 // テストの共通部分：組み立て・配信・ブラウザ・テスト用モードのページ。
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, devices } from 'playwright';
@@ -27,7 +27,23 @@ export const GL_ARGS = [
   '--font-render-hinting=none',
 ];
 
-// ページのエラーの「assets/index-xxxx.js:行:列」に、src/game/ の場所を書き足す（組み立てた JS は書き直されていて、行が違うため）。
+// ゲームの文言を含む全部の文のファイル（src/index.html と src/lib/ の .ts）と、それをつないだ文（index.html は、コメントを除いた本文。
+// CSS の content なども描かれうるので残す）。文字を調べるテスト（使う文字・文字の幅）が使う
+export const GAME_FILES = [
+  'src/index.html',
+  ...readdirSync(join(ROOT, 'src/lib'), { recursive: true })
+    .map(String)
+    .filter((f) => f.endsWith('.ts'))
+    .sort()
+    .map((f) => `src/lib/${f}`),
+];
+export const gameText = () =>
+  GAME_FILES.map((f) => {
+    const t = readFileSync(join(ROOT, f), 'utf8');
+    return f.endsWith('.html') ? t.replace(/<!--[\s\S]*?-->/g, '') : t;
+  }).join('\n');
+
+// ページのエラーの「assets/index-xxxx.js:行:列」に、src/lib/ の場所を書き足す（組み立てた JS は書き直されていて、行が違うため）。
 // ソースマップは公開物に入れず、.build/maps/<mode>/ に置いている（vite.config.mjs）
 let mapDir = null;
 const maps = {};

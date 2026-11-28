@@ -88,7 +88,7 @@ export const LORD_GAL = {
   snake: { base: 'N', name: 'ナーガの女王', scale: 2.6, verb: '水場のほとりで、冠のような鱗を光らせている' },
 };
 /** 試しの間の、起き上がる的 */
-export const DUMMY_KINDS = [
+export const DUMMY_KINDS: { k: string; name: string; col: Color }[] = [
   { k: 'dummy', name: '的の人形', col: [0.78, 0.74, 0.66] },
   { k: 'dummyF', name: '的の人形（火に強い）', col: [1.0, 0.55, 0.3] },
   { k: 'dummyP', name: '的の人形（毒が効かない）', col: [0.62, 0.85, 1.0] },

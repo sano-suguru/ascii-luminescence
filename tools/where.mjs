@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// 組み立てた JS の場所が、src/game/ のどのファイルの何行目かを調べる（ブラウザのエラーの場所を、元のファイルに直す）。
+// 組み立てた JS の場所が、src/lib/ のどのファイルの何行目かを調べる（ブラウザのエラーの場所を、元のファイルに直す）。
 //   node tools/where.mjs index-D0mETEmY.js:4321:12   エラーに出た場所をそのまま貼ってよい（assets/… や URL の形も可）
 //   node tools/where.mjs 4321                        dist/assets/ の JS（1つだけのはず）の 4321 行目
 //   node tools/where.mjs 4321 --test                 テスト版（.build/test/）。テストのエラーはテストが自動で直して出す
-// 組み立てた JS は Vite が書き直している（字下げなど）ので、行は元のファイルと違う。ソースマップ（.build/maps/。公開しない）で戻す。
+// 組み立てた JS は Vite が TypeScript の型を外して書き直している（字下げなど）ので、行は元のファイルと違う。ソースマップ（.build/maps/。公開しない）で戻す。
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { findMap, originalPosition } from './sourcemap.mjs';
@@ -24,7 +24,7 @@ if (!m) usage();
 const name = m[1].replace(/\?.*$/, '').split('/').pop();
 if (name && !name.endsWith('.js')) {
   // 昔の組み立て（1ファイルの index.html）の場所は、今の JS の行とは違うので答えない
-  console.log(`${name} は JS ではない。今の組み立てでは、ゲーム本体は assets/index-<hash>.js にある（エラーに出たその場所を貼ること）`);
+  console.log(`${name} は JS ではない。今の組み立てでは、ゲームは assets/index-<hash>.js にある（エラーに出たその場所を貼ること）`);
   usage();
 }
 const outDir = join(root, test ? '.build/test' : 'dist'),
@@ -64,7 +64,7 @@ if (!(line >= 1 && line <= total)) {
 }
 const p = originalPosition(map, line, col);
 if (!p) {
-  console.log('ゲーム本体の外（包みの行など、元のファイルに対応する行が無い）');
+  console.log('元のファイルに対応する行が無い');
   process.exit(0);
 }
 // 組み立てた後に src を変えていたら、行がずれているかもしれない

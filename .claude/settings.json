@@ -33,8 +33,6 @@
       "Bash(pnpm dev)",
       "Bash(pnpm dev *)",
       "Bash(pnpm where *)",
-      "Bash(pnpm map *)",
-      "Bash(pnpm map)",
       "Bash(pnpm install --frozen-lockfile)",
       "Bash(pnpm exec oxlint *)",
       "Bash(pnpm exec oxfmt *)",

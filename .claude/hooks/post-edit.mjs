@@ -41,14 +41,6 @@ if (extname(file) === '.ts') {
   process.exit(0);
 }
 
-// ゲーム本体（src/game/*.js）は1つだけでは調べられないので、つないだものを調べる（場所は元のファイルの行で出る）
-if (/^src\/game\/[^/]+\.m?js$/.test(rel)) {
-  if (!existsSync(oxlint)) process.exit(0);
-  const out = run(process.execPath, [join(root, 'tools/lint-game.mjs'), '--quiet']);
-  if (out) fail('構文か lint のエラー（src/game/ をつないで調べた。pnpm lint で警告も見られる）', out);
-  process.exit(0);
-}
-
 const syn = run(process.execPath, ['--check', file]);
 if (syn) fail('構文エラー', syn);
 if (existsSync(oxlint)) {
