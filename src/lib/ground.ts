@@ -221,7 +221,8 @@ export function updateCritter(m: Mob, dt: number, t: number, dp: number): void {
 /**
  * 掃除機と修復機の仕事（dt 秒）。掃除機は灰を片付け（燃え残りの火も消す）、修復機は焼け落ちた扉を作り直す。仕事の所にいる間は true（動かない）。
  * 仕事が無ければ、1.5秒ごとに近くの仕事を探す（掃除機は上下左右10マスの枠の中の灰、修復機は直線で40（20マス）以内の焼け落ちた扉。そのうち歩いて行ける
- * （jobReach の歩数以内）一番歩数の少ない物。修復機は扉の両側のマスのどちらかへ。燃えているマスには入れないので、選ばない）
+ * （jobReach の歩数以内）、同じ種類のほかの機械が向かっていない、一番歩数の少ない物。ほかの機械が向かっている仕事は、
+ * その機械が手放すまで、もっと近い機械がいても、その機械が動けない間も選ばない。修復機は扉の両側のマスのどちらかへ。燃えているマスには入れないので、選ばない）
  */
 export function machineWork(m: Mob, dt: number): boolean {
   const ty = m.ty;
@@ -279,10 +280,14 @@ export function machineWork(m: Mob, dt: number): boolean {
   m.scanT = clock.time;
   // 歩いて行ける仕事だけを、歩数の少ない順に（同じなら扉の番号・マスの順）
   const steps = walkSteps(m, [m.cz * MW + m.cx], jobReach(m));
+  // 同じ種類のほかの機械が向かっている仕事は選ばない（2台が同じ灰や扉へ向かわないように）
+  const taken = new Set<number>();
+  for (const o of here.monsters)
+    if (o !== m && !o.dead && o.ty.critter === ty.critter && o.job !== undefined && o.job >= 0) taken.add(o.job);
   let bi = -1,
     bd = 1e9;
   const take = (k: number, s: number): void => {
-    if (s >= 0 && s < bd) {
+    if (s >= 0 && s < bd && !taken.has(k)) {
       bd = s;
       bi = k;
     }

@@ -80,6 +80,7 @@ await withBrowser(async ({ browser, base }) => {
     ['1', base],
     ['1・Artifact 版', artBase],
   ]) {
+    console.log(`■ ${label}`);
     const pg = await newPage(browser, errs, { width: W, height: H, realLock: true });
     // 読んだ物（data: は数えない）。Artifact 版は index.html だけのはず
     const reqs = [];
@@ -205,6 +206,7 @@ await withBrowser(async ({ browser, base }) => {
   // ゲームを止めて進められないので、タイトルが出て、背景の迷宮を描いたフレームが2つ進むまでだけ待つ（tests/title.mjs と同じ）
   {
     const label = "1'・Artifact 版（テスト用モードでない）";
+    console.log(`■ ${label}`);
     const pg = await newPage(browser, errs, { width: W, height: H, realLock: true });
     await pg.setContent(
       `<body style="margin:0"><iframe sandbox="allow-scripts" style="width:${W}px;height:${H}px;border:0;display:block" src="${artBase}"></iframe></body>`,
@@ -247,6 +249,7 @@ await withBrowser(async ({ browser, base }) => {
   };
   for (const [kind, init] of Object.entries(kinds)) {
     const label = `2・${kind}`;
+    console.log(`■ ${label}`);
     const pg = await newPage(browser, errs, { width: W, height: H, realLock: true });
     await pg.addInitScript(init); // ページの中の iframe でも動く
     const { fr, E } = await openFrame(pg, base, 'seed=202');

@@ -1,5 +1,5 @@
 # 確かめるだけの CI（公開は Cloudflare Workers Builds が行う）。
-# 速さのために、構文から組み立てまで（static）と、ブラウザのテスト（browser。2台のランナーに半分ずつ）を、別のランナーで同時に走らせる。
+# 速さのために、構文から組み立てまで（static）と、ブラウザのテスト（browser。3台のランナーに3分の1ずつ）を、別のランナーで同時に走らせる。
 # 最後の check が2つの結果をまとめる（ブランチの保護で必須にするのは check だけでよい）。
 name: check
 on:
@@ -30,15 +30,16 @@ jobs:
         run: pnpm install --frozen-lockfile
       - run: pnpm check
   browser:
-    # ブラウザのテストは CPU で描くので、ランナーの当たり外れで2倍ほど変わる。2台に分けて待ち時間を縮める（分け方は tests/run.mjs の SEC）
+    # ブラウザのテストは CPU で描くので、ランナーの当たり外れで2倍ほど変わる。ランナー（4スレッド）は smoke 1つでも CPU が8割埋まり、1台の中で同時に走らせても全体は速くならないので、
+    # 台数で分けて待ち時間を縮める（分け方は tests/run.mjs の SEC）
     name: ブラウザのテストと画面写真の比較（${{ matrix.shard }}/${{ matrix.total }}）
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         # 組を増やす時は、shard に番号を足し、total も同じ数にする
-        shard: [1, 2]
-        total: [2]
+        shard: [1, 2, 3]
+        total: [3]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
