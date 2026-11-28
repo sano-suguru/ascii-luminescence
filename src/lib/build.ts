@@ -1005,6 +1005,7 @@ export function buildWorld(): void {
           }
       }
       if (ti === TC) {
+        // 裂け目のマスには、床の物を置かない
       } else if (level().bridge[i]) {
         const dir = level().bridgeDir[i],
           ax: [number, number] = dir === 0 ? [1, 0] : [0, 1],
@@ -1351,6 +1352,7 @@ export function buildWorld(): void {
             );
         }
       } else if (level().decoCell.get(i) && must(level().decoCell.get(i)).k === 'carpet') {
+        // 敷物のマスには、床の物を置かない
       } else if (level().vaultCell[i] && !cave) {
         // mosaic floor: a fixed pattern marks vault ground as built, not natural
         const vs = nth(VAULTS, nth(level().vaultCell, i) - 1);

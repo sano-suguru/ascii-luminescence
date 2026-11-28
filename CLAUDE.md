@@ -497,8 +497,7 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
   BIZ UDGothic で補っている（全角2マス。補ってよい文字の一覧は src/lib/text.ts の `BIZ_CHARS`。組み立ては、それを含む BIZ UDGothic の面だけ入れる）。新しい記号を使う時は、M PLUS 1 Code にあるかを
   `pnpm check`（tests/glyphs.mjs）で確かめ、無ければ別の文字にするか、`BIZ_CHARS` と visW に足す。
   Ⅱ などは、BIZ UDGothic にも無いので使わない（II にする）。
-- **lint の警告**：関数に覚えさせる欄の型（`declare namespace` の中の `let`。houndScent.msgT など）は、使っていても「使っていない」と警告に出る。消さない。
-  使っていない関数・変数を消す時は、図鑑や dbg から文字列で呼ばれていないかと、右の値を作る時に乱数を引いていないかを確かめる。
+- **使っていない物を消す時**：図鑑や dbg から文字列で呼ばれていないかと、右の値を作る時に乱数を引いていないかを確かめる。
 - **sed の区切り文字**：差し込む文に `|`（`||` など）があると壊れる。置き換えは Python で行う方が安全。
 - **/bin/sh**：`mkdir -p a/{b,c}` は展開されない。
 - **混ぜる**：`.sort(() => rand() - 0.5)` は使わず、`shuffle(配列, 乱数)`（src/lib/random.ts）を使う。でたらめな値を返す比べる関数での並びは
