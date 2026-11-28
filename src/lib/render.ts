@@ -125,7 +125,7 @@ export function initRenderer(): boolean {
   gfx.canvas = document.getElementById('gl') as HTMLCanvasElement | null;
   try {
     gfx.renderer = new T.WebGLRenderer({
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- 上で入れた #gl（元の読み方のまま）
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- 上で入れた #gl
       canvas: gfx.canvas as HTMLCanvasElement,
       antialias: false,
       powerPreference: 'high-performance',
@@ -222,7 +222,7 @@ export function initRenderer(): boolean {
     uFogDen: { value: 0.05 },
     uFogColor: { value: fogCol },
     uScale: { value: 600 },
-    // oxlint-disable-next-line typescript/no-misused-spread -- 明るさの文字は ASCII（元の書き方のまま）
+    // oxlint-disable-next-line typescript/no-misused-spread -- 明るさの文字は ASCII
     uRamp: { value: new Float32Array([...RAMP_CH].map((c) => c.charCodeAt(0) - 32)) },
     uAmb: { value: 1 },
   };

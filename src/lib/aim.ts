@@ -134,7 +134,7 @@ export function drawSwing(): void {
 }
 /** マスに閉じた扉があるか（燃え尽きた扉と、半分より開いた扉は通す。マップの外のマスは扉が無い） */
 export function doorBlock(ci: number): boolean {
-  // マップの外のマスも渡される（光線がマップの端で止まった所など）。その時は扉が無い（元のまま。範囲の外の読みは undefined で、比べると false）
+  // マップの外のマスも渡される（光線がマップの端で止まった所など）。その時は扉が無い（範囲の外の読みは undefined で、比べると false）
   const di = level().doorAt[ci],
     d = (di ?? NaN) >= 0 ? nth(level().doors, must(di)) : null;
   return !!d && !d.gone && d.o < 0.5;

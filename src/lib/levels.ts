@@ -360,7 +360,7 @@ export function settleSlotPick(): void {
 export function showStratum(st: { name: string; special?: boolean; branch?: boolean; realm?: boolean; n?: number }): void {
   const el = document.getElementById('stratum');
   if (!el) return;
-  // oxlint-disable-next-line typescript/no-misused-spread -- 層の名前は絵文字の無い日本語（1文字ずつ空ける。元のまま）
+  // oxlint-disable-next-line typescript/no-misused-spread -- 層の名前は絵文字の無い日本語（1文字ずつ空ける）
   const name = [...st.name].join(' ');
   el.innerHTML = `<span class="r">-  -  -</span>   ${st.special ? '特 別 な 階' : st.branch ? '支 道' : st.realm ? '異 界' : `第 ${st.n} 層`}   <span class="r">-  -  -</span>\n<b>${name}</b>`;
   el.classList.remove('show');
@@ -735,7 +735,7 @@ export function die(cause: string): void {
   document.body.classList.add('over');
   draw();
   el.onclick = (e) => {
-    // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品（元の読み方のまま）
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品
     const b = (e.target as Element).closest && (e.target as Element).closest('button');
     if (!b) return;
     if (b.dataset['gv'] !== undefined) {

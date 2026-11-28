@@ -90,11 +90,11 @@ export function galleryList(): GalleryEntry[] {
     if (k === 'lord' || k === 'final' || k === 'final2' || k === 'X' || k.startsWith('__') || k.startsWith('dummy')) continue;
     out.push({ key: k, ty: lookup(MTYPES, k) });
   }
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- 保存した獣の記録は、中身を確かめずに使う（元のまま）
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- 保存した獣の記録は、中身を確かめずに使う
   for (const rec of (loadBeasts() as BeastRec[]).concat(saved.DEVALL ? beastSamples() : []))
     out.push({
       key: 'beast:' + rec.seed + ':' + rec.name,
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- 記録に無い欄（速さ・光の尾）は無いまま（図鑑では動かない。元のまま）
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- 記録に無い欄（速さ・光の尾）は無いまま（図鑑では動かない）
       ty: { ...rec, ch: 'X', form: 'beast', beast: true, light: 9, boss: false, verb: rec.lore } as unknown as MonsterType,
     });
   for (const [bk, L] of Object.entries(LORD_GAL)) {
@@ -110,7 +110,7 @@ export function galleryList(): GalleryEntry[] {
         verb: L.verb,
         boss: true,
         col: L.base === 'L' ? [0.75, 0.9, 1.0] : base.col,
-        // oxlint-disable-next-line typescript/consistent-type-assertions -- 表に無い支道（undefined）は元の生き物の見た目にする、元の読み方のまま（表を文字の鍵で引くための型だけ）
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- 表に無い支道（undefined）は元の生き物の見た目にする（表を文字の鍵で引くための型だけ）
         look: ({ crypt: null, lair: null, nest: null, snake: null } as Record<string, null | undefined>)[bk] || base.look,
         ...(bk === 'lair'
           ? { form: 'olddragon', light: 5 }
@@ -190,7 +190,7 @@ export function galleryRoom(seed: number): { cx: number; cz: number; x: number; 
   fight.clouds = [];
   fight.boltFx = [];
   fight.zapQueue = [];
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- 今の階に tall の欄は無い（いつも偽で、何もしない。元のまま）
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- 今の階に tall の欄は無い（いつも偽で、何もしない）
   const D = level() as unknown as { tall?: Uint8Array };
   if (D.tall) for (const i of cs) D.tall[i] = 0;
   return { cx, cz, x: (cx + 0.5) * CELL, z: (cz + 0.5) * CELL };
@@ -319,7 +319,7 @@ export function showBeast(i: number): void {
         Ls[k] = S;
         return;
       }
-      // oxlint-disable-next-line typescript/no-dynamic-delete, typescript/consistent-type-assertions -- 灯りの欄を全部消してから、開いた時の欄を入れる（元のまま。欄を名前で消すための型だけ）
+      // oxlint-disable-next-line typescript/no-dynamic-delete, typescript/consistent-type-assertions -- 灯りの欄を全部消してから、開いた時の欄を入れる（欄を名前で消すための型だけ）
       for (const a of Object.keys(L)) delete (L as unknown as Record<string, unknown>)[a];
       Object.assign(L, S);
     });

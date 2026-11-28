@@ -166,7 +166,7 @@ export function drawOmens(t: number, dt: number): void {
   const D = here.D;
   const near = (x: number, z: number, r: number): boolean => Math.hypot(x - player.x, z - player.z) < r,
     rate = (n: number): boolean => mr() < n * (dt || 0.016);
-  // 立ちのぼる粒子を、1秒に n 個ほど出す（決まりに gl・vy が無ければ、元と同じく、ここで止まるか NaN になる）
+  // 立ちのぼる粒子を、1秒に n 個ほど出す（決まりに gl・vy が無ければ、ここで止まるか NaN になる）
   const rise = (x: number, z: number, def: OmenDef | Rise, n: number, spread?: number): void => {
     if (!rate(n)) return;
     const vy = def.vy ?? NaN,

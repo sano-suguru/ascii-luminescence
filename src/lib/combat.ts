@@ -197,7 +197,7 @@ export function hitReact(m: Mob, n: number): void {
       w = Math.max(0.3, (ty.scale || 1) * (ty.scale || 1) * heavy),
       v = Math.min(6, (n * 0.9) / w);
     const ak =
-        // oxlint-disable-next-line typescript/consistent-type-assertions -- 表に無い攻撃（undefined も）は 0.6 にする、元の読み方のまま（表を文字の鍵で引くための型だけ）
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- 表に無い攻撃（undefined も）は 0.6 にする（表を文字の鍵で引くための型だけ）
         ({ blade: 1.0, bolt: 0.45, orb: 0.75, beam: 0.12, bare: 0.6 } as Partial<Record<string, number>>)[m.lastAtk as string] || 0.6,
       vv = v * 0.5 * ak * (m.lastKnock || 1),
       src = m.lastAtk === 'orb' && fight.hitSrcPoint ? fight.hitSrcPoint : [player.x, player.z];
@@ -771,7 +771,7 @@ export function dashCast(sp: Spec, dir: V3, auto: boolean): void {
             0.5,
             G(mpick([')', '(', '|'])),
             0.16,
-            // oxlint-disable-next-line typescript/consistent-type-assertions -- 性質の色は3つの数（元のまま広げて渡す）
+            // oxlint-disable-next-line typescript/consistent-type-assertions -- 性質の色は3つの数（そのまま広げて渡す）
             ...(must(elemCol(sp.elem)).map((v) => v * 1.6) as Col3),
             0,
           );

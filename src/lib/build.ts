@@ -263,13 +263,13 @@ export function buildWorld(): void {
       const ci = cellOf(x, z),
         dm = ci >= 0 ? nth(level().darkMul, ci) : 1;
       if (dm < 1) {
-        // oxlint-disable-next-line typescript/consistent-type-assertions -- この要素はすぐ上の push で書いたので、いつもある（元の書き方のまま）
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- この要素はすぐ上の push で書いたので、いつもある
         (LW[n * 3] as number) *= dm;
-        // oxlint-disable-next-line typescript/consistent-type-assertions -- この要素はすぐ上の push で書いたので、いつもある（元の書き方のまま）
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- この要素はすぐ上の push で書いたので、いつもある
         (LW[n * 3 + 1] as number) *= dm;
-        // oxlint-disable-next-line typescript/consistent-type-assertions -- この要素はすぐ上の push で書いたので、いつもある（元の書き方のまま）
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- この要素はすぐ上の push で書いたので、いつもある
         (LW[n * 3 + 2] as number) *= dm;
-        // oxlint-disable-next-line typescript/consistent-type-assertions -- この要素はすぐ上の push で書いたので、いつもある（元の書き方のまま）
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- この要素はすぐ上の push で書いたので、いつもある
         (EM[n * 4] as number) *= 0.3 + 0.7 * dm;
       }
     }
@@ -796,7 +796,7 @@ export function buildWorld(): void {
         th = room
           ? room.theme
           : ti === TC
-            ? // oxlint-disable-next-line typescript/consistent-type-assertions -- 部屋が見つからない時の空の物（元の読み方のまま。欄を読むための型だけ）
+            ? // oxlint-disable-next-line typescript/consistent-type-assertions -- 部屋が見つからない時の空の物（欄を読むための型だけ）
               (rooms.find((r) => r.theme) || ({} as { theme?: Theme | null })).theme || null
             : null,
         cave = !!(room && room.cave);

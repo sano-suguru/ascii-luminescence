@@ -77,7 +77,7 @@ function buildDotLogo(el: HTMLElement): void {
     cells: HTMLElement[] = [];
   const lineRows = TITLE_LINES.map((t) => {
     const r = ['', '', '', '', ''];
-    // oxlint-disable-next-line typescript/no-misused-spread -- ロゴの文字は絵文字の無い文字（1字ずつ数える。元のまま）
+    // oxlint-disable-next-line typescript/no-misused-spread -- ロゴの文字は絵文字の無い文字（1字ずつ数える）
     [...t.toUpperCase()].forEach((ch, k) => {
       const f = must(LOGO_FONT[ch] || LOGO_FONT[' '], '点の字');
       for (let y = 0; y < 5; y++) r[y] += (k ? '0' : '') + nth(f, y);
@@ -158,19 +158,19 @@ export function buildLogo(): void {
     return;
   }
   const rows: string[] = [];
-  // oxlint-disable-next-line typescript/no-misused-spread -- ロゴの文字は絵文字の無い文字（1字ずつ数える。元のまま）
+  // oxlint-disable-next-line typescript/no-misused-spread -- ロゴの文字は絵文字の無い文字（1字ずつ数える）
   const W = Math.max(...TITLE_LINES.map((t) => Math.max(...must(logoArt[t], 'ロゴの絵').map((l) => [...l].length))));
   TITLE_LINES.forEach((t, k) => {
     const art = must(logoArt[t], 'ロゴの絵'),
-      // oxlint-disable-next-line typescript/no-misused-spread -- ロゴの文字は絵文字の無い文字（1字ずつ数える。元のまま）
+      // oxlint-disable-next-line typescript/no-misused-spread -- ロゴの文字は絵文字の無い文字（1字ずつ数える）
       w = Math.max(...art.map((l) => [...l].length)),
       pad = ' '.repeat(Math.floor((W - w) / 2));
     art.forEach((l) => rows.push(pad + l));
     if (k < TITLE_LINES.length - 1) rows.push('');
   });
-  // oxlint-disable-next-line typescript/no-misused-spread -- ロゴの文字は絵文字の無い文字（1字ずつ数える。元のまま）
+  // oxlint-disable-next-line typescript/no-misused-spread -- ロゴの文字は絵文字の無い文字（1字ずつ数える）
   const face = rows.map((l) => [...l].map((c) => (c === '█' ? c : ' ')).join('')).join('\n'),
-    // oxlint-disable-next-line typescript/no-misused-spread -- ロゴの文字は絵文字の無い文字（1字ずつ数える。元のまま）
+    // oxlint-disable-next-line typescript/no-misused-spread -- ロゴの文字は絵文字の無い文字（1字ずつ数える）
     shade = rows.map((l) => [...l].map((c) => (c === '█' || c === ' ' ? ' ' : c)).join('')).join('\n');
   el.innerHTML = `<pre class="lg-shade">${shade}</pre><pre class="lg-face">${face}</pre><pre class="lg-shine">${face}</pre>`;
   // 幅は、タイトルの画面（#intro）の左右の余白（24px ずつ）を引いた中に収める。背の低い画面（520px 未満。スマホの横向きなど）では、下の枠を見せるために小さくする

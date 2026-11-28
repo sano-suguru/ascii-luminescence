@@ -80,13 +80,13 @@ export function renderLevelUp(): void {
     el.dataset['lvBound'] = '1';
     el.addEventListener('mouseover', (e) => {
       if (!ui.lvlOpen || ui.touch) return;
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品（元の読み方のまま）
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品
       const b = (e.target as Element).closest && (e.target as Element).closest<HTMLElement>('button[data-lk]');
       setLevelDetail(b ? ui.lvlOpts[+(b.dataset['lk'] ?? NaN)] : null);
     });
     el.addEventListener('click', (e) => {
       if (!ui.lvlOpen) return;
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品（元の読み方のまま）
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品
       const b = (e.target as Element).closest && (e.target as Element).closest<HTMLElement>('button[data-lk]');
       if (!b) return;
       e.stopPropagation();
@@ -203,7 +203,7 @@ export function renderAltar(): void {
   if (!el.dataset['bound']) {
     el.dataset['bound'] = '1';
     el.addEventListener('click', (e) => {
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品（元の読み方のまま）
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品
       const b = (e.target as Element).closest && (e.target as Element).closest<HTMLElement>('button');
       if (!b || !ui.altarOpen) return;
       e.stopPropagation();
@@ -222,7 +222,7 @@ export function renderAltar(): void {
     });
     el.addEventListener('mouseover', (e) => {
       if (!ui.altarOpen || ui.touch) return;
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品（元の読み方のまま）
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品
       const b = (e.target as Element).closest && (e.target as Element).closest<HTMLElement>('button[data-k]');
       setAltarDetail(b ? altarOpts().find((o) => o.slot === +(b.dataset['k'] ?? NaN)) : null);
     });

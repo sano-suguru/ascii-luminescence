@@ -42,7 +42,7 @@ export function installTestMode(): TestClock {
     return id;
   };
   window.clearTimeout = window.clearInterval = (id) => {
-    // oxlint-disable-next-line typescript/consistent-type-assertions -- 止める番号は、上で出した物（無ければ何も消さない。元の読み方のまま）
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- 止める番号は、上で出した物（無ければ何も消さない）
     timers.delete(id as number);
   };
   // 音：音の乱数（sndRand）もシードで決める（見た目の乱数とは別の並び。音は見た目の乱数を引かない）。

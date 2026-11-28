@@ -204,7 +204,7 @@ export function drawZones(t: number): void {
       const a = (k / n) * Math.PI * 2 + t * 0.3,
         rr = zn.r * (0.92 + 0.08 * Math.sin(t * 3 + k)),
         b = (zn.el ? 0.9 : 0.35) * f * (0.7 + 0.3 * Math.sin(t * 4 + k * 1.3));
-      // 色の無い性質は無い（無ければ、元と同じく、ここで止まる）
+      // 色の無い性質は無い（無ければ、ここで止まる）
       const col = must(c, '魔法の場の色');
       dyn(
         zn.x + Math.cos(a) * rr,

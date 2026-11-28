@@ -83,7 +83,7 @@ function onKeyDown(e: KeyboardEvent): void {
     e.preventDefault();
     return;
   }
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- キーを受けた所は画面の部品（元の読み方のまま）
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- キーを受けた所は画面の部品
   if (e.target && (e.target as HTMLElement).tagName === 'INPUT') {
     if (e.code === 'Enter') {
       e.preventDefault();
@@ -238,7 +238,7 @@ export function initInput(): void {
     (e) => {
       if (!ui.menuOpen && !ui.invOpen) return;
       if (ui.dbgOpen) {
-        // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品（元の読み方のまま）
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品
         if (!(e.target && (e.target as Element).closest && (e.target as Element).closest('#dbgp'))) {
           e.preventDefault();
           e.stopPropagation();
@@ -246,7 +246,7 @@ export function initInput(): void {
         }
         return;
       }
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品（元の読み方のまま）
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品
       const inside = e.target && (e.target as Element).closest && (e.target as Element).closest('#menu,#pack');
       if (inside) return;
       e.preventDefault();

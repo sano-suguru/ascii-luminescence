@@ -337,7 +337,7 @@ export function resetRunes(): void {
 /** 枠を1つ開ける（t：手の枠 'slotL'・'slotR' は多くても SLOT_MAX まで、体の枠 'body' は2まで） */
 export function applyOpen(t: string): void {
   if (t === 'slotR' || t === 'slotL') {
-    // oxlint-disable-next-line typescript/consistent-type-assertions -- t は 'slotR' か 'slotL' なので、t.slice(4) は 'R' か 'L'（元の読み方のまま）
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- t は 'slotR' か 'slotL' なので、t.slice(4) は 'R' か 'L'
     const H = hands()[t.slice(4) as Side];
     H.slotN = Math.min(SLOT_MAX, (H.slotN || 2) + 1);
     while (H.slots.length < H.slotN) H.slots.push(null);

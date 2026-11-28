@@ -897,7 +897,7 @@ export function drawFixtures(t: number, dt: number): void {
         break;
       }
       case 'torch': {
-        // たいまつには壁の向き nx・nz と壁の位置 wx・wz がある（無ければ、元と同じく NaN になる）
+        // たいまつには壁の向き nx・nz と壁の位置 wx・wz がある（無ければ NaN になる）
         const nx = f.nx ?? NaN,
           nz = f.nz ?? NaN,
           yaw = Math.atan2(nx, nz),
@@ -1320,7 +1320,7 @@ export function drawGraves(t: number): void {
     for (let y = 0; y < 3; y++) dyn(x, 0.2 + y * 0.3, z, G(y === 2 ? '+' : '|'), 0.34, 0.55, 0.55, 0.62, 0, 0);
     dyn(x - 0.18, 0.62, z, G('-'), 0.3, 0.5, 0.5, 0.58, 0, 0);
     dyn(x + 0.18, 0.62, z, G('-'), 0.3, 0.5, 0.5, 0.58, 0, 0);
-    // 墓には必ずルーンがある（無ければ、元と同じくここで止まる）
+    // 墓には必ずルーンがある（無ければここで止まる）
     const rune = must(it.rune, '墓のルーン'),
       c = must(runeCol(rune), '墓のルーンの色'),
       b = 0.9 + 0.4 * Math.sin(t * 1.8 + it.i);

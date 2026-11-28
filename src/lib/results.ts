@@ -112,7 +112,7 @@ export function saveGrave(): void {
   const ru = ui.graveSel > 0 ? nth(ui.graveCands, ui.graveSel - 1) : null;
   saved.META.grave = ru
     ? {
-        // oxlint-disable-next-line typescript/consistent-type-assertions -- 層が見つからない時の空の物（元の読み方のまま。欄を読むための型だけ）
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- 層が見つからない時の空の物（欄を読むための型だけ）
         k: (STRATA.find((st) => here.depth >= st.from && here.depth <= st.to) || ({} as { k?: string })).k || '',
         depth: here.depth,
         cause: adv.runStats.cause || '',

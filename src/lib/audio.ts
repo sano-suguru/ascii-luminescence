@@ -535,7 +535,7 @@ export function chantStart(el: string | null): ChantVoice | null {
     out = ctx.createGain();
   out.gain.value = 1;
   out.connect(sOut(undefined, undefined, 0.85));
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- 性質が無い時（null）も、元のまま表を引いて 165 にする（表を文字の鍵で引くための型だけ）
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- 性質が無い時（null）も、表を引いて 165 にする（表を文字の鍵で引くための型だけ）
   const root = ELEM_ROOT[el as string] || 165;
   let next = ctx.currentTime + 0.03,
     syl = 0,
