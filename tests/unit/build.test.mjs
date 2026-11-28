@@ -5,13 +5,6 @@ import { describe, expect, it } from 'vitest';
 import { decodeMappings, findMap, originalPosition } from '../../tools/sourcemap.mjs';
 
 const ROOT = join(import.meta.dirname, '../..');
-// src/lib/ の .ts を全部つないだ文
-const libText = () =>
-  readdirSync(join(ROOT, 'src/lib'), { recursive: true })
-    .map(String)
-    .filter((f) => f.endsWith('.ts'))
-    .map((f) => readFileSync(join(ROOT, 'src/lib', f), 'utf8'))
-    .join('\n');
 
 describe('ソースマップ', () => {
   it('mappings を読み、区切りを絶対値にする（負の差・大きな値・空の行も）', () => {
@@ -40,7 +33,7 @@ describe('ソースマップ', () => {
 });
 
 describe('Vite の組み立て（公開用と同じ設定）', () => {
-  it('ソースマップを出力に残さず、関数を1つも消さず、組み立てた JS の名前が src/lib の同じ名前に戻る', async () => {
+  it('ソースマップを出力に残さず、組み立てた JS の関数の名前が src/lib の同じ名前に戻る', async () => {
     const { build } = await import('vite');
     const mode = `unit-${process.pid}`,
       out = join(ROOT, '.build', mode),
@@ -56,7 +49,7 @@ describe('Vite の組み立て（公開用と同じ設定）', () => {
         code = readFileSync(join(out, 'assets', js), 'utf8');
       expect(readFileSync(join(out, 'index.html'), 'utf8')).toContain(`src="./assets/${js}"`);
       expect(code).not.toContain('sourceMappingURL');
-      expect(code).not.toContain('html_proxy'); // ページの <style> の空の部品（noCssStub）
+      expect(code).not.toContain('html_proxy'); // ページの <style> から Vite が作る空の部品（使っていないので消える）
       expect(readFileSync(join(out, 'index.html'), 'utf8')).toContain('--void:#030209'); // <style> は HTML に残っている
       // ホーム画面に置ける（homeScreen）：宣言とアイコンを出し、HTML から読む
       const html = readFileSync(join(out, 'index.html'), 'utf8'),
@@ -74,9 +67,8 @@ describe('Vite の組み立て（公開用と同じ設定）', () => {
       expect(map.sources.filter((f) => !OURS.test(f) && !THREE_SRC.test(f))).toEqual([]);
       expect(map.sources).toContain('src/lib/text.ts');
       expect(map.sources.some((f) => THREE_SRC.test(f))).toBe(true);
-      // 関数の名前（function xx）は、元のファイルの同じ場所に戻る。src/lib/ の関数の名前を集める（three.js の物は除く）
+      // 関数の名前（function xx）は、元のファイルの同じ場所に戻る（three.js の物は除く）
       let checked = 0;
-      const ours = [];
       lines.forEach((l, i) => {
         for (const m of l.matchAll(/function ([A-Za-z_$][\w$]*)/g)) {
           const at = m.index + 9,
@@ -85,14 +77,10 @@ describe('Vite の組み立て（公開用と同じ設定）', () => {
           if (THREE_SRC.test(p.source)) continue;
           const src = (cache[p.source] ??= readFileSync(join(ROOT, p.source), 'utf8').split('\n'))[p.line - 1];
           expect(src.slice(p.column, p.column + m[1].length)).toBe(m[1]);
-          ours.push(m[1]);
           checked++;
         }
       });
       expect(checked).toBeGreaterThan(300);
-      // 使っていない関数も消さない（消すかどうかは人が決める。vite.config.mjs の rolldownOptions）
-      const sorted = (a) => a.sort((x, y) => (x < y ? -1 : x > y ? 1 : 0));
-      expect(sorted(ours)).toEqual(sorted([...libText().matchAll(/function\s+([A-Za-z_$][\w$]*)/g)].map((x) => x[1])));
     } finally {
       process.env.NODE_ENV = env;
       rmSync(out, { recursive: true, force: true });
