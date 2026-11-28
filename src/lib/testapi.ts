@@ -103,7 +103,6 @@ export function initTestApi(): void {
           else TESTQ.done = ok;
         });
       },
-      // give every blessing at level n (default 1), so a level-up offers their next level (shown with II)
       // 指の操作の、試して合わせる値を変える（{look, analog}。src/lib/touchpad.ts の TUNE。tools/feel.mjs が使う）
       touchTune(o?: Partial<typeof TUNE>) {
         Object.assign(TUNE, o || {});
@@ -118,6 +117,7 @@ export function initTestApi(): void {
         }
         return { pr: gfx.pixelRatio, bloom: must(gfx.bloom, '光のにじみ gfx.bloom').enabled };
       },
+      // give every blessing at level n (default 1), so a level-up offers their next level (shown with II)
       bless(n = 1) {
         for (const k in BLESS) adv.lvl.bless[k] = n;
         return Object.keys(BLESS).length;
