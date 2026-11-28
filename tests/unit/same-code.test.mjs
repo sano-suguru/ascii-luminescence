@@ -460,6 +460,24 @@ describe('一番外の文を関数に包んで移した物（wrappedDecls）', (
       ).mismatches.length,
     ).toBe(1);
   });
+  it('F(); で包んだ文に、包みから抜ける return; があれば違い（すぐ呼ぶ関数の中の return; は違わない）。if(!F())return; の本体の最後が return true; でなければ違い', () => {
+    expect(
+      wrap(`if(!ok){ show(); return; } rest();`, `f();`, `export function f() { if (!ok) { show(); return; } rest(); }`).mismatches,
+    ).toBe(1);
+    expect(wrap(`(function logo(){ if(!el)return; b(); })();`, `logo();`, `export function logo() { if (!el) return; b(); }`)).toEqual({
+      n: { logo: 0 },
+      mismatches: 0,
+      absorbed: [],
+    });
+    expect(wrap(`a(); b();`, `if(!f())return;`, `export function f() { a(); b(); }`).mismatches).toBe(1);
+  });
+  it('古い JS の一番外の宣言を、モジュールの一番外に移した物は、初めの値が決まった値でなければ人が確かめる一覧に出す', () => {
+    const files = [{ file: 'src/lib/a.ts', text: `export const T = { n: 1 };\nexport const el = document.getElementById('x');` }];
+    expect(
+      wrappedDecls(new Map([['01-a.js', `const T={n:1}; const el=document.getElementById('x');`]]), new Map([['01-a.js', '']]), files)
+        .review,
+    ).toEqual(['src/lib/a.ts の一番外：el（古い JS の一番外の宣言を、モジュールの一番外に移した。読み込んだ時に作られる）']);
+  });
   it('前からある引数の無い呼び出し（古い版の次の文と同じ物）は、包んだ物と見ない', () => {
     expect(wrap(`addLooks(); a();`, `addLooks(); a();`, `export function addLooks() { x(); y(); }`)).toEqual({
       n: {},
