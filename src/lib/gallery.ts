@@ -19,7 +19,7 @@ import { DUMMY_KINDS, GALLERY_SLEEP, LORD_GAL } from './names.ts';
 import { dyn, initDust, spawn } from './particles.ts';
 import { keyedRand, mr, withVisualRand } from './random.ts';
 import { clamp } from './rng.ts';
-import { RUNE_DEF, RUNE_TYPES, SLOT_MAX, TRAITS } from './runes.ts';
+import { RES, RUNE_DEF, RUNE_TYPES, SLOT_MAX, TRAITS } from './runes.ts';
 import { loadBeasts, recordBeast, saveSet } from './save.ts';
 import { tryLock, updateResume } from './screens.ts';
 import {
@@ -665,6 +665,26 @@ export function renderGallery(): void {
   }
 }
 // ---------------------------------------------------------------- the testing chamber: every rune found so far, and dummies that get back up
+/** 試しの間の的の種類を、生き物の表 MTYPES と性質の効き目 RES に足す（ページの用意で1回。src/lib/boot.ts の boot が呼ぶ） */
+export function addDummyKinds(): void {
+  for (const d of DUMMY_KINDS)
+    MTYPES[d.k] = {
+      ch: '+',
+      name: d.name,
+      col: d.col,
+      form: 'humanoid',
+      scale: 0.95,
+      speed: 0,
+      fl: 0,
+      light: 1.6,
+      trail: 0,
+      dummy: true,
+      verb: '藁と石で組まれた的。何度倒れても、また起き上がる',
+    };
+  RES['dummyF'] = { fire: 0.2, ice: 2 };
+  RES['dummyP'] = { poison: 0.2, fire: 2 };
+  RES['dummyT'] = { thunder: 2, fire: 0.5 };
+}
 /** 試しの間の的を起こす（新しく作り、土ぼこりを出す） */
 export function spawnDummy(d: GalleryDummy): void {
   const m = makeMonster({ key: d.k, cx: Math.floor(d.x / CELL), cz: Math.floor(d.z / CELL), g: -1, lead: true });

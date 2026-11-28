@@ -4,8 +4,8 @@ import { must } from './array.ts';
 import { sndPrep } from './audio.ts';
 import { autoGuard, initAuto } from './auto.ts';
 import { addLooks } from './bodies/build.ts';
-import { MTYPES } from './creatures.ts';
 import { dbg, dbgUrl, initDbg } from './debug.ts';
+import { addDummyKinds } from './gallery.ts';
 import { initInput, initPointer } from './input.ts';
 import { initIntro, redrawIntroLater } from './intro.ts';
 import { newLevel } from './levels.ts';
@@ -13,9 +13,7 @@ import { renderLog } from './log.ts';
 import { applySize, frame } from './loop.ts';
 import { sizeMap } from './minimap.ts';
 import { summon } from './monsters.ts';
-import { DUMMY_KINDS } from './names.ts';
 import { buildAtlas, initRenderer, makeWater } from './render.ts';
-import { RES } from './runes.ts';
 import { loadSet } from './save.ts';
 import { loadSndLevel } from './screens.ts';
 import { DYN_VS, GLYPH_FS, PT_FS, PT_VS, STATIC_VS } from './shaders.ts';
@@ -203,24 +201,7 @@ export function boot(): void {
   saved.SEEN = loadSet('al_seen');
   saved.RSEEN = loadSet('al_runes');
   // 試しの間の的の種類
-  for (const d of DUMMY_KINDS) {
-    MTYPES[d.k] = {
-      ch: '+',
-      name: d.name,
-      col: d.col,
-      form: 'humanoid',
-      scale: 0.95,
-      speed: 0,
-      fl: 0,
-      light: 1.6,
-      trail: 0,
-      dummy: true,
-      verb: '藁と石で組まれた的。何度倒れても、また起き上がる',
-    };
-  }
-  RES['dummyF'] = { fire: 0.2, ice: 2 };
-  RES['dummyP'] = { poison: 0.2, fire: 2 };
-  RES['dummyT'] = { thunder: 2, fire: 0.5 };
+  addDummyKinds();
   // 残した音量の段
   loadSndLevel();
   // 見た時の説明を出す所

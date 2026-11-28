@@ -3,8 +3,8 @@
 // 向かってくる姿が読めるか・光ってにじまないか・頭の上の印が体に付いているかを確かめる時に使う（見た目を直す時の最後の確かめ）。
 //   pnpm field ヘビ                名前で選ぶ（図鑑の名前。表の鍵（n・T など）でもよい。主・忘れられた獣は pnpm lords）
 //   --scenes 1:202,3:7             写す階（深さ:シード を , で区切る。既定は、石の迷宮の深さ 1 と大洞窟の深さ 3）
-//   --rev <版>                     前の版（git の版。例 origin/main）とも同じ所で写し、前と今を上下に並べる（src/ だけを前の版にした一時的な作業場所で組み立てる。
-//                                  その作業場所の src/ 以外（vite.config.mjs など）は、最後のコミットの物。まだコミットしていない src/ の外の変更は、前の版には入らない）
+//   --rev <版>                     前の版（git の版。例 origin/main）とも同じ所で写し、前と今を上下に並べる（src/ と組み立て（vite.config.mjs・tools/）を前の版にした
+//                                  一時的な作業場所で組み立てる。ほかは最後のコミットの物。まだコミットしていない src/ の外の変更は、前の版には入らない）
 //   --out <ディレクトリ>           置き場所（既定 tests/out/field/）
 //   --kill [1,4,10,30,90,240,330]  距離ごとの写真の代わりに、倒して時間を追って写す（倒れ方を直す時に）。数は倒してからのフレーム数（1/30 秒。小さい順）
 // 写す物（階ごと）：生き物を 6m ほど先の、見えている床に置き、向かってくるところを 4m・3m・2.5m で写す（照準が当たると明るく描くので、
@@ -239,16 +239,18 @@ const errs = [];
 const now = await shootAll(ROOT, '', errs);
 let old = null;
 if (rev) {
-  // src/ だけを前の版にした一時的な作業場所（tools/case-diff.mjs と同じ作り方）
+  // src/ と組み立て（vite.config.mjs と、それが読む tools/）を前の版にした一時的な作業場所。組み立ての仕組みは版で違うので、src/ と揃える
   const tmp = mkdtempSync(join(tmpdir(), 'al-field-'));
   const git = (...a) => execFileSync('git', a, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
   try {
     git('worktree', 'add', '--detach', tmp, 'HEAD');
     rmSync(join(tmp, 'src'), { recursive: true, force: true });
-    execFileSync('git', ['checkout', rev, '--', 'src'], { cwd: tmp, stdio: 'ignore' });
+    execFileSync('git', ['checkout', rev, '--', 'src', 'vite.config.mjs', 'tools'], { cwd: tmp, stdio: 'ignore' });
     symlinkSync(join(ROOT, 'node_modules'), join(tmp, 'node_modules'));
     old = await shootAll(tmp, '-old', errs);
   } finally {
+    // 消す前にリンクを外す（リンクを残したまま worktree remove --force で消すと、リンクの先の node_modules まで消えることがある）
+    rmSync(join(tmp, 'node_modules'), { force: true });
     try {
       git('worktree', 'remove', '--force', tmp);
     } catch {

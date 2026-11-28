@@ -9,7 +9,7 @@
 import { sndInit } from '../../src/lib/audio.ts';
 import { addLooks } from '../../src/lib/bodies/build.ts';
 import { MTYPES } from '../../src/lib/creatures.ts';
-import { DUMMY_KINDS } from '../../src/lib/names.ts';
+import { addDummyKinds } from '../../src/lib/gallery.ts';
 import { P, dCol, dPar, dPos } from '../../src/lib/particles.ts';
 import { setSoundRand } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
@@ -120,23 +120,7 @@ export async function galleryCases(F, seeds, page) {
     keptTypes = Object.entries(MTYPES).map(([k, t]) => [k, LOOK_FIELDS.map((f) => [f, Object.getOwnPropertyDescriptor(t, f)])]);
   addLooks();
   // 試しの間の的の種類（ゲームでは src/lib/boot.ts の boot が足す）
-  for (const d of DUMMY_KINDS)
-    MTYPES[d.k] = {
-      ch: '+',
-      name: d.name,
-      col: d.col,
-      form: 'humanoid',
-      scale: 0.95,
-      speed: 0,
-      fl: 0,
-      light: 1.6,
-      trail: 0,
-      dummy: true,
-      verb: '藁と石で組まれた的。何度倒れても、また起き上がる',
-    };
-  RES.dummyF = { fire: 0.2, ice: 2 };
-  RES.dummyP = { poison: 0.2, fire: 2 };
-  RES.dummyT = { thunder: 2, fire: 0.5 };
+  addDummyKinds();
   const alog = [],
     stored = [],
     timers = fakeTimers(),

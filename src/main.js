@@ -14,9 +14,9 @@ import '@fontsource/biz-udgothic/400.css';
 import '@fontsource/biz-udgothic/700.css';
 import { boot } from './lib/boot.ts';
 
-boot();
-
 // 開発用サーバーだけ：テスト用モード（?test=1）は時計（setTimeout）を止めるので、Vite の読み直し（setTimeout で少し待ってから読み直す）が動かない。
-// 読み直しの合図を受けたら、すぐ読み直す（組み立てた物では import.meta.hot が無いので何もしない）
+// 読み直しの合図を受けたら、すぐ読み直す（組み立てた物では import.meta.hot が無いので何もしない）。boot が止まっても読み直せるように、先に登録する
 if (import.meta.hot && new URLSearchParams(location.search).get('test') === '1')
   import.meta.hot.on('vite:beforeFullReload', () => location.reload());
+
+boot();
