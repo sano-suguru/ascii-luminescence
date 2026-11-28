@@ -140,7 +140,7 @@ export function releaseTouch(): void {
 /** ボタンを押した時にすること（ビルドの持ち替えは、古い JS のホイールと同じ処理を渡す） */
 export interface PadActions {
   build: () => void;
-  /** 図鑑の操作（古い JS の src/game/25-gallery.js。マウスのドラッグとホイールと同じ処理） */
+  /** 図鑑の操作（src/lib/gallery.ts。マウスのドラッグとホイールと同じ処理） */
   gallery: {
     /** 図鑑で生き物を見ているか */
     on: () => boolean;

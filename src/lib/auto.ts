@@ -30,7 +30,7 @@ export const AUTO_SEED = 202;
 /** これより長くかかった1フレームを、段の遅いフレームに数える（ミリ秒。診断の記録の slow と同じ） */
 const SLOW_MS = 100;
 
-/** 古い JS（src/game/23-debug.js の dbg）から受け取る処理 */
+/** 開発用の命令（src/lib/debug.ts の dbg）から、src/lib/boot.ts の start が渡す処理 */
 export interface AutoHooks {
   /** 階段の2マス手前に、階段を向いて立つ。できなければ false */
   toStairs: () => boolean;
@@ -40,7 +40,7 @@ export interface AutoHooks {
   hurt: (n: number) => void;
   /** 生き物を置く */
   summon: (key: string, cell: number) => void;
-  /** タイトルを描き直す（［自動で試す］を出す・隠す。src/game/17-meta.js の redrawIntroLater。シードの欄に打っている間は、離れてから） */
+  /** タイトルを描き直す（［自動で試す］を出す・隠す。src/lib/intro.ts の redrawIntroLater。シードの欄に打っている間は、離れてから） */
   title: () => void;
 }
 
@@ -403,7 +403,15 @@ export const AUTO_STEPS: Step[] = [
       if (!foes.length) return '生き物を置けない';
       if (!shotR) return '右手で放てない';
       if (!shotL) return '左手で撃てない';
-      return foes.some((m, i) => m.dead || (m.hp ?? 0) < (hp0[i] ?? 0)) ? '' : '攻撃が当たらない';
+      if (foes.some((m, i) => m.dead || (m.hp ?? 0) < (hp0[i] ?? 0))) return '';
+      // 当たらなかった時は、置いた生き物ごとに、プレイヤーからの距離・向いている向きからのずれ（度）・体力（前 → 後）を書く（CI と端末の記録で、わけを探すため）
+      const seen = foes.map((m, i) => {
+        const dx = m.x - player.x,
+          dz = m.z - player.z,
+          off = Math.atan2(Math.sin(Math.atan2(-dx, -dz) - player.yaw), Math.cos(Math.atan2(-dx, -dz) - player.yaw));
+        return `${m.key} ${Math.hypot(dx, dz).toFixed(1)}m ${Math.round((off * 180) / Math.PI)}度 ${hp0[i] ?? 0}→${m.hp ?? 0}`;
+      });
+      return `攻撃が当たらない（右 ${shotR}・左 ${shotL}。${seen.join('、')}）`;
     },
   ],
   [
@@ -543,7 +551,7 @@ function resumeIfPaused(): void {
 /** 古い JS から受け取った処理（initAuto が入れる。入るまではタイトルに［自動で試す］を出さない） */
 let hooks: AutoHooks | null = null;
 
-/** ゲームの用意ができた時に1回（src/game/30-loop-init.js が呼ぶ）。?auto があれば、そのまま流す */
+/** ゲームの用意ができた時に1回（src/lib/boot.ts の start が呼ぶ）。?auto があれば、そのまま流す */
 export async function initAuto(h: AutoHooks): Promise<void> {
   hooks = h;
   // 持ち主と分かった方が先なら、ここで［自動で試す］を出す
@@ -560,7 +568,7 @@ export async function initAuto(h: AutoHooks): Promise<void> {
 export function canOfferAuto(): boolean {
   return ui.owner && !TEST && !autoSt.on && hooks !== null;
 }
-/** タイトルの［自動で試す］を押した時（src/game/17-meta.js）。ゲームの保存を止めて AUTO_LAPS 周流す */
+/** タイトルの［自動で試す］を押した時（src/lib/intro.ts）。ゲームの保存を止めて AUTO_LAPS 周流す */
 export function startAuto(): void {
   if (!hooks || !canOfferAuto() || ui.started) return;
   guardSaves();

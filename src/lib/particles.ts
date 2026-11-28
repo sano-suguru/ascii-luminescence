@@ -48,7 +48,7 @@ export function dyn(
   buf.dn++;
 }
 
-/** 描く粒子（塵・ガス・そのほかの粒子を、この順に並べる。src/lib/motes.ts の updateParticles が毎フレーム書き、05-renderer.js の gfx.ptGeo が描画に渡す）：
+/** 描く粒子（塵・ガス・そのほかの粒子を、この順に並べる。src/lib/motes.ts の updateParticles が毎フレーム書き、src/lib/render.ts の initRenderer が作る gfx.ptGeo が描画に渡す）：
  * 位置 ptPos・色 ptCol（1つに3つ）、大きさ ptSize・文字 ptGly（1つに1つ。もとは src/game/05-renderer.js） */
 export const ptPos = new Float32Array(PT_TOTAL * 3),
   ptCol = new Float32Array(PT_TOTAL * 3),

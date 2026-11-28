@@ -3,7 +3,7 @@
 // 移す時は tools/state-move.mjs を使う（同じ名前の局所の変数は書き換えない）。初めの値は、古い JS の宣言のまま。
 // 入れ物の名前は、古い JS の局所の名前とぶつからない物にする（道具が確かめる。fx は座標の fx とぶつかるので vfx にした）。
 import { type MonsterType } from './creatures.ts';
-import { type BranchPlace, type Fixture, type InterPlace, type Level, type RealmPlace, type Web } from './generate.ts';
+import { type BranchPlace, type Fixture, type InterPlace, type Level, type LevelLight, type RealmPlace, type Web } from './generate.ts';
 import { META_DEF, type Meta } from './progress.ts';
 import { type History } from './history.ts';
 import type { HandsSnap, Spec } from './gear.ts';
@@ -14,16 +14,21 @@ import { type Rune } from './runes.ts';
 import type {
   BufferAttribute,
   BufferGeometry,
+  InstancedBufferAttribute,
+  InstancedBufferGeometry,
   DataTexture,
   Mesh,
   Scene,
   ShaderMaterial,
   Sphere,
   Texture,
-  Vector3,
   WebGLRenderer,
 } from 'three';
+import { Euler, Matrix4, Vector3 } from 'three';
 import type { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import type { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import type { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import type { QualityRun } from './quality.ts';
 import { DUST_N } from './shaders.ts';
 import { NCELL, NDL, NSL } from './world.ts';
 
@@ -37,7 +42,7 @@ export interface ZapFlash {
   r: number;
 }
 
-/** テスト用モード（?test=1）か（src/game/00-test-mode.js が時計と乱数を入れ替える。読めない時は違う） */
+/** テスト用モード（?test=1）か（src/lib/testmode.ts の installTestMode が時計と乱数を入れ替える。読めない時は違う） */
 export const TEST = (() => {
   try {
     return new URLSearchParams(location.search).get('test') === '1';
@@ -46,14 +51,53 @@ export const TEST = (() => {
   }
 })();
 
+/** テスト用モードの時計（ゲームの時計を ms 進め、その間に来る setTimeout・setInterval を流す advance と、本物の setTimeout。src/lib/testmode.ts の installTestMode が作る） */
+export interface TestClock {
+  advance(ms: number): void;
+  realTimeout: (fn: () => void, ms: number) => number;
+}
 /** 時計（ゲームの時刻。止めている間・テスト用モードで進めない間は進まない。溜めている間・ヒットストップ中はゆっくり進む） */
 export interface Clock {
-  /** ゲームが始まってからの秒（30-loop-init.js の tick が進める） */
+  /** ゲームが始まってからの秒（src/lib/loop.ts の tick が進める） */
   time: number;
-  /** tick が進んだ回数（止めている間に描き直さない時は数えない）。tick の段ごとの見た目の乱数の鍵にする（30-loop-init.js の inPhase・inMobPhase） */
+  /** tick が進んだ回数（止めている間に描き直さない時は数えない）。tick の段ごとの見た目の乱数の鍵にする（src/lib/loop.ts の inPhase・inMobPhase） */
   frame: number;
+  /** 前のフレームの時刻（秒。src/lib/loop.ts の frame） */
+  last: number;
+  /** 見えるマスを数え直すまでと、ミニマップを描き直すまでの溜め（秒） */
+  fovT: number;
+  mapT: number;
+  /** 画質を決めるために数えている秒・フレームの時間の和・数（src/lib/quality.ts）と、数え始めるまで様子を見ている秒 */
+  perfT: number;
+  perfAcc: number;
+  perfN: number;
+  warm: number;
+  /** テスト用モードの時計（テスト用モードでない時は null。00-test-mode.js がその場で入れる） */
+  TESTCLK: TestClock | null;
+  /** テスト用モードで、用意ができたか（true）、用意の途中で止まったわけ（'error: …'）、まだか（false）。__test.ready・error が読む */
+  testBoot: boolean | string;
 }
-export const clock: Clock = { time: 0, frame: 0 };
+export const clock: Clock = {
+  time: 0,
+  frame: 0,
+  last: 0,
+  fovT: 0,
+  mapT: 0,
+  perfT: 0,
+  perfAcc: 0,
+  perfN: 0,
+  warm: 0,
+  TESTCLK: null,
+  testBoot: false,
+};
+/** テスト用モードの1歩の秒（ゲームの1/30秒） */
+export const TEST_STEP = 1 / 30;
+/** テスト用モードの __test.frames(n) が描いて進める残りの数と、終わった時に呼ぶ物。丸ごと入れ替えない */
+export const TESTQ: { n: number; done: (() => void) | null } = { n: 0, done: null };
+/** テスト用モードの __test.tickNoise(n)：tick のどの段も、終わりに見た目の乱数を n 回余分に引く。丸ごと入れ替えない */
+export const tickNoise = { n: 0 };
+/** テスト用モードの __test.skipPhase(names) で止めた tick の段の名前（その段を飛ばす）。丸ごと入れ替えない */
+export const skipPhases = new Set<string>();
 
 /** 揺れと光り（画面の揺れ、画面の光り、ダメージを受けた時と回復した時の光り、稲妻の光り）と、目の慣れ expo（画面の明るさに掛ける。src/lib/camera.ts の updateAtmosphere が、まわりの明るさに合わせてゆっくり変える）と、
  * 階の場所ごとの空気 ambK（分かれ道は明るく、階段へ向かう道は暗く。src/lib/camera.ts の updateSectionAir）と、詠唱している間に画面をゆっくりにする見た目の強さ slowFx（0 から 1。src/lib/chantfx.ts の updateCross） */
@@ -69,9 +113,93 @@ export interface Vfx {
 }
 export const vfx: Vfx = { shake: 0, flash: 0, hurtFlash: 0, hpFlash: 0, zapFlash: null, expo: 1.1, ambK: 1, slowFx: 0 };
 
-/** 図鑑の獣を見ている間（'beast'）か、試しの間（'range'）の状態（今は mode と settle だけ型を付ける。ほかの欄は、図鑑と試しの間の処理を移す時に足す） */
+/** 図鑑の一覧の1つ（鍵と種類。忘れられた獣・主・王の影は、図鑑のために作った種類） */
+export interface GalleryEntry {
+  key: string;
+  ty: MonsterType;
+}
+/** 図鑑の部屋（真ん中のマスと位置。図鑑の部屋は、カメラを向ける開けた向き dir とその向きに床が続く距離 far も） */
+export interface GalleryRoom {
+  cx: number;
+  cz: number;
+  x: number;
+  z: number;
+  dir?: number;
+  far?: number;
+}
+/** 図鑑のカメラ（プレイヤーが動かす view と、__test.galleryShow が止める fix の共通の欄） */
+export interface GalleryCam {
+  /** 寄る・引く（距離を 1/zoom 倍） */
+  zoom: number;
+  /** 見下ろす角度（null：図鑑が生き物の大きさから決める高さ） */
+  pitch: number | null;
+  /** 見下ろし始めた時の、見ている点からの距離の割合（src/lib/gallery.ts の galleryDrag） */
+  stretch?: number;
+  /** 寄った時に止まる球を数えた形と、見ている点の高さと、球の半径 */
+  bodyFor?: Body;
+  bodyAt?: number;
+  bodyR?: number;
+  /** 体の高さの真ん中（見ている点からの高さ） */
+  midOff?: number;
+}
+/** __test.galleryShow が止める向きと姿 */
+export interface GalleryFix extends GalleryCam {
+  /** 向き（0 でこちらを向く） */
+  yaw: number;
+  /** 'stand'・'walk'・'sleep' */
+  pose: string;
+  /** 体の高さの真ん中を画面の真ん中に写すか */
+  center: boolean;
+}
+/** プレイヤーが動かすカメラ（ホイールとドラッグ。src/lib/gallery.ts の galleryView） */
+export interface GalleryView extends GalleryCam {
+  /** 最後に動かした時の g.t */
+  t: number;
+  /** なめらかに動かしている、見ている点の高さと距離 */
+  aimS: number | undefined;
+  rS: number | undefined;
+  /** 体の高さの真ん中を数えた形 */
+  midFor?: Body;
+}
+/** 試しの間の的（置く位置・種類・倒れてから起き上がるまでの秒・今の生き物） */
+export interface GalleryDummy {
+  k: string;
+  x: number;
+  z: number;
+  m?: Mob;
+  respawn?: number;
+}
+/** 図鑑の獣を見ている間（'beast'）か、試しの間（'range'）の状態（src/lib/gallery.ts） */
 export interface Gallery {
   mode: 'beast' | 'range';
+  /** 部屋（作る前に ui.gallery を入れるので、作るまでは null） */
+  room?: GalleryRoom | null;
+  /** 図鑑：見せる一覧と、図鑑の全部の数・今の番号・出している生き物・出してからの秒 */
+  list?: GalleryEntry[];
+  all?: number;
+  idx?: number;
+  m?: Mob | null;
+  t?: number;
+  /** 図鑑を開いた時の備品と灯り（生き物を出すたびに戻す） */
+  still?: { fixtures: Fixture[]; lights: LevelLight[] };
+  /** 止めた向きと姿（__test.galleryShow だけ）と、プレイヤーが動かすカメラ */
+  fix?: GalleryFix | null;
+  view?: GalleryView | null;
+  /** マウスで回している間（押した所） */
+  drag?: { x: number; y: number } | null;
+  /** 今のカメラが見ている点の高さ・距離・角度・見ている点からの距離の割合 */
+  aimY?: number | undefined;
+  rNow?: number | undefined;
+  tiltNow?: number;
+  stretchNow?: number;
+  /** 出している生き物の見た目の乱数の並び */
+  rnd?: () => number;
+  /** 水に住む生き物か（水のさざ波を描く） */
+  water?: boolean;
+  /** 今出している説明が眠っている時の物か */
+  shownSleep?: boolean;
+  /** 試しの間の的 */
+  dummies?: GalleryDummy[];
   /** 生き物を出した後、目の慣れと霧をすぐ合わせるまでの段（1：カメラを置くのを待つ、2：次の一歩で src/lib/camera.ts の updateAtmosphere が合わせて 0 にする） */
   settle?: number;
 }
@@ -97,11 +225,21 @@ export interface Ui {
   unlockedAt: number;
   /** Esc のキーを処理している間か（その間は tryLock が捕まえにいかない） */
   escKey: boolean;
+  /** エラーを出す所 #err（00-test-mode.js がその場で入れる。WebGL を作れなかった時に書く） */
+  errEl: HTMLElement | null;
+  /** マウスを捕まえていない時に、描く画面を押してドラッグしているか と、前のマウスの位置（見回す） */
+  dragging: boolean;
+  lmx: number;
+  lmy: number;
+  /** 左のボタンを押した所（書くだけで、読む所は無い） */
+  downAt: [number, number] | null;
+  /** タイトルの画面に出している物（'main'：タイトル、'unlock'：解放の画面） */
+  introMode: 'main' | 'unlock';
   /** 指で遊んでいるか（指で触れたら true、マウスを動かしたら false。src/lib/touch.ts。この間は tryLock が捕まえにいかない） */
   touch: boolean;
   /** 指で遊んでいて、画面が縦向きか（探索中は止めて、横にする案内を出す。src/lib/touch.ts の updatePortrait） */
   portrait: boolean;
-  /** タイトルに［開発用モード］を出すか（このページで一度でも開発用モードがオンだった時。オフに戻しても、そのページの間は出す。src/game/17-meta.js） */
+  /** タイトルに［開発用モード］を出すか（このページで一度でも開発用モードがオンだった時。オフに戻しても、そのページの間は出す。src/lib/intro.ts の buildIntroPanel） */
   devSeen: boolean;
   /** claude.ai の Artifact の持ち主が開き、診断の記録が書けるか（src/lib/diag.ts の initDiag が分かった時に入れる。タイトルに［開発用モード］と［自動で試す］を出す） */
   owner: boolean;
@@ -173,6 +311,8 @@ export interface Ui {
   perfOn: boolean;
   /** 図鑑の獣を見ている間・試しの間の状態（どちらでもなければ null） */
   gallery: Gallery | null;
+  /** 見た物の記録を次に数えるまでの秒（src/lib/gallery.ts の trackSeen。0.5 秒ごと） */
+  seenT: number;
   /** マウスを捕まえられないと決めたか（決めた後は捕まえようとしない。捕まえていない時は、ドラッグで視点を動かし、Esc でメニューを開く） */
   plFailed: boolean;
   /** 装備の画面を開けた時の両手（handsKey の key と、写し snap）。閉じた時に変わっていれば、付け替えの詠唱をする。閉じている間は null */
@@ -212,6 +352,12 @@ export const ui: Ui = {
   lockTries: 0,
   unlockedAt: -1e9,
   escKey: false,
+  errEl: null,
+  dragging: false,
+  lmx: 0,
+  lmy: 0,
+  downAt: null,
+  introMode: 'main',
   touch: false,
   portrait: false,
   devSeen: false,
@@ -253,6 +399,7 @@ export const ui: Ui = {
   uiMode: 0,
   perfOn: false,
   gallery: null,
+  seenT: 0,
   plFailed: false,
   packSnap: null,
   aimMon: null,
@@ -875,6 +1022,8 @@ export interface Monster {
   /** 体の明るさ（生き物の処理が入れる）と、心臓を見せるか（王の影。src/lib/levels.ts の spawnFinalBoss） */
   glow?: number;
   heartOn?: boolean;
+  /** 図鑑に出している生き物（tick が動かさない。src/lib/gallery.ts の showBeast） */
+  galShow?: boolean;
   /** ここから下は、描く処理（src/lib/bodies/draw.ts）と見た時の説明（src/lib/look.ts）・灯り（src/lib/lightmap.ts の updateLights）が読む欄。
    * 生き物の表の鍵（'final' は王の影）と、揺れの位相 ph・歩きの位相 walk・警戒 alert（src/lib/monsters.ts の makeMonster が入れる） */
   key?: string;
@@ -1027,7 +1176,7 @@ export interface Here {
   fade: number;
   /** 図鑑の見本の階を作っているか */
   showroomGen: boolean;
-  /** 今の階の中身（generate.ts の generateLevel の結果）。初期化（30-loop-init.js の init）で1つ目の階を作るまでは null。古い JS が後から足す欄は LevelExtra（まだ型の無い hub などは、使う処理を移す時に足す） */
+  /** 今の階の中身（generate.ts の generateLevel の結果）。初期化（src/lib/boot.ts の init）で1つ目の階を作るまでは null。古い JS が後から足す欄は LevelExtra（まだ型の無い hub などは、使う処理を移す時に足す） */
   D: (Level & LevelExtra) | null;
   /** 見たことのあるマス（階に入るたびに作り直す。src/lib/levels.ts の newLevel） */
   explored: Uint8Array;
@@ -1156,7 +1305,7 @@ export interface Legend {
 }
 /** 保存する記録（localStorage）：伝承・解放・墓・試練 META、魔導書に記した反応 BOOK、見たルーン RSEEN、見た生き物 SEEN、開発用モード DEVALL、
  * それと今の探索の伝説の物 LEGEND（これは保存しない）。
- * 本当の初めの値は、古い JS が localStorage から読んでその場で入れる（META・DEVALL は 17-meta.js、BOOK は 19-hands-runes.js、
+ * 本当の初めの値は、古い JS が localStorage から読んでその場で入れる（META・DEVALL は src/lib/intro.ts の initIntro、BOOK は 19-hands-runes.js、
  * SEEN・RSEEN は 25-gallery.js）。ここの値は仮 */
 export interface Saved {
   META: Meta;
@@ -1261,52 +1410,78 @@ export interface Buf {
   pN: number;
 }
 export const buf: Buf = { dn: 0, pN: 0 };
-/** three.js のカメラのうち、TypeScript が使う欄だけ（本物は 05-renderer.js が作る PerspectiveCamera。位置と向きは src/lib/player.ts が set で書く） */
+/** three.js のカメラのうち、TypeScript が使う欄だけ（本物は src/lib/render.ts の initRenderer が作る PerspectiveCamera。位置と向きは src/lib/player.ts が set で書く） */
 export interface CameraView {
-  readonly position: { readonly x: number; readonly y: number; readonly z: number; set(x: number, y: number, z: number): unknown };
-  readonly rotation: { set(x: number, y: number, z: number): unknown };
-  /** 画面の横と縦の比（本物のカメラだけにある。手元の武器を細い画面で縮める src/lib/held.ts が読む） */
-  readonly aspect?: number;
+  readonly position: Vector3;
+  readonly rotation: Euler;
+  /** 画面の横と縦の比（手元の武器を細い画面で縮める src/lib/held.ts が読む）と、縦の画角（度） */
+  aspect: number;
+  readonly fov: number;
+  readonly projectionMatrix: Matrix4;
+  readonly matrixWorldInverse: Matrix4;
+  updateProjectionMatrix(): void;
+  updateMatrixWorld(): void;
 }
-/** three.js の、マスの火・灰・変わり方を描画に渡す絵（DataTexture）のうち、TypeScript が書く欄だけ（本物は 05-renderer.js が作る。中身は cellData） */
+/** three.js の、マスの火・灰・変わり方を描画に渡す絵（DataTexture）のうち、TypeScript が書く欄だけ（本物は src/lib/render.ts の initRenderer が作る。中身は cellData） */
 export interface CellTex {
   needsUpdate: boolean;
 }
-/** 描画の部品（three.js の物）と描き方の切り替え：カメラ camera とマスの絵 cellTex（本当の値は 05-renderer.js がその場で入れる。ここの値は仮）と、
+/** 描画の部品（three.js の物）と描き方の切り替え：カメラ camera とマスの絵 cellTex（本当の値は src/lib/render.ts の initRenderer がその場で入れる。ここの値は仮）と、
  * 生き物の体だけを描くか drawBodyOnly（まわりの飾り・強い個体の輪・頭の上の印を描かない。__test.monsterView だけが入れる） */
 export interface Gfx {
   camera: CameraView;
   cellTex: CellTex;
   drawBodyOnly: boolean;
-  /** ここから下は、05-renderer.js・30-loop-init.js・06-world.js がその場で入れる three.js の物（入れるまでは null・undefined か空）。
+  /** ここから下は、src/lib/render.ts の initRenderer と src/lib/boot.ts の init がその場で入れる three.js の物（水面は init が呼ぶ src/lib/render.ts の makeWater）（入れるまでは null・undefined か空）。
    * 描画する部品（WebGL を使えない時は作れず、ゲームは始まらない） */
   renderer: WebGLRenderer | undefined;
-  /** 描く物を入れる場面（05-renderer.js が作る。three.js は物を作る時に Math.random を引くので、テスト用モードの乱数の入れ替えの後に作る） */
+  /** 描く画面（#gl。src/lib/render.ts の initRenderer が document から読む） */
+  canvas: HTMLCanvasElement | null;
+  /** 描く物を入れる場面（src/lib/render.ts の initRenderer が作る。three.js は物を作る時に Math.random を引くので、テスト用モードの乱数の入れ替えの後に作る） */
   scene: Scene | null;
   /** 描画の全部の部品が分け合う値（シェーダーの uniform） */
   U: Uniforms | null;
-  /** 階の文字の部品（30-loop-init.js の init が作る）と、壁の向こうを隠す板の部品 */
+  /** 階の文字の部品（src/lib/boot.ts の init が作る）と、壁の向こうを隠す板の部品 */
   staticMat: ShaderMaterial | undefined;
   occMat: ShaderMaterial | undefined;
   /** 画面の最後の後処理（露出・熱のゆらぎ・水中・傷の赤み・詠唱の間の色） */
   finalPass: ShaderPass | null;
+  /** 描く細かさ（画面の倍率。遅い端末では src/lib/quality.ts が下げる）と、作り直した大きさ（'横x縦@細かさ'。src/lib/loop.ts の applySize） */
+  pixelRatio: number;
+  sizedAs: string;
+  /** 後処理をつなぐ部品と、光のにじみ（遅い端末では切る） */
+  composer: EffectComposer | null;
+  bloom: UnrealBloomPass | null;
+  /** 画質を下げる途中の状態（src/lib/quality.ts の stepQuality） */
+  qRun: QualityRun;
+  /** 置いた文字を描く形と、その属性（位置・色・大きさなど。src/lib/render.ts の flushDyn が数を渡す）と、置いた文字と粒子の部品 */
+  dynGeo: InstancedBufferGeometry | null;
+  aPos: InstancedBufferAttribute | null;
+  aCol: InstancedBufferAttribute | null;
+  aPar: InstancedBufferAttribute | null;
+  dynMat: ShaderMaterial | undefined;
+  ptMat: ShaderMaterial | undefined;
+  /** 水面 */
+  waterMesh: Mesh | null;
+  /** テスト用モードの __test.cam で置いたカメラ（位置 pos・見る点 at・置いた時の階 lvl。null ならふだんどおり。src/lib/loop.ts の withTestCam） */
+  testCam: { pos: [number, number, number]; at: [number, number, number]; lvl: Level | null } | null;
   /** 階の文字を区切りごとにまとめた物（区切りの文字の数 count と、区切りを包む球 sphere。球で、見えない区切りを描かない）と、壁の向こうを隠す板（src/lib/build.ts の buildWorld が作る） */
   chunks: { mesh: Mesh; count: number; sphere: Sphere }[];
   occMesh: Mesh | null;
-  /** 水面の絵（マスごとの水の深さ・流れ・湖か・藻と、灯りの番号と重み。06-world.js の makeWater が作り、src/lib/build.ts の updateWater が書く） */
+  /** 水面の絵（マスごとの水の深さ・流れ・湖か・藻と、灯りの番号と重み。src/lib/render.ts の makeWater（src/lib/boot.ts の init が呼ぶ）が作り、src/lib/build.ts の updateWater が書く） */
   waterTex: DataTexture | null;
   waterLTex: DataTexture | null;
   /** その階の霧の濃さの基 */
   fogBase: number;
   /** 粒子（塵・ガス・そのほか）を描く形と、その位置・色・大きさ・文字の属性（中身は src/lib/particles.ts の ptPos・ptCol・ptSize・ptGly。
-   * 05-renderer.js が作り、src/lib/motes.ts の updateParticles が描く数を書く） */
+   * src/lib/render.ts の initRenderer が作り、src/lib/motes.ts の updateParticles が描く数を書く） */
   ptGeo: BufferGeometry | null;
   bpPos: BufferAttribute | null;
   bpCol: BufferAttribute | null;
   bpSize: BufferAttribute | null;
   bpGly: BufferAttribute | null;
 }
-/** 描画の部品が分け合う値（シェーダーの uniform。05-renderer.js が作る） */
+/** 描画の部品が分け合う値（シェーダーの uniform。src/lib/render.ts の initRenderer が作る） */
 export interface Uniforms {
   uCell: { value: unknown };
   uCollT: { value: number };
@@ -1325,15 +1500,40 @@ export interface Uniforms {
   uAmb: { value: number };
 }
 export const gfx: Gfx = {
-  camera: { position: { x: 0, y: 0, z: 0, set: () => undefined }, rotation: { set: () => undefined } },
+  // 仮のカメラ（本物の PerspectiveCamera は、作る時に Math.random を引くので、src/lib/render.ts の initRenderer がテスト用モードの乱数の入れ替えの後に作る。
+  // Vector3・Euler・Matrix4 は乱数を引かない）
+  camera: {
+    position: new Vector3(),
+    rotation: new Euler(),
+    aspect: 1,
+    fov: 74,
+    projectionMatrix: new Matrix4(),
+    matrixWorldInverse: new Matrix4(),
+    updateProjectionMatrix: () => undefined,
+    updateMatrixWorld: () => undefined,
+  },
   cellTex: { needsUpdate: false },
   drawBodyOnly: false,
   renderer: undefined,
+  canvas: null,
   scene: null,
   U: null,
   staticMat: undefined,
   occMat: undefined,
   finalPass: null,
+  pixelRatio: 1,
+  sizedAs: '',
+  composer: null,
+  bloom: null,
+  qRun: { q: { pr: 1, bloom: true }, prev: null, done: false },
+  dynGeo: null,
+  aPos: null,
+  aCol: null,
+  aPar: null,
+  dynMat: undefined,
+  ptMat: undefined,
+  waterMesh: null,
+  testCam: null,
   chunks: [],
   occMesh: null,
   waterTex: null,
@@ -1349,7 +1549,7 @@ export const gfx: Gfx = {
 export const cellData = new Uint8Array(NCELL * 4);
 /** 薄い氷のマスに乗っていた秒（マス → 秒。src/lib/ground.ts の crackIce。src/lib/levels.ts の newLevel が階ごとに空にする）。丸ごと入れ替えない */
 export const iceT = new Map<number, number>();
-/** 灯りを描画に渡す配列（src/lib/lightmap.ts の updateLights が毎フレーム書き、05-renderer.js の U が描画に渡す）。丸ごと入れ替えない。
+/** 灯りを描画に渡す配列（src/lib/lightmap.ts の updateLights が毎フレーム書き、src/lib/render.ts の initRenderer が作る U が描画に渡す）。丸ごと入れ替えない。
  * SL：階の灯りの色と強さ（灯り1つに3つ）、DLP：動く灯りの位置と届く距離（1つに4つ。0番は手元の灯り、最後は稲妻の光り）、DLC：動く灯りの色（1つに3つ） */
 export const SL = new Float32Array(NSL * 3),
   DLP = new Float32Array(NDL * 4),

@@ -1,7 +1,7 @@
 // 見た時の説明（もとは src/game/29-look.js の look）：目（カメラ）から見ている向きに、生き物・備品・扉・巣・罠・床の物・鉄格子を球で当て、
 // その手前の壁・床・天井・柱・飾り・結晶・裂け目・ガスを進んで調べ、一番近い物の説明を、0.5秒見続けたら画面に出す。照準の先の生き物（ui.aimMon）も入れる。
 // 状態の入れ物 ui（説明の状態と出す所 lookEl、照準の先の生き物）・gfx（カメラの位置。読むだけ）・here（今の階）・player・blaze（火と灰）・adv（年代記）・clock に頼る。
-// 呼ぶのは古い JS のメインループ（30-loop-init.js の tick）。
+// 呼ぶのはメインループ（src/lib/loop.ts の tick）。
 import { lookup, must, nth } from './array.ts';
 import { guardedNow } from './altars.ts';
 import type { Door, Fixture, Item, Trap } from './generate.ts';

@@ -20,7 +20,7 @@ const GAME_DIR = join(import.meta.dirname, '..', 'src/game');
 
 // 決まった値か（入れ物に移してよい初めの値）：数・文字列・true などと、それだけでできた配列・オブジェクト、-1 のような符号、空の new Set()・new Map()。
 // 名前の読み取り（Math.random・undefined 以外の名前）、関数の呼び出し、ほかの new などは決まった値ではない（その場に残す）
-const fixed = (n) => {
+export const fixed = (n) => {
   switch (n.type) {
     case 'Literal':
       return true;

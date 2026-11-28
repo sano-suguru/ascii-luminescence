@@ -3,7 +3,7 @@
 // 祭壇・泉・宝物庫・番人のいる褒美・墓は 20m から（分かれ道では 1.5 倍）、後の4つは見るまで '?'。見通せる所にある物には矢印を出さない。
 // 描くのは、ゲームの画面に重ねた 2D のキャンバス（#arrows）。キャンバスと描き手と下の HUD は、22-world-hints.js が document から ui に入れる
 // （下の HUD の大きさの変わり目を見る ResizeObserver も、そこで作る）。
-// 状態の入れ物 ui・here・player・adv に頼る。呼ぶのは古い JS（30-loop-init.js の tick の段 'runes'）。
+// 状態の入れ物 ui・here・player・adv に頼る。呼ぶのは src/lib/loop.ts の tick（段 'runes'）。
 import { must, nth } from './array.ts';
 import { aimOrigin, losClear, viewDir } from './aim.ts';
 import { clamp } from './rng.ts';

@@ -2,7 +2,7 @@
 // 形の点を、体の部位ごとの動き（歩く・揺れる・羽ばたく・回るなど）で動かし、向きと大きさを掛けて、世界の中に文字を置く（dyn）。
 // まわりの飾り（auras.ts）・頭の上の印（status.ts の drawMark）・姿を変える途中（drawMorph）・照準の先の輪・強い個体の輪・剣を操る者の剣・深みの主の触手・クラーケンの立ち上がる腕も、ここから描く。
 // 状態の入れ物 player・clock・ui（照準の先の生き物 aimMon）・gfx（カメラの位置。読むだけ。体だけを描くか drawBodyOnly）に頼る。
-// 呼ぶのは古い JS の描画（30-loop-init.js の tick）と、テストの道具（__test.monsterView）。
+// 呼ぶのは描画（src/lib/loop.ts の tick）と、テストの道具（__test.monsterView）。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
 import { lookup, must, nth } from '../array.ts';
 import { G, SWAPSET } from '../glyphs.ts';
@@ -108,7 +108,7 @@ export function krakenArms(m: Mon, t: number): void {
   });
 }
 
-/** 生き物を描く：近接の攻撃を溜めている間は頭の上に !、当たって光っている間は HIT_GLOW 倍の明るさで描く（__test.hideMonster で隠した物は描かない） */
+/** 生き物を描く：近接の攻撃を溜めている間は頭の上に !、当たって光っている間は明るく描く（hitGlow。__test.hideMonster で隠した物は描かない） */
 export function drawMonster(m: Mon, t: number): void {
   if (m.drawHide) return; // __test.hideMonster: not drawn for a moment (its light stays)
   if ((m.wind ?? NaN) > 0) {
@@ -127,24 +127,24 @@ export function drawMonster(m: Mon, t: number): void {
               : markHeight(m.ty));
     dyn(m.x, h, m.z, G('!'), 0.5, 3.2, 0.6, 0.4);
   }
-  if ((m.hitT ?? NaN) > 0) {
-    const g0 = m.glow;
-    m.glow *= glowBoost(m, HIT_GLOW);
-    drawMonster1(m, t, true);
-    m.glow = g0;
-    return;
-  }
-  drawMonster1(m, t);
+  drawMonster1(m, t, hitGlow(m));
 }
-/** 当たって光っている間の明るさの倍率。照準の先の倍率 AIM_GLOW とは掛け合わせない（掛け合わせると、光のにじみで体が白く飛ぶ。pnpm glare で数える） */
+/** 当たって光っている間の明るさの倍率の山 */
 const HIT_GLOW = 2.4;
+/** 当たって光る残りの秒がこれより短くなると、倍率を 1 へ下げていく（当たって光るのは 0.22 から 0.35 秒なので、初めの 0.12 から 0.25 秒は山のまま） */
+const HIT_FADE = 0.1;
 /** 照準の先の明るさの倍率 */
 const AIM_GLOW = 1.9;
+/** 当たって光っている間の明るさの倍率（光っていなければ 1） */
+function hitGlow(m: Mon): number {
+  const ht = m.hitT ?? 0;
+  return ht > 0 ? 1 + (HIT_GLOW - 1) * clamp(ht / HIT_FADE, 0, 1) : 1;
+}
 /**
  * 明るくする倍率 k を、画面での見かけの大きさ（体の大きさ ÷ カメラからの床の上の距離）で弱めた物。見かけが BIG[0] までは k のまま、BIG[1] で増やす分を BIG[2] 倍にする
- * （大きな体がすぐ近くで画面を覆うと、同じ倍率でも光のにじみで画面が白く飛ぶため。トロルが 1.8 の所で見かけ 0.89）
+ * （大きな体が近くで画面を覆うと、同じ倍率でも、たくさんの文字の光が重なって、光のにじみで体が白く飛ぶため。トロルが 4.5 の所で見かけ 0.36、1.8 の所で 0.89）
  */
-const BIG = [0.4, 0.9, 0.25] as const;
+const BIG = [0.2, 0.6, 0.25] as const;
 function glowBoost(m: Mon, k: number): number {
   const cam = gfx.camera.position,
     size = m.ty.scale / Math.max(0.5, Math.hypot(m.x - cam.x, m.z - cam.z)),
@@ -152,33 +152,30 @@ function glowBoost(m: Mon, k: number): number {
   return 1 + (k - 1) * (1 - (1 - BIG[2]) * f);
 }
 /**
- * 生き物を描く（続き）：深みの主の触手とクラーケンの立ち上がる腕、遠い小さな生き物は描かない、照準の先の生き物は明るく描いて足もとに輪を足す
- * （明るさは見かけが大きいほど弱める。hit が真なら、当たって光っている間なので、照準の先でも明るさは重ねず、輪だけを足す）
+ * 生き物を描く（続き）：深みの主の触手とクラーケンの立ち上がる腕、遠い小さな生き物は描かない、照準の先の生き物と当たって光っている生き物は明るく描き、照準の先なら足もとに輪を足す。
+ * 明るくする倍率は、当たって光る倍率 hitK と照準の先の倍率 AIM_GLOW の大きい方で（掛け合わせない）、見かけが大きいほど弱め、気づいている度合いの明るさ m.glow に掛けずに足す
+ * （掛けると、気づいた敵に照準を合わせたり当てたりした時に、光のにじみで体が白く飛ぶ。pnpm glare で数える）
  */
-export function drawMonster1(m: Mon, t: number, hit = false): void {
-  const aimK = hit ? 1 : glowBoost(m, AIM_GLOW);
-  if (m.ty.habitat === 'deep' && Math.hypot(m.x - player.x, m.z - player.z) < 44) {
-    // 照準の先なら、体と同じく明るく（クラーケンの立ち上がる腕は m.glow を読む）
-    const g0 = m.glow;
-    if (m === ui.aimMon && !m.hidden) m.glow *= aimK;
+export function drawMonster1(m: Mon, t: number, hitK = 1): void {
+  const aimed = m === ui.aimMon && !m.hidden,
+    add = glowBoost(m, Math.max(hitK, aimed ? AIM_GLOW : 1)) - 1,
+    g0 = m.glow;
+  m.glow += add;
+  // 触手とクラーケンの立ち上がる腕も、体と同じく明るく（m.glow を読む）
+  if (m.ty.habitat === 'deep' && Math.hypot(m.x - player.x, m.z - player.z) < 44)
     (m.ty.form === 'kraken' ? krakenArms : drawTentacles)(m, t);
-    m.glow = g0;
-  }
-  if (m.ty.critter && Math.hypot(m.x - player.x, m.z - player.z) > 30) return;
-  if (m === ui.aimMon && !m.hidden) {
-    const g0 = m.glow;
-    m.glow *= aimK;
-    drawMonster0(m, t);
-    m.glow = g0;
+  const far = m.ty.critter && Math.hypot(m.x - player.x, m.z - player.z) > 30;
+  if (!far) drawMonster0(m, t);
+  m.glow = g0;
+  if (far) return;
+  if (aimed) {
     const sc = m.ty.scale,
       c = m.ty.col;
     for (let k = 0; k < 12; k++) {
       const a = (k / 12) * Math.PI * 2 + t * 0.8;
       dyn(m.x + Math.cos(a) * 0.75 * sc, m.y + 0.5 * sc, m.z + Math.sin(a) * 0.75 * sc, G('.'), 0.12, c[0] * 2.4, c[1] * 2.4, c[2] * 2.4);
     }
-    return;
   }
-  drawMonster0(m, t);
 }
 /**
  * 生き物の体を描く：眠っている姿と目覚める変身（竜と忘れられた獣）、まわりの飾りと強い個体の輪（体だけを描く時は描かない）、化けた巻物、
@@ -302,7 +299,7 @@ export function drawMonster0(m: Mon, t: number): void {
       case 'eelw':
         lx += Math.sin(t * 4 - p.z * 3.5 + m.ph) * 0.09 * (0.4 + Math.max(0, 0.8 - p.z));
         break;
-      // 尾（サラマンダー・ネズミ）：付け根では動かず、先ほど大きく左右に振れる（piv は付け根からの距離）。歩く時は体と一緒に上下する
+      // 尾（サラマンダー・ネズミ・ジャッカル）：付け根では動かず、先ほど大きく左右に振れる（piv は付け根からの距離）。歩く時は体と一緒に上下する
       case 'tailw':
         lx += tailSwish(m, t, p.piv);
         ly += bob;

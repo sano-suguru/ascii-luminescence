@@ -28,7 +28,7 @@ export interface Meta {
   grave: Grave | null;
   /** 選んでいる試練（UNLOCKS の t） */
   trials: string[];
-  /** 指で遊ぶ時の始めの一言を、もう出したか（src/game/17-meta.js の touchTip） */
+  /** 指で遊ぶ時の始めの一言を、もう出したか（src/lib/intro.ts の touchTip） */
   touchTip?: boolean;
 }
 /** 墓（倒れた層 k・深さ・倒れた訳と、残したルーン。次の探索の同じ深さに置く） */
