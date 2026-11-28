@@ -48,7 +48,7 @@ src/lib/*.ts         ゲーム本体（TypeScript）。厳しい型で確かめ�
                      altars：祭壇とルーンを置く（階ごとに置く placeRunesForLevel・mainPathAltars、祭壇の中身 altarFill・番人・鍛え方・泉・石碑のそばか nearStele・祭壇の画面の1行と説明、拾ったルーンを手か袋に入れる takeRune）、
                      pickup：足元の物を拾う pickupItems・物を取る grabItem・宝物庫の褒美を取った時 vaultSprung・落石 updateRockfall・空の枠を拾った時 openSlot・伝説の物を手にした時 pickLegend、
                      levels：階のシード levelSeed と最深部か isFinal と特別な階の場所 interAt・interAfter と、階を移る処理（新しい階 newLevel・次の場所へ進む advance・場所の名前 placeKey・階を作る generate・最深部の支度 setupFinal・最深部を進める updateFinal・王の影を立ち上がらせる spawnFinalBoss・層の名前 showStratum・部屋の出来事 initEvents・見えるマス computeFOV・階の中の出来事 checkEvents・層で強くなる strataGrowth・選ばれなかった枠 settleSlotPick・死んだ時 die・新しい探索 newRun）、
-                     monsters：生き物の処理（強さ statOf・作る makeMonster・歩いて行けるか canStep・次に向かうマス chooseNext・critterStep・猟犬が追う匂い houndScent・近くの火 fireNear・敵か hostile・攻撃の的か foe・呼び出す summon・生き物の動き updateMonster・視界の中でも体が描かれないか bodyUnseen（m.visible と目の慣れが使う））と加護の段 BL、
+                     monsters：生き物の処理（強さ statOf・作る makeMonster・歩いて行けるか canStep・歩いて何歩で行けるか walkSteps（掃除機と修復機が、行ける仕事を選び、道なりに向かうのに使う）・次に向かうマス chooseNext・critterStep・猟犬が追う匂い houndScent・近くの火 fireNear・敵か hostile・攻撃の的か foe・呼び出す summon・生き物の動き updateMonster・視界の中でも体が描かれないか bodyUnseen（m.visible と目の慣れが使う））と加護の段 BL、
                      ground：地面と小さな生き物（小さな生き物の動き updateCritter・掃除機と修復機の仕事 machineWork・水しぶき splash・火をつける ignite・マスの絵を描画に渡す uploadCells・氷が割れる crackIce・茂み tallAt・trample・硫黄が燃え上がる brimFlare・冷気 chillArea・凍らせた水が溶ける updateFrozen・階に入った時の燃える物のマス initFire・火を進める stepFire・ガスが広がる stepGas・踏み分けた茂みが戻る regrow・燃えた硫黄が戻る brimRecover）、
                      hands：手元の武器の文字と形と色の表（武器ごとの形 VM_MODELS・部位ごとの色と明るさ・弦を引く手 VM_FIST）、
                      held：手元の武器を描く drawViewWeapons（壁が近いと縮め、詠唱・振る・撃った跳ねで動かし、性質の火花を出す）、
@@ -234,6 +234,8 @@ tests/unit/panels.test.mjs  レベルアップ・祭壇・メニューのパネ�
                      恩恵とルーン・続けてもう一度・指の2回押し）・祭壇の画面（開く距離・やめる・右クリック・離れるまで開かない・止まっている間・選ぶ）・メニューの全部の項目と
                      確かめ待ちが4秒で戻る・タイトルに戻る・火の中で焼ける、の場面を通す。偽の画面の部品は、書いた HTML からボタンと説明の欄を読み取り、listener に偽のイベントを渡す。
                      新しい階・新しい探索・装備の画面の開け閉めは vi.mock で、呼んだ記録だけ取る物にする。迷宮の生成を変えると、この指紋も変わる）を使う
+tests/unit/machines.test.mjs  掃除機と修復機の単体テスト。本物の階に壁で囲んだ区画を書き込み、壁の向こうの近い仕事より手前の行ける仕事を選ぶか・U字の壁の奥からも回り込むか・
+                     向かう途中で道に火が回ると仕事を手放し、火が消えればまた向かうか・向かっている仕事をほかの物が先に片付けたら着く前に手放すか・壁の無い所の仕事を今までどおりこなすかを、updateCritter を直に呼んで確かめる
 tests/unit/lava.test.mjs  溶岩の流れ（火口の噴き上がりと部屋の出来事の流れ）と吹き飛ばしの単体テスト。Node で生成した火山の異界の階に、壁で囲んだ床の区画を書き込み、
                      生き物・出来事を置いて updateEvents・updateStatuses を直に呼ぶ（updateMonster は呼ばないので、生き物は置いた所から動かない）。溶岩に住む生き物のマスに流す・
                      重なる2つの火口がずれて噴き上がる・部屋の出来事の流れと噴き上がりが重なる・速さが 0 になるフレームに壁や溶岩へ入る・両側に溶岩がある・体の真ん中が溶岩に入っている、の場面

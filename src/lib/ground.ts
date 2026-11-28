@@ -13,7 +13,7 @@ import { boom } from './combat.ts';
 import { G } from './glyphs.ts';
 import { msg } from './log.ts';
 import { lerpAngle } from './math.ts';
-import { critterStep } from './monsters.ts';
+import { critterStep, jobCells, jobReach, walkSteps } from './monsters.ts';
 import { mname } from './names.ts';
 import { spawn } from './particles.ts';
 import { mpick, mr } from './random.ts';
@@ -219,11 +219,11 @@ export function updateCritter(m: Mob, dt: number, t: number, dp: number): void {
     ty.critter === 'fish' ? 1.4 + 0.4 * Math.sin(t * 3 + m.ph) : ty.critter === 'grazer' ? 1.5 + 0.3 * Math.sin(t * 1.2 + m.ph) : 1.2;
 }
 /**
- * 掃除機と修復機の仕事（dt 秒）。掃除機は灰と火を消し、修復機は焼け落ちた扉を作り直す。仕事の所にいる間は true（動かない）。
- * 仕事が無ければ、1.5秒ごとに近くの仕事を探す（掃除機は10マス以内の一番近い灰か火、修復機は40以内の一番近い焼け落ちた扉）
+ * 掃除機と修復機の仕事（dt 秒）。掃除機は灰を片付け（燃え残りの火も消す）、修復機は焼け落ちた扉を作り直す。仕事の所にいる間は true（動かない）。
+ * 仕事が無ければ、1.5秒ごとに近くの仕事を探す（掃除機は上下左右10マスの枠の中の灰、修復機は直線で40（20マス）以内の焼け落ちた扉。そのうち歩いて行ける
+ * （jobReach の歩数以内）一番歩数の少ない物。修復機は扉の両側のマスのどちらかへ。燃えているマスには入れないので、選ばない）
  */
 export function machineWork(m: Mob, dt: number): boolean {
-  // cleaners clear ash and put out fires; engineers rebuild burnt doors
   const ty = m.ty;
   if (m.job !== undefined && m.job >= 0) {
     const [jx, jz] = ty.critter === 'engineer' ? [nth(level().doors, m.job).bx, nth(level().doors, m.job).bz] : cpos(m.job);
@@ -277,37 +277,32 @@ export function machineWork(m: Mob, dt: number): boolean {
   }
   if (clock.time - (m.scanT || -9) < 1.5) return false;
   m.scanT = clock.time;
+  // 歩いて行ける仕事だけを、歩数の少ない順に（同じなら扉の番号・マスの順）
+  const steps = walkSteps(m, [m.cz * MW + m.cx], jobReach(m));
+  let bi = -1,
+    bd = 1e9;
+  const take = (k: number, s: number): void => {
+    if (s >= 0 && s < bd) {
+      bd = s;
+      bi = k;
+    }
+  };
   if (ty.critter === 'engineer') {
-    let bi = -1,
-      bd = 1e9;
     level().doors.forEach((d, k) => {
-      if (!d.gone) return;
-      const dd = Math.hypot(d.bx - m.x, d.bz - m.z);
-      if (dd < bd && dd < 40) {
-        bd = dd;
-        bi = k;
-      }
+      if (!d.gone || Math.hypot(d.bx - m.x, d.bz - m.z) >= 40) return;
+      for (const i of jobCells(m, k)) take(k, steps[i] ?? -1);
     });
-    m.job = bi;
   } else {
-    let bi = -1,
-      bd = 1e9;
     for (let dz = -10; dz <= 10; dz++)
       for (let dx = -10; dx <= 10; dx++) {
         const x = m.cx + dx,
           z = m.cz + dz;
         if (x < 0 || z < 0 || x >= MW || z >= MH) continue;
         const i = z * MW + x;
-        if (!blaze.burnt[i] && !((blaze.fire[i] ?? NaN) > 0.1)) continue;
-        if (level().tile[i] !== TF) continue;
-        const dd = Math.abs(dx) + Math.abs(dz);
-        if (dd < bd) {
-          bd = dd;
-          bi = i;
-        }
+        if (blaze.burnt[i] && level().tile[i] === TF) take(i, steps[i] ?? -1);
       }
-    m.job = bi;
   }
+  m.job = bi;
   return false;
 }
 /** 水しぶき（x・z。24 より近ければ音も、26 より遠ければ粒子を出さない）。色 c は使わない（しぶきはいつも水の色） */
