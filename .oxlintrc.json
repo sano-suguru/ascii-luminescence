@@ -83,7 +83,7 @@
     },
     {
       // 主を本当にいる場所で写す道具・手触りの試し打ち：page.evaluate の中で __test と dbg を使う
-      "files": ["tools/lords.mjs", "tools/feel.mjs", "tools/field.mjs", "tools/glare.mjs"],
+      "files": ["tools/lords.mjs", "tools/feel.mjs", "tools/field.mjs", "tools/glare.mjs", "tools/zap.mjs"],
       "globals": { "__test": "readonly", "dbg": "readonly" }
     },
     {
