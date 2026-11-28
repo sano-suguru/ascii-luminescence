@@ -81,6 +81,7 @@ describe('Vite の組み立て（公開用と同じ設定）', () => {
         for (const m of l.matchAll(/function ([A-Za-z_$][\w$]*)/g)) {
           const at = m.index + 9,
             p = originalPosition(map, i + 1, at);
+          if (!p) throw new Error(`組み立てた JS の ${i + 1} 行目の function ${m[1]} に、元の場所が無い`);
           if (THREE_SRC.test(p.source)) continue;
           const src = (cache[p.source] ??= readFileSync(join(ROOT, p.source), 'utf8').split('\n'))[p.line - 1];
           expect(src.slice(p.column, p.column + m[1].length)).toBe(m[1]);
