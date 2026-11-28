@@ -229,8 +229,6 @@ export interface Ui {
   dragging: boolean;
   lmx: number;
   lmy: number;
-  /** 左のボタンを押した所（書くだけで、読む所は無い） */
-  downAt: [number, number] | null;
   /** タイトルの画面に出している物（'main'：タイトル、'unlock'：解放の画面） */
   introMode: 'main' | 'unlock';
   /** 指で遊んでいるか（指で触れたら true、マウスを動かしたら false。src/lib/touch.ts。この間は tryLock が捕まえにいかない） */
@@ -354,7 +352,6 @@ export const ui: Ui = {
   dragging: false,
   lmx: 0,
   lmy: 0,
-  downAt: null,
   introMode: 'main',
   touch: false,
   portrait: false,

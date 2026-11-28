@@ -150,8 +150,7 @@ export function drawCastFx(t: number): void {
     full = gear.castSt.full;
   // the circle at the hand
   const P = castPoint(gear.castSt.h, k),
-    // @ts-expect-error -- 古い JS のまま（前の向き f は使っていない）
-    [f, r, u] = handUp(),
+    [, r, u] = handUp(),
     H = gear.hands[gear.castSt.h],
     rs = [H.elem].filter(Boolean).map((ru) => must(lookup(RUNE_DEF, must(ru, '手の性質のルーン').type).ch, 'ルーンの文字')),
     n = 12,

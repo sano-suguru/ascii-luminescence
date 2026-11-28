@@ -24,7 +24,7 @@ import { RUNE_TYPES, TRAITS } from '../../src/lib/runes.ts';
 import { SND, adv, blaze, buf, clock, fight, gear, gfx, here, keys, msgs, player, saved, stealth, ui, vfx } from '../../src/lib/state.ts';
 import { CELL, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MW, NCELL, SF_BRIM, SF_DEAD, SF_ICE, TF, TW, cpos } from '../../src/lib/world.ts';
 import { fakeAudioClass } from './fake-audio.mjs';
-import { fakeCamera, fakeDom, fakeTimers, fakeUniforms, fnv, hashArr, text } from './fight-cases.mjs';
+import { fakeCamera, fakeTimers, fakeUniforms, fnv, hashArr, text } from './fight-cases.mjs';
 import { PLACES, gen, loadEnv } from './gen-places.ts';
 import { swapGlobals } from './ui-cases.mjs';
 import { stateFp } from './case-out.mjs';
@@ -424,7 +424,7 @@ export async function stepCases(F, seeds, page) {
 
       // ---- 場面：詠唱（始められない時・素手・溜めの要らない武器・溜めて離す・溜めすぎる・持ち替えの途中）
       call('timeScale');
-      for (const [k, v] of [
+      for (const [k] of [
         ['dead', 1],
         ['trans', 1],
         ['started', 0],

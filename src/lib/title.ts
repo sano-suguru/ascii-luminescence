@@ -135,8 +135,6 @@ function buildDotLogo(el: HTMLElement): void {
     }
     sweep += 1.2;
     if (sweep > W + 30) sweep = -30;
-    // @ts-expect-error -- 古い JS から写した、使っていない変数（消すのは別のコミット）
-    const lit = new Set();
     cells.forEach((c) => {
       const x =
         c.dataset['x'] !== undefined

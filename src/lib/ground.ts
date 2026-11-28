@@ -397,8 +397,7 @@ export function brimFlare(i: number): void {
     const j = i + d[0] + d[1] * MW;
     if (level().surface[j] === SF_BRIM && (blaze.fuel[j] ?? NaN) > 0) ignite(j, 0.6, false);
   }
-  // oxlint-disable-next-line no-unused-expressions -- 古い JS の文のまま（tools/same-code.mjs が同じ文と見るため。sCrackleBurst はいつもある）
-  sCrackleBurst && sCrackleBurst(((i % MW) + 0.5) * CELL, (((i / MW) | 0) + 0.5) * CELL);
+  sCrackleBurst(((i % MW) + 0.5) * CELL, (((i / MW) | 0) + 0.5) * CELL);
   if (!here.brimMsg) {
     here.brimMsg = true;
     msg('<b style="color:#ffd04a">*</b>足元の硫黄が、ぼっと燃え上がった！ しばらくすると、また燃えるようになる。');

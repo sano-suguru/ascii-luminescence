@@ -11,7 +11,6 @@ import { addLooks } from '../../src/lib/bodies/build.ts';
 import { resetGlyphWork } from '../../src/lib/build.ts';
 import { MTYPES } from '../../src/lib/creatures.ts';
 import { getLegend } from '../../src/lib/legend.ts';
-import { P } from '../../src/lib/particles.ts';
 import { setSoundRand } from '../../src/lib/random.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 import { DUST_N } from '../../src/lib/shaders.ts';
@@ -41,7 +40,7 @@ import {
 import { T, fogCol } from '../../src/lib/three.ts';
 import { BRANCHES, CELL, FINAL_DEPTH, MH, MW, NCELL, REALMS, SF_HAY, TF, TP } from '../../src/lib/world.ts';
 import { fakeAudioClass } from './fake-audio.mjs';
-import { fakeCamera, fakeDom, fakeTimers, fakeUniforms, hashArr } from './fight-cases.mjs';
+import { fakeCamera, fakeTimers, fakeUniforms, hashArr } from './fight-cases.mjs';
 import { swapGlobals } from './ui-cases.mjs';
 import { stateFp } from './case-out.mjs';
 

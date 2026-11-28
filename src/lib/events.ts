@@ -612,8 +612,6 @@ export function updateTraps(dt: number): void {
       G2.open = true;
       G2.pulled = clock.time;
       sCreak(lx, lz);
-      // @ts-expect-error -- 古い JS のまま（使っていない。鉄格子のマスの位置）
-      const [gx, gz] = cpos(G2.cell);
       setTimeout(() => sRumble(0.25, 1.6), 500);
       msg('<b style="color:#ffd48a">/</b>壁のレバーを引いた。どこか遠くで、鉄格子が軋みながら上がっていく音がした。');
     }

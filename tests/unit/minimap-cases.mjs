@@ -9,7 +9,7 @@
 import { MTYPES } from '../../src/lib/creatures.ts';
 import { TRAP_INFO } from '../../src/lib/names.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
-import { blaze, here, lantern, player, ui } from '../../src/lib/state.ts';
+import { blaze, here, lantern, player } from '../../src/lib/state.ts';
 import {
   CELL,
   LQ_BOG,

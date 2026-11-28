@@ -282,10 +282,7 @@ export function initInput(): void {
       beginCast('L');
       return;
     }
-    if (e.button === 0) {
-      ui.downAt = [e.clientX, e.clientY];
-      beginCast('L');
-    }
+    if (e.button === 0) beginCast('L');
     ui.dragging = true;
     ui.lmx = e.clientX;
     ui.lmy = e.clientY;
@@ -298,7 +295,6 @@ export function initInput(): void {
       if (e.button === 0) releaseCast('L');
       if (e.button === 2) releaseCast('R');
     }
-    ui.downAt = null;
     ui.dragging = false;
     updateResume();
   });

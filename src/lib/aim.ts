@@ -216,8 +216,6 @@ export function aimTarget(): Mob | null {
   ui.crossMon = null;
   const [ox, oy, oz] = aimOrigin(),
     [vx, vy, vz] = viewDir();
-  // @ts-expect-error -- 古い JS のまま（使っていない。tools/same-code.mjs が同じ文と見るため）
-  let bd = 1e9;
   let ba = 1e9;
   for (const m of here.monsters) {
     if (!foe(m) || !m.visible) continue;

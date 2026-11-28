@@ -38,7 +38,7 @@ import {
 import { T } from '../../src/lib/three.ts';
 import { MH, MW, NCELL } from '../../src/lib/world.ts';
 import { fakeAudioClass } from './fake-audio.mjs';
-import { fakeDom, fakeTimers, fakeUniforms, fnv, hashArr } from './fight-cases.mjs';
+import { fakeTimers, fakeUniforms, fnv, hashArr } from './fight-cases.mjs';
 import { swapGlobals } from './ui-cases.mjs';
 import { advance, newLevel, showStratum } from '../../src/lib/levels.ts';
 import { boom, hurtPlayer, monsterStrike } from '../../src/lib/combat.ts';

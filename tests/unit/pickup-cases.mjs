@@ -42,8 +42,6 @@ export const NAMES = [
   'updateFinal',
   'spawnFinalBoss',
 ];
-/** 確かめる関数の名前と、関数が覚える状態の名前 */
-export const LEGACY_NAMES = [...NAMES, 'rockfall', 'rallyShown', 'rallyChime', 'slotPickN'];
 const LEGENDS = ['candle', 'bell', 'mirror'];
 
 /** makeF：場合ごとに呼ぶ、関数をまとめた物を返す関数（async でもよい）。seeds：場合の数。page：fakeDom() の偽の画面 */

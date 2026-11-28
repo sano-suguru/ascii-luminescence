@@ -258,8 +258,7 @@ export function drawWave(p: Proj): void {
     }
     return;
   }
-  // @ts-expect-error -- 古い JS のまま（前の向き cf は使っていない）
-  const [cf, cr, cu] = handUp(),
+  const [, cr, cu] = handUp(),
     grow = 1 + 0.5 * (1 - life),
     W = (p.cw || 1.2) * grow,
     half = W / 2,

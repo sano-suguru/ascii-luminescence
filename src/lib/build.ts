@@ -1246,12 +1246,6 @@ export function buildWorld(): void {
             );
           }
       } else if (liquid[i] === LQ_WATER) {
-        const lake = th && (th.k === 'lake' || level().stratum.k === 'cavern'),
-          // @ts-expect-error -- 古い JS のまま（使っていない。tools/same-code.mjs が同じ文と見るため）
-          wc = lake ? [0.22, 0.72, 1.0] : [0.28, 0.62, 1.0];
-        // @ts-expect-error -- 古い JS のまま（使っていない。tools/same-code.mjs が同じ文と見るため）
-        const wn = level().stratum.flood ? 3 : 4,
-          ws = level().stratum.flood ? 0.6 : 0.5;
         // the surface itself is drawn by the water plane
       } else if (surface[i] === SF_ICE) {
         const tn = level().thin[i];

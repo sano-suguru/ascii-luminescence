@@ -18,7 +18,7 @@ import { SND, adv, buf, clock, fight, gear, gfx, here, msgs, player, saved, ui, 
 import { T } from '../../src/lib/three.ts';
 import { MH, MW, NCELL } from '../../src/lib/world.ts';
 import { fakeAudioClass } from './fake-audio.mjs';
-import { fakeCamera, fakeDom, fakeTimers, fakeUniforms, fnv, hashArr } from './fight-cases.mjs';
+import { fakeCamera, fakeTimers, fakeUniforms, fnv, hashArr } from './fight-cases.mjs';
 import { swapGlobals } from './ui-cases.mjs';
 
 /** 確かめる関数の名前（場合が全部を呼ぶか、gallery.test.mjs が確かめる） */
