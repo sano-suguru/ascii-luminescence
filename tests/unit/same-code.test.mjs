@@ -445,6 +445,21 @@ describe('一番外の文を関数に包んで移した物（wrappedDecls）', (
       f: 1,
     });
   });
+  it('消した変数の宣言：初めの値が何もしない物は飛ばし、何かする物と、消えたファイルの文は違いとして出す', () => {
+    expect(wrap(`let unused=null; a();`, `a();`, `export function z() {}`).mismatches).toBe(0);
+    expect(wrap(`const unused=sideEffect(); a();`, `a();`, `export function z() {}`).mismatches).toBeGreaterThan(0);
+    const files = [{ file: 'src/lib/a.ts', text: 'export function z() {}' }];
+    expect(
+      wrappedDecls(
+        new Map([
+          ['01-a.js', 'a();'],
+          ['02-b.js', 'b();'],
+        ]),
+        new Map([['01-a.js', 'a();']]),
+        files,
+      ).mismatches.length,
+    ).toBe(1);
+  });
   it('前からある引数の無い呼び出し（古い版の次の文と同じ物）は、包んだ物と見ない', () => {
     expect(wrap(`addLooks(); a();`, `addLooks(); a();`, `export function addLooks() { x(); y(); }`)).toEqual({
       n: {},

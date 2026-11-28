@@ -42,7 +42,7 @@ import { basename, join, relative } from 'node:path';
 import * as eslintScope from 'eslint-scope';
 import { parseAst } from 'vite';
 import { gameParts, gameSource } from './game-source.mjs';
-import { stateMove } from './state-move.mjs';
+import { fixed, stateMove } from './state-move.mjs';
 
 const root = join(import.meta.dirname, '..');
 const WRAP = '(function(){\n';
@@ -163,10 +163,12 @@ export function wrappedDecls(oldGame, nowGame, files) {
     const text = `function ${name}(){\n${body}\n}`;
     decls.set(name, { node: parseAst(text, { lang: 'js' }).body[0], file, text, base: 0 });
   };
-  // 古い版の変数の宣言で、名前が今の古い JS にも渡した .ts にも出てこない物は、消した物（呼び出しの側の「消した」の一覧に出る）なので、突き合わせない
+  // 古い版の変数の宣言で、名前が今の古い JS にも渡した .ts にも出てこず、初めの値が決まった値（数・文字列・それだけの配列など。何もしない）の物は、
+  // 消した物（呼び出しの側の「消した」の一覧に出る）なので、突き合わせない。初めの値が何かする物（関数の呼び出しなど）は、消すと動きが変わるので突き合わせる
   const allNow = [...nowGame.values(), ...files.map((f) => f.text)].join('\n');
   const deletedVar = (x) =>
-    x?.node.type === 'VariableDeclaration' && x.node.declarations.every((d) => boundNames(d.id).every((nm) => !referenced(allNow, nm)));
+    x?.node.type === 'VariableDeclaration' &&
+    x.node.declarations.every((d) => (!d.init || fixed(d.init)) && boundNames(d.id).every((nm) => !referenced(allNow, nm)));
   for (const [file, nowText] of nowGame) {
     if (!/^\d{2}-[a-z0-9-]+\.js$/.test(file)) continue;
     const oldText = oldGame.get(file);
@@ -239,6 +241,10 @@ export function wrappedDecls(oldGame, nowGame, files) {
     }
     for (; i < olds.length; i++) if (!deletedVar(olds[i])) mismatches.push({ file, old: src(olds[i]), new: '（無い）' });
   }
+  // 古い版にあって、今は無いファイルの一番外の文も、どこにも突き合わないので出す
+  for (const [file, oldText] of oldGame)
+    if (/^\d{2}-[a-z0-9-]+\.js$/.test(file) && !nowGame.has(file))
+      for (const x of stmts(oldText, () => true)) if (!deletedVar(x)) mismatches.push({ file, old: src(x), new: '（ファイルが無い）' });
   return { decls, absorbed, mismatches };
 }
 
