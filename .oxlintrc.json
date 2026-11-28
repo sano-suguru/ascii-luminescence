@@ -86,6 +86,18 @@
       "globals": { "dbg": "readonly", "document": "readonly", "window": "readonly" }
     },
     {
+      // PV を撮る道具：ページの中に入れる道具（tools/pv/page.mjs）と page.evaluate の中で、__test・dbg と画面の部品を使う
+      "files": ["tools/pv.mjs", "tools/pv/**"],
+      "globals": {
+        "__test": "readonly",
+        "dbg": "readonly",
+        "document": "readonly",
+        "window": "readonly",
+        "localStorage": "readonly",
+        "__pv": "readonly"
+      }
+    },
+    {
       // 自動で試す台本をこの環境で流す道具：ページに差し込む見かけの時計（addInitScript）と page.evaluate の中で、ブラウザの名前を使う
       "files": ["tools/auto-run.mjs"],
       "globals": { "document": "readonly", "window": "readonly", "requestAnimationFrame": "readonly" }
