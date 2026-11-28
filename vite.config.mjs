@@ -1,13 +1,13 @@
-// 組み立て（Vite 8）。入口は src/index.html。ゲーム本体は tools/vite-plugins.mjs の legacyGame が1つのモジュールにする。
+// 組み立て（Vite 8）。入口は src/index.html（src/main.js が src/lib/boot.ts を読む）。
 //   vite build              -> dist/（公開用）
 //   vite build --mode test  -> .build/test/（テスト用。JetBrains Mono を指定した所の日本語も、同梱のフォントで描く。tools/vite-plugins.mjs の testPage）
-//   three.js（src/game/imports.mjs）とフォント（src/main.js）は、どちらも npm から組み立てに入れる。外の CDN は読まない
+//   three.js（src/lib/three.ts）とフォント（src/main.js）は、どちらも npm から組み立てに入れる。外の CDN は読まない
 //   vite build --mode artifact -> .build/artifact/index.html（claude.ai の Artifact 用。JS・CSS・フォントを全部入れた HTML 1つ。tools/vite-plugins.mjs の inlineAll）
 //   ほかの mode             -> .build/<mode>/（単体テストで、公開用と同じ組み立てを試す時など）
 // ソースマップは、どの mode でも .build/maps/<mode>/ に置き、出力には残さない（公開しない）。
 import { join } from 'node:path';
 import { defineConfig } from 'vite';
-import { fontCss, homeScreen, inlineAll, legacyGame, noCssStub, privateMaps, testPage } from './tools/vite-plugins.mjs';
+import { fontCss, homeScreen, inlineAll, noCssStub, privateMaps, testPage } from './tools/vite-plugins.mjs';
 
 const root = import.meta.dirname;
 
@@ -36,7 +36,6 @@ export default defineConfig(({ mode }) => ({
     assetsInlineLimit: mode === 'artifact' ? () => true : (file) => (/\.woff2?$/.test(file) ? false : undefined),
   },
   plugins: [
-    legacyGame(),
     noCssStub(),
     fontCss(),
     mode === 'test' && testPage(),

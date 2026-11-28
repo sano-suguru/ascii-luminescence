@@ -22,17 +22,15 @@
 - 手間と得る物を比べる時は、手間を分けて数える。「手間が大きい」と書く時は、どの手間かを書く。
   - Claude が手を動かす量：ほぼ数えない。
   - ユーザーが差分を読んで確かめる量：数える。差分を小さく・読みやすくする。
-  - 動きを壊す危うさ：数える。ただし、確かめる道具（型・指紋・same-code・テスト）で下げられるなら小さく見てよい。
+  - 動きを壊す危うさ：数える。ただし、確かめる道具（型・指紋・テスト）で下げられるなら小さく見てよい。
   - 仕組み・規則・依存が増えて、後から触る時に覚えることや壊れる所が増えること：一番重く数える（作った後もずっと続くため）。
 
 ## ファイル
 ```
 src/index.html       画面の作りとCSS（Vite の入口）
-src/main.js          ページの入口のモジュール（フォント（@fontsource の CSS）と、ゲーム本体 virtual:legacy-game を読む）
+src/main.js          ページの入口のモジュール（フォント（@fontsource の CSS）を読み、ゲームの用意 src/lib/boot.ts の boot を呼ぶ。開発用サーバーでテスト用モードの時に、すぐ読み直す処理も）
 src/icons/*.png       ホーム画面のアイコン（公開用の組み立てが出す。作り方は tools/icons.mjs）
-src/game/*.js        ゲーム本体の古い JS（27ファイル。下の「ゲーム本体の地図」）
-src/game/imports.mjs ゲーム本体が使う TypeScript のモジュールを読む import の文（包みの関数の前に置かれる）
-src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整形もする
+src/lib/*.ts         ゲーム本体（TypeScript）。厳しい型で確かめ、整形もする
                      array：配列と表を読む nth・lookup・must（無ければその場で止まる。as の代わり）、
                      rng：シードの乱数を作る mulberry32 と clamp、
                      random：見た目の乱数 mr・mpick（一時的な入れ替えは withVisualRand、生き物の並びへの入れ替えは withMobRand）と迷宮の乱数 rand・R・RI・pick（入れ替えは setRand）と音の乱数 sndRand（入れ替えは setSoundRand）と出来事ごとの乱数 keyedRand と混ぜる shuffle、
@@ -65,7 +63,7 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      debug：開発用の命令 dbg（F2 の画面 setDbg・renderDbg と window.dbg が同じ物を使う。window.dbg に置く initDbg は、開発用モードがオフなら命令を動かさない）と URL の指定 dbgUrl、
                      testapi：テスト用モードの道具 window.__test（initTestApi。下の「テスト用モード」）、
                      testmode：テスト用モードの時計と乱数の入れ替え installTestMode（下の「テスト用モード」）、
-                     boot：ゲームを始める（文字の部品と最初の階を作ってメインループを回し始める init と、それを呼ぶ start。テスト用モードでは用意ができたら URL の指定を当てて __test.ready に知らせ、そうでなければ自動で試す用意をする）、
+                     boot：ページの用意とゲームを始める（src/main.js が呼ぶ boot が、下の「落とし穴」の「用意の順番」の順に用意し、最後に start を呼ぶ。文字の部品と最初の階を作ってメインループを回し始める init と、それを呼ぶ start。テスト用モードでは用意ができたら URL の指定を当てて __test.ready に知らせ、そうでなければ自動で試す用意をする）、
                      hud：表示の大きさ（ミニマップ・装備の画面など）と頭の上の印の高さ（MARK_H・markHeight）、
                      minimap：ミニマップ（キャンバスの大きさを画面の倍率に合わせる sizeMap・描く drawMap。今見えているマスの色を here.mem に覚える）、
                      names：名前と説明の表（見た時の説明・罠・伝説の物・図鑑の主・図鑑で眠っている間の説明 GALLERY_SLEEP・部屋の仕掛けの伝言 MACHINE_INFO）、
@@ -75,18 +73,18 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      hotbar：下の HUD renderHotbar（指の操作の [持ち替え] の出し分けも）と持ち替えられるビルド buildsHave、
                      save：保存 saveSet・saveMeta と保存した集まりを読む loadSet と忘れられた獣の記録 loadBeasts・recordBeast、
                      loop：大きさとメインループ（画面の大きさに合わせる applySize・毎フレームの frame・テスト用モードの1歩 testTick・ゲームの一歩 stepTick・tick・tick の段ごとの見た目の乱数 inPhase・inMobPhase・テスト用モードの __test.cam で置いたカメラ withTestCam・画質を変える setQuality）、
-                     render：描画の土台の処理（文字の絵の表 buildAtlas・置いた文字の数を描画に渡す flushDyn・水面を作る makeWater・見える区切りだけを描く cullChunks と、描画の部品そのもの（描く画面・描画する部品・場面・カメラ・後処理と光のにじみ・マスの絵・分け合う値・置いた文字と粒子の形）を作って gfx に入れる initRenderer。どれも作る時に乱数を引くので、テスト用モードの入れ替えの後に 05-renderer.js が呼ぶ）、
+                     render：描画の土台の処理（文字の絵の表 buildAtlas・置いた文字の数を描画に渡す flushDyn・水面を作る makeWater・見える区切りだけを描く cullChunks と、描画の部品そのもの（描く画面・描画する部品・場面・カメラ・後処理と光のにじみ・マスの絵・分け合う値・置いた文字と粒子の形）を作って gfx に入れる initRenderer。どれも作る時に乱数を引くので、テスト用モードの入れ替えの後に boot が呼ぶ）、
                      gallery：見た物の記録 trackSeen・図鑑（一覧 galleryList・部屋 showroom・開く openBestiary・生き物を出す showBeast・ホイールとドラッグと指で動かすカメラ galleryWheel・galleryDrag・galleryZoom・galleryHold・galleryReset・galleryView・一歩 updateGallery・パネル renderGallery・説明の2行 galleryDesc・galleryLine）・試しの間（部屋 galleryRoom・的 spawnDummy・開く openRange）・図鑑と試しの間の世界の中の文字 drawGallery、
                      inventory：装備の画面 renderInv（中のボタンの処理・ビルドの呼び出し applyBuild も）と、開け閉め setInv・付け替えの詠唱 startSwap、
                      panels：レベルアップの画面（選択肢 levelChoices・開く openLevelUp・選ぶ chooseLevel）と祭壇の画面（開く openAltar・閉じる closeAltar・選ぶ chooseAltar・毎フレーム開け閉めする updateAltarPanel）。どちらも #altarp に描き、指なら選択肢は2回押して決める（confirmTap）、
                      menu：メニュー（描く renderMenu・開け閉め setMenu・項目を押した menuAct・確かめ待ちを4秒で戻す menuArmReset。指で遊ぶ時は、操作の案内・年代記・魔導書をメニューの中に開き、見回す速さの項目も出す）とタイトルへ戻る returnToTitle、
                      status：状態の表示 renderStatus・明るさと気配 updateStealth・年代記・操作の案内・魔導書（枠の行 chronRows・helpRows・bookRows。操作の案内は指で遊ぶ時は指の操作の説明）・表示の量・見つかった時 onNoticed・物音 makeNoise・立ち止まって調べる updateSearch・止まっているか isPaused・場所の名前 placeLabel・下の一言 showHint（自分で消す一言は flashHint、出した一言だけ消すのは clearHint）・頭の上の印 drawMark、
                      layout：画面の大きさに合わせる（タイトルの枠を zoom で縮めて画面に収める fitIntro。指で遊ぶ時のパネル（装備・メニュー・祭壇とレベルアップ・結果）も、[装備] [メニュー] の下から画面の下までに縮め、入らない分は中を送る fitPanels。下限 FIT_MIN）、
-                     touch：指で遊ぶ時の土台（指で触れたら指の遊び方 setTouch。指の後にブラウザが出すマウスの事件を止める（iPhone は pointerdown の preventDefault で止まらないので、指の事件から COMPAT_MS 以内のマウスの事件も止める）。タッチのボタン [全画面] [装備] [メニュー] initTouch。パネルの選択肢を指で押した時の2段階（1回目で選んで説明、2回目で決める）confirmTap。操作の説明を遊び方で書き分ける byInput。指で遊んでいて縦向きの間は、探索を止めて横にする案内 #turn を出す updatePortrait。タイトルにホーム画面に置く案内を出すか homeHint（iPhone・iPad の Safari で、指で触れる端末で、ホーム画面から開いていない時だけ）。遊び方が変わった時に古い JS が文言を書き直す処理（initTouch の changed。図鑑の案内）。ゲームのマウスの処理より先に src/lib/input.ts の initPointer が呼ぶ）、
+                     touch：指で遊ぶ時の土台（指で触れたら指の遊び方 setTouch。指の後にブラウザが出すマウスの事件を止める（iPhone は pointerdown の preventDefault で止まらないので、指の事件から COMPAT_MS 以内のマウスの事件も止める）。タッチのボタン [全画面] [装備] [メニュー] initTouch。パネルの選択肢を指で押した時の2段階（1回目で選んで説明、2回目で決める）confirmTap。操作の説明を遊び方で書き分ける byInput。指で遊んでいて縦向きの間は、探索を止めて横にする案内 #turn を出す updatePortrait。タイトルにホーム画面に置く案内を出すか homeHint（iPhone・iPad の Safari で、指で触れる端末で、ホーム画面から開いていない時だけ）。遊び方が変わった時に文言を書き直す処理（initTouch の changed。図鑑の案内）。ゲームのマウスの処理より先に src/lib/input.ts の initPointer が呼ぶ）、
                      touchpad：指の操作（試して合わせる値 TUNE（見回す速さ look（メニューで遅い・ふつう・速いから選ぶ段 LOOK・cycleLook。選んだ段は al_look に残す）・アナログか analog。アナログなら倒し具合を thumb.stick に入れ、src/lib/player.ts がキーの代わりに向きと速さに使う）・左半分に触れた所に出るスティックで移動・右半分のドラッグで見回す・[右手] [左手] で詠唱・[持ち替え]（ビルドを2つ以上保存した時だけ出る）・[回避]・図鑑では1本指のドラッグで回し・見下ろし、2本指でつまんで寄る・引く initTouchpad。ページが隠れた時に、触れている指（図鑑の指も）を離したことにし、溜めている詠唱を放たずに散らす releaseTouch。描く画面は touch-action を既定のままにし、touchmove の preventDefault で送りと拡大を止める。touch-action: none の上で指を動かすと、Chromium は直後のボタンのタップを click にしないため）、
                      diag：診断の記録（claude.ai の Artifact の中で、持ち主が開いた時だけ、端末・速さ・できごと（開け閉め・溜めている手・飛ぶ物があるか・音の部品の状態（先に作った部品も。記録を始めた時の状態も書く）・ボタンと描く画面を押した）・場面が切り替わる時の処理にかかった時間・遅いフレーム・メニューで押した項目（押し間違いの目安）・自動で試した記録・エラーを Artifact のデータベースの diag に書く initDiag。Claude が ArtifactData の道具で読む。window.claude.use が無い所では何もしない。書けると分かったら ui.owner を入れ、呼んだ src/lib/input.ts の initInput が渡す redrawIntroLater がタイトルを描き直して［開発用モード］と［自動で試す］を出す）、
                      took：かかった時間を診断の記録に渡す took（記録していない時は何もしない。levels.ts などが diag.ts を直に読むと輪になるので、間に置く）、
-                     auto：自動で試す（タイトルの［自動で試す］（Artifact の中で持ち主が開いた時だけ、［開発用モード］の真下に出す canOfferAuto。押すと startAuto。ゲームの用意ができてから（initAuto の後）出し、開発用モードがオフでも出す。流している間は［開発用モード］とどちらも隠す。AUTO_LAPS 周。claude.ai はリンクに付けた ?auto をゲームのページに渡さないので、iPhone ではこちら）と、URL の ?auto=<周の数 1〜9>・?auto=quick（道具とテストが使う）。台本 AUTO_STEPS（迷宮に入る・歩く・見回す・生き物を置いて撃つ・階段を下りる・メニュー・装備・死んで新しい探索へ）を、ページの中で合成した指の事件で、本物の時計で流す。段ごとのフレームの数・平均・一番遅い1回・遅いフレームの数を autoSt に貯め、診断の記録が欄 auto に書く。自動の間はゲームの保存（al_ で始まる名前）を localStorage に書かない（autoGuard。00-test-mode.js が初めに呼ぶ）。開発用モードはオンにせず、dbg の中身を直に呼ぶ（AutoHooks。src/lib/boot.ts の start が渡す）。1周目のシードは AUTO_SEED。生き物は、前と左右斜めの向きに床が続く所だけに置く（壁の向こうに置かない）。死ぬ段の前までは不死。縦向き・隠れている間は待って数えない（隠れている間はフレームが来ないので、visibilitychange で数え直す）。ゲームの中で着くのを待つ所（階段まで歩く・階を移る・新しい探索）と撃つ段は、ゲームの時刻で待つ（遅い端末では1フレームで進むゲームの時間に上限があるため）。撃つ段は、右手を溜めきる（gear.castSt.full）まで押し、左手は前の一撃の戻りと転がりが終わってから押し、飛ぶ物と遅れて起きる当たりが済んでから当たりを数える（短い台本は1回、ふつうは3回）。右手で放てない・左手で撃てない・当たらない時は、うまくいかなかったと書く。レベルアップの画面は1つ目を選び、祭壇の画面は閉じる（段の shut に回数）。止めた時・例外の時も、置いた指は全部離す。Wake Lock を頼む。テスト用モードでは動かない。合成した指の事件なので手触りは、自動再生の決まりで音は、確かめない）、
+                     auto：自動で試す（タイトルの［自動で試す］（Artifact の中で持ち主が開いた時だけ、［開発用モード］の真下に出す canOfferAuto。押すと startAuto。ゲームの用意ができてから（initAuto の後）出し、開発用モードがオフでも出す。流している間は［開発用モード］とどちらも隠す。AUTO_LAPS 周。claude.ai はリンクに付けた ?auto をゲームのページに渡さないので、iPhone ではこちら）と、URL の ?auto=<周の数 1〜9>・?auto=quick（道具とテストが使う）。台本 AUTO_STEPS（迷宮に入る・歩く・見回す・生き物を置いて撃つ・階段を下りる・メニュー・装備・死んで新しい探索へ）を、ページの中で合成した指の事件で、本物の時計で流す。段ごとのフレームの数・平均・一番遅い1回・遅いフレームの数を autoSt に貯め、診断の記録が欄 auto に書く。自動の間はゲームの保存（al_ で始まる名前）を localStorage に書かない（autoGuard。boot の初めの方で呼ぶ）。開発用モードはオンにせず、dbg の中身を直に呼ぶ（AutoHooks。src/lib/boot.ts の start が渡す）。1周目のシードは AUTO_SEED。生き物は、前と左右斜めの向きに床が続く所だけに置く（壁の向こうに置かない）。死ぬ段の前までは不死。縦向き・隠れている間は待って数えない（隠れている間はフレームが来ないので、visibilitychange で数え直す）。ゲームの中で着くのを待つ所（階段まで歩く・階を移る・新しい探索）と撃つ段は、ゲームの時刻で待つ（遅い端末では1フレームで進むゲームの時間に上限があるため）。撃つ段は、右手を溜めきる（gear.castSt.full）まで押し、左手は前の一撃の戻りと転がりが終わってから押し、飛ぶ物と遅れて起きる当たりが済んでから当たりを数える（短い台本は1回、ふつうは3回）。右手で放てない・左手で撃てない・当たらない時は、うまくいかなかったと書く。レベルアップの画面は1つ目を選び、祭壇の画面は閉じる（段の shut に回数）。止めた時・例外の時も、置いた指は全部離す。Wake Lock を頼む。テスト用モードでは動かない。合成した指の事件なので手触りは、自動再生の決まりで音は、確かめない）、
                      screens：マウスを捕まえる tryLock（指で遊んでいる間は捕まえにいかない）・失敗した時 lockFailed（一度も捕まえていないか、最後に捕まえてから3回続けて失敗したら（外れてから1.5秒の間の分は数えない）、捕まえられないと決め、ドラッグの案内を1回出す。それまでは、次のクリックでまた捕まえる。Esc のキーを処理している間 ui.escKey は捕まえにいかない）・捕まえる遊び方で探索中なのにマウスが外れているか lockLost・描く画面を押した時に、lockLost なら捕まえ直すだけにする relockClick・外れた時にメニューを開くか menuOnUnlock・ページが隠れた時（アプリの切り替えなど。指で遊ぶ時はマウスが外れないので、こちらで止める）にメニューを開くか menuOnHide（どちらも探索中で、止まっている画面が開いていない時だけ）・「クリックで視点操作に戻る」の一言 updateResume（lockLost の時だけ出す。止まっている間・死んだ時・タイトルでは CSS が隠す）・音量 sndToggle（選んだ段は al_snd に残し、ページを開いた時に loadSndLevel で読む）、
                      particles：粒子を出す spawn・消す killP と、世界の中に文字を置く dyn（配列も。描き方 mode は、こちらを向く・床に寝かせる（1 を越えた分は文字を起こす角度）・立てる）と、漂う塵を置く initDust・respawnDust と、描く粒子の配列 ptPos・ptCol・ptSize・ptGly、
                      motes：粒子を動かす（塵・沼のガスの粒 updateGasPoints・川のさざ波 riverFX・粒子と火の粉を動かして GPU に渡す数を書く updateParticles）、
@@ -95,7 +93,7 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      legend：今の探索の伝説の物 getLegend と状態の表示の1行・伝説の物の読み方（legendOfBranch・legendAll・descentSealed）と世界の中に描く drawLegendWorld と神託所の手がかり oracleLegendHints、
                      lightmap：マスの明るさ cellLight と、生き物の体・倒れて崩れた文字・扉に足す時の頭打ち LIT_MAX・litScale と天井の高さ ceilAt・灯りの揺らぎ flicker と灯りを描画に渡す配列を書き直す updateLights（状態に頼る。灯りの計算そのものは light）、
                      fixtures：階に置いてある物を描く（灯りの備品 drawFixtures・扉 drawDoors・泉 drawSprings・墓 drawGraves・クモの巣 drawWebs・罠と鉄格子 drawTraps・床と台と祭壇のルーンと石碑と宝物庫の兆し drawRunesWorld（光線・飛ぶ物・詠唱している手の前と付け替えの間のルーンも））と巣に触れた時 webTouch、
-                     arrows：方向の矢印（行き先 arrowTargets・見通せるか inPlainSight・画面に重ねた 2D のキャンバス #arrows に描く drawArrows。キャンバスと下の HUD は 22-world-hints.js が ui に入れる）、
+                     arrows：方向の矢印（行き先 arrowTargets・見通せるか inPlainSight・画面に重ねた 2D のキャンバス #arrows に描く drawArrows。キャンバスと下の HUD は boot が ui に入れる）、
                      chantfx：詠唱の見た目（術が飛ぶ道 simPath・手の前の円と飛ぶ道と落ちる所 drawCastFx・照準の文字 #cross と詠唱の間の画面の色 updateCross）、
                      fx：火と術の跡を描く（火 drawFire・凍らせた水 drawFrozen・稲妻 addBolt・sparkCrown・drawBoltFx・床の目印と魔法の場 drawZones）、
                      omens：先にある物の手がかり（表 STRATUM_OMEN など・computeOmen・omenOf・drawOmens）と階段の封（stairsGuarded・drawStairSeal）、
@@ -110,26 +108,18 @@ src/lib/*.ts         TypeScript に移した物。厳しい型で確かめ、整
                      build：世界の組み立て（階の文字 buildWorld（文字を置く間の作業用の配列は、階ごとに作らず使い回す。持ち続けるのは13万字分だけで、それより多い階では組み立ての間だけ伸ばす）・霧の色 setFog・水面の絵 updateWater）、
                      three：three.js と後処理の部品 T と霧の色 fogCol（作る時に乱数を引く物は置かない）、
                      quality：速さに合わせて画質を下げる段の決め方 nextQuality と、下げ方を進める stepQuality と、数えるのが途切れた時の holdQuality（探索中の平均が 48fps を割ると、1段ずつ、描く細かさを 1 まで → 光のにじみを切る → 描く細かさを下限 0.75 まで。1 より下げると文字がぼやけるので、光のにじみを先に切る。1段下げても、フレームの時間が1割も縮まなければ（低電力モードの iPhone のように、端末が書き換えを1秒に30回までに抑えている時）、その1段を戻して、それからは変えない。変えた後は3秒おいてから数え、比べる前に数えるのが途切れたら（階を移る・止まる）、下げた1段を戻して下げ直す。src/lib/loop.ts の frame が呼ぶ。テスト用モードでは呼ばない）
-src/lib/state.ts     ゲームの状態の入れ物（分野ごと：clock＝時計（ゲームの時刻 time と、tick が進んだ回数 frame と、前のフレームの時刻 last・見えるマスとミニマップの溜め fovT・mapT・画質を決めるために数える perfT・perfAcc・perfN・warm と、テスト用モードの時計 TESTCLK と、テスト用モードの用意ができたか testBoot）、blaze＝火と地面のマス（fire・fuel・burnt・scent・凍らせた水 frozen・踏み分けた茂み trampled など）、fight＝戦い（飛ぶ物 projs・光線・毒の霧・魔法の場・遅れて起きること・雨・床の目印・ヒットストップ・稲妻・宝物庫の落石 rockfall・倒れた生き物が崩れて積もった文字 debris など）、vfx＝揺れと光りと目の慣れ expo と階の場所ごとの空気 ambK と詠唱の間の画面の遅さ slowFx、ui＝画面の開け閉め（started・invOpen・エラーを出す所 errEl・マウスを捕まえていない時のドラッグ dragging と前の位置 lmx・lmy（左のボタンを押した所 downAt は、書くだけで読まない）・タイトルに出している物 introMode（タイトルか解放の画面か）・ミニマップのキャンバス mapC と描き手 mctx・方向の矢印のキャンバス arrowCv と描き手 arrowCtx と下の HUD hotbarEl（矢印が避ける。上の端を覚える hotbarTop）・照準の文字を書く所 crossEl とその前の中身 crossKey・レベルアップの選択肢 lvlOpts・近くの祭壇 altarNear・プレイヤーが閉じた祭壇 altarDismissed・メニューの中に開いている物 menuPage・タイトルで選んだ始める深さ startDepth・タイトルの画面 introEl・装備の画面で選んでいるルーン packSel・下の一言 hintHTML とそれを出した回数 hintSeq・メニューの確かめ待ち・マウスを捕まえられないと決めたか plFailed・一度でも捕まえたか lockedOnce・最後に捕まえてから捕まえようとした回数 lockTries・最後に外れた時刻 unlockedAt・Esc のキーを処理している間か escKey・指で遊んでいるか touch・指で遊んでいて縦向きか portrait・タイトルに［開発用モード］を出すか devSeen（このページで一度でもオンだった）・Artifact の持ち主か owner・指でパネルの選択肢を1回押して選んだだけの物 tapArm・装備の画面を開けた時の両手 packSnap・照準の先の生き物 aimMon・見た時の説明 lookPend・lookPendT・lookHTML と出す所 lookEl・炎から逃げた・叫んだ・草を食べる物が驚いた伝言の時刻と旗 fleeMsgT・shriekMsgT・grazeMsg・照準の先を探した時刻と生き物 aimT・crossMon・墓に遺せる物 graveCands・graveSel・図鑑と試しの間の状態 gallery（src/lib/gallery.ts）・見た物を次に数えるまでの秒 seenT・開発用の godMode・茂みの伝言の旗 tallMsg など）、gfx＝描画の部品（描く画面 canvas・描く細かさ pixelRatio と作り直した大きさ sizedAs・後処理をつなぐ部品 composer と光のにじみ bloom・画質を下げる途中の状態 qRun・置いた文字の形と属性 dynGeo・aPos・aCol・aPar と部品 dynMat・粒子の部品 ptMat・水面 waterMesh・テスト用モードの __test.cam で置いたカメラ testCam、three.js のカメラ camera とマスの絵 cellTex（TS の側の型は、TS が使う欄だけ）、場面 scene・描画する部品 renderer・分け合う値 U・後処理 finalPass・文字の部品 staticMat・occMat・区切りごとの文字 chunks・隠す板 occMesh・水面の絵 waterTex・waterLTex・霧の濃さの基 fogBase・粒子を描く形 ptGeo と属性 bpPos・bpCol・bpSize・bpGly。描く画面と本当の値は src/lib/render.ts の initRenderer（05-renderer.js が呼ぶ）と src/lib/boot.ts の init（30-loop-init.js が呼ぶ。水面は init が呼ぶ src/lib/render.ts の makeWater）がその場で入れる）と、生き物の体だけを描くか drawBodyOnly、adv＝今の探索（runSeed・lvl・dead・年代記 HIST など）、gear＝手と詠唱（hands・bag・castSt など）、here＝今いる場所と階の中身（D・depth・branch・monsters・見えたマス・部屋の出来事 events・川のマス riverCells・最深部の状態 finalSt・その階で一度だけの巣・修復機・硫黄の伝言の旗 webMsg・brimMsg・その階で作った生き物の数 mobSeq・着いた階段のマス lockCell・入った部屋 visitedRooms・前の階の層 lastStratum など。monsters の型は makeMonster が必ず入れる欄を必ずある物にした Mob）、saved＝保存する記録（META・BOOK・RSEEN・SEEN・DEVALL と、今の探索の伝説の物 LEGEND）、player・指の操作の入力 thumb（アナログのスティックの倒し具合 stick）・placeMem・伝言の一覧 msgs・音 SND・忍び足 stealth・手元の灯り lantern・表示の数 hudInfo（今の階の見たマスの割合 explored・速さの表示の数・立ち直りの表示の数 rallyShown）・押しているキー keys・描く物の数 buf（置いた文字の数 dn・生きている粒子の数 pN）・灯りを描画に渡す配列 SL・DLP・DLC・マスの絵の中身 cellData・薄い氷に乗っていた秒 iceT・漂う塵 dust・通れない所に押し当てた記録 edge・手元の武器が跳ねた時刻 vmKick・光線を撃ち続けた記録 beamHold。古い JS は clock.time・vfx.shake・ui.started・gfx.camera のように欄で読み書きする。player から keys までと SL・DLP・DLC・cellData・iceT・dust・edge・vmKick・beamHold は丸ごと入れ替えないので名前のまま。buf は入れ物。テスト用モードの1歩の秒 TEST_STEP と、__test が使う TESTQ（描いて進める残りの数）・tickNoise・skipPhases もここ）
-src/lib/generate.ts  迷宮の生成（generateLevel。「入力 → 結果」の形。入力 GenInput・古い JS の物 GenEnv・結果 GenResult と、部屋 Room などの型）
+src/lib/state.ts     ゲームの状態の入れ物（分野ごと：clock＝時計（ゲームの時刻 time と、tick が進んだ回数 frame と、前のフレームの時刻 last・見えるマスとミニマップの溜め fovT・mapT・画質を決めるために数える perfT・perfAcc・perfN・warm と、テスト用モードの時計 TESTCLK と、テスト用モードの用意ができたか testBoot）、blaze＝火と地面のマス（fire・fuel・burnt・scent・凍らせた水 frozen・踏み分けた茂み trampled など）、fight＝戦い（飛ぶ物 projs・光線・毒の霧・魔法の場・遅れて起きること・雨・床の目印・ヒットストップ・稲妻・宝物庫の落石 rockfall・倒れた生き物が崩れて積もった文字 debris など）、vfx＝揺れと光りと目の慣れ expo と階の場所ごとの空気 ambK と詠唱の間の画面の遅さ slowFx、ui＝画面の開け閉め（started・invOpen・エラーを出す所 errEl・マウスを捕まえていない時のドラッグ dragging と前の位置 lmx・lmy・タイトルに出している物 introMode（タイトルか解放の画面か）・ミニマップのキャンバス mapC と描き手 mctx・方向の矢印のキャンバス arrowCv と描き手 arrowCtx と下の HUD hotbarEl（矢印が避ける。上の端を覚える hotbarTop）・照準の文字を書く所 crossEl とその前の中身 crossKey・レベルアップの選択肢 lvlOpts・近くの祭壇 altarNear・プレイヤーが閉じた祭壇 altarDismissed・メニューの中に開いている物 menuPage・タイトルで選んだ始める深さ startDepth・タイトルの画面 introEl・装備の画面で選んでいるルーン packSel・下の一言 hintHTML とそれを出した回数 hintSeq・メニューの確かめ待ち・マウスを捕まえられないと決めたか plFailed・一度でも捕まえたか lockedOnce・最後に捕まえてから捕まえようとした回数 lockTries・最後に外れた時刻 unlockedAt・Esc のキーを処理している間か escKey・指で遊んでいるか touch・指で遊んでいて縦向きか portrait・タイトルに［開発用モード］を出すか devSeen（このページで一度でもオンだった）・Artifact の持ち主か owner・指でパネルの選択肢を1回押して選んだだけの物 tapArm・装備の画面を開けた時の両手 packSnap・照準の先の生き物 aimMon・見た時の説明 lookPend・lookPendT・lookHTML と出す所 lookEl・炎から逃げた・叫んだ・草を食べる物が驚いた伝言の時刻と旗 fleeMsgT・shriekMsgT・grazeMsg・照準の先を探した時刻と生き物 aimT・crossMon・墓に遺せる物 graveCands・graveSel・図鑑と試しの間の状態 gallery（src/lib/gallery.ts）・見た物を次に数えるまでの秒 seenT・開発用の godMode・茂みの伝言の旗 tallMsg など）、gfx＝描画の部品（描く画面 canvas・描く細かさ pixelRatio と作り直した大きさ sizedAs・後処理をつなぐ部品 composer と光のにじみ bloom・画質を下げる途中の状態 qRun・置いた文字の形と属性 dynGeo・aPos・aCol・aPar と部品 dynMat・粒子の部品 ptMat・水面 waterMesh・テスト用モードの __test.cam で置いたカメラ testCam、three.js のカメラ camera とマスの絵 cellTex（TS の側の型は、TS が使う欄だけ）、場面 scene・描画する部品 renderer・分け合う値 U・後処理 finalPass・文字の部品 staticMat・occMat・区切りごとの文字 chunks・隠す板 occMesh・水面の絵 waterTex・waterLTex・霧の濃さの基 fogBase・粒子を描く形 ptGeo と属性 bpPos・bpCol・bpSize・bpGly。描く画面と本当の値は src/lib/render.ts の initRenderer（boot が呼ぶ）と src/lib/boot.ts の init（start が呼ぶ。水面は init が呼ぶ src/lib/render.ts の makeWater）がその場で入れる）と、生き物の体だけを描くか drawBodyOnly、adv＝今の探索（runSeed・lvl・dead・年代記 HIST など）、gear＝手と詠唱（hands・bag・castSt など）、here＝今いる場所と階の中身（D・depth・branch・monsters・見えたマス・部屋の出来事 events・川のマス riverCells・最深部の状態 finalSt・その階で一度だけの巣・修復機・硫黄の伝言の旗 webMsg・brimMsg・その階で作った生き物の数 mobSeq・着いた階段のマス lockCell・入った部屋 visitedRooms・前の階の層 lastStratum など。monsters の型は makeMonster が必ず入れる欄を必ずある物にした Mob）、saved＝保存する記録（META・BOOK・RSEEN・SEEN・DEVALL と、今の探索の伝説の物 LEGEND）、player・指の操作の入力 thumb（アナログのスティックの倒し具合 stick）・placeMem・伝言の一覧 msgs・音 SND・忍び足 stealth・手元の灯り lantern・表示の数 hudInfo（今の階の見たマスの割合 explored・速さの表示の数・立ち直りの表示の数 rallyShown）・押しているキー keys・描く物の数 buf（置いた文字の数 dn・生きている粒子の数 pN）・灯りを描画に渡す配列 SL・DLP・DLC・マスの絵の中身 cellData・薄い氷に乗っていた秒 iceT・漂う塵 dust・通れない所に押し当てた記録 edge・手元の武器が跳ねた時刻 vmKick・光線を撃ち続けた記録 beamHold。状態は clock.time・vfx.shake・ui.started・gfx.camera のように欄で読み書きする。player から keys までと SL・DLP・DLC・cellData・iceT・dust・edge・vmKick・beamHold は丸ごと入れ替えないので名前のまま。buf は入れ物。テスト用モードの1歩の秒 TEST_STEP と、__test が使う TESTQ（描いて進める残りの数）・tickNoise・skipPhases もここ）
+src/lib/generate.ts  迷宮の生成（generateLevel。「入力 → 結果」の形。入力 GenInput・外から渡す物 GenEnv・結果 GenResult と、部屋 Room などの型）
 src/lib/bodies/*.ts  生き物の形（draw：生き物を描く drawMonster・drawMonster1・drawMonster0 と深みの主の触手 drawTentacles とクラーケンの立ち上がる腕 krakenArms、build：種類から形を選んで作る buildForm と、人型・四つ足の見た目の特徴、表 MTYPES に見た目を書き足す addLooks、kit：点の型と道具 q2・q3、
                      small・beasts・lords：各生き物の形と忘れられた獣（図鑑の見本 beastSamples も）、bosses：主の形（不死の王・蜘蛛の女王・ナーガの女王・古竜・深みの主・王の影の二つ目の姿）、
                      auras：主と一部の生き物のまわりの飾り（lichAura など）・王の影の変身 transformShadow・姿を変える途中 drawMorph）
 tsconfig.json        TypeScript 7 の設定（strict・noUncheckedIndexedAccess・exactOptionalPropertyTypes など）。対象は src/lib/ と tests/unit/*.ts
 vite.config.mjs      組み立て（Vite 8）。公開用は dist/、テスト用（--mode test）は .build/test/、claude.ai の Artifact 用（--mode artifact）は .build/artifact/index.html
-tools/vite-plugins.mjs  Vite のプラグイン：legacyGame（src/game をつないで1つのモジュールに）・testPage（テスト版）・privateMaps（ソースマップを公開物の外へ）・noCssStub（ページの <style> から作られる空のモジュールを消す）・fontCss（@fontsource の CSS を絞る：woff を外し、BIZ UDGothic は BIZ_CHARS を含む面だけ）・homeScreen（公開用：ホーム画面に置くための宣言 manifest.webmanifest とアイコンを出し、HTML から読む。display は standalone）・inlineAll（Artifact 版：JS と CSS を HTML の中に書き込み、HTML 1つにする。16MB 手前の ARTIFACT_MAX を越えたら止める）
-tools/game-source.mjs   ゲーム本体をつなぐ処理（gameSource）・行の対応・ソースマップ・テスト版のフォント
+tools/vite-plugins.mjs  Vite のプラグイン：testPage（テスト版。JetBrains Mono を指定した所の日本語を決まったフォントで描く面 cjkFallback を足す）・privateMaps（ソースマップを公開物の外へ）・noCssStub（ページの <style> から作られる空のモジュールを消す）・fontCss（@fontsource の CSS を絞る：woff を外し、BIZ UDGothic は BIZ_CHARS を含む面だけ）・homeScreen（公開用：ホーム画面に置くための宣言 manifest.webmanifest とアイコンを出し、HTML から読む。display は standalone）・inlineAll（Artifact 版：JS と CSS を HTML の中に書き込み、HTML 1つにする。16MB 手前の ARTIFACT_MAX を越えたら止める）
 tools/icons.mjs      ホーム画面のアイコン src/icons/icon-192.png・icon-512.png を作る（タイトルのロゴの光る「A」。絵を変える時だけ走らせ、PNG を git に入れる）
-tools/sourcemap.mjs  ソースマップの読み書き（自前の小さな道具）
+tools/sourcemap.mjs  ソースマップを読む小さな道具（tools/where.mjs と tests/lib.mjs のエラーの場所と、単体テスト build.test.mjs が使う）
 tools/check.mjs      pnpm check の中身：構文と lint・型・整形・単体テスト・使う文字・組み立てを同時に走らせる（単体テストを先にし、ほかの段は優先度を下げて空いたコアで。通った段は1行、落ちた段は出力を全部出す）
-tools/lint-game.mjs  src/game/ をつないで構文と lint を調べ、場所を元のファイルの行で出す（読んだ名前の宣言し直しと、状態の入れ物の名前の宣言も止める。入れ物の名前は src/lib/state.ts の export から取る）
-tools/state-move.mjs 状態を入れ物に移す道具：古い JS の一番外の状態を、src/lib/state.ts の入れ物の欄に移す書き換え（名前の見分けは eslint-scope）。単体テストは tests/unit/state-move.test.mjs（小さな見本で確かめる）
-tools/legacy-eval.mjs  テストの道具：古い JS のトップレベルの宣言を名前で取り出して評価する（移す前の古い関数を取り出して、新しい関数と結果を比べる。まだ古い JS にある関数を単体テストで本物のまま使う。型は .d.mts）
-tools/same-code.mjs  移した関数が、移す前の古い関数と「同じ文」かを、構文の木で確かめる道具（型を外し、型のための決まった書き換えを元に戻して比べる。
-                     規則と使い方はファイルの頭。古い JS は git の版（--rev）から読み、状態を移した名前は --state か --auto-state で古い側にも同じ書き換えをする。
-                     PR の CI も、元の版と比べて走らせる）。単体テストは tests/unit/same-code.test.mjs
-tools/where.mjs      組み立てた JS の場所 → src/game/ のどのファイルの何行目か（ソースマップで戻す）
-tools/map.mjs        ゲーム本体の地図（ファイルごとの行の数と見出し）
+tools/where.mjs      組み立てた JS の場所 → src/lib/ のどのファイルの何行目か（ソースマップで戻す。読む道具は tools/sourcemap.mjs）
 tools/serve.mjs      静的ファイルの小さなサーバー（テストでは CORS の見出しを付ける。サンドボックスの iframe は起源が null になり、付けないと JS・CSS・フォントを読めない）
 tools/shots.mjs      図鑑の生き物を、見やすい角度で写す（pnpm shots。向き・寄る引く・見下ろす角度は形ごとの表。--views で、生き物ごとに角度の一揃い（正面・斜め前・横・後ろ・上から・歩く姿・遠くの7枚）と、
                      7枚を体のまわりで切り抜いて大きくし横に並べた1枚。--compare で、前に写した物と同じ枠で上下に並べた1枚。写真は tests/out/shots/。切り抜いて並べる処理は tools/sheet.mjs）
@@ -165,7 +155,7 @@ tools/auto-run.mjs   自動で試す台本（?auto）を、この環境でスマ
                      前の結果（<条件>.prev.json）と段ごとに並べる。確かめること：エラーが無い・全部の段を通る・lowpower では画質を下げても戻して止まる・slow では戻さない
 tools/diag-report.mjs  診断の記録を表にする（node tools/diag-report.mjs <ファイルかフォルダ…>。ArtifactData の道具の list に out_dir を付けて保存した JSON。
                      音の部品の移り変わり・かかった時間の名前ごとの回数と中央と最大・遅いフレームを近くの処理ごとに・メニューの押し方（menuRows。1.5秒以内に別の項目を押した・切り替えを押し戻した回数）・自動で試した段の表（autoRows）・画質の移り変わり（qualitySteps）・時刻の順の一覧。--compare で、自動で試した段と画質を前と今で並べる（compareRows））
-tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ（描き方の引数 GL_ARGS）・テスト用モードのページ。newPage の device で、Playwright の端末の名前（スマホの真似）で開ける。ページはポインタロックを差し替えて止める（realLock で止めない）。環境変数 AL_PREBUILT が 1 なら、組み立て済みとして組み立てない。withBrowser の root で、別の作業場所を組み立てて配信する（tools/field.mjs の --rev）。
+tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ（描き方の引数 GL_ARGS）・テスト用モードのページ・ゲームの文言を含む文 gameText（src/index.html と src/lib/ の .ts。文字を調べる glyphs.mjs・panels.mjs が使う）。newPage の device で、Playwright の端末の名前（スマホの真似）で開ける。ページはポインタロックを差し替えて止める（realLock で止めない）。環境変数 AL_PREBUILT が 1 なら、組み立て済みとして組み立てない。withBrowser の root で、別の作業場所を組み立てて配信する（tools/field.mjs の --rev）。
                      生き物を撃つ部品：aimAt(pg, 鍵) は、照準の先（__test.mob(n).aimed）になるまで dbg.look で体の高さの真ん中を向いて 1/30 秒ずつ進める（12 回でなれなければ Error）。
                      strike(pg, 手, 鍵) は、押して、近接ならすぐ当たり、溜める武器なら cast.full まで待って向き直してから離し、体力が減るまで描かずに 1/30 秒ずつ進める（{hit, frame} を返す。150 フレームで当たらなければ Error）。
                      tools/glare.mjs と tests/world.mjs の 18・20 が使う）
@@ -247,10 +237,9 @@ tests/unit/lava.test.mjs  溶岩の流れ（火口の噴き上がりと部屋の
 tests/unit/level.test.mjs  階を移る処理（newLevel・advance・checkEvents・die・newRun）と世界の組み立て（buildWorld・setFog・updateWater）の単体テスト。たくさんの場合を作る level-cases.mjs
                      （探索を始め、進む向きと場所と着く所を変えて階を移り、階段・門・穴・封じられた階段を踏み、死んで結果の画面のボタンを押す。three.js の物は Node でも本物を作り、
                      描画する部品だけ偽物。迷宮の生成を変えると、この指紋も変わる。単独で15秒ほど、ほかのテストと同時なら25秒ほど。ほとんどは本物の newLevel・buildWorld の時間）を使う
-tests/unit/traits.test.mjs  特性を名前で読む所（TL・tv・wTL）が、どれも特性の表（src/lib/runes.ts の TRAITS）にある名前か（src/lib/*.ts と src/game/*.js を構文の木で調べる）
+tests/unit/traits.test.mjs  特性を名前で読む所（TL・tv・wTL）が、どれも特性の表（src/lib/runes.ts の TRAITS）にある名前か（src/lib/ の .ts を構文の木で調べる）
 tests/unit/case-out.mjs  指紋の元の文を書き出す caseOut と、状態の指紋 stateFp（環境変数 AL_CASES_OUT がある時だけ、書き出し、状態を欄ごと・生き物ごとの指紋にする。tools/case-diff.mjs が使う）。
                      指紋を取るテストを足す時は、指紋を比べる行の前に caseOut('名前', 文) を置く
-tests/unit/same-code.test.mjs  tools/same-code.mjs の単体テスト（規則ごとに同じと言う物・違うと言う物、抜けた文・係数・比べ方・乱数を引く順番の違いを見つけるか）
 tests/unit/view.test.mjs  カメラから見て描く・調べる処理（生き物を描く・罠と鉄格子を描く・見た時の説明・灯りの揺らぎと灯りの配列・照準）の単体テスト。まわりの明かりの頭打ち（src/lib/lightmap.ts の LIT_MAX・litScale）で、生き物の体に足す明かりが強さ LIT_MAX を越えず、色の比を保つか（火が固まった所で体が白く飛ばないように）も。たくさんの場合を作る view-cases.mjs
                      （Node で本物の迷宮を生成し、全部の種類の生き物・罠・床の物・灯りの種類を足し、偽のカメラ（位置だけ）を物へ向ける。説明の分かれ道ごとの場面も通す。
                      迷宮の生成を変えると、この指紋も変わる）を使う
@@ -287,31 +276,31 @@ tests/unit/bodies-legacy.test.mjs  形を選んで作る処理（buildForm と�
 tests/unit/auto.test.ts  自動で試す（src/lib/auto.ts）の URL の読み方と、台本の段の並び
 tests/unit/diag-report.test.mjs  診断の記録の表（tools/diag-report.mjs）の単体テスト（メニューの押し方の数え方・画質の移り変わり・前と今の比べ方）
 tests/unit/inline-all.test.mjs  Artifact 版の組み立て（inlineAll）が、JS と CSS を中に書き、壊れる形（</script・<!--・</style）・HTML の外に残るファイル・大きすぎる物を止めるか（出力の束の小さな偽物で）
+tests/unit/build.test.mjs  組み立ての単体テスト：ソースマップを読む道具（tools/sourcemap.mjs）・公開用と同じ設定の Vite の組み立て（ソースマップを出力に残さない・関数を1つも消さない（src/lib の関数の名前と比べる）・組み立てた JS の関数の名前が src/lib の同じ場所に戻る・ホーム画面に置く宣言）・src/ にでたらめな比べる関数での並べ替えが無いか
 tests/unit/modules.test.mjs  src/lib のどのモジュールも、単独で読めるか（読み込みが輪になって、まだ作っていない値を使っていないか。ファイルごとに別の Node で読む）
 tests/unit/audio.test.mjs  音を鳴らす処理と詠唱の声（chantStart）の単体テスト（音を鳴らす所が見た目の乱数を引かないかを、src/ を構文の木で調べる sound-random-check.mjs も）。偽の Web Audio（fake-audio.mjs。作った部品・値・つなぎ方・鳴らす時刻を全部記録する。Node には Web Audio が無い）と、
                      たくさんの場合を作る audio-cases.mjs を使う
 tests/glyphs.mjs     使う文字が、パネルのフォント（M PLUS 1 Code ＋ BIZ UDGothic の補い）に字形があるか（ブラウザ不要）
 .oxlintrc.json       lint（Oxlint）の設定（エラー＝不具合、警告＝整理の候補）
-.oxfmtrc.json        整形（Oxfmt）の設定。src/game/（古い JS）と index.html 以外。古い JS はまとめては整形しない（行が約4倍になる）。TypeScript に移した物から整形する
+.oxfmtrc.json        整形（Oxfmt）の設定。index.html と文書と生成物は整形しない
 vitest.config.mjs    単体テスト（Vitest）の設定。テストは tests/unit/*.test.{mjs,ts}
 package.json         スクリプトと依存。packageManager で pnpm の版を固定（pnpm@12.22.0）
 pnpm-workspace.yaml  pnpm のサプライチェーン対策（公開24時間未満は入れない、信頼の低下を拒む、インストール時のスクリプトは承認制）
 .node-version        Node の版（26.13.1）。CI・SessionStart hook・Cloudflare が読む
 wrangler.jsonc       Cloudflare Workers（静的アセット）の設定。公開は dist/
 .claude/settings.json  権限と hooks
-.github/workflows/ci.yml  確かめるだけの CI。pnpm check（ジョブ static。PR では、移した関数が移す前と同じ文かの比べ合わせ tools/same-code.mjs も）と、ブラウザのテストと画面写真の比較
+.github/workflows/ci.yml  確かめるだけの CI。pnpm check（ジョブ static）と、ブラウザのテストと画面写真の比較
                      （ジョブ browser。2台のランナーに --shard で半分ずつ。Chromium は headless shell だけ入れる）を別のランナーで同時に走らせ、ジョブ check が結果をまとめる（ブランチの保護で必須にするのは check だけでよい）。どれも違えば失敗
 .github/workflows/dependency-review.yml  PR で増える依存の脆弱性とライセンス
 .github/workflows/codeql.yml  CodeQL（JavaScript の静的解析。PR と毎週）
 .github/dependabot.yml  依存の更新の PR（Dependabot。毎週。公開から1日たった版だけ。three.js と Playwright は minor 以上を手で上げる）
 docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 ```
-組み立ては Vite 8。`src/game/imports.mjs`（import の文）の後ろに、`src/game/*.js` を名前の順につなぎ、`(function(){ 'use strict'; … })();` で
-包んだものを置いて、1つのモジュール（`virtual:legacy-game`）にする（`tools/vite-plugins.mjs` の legacyGame）。公開物は `dist/index.html` と `dist/assets/index-<hash>.js`。
-- Vite（Rolldown）は JS を書き直して出す（字下げ・引用符・`undefined`→`void 0` など。縮めはしない。コメントは消える）。なので、組み立てた JS の行は元のファイルと違う。
+組み立ては Vite 8。入口は `src/index.html` → `src/main.js` → `src/lib/boot.ts`。公開物は `dist/index.html` と `dist/assets/index-<hash>.js`。
+- Vite（Rolldown）は TypeScript の型を外し、JS を書き直して出す（字下げ・引用符・`undefined`→`void 0` など。縮めはしない。コメントは消える）。なので、組み立てた JS の行は元のファイルと違う。
   場所はソースマップで戻す。ソースマップは**公開しない**ので、出力には残さず `.build/maps/<mode>/` に移している（privateMaps）。
-- 開発用サーバー（`pnpm dev`）は、src/game/ が変わるとページを読み直す（HMR はしない）。テスト用モード（`?test=1`）は時計が止まっていて
-  Vite の読み直し（setTimeout を使う）が動かないので、開発用サーバーの時だけ、ゲーム本体の後ろに「すぐ読み直す」処理を足している（legacyGame）。
+- 開発用サーバー（`pnpm dev`）は、src/ が変わるとページを読み直す（ゲームは HMR に対応していない）。テスト用モード（`?test=1`）は時計が止まっていて
+  Vite の読み直し（setTimeout を使う）が動かないので、src/main.js が、開発用サーバーの時だけ「すぐ読み直す」処理を置いている。
 - Artifact 版（`--mode artifact`）は、公開用と同じ組み立ての、フォントを CSS の data URI にし（`assetsInlineLimit`）、JS と CSS を `index.html` の中に書き込んだ物（inlineAll）。
   Artifact は外から読める物が決まっていて、同じ所に置いたファイルを読めるかは決まりに無いため、HTML 1つにしている（約7MB）。ソースマップは出さない（中に書くと行が合わない）。
 - 使っていない関数も消さない（`vite.config.mjs` の `rolldownOptions`。Vite は minify: false でも、使っていないコードを消す設定を渡すため）。
@@ -321,12 +310,11 @@ docs/DESIGN.md       設計の全体、決めた方針、残っている課題
 ```
 pnpm install --frozen-lockfile   # 依存を入れる（クラウドのセッションでは SessionStart hook が Node・pnpm ごと自動で行う）
 pnpm check            # 構文 + lint（エラーだけ。型の情報も使う） + 型（tsc） + 整形の確かめ + 単体テスト（Vite の組み立ても試す） + 使う文字 + 組み立て（公開用と Artifact 版）。段は tools/check.mjs が同時に走らせる。40秒ほど（4コアのクラウドの環境では1分15秒ほど。単体テストの階の比べ合わせ level.test.mjs が長い。半分ほどは本物の buildWorld）。編集のたびにこれ
-pnpm lint             # 警告も含めて lint を見る（src/game/ はつないで調べる）
-pnpm fmt              # 整形する（Oxfmt。src/game/ の古い JS と index.html 以外）
+pnpm lint             # 警告も含めて lint を見る
+pnpm fmt              # 整形する（Oxfmt。index.html 以外）
 pnpm typecheck        # 型を確かめる（TypeScript 7 の tsc。src/lib/ と tests/unit/*.ts。1秒かからない）
 pnpm test:unit        # 単体テスト（Vitest。tests/unit/）
-pnpm map [語]         # ゲーム本体の地図。語を付けると、見出しにその語を含むファイルだけ（例：pnpm map fire）
-pnpm where index-D0mETEmY.js:4321:12   # 組み立てた JS のその場所が、src/game/ のどこか（行だけも可。--test でテスト版）
+pnpm where index-D0mETEmY.js:4321:12   # 組み立てた JS のその場所が、src/lib/ のどこか（行だけも可。--test でテスト版）
 pnpm test             # スモーク・タイトル・自動で試す・サンドボックスの iframe・画面写真の比較・図鑑・世界とのやり取り・指で遊ぶ時・装備の画面・全部の階・同じ結果・枠（tests/run.mjs が同時に3つずつ走らせる。オフラインで動く。2分ほど。1つだけは node tests/smoke.mjs など）
 pnpm test:visual      # 画面写真の比較だけ（1分ほど）。違えば tests/out/visual/ に違いの画像
 pnpm shots [名前…]    # 図鑑の生き物を見やすい角度で写す（既定は竜・主たちの12枚（tools/shots.mjs の PICK）。--all で全部、--bare で図鑑の枠を隠す、--out で置き場所、
@@ -345,7 +333,7 @@ node tests/visual.mjs --update [--only 場面]   # 基準の画像を作り直�
 node tests/levels.mjs --seed 202               # 1つのシードだけ（--seeds 100 で数を変える）
 node tests/smoke.mjs --prod                    # 公開用の版（dist/）で起動（JetBrains Mono の所の日本語はシステムのフォント）。タイトルの画面は node tests/title.mjs --prod
 pnpm verify           # check + test
-pnpm dev              # Vite の開発用サーバー（http://localhost:5173/。src/game/ を変えると読み直す）
+pnpm dev              # Vite の開発用サーバー（http://localhost:5173/。src/ を変えると読み直す）
 pnpm build            # 公開用を dist/ に組み立てる（pnpm build:test でテスト用を .build/test/ に）
 pnpm build:artifact   # claude.ai の Artifact 用を .build/artifact/index.html に組み立てる（HTML 1つ。公開は下の「Artifact に公開する」）
 pnpm serve            # dist/ を組み立てて http://127.0.0.1:8000/ で配信
@@ -381,70 +369,43 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 - フォントも、npm の @fontsource を組み立てに入れる（`src/main.js` で読む。Google Fonts は読まない）。テスト版（`vite build --mode test`。テストが自分で組み立てる）も同じ。
   テストのブラウザには、システムのフォントを見せない（`tests/fonts.conf`、指定したフォントに無い文字の代わり（fallback）は、npm パッケージの DejaVu だけ）。
   JetBrains Mono を指定した所の日本語は、テスト版のほか（公開用の版・開発用サーバー）ではシステムの日本語フォントで描画されるが、テスト版では M PLUS 1 Code
-  （全角の ！？ などは BIZ UDGothic）を組み合わせて描く（`tools/game-source.mjs` の `cjkFallback`）。マシンが違っても同じ画素になる。
+  （全角の ！？ などは BIZ UDGothic）を組み合わせて描く（`tools/vite-plugins.mjs` の `cjkFallback`）。マシンが違っても同じ画素になる。
 - ポインタロックは、テストでは `HTMLCanvasElement.prototype.requestPointerLock` を差し替えて止める（tests/lib.mjs）。tests/frame.mjs だけは差し替えず、サンドボックスの iframe でブラウザ本来の動きのまま断られる。
   iframe の中のキー入力は、iframe の中を一度クリックしてから届く。
 - Playwright は 1.63.0 に固定（クラウド環境の /opt/pw-browsers の Chromium と版を合わせている）。上げる時はそろえること。
   上げると描き方が少し変わりうるので、`pnpm test:visual` が落ちたら、違いの画像を見てから基準を作り直す（コミットを分ける）。
 - CI では画面写真の比較も失敗にする。CI とクラウド環境の差は数画素（0.01%以下）で、失敗の基準は0.2%。
 
-## TypeScript に移す
-古い JS（src/game/）の関数を、1つずつ src/lib/*.ts に移す。動きを変えないことが一番大事。
-1. src/lib/ に、型を付けて書き直す（`export` する）。状態の多くは src/lib/state.ts の入れ物にあるので、状態に頼る関数も移せる（入れ物を import して読み書きする。確かめ方は手順3）。
-   迷宮の乱数（`rand`・`R`・`RI`・`pick`）は src/lib/random.ts にある（入れ替えは `setRand`。`rand=…` とは書けない）。
-   まだ古い JS にある状態（src/lib/state.ts に無い物）に頼る関数は、先にその状態を入れ物に移す（下の「状態を入れ物に移す」）。
-   TypeScript のモジュールは、古い JS より先に読まれる。読んだ時に値を覚える書き方（`const mr=Math.random` など）は、
-   テスト用モードの入れ替えより前の値を覚えてしまうので、呼んだ時に読む形にする（`mr = () => Math.random()`）。
-   同じ理由で、作る時に Math.random を引く物（three.js の Scene・Mesh・Material などは uuid を作る）をモジュールの一番外で作らない（その後の見た目の乱数がずれる）。
-   古い JS が順に呼ぶ関数の中で作り、入れ物（gfx.scene など）に入れる（描画の部品は src/lib/render.ts の initRenderer、文字の部品は src/lib/boot.ts の init）。
-2. `src/game/imports.mjs` に import を足し、src/game/ から元の定義を消す（「〜は src/lib/xx.ts」と1行残す）。
-   src/lib/ のファイルの頭の「もとは src/game/〜」と、古い JS の「〜は src/lib/xx.ts」の行は、移している間の手がかり。古い JS を全部移し終えたら消す。
-   消し忘れると、包みの中の古い定義が import を黙って隠す。lint-game（pnpm check と編集直後の hook）が、包みの一番外での宣言をエラーにして止める
-   （関数の中で同じ名前を使い直すのは、その中だけのことなので止めない。色の名前の `EYE` など）。
-3. 移した関数が、移す前と同じ文かを `node tools/same-code.mjs --rev origin/main --auto-state src/lib` で確かめる（違いが0、比べていない名前が無いこと。
-   比べるのは古い JS から消えた名前だけ。状態を入れ物に移した名前は --auto-state が見つける（src/lib/state.ts の入れ物に初めの値を書いた欄から）。
-   見つからない時は --state 入れ物:名前,… で渡す。古い JS でも使われていなかった物や、呼ぶ所も一緒に消した物（今はどこからも使われていない物）は、
-   「消した」と出して止めない）。PR の CI も同じことをする。移す時は名前を変えない（変えると、古い名前がどこからも使われなくなり「消した」に見えて、比べない）。
-   移す PR では、移した関数の動きを変えない。変えたい時は、移す PR を入れてから別の PR で変える（同じ PR で変えると、CI の比べ合わせが止める。
-   写し漏れを直して元の動きに戻すのは止まらない）。移していない所の小さな直しは、コミットを分ければ同じ PR に入れてよい。道具が出す「人が確かめる一覧」は、1件ずつ確かめ、一覧と確かめた結果を PR の説明に書く。
-   型のための書き換えは、道具の規則（nth・lookup・must・level()・算術の中の `?? NaN` など。ファイルの頭）の形だけにする。規則に無い書き換えは違いとして出るので、
-   写し方を規則に合わせる（無い値をそのまま渡す・返す所は `?? NaN` ではなく `nth`・`must`）。「先に読む」（`const D = here.D` など）は、道具が出す一覧を見て、
-   間で中身が変わらないことを確かめる。道具は通るかどうかに関係なく全部の行を見るので、写し漏れ・係数・比べ方・乱数を引く順番の違いはここで見つける。
-   そのうえで、移す前の実装と、たくさんの入力で同じ結果になることを確かめる（規則と、状態の入れ物の読み書きを確かめるため。Node 26 は .ts をそのまま動かせる。古い関数は git の版から取り出す）。
-   乱数を引く順番を変えると、同じシードで違う結果になる。移す前の値を、単体テスト（tests/unit/*.test.ts）に残す。
-   本物の型に合わせられない偽物を使うテスト（音の偽の Web Audio など）は、`as` を使わないように .mjs で書く（その分、型では確かめない）。
-   移した物が、まだ古い JS にある関数を使う時は、テストで `tools/legacy-eval.mjs` の legacyValues から本物を取り出す。
-   状態に頼る関数は、古い JS を消す前に、legacyValues で取り出した古い関数と新しい関数に同じ状態（gear など）を入れ、たくさんの場合で結果と状態の変わり方を比べてから消す
-   （古い関数も、TypeScript の状態の入れ物を同じ物として読む）。比べ方の見本は、tests/unit/gear.test.ts の頭にある。
-   迷宮の生成は Node とブラウザで同じ迷宮になる（混ぜるのは shuffle）。生成に関わる変更は、Node の単体テストの指紋（generate.test.ts。欄の並びによらない）で、
-   前の版と作り比べる。意図して迷宮を変えた時は、ブラウザの `__test.gen` でも Node と同じ指紋になることを確かめてから、指紋を作り直す
-   （生成した迷宮を使う place.test.ts・status.test.mjs・draw.test.mjs の指紋も変わるので、一緒に作り直す）。
-   指紋を作り直す前に、`node tools/case-diff.mjs` で前の版と書き出しを比べ、違いがねらった所とそれに続く物だけかを確かめる（生き物の見た目を直した時も同じ）。
-   確かめたら、`node tools/case-diff.mjs --update` で指紋の値を書き換える。main を取り込んで指紋の行がぶつかった時は、main の値を取ってから、同じく比べ合わせ → `--update`。
-4. `pnpm fmt`・`pnpm check`・`pnpm test`（画面写真の比較も含む。画素まで同じはず）。
+## TypeScript の書き方
 - 型を外すだけで組み立てる（Vite）。enum・中身のある namespace など、型を外すだけでは動かない書き方は使わない（`erasableSyntaxOnly`）。
   型だけの `declare namespace`（組み立てで消える）は、関数に覚えさせる欄の型を付ける時だけ使ってよい（monsters.ts の `houndScent.msgT`）。
 - import は `.ts` まで書く（`./rng.ts`）。`noUncheckedIndexedAccess` なので、配列の要素は `undefined` かもしれない物として扱う。
 - 型の言い切り（`as`。`as const` は除く）と後ろの `!` は使わない（lint がエラーにする。間違っていても tsc が黙って通すため）。
   配列と表は src/lib/array.ts の `nth`・`lookup`、無いかもしれない値は `must` で読む（無ければその場で止まる）。範囲の外や無い欄を
-  わざと読む所は、無い時の扱いをその場で書く（`?? 0` など、元と同じ値になる形）。どうしても要る所だけ `oxlint-disable-next-line` と理由。
-- **状態を入れ物に移す**：`node tools/state-move.mjs <入れ物> <名前>…`（`--dry` で一覧だけ）。eslint-scope で、ゲームの状態を指す所だけを
-  `入れ物.名前` に書き換え、元の宣言を消す（初めの値は一覧に出るので、src/lib/state.ts の入れ物に書く。入れ物は src/game/imports.mjs で読む）。
-  初めの値が決まった値（数・文字列・true など、それだけでできた配列・オブジェクト、空の `new Set()`・`new Map()`）でない宣言（`Math.random()`・`Math.random` の読み取り・`new Date()` など）は、
-  道具がその場に `入れ物.名前=…;` として残す（TypeScript のモジュールは先に読まれるので、移すと値を作る時と順番が変わる）。
-  その場に残す名前が並んだ宣言（`const a=…, b=…;`）の中にある時は、並んだ全部をその場に残す物として一緒に移す（`入れ物.a=…; 入れ物.b=…;` にする）。そうでなければ道具が止める。
-  丸ごと入れ替えない `const`（`player` など）は、道具を使わず、宣言を state.ts に移して import するだけでよい（名前はそのまま）。
-  書き漏れは lint（定義されていない名前）が止める。入れ物の名前は、古い JS の局所の名前とぶつからない物にする（道具が確かめ、lint-game も
-  関数の中での宣言し直しを止める。例：座標の `fx` があるので、揺れと光りの入れ物は `vfx`）。書き換えた後は、変わった行が「名前に入れ物を付けただけ」か確かめる。
+  わざと読む所は、無い時の扱いをその場で書く（`?? 0` など）。どうしても要る所だけ `oxlint-disable-next-line` と理由。
+  本物の型に合わせられない偽物を使うテスト（音の偽の Web Audio など）は、`as` を使わないように .mjs で書く（その分、型では確かめない）。
+- 関数の多重定義（同じ名前の function を型ごとに並べる書き方）は使わない。組み立てた JS では1つになり、ソースマップのテスト（build.test.mjs）の関数の数が合わなくなる。
+- **モジュールを読んだ時には何もしない**：一番外で、Math.random を引く物・DOM を読む物を作らない（読む順番はモジュールのつながりで決まり、
+  テスト用モードの入れ替え（src/lib/boot.ts の boot の初め）より前になる）。読んだ時に値を覚える書き方（`const mr=Math.random` など）も、
+  入れ替えより前の値を覚えてしまうので、呼んだ時に読む形にする（`mr = () => Math.random()`）。作る時に Math.random を引く物（three.js の Scene・Mesh・Material などは uuid を作る）は、
+  boot が順に呼ぶ関数の中で作り、入れ物（gfx.scene など）に入れる（描画の部品は src/lib/render.ts の initRenderer、文字の部品は src/lib/boot.ts の init）。
+  DOM を読む物は単体テスト modules.test.mjs（どのモジュールも Node で単独で読める）が止める。
+- 状態は src/lib/state.ts の入れ物（clock・ui・gfx など）の欄に置き、`入れ物.名前` で読み書きする。入れ物の名前は、局所の名前とぶつからない物にする
+  （例：座標の `fx` があるので、揺れと光りの入れ物は `vfx`）。
 - 例外：生き物の表 `MTYPES`（src/lib/creatures.ts）と性質の効き目 `RES`（src/lib/runes.ts）は表だが、探索の途中で種類が足される（その階の主・忘れられた獣・王の影・
-  図鑑の見本・試しの間の的）。古い JS が初めからある種類と同じ `MTYPES[key]` で読むので、表のモジュールに置いている（生き物の処理を移す時に分ける）。
-- 関数の多重定義（同じ名前の function を型ごとに並べる書き方）は使わない。組み立てた JS では1つになり、ソースマップのテストの関数の数が合わなくなる。
-- 文字を調べるテスト（使う文字・文字の幅）は、src/lib/*.ts の文も見る（`gameText`）。コメントの文字も調べるので、フォントに無い文字（＝ など）は
+  図鑑の見本・試しの間の的）。初めからある種類と同じ `MTYPES[key]` で読むので、表のモジュールに置いている。
+- 乱数を引く順番を変えると、同じシードで違う結果になる。指紋を取る単体テストが、たくさんの場合で結果を確かめている。
+  指紋を作り直す前に、`node tools/case-diff.mjs` で前の版と書き出しを比べ、違いがねらった所とそれに続く物だけかを確かめる（生き物の見た目を直した時も同じ）。
+  確かめたら、`node tools/case-diff.mjs --update` で指紋の値を書き換える。main を取り込んで指紋の行がぶつかった時は、main の値を取ってから、同じく比べ合わせ → `--update`。
+- 迷宮の生成は Node とブラウザで同じ迷宮になる（混ぜるのは shuffle）。生成に関わる変更は、Node の単体テストの指紋（generate.test.ts。欄の並びによらない）で、
+  前の版と作り比べる。意図して迷宮を変えた時は、ブラウザの `__test.gen` でも Node と同じ指紋になることを確かめてから、指紋を作り直す
+  （生成した迷宮を使う place.test.ts・status.test.mjs・draw.test.mjs などの指紋も変わるので、一緒に作り直す）。
+- 文字を調べるテスト（使う文字・文字の幅）は、src/lib/ の文と index.html を見る（tests/lib.mjs の `gameText`）。コメントの文字も調べるので、フォントに無い文字（＝ など）は
   コメントにも書かない（落ちた時は、場所と「コメント」の印が出る）。
 
 ## テスト用モード（`?test=1`）
 同じ手順なら、いつも同じ結果になるモード。開発用モードも含む（`seed=`・`depth=`・`god=1` などがそのまま使える）。
-テスト用モードでない時（`?test=1` なし）の動きには影響しない（テスト用モードかを `src/lib/state.ts` の `TEST` で見て、`src/lib/testmode.ts` の installTestMode（`src/game/00-test-mode.js` が一番初めに呼ぶ）が時計と乱数を入れ替える）。
+テスト用モードでない時（`?test=1` なし）の動きには影響しない（テスト用モードかを `src/lib/state.ts` の `TEST` で見て、`src/lib/testmode.ts` の installTestMode（`src/lib/boot.ts` の boot が一番初めに呼ぶ）が時計と乱数を入れ替える）。
 - `Math.random` はシードで決まる。時計（`performance.now`・`setTimeout`・`setInterval`・音の時計 `AudioContext.currentTime`）は、ゲームが進む時だけ進む。
   音の部品はいつも動いている扱い（`state` が `'running'`）。詠唱の円の文字は、詠唱の声の音節の時刻（音の時計）で光り、声は部品が動いている時だけ鳴るので、
   どちらかが実時間で変わると、絵がずれるため。音の速さ（`sampleRate`）は 44100。始めに作る響きと雑音は音の速さの数だけ音の乱数を引くので、
@@ -488,10 +449,10 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
   - パネルの文字の幅を測る時は、`document.fonts.ready` を待つ（文字の範囲ごとのフォントは、使う時に読まれる）。
 
 ## 自動の確かめ（hooks、.claude/settings.json）
-- **編集の直後**（PostToolUse）：`src/` などの JS を編集すると、構文と lint を確かめる（`src/game/` は全部をつないで調べる）。TypeScript は型（tsc）と、型の情報を使う lint。エラーなら差し戻されるので、その場で直す。
+- **編集の直後**（PostToolUse）：`src/` などの JS を編集すると、構文と lint を確かめる。TypeScript は型（tsc）と、型の情報を使う lint。エラーなら差し戻されるので、その場で直す。
 - **終える前**（Stop）：`src/`・`tools/`・`tests/`・設定が変わっていれば `pnpm check` を通す。通らなければ終われない。
 - **セッションの始め**（SessionStart、クラウドのみ）：.node-version の Node と packageManager の pnpm を用意し（~/.cache）、依存が変わっていれば `pnpm install --frozen-lockfile`。
-- 権限：`pnpm run` のスクリプト（`pnpm run deploy` を除く）と、check・lint・fmt・test・build・typecheck・dev・map・where・verify・serve などの `pnpm` の直接の呼び出し、`pnpm exec` の oxlint・oxfmt・vitest・vite、`node tools/*`・`node tests/*`、
+- 権限：`pnpm run` のスクリプト（`pnpm run deploy` を除く）と、check・lint・fmt・test・build・typecheck・dev・where・verify・serve などの `pnpm` の直接の呼び出し、`pnpm exec` の oxlint・oxfmt・vitest・vite、`node tools/*`・`node tests/*`、
   git の読み取り・add・commit・push・fetch・merge・stash・ブランチの切り替えは確認なし（一覧は .claude/settings.json の allow）。
   依存の追加と更新（`pnpm add`・`pnpm update`・`pnpm approve-builds`・`pnpm dlx`）・公開（`pnpm run deploy`・wrangler）・`rm -rf`・`git reset --hard`・`git clean`・変更を捨てる `git checkout` は確認あり。
   force push（`+ブランチ` の形も）・リモートのブランチの削除、npm での依存のインストール、`dist/` と `pnpm-lock.yaml` の直接編集、`.env`・`.dev.vars` を読むことは禁止。
@@ -519,52 +480,24 @@ pnpm run deploy       # 手元から Cloudflare に公開（ふだんは Workers
 `al_meta`（伝承・解放・墓・試練・指で遊ぶ時の始めの一言を出したか）、`al_book`（魔導書：記した反応）、`al_beasts`（忘れられた獣）、
 `al_runes`（見たルーン）、`al_seen`（見た生き物）、`al_look`（指で遊ぶ時の見回す速さの段）、`al_snd`（音量の段）、`al_dev`（開発用モード）
 
-## ゲーム本体の地図（src/game/）
-ファイルは名前の順につながる（後のファイルは、前のファイルの変数や関数を使える。トップレベルで実行する文は順番に気をつける）。
-ファイル名は「2桁の番号-名前.js」（違う名前や、改行で終わらないファイルがあると、組み立てが止まる）。
-細かい見出しと行は `pnpm map` で見る。TypeScript に移した名前のうち、古い JS が読む物の一覧は `src/game/imports.mjs`（生成だけが使う物は載らない。古い JS の「〜は src/lib/…」の行も見る）。ブラウザのエラーの場所は `pnpm where <JS:行:列>` で元のファイルに直す（テストのエラーには自動で付く）。
-| ファイル | 中身 |
-|---|---|
-| 00-test-mode | テスト用モードの時計と乱数を入れ替える installTestMode（src/lib/testmode.ts）を呼び、エラーを出す所 ui.errEl を document から読み、autoGuard を呼ぶ。テスト用モードか `TEST` は src/lib/state.ts |
-| 01-title | タイトルのロゴを描く buildLogo（src/lib/title.ts）を呼ぶ文だけ |
-| 02-constants | 「〜は src/lib/…」の行だけ。特別な階の場所 interAt・interAfter、場所の名前 placeKey と次の場所へ進む advance は src/lib/levels.ts。生き物の表 MTYPES は src/lib/creatures.ts。部屋の仕掛けの伝言 MACHINE_INFO は src/lib/names.ts。層・テーマ・支道と異界の中身・迷宮の乱数・迷宮の大きさ・タイル・灯りの計算などは src/lib/。飾りの文字の並び（RUNESET など）は src/lib/glyphs.ts、今いる場所の名前 placeLabel は src/lib/status.ts |
-| 03-vaults-history | 「〜は src/lib/…」の行だけ。壁の絵 ARTS と洞窟の形と宝物庫の絵は src/lib/vaults.ts、探索ごとの年代記の中身 HIST は src/lib/state.ts の adv、makeHistory は src/lib/history.ts、岩・鉱脈・宝物庫の壁の高さは src/lib/world.ts |
-| 04-generate | 「〜は src/lib/…」の行だけ。迷宮の生成の呼び出し口 generate は src/lib/levels.ts（生成そのものは src/lib/generate.ts の generateLevel） |
-| 05-renderer | 描画の部品を作る initRenderer（src/lib/render.ts）を呼ぶ文だけ（どれも作る時に乱数を引くので、テスト用モードの入れ替えの後にここで呼ぶ。WebGL を作れなければ、ゲームの用意をここでやめる）。three.js と後処理の部品 T・霧の色 fogCol は src/lib/three.ts、灯りを描画に渡す配列 SL・DLP・DLC とマスの絵の中身 cellData と入れ物 gfx・塵 dust は src/lib/state.ts、シェーダーのソースと描画用の配列の大きさは src/lib/shaders.ts、文字を置く dyn・粒子を出す spawn・消す killP とその配列・描く粒子の配列 ptPos などは src/lib/particles.ts、その数 buf は src/lib/state.ts、粒子を動かす updateParticles は src/lib/motes.ts |
-| 06-world | 「〜は src/lib/…」の行だけ。水面を作る makeWater と見える区切りだけを描く cullChunks は src/lib/render.ts、世界の組み立て buildWorld と水面の絵を書き直す updateWater は src/lib/build.ts、区切りごとの文字 chunks・隠す板 occMesh・水面 waterMesh・水面の絵 waterTex は src/lib/state.ts の gfx、入った部屋 visitedRooms は here、通れない所に押し当てた記録 edge は src/lib/state.ts。今の階の中身 D・depth・monsters・player などと、描いた文字の数 glyphCount・chunksDrawn（hudInfo）は src/lib/state.ts。画面の下の一言 showHint は src/lib/status.ts、sstep・flowW は src/lib/math.ts、CHUNK は src/lib/world.ts、天井の高さ ceilAt は src/lib/lightmap.ts |
-| 07-bodies-lords | 表 MTYPES に見た目を書き足す（addLooks を呼ぶだけ。addLooks は src/lib/bodies/build.ts）。生き物の形を作る buildForm は src/lib/bodies/build.ts、まわりの飾り・王の影の変身・姿を変える途中は src/lib/bodies/auras.ts、各生き物の形は src/lib/bodies/ |
-| 11-monster-move | 「〜は src/lib/…」の行だけ。生き物を作る makeMonster・歩ける所 canStep・行き先 chooseNext は src/lib/monsters.ts |
-| 13-creatures | 「〜は src/lib/…」の行だけ。生き物の動き updateMonster は src/lib/monsters.ts、小さな生き物の動き updateCritter・掃除機と修復機の仕事 machineWork・水しぶき splash は src/lib/ground.ts、小さな生き物の次に向かうマス critterStep と猟犬が追う匂い houndScent は src/lib/monsters.ts、叫び声の音 sShriek は src/lib/audio.ts。生き物を描く drawMonster・drawMonster1・drawMonster0 と深みの主の触手 drawTentacles は src/lib/bodies/draw.ts、頭の上の印 drawMark は src/lib/status.ts、主などのまわりの飾り（lichAura など）と姿を変える途中 drawMorph は src/lib/bodies/auras.ts、古い形は src/lib/bodies/small.ts、遠吠えと警報の音 sHowl・sAlarm は src/lib/audio.ts、クモの巣を描く drawWebs と巣に触れた時 webTouch は src/lib/fixtures.ts |
-| 14-lights-fixtures | 見出しと「〜は src/lib/…」の行だけ。灯りの揺らぎ flicker と、灯りを描画に渡す配列を書き直す updateLights は src/lib/lightmap.ts、LANTERN は src/lib/light.ts、マスの明るさ cellLight は src/lib/lightmap.ts、備品を描く drawFixtures と扉を描く drawDoors は src/lib/fixtures.ts |
-| 15-sound-fire | 「〜は src/lib/…」の行だけ。沼のガスの粒 updateGasPoints・川のさざ波 riverFX・粒子と塵を動かす updateParticles は src/lib/motes.ts、火を進める stepFire・ガスが広がる stepGas は src/lib/ground.ts、部屋の出来事を進める updateEvents は src/lib/events.ts、ガスが広がる時の作業の配列 gasTmp は src/lib/state.ts の blaze。ガスが爆ぜる boom は src/lib/combat.ts、燃える物のマス initFire は src/lib/ground.ts、部屋の出来事を作る initEvents は src/lib/levels.ts、塵を置く initDust・respawnDust は src/lib/particles.ts。音量の切り替え sndToggle は src/lib/screens.ts、音を鳴らす処理（sndInit・効果音・まわりの音 sndUpdate など）は src/lib/audio.ts、SND_NAME・sEnv は src/lib/sound.ts、cpos・FIRE_TYPES は src/lib/world.ts。火と地面のマスの状態（火の備品のマス fireSrc・爆ぜた伝言の時刻 lastBoom も）は src/lib/state.ts の blaze、音 SND も src/lib/state.ts、火を描く drawFire は src/lib/fx.ts。火をつける ignite とマスの絵を描画に渡す uploadCells は src/lib/ground.ts、生き物を呼び出す summon は src/lib/monsters.ts |
-| 16-view-input | ミニマップのキャンバス ui.mapC と描き手 ui.mctx を document から読む（大きさを合わせる sizeMap と描く drawMap は src/lib/minimap.ts）、伝言の1秒ごとの描き直し、タイトルの画面 ui.introEl を document から読み、マウスを捕まえた・捕まえられなかった時の受け取りと指で遊ぶ時の土台を用意する initPointer（src/lib/input.ts）を呼ぶ。タイトルで選んだ始める深さ startDepth は src/lib/state.ts の ui。見えるマス computeFOV は src/lib/levels.ts、通れない所の当たり判定 solidAt は src/lib/player.ts（通れなかった物 blockType は src/lib/state.ts の player）。マウスを捕まえる tryLock・失敗した時 lockFailed・外れた時にメニューを開くか menuOnUnlock・updateResume は src/lib/screens.ts、伝言 msg・renderLog は src/lib/log.ts、伝言の一覧 msgs は src/lib/state.ts。ミニマップの大きさは src/lib/hud.ts、押しているキー keys は src/lib/state.ts |
-| 17-meta | タイトルの画面を用意する initIntro（src/lib/intro.ts。記録 META と開発用モードを読み、タイトルを描き、[迷宮に入る] を受け取る）と、マウスとキーの処理を用意する initInput（src/lib/input.ts）を呼ぶ文だけ。タイトルの枠を画面に収める fitIntro は src/lib/layout.ts、UNLOCKS・META_DEF は src/lib/progress.ts、解放の確かめ（unlocked・lockedOf・weaponPool）と試練（trialOn）と使える伝承 loreLeft は src/lib/unlocks.ts、保存する記録 META などは src/lib/state.ts の saved、保存する saveMeta は src/lib/save.ts |
-| 18-level-player | 探索のシードの初めの値。目の慣れ expo は src/lib/state.ts の vfx。レベルアップの画面（levelChoices・lvlLine・openLevelUp・chooseLevel）は src/lib/panels.ts、命の一歩 updateLife は src/lib/combat.ts。加護の表 BLESS は src/lib/progress.ts、加護の段 BL は src/lib/monsters.ts。新しい階 newLevel・階の中の出来事 checkEvents・層の名前 showStratum・層で強くなる strataGrowth・選ばれなかった枠 settleSlotPick・死と始め直し die・newRun は src/lib/levels.ts、霧の色 setFog は src/lib/build.ts、プレイヤーと生き物のダメージ hurtPlayer・damageMonster・ひるみと吹き飛び hitReact・近接の攻撃 monsterStrike・経験 gainExp・冷気が弾ける coldSnap は src/lib/combat.ts、結果の画面の場所・伝承・墓（resultPlace・runLore・awardLore・loreRows・graveCandidates・graveRows・saveGrave）は src/lib/results.ts。階のシード levelSeed は src/lib/levels.ts、生き物の強さの表 MSTAT は src/lib/creatures.ts、statOf は src/lib/monsters.ts、墓のルーン graveRune は src/lib/gear.ts。expNeed・expOf は src/lib/progress.ts、serRune は src/lib/runes.ts。TRAP_INFO は src/lib/names.ts、WEAPON・SLEEP_MULT は src/lib/runes.ts、roll は src/lib/random.ts。攻撃が当たる生き物か hittable は src/lib/aim.ts、敵か hostile・攻撃の的か foe・体力を初めの値にする initMonsterLife は src/lib/monsters.ts、薄い氷が割れる crackIce・茂み tallAt・trample・硫黄が燃え上がる brimFlare と、踏み分けた茂みが戻る regrow・燃えた硫黄が戻る brimRecover（戻るまでの秒 brimT は src/lib/state.ts の blaze）は src/lib/ground.ts、罠（triggerTrap・updateTraps）は src/lib/events.ts、罠と鉄格子を描く drawTraps は src/lib/fixtures.ts |
-| 19-hands-runes | 魔導書 saved.BOOK を localStorage から読む文と、「〜は src/lib/…」の行だけ。手元の武器の形と色の表（VM_MODELS など）は src/lib/hands.ts、描く drawViewWeapons は src/lib/held.ts。術の中身 specOf・探索の始めの手に戻す resetRunes・ルーンを作る・ルーンの種類を選ぶ・手と持ち物の処理は src/lib/gear.ts、手元の武器が跳ねた時刻 vmKick は src/lib/state.ts、ルーンの名前と色と付けられるか・特性の説明 trDesc は src/lib/runes.ts。ルーンの定義 RUNE_DEF・性質の効き目 RES・TRAITS・REACT・手の枠は src/lib/runes.ts。武器を振った線 drawSwing は src/lib/aim.ts |
-| 20-chant-hits | 「〜は src/lib/…」の行だけ。詠唱（timeScale・beginCast・fizzle・releaseCast・updateCast）は src/lib/chant.ts、飛ぶ物 updateProjs・状態異常 updateStatuses・monTimeK・遅れて起きることと魔法の場 updateZones・雨 updateRains は src/lib/projs.ts、剣の波を描く drawWave は src/lib/fx.ts。術を放つ castNow と武器の種類ごとの撃ち方・当たり applyHit・性質を移す applyElem・反応 react・稲妻・玉が弾ける orbBurst・火 burstFire・発動のルーン onKilledBy・遅れて起きること later などは src/lib/combat.ts、光線を撃ち続けた記録 beamHold は src/lib/state.ts、地面に落とす所 groundPoint・跳ね返る向き reflectDir は src/lib/aim.ts。turnDir は src/lib/math.ts、sp_elem は src/lib/runes.ts。戦いの状態は src/lib/state.ts の fight、床の目印と魔法の場を描く drawZones は src/lib/fx.ts。見ている向き viewDir は src/lib/aim.ts |
-| 21-altars-heal | 見出しと「〜は src/lib/…」の行だけ。祭壇の画面（renderAltar・openAltar・closeAltar・updateAltarPanel・chooseAltar）は src/lib/panels.ts。足元の物を拾う pickupItems・物を取る grabItem・宝物庫の褒美を取った時 vaultSprung・落石 updateRockfall は src/lib/pickup.ts（落石の状態は src/lib/state.ts の fight.rockfall）、主を倒した時の祭壇 dropRune と立ち直り rallyOnHit・光の粒を動かす updateRally は src/lib/combat.ts、立ち直りの光の粒 rallyMotes は src/lib/state.ts の fight。階ごとに祭壇とルーンを置く・祭壇の中身・番人・鍛え方・泉を置く・石碑のそばか・祭壇の画面の1行と説明と選択肢・拾ったルーンを手か袋に入れる（placeRunesForLevel・mainPathAltars・altarFill・addGuards・forgeOptions・placeSpring・nearStele・altarLine・altarDetail・altarOpts・takeRune・placeChosen など）は src/lib/altars.ts、近くの祭壇 altarNear は src/lib/state.ts の ui、RALLY_FROM は src/lib/runes.ts、ALTAR_W は src/lib/hud.ts、泉を描く drawSprings は src/lib/fixtures.ts |
-| 22-world-hints | 方向の矢印のキャンバス ui.arrowCv・描き手 ui.arrowCtx・下の HUD ui.hotbarEl と照準の文字 ui.crossEl を document から読み、下の HUD の大きさを見る ResizeObserver を作る。方向の矢印 drawArrows は src/lib/arrows.ts、床のルーン drawRunesWorld は src/lib/fixtures.ts、階の場所ごとの空気 updateSectionAir は src/lib/camera.ts、詠唱の見た目 drawCastFx・照準の文字 updateCross・術が飛ぶ道 simPath は src/lib/chantfx.ts。照準の先の生き物 aimTarget・狙いを助ける点 assistPoint・撃つ所と向き shotFrame と照準の小さな関数（handUp・aimPoint・centerPoint・castPoint・handPoint）は src/lib/aim.ts（照準の先の生き物 crossMon は src/lib/state.ts の ui）、術を放つ音 castSound は src/lib/audio.ts。先にある物の手がかり（computeOmen・drawOmens：階段から漏れる光と音、支道の入口の跡、異界の門の光）と階段の封（stairsGuarded・drawStairSeal）は src/lib/omens.ts、墓を描く drawGraves は src/lib/fixtures.ts |
-| 23-debug | window.dbg に置く initDbg（src/lib/debug.ts）を呼ぶ文だけ。命令 dbg・F2 の画面・URL の指定は src/lib/debug.ts |
-| 24-goal | 見出しと「〜は src/lib/…」の行だけ。タイトルへ戻る returnToTitle は src/lib/menu.ts、空の枠を拾った時 openSlot・伝説の物を手にした時 pickLegend は src/lib/pickup.ts、最深部を進める updateFinal・王の影を立ち上がらせる spawnFinalBoss は src/lib/levels.ts、勝った時 victory は src/lib/results.ts、支道の主が倒れた時 lordFell は src/lib/combat.ts、最深部の支度 setupFinal は src/lib/levels.ts、枠を開ける applyOpen は src/lib/gear.ts。王の影の大きさ shadowKingScale は src/lib/bodies/lords.ts、二つ目の姿の大きさ shadowSerpentScale は src/lib/bodies/bosses.ts。最深部か isFinal は src/lib/levels.ts、最深部の状態 finalSt は src/lib/state.ts の here、王の影の変身 transformShadow は src/lib/bodies/auras.ts、今の探索の伝説の物 getLegend と状態の表示の1行 legendLine・伝説の物の読み方（legendOfBranch・legendAll・descentSealed）・世界の中に描く drawLegendWorld・神託所の手がかり oracleLegendHints は src/lib/legend.ts、伝説の物の表は src/lib/names.ts、稲妻の見た目 addBolt・sparkCrown・drawBoltFx は src/lib/fx.ts |
-| 25-gallery | 見た生き物と見たルーン（saved.SEEN・saved.RSEEN）を localStorage から読む文と、試しの間の的の種類を表 MTYPES・RES に足す文だけ。見た物の記録 trackSeen・図鑑・試しの間は src/lib/gallery.ts、図鑑の主・試しの間の的の表は src/lib/names.ts、保存した集まりを読む loadSet・保存する saveSet と忘れられた獣の記録 loadBeasts・recordBeast は src/lib/save.ts、図鑑の見本の獣 beastSamples は src/lib/bodies/lords.ts |
-| 26-spells-hud | 「〜は src/lib/…」の行だけ。毒の霧に火が届く cloudsMeetFire は src/lib/projs.ts、詠唱の声 chantStart は src/lib/audio.ts（鳴っている声 humNode は src/lib/state.ts の gear）、転がる startRoll は src/lib/chant.ts。閉じた扉 doorBlock・見通し losClear・光線を撃つ所 beamFrame は src/lib/aim.ts、性質を地面に落とす landElem・水に雷が伝わる conductWater・かわした時 onDodged（かわした時の加護の効く間と発動のルーン）は src/lib/combat.ts。止まっているか isPaused は src/lib/status.ts、下の HUD renderHotbar は src/lib/hotbar.ts、詠唱の声の表は src/lib/sound.ts、凍らせた水を描く drawFrozen は src/lib/fx.ts、冷気 chillArea と凍らせた水が溶ける updateFrozen は src/lib/ground.ts |
-| 27-rune-screen | 見出しと「〜は src/lib/…」の行だけ。メニュー（renderMenu・setMenu・menuAct・menuArmReset。指で遊ぶ時は、操作の案内・年代記・魔導書をメニューの中に開き、[戻る] で一覧に戻る）は src/lib/menu.ts。魔導書 renderBook と立ち止まって調べる updateSearch は src/lib/status.ts。装備の画面を作る renderInv と中のボタンの処理（選ぶ・はめる・袋のページ・ビルドの保存と呼び出し applyBuild）・開け閉め setInv・付け替えの詠唱 startSwap は src/lib/inventory.ts、装備の画面の状態（選んでいるルーン packSel・開けた時の両手 packSnap など）は src/lib/state.ts の ui。音量 sndToggle・マウスを捕まえる tryLock は src/lib/screens.ts、枠 boxText は src/lib/text.ts |
-| 28-camera-player | 残した音量の段を読む（loadSndLevel を呼ぶ）。霧と目の慣れ updateAtmosphere（霧の濃さ・露出・溶岩の近くの熱のゆらぎ・水中の見え方）・その点が岩の中か rockAt は src/lib/camera.ts。プレイヤーの動き updatePlayer は src/lib/player.ts。攻撃や投げた物が出る所 aimOrigin は src/lib/aim.ts |
-| 29-look | 見た時の説明を出す所 ui.lookEl を document から読む。見た時の説明 look は src/lib/look.ts、説明の表と lookLine は src/lib/names.ts |
-| 30-loop-init | 画面の大きさが変わった時の処理を置く文と、テスト用の `__test` を置く initTestApi（src/lib/testapi.ts）・ゲームを始める start（src/lib/boot.ts。init で文字の絵の表と文字の部品を作り、最初の階を作って frame を回し始める）を呼ぶ文。大きさとメインループ（applySize・frame・tick。tick の段ごとの見た目の乱数 inPhase・inMobPhase）と画質を変える setQuality は src/lib/loop.ts、ゲームの時刻 time は src/lib/state.ts の clock |
-結果の画面は `die()` / `victory()` / `newRun()`（結果の画面のボタンと Enter・R は `startNewRun()`。暗くして、真っ暗になった時に tick が newRun を呼ぶ）、タイトルは `buildIntroPanel()` / `buildUnlockPanel()`。
-
 ## 落とし穴
-- **用意の順番**：古い JS の一番外の文は、ファイルの順に流れる（タイトルを描く `initIntro()` は 17-meta.js、ゲームを始める `start()` は 30-loop-init.js）。
-  状態の入れ物（src/lib/state.ts）は先に読まれるので TDZ にはならないが、本当の初めの値をその場の代入で入れている欄（`saved.META`・`saved.DEVALL` は
-  17-meta.js が呼ぶ src/lib/intro.ts の initIntro、`saved.BOOK` は 19-hands-runes.js、`saved.SEEN`・`saved.RSEEN` は 25-gallery.js で localStorage から、描く画面 `gfx.canvas`・カメラ `gfx.camera`・マスの絵 `gfx.cellTex`・場面 `gfx.scene`・描画する部品 `gfx.renderer`・分け合う値 `gfx.U`・後処理 `gfx.finalPass`・描く細かさ `gfx.pixelRatio`・後処理をつなぐ部品 `gfx.composer`・光のにじみ `gfx.bloom`・置いた文字の形と属性 `gfx.dynGeo`・`gfx.aPos`・`gfx.aCol`・`gfx.aPar` は 05-renderer.js が呼ぶ src/lib/render.ts の initRenderer、文字の部品 `gfx.staticMat`・`gfx.occMat`・`gfx.dynMat`・`gfx.ptMat` は 30-loop-init.js が呼ぶ src/lib/boot.ts の init、テスト用モードの時計 `clock.TESTCLK` は 00-test-mode.js、水面の絵 `gfx.waterTex`・`gfx.waterLTex` は init が呼ぶ src/lib/render.ts の makeWater、
-  見た時の説明を出す所 `ui.lookEl` は 29-look.js、タイトルの画面 `ui.introEl` とミニマップのキャンバス `ui.mapC`・描き手 `ui.mctx` は 16-view-input.js、方向の矢印のキャンバス `ui.arrowCv`・描き手 `ui.arrowCtx`・下の HUD `ui.hotbarEl` と照準の文字 `ui.crossEl` は 22-world-hints.js で document から）は、それより前に読むと、止まらずに黙って仮の値（カメラは位置 0,0,0 の仮の物（行列は単位行列で、updateProjectionMatrix・updateMatrixWorld は何もしない）、描く細かさは 1、描く画面と three.js の物は null か undefined、マスの絵は needsUpdate だけの物、`ui.lookEl`・`ui.introEl`・`ui.mapC`・`ui.mctx`・`ui.arrowCv`・`ui.arrowCtx`・`ui.hotbarEl`・`ui.crossEl` は null）になる。
+- **用意の順番**：ページの用意は src/lib/boot.ts の boot が順に行う（テスト用モードの時計と乱数の入れ替え `installTestMode` → エラーを出す所 `ui.errEl` → `autoGuard` → タイトルのロゴ `buildLogo` →
+  描画の部品 `initRenderer`（WebGL を作れなければ、ここでやめる）→ 表に見た目を書き足す `addLooks` → ミニマップ `ui.mapC`・`ui.mctx`・伝言の1秒ごとの描き直し・タイトルの画面 `ui.introEl` →
+  指の土台 `initPointer`（マウスとキーの処理より先に登録する）→ タイトル `initIntro`（`saved.META`・`saved.DEVALL` を読む）→ マウスとキー `initInput` → 探索のシード `adv.runSeed` →
+  魔導書 `saved.BOOK` → 方向の矢印 `ui.arrowCv`・`ui.arrowCtx`・下の HUD `ui.hotbarEl`・照準の文字 `ui.crossEl` → 開発用の命令 `initDbg` → `saved.SEEN`・`saved.RSEEN` と試しの間の的の種類 →
+  音量の段 `loadSndLevel` → 見た時の説明を出す所 `ui.lookEl` → resize を受ける → `initTestApi` → `start`）。Math.random を引く物は、入れ替えより後に作る。
+  状態の入れ物（src/lib/state.ts）は先に読まれるので TDZ にはならないが、本当の初めの値をその場の代入で入れている欄（上の boot の欄と、描く画面 `gfx.canvas`・カメラ `gfx.camera`・マスの絵 `gfx.cellTex`・
+  場面 `gfx.scene`・描画する部品 `gfx.renderer`・分け合う値 `gfx.U`・後処理 `gfx.finalPass`・描く細かさ `gfx.pixelRatio`・後処理をつなぐ部品 `gfx.composer`・光のにじみ `gfx.bloom`・
+  置いた文字の形と属性 `gfx.dynGeo`・`gfx.aPos`・`gfx.aCol`・`gfx.aPar` は initRenderer、文字の部品 `gfx.staticMat`・`gfx.occMat`・`gfx.dynMat`・`gfx.ptMat` は start が呼ぶ init、
+  水面の絵 `gfx.waterTex`・`gfx.waterLTex` は init が呼ぶ src/lib/render.ts の makeWater）は、それより前に読むと、止まらずに黙って仮の値（カメラは位置 0,0,0 の仮の物（行列は単位行列で、
+  updateProjectionMatrix・updateMatrixWorld は何もしない）、描く細かさは 1、描く画面と three.js の物は null か undefined、マスの絵は needsUpdate だけの物、
+  `ui.lookEl`・`ui.introEl`・`ui.mapC`・`ui.mctx`・`ui.arrowCv`・`ui.arrowCtx`・`ui.hotbarEl`・`ui.crossEl` は null）になる。
 - **パネルの枠と文字の幅**：枠（boxText）は `visW` で幅を数えて縦線を揃える（どちらも src/lib/text.ts）。パネルのフォントは M PLUS 1 Code
   （半角1マス・全角2マス。ただし全角スペース「　」は1マス。なので、列を揃える時は全角スペースで埋めず、visW で数えた半角スペースで埋める）。M PLUS 1 Code に無い文字（← → ！：？［］）は、
   BIZ UDGothic で補っている（全角2マス。補ってよい文字の一覧は src/lib/text.ts の `BIZ_CHARS`。組み立ては、それを含む BIZ UDGothic の面だけ入れる）。新しい記号を使う時は、M PLUS 1 Code にあるかを
   `pnpm check`（tests/glyphs.mjs）で確かめ、無ければ別の文字にするか、`BIZ_CHARS` と visW に足す。
   Ⅱ などは、BIZ UDGothic にも無いので使わない（II にする）。
-- **lint の警告**：使っていない関数・変数が残っている（古い仕組みの残り。`pnpm lint` の警告）。消す時は、図鑑や dbg から文字列で呼ばれていないか確かめる。
+- **使っていない物を消す時**：図鑑や dbg から文字列で呼ばれていないかと、右の値を作る時に乱数を引いていないかを確かめる。
 - **sed の区切り文字**：差し込む文に `|`（`||` など）があると壊れる。置き換えは Python で行う方が安全。
 - **/bin/sh**：`mkdir -p a/{b,c}` は展開されない。
 - **混ぜる**：`.sort(() => rand() - 0.5)` は使わず、`shuffle(配列, 乱数)`（src/lib/random.ts）を使う。でたらめな値を返す比べる関数での並びは

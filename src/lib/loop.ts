@@ -1,4 +1,4 @@
-// 大きさとメインループ（もとは src/game/30-loop-init.js）。
+// 大きさとメインループ。
 // 画面の大きさに合わせる applySize、毎フレームの frame、テスト用モードの1歩 testTick、ゲームの一歩 stepTick・tick と、tick の段ごとの見た目の乱数
 // （keyedPhase・tickRandOn・inPhase・inMobPhase）、テスト用モードの __test.cam で置いたカメラ（placeTestCam・withTestCam）、画質を変える setQuality。
 import { must } from './array.ts';

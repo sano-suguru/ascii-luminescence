@@ -23,7 +23,7 @@
 //      粒子の位置など）は止めない。場所は、引いた所（const v = mr() の行）を返す。
 // 音を鳴らす関数は、src/lib/audio.ts の s で始まる export と、本体が if(!sndReady())return で始まる関数（function の宣言と、名前を付けた関数の式・矢印関数）。
 // 変数は、関数の中で宣言した物だけを追う（名前がどの宣言を指すかは eslint-scope で見分ける。中の関数から読む所も数える）。追いきれない形（見ない）：
-//   - 一番外の変数（モジュールと、古い JS を包んだ関数の一番外）：ほかのファイルからも読まれうるので、読む所を全部は見られず、音だけに使うかを決められない
+//   - モジュールの一番外の変数：ほかのファイルからも読まれうるので、読む所を全部は見られず、音だけに使うかを決められない
 //   - 関数の引数と返り値を経る形（play(mr()) で、play が引数を音だけに使う、など）、関数の値を経る形（const g = () => k * v; … sDrip(0, 0, g())。
 //     中の関数の本体は値に数えない。const g = () => { spawn(v); } を音の引数の中で呼んでも、v を音に使うとは言えないため）と、
 //     オブジェクトの欄を経る形（m.t = mr(); … sDrip(0, 0, m.t)）
@@ -132,19 +132,11 @@ function scopes(ast) {
 const inside = (x, n) => x.start >= n.start && x.end <= n.end;
 
 /**
- * files：[{ name, text }]（name が game/ で始まる物は古い JS として、関数で包んで読む。.ts は TypeScript として読む）。
+ * files：[{ name, text }]（.ts は TypeScript として、ほかは JS として読む）。
  * audioNames：src/lib/audio.ts の音を鳴らす関数の名前。返り値：['name:行 どの形'] の一覧（見つかった音を鳴らす関数の名前も返す）
  */
 export function soundRandomCheck(files, audioNames) {
-  const parsed = files.map(({ name, text }) => {
-    const legacy = name.startsWith('game/');
-    return {
-      name,
-      text,
-      off: legacy ? 13 : 0,
-      ast: parseAst(legacy ? `(function(){\n${text}\n})` : text, { lang: name.endsWith('.ts') ? 'ts' : 'js' }),
-    };
-  });
+  const parsed = files.map(({ name, text }) => ({ name, text, ast: parseAst(text, { lang: name.endsWith('.ts') ? 'ts' : 'js' }) }));
   const sound = new Set(audioNames);
   const guarded = (f) =>
     f && ['FunctionExpression', 'ArrowFunctionExpression'].includes(f.type) && f.body.type === 'BlockStatement' && isGuard(f.body.body[0]);
@@ -163,7 +155,7 @@ export function soundRandomCheck(files, audioNames) {
       : st.type === 'IfStatement'
         ? soundTest(st.test) && soundOnly(st.consequent) && (!st.alternate || soundOnly(st.alternate))
         : st.type === 'ExpressionStatement' && st.expression.type === 'CallExpression' && sound.has(nameOf(st.expression));
-  const textOf = (p, n) => p.text.slice(n.start - p.off, n.end - p.off).replace(/\s+/g, '');
+  const textOf = (p, n) => p.text.slice(n.start, n.end).replace(/\s+/g, '');
   const exits = (st) =>
     ['ReturnStatement', 'ContinueStatement'].includes(st.type) ||
     (st.type === 'BlockStatement' && st.body.length > 0 && exits(st.body.at(-1)));
@@ -282,7 +274,7 @@ export function soundRandomCheck(files, audioNames) {
     });
     const names = new Set(VISUAL.filter((v) => !own.has(v)));
     const direct = (n) => valueRefs(n, names);
-    const line = (node) => p.text.slice(0, Math.max(0, node.start - p.off)).split('\n').length;
+    const line = (node) => p.text.slice(0, node.start).split('\n').length;
     const seen = new Set(); // もう出した、見た目の乱数を直に引く所（同じ所を、変数を経た形として二度出さない）
     const at = (node, why, ds) => {
       for (const d of ds) seen.add(d);
@@ -291,11 +283,8 @@ export function soundRandomCheck(files, audioNames) {
 
     // 引いた値を入れた変数（関数の中で宣言した物）。書き込む式に、見た目の乱数か、引いた値を入れた変数があれば、その変数も引いた値を入れた物
     const sm = p.sm;
-    // 一番外（モジュールと、古い JS を包んだ関数）の変数は追わない（ほかのファイルからも読まれうるので、読む所を全部は見られない）
-    const wrapper = p.off ? p.ast.body[0].expression : null;
-    const vars = sm.scopes
-      .flatMap((sc) => sc.variables)
-      .filter((v) => v.scope.variableScope.type === 'function' && v.scope.variableScope.block !== wrapper);
+    // モジュールの一番外の変数は追わない（ほかのファイルからも読まれうるので、読む所を全部は見られない）
+    const vars = sm.scopes.flatMap((sc) => sc.variables).filter((v) => v.scope.variableScope.type === 'function');
     // 変数に入る値の式。分割代入（const [a, b] = [mr(), 0.3]）は、名前ごとに、入る値の式だけ（分からない形は、右の式全体）
     const patOf = new Map(); // 右の式 → 左の形
     walk(p.ast, (n) => {

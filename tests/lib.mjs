@@ -1,5 +1,5 @@
 // テストの共通部分：組み立て・配信・ブラウザ・テスト用モードのページ。
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, devices } from 'playwright';
@@ -27,7 +27,35 @@ export const GL_ARGS = [
   '--font-render-hinting=none',
 ];
 
-// ページのエラーの「assets/index-xxxx.js:行:列」に、src/game/ の場所を書き足す（組み立てた JS は書き直されていて、行が違うため）。
+// ゲームの文言を含む全部の文のファイル（src/index.html と src/lib/ の .ts）と、それをつないだ文（index.html は、コメントを除いた本文。
+// CSS の content なども描かれうるので残す）。文字を調べるテスト（使う文字・文字の幅）が使う
+export const GAME_FILES = [
+  'src/index.html',
+  ...readdirSync(join(ROOT, 'src/lib'), { recursive: true })
+    .map(String)
+    .filter((f) => f.endsWith('.ts'))
+    .sort()
+    .map((f) => `src/lib/${f}`),
+];
+// HTML のコメント（<!-- から --> まで）を除く。閉じていないコメントは残す
+const dropComments = (t) => {
+  let out = '',
+    i = 0;
+  for (let a; (a = t.indexOf('<!--', i)) >= 0;) {
+    out += t.slice(i, a);
+    const b = t.indexOf('-->', a + 4);
+    if (b < 0) return out + t.slice(a);
+    i = b + 3;
+  }
+  return out + t.slice(i);
+};
+export const gameText = () =>
+  GAME_FILES.map((f) => {
+    const t = readFileSync(join(ROOT, f), 'utf8');
+    return f.endsWith('.html') ? dropComments(t) : t;
+  }).join('\n');
+
+// ページのエラーの「assets/index-xxxx.js:行:列」に、src/lib/ の場所を書き足す（組み立てた JS は書き直されていて、行が違うため）。
 // ソースマップは公開物に入れず、.build/maps/<mode>/ に置いている（vite.config.mjs）
 let mapDir = null;
 const maps = {};

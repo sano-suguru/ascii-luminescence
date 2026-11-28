@@ -1,4 +1,4 @@
-// 名前と説明の表（もとは src/game/02・12・18・24・25・28・29）：見た時の説明、罠・伝説の物・主の名前、試しの間の的、部屋の仕掛けの伝言。
+// 名前と説明の表：見た時の説明、罠・伝説の物・主の名前、試しの間の的、部屋の仕掛けの伝言。
 import { type Color, cssOf } from './color.ts';
 
 /** 見た時の説明の1行（文字 ch を色 col で、名前 name と説明 desc。色は3つの数。無い・足りない時は止まる。文字・名前・説明が無い時は undefined と書く） */
@@ -88,13 +88,13 @@ export const LORD_GAL = {
   snake: { base: 'N', name: 'ナーガの女王', scale: 2.6, verb: '水場のほとりで、冠のような鱗を光らせている' },
 };
 /** 試しの間の、起き上がる的 */
-export const DUMMY_KINDS = [
+export const DUMMY_KINDS: { k: string; name: string; col: Color }[] = [
   { k: 'dummy', name: '的の人形', col: [0.78, 0.74, 0.66] },
   { k: 'dummyF', name: '的の人形（火に強い）', col: [1.0, 0.55, 0.3] },
   { k: 'dummyP', name: '的の人形（毒が効かない）', col: [0.62, 0.85, 1.0] },
   { k: 'dummyT', name: '的の人形（濡れている）', col: [0.5, 0.7, 1.0] },
 ];
-/** 部屋の仕掛け（野営の跡・祭壇・書庫・墓所など）の、文字と色と、初めて入った時の伝言（もとは src/game/02-constants.js） */
+/** 部屋の仕掛け（野営の跡・祭壇・書庫・墓所など）の、文字と色と、初めて入った時の伝言 */
 export const MACHINE_INFO: Record<string, { ch: string; col: Color; msg: string }> = {
   camp: { ch: '%', col: [0.95, 0.85, 0.7], msg: '焚き火の跡と朽ちた寝袋。散らばった骨が、先客の末路を物語っている。' },
   altar: { ch: '_', col: [1.0, 0.82, 0.42], msg: '石の祭壇の上に、一枚の巻物 ? が静かに浮かんでいる。' },

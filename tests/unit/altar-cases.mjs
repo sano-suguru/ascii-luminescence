@@ -1,9 +1,9 @@
 // テストの道具：祭壇とルーンを置く関数を、たくさんの場合で呼び、返す値と、階の床の物・湧く所の変わり方を、1つの文字列にまとめる。
-// F は関数をまとめた物（src/lib/altars.ts・unlocks.ts の関数と、gear.ts の randomRuneType）。altars.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
+// F は関数をまとめた物（src/lib/altars.ts・unlocks.ts の関数と、gear.ts の randomRuneType）。altars.test.mjs が、この文字列の指紋を確かめる。
 // 階は、迷宮の生成を使わずに、ここで小さな階（部屋・床・水・湧く所）を作る（迷宮の生成を変えても、この指紋は変わらない）。
 // 場合ごとに、手（武器・特性・枠・体の枠）・解放・開発用モード・深さ・体力・探索のシード・番人の群れを、シードの乱数で変える。
 // 書き換えた状態（here・gear・adv・player・saved）と Math.random は、終わったら元に戻す。
-// 祭壇の中身と鍛え方は、本当は出来事ごとの乱数（keyedRand）で選ぶが、ここでは Math.random を読む乱数を渡す。乱数を分ける前と同じ指紋になるので、選び方は変わっていない。
+// 祭壇の中身と鍛え方は、本当は出来事ごとの乱数（keyedRand）で選ぶが、ここでは Math.random を読む乱数を渡す。
 import { UNLOCKS } from '../../src/lib/progress.ts';
 import { mulberry32 } from '../../src/lib/rng.ts';
 import { RUNE_TYPES, TRAITS } from '../../src/lib/runes.ts';

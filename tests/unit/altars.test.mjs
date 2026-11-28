@@ -1,5 +1,5 @@
 // 祭壇とルーンを置く処理（src/lib/altars.ts）と、解放の確かめ（src/lib/unlocks.ts）・ルーンの種類を選ぶ randomRuneType（src/lib/gear.ts）の単体テスト。
-// 指紋の値は、移す前の古い JS（src/game/17-meta.js・19-hands-runes.js・21-altars-heal.js）でも同じになる（altar-cases.mjs の場合を、古い関数で数えて確かめた）。
+// 指紋は、altar-cases.mjs の場合の結果。
 // 迷宮の生成は使わないので、生成を変えてもこの指紋は変わらない。テストを .mjs で書くのは、テストの中で作る小さな階を、生成の結果の型に合わせられないため
 import { describe, expect, it } from 'vitest';
 import * as AL from '../../src/lib/altars.ts';
@@ -58,7 +58,7 @@ describe('祭壇', () => {
   });
 });
 
-describe('移す前と同じ', () => {
+describe('指紋', () => {
   it('祭壇の中身・番人・鍛え方・泉・祭壇の1行と、解放・ルーンの種類（400の場合）の指紋', () => {
     const all = altarCases({ ...AL, ...UN, randomRuneType }, 400),
       lines = all.split('\n');

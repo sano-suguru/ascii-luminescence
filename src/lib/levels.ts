@@ -1,5 +1,5 @@
-// 階のシード（もとは src/game/18-level-player.js）と、最深部か（もとは 24-goal.js）、特別な階の場所（もとは 02-constants.js）と、
-// 階を移る処理の部品（場所の名前・次の場所へ進む・階を作る・最深部の支度と、最深部を進める updateFinal・王の影を立ち上がらせる spawnFinalBoss（もとは 24-goal.js）・層の名前・部屋の出来事・見えるマス）。
+// 階のシードと、最深部か、特別な階の場所と、
+// 階を移る処理の部品（場所の名前・次の場所へ進む・階を作る・最深部の支度と、最深部を進める updateFinal・王の影を立ち上がらせる spawnFinalBoss・層の名前・部屋の出来事・見えるマス）。
 // 状態の入れ物 adv（探索）・here（今いる場所）・player・ui に頼る物。
 import { lookup, must, nth } from './array.ts';
 import { MTYPES } from './creatures.ts';
@@ -82,7 +82,7 @@ export function interAfter(d: number): string | null {
   for (const k in SPECIALS) if (interAt(k) === d) return k;
   return null;
 }
-/** 今いる場所の名前（探索のシードと、本道の深さ・支道・異界・特別な階。行った階の覚え placeMem の鍵。もとは src/game/02-constants.js） */
+/** 今いる場所の名前（探索のシードと、本道の深さ・支道・異界・特別な階。行った階の覚え placeMem の鍵） */
 export const placeKey = (): string =>
   `${adv.runSeed}:` +
   (here.realm
@@ -94,7 +94,7 @@ export const placeKey = (): string =>
         : `m:${here.depth}`);
 /**
  * 次の場所へ進む（go：'up' は上り階段・'branch' は支道の入口・'realm' は異界の門、ほかは下り階段）。今の階の見えた所を覚えてから、
- * 深さ・支道・異界・特別な階を書き換える。最深部より先や、伝説の物が揃わない最深部へは進めず、advance.bounced を立てる（もとは src/game/02-constants.js）
+ * 深さ・支道・異界・特別な階を書き換える。最深部より先や、伝説の物が揃わない最深部へは進めず、advance.bounced を立てる
  */
 export function advance(go?: string): void {
   if (here.D && here.explored) placeMem.set(placeKey(), { explored: here.explored.slice(), mem: here.mem.slice() });
@@ -173,12 +173,12 @@ export function advance(go?: string): void {
   }
   here.depth++;
 }
-// 型だけの declare namespace で、関数の欄の型を付ける（組み立てで消える。古い JS の文をそのまま残すため）
+// 型だけの declare namespace で、関数の欄の型を付ける（組み立てで消える）
 export declare namespace advance {
   /** 進めずに押し戻されたか（読んだ側が戻す） */
   let bounced: boolean | undefined;
 }
-/** 今の場所の階を作る（年代記が無ければ作り、その階の主と忘れられた獣を生き物の表に足す。もとは src/game/04-generate.js） */
+/** 今の場所の階を作る（年代記が無ければ作り、その階の主と忘れられた獣を生き物の表に足す） */
 export function generate(seed: number, depth: number): Level {
   if (adv.HIST_SEED !== adv.runSeed) {
     adv.HIST = makeHistory(adv.runSeed);
@@ -204,7 +204,7 @@ export function generate(seed: number, depth: number): Level {
   return r.level;
 }
 /**
- * 最深部の支度：天井の一番高い、まわりが開けた床（王の影が立つ所 c0）を探し、小さな生き物のほかを消して、最深部の状態を作る（もとは src/game/24-goal.js）
+ * 最深部の支度：天井の一番高い、まわりが開けた床（王の影が立つ所 c0）を探し、小さな生き物のほかを消して、最深部の状態を作る
  */
 export function setupFinal(): void {
   // the bottom: the place with the highest vault on this level, with open floor around it, so the shadow can stand under the vault
@@ -335,7 +335,7 @@ export function spawnFinalBoss(): void {
     1400,
   );
 }
-/** 新しい層に入ると体が強くなる（本道の4つの層で一度ずつ。最大体力 +4。もとは src/game/18-level-player.js） */
+/** 新しい層に入ると体が強くなる（本道の4つの層で一度ずつ。最大体力 +4） */
 export function strataGrowth(): void {
   if (!here.D || here.branch || here.realm || here.inter || !ui.started || ui.gallery) return;
   const k = here.D.stratum && here.D.stratum.k;
@@ -346,7 +346,7 @@ export function strataGrowth(): void {
   renderStatus();
   setTimeout(() => msg('<b style="color:#ffd9a0">+</b>新しい層の空気が、体を強くした。最大体力 +4。'), 2200);
 }
-/** 選ばれなかった空の枠の祭壇があれば、その枠を開ける（枠を選ぶ祭壇から離れた時。もとは src/game/18-level-player.js） */
+/** 選ばれなかった空の枠の祭壇があれば、その枠を開ける（枠を選ぶ祭壇から離れた時） */
 export function settleSlotPick(): void {
   if (!adv.runState || !adv.runState.slotPend || !here.D) return;
   const o = (here.D.items || []).find((x) => x.grp === adv.runState.slotPend && !x.taken);
@@ -356,11 +356,11 @@ export function settleSlotPick(): void {
   }
   adv.runState.slotPend = null;
 }
-/** 層の名前を、画面の真ん中に少しの間出す（もとは src/game/18-level-player.js） */
+/** 層の名前を、画面の真ん中に少しの間出す */
 export function showStratum(st: { name: string; special?: boolean; branch?: boolean; realm?: boolean; n?: number }): void {
   const el = document.getElementById('stratum');
   if (!el) return;
-  // oxlint-disable-next-line typescript/no-misused-spread -- 層の名前は絵文字の無い日本語（1文字ずつ空ける。元のまま）
+  // oxlint-disable-next-line typescript/no-misused-spread -- 層の名前は絵文字の無い日本語（1文字ずつ空ける）
   const name = [...st.name].join(' ');
   el.innerHTML = `<span class="r">-  -  -</span>   ${st.special ? '特 別 な 階' : st.branch ? '支 道' : st.realm ? '異 界' : `第 ${st.n} 層`}   <span class="r">-  -  -</span>\n<b>${name}</b>`;
   el.classList.remove('show');
@@ -369,12 +369,12 @@ export function showStratum(st: { name: string; special?: boolean; branch?: bool
   clearTimeout(showStratum.t);
   showStratum.t = setTimeout(() => el.classList.remove('show'), 5600);
 }
-// 型だけの declare namespace で、関数の欄の型を付ける（組み立てで消える。古い JS の文をそのまま残すため）
+// 型だけの declare namespace で、関数の欄の型を付ける（組み立てで消える）
 export declare namespace showStratum {
   /** 名前を消す時計 */
   let t: ReturnType<typeof setTimeout> | undefined;
 }
-/** 部屋の出来事を作る（神託・転移・噴き出し・目覚める像・崩れる床・水攻めと溶岩・霊。もとは src/game/15-sound-fire.js） */
+/** 部屋の出来事を作る（神託・転移・噴き出し・目覚める像・崩れる床・水攻めと溶岩・霊） */
 export function initEvents(): void {
   here.events = [];
   level().collapsed = false;
@@ -398,7 +398,7 @@ export function initEvents(): void {
       here.events.push({ type: 'haunt', ri, tombs: must(md.tombs).map((tb) => tb.i), done: false, t: -1 });
   });
 }
-/** 見えるマスを数え直す（300 の向きに 18 マスまで。壁・背の高い茂み・柱・閉じた扉で止まる。見えたマスは覚える。もとは src/game/16-view-input.js） */
+/** 見えるマスを数え直す（300 の向きに 18 マスまで。壁・背の高い茂み・柱・閉じた扉で止まる。見えたマスは覚える） */
 export function computeFOV(): void {
   here.fovStamp++;
   const ox = player.x / CELL,
@@ -428,7 +428,7 @@ export function computeFOV(): void {
 }
 /**
  * 階の中の出来事を調べる（first なら着いた時の伝言）：初めて入った部屋・壁の彫刻・下り階段を見つけた・上り階段と支道と異界の門と崩れた穴と下り階段を
- * 踏んだ（封じられた階段は伝言だけ）・見た所の割合（もとは src/game/18-level-player.js）
+ * 踏んだ（封じられた階段は伝言だけ）・見た所の割合
  */
 export function checkEvents(first?: boolean): void {
   const pc = Math.floor(player.z / CELL) * MW + Math.floor(player.x / CELL);
@@ -540,7 +540,7 @@ export function checkEvents(first?: boolean): void {
 /**
  * 新しい階に入る（seedOverride があればそのシードで作る）：階を作り、祭壇とルーンを置き、世界を組み立て、生き物を作り（眠る物は階のシードから）、
  * 見えた所の覚えを戻し、体を少し休め、着いた所（階段・門）のそばに立ち、火と出来事と霧と塵を用意して、見えるマスと出来事を調べる。
- * 層が変わったら層の名前を出す（もとは src/game/18-level-player.js）
+ * 層が変わったら層の名前を出す
  */
 export function newLevel(seedOverride?: number): void {
   const t0 = performance.now();
@@ -694,8 +694,7 @@ export function newLevel(seedOverride?: number): void {
   took('newLevel', t0, { gen: Math.round(tGen - t0), build: Math.round(tBuilt - tBuild) });
 }
 /**
- * 死んだ時（勝った後は何もしない）：動きを止め、伝承を受け取り、墓に遺せる物を選ぶ結果の画面を出す（選び直すと描き直す。［新しい探索へ］で次の探索。
- * もとは src/game/18-level-player.js）
+ * 死んだ時（勝った後は何もしない）：動きを止め、伝承を受け取り、墓に遺せる物を選ぶ結果の画面を出す（選び直すと描き直す。［新しい探索へ］で次の探索）
  */
 export function die(cause: string): void {
   if (adv.won) return;
@@ -736,7 +735,7 @@ export function die(cause: string): void {
   document.body.classList.add('over');
   draw();
   el.onclick = (e) => {
-    // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品（元の読み方のまま）
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品
     const b = (e.target as Element).closest && (e.target as Element).closest('button');
     if (!b) return;
     if (b.dataset['gv'] !== undefined) {
@@ -748,7 +747,7 @@ export function die(cause: string): void {
   sRumble(0.6, 2.5);
   took('die', t0);
 }
-/** 新しい探索を始める（墓を記録し、結果の画面を閉じ、探索のシード・深さ・体力・レベル・記録・手と持ち物を戻して、1つ目の階に入る。もとは src/game/18-level-player.js） */
+/** 新しい探索を始める（墓を記録し、結果の画面を閉じ、探索のシード・深さ・体力・レベル・記録・手と持ち物を戻して、1つ目の階に入る） */
 export function newRun(): void {
   const t0 = performance.now();
   saveGrave();

@@ -1,7 +1,7 @@
-// 生き物の表 MTYPES（もとは src/game/02-constants.js）と、生き物の強さの表 MSTAT。
+// 生き物の表 MTYPES と、生き物の強さの表 MSTAT。
 // MTYPES は、探索の途中で種類が足される（その階の主 lord・忘れられた獣 X・王の影 final・図鑑の見本 __gal・試しの間の的）ので、表そのものは書き換えてよい。
 // 足された種類は、次に置き換えられるまで残る（前の階・前の探索の lord も残る）。読む側は、今の階の主かどうかを here.D などで見ること。
-// 状態の入れ物（src/lib/state.ts）ではなくここに置くのは、37種の表と足される種類を、古い JS が同じ MTYPES[key] で読むため（生き物の処理を移す時に分ける）。
+// 足された種類も、初めからある種類と同じ MTYPES[key] で読むので、状態の入れ物ではなく、この表のモジュールに置く。
 
 import type { Color } from './color.ts';
 import type { BeastBody } from './bodies/lords.ts';
@@ -543,7 +543,7 @@ export const MTYPES: Record<string, MonsterType> = {
 };
 
 /**
- * 生き物の強さ [体力, 最小のダメージ, 最大のダメージ, 攻撃の間の秒]（このゲームの数。段ごとに決めた。もとは src/game/18-level-player.js・24-goal.js・25-gallery.js）。
+ * 生き物の強さ [体力, 最小のダメージ, 最大のダメージ, 攻撃の間の秒]（このゲームの数。段ごとに決めた）。
  * final・final2 は王の影の一つ目と二つ目の姿、dummy などは試しの間の的。表に無い種類は、src/lib/monsters.ts の statOf が並の強さにする
  */
 export const MSTAT: Partial<Record<string, readonly [number, number, number, number]>> = {

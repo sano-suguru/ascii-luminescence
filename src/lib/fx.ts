@@ -1,8 +1,8 @@
-// 火と術の跡を描く（もとは src/game/15-sound-fire.js の drawFire、26-spells-hud.js の drawFrozen、24-goal.js の addBolt・sparkCrown・drawBoltFx、
-// 20-chant-hits.js の drawZones・drawWave）：燃えているマスの炎、凍らせた水、たどれる稲妻（ぎざぎざの線がちらつき、遅れて落ちる稲妻を順に起こす）、
+// 火と術の跡を描く（drawFire・drawFrozen・addBolt・sparkCrown・drawBoltFx・drawZones・drawWave）：
+// 燃えているマスの炎、凍らせた水、たどれる稲妻（ぎざぎざの線がちらつき、遅れて落ちる稲妻を順に起こす）、
 // 当たった生き物の頭の火花の輪、床の目印と魔法の場、剣が飛ばす風の刃。毎フレーム、世界の中に文字を置き（dyn）、粒子を出す（spawn）。
 // 状態の入れ物 blaze（火）・fight（稲妻・目印）・vfx（稲妻の光り）・player・gfx（カメラの位置。読むだけ）に頼る。呼ぶのは描画（src/lib/loop.ts の tick と
-// src/lib/fixtures.ts の drawRunesWorld）と、稲妻を出す処理（20-chant-hits.js・26-spells-hud.js）。
+// src/lib/fixtures.ts の drawRunesWorld）と、稲妻を出す処理（src/lib/combat.ts）。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
 import { must, nth } from './array.ts';
 import { handUp } from './aim.ts';
@@ -204,7 +204,7 @@ export function drawZones(t: number): void {
       const a = (k / n) * Math.PI * 2 + t * 0.3,
         rr = zn.r * (0.92 + 0.08 * Math.sin(t * 3 + k)),
         b = (zn.el ? 0.9 : 0.35) * f * (0.7 + 0.3 * Math.sin(t * 4 + k * 1.3));
-      // 色の無い性質は無い（無ければ、元と同じく、ここで止まる）
+      // 色の無い性質は無い（無ければ、ここで止まる）
       const col = must(c, '魔法の場の色');
       dyn(
         zn.x + Math.cos(a) * rr,
@@ -258,8 +258,7 @@ export function drawWave(p: Proj): void {
     }
     return;
   }
-  // @ts-expect-error -- 古い JS のまま（前の向き cf は使っていない）
-  const [cf, cr, cu] = handUp(),
+  const [, cr, cu] = handUp(),
     grow = 1 + 0.5 * (1 - life),
     W = (p.cw || 1.2) * grow,
     half = W / 2,

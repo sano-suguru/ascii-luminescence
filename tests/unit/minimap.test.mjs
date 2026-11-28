@@ -1,5 +1,5 @@
 // ミニマップ（src/lib/minimap.ts の sizeMap・drawMap）の単体テスト。
-// 指紋は、minimap-cases.mjs の場合の結果（移す前の古い JS と、バイトまで同じだった値）。動きを意図して変えた時や、場合の入力を変えた時は、
+// 指紋は、minimap-cases.mjs の場合の結果。動きを意図して変えた時や、場合の入力を変えた時は、
 // 変わり方を確かめてから作り直す（何が変わったかは、コミットと PR に書く）。
 // 階は Node で本物の迷宮を生成するので、迷宮の生成を変えると、この指紋も変わる（その時は generate.test.ts の指紋と一緒に作り直す）。
 // テストを .mjs で書くのは、偽の描き手とキャンバスを、本物の型に合わせられないため。
@@ -20,7 +20,7 @@ const fnv = (s) => {
 const keep = { mapC: ui.mapC, mctx: ui.mctx };
 afterAll(() => Object.assign(ui, keep));
 
-describe('移す前と同じ', () => {
+describe('指紋', () => {
   it('ミニマップ（画面の倍率8通りと、120の階）の指紋', { timeout: 60000 }, async () => {
     const fake = fakeCanvas();
     Object.assign(ui, { mapC: fake.canvas, mctx: fake.ctx });

@@ -8,8 +8,7 @@
 //      8px ずつあけて並ぶ（重ならない）。説明だけの時は十字の下 22px、説明が1行なら一言はほぼ前と同じ所（十字の下 48px から 2px 以内）に出る
 //   4. 十字の下の一言（#hint）が消える時：表示・音量・ビルドの持ち替えの一言は、塞がれていない間も自分の時計まで残り、時計の後に消える。
 //      後から別の一言が出たら、前の一言の時計はそれを消さない。行く手を塞がれた時の一言は、塞がれなくなってから 0.9 秒ほどで消える
-import { gameText } from '../tools/game-source.mjs';
-import { withBrowser, newPage, openTest, advance, nearAltar } from './lib.mjs';
+import { withBrowser, newPage, openTest, advance, nearAltar, gameText } from './lib.mjs';
 
 const src = gameText();
 // oxlint-disable-next-line typescript/no-misused-spread -- visW はコードポイントごとに数えるので、わざとコードポイントに分ける

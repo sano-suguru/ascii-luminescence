@@ -1,4 +1,4 @@
-// 見た物の記録・図鑑・試しの間（もとは src/game/25-gallery.js）。
+// 見た物の記録・図鑑・試しの間。
 // 見た物の記録 trackSeen、図鑑（一覧 galleryList・部屋 showroom・開く openBestiary・生き物を出す showBeast・カメラを動かす galleryWheel・galleryDrag・galleryZoom・
 // galleryHold・galleryReset・毎フレームの updateGallery・説明 galleryDesc・galleryLine・renderGallery）、試しの間（部屋 galleryRoom・的 spawnDummy・開く openRange）と、
 // 図鑑と試しの間の世界の中の文字 drawGallery。
@@ -19,7 +19,7 @@ import { DUMMY_KINDS, GALLERY_SLEEP, LORD_GAL } from './names.ts';
 import { dyn, initDust, spawn } from './particles.ts';
 import { keyedRand, mr, withVisualRand } from './random.ts';
 import { clamp } from './rng.ts';
-import { RUNE_DEF, RUNE_TYPES, SLOT_MAX, TRAITS } from './runes.ts';
+import { RES, RUNE_DEF, RUNE_TYPES, SLOT_MAX, TRAITS } from './runes.ts';
 import { loadBeasts, recordBeast, saveSet } from './save.ts';
 import { tryLock, updateResume } from './screens.ts';
 import {
@@ -90,11 +90,11 @@ export function galleryList(): GalleryEntry[] {
     if (k === 'lord' || k === 'final' || k === 'final2' || k === 'X' || k.startsWith('__') || k.startsWith('dummy')) continue;
     out.push({ key: k, ty: lookup(MTYPES, k) });
   }
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- 保存した獣の記録は、中身を確かめずに使う（元のまま）
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- 保存した獣の記録は、中身を確かめずに使う
   for (const rec of (loadBeasts() as BeastRec[]).concat(saved.DEVALL ? beastSamples() : []))
     out.push({
       key: 'beast:' + rec.seed + ':' + rec.name,
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- 記録に無い欄（速さ・光の尾）は無いまま（図鑑では動かない。元のまま）
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- 記録に無い欄（速さ・光の尾）は無いまま（図鑑では動かない）
       ty: { ...rec, ch: 'X', form: 'beast', beast: true, light: 9, boss: false, verb: rec.lore } as unknown as MonsterType,
     });
   for (const [bk, L] of Object.entries(LORD_GAL)) {
@@ -110,7 +110,7 @@ export function galleryList(): GalleryEntry[] {
         verb: L.verb,
         boss: true,
         col: L.base === 'L' ? [0.75, 0.9, 1.0] : base.col,
-        // oxlint-disable-next-line typescript/consistent-type-assertions -- 表に無い支道（undefined）は元の生き物の見た目にする、元の読み方のまま（表を文字の鍵で引くための型だけ）
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- 表に無い支道（undefined）は元の生き物の見た目にする（表を文字の鍵で引くための型だけ）
         look: ({ crypt: null, lair: null, nest: null, snake: null } as Record<string, null | undefined>)[bk] || base.look,
         ...(bk === 'lair'
           ? { form: 'olddragon', light: 5 }
@@ -190,7 +190,7 @@ export function galleryRoom(seed: number): { cx: number; cz: number; x: number; 
   fight.clouds = [];
   fight.boltFx = [];
   fight.zapQueue = [];
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- 今の階に tall の欄は無い（いつも偽で、何もしない。元のまま）
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- 今の階に tall の欄は無い（いつも偽で、何もしない）
   const D = level() as unknown as { tall?: Uint8Array };
   if (D.tall) for (const i of cs) D.tall[i] = 0;
   return { cx, cz, x: (cx + 0.5) * CELL, z: (cz + 0.5) * CELL };
@@ -319,7 +319,7 @@ export function showBeast(i: number): void {
         Ls[k] = S;
         return;
       }
-      // oxlint-disable-next-line typescript/no-dynamic-delete, typescript/consistent-type-assertions -- 灯りの欄を全部消してから、開いた時の欄を入れる（元のまま。欄を名前で消すための型だけ）
+      // oxlint-disable-next-line typescript/no-dynamic-delete, typescript/consistent-type-assertions -- 灯りの欄を全部消してから、開いた時の欄を入れる（欄を名前で消すための型だけ）
       for (const a of Object.keys(L)) delete (L as unknown as Record<string, unknown>)[a];
       Object.assign(L, S);
     });
@@ -665,6 +665,26 @@ export function renderGallery(): void {
   }
 }
 // ---------------------------------------------------------------- the testing chamber: every rune found so far, and dummies that get back up
+/** 試しの間の的の種類を、生き物の表 MTYPES と性質の効き目 RES に足す（ページの用意で1回。src/lib/boot.ts の boot が呼ぶ） */
+export function addDummyKinds(): void {
+  for (const d of DUMMY_KINDS)
+    MTYPES[d.k] = {
+      ch: '+',
+      name: d.name,
+      col: d.col,
+      form: 'humanoid',
+      scale: 0.95,
+      speed: 0,
+      fl: 0,
+      light: 1.6,
+      trail: 0,
+      dummy: true,
+      verb: '藁と石で組まれた的。何度倒れても、また起き上がる',
+    };
+  RES['dummyF'] = { fire: 0.2, ice: 2 };
+  RES['dummyP'] = { poison: 0.2, fire: 2 };
+  RES['dummyT'] = { thunder: 2, fire: 0.5 };
+}
 /** 試しの間の的を起こす（新しく作り、土ぼこりを出す） */
 export function spawnDummy(d: GalleryDummy): void {
   const m = makeMonster({ key: d.k, cx: Math.floor(d.x / CELL), cz: Math.floor(d.z / CELL), g: -1, lead: true });

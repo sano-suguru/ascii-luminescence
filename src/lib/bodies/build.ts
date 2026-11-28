@@ -1,7 +1,7 @@
-// 生き物の形を作る（もとは src/game/07-bodies-lords.js・09-bodies-creatures.js・10-bodies-beast.js）。
+// 生き物の形を作る。
 // buildForm が、種類（MTYPES の1つ）の form・look から形を選んで作り、見た目の特徴（extraLook）を足す。
 // 人型と四つ足の形と、種類ごとの見た目の特徴（lookHumanoid・shapeHumanoid・humanoid2）もここにある。
-// addLooks は、表 MTYPES に見た目（look など）を書き足す（古い JS の 07-bodies-lords.js が、読み込む時に呼ぶ）。
+// addLooks は、表 MTYPES に見た目（look など）を書き足す（src/lib/boot.ts の boot が呼ぶ）。
 // 形を作る時に mr()（見た目の乱数）を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
 import { lookup } from '../array.ts';
 import type { Color } from '../color.ts';
@@ -177,7 +177,7 @@ export function shapeHumanoid(pts: Body, look: string | null | undefined): void 
     }
   }
 }
-/** 表 MTYPES に、見た目（look）・機械の形・猟犬の尾と色を書き足す。古い JS（07-bodies-lords.js）が、読み込む時に1回呼ぶ */
+/** 表 MTYPES に、見た目（look）・機械の形・猟犬の尾と色を書き足す。src/lib/boot.ts の boot が1回呼ぶ */
 export function addLooks(): void {
   for (const [k, v] of Object.entries({
     k: 'kobold',

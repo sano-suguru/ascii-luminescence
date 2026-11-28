@@ -1,12 +1,12 @@
 // テストの道具：レベルアップ・祭壇・メニューのパネル（src/lib/panels.ts・src/lib/menu.ts）と、命の一歩 updateLife（src/lib/combat.ts）を、
 // たくさんの場合で呼び、結果を1つの文字列にまとめる。makeF は、場合ごとに関数をまとめた物を返す（場合ごとに、関数が覚える状態を初めに戻すため）。
-// panels.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
+// panels.test.mjs が、この文字列の指紋を確かめる。
 // 1つの場合では、Node で本物の迷宮を生成し、祭壇の組（ルーン・主・鍛え・空の枠。番人のいる物も）と生き物を置いて、分かれ道ごとの「場面」を通す
 // （レベルアップ：開く・説明・400ms 以内のクリック・恩恵とルーンを選ぶ・続けてもう一度・指の2回押し。祭壇：近い・遠い・番人・取った後・見出しの種類・説明・
 // やめる・右クリック・離れるまで開かない・止まっている間・選ぶ・指の2回押し。メニュー：マウスと指の一覧・全部の項目・確かめ待ちが4秒で戻る・タイトルに戻る。命の一歩：火）。
-// ここで移さない重い処理（新しい階 newLevel・新しい探索 newRun・装備の画面の開け閉め setInv）は、panels.test.mjs が vi.mock で、呼んだ時の記録だけ取る物に入れ替える。
+// ここで確かめない重い処理（新しい階 newLevel・新しい探索 newRun・装備の画面の開け閉め setInv）は、panels.test.mjs が vi.mock で、呼んだ時の記録だけ取る物に入れ替える。
 // 記録するのは、返す値と、呼ぶたびの状態（パネルの HTML と class・ui の欄・探索の記録・手と袋・祭壇の物・プレイヤー・生き物・伝言）と、画面の部品にした事の並び。
-// 入れ物に移した状態（ui.lvlOpts・ui.altarDismissed など）そのものは記録しない（古い JS では包みの一番外の変数だったので。動きは画面と、ほかの状態に出る）。
+// 入れ物の状態のうち ui.lvlOpts・ui.altarDismissed などは、そのものは記録しない（動きは画面と、ほかの状態に出る）。
 // テストを .mjs で書くのは、偽の画面の部品を、本物の型に合わせられないため。
 // 書き換えた状態と、document・localStorage・performance・setTimeout・Math.random は、終わったら元に戻す。
 import { addLooks } from '../../src/lib/bodies/build.ts';
@@ -26,7 +26,7 @@ import { PLACES, gen, loadEnv } from './gen-places.ts';
 import { swapGlobals } from './ui-cases.mjs';
 import { stateFp } from './case-out.mjs';
 
-/** 移した関数の名前（場合が全部を呼ぶか、panels.test.mjs が確かめる。ほかの関数は、これらの中から呼ばれる） */
+/** 確かめる関数の名前（場合が全部を呼ぶか、panels.test.mjs が確かめる。ほかの関数は、これらの中から呼ばれる） */
 export const NAMES = [
   'levelChoices',
   'openLevelUp',

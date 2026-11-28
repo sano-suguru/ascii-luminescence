@@ -1,10 +1,10 @@
 // テストの道具：詠唱と当たり（src/lib/combat.ts）・照準と線（aim.ts の doorBlock など）・術の中身（gear.ts の specOf・resetRunes・applyOpen）・術の音（audio.ts の castSound）・
 // 結果の画面（results.ts）・プレイヤーの動き（player.ts）・生き物の動き（monsters.ts の updateMonster）を、たくさんの場合で呼び、結果を1つの文字列にまとめる。
-// F は関数をまとめた物。fight.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
+// F は関数をまとめた物。fight.test.mjs が、この文字列の指紋を確かめる。
 // 階は Node で本物の迷宮を生成する（gen-places.ts の全部の場所）ので、迷宮の生成を変えると、この指紋も変わる。
 // 1つの場合では、本物の階に、表の全部の種類の生き物をいろいろな状態で置き、両手の武器と枠（性質・効き方・発動）と特性と加護をシードの乱数で選んで、
 // 武器の種類ごとの詠唱・当たり・反応・ダメージ・プレイヤーの傷・生き物とプレイヤーの動きを、決まった「場面」と乱数の両方で呼ぶ。
-// 遅れて起きること（fight.laters・fight.zapQueue）と setTimeout は、ゲームの時計を進めながら、ここで流す（ゲームでは古い JS の毎フレームの処理が流す）。
+// 遅れて起きること（fight.laters・fight.zapQueue）と setTimeout は、ゲームの時計を進めながら、ここで流す（ゲームでは毎フレームの処理が流す。src/lib/projs.ts の updateZones など）。
 // 返す値と、呼ぶたびの状態（プレイヤー・生き物・飛ぶ物などの戦いの状態・火と地面のマス・粒子・伝言・画面の部品・音の記録・保存した物）と、
 // 見た目の乱数と音の乱数を引いた数を記録する。テストを .mjs で書くのは、偽の画面の部品・偽の Web Audio を、本物の型に合わせられないため。
 // 書き換えた状態と、document・window・localStorage・performance・setTimeout・Math.random・音の乱数は、終わったら元に戻す。
@@ -64,7 +64,7 @@ import { PLACES, gen, loadEnv } from './gen-places.ts';
 import { swapGlobals } from './ui-cases.mjs';
 import { stateFp } from './case-out.mjs';
 
-/** 移した関数の名前（場合が全部を呼ぶか、fight.test.mjs が確かめる） */
+/** 確かめる関数の名前（場合が全部を呼ぶか、fight.test.mjs が確かめる） */
 export const NAMES = [
   'castNow',
   'meleeCast',

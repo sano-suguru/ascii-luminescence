@@ -1,4 +1,4 @@
-// 経験・伝承・解放の表（もとは src/game/17-meta.js と 18-level-player.js の一部）。状態の入れ物（src/lib/state.ts）は読まない（state.ts がここの META_DEF を読むので、読むと輪になる）。
+// 経験・伝承・解放の表。状態の入れ物（src/lib/state.ts）は読まない（state.ts がここの META_DEF を読むので、読むと輪になる）。
 import { type SavedRune } from './runes.ts';
 
 /** レベル n から次へ上がるのに要る経験 */
@@ -76,7 +76,7 @@ export interface Bless {
   d: (l: number) => string;
   cost?: boolean;
 }
-/** 加護の表（もとは src/game/18-level-player.js） */
+/** 加護の表 */
 export const BLESS: Record<string, Bless> = {
   tough: { name: '頑丈な体', d: (l) => `最大体力が ${6 * l} 増える` },
   quickdodge: { name: '身軽な詠唱', d: (l) => `かわしてから ${l >= 2 ? 2.5 : 1.5}秒以内の詠唱が、半分の時間で済む` },

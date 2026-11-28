@@ -1,7 +1,7 @@
 // 階ごとに祭壇とルーンを置く処理（src/lib/altars.ts の placeRunesForLevel・mainPathAltars・strongestKey・nearStele）と、
 // 階のシード（src/lib/levels.ts）・生き物の強さ（src/lib/creatures.ts の MSTAT と src/lib/monsters.ts の statOf）・墓のルーン（src/lib/gear.ts の graveRune）・
 // 試練（src/lib/unlocks.ts の trialOn）の単体テスト。
-// 指紋の値は、移す前の古い JS（src/game/17-meta.js・18-level-player.js・21-altars-heal.js）でも同じになる（place-cases.ts の場合を、古い関数で数えて確かめた）。
+// 指紋は、place-cases.ts の場合の結果。
 // 階は Node で本物の迷宮を生成するので、迷宮の生成を変えると、置く処理の指紋も変わる（その時は generate.test.ts の指紋と一緒に作り直す）。
 import { describe, expect, it } from 'vitest';
 import * as AL from '../../src/lib/altars.ts';
@@ -54,7 +54,7 @@ describe('階のシード・生き物の強さ・墓のルーン', () => {
   });
 });
 
-describe('移す前と同じ', () => {
+describe('指紋', () => {
   it('階のシード・試練・墓のルーン（400の場合）と、生き物の強さ（全部の種類、試練のあり・なし）の指紋', () => {
     const all = smallCases(F, 400);
     caseOut('place-1', all);

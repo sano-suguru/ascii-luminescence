@@ -1,4 +1,4 @@
-// 小さな計算の道具（もとは src/game/06-world.js・12-hud-text.js・18-level-player.js・20-chant-hits.js）。
+// 小さな計算の道具。
 import { clamp } from './rng.ts';
 import { mr } from './random.ts';
 

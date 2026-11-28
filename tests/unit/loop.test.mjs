@@ -1,9 +1,6 @@
 // 大きさとメインループ（src/lib/loop.ts）と描画の土台（src/lib/render.ts）の単体テスト。
-// 指紋は、loop-cases.mjs の場合の結果。移す時に、古い JS を消す前に比べた：tools/legacy-eval.mjs の legacyValues で、
-// 移す前の src/game/05-renderer.js・06-world.js・30-loop-init.js（状態を入れ物に移した名前を tools/state-move.mjs で書き換えた物）の関数を取り出し、
-// 同じ場合で呼んで、文字列が同じだった（12の場合・5650回の呼び出し）。わざと1か所変えると違いが出ることも確かめた。
-// 古い関数と新しい関数は、別々のプロセスで走らせて比べた（同じプロセスで続けて走らせると、前の物が残した状態（粒子や関数に覚えさせた欄など）が後の物に入る）。
-// このテストも、自分のファイルだけを1つのプロセスで走らせる前提（Vitest はファイルごとに分ける）。
+// 指紋は、loop-cases.mjs の場合の結果。
+// このテストは、自分のファイルだけを1つのプロセスで走らせる前提（Vitest はファイルごとに分ける。同じプロセスで続けて走らせると、前のテストが残した状態（粒子や関数に覚えさせた欄など）が入る）。
 // 動きを意図して変えた時や、場合の入力を変えた時は、変わり方を確かめてから作り直す（何が変わったかは、コミットと PR に書く）。
 // 階は Node で本物の迷宮を生成するので、迷宮の生成を変えると、この指紋も変わる（その時は generate.test.ts の指紋と一緒に作り直す）。
 // tick は、ほとんどの処理（生き物・火・粒子・描く物）を呼ぶので、それらを変えても、この指紋は変わる。
@@ -15,7 +12,7 @@ import { caseOut } from './case-out.mjs';
 import { fakeDom, fnv } from './fight-cases.mjs';
 import { NAMES, loopCases } from './loop-cases.mjs';
 
-describe('移す前と同じ', () => {
+describe('指紋', () => {
   it('大きさ・メインループ・画質・描画の土台（12の場合、10の関数）の指紋', async () => {
     const all = await loopCases({ ...LO, ...RE }, 12, fakeDom()),
       lines = all.split('\n'),

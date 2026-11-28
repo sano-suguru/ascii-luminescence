@@ -1,4 +1,4 @@
-// 層・テーマ・特別な階・支道と異界の中身・地形・群れ（もとは src/game/02-constants.js と 04-generate.js の levelDims）。
+// 層・テーマ・特別な階・支道と異界の中身・地形・群れ。
 // 迷宮の生成が読む表と、層・支道・階の大きさを決める小さな関数（stratumOf・branchAtDepth・levelDims）。
 // 生き物の表 MTYPES は src/lib/creatures.ts。
 import { lookup, nth } from './array.ts';
@@ -385,5 +385,5 @@ export const HORDES: Horde[] = [
   { lead: 'D', fol: [], d: [10, 99], w: 0.35 },
 ];
 
-/** 深さ d の本道の層（もとは src/game/22-world-hints.js） */
+/** 深さ d の本道の層 */
 export const stratumAtDepth = (d: number) => STRATA.find((s) => d >= s.from && d <= s.to);

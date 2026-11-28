@@ -1,8 +1,6 @@
 // 粒子と世界の中に置く文字（src/lib/particles.ts）・頭の上の印（status.ts の drawMark）・装備の画面の開け閉めと付け替えの詠唱（inventory.ts）・
 // マウスを捕まえる・視点・音量（screens.ts）の単体テスト。
-// 指紋の値は、移す前の古い JS（src/game/05・12・15・16・27・28）で数えた値から、音が見た目の乱数を引かず、音の乱数（sndRand）を使う分と、
-// マウスを捕まえられない時の扱い（lockFailed：requestPointerLock が無い時も失敗とし、案内の伝言を1回出す）と、下の HUD が指の操作の [持ち替え]（#swapB）を出し分ける分だけ違う
-// （音の乱数を Math.random に回し、lockFailed と [持ち替え] の分を除くと、古い JS と同じ値になる。screens-cases.mjs の場合を、古い関数で数えて確かめた）。
+// 指紋は、screens-cases.mjs の場合の結果。
 // テストを .mjs で書くのは、偽の画面の部品を、本物の型に合わせられないため。
 import { describe, expect, it } from 'vitest';
 import * as INV from '../../src/lib/inventory.ts';
@@ -20,7 +18,7 @@ const fnv = (s) => {
   return (h >>> 0).toString(16).padStart(8, '0');
 };
 
-describe('移す前と同じ', () => {
+describe('指紋', () => {
   it('粒子を出す・消す・文字を置く（300の場合）の指紋', () => {
     const all = particleCases(PT, 300);
     // 場合が中身を通っているか：粒子と文字の数が上限に達する場合も通る

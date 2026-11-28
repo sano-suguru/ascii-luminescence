@@ -1,4 +1,4 @@
-// 詠唱と転がり（もとは src/game/20-chant-hits.js・26-spells-hud.js）：ゲームの時間の速さ、溜め始める・放つ・溜めの途中、溜めが散る、転がり。
+// 詠唱と転がり：ゲームの時間の速さ、溜め始める・放つ・溜めの途中、溜めが散る、転がり。
 // 状態の入れ物 gear（両手・溜め・持ち替え・詠唱の声）・fight・player・adv・here・ui・clock に頼る。
 import { lookup, must, nth } from './array.ts';
 import { aimOrigin, castPoint, handPoint, viewDir } from './aim.ts';
@@ -176,7 +176,7 @@ export function updateCast(dt: number): void {
 }
 /**
  * 下の HUD を最後に描き直した時の、ゲームの時刻の 0.1 秒の番号（関数の欄。updateCast が読み書きする）。
- * 型だけの declare namespace で欄の型を付ける（組み立てで消える。古い JS の updateCast.last の文をそのまま残すため）
+ * 型だけの declare namespace で欄の型を付ける（組み立てで消える）
  */
 export declare namespace updateCast {
   let last: number | undefined;

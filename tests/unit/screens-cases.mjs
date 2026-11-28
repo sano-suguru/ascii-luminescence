@@ -1,6 +1,6 @@
 // テストの道具：粒子と世界の中に置く文字（src/lib/particles.ts）・頭の上の印（status.ts の drawMark）・装備の画面の開け閉めと付け替えの詠唱
 // （inventory.ts の setInv・startSwap）・マウスを捕まえる・音量（screens.ts）を、たくさんの場合で呼び、配列の中身と数・状態の変わり方・
-// 画面の部品にしたこと（偽の画面の部品が記録する）を、1つの文字列にまとめる。screens.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
+// 画面の部品にしたこと（偽の画面の部品が記録する）を、1つの文字列にまとめる。screens.test.mjs が、この文字列の指紋を確かめる。
 // F は関数をまとめた物。粒子の場合（particleCases）は、F の配列（P・dPos・dCol・dPar）を読む。ほかの場合（screenCases）は、粒子と文字を
 // 本物の src/lib/particles.ts に置く物として、その配列を読む。
 // テストを .mjs で書くのは、偽の画面の部品・偽の Web Audio の音量・偽の localStorage を、本物の型に合わせられないため。
@@ -105,7 +105,7 @@ const ALL = Object.values(RUNE_TYPES).flat();
 
 /**
  * 偽の画面の部品：したことを log に記録する。描く画面 #gl の requestPointerLock の返し方は st.lock で変える。
- * #gl と #resume は、場合が変わっても同じ部品を使い続ける（古い関数と比べる時に、取り出した時の部品を覚える書き方とも同じ結果になるように）
+ * #gl と #resume は、場合が変わっても同じ部品を使い続ける
  */
 export function fakeScreen() {
   const log = [],
@@ -170,8 +170,8 @@ export function fakeScreen() {
 }
 
 /**
- * 頭の上の印・装備の画面の開け閉め・付け替えの詠唱・マウスを捕まえる・音量。page は fakeScreen() の偽の画面（古い関数を取り出す前に
- * document に入れておき、すべての場合で同じ物を使う）。場合ごとに、生き物・両手・袋・石碑と祭壇・画面の開け閉めをシードの乱数で作り、関数を4つ続けて呼ぶ。
+ * 頭の上の印・装備の画面の開け閉め・付け替えの詠唱・マウスを捕まえる・音量。page は fakeScreen() の偽の画面（document に入れておき、
+ * すべての場合で同じ物を使う）。場合ごとに、生き物・両手・袋・石碑と祭壇・画面の開け閉めをシードの乱数で作り、関数を4つ続けて呼ぶ。
  * 呼び終わったら、捨てられた Promise の後始末（マウスを捕まえられなかった時）と、setTimeout で待たせた物を流してから記録する
  */
 export async function screenCases(F, seeds, page) {

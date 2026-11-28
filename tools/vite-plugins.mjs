@@ -1,6 +1,4 @@
 // Vite のプラグイン（vite.config.mjs から使う）。
-//   legacyGame()     src/game/*.js を名前の順につなぎ、一番外側の関数で包んだ1つのモジュール（virtual:legacy-game）にする。
-//                    ソースマップで、元のファイルの行に戻せる。開発用サーバーでは、src/game/ が変わったらページを読み直す
 //   testPage(outDir) テスト版：JetBrains Mono を指定した所の日本語も、決まったフォント（M PLUS 1 Code）で描く面を足す（cjkFallback。
 //                    どのマシンでも同じ文字の形になる）。three.js とフォントは、公開用もテスト版も npm から組み立てに入れる
 //   privateMaps(dir) ソースマップを出力の外（.build/maps/）へ移す。公開物には入れない（tools/where.mjs とテストだけが読む）
@@ -10,53 +8,10 @@
 //   inlineAll()      Artifact 版：JS と CSS を index.html の中に書き込み、HTML 1つにする（フォントは vite.config.mjs が CSS の data URI にする）。
 //                    ARTIFACT_MAX を越えたら止める
 import { mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { BIZ_CHARS } from '../src/lib/text.ts';
-import { cjkFallback, gameSource, gameSourceMap } from './game-source.mjs';
 
 const root = join(import.meta.dirname, '..');
-const GAME_DIR = join(root, 'src/game');
-// 解決した名前は、ファイルの形にする（'\0' で始まる仮の名前のモジュールには、Rolldown がソースマップを作らないため）。
-// このファイルは実際には無く、中身は load が返す。src/game/ の中の名前にして、imports.mjs の相対パス（'../lib/…'）が、
-// エディタで開いた時と同じ所を指すようにしている
-const ID = 'virtual:legacy-game',
-  RID = join(GAME_DIR, 'index.js');
-
-// 開発用サーバーだけで、ゲーム本体の後ろに足す。テスト用モード（?test=1）は時計（setTimeout）を止めるので、Vite の読み直し
-// （setTimeout で少し待ってから読み直す）が動かない。読み直しの合図を受けたら、すぐ読み直す。組み立てた物には入れない
-const DEV_TAIL = `if (import.meta.hot && new URLSearchParams(location.search).get('test') === '1')
-  import.meta.hot.on('vite:beforeFullReload', () => location.reload());
-`;
-
-export function legacyGame() {
-  let serve = false;
-  return {
-    name: 'legacy-game',
-    configResolved(config) {
-      serve = config.command === 'serve';
-    },
-    resolveId: (id) => (id === ID ? RID : null),
-    load(id) {
-      if (id !== RID) return null;
-      const map = gameSourceMap();
-      for (const f of map.sources) this.addWatchFile(f);
-      return { code: gameSource() + (serve ? DEV_TAIL : ''), map };
-    },
-    // 開発用サーバー：ゲームは HMR に対応していないので、ページを読み直す。
-    // 変えた時は、Vite が自分で読み直す（load の addWatchFile で、つないだファイルを見張っている）。
-    // 足した・消した時は Vite が知らないファイルなので、ここでつなぎ直して読み直させる（変えた時にもここで送ると、2回読み直してしまう）
-    configureServer(server) {
-      server.watcher.add(GAME_DIR);
-      server.watcher.on('all', (ev, file) => {
-        if ((ev !== 'add' && ev !== 'unlink') || dirname(resolve(file)) !== GAME_DIR) return;
-        const env = server.environments.client,
-          mod = env.moduleGraph.getModuleById(RID);
-        if (mod) env.moduleGraph.invalidateModule(mod);
-        env.hot.send({ type: 'full-reload' });
-      });
-    },
-  };
-}
 
 // ページの中の <style> を、Vite は一度 CSS のモジュール（index.html?html-proxy&inline-css…）として扱い、中身を HTML に戻す。
 // 残ったモジュールは空の文字列を返すだけの JS になる（var index_html_html_proxy_… = ""）。使っていないコードを消さない設定
@@ -116,6 +71,55 @@ export function fontCss() {
       },
     },
   };
+}
+
+// ゲームは JetBrains Mono を指定した所でも日本語を書く。JetBrains Mono に日本語は無いので、テスト版のほか（公開用の版・開発用サーバー）では
+// システムの日本語フォントで描画される（マシンごとに違う）。テスト版では、M PLUS 1 Code の面を「JetBrains Mono」の名前でも登録して、日本語をそれで描く。
+// 同じ名前の面は後に書いた方が先に使われるので、英数字では、本物の JetBrains Mono（後に置かれる、組み立てたフォントの CSS）が使われる。
+// フォントそのものは、公開用もテスト版も src/main.js で @fontsource から読む。
+function cjkFallback() {
+  // 日本語の範囲だけ（記号と句読点・かな・漢字・全角）。罫線（タイトルのロゴ）などは含めない
+  const CJK = [
+    [0x3000, 0x30ff],
+    [0x3400, 0x4dbf],
+    [0x4e00, 0x9fff],
+    [0xf900, 0xfaff],
+    [0xff00, 0xffef],
+  ];
+  const hex = (n) => n.toString(16);
+  const narrow = (range) => {
+    const out = [];
+    for (const t of range.split(',')) {
+      const [a, b] = t
+        .trim()
+        .replace(/^U\+/i, '')
+        .split('-')
+        .map((x) => parseInt(x, 16));
+      for (const [c0, c1] of CJK) {
+        const lo = Math.max(a, c0),
+          hi = Math.min(b ?? a, c1);
+        if (lo <= hi) out.push(lo === hi ? `U+${hex(lo)}` : `U+${hex(lo)}-${hex(hi)}`);
+      }
+    }
+    return out.join(',');
+  };
+  const faces = (pkg, w, weight) =>
+    readFileSync(join(root, `node_modules/@fontsource/${pkg}/${w}.css`), 'utf8')
+      .split('@font-face')
+      .slice(1)
+      .map((f) => {
+        const range = f.match(/unicode-range:\s*([^;]+);/),
+          src = f.match(/url\(\.\/files\/([^)]+\.woff2)\)/)?.[1];
+        const r = range && src ? narrow(range[1]) : ''; // 読めない面は飛ばす（@fontsource の書き方が変わった時に落ちないように）
+        return r
+          ? `@font-face{font-family:'JetBrains Mono';font-style:normal;font-display:swap;font-weight:${weight};src:url(fonts/${pkg}/files/${src}) format('woff2');unicode-range:${r};}\n`
+          : '';
+      })
+      .join('');
+  // M PLUS 1 Code には全角の ！？：［］ などが無いので、BIZ UDGothic（ゲームの CSS でも次の候補）で補う。
+  // 先に書いた面ほど後回しになるので、BIZ UDGothic を先、M PLUS 1 Code を後に書く。
+  const set = (pkg) => faces(pkg, 400, 400) + faces(pkg, 700, 700) + faces(pkg, 700, 800);
+  return set('biz-udgothic') + set('m-plus-1-code');
 }
 
 export function testPage() {
@@ -197,7 +201,7 @@ export function privateMaps(mapDir) {
     buildStart() {
       rmSync(mapDir, { recursive: true, force: true });
     },
-    // 書き出した .map を移し、sources をリポジトリからの相対（src/game/xx.js）に直す
+    // 書き出した .map を移し、sources をリポジトリからの相対（src/lib/xx.ts など）に直す
     writeBundle() {
       const assets = join(outDir, 'assets');
       let files = [];

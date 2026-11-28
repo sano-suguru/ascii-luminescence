@@ -1,4 +1,4 @@
-// 手元の武器の文字と形の表（もとは src/game/19-hands-runes.js の初め）。描く処理 drawViewWeapons は src/lib/held.ts。
+// 手元の武器の文字と形の表。描く処理 drawViewWeapons は src/lib/held.ts。
 // the weapons in hand: drawn in glyphs as if held, entering from the lower edges of the view and cut off by them;
 // near parts large, far parts small; filled shapes with bright rims; a hand where a hand would be (a fist on a hilt or shaft, the bow hand and the drawing hand,
 // two hands on a two-handed weapon, an open hand when bare). Long weapons show only their upper part. Near a wall the picture shrinks toward the eye.

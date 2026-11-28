@@ -1,7 +1,6 @@
 // 伝言（src/lib/log.ts）・下の HUD（src/lib/hotbar.ts）・手の枠（src/lib/gear.ts の equipWeapon・slotSet・freeSlotFor・bodyN）・加護の段（src/lib/monsters.ts の BL）・
 // 保存（src/lib/save.ts）・ルーンの説明（src/lib/runes.ts の trDesc・detailLines）・拾ったルーンを入れる処理と祭壇の画面の説明（src/lib/altars.ts）の単体テスト。
-// 指紋の値は、移す前の古い JS（src/game/16・17・18・19・21・25・26・27）で数えた値から、下の HUD が指の操作の [持ち替え]（#swapB）を出し分ける分だけ違う
-// （その2行を除くと、古い JS と同じ値になる。ui-cases.mjs の場合を、古い関数で数えて確かめた）。
+// 指紋は、ui-cases.mjs の場合の結果。
 // テストを .mjs で書くのは、偽の画面の部品と偽の localStorage を、本物の型に合わせられないため。
 import { describe, expect, it } from 'vitest';
 import * as AL from '../../src/lib/altars.ts';
@@ -109,7 +108,7 @@ describe('装備の画面の作り直し', () => {
     }));
 });
 
-describe('移す前と同じ', () => {
+describe('指紋', () => {
   it('伝言・下の HUD・手の枠・保存・ルーンの説明・拾ったルーンを入れる処理（800の場合、18の関数）の指紋', () => {
     const page = fakePage(),
       all = uiCases(F, 800, () => (msgs.length = 0), page),

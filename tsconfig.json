@@ -1,6 +1,6 @@
 {
   // TypeScript（7）の型の確かめ（pnpm check の tsc）。組み立ては Vite が型を外すだけなので、tsc は何も出力しない。
-  // ゲーム本体の古い JS（src/game/*.js）は対象にしない。TypeScript に移した物（src/lib/）と、その単体テストだけ
+  // 対象はゲーム（src/lib/）と、その単体テストの .ts
   "compilerOptions": {
     "target": "esnext",
     "lib": ["esnext", "dom"],

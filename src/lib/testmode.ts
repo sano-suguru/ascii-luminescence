@@ -1,4 +1,4 @@
-// テスト用モード（?test=1）の時計と乱数の入れ替え（もとは src/game/00-test-mode.js）：同じ手順なら、いつも同じ結果になるように、
+// テスト用モード（?test=1）の時計と乱数の入れ替え：同じ手順なら、いつも同じ結果になるように、
 // Math.random と音の乱数 sndRand（別の並び）をシードで決め、時計（performance.now・setTimeout・setInterval・音の時計 AudioContext.currentTime）を、ゲームが進む時だけ進める。
 // ゲームは自分では進まない：window.__test.frames(n) が n フレーム描き、__test.advance(秒) が描かずに進める。
 // ゲームの用意の一番初めに、テスト用モードの時だけ呼ぶ（clock.TESTCLK に入れる）。
@@ -42,7 +42,7 @@ export function installTestMode(): TestClock {
     return id;
   };
   window.clearTimeout = window.clearInterval = (id) => {
-    // oxlint-disable-next-line typescript/consistent-type-assertions -- 止める番号は、上で出した物（無ければ何も消さない。元の読み方のまま）
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- 止める番号は、上で出した物（無ければ何も消さない）
     timers.delete(id as number);
   };
   // 音：音の乱数（sndRand）もシードで決める（見た目の乱数とは別の並び。音は見た目の乱数を引かない）。

@@ -1,4 +1,4 @@
-// タイトルの画面（もとは src/game/17-meta.js）：記録 META を読む loadMeta、解放の画面 buildUnlockPanel、タイトルの枠 buildIntroPanel（指で触る端末ではキーボードの操作の一覧を出さない）、
+// タイトルの画面：記録 META を読む loadMeta、解放の画面 buildUnlockPanel、タイトルの枠 buildIntroPanel（指で触る端末ではキーボードの操作の一覧を出さない）、
 // 後から描き直す redrawIntroLater、初めて指で入った時の一言 touchTip と、タイトルの画面を用意する initIntro（記録を読み、タイトルを描き、[迷宮に入る] を受け取る）。
 import { must, nth } from './array.ts';
 import { sChime, sndInit } from './audio.ts';
@@ -217,7 +217,7 @@ export function initIntro(): void {
   initFitIntro();
   // the title panel can be rebuilt, so its [迷宮に入る] is caught on the panel itself
   must(document.getElementById('intropanel'), 'タイトルの枠 #intropanel').addEventListener('click', (e) => {
-    // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品（元の読み方のまま）
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品
     if (!(e.target && (e.target as Element).closest && (e.target as Element).closest('#enter'))) return;
     const t0 = performance.now();
     sndInit();

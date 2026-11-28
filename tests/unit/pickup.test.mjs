@@ -1,7 +1,5 @@
 // 足元の物を拾う処理（src/lib/pickup.ts）・立ち直り（combat.ts の updateRally）・最深部（levels.ts の updateFinal・spawnFinalBoss）の単体テスト。
-// 指紋は、pickup-cases.mjs の場合の結果。移す時に、移す前の古い JS（src/game/21-altars-heal.js・24-goal.js）と比べた：
-//   origin/main を別の作業場所に出し、tools/legacy-eval.mjs の legacyValues で古い関数（と包みの一番外の変数）を取り出して、同じ16の場合を走らせ、
-//   記録の文字列がバイトまで同じことを確かめた。新しい関数をわざと1か所変える（落石の傷・光の粒の向かう高さ・亡霊を呼ぶ間・音の間）と、違いが出ることも確かめた。
+// 指紋は、pickup-cases.mjs の場合の結果。
 // 動きを意図して変えた時は、変わり方を確かめてから作り直す（何が変わったかは、コミットと PR に書く）。
 // 階は Node で本物の迷宮を生成するので、迷宮の生成を変えると、この指紋も変わる（その時は generate.test.ts の指紋と一緒に作り直す）。
 // テストを .mjs で書くのは、偽の画面の部品・偽の Web Audio を、本物の型に合わせられないため。
@@ -14,7 +12,7 @@ import { fakeDom, fnv } from './fight-cases.mjs';
 import { NAMES, pickupCases, pickupText } from './pickup-cases.mjs';
 import { caseOut } from './case-out.mjs';
 
-// 場合ごとに、関数が覚える状態（入れ物に移した物）を初めに戻す
+// 場合ごとに、関数が覚える状態（入れ物の物）を初めに戻す
 const makeF = () => {
   fight.rockfall = null;
   fight.rallyChime = 0;
@@ -23,7 +21,7 @@ const makeF = () => {
   return { ...PICKUP, updateRally, updateFinal, spawnFinalBoss };
 };
 
-describe('移す前と同じ', () => {
+describe('指紋', () => {
   it('拾う・宝物庫・落石・立ち直り・最深部（16の場合、9の関数）の指紋', { timeout: 120000 }, async () => {
     const all = await pickupCases(makeF, 16, fakeDom()),
       body = pickupText(all),

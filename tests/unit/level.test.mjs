@@ -19,7 +19,7 @@ const fnv = (s) => {
   return (h >>> 0).toString(16).padStart(8, '0');
 };
 
-describe('移す前と同じ', () => {
+describe('指紋', () => {
   it('階を移る処理と世界の組み立て（5の場合、19の関数）の指紋', { timeout: 180000 }, async () => {
     const all = await levelCases({ ...LEVELS, ...BUILD, ...GROUND, ...PART, updatePlayer, hurtPlayer }, 5, fakeDom()),
       body = levelText(all),

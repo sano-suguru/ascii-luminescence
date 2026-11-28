@@ -1,4 +1,4 @@
-// 開発用（もとは src/game/23-debug.js）：F2 の画面と window.dbg（自動の確かめ用）が同じ命令 dbg を使う。F2 の画面 setDbg・renderDbg と、URL の指定 dbgUrl、
+// 開発用：F2 の画面と window.dbg（自動の確かめ用）が同じ命令 dbg を使う。F2 の画面 setDbg・renderDbg と、URL の指定 dbgUrl、
 // window.dbg に置く initDbg（開発用モードがオフの時は、命令を動かさずにわけの文を返す）。
 import { aimOrigin } from './aim.ts';
 import { guardedNow, takeRune } from './altars.ts';
@@ -104,19 +104,16 @@ export const dbg = {
       lord: here.monsters.some((m) => m.key === 'lord' && !m.dead),
       monsters: here.monsters.filter((m) => !m.dead).length,
       bodyOpen: adv.runState.bodyOpen || 0,
-      // oxlint-disable-next-line unicorn/prefer-set-size -- 元の書き方のまま
-      altars: [...new Set((level().items || []).filter((o) => o.altar && !o.taken).map((o) => o.grp))].length,
+      altars: new Set((level().items || []).filter((o) => o.altar && !o.taken).map((o) => o.grp)).size,
       springs: (level().items || []).filter((o) => o.kind === 'spring' && !o.taken).length,
       startPos: here.D ? cpos(here.D.start).map((v) => +v.toFixed(1)) : null,
       hub: here.D && here.D.hub ? [+(here.D.hub.cx * CELL + 1).toFixed(1), +(here.D.hub.cz * CELL + 1).toFixed(1)] : null,
       hubNear: here.D ? here.D.hubNear : null,
       stairGuard: here.D && here.D.stairGuard !== undefined ? stairsGuarded() : null,
       stairsPos: here.D && here.D.stairs >= 0 ? cpos(here.D.stairs).map((v) => +v.toFixed(1)) : null,
-      /* oxlint-disable unicorn/prefer-set-size -- 元の書き方のまま */
-      guarded: [
-        ...new Set((level().items || []).filter((o) => o.altar && !o.taken && o.guardG !== undefined && guardedNow(o)).map((o) => o.grp)),
-      ].length,
-      /* oxlint-enable unicorn/prefer-set-size */
+      guarded: new Set(
+        (level().items || []).filter((o) => o.altar && !o.taken && o.guardG !== undefined && guardedNow(o)).map((o) => o.grp),
+      ).size,
       elite: here.monsters.some((m) => m.elite && !m.dead),
       elitePrize: (level().items || []).some((o) => o.elitePrize && !o.taken),
       eliteWhy: level().eliteWhy || null,
@@ -365,7 +362,7 @@ function renderDbg(): void {
         const [k, v] = I.next.split(':') as [string, string];
         const key = v.replace(' (strong)', '');
         return k === 'stratum'
-          ? // oxlint-disable-next-line typescript/consistent-type-assertions -- 無い層なら名前も無い（元の読み方のまま）
+          ? // oxlint-disable-next-line typescript/consistent-type-assertions -- 無い層なら名前も無い
             ((STRATA.find((s) => s.k === key) || {}) as { name?: string }).name
           : k === 'special'
             ? lookup(SPECIALS, key).name

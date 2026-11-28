@@ -45,7 +45,7 @@ export function updatePortrait(): void {
   document.body.classList.toggle('portrait', ui.portrait);
 }
 
-/** 遊び方が変わった時に、古い JS が文言を書き直す処理（initTouch が入れる。図鑑の案内など） */
+/** 遊び方が変わった時に、文言を書き直す処理（initTouch が入れる。図鑑の案内など） */
 let inputChanged: () => void = () => undefined;
 
 /** 指の遊び方にする・戻す */
@@ -63,7 +63,7 @@ export function updateFullscreenButton(): void {
   must(document.getElementById('fsB'), '#fsB').hidden = !document.fullscreenEnabled || !!document.fullscreenElement;
 }
 
-/** ボタンを押した時にすること（装備の画面とメニューの開け閉めは、古い JS の Tab・Esc と同じ処理を渡す） */
+/** ボタンを押した時にすること（装備の画面とメニューの開け閉めは、キーの Tab・Esc と同じ処理を渡す） */
 export interface TouchActions {
   pack: () => void;
   menu: () => void;

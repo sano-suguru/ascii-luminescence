@@ -733,10 +733,10 @@ describe('生き物の形', () => {
     expect(top).toBeLessThanOrEqual(bosses.SHADOW_SERPENT_H);
     expect(top).toBeGreaterThan(bosses.SHADOW_SERPENT_H - 0.05);
   });
-  it('深みの主の触手：体のそばの4本と、水面から出る10本。移す前と同じ値', () => {
+  it('深みの主の触手：体のそばの4本と、水面から出る10本。値が思わず変わっていないか', () => {
     expect(lords.KRAKEN_T.length).toBe(14);
     expect(lords.KRAKEN_W.length).toBe(14);
-    expect(fnv(JSON.stringify([lords.KRAKEN_T, lords.KRAKEN_W]))).toBe('1128adb5'); // 移す前の実装で出した値
+    expect(fnv(JSON.stringify([lords.KRAKEN_T, lords.KRAKEN_W]))).toBe('1128adb5');
   });
   it('hsl2rgb：色相 0 は赤、1/3 は緑、2/3 は青', () => {
     expect(hsl2rgb(0, 1, 0.5)).toEqual([1, 0, 0]);

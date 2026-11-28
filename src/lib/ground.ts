@@ -1,5 +1,5 @@
-// 地面と小さな生き物（もとは src/game/13-creatures.js の updateCritter・machineWork・splash、15-sound-fire.js の ignite・uploadCells、
-// 18-level-player.js の crackIce・tallAt・trample・brimFlare・regrow・brimRecover、26-spells-hud.js の chillArea・updateFrozen、15-sound-fire.js の initFire・stepFire・stepGas）：
+// 地面と小さな生き物（updateCritter・machineWork・splash・ignite・uploadCells・crackIce・tallAt・trample・brimFlare・regrow・brimRecover・
+// chillArea・updateFrozen・initFire・stepFire・stepGas）：
 // 小さな生き物（魚・草を食べる物・叫ぶ物・化けた巻物・掃除機・修復機）の動き、水しぶき、火をつける、マスの絵を描画に渡す、
 // 薄い氷が割れる、背の高い茂みを踏み分ける・元に戻る、硫黄が燃え上がる・元に戻る、冷気で火を消して水を凍らせる・溶ける、階に入った時の燃える物のマス、
 // 火とガスを1歩進める。
@@ -397,8 +397,7 @@ export function brimFlare(i: number): void {
     const j = i + d[0] + d[1] * MW;
     if (level().surface[j] === SF_BRIM && (blaze.fuel[j] ?? NaN) > 0) ignite(j, 0.6, false);
   }
-  // oxlint-disable-next-line no-unused-expressions -- 古い JS の文のまま（tools/same-code.mjs が同じ文と見るため。sCrackleBurst はいつもある）
-  sCrackleBurst && sCrackleBurst(((i % MW) + 0.5) * CELL, (((i / MW) | 0) + 0.5) * CELL);
+  sCrackleBurst(((i % MW) + 0.5) * CELL, (((i / MW) | 0) + 0.5) * CELL);
   if (!here.brimMsg) {
     here.brimMsg = true;
     msg('<b style="color:#ffd04a">*</b>足元の硫黄が、ぼっと燃え上がった！ しばらくすると、また燃えるようになる。');
@@ -484,7 +483,6 @@ export function updateFrozen(dt: number): void {
 }
 /**
  * 階に入った時の、火と燃える物のマス（燃える床・扉・クモの巣・絨毯と書架、灰の野と仕掛けの灰と焦げ跡）と、火の備品のマス（blaze.fireSrc）を作る
- * （もとは src/game/15-sound-fire.js）
  */
 export function initFire(): void {
   blaze.fire = new Float32Array(NCELL);
@@ -532,7 +530,7 @@ export function initFire(): void {
     .map((f) => Math.floor(f.z / CELL) * MW + Math.floor(f.x / CELL));
   uploadCells();
 }
-/** 火を1歩進める（火の備品に触れたガスが燃え上がる・燃える物を燃やして広がる・水のそばで湯気・燃え尽きると灰に・扉が焼け落ちる。火の明かりをぼかす。もとは src/game/15-sound-fire.js） */
+/** 火を1歩進める（火の備品に触れたガスが燃え上がる・燃える物を燃やして広がる・水のそばで湯気・燃え尽きると灰に・扉が焼け落ちる。火の明かりをぼかす） */
 export function stepFire(): void {
   const g = level().gas;
   // open flames (braziers, torches, lava) ignite gas that drifts into them
@@ -614,7 +612,7 @@ export function stepFire(): void {
   }
   uploadCells();
 }
-/** 沼のガスを1歩進める（となりへ広がって薄れる・沼から泡と一緒に湧く）。もとは src/game/15-sound-fire.js */
+/** 沼のガスを1歩進める（となりへ広がって薄れる・沼から泡と一緒に湧く） */
 export function stepGas(): void {
   const g = level().gas,
     nb = blaze.gasTmp,
@@ -682,7 +680,7 @@ export function stepGas(): void {
   }
   blaze.gasAny = any;
 }
-/** 踏み分けた背の高い草や茸を、45秒たったら元に戻す（プレイヤーの立つマスは戻さない）。もとは src/game/18-level-player.js */
+/** 踏み分けた背の高い草や茸を、45秒たったら元に戻す（プレイヤーの立つマスは戻さない） */
 export function regrow(): void {
   if (!blaze.trampled.length) return;
   const pc = Math.floor(player.z / CELL) * MW + Math.floor(player.x / CELL);
@@ -697,7 +695,7 @@ export function regrow(): void {
   });
   if (ch) uploadCells();
 }
-/** 燃えた硫黄（掃除機が掃いた物も）を、2秒ごとに少しずつ元に戻す。もとは src/game/18-level-player.js */
+/** 燃えた硫黄（掃除機が掃いた物も）を、2秒ごとに少しずつ元に戻す */
 export function brimRecover(dt: number): void {
   blaze.brimT = blaze.brimT + dt;
   if (blaze.brimT < 2) return;

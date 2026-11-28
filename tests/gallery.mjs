@@ -130,7 +130,7 @@ await withBrowser(
       return { n: list.length, total, bad };
     });
     console.log('bestiary:', gal.n, 'creatures');
-    for (const b of gal.bad) errs.push(annotate(`図鑑：${b}`)); // 例外の場所に src/game/ のファイルと行を書き足す
+    for (const b of gal.bad) errs.push(annotate(`図鑑：${b}`)); // 例外の場所に src/lib/ のファイルと行を書き足す
     if (gal.n !== undefined && (gal.n < 40 || gal.n !== gal.total))
       errs.push(`図鑑の一覧に全部が並んでいない：一覧 ${gal.n}、図鑑の全部 ${gal.total}`);
     // 竜が寝起きして枠の文が変わっても、押している途中の [>] ボタンは入れ替わらない（押して離すと、次の生き物へ進む）。

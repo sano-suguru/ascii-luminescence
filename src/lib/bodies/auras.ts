@@ -1,7 +1,7 @@
-// 主と一部の生き物のまわりの飾り（もとは src/game/07-bodies-lords.js・08-bodies-shadow.js・09-bodies-creatures.js）：
+// 主と一部の生き物のまわりの飾り：
 // 毎フレーム、世界の中に文字を置き（dyn）、粒子を出し（spawn）、ときどき低い音や息の音を鳴らす。初めに作って覚える物（剣・宝・灯り・残像）は、生き物に持たせる。
 // 王の影の変身（transformShadow）と、姿を変える途中の描き方（drawMorph）もここにある。
-// 呼ぶのは古い JS の描画（13-creatures.js の drawMonster0）と、最深部の処理（src/lib/levels.ts の updateFinal）。
+// 呼ぶのは生き物の描画（src/lib/bodies/draw.ts の drawMonster0）と、最深部の処理（src/lib/levels.ts の updateFinal）。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
 import { must, nth } from '../array.ts';
 import { sNoise, sOut, sRumble, sTone, sndReady } from '../audio.ts';
@@ -342,7 +342,7 @@ export function transformShadow(b: Monster & { form: Body }): void {
 
 /**
  * 縦に立つ輪の上の点（その輪の面の中の横の位置 w、前後の位置 z）を、輪の面が目（プレイヤー）の方を
- * 向くように回した、体の向きでの x と z。目が真上にいる時は回さない（13-creatures.js の drawMonster0 の halo と同じ回し方）
+ * 向くように回した、体の向きでの x と z。目が真上にいる時は回さない（src/lib/bodies/draw.ts の drawMonster0 の halo と同じ回し方）
  */
 const faceEye = (m: Mon, w: number, z: number): readonly [number, number] => {
   const ex = player.x - m.x,

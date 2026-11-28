@@ -1,4 +1,4 @@
-// 下の HUD（もとは src/game/26-spells-hud.js）。状態の入れ物 gear（両手・詠唱・付け替え）に頼り、画面の #hotbar に書く。
+// 下の HUD。状態の入れ物 gear（両手・詠唱・付け替え）に頼り、画面の #hotbar に書く。
 // 指の操作の [持ち替え]（#swapB）も、ここで出し分ける（ビルドが変わった後は、いつも下の HUD を描き直すため）。
 import { lookup } from './array.ts';
 import { cssOf } from './color.ts';

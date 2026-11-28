@@ -8,10 +8,8 @@
     "no-unused-vars": ["warn", { "caughtErrors": "none", "args": "none" }],
     "no-empty": ["warn", { "allowEmptyCatch": true }],
     // ESLint の recommended にあって、Oxlint の correctness に入っていない規則を足す。
-    // 特に no-redeclare：src/game/ は27ファイルを1つにつなぐので、別のファイルの同じ名前の関数が、黙って前のものを上書きしてしまう
     "no-redeclare": "error",
-    // import した名前への代入（correctness に入っているが、はっきり書いておく）。src/game/imports.mjs で読んだ名前（TypeScript に移した物）に
-    // 古い JS で代入すると、その行が動いた時に初めてブラウザで止まるので、lint で止める
+    // import した名前への代入（correctness に入っているが、はっきり書いておく。その行が動いた時に初めて止まるので、lint で止める）
     "no-import-assign": "error",
     "no-fallthrough": "error",
     "no-case-declarations": "error",
@@ -47,17 +45,25 @@
   },
   "overrides": [
     {
-      // TypeScript に移した物（src/lib/）とその単体テスト。名前が定義されているかは tsc が確かめる
+      // ゲーム（src/lib/）とその単体テスト。名前が定義されているかは tsc が確かめる
       "files": ["**/*.ts", "**/*.d.mts"],
       "rules": {
         "no-undef": "off",
+        // 使っていない変数・引数・import は、tsc（noUnusedLocals・noUnusedParameters）がエラーにする。oxlint の規則は、
+        // 関数に覚えさせる欄の型（declare namespace の中の let）を使っていないと取り違えるので、.ts では使わない
+        "no-unused-vars": "off",
         // 型の言い切り（as・後ろの !）は、tsc に「確かめずに信じろ」と言う書き方。間違っていても黙って通り、型を付けた意味が薄れる。
-        // 配列や表を読む所は src/lib/array.ts の at・get（無ければその場で止まる）、範囲の外をわざと読む所は無い時の扱いをはっきり書く。
+        // 配列や表を読む所は src/lib/array.ts の nth・lookup・must（無ければその場で止まる）、範囲の外をわざと読む所は無い時の扱いをはっきり書く。
         // as（as const は除く）と ! は、どれもエラー。どうしても要る所だけ、oxlint-disable-next-line と理由を書く
         "typescript/no-unnecessary-type-assertion": "error",
         "typescript/no-non-null-assertion": "error",
         "typescript/consistent-type-assertions": ["error", { "assertionStyle": "never" }]
       }
+    },
+    {
+      // ページの入口。ブラウザで動く
+      "files": ["src/main.js"],
+      "env": { "browser": true }
     },
     {
       // 道具・テスト・hooks（Node の ESM）
@@ -89,23 +95,6 @@
       // 自動で試す台本をこの環境で流す道具：ページに差し込む見かけの時計（addInitScript）と page.evaluate の中で、ブラウザの名前を使う
       "files": ["tools/auto-run.mjs"],
       "globals": { "document": "readonly", "window": "readonly", "requestAnimationFrame": "readonly" }
-    },
-    {
-      // ゲーム本体：src/game/*.js をつないだもの（tools/lint-game.mjs が書き出して調べる）。
-      // ブラウザで動く。THREE は src/game/imports.mjs で npm の three から読む。
-      "files": [".build/lint/*.js"],
-      "env": { "browser": true },
-      "rules": {
-        // 同じスコープで、宣言より前に let/const を使う（TDZ）のを見つける。関数の中から外の変数を読むのは許す
-        "no-use-before-define": ["error", { "functions": false, "classes": true, "variables": false }],
-        // 以下は不具合ではない書き方（調整用の *0.0、a&&a()、if(false) で止めたコード、好みの書き方）。整理の候補として警告にする
-        "oxc/erasing-op": "warn",
-        "no-unused-expressions": "warn",
-        "no-constant-condition": "warn",
-        "unicorn/no-useless-spread": "warn",
-        "unicorn/prefer-string-starts-ends-with": "warn",
-        "unicorn/prefer-set-size": "warn"
-      }
     }
   ]
 }

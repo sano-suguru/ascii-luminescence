@@ -1,8 +1,4 @@
 // 手と持ち物の処理（src/lib/gear.ts）と、ルーンの名前・付け方（src/lib/runes.ts）の単体テスト。
-// 値は、移す前の古い JS（src/game/19-hands-runes.js）と同じ。移す時に、古い JS を消す前に比べた：
-//   tools/legacy-eval.mjs の legacyValues で古い関数を取り出し（古い関数も、src/lib/state.ts の gear を同じ物として読む）、
-//   乱数で作った600通りの手を、structuredClone で2つに写して gear に入れ、古い関数と新しい関数の結果と、gear の変わり方を比べた（約7万5千か所、違い0）。
-//   わざと1か所変えると違いが出ることも確かめた（比べ方が効いていること）。
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as G from '../../src/lib/gear.ts';
 import * as R from '../../src/lib/runes.ts';
@@ -86,7 +82,7 @@ describe('ルーンの名前・付け方（src/lib/runes.ts）', () => {
     expect(R.handName(gear.hands?.L ?? { atk: null, elem: null })).toBe('氷の短弓');
     expect(R.handName({ atk: null, elem: null })).toBe('素手');
   });
-  it('色：強いルーンは、表を引く前に金（表に無い種類でも止まらない。移す前と同じ順）', () => {
+  it('色：強いルーンは、表を引く前に金（表に無い種類でも止まらない）', () => {
     expect(R.runeCol(ru(1, 'no_such_rune', { strong: true }))).toEqual(R.TIER_COL[3]);
     expect(() => R.runeCol(ru(1, 'no_such_rune'))).toThrow();
   });

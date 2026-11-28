@@ -5,7 +5,6 @@ import { clamp, mulberry32 } from '../../src/lib/rng.ts';
 describe('mulberry32', () => {
   it('同じシードなら同じ並び（ゲームの年代記や生成が、この並びに頼っている）', () => {
     const r = mulberry32(202);
-    // TypeScript に移す前の実装で出した値
     expect([r(), r(), r()]).toEqual([0.1287418524734676, 0.9633730442728847, 0.2188588441349566]);
     const a = mulberry32(7),
       b = mulberry32(7);

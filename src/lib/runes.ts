@@ -1,4 +1,4 @@
-// ルーンと武器の特性・反応・手の枠（もとは src/game/19-hands-runes.js と、18・27 の一部）。
+// ルーンと武器の特性・反応・手の枠。
 import { lookup, nth } from './array.ts';
 import { clamp } from './rng.ts';
 import { css, cssOf } from './color.ts';
@@ -211,7 +211,7 @@ export function emptyChip(cat: string, attrs: string): string {
   return `<button class="row rs empty" ${attrs}><span class="mk"> </span><span class="dim">${br[0]} 空き ${br[1]}</span></button>`;
 }
 
-// ---------------------------------------------------------------- もとは src/game/18・19・20・21・27
+// ---------------------------------------------------------------- 術の性質と反応・立て直し・素手・ルーンの定義
 /** 術 sp が性質（elem）を持つか */
 export const sp_elem = (p: { sp?: { elem?: unknown } | null } | null | undefined): boolean => !!(p && p.sp && p.sp.elem);
 /** 二つの性質の反応の名前（無ければ null） */
@@ -233,7 +233,7 @@ export const RALLY_FROM = new Set(['blade', 'magic', 'fire', 'thunder', 'poison'
 export const WEAPON = { name: '短剣', min: 3, max: 5, cd: 0.45, reach: 2.2 },
   SLEEP_MULT = 3;
 
-/** ルーンの定義（武器・性質・発動・効き方・護符など）。もとは src/game/19-hands-runes.js */
+/** ルーンの定義（武器・性質・発動・効き方・護符など） */
 export interface RuneDef {
   /** 種類（atk 武器・sub・elem 性質・trig 発動・body 護符・open・mod 効き方） */
   cat: string;
@@ -543,7 +543,7 @@ export const RUNE_DEF: Record<string, RuneDef> = {
   },
   ward: { cat: 'body', ch: '"', col: [1.0, 0.86, 0.62], name: '守りの護符', aff: [], desc: '受けるダメージが 15% 減る' },
 };
-/** 生き物ごとの、性質の効き目の倍率（種類 → 性質 → 倍率。試しの間の的は 25-gallery.js が足す） */
+/** 生き物ごとの、性質の効き目の倍率（種類 → 性質 → 倍率。試しの間の的は src/lib/boot.ts の boot が足す） */
 export const RES: Record<string, Record<string, number>> = {
   L: { poison: 0.2, fire: 2 },
   lord: { poison: 0.5 },
@@ -566,7 +566,7 @@ export const RES: Record<string, Record<string, number>> = {
   T: { fire: 1.5 },
 };
 
-// ---------------------------------------------------------------- ルーンの名前・色・付け方（もとは src/game/19-hands-runes.js）。表だけに頼る物
+// ---------------------------------------------------------------- ルーンの名前・色・付け方。表だけに頼る物
 /** 武器に付きうる、その武器の特性（初めの2つ） */
 export const WEAPON_SIG = (t: string): string[] => Object.keys(TRAITS[t] || {}).slice(0, 2);
 /**
@@ -581,7 +581,7 @@ export function rollTraits<T extends Rune | null | undefined>(ru: T, d: number, 
 }
 /** ルーンの色（強い物は金、色の決まったルーンはその色、ほかは並の色） */
 export const runeCol = (ru: Rune): readonly number[] | undefined => {
-  if (ru.strong) return TIER_COL[3]; // 表を引く前に見る（移す前と同じ順）
+  if (ru.strong) return TIER_COL[3]; // 表を引く前に見る
   return lookup(RUNE_DEF, ru.type).col || TIER_COL[0];
 };
 /** 効き方のルーンの値（強い物は2倍。効き方でないルーンは、値 val が無いので NaN） */

@@ -1,6 +1,6 @@
-// 描画の土台の処理（もとは src/game/05-renderer.js・06-world.js）。
+// 描画の土台の処理。
 // 文字の絵の表を作る buildAtlas、置いた文字の数を描画に渡す flushDyn、水面を作る makeWater、見える区切りだけを描く cullChunks。
-// 描画の部品そのもの（描く画面・描画する部品・場面・カメラ・後処理・置いた文字と粒子の形と属性）を作って gfx に入れる initRenderer（もとは 05-renderer.js）。
+// 描画の部品そのもの（描く画面・描画する部品・場面・カメラ・後処理・置いた文字と粒子の形と属性）を作って gfx に入れる initRenderer。
 import { must, nth } from './array.ts';
 import { RAMP_CH, RUNE_CHARS } from './glyphs.ts';
 import { dCol, dPar, dPos, ptCol, ptGly, ptPos, ptSize } from './particles.ts';
@@ -125,7 +125,7 @@ export function initRenderer(): boolean {
   gfx.canvas = document.getElementById('gl') as HTMLCanvasElement | null;
   try {
     gfx.renderer = new T.WebGLRenderer({
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- 上で入れた #gl（元の読み方のまま）
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- 上で入れた #gl
       canvas: gfx.canvas as HTMLCanvasElement,
       antialias: false,
       powerPreference: 'high-performance',
@@ -222,7 +222,7 @@ export function initRenderer(): boolean {
     uFogDen: { value: 0.05 },
     uFogColor: { value: fogCol },
     uScale: { value: 600 },
-    // oxlint-disable-next-line typescript/no-misused-spread -- 明るさの文字は ASCII（元の書き方のまま）
+    // oxlint-disable-next-line typescript/no-misused-spread -- 明るさの文字は ASCII
     uRamp: { value: new Float32Array([...RAMP_CH].map((c) => c.charCodeAt(0) - 32)) },
     uAmb: { value: 1 },
   };

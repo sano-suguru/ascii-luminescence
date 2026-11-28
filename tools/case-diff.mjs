@@ -346,6 +346,8 @@ function main() {
     console.log(`前の版（src/ は ${rev}）：同じテストを走らせる`);
     vitest(tmp, dirs.old);
   } finally {
+    // 消す前にリンクを外す（リンクを残したまま worktree remove --force で消すと、リンクの先の node_modules まで消えることがある）
+    rmSync(join(tmp, 'node_modules'), { force: true });
     try {
       git('worktree', 'remove', '--force', tmp);
     } catch {

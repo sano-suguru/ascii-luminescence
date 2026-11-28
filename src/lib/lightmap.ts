@@ -1,4 +1,4 @@
-// マスの明るさ（もとは src/game/14-lights-fixtures.js）と天井の高さ（もとは 06-world.js）、灯りの揺らぎ flicker と、灯りを描画に渡す配列を書き直す updateLights（もとは 14-lights-fixtures.js）。
+// マスの明るさと天井の高さ、灯りの揺らぎ flicker と、灯りを描画に渡す配列を書き直す updateLights。
 // 状態の入れ物 here（今の階の灯りと天井・生き物）・blaze（火の明かり）・player・ui・gfx（カメラの位置。読むだけ）・gear（詠唱）・vfx（稲妻の光り）・
 // lantern（手元の灯り）と、灯りを描画に渡す配列 SL・DLP・DLC に頼る物。灯りの計算そのもの（迷宮の生成も使う）は src/lib/light.ts。
 // updateLights を呼ぶのは描画（src/lib/loop.ts の tick）。flicker はランプの時に見た目の乱数 mr() を引く。
@@ -56,7 +56,7 @@ export const ceilAt = (x: number, z: number): number | undefined => {
 };
 
 // ---------------------------------------------------------------- lights
-/** 灯りの揺らぎ（もとは src/game/14-lights-fixtures.js）：灯りの種類ごとの、時刻 t の明るさの倍率。ランプはときどき暗くなる（見た目の乱数を引く） */
+/** 灯りの揺らぎ：灯りの種類ごとの、時刻 t の明るさの倍率。ランプはときどき暗くなる（見た目の乱数を引く） */
 export function flicker(L: LevelLight, t: number): number {
   const p = L.ph;
   switch (L.type) {
@@ -125,7 +125,7 @@ export function flicker(L: LevelLight, t: number): number {
   return 1;
 }
 /**
- * 灯りを描画に渡す配列（SL・DLP・DLC）を書き直す（もとは src/game/14-lights-fixtures.js）：階の灯りの明るさ（揺らぎ・影の獣・眠る竜・不死の王の冷たい光）、
+ * 灯りを描画に渡す配列（SL・DLP・DLC）を書き直す：階の灯りの明るさ（揺らぎ・影の獣・眠る竜・不死の王の冷たい光）、
  * 手元の灯り（詠唱の間は性質の色に寄る）、稲妻の光り、灯りを持つ生き物（近い順）
  */
 export function updateLights(t: number): void {

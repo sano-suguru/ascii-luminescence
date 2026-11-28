@@ -1,6 +1,6 @@
 // テストの道具：タイトルの画面（src/lib/intro.ts）・入力（src/lib/input.ts）・開発用の命令（src/lib/debug.ts）を、たくさんの場合で呼び、結果を1つの文字列にまとめる。
-// F は関数をまとめた物。intro.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
-// ここで移さない処理（新しい階・音・図鑑・メニュー・装備の画面・詠唱など）は、intro.test.mjs が vi.mock で、呼んだ時の記録だけ取る物に入れ替える
+// F は関数をまとめた物。intro.test.mjs が、この文字列の指紋を確かめる。
+// ここで確かめない処理（新しい階・音・図鑑・メニュー・装備の画面・詠唱など）は、intro.test.mjs が vi.mock で、呼んだ時の記録だけ取る物に入れ替える
 // （記録は globalThis.__alMock.log。返す値は __alMock.ret で場合ごとに決める）。
 // タイトルと入力の場合：記録 META・開発用モード・持ち主・指で触る端末・自動で試すかを変えてタイトルを用意し、タイトルのボタンを押し・シードを打ち・描き直し・
 // [迷宮に入る] を押す。続けて、マウスとキーの処理を用意し、開け閉めの状態を変えながら、キー・マウス・ホイール・離れる・隠れる・マウスを捕まえた知らせと、
@@ -23,7 +23,7 @@ import { fnv, text } from './fight-cases.mjs';
 import { PLACES, gen, loadEnv } from './gen-places.ts';
 import { swapGlobals } from './ui-cases.mjs';
 
-/** 移した関数の名前（場合が全部を呼ぶか、intro.test.mjs が確かめる。ほかの関数は、これらの中から呼ばれる） */
+/** 確かめる関数の名前（場合が全部を呼ぶか、intro.test.mjs が確かめる。ほかの関数は、これらの中から呼ばれる） */
 export const NAMES = [
   'initIntro',
   'buildIntroPanel',
@@ -207,7 +207,7 @@ const stateOf = () =>
     monsters: here.monsters.length,
   });
 
-/** 古い関数と新しい関数を同じ場合で呼ぶための、状態の初めの値（場合ごとに戻す） */
+/** 状態の初めの値（場合ごとに戻す） */
 function keepState() {
   return {
     here: { ...here },
