@@ -159,7 +159,13 @@ describe('掃除機', () => {
       if (m1.job >= 0 && m2.job >= 0) both = [m1.job, m2.job];
     }
     expect(both).not.toBeNull();
-    expect(new Set(both).size).toBe(2);
+    expect(new Set(both)).toEqual(new Set([a, b]));
+    for (let q = 0; q < 600 && (blaze.burnt[a] || blaze.burnt[b]); q++) {
+      clock.time += 0.1;
+      updateCritter(m1, 0.1, clock.time, 99);
+      updateCritter(m2, 0.1, clock.time, 99);
+    }
+    expect([blaze.burnt[a], blaze.burnt[b]]).toEqual([0, 0]);
   });
 });
 
