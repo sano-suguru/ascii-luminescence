@@ -116,6 +116,22 @@ describe('掃除機', () => {
     const m = put('Rc', 16, 13);
     expect(run(m, 90, () => !blaze.burnt[a] && !blaze.burnt[b])).not.toBeNull();
   });
+  it('向かっている途中で道に火が回ると、仕事を手放して探し直し、火が消えればまた向かう', () => {
+    // 区画を左右に分ける壁の、1マスだけの通り道。灰は通り道の向こう
+    for (let z = Z0 + 1; z < Z1; z++) if (z !== 13) wall(18, z);
+    const ash = at(21, 13);
+    blaze.burnt[ash] = 1;
+    const m = put('Rc', 15, 13);
+    expect(run(m, 3, () => m.job === ash)).not.toBeNull();
+    blaze.fire[at(18, 13)] = 1; // 通り道が燃える（火は進めないので、燃えたまま）
+    expect(run(m, 20, () => m.job === -1)).not.toBeNull();
+    expect(blaze.burnt[ash]).toBe(1);
+    // 燃えている間は、探し直しても選ばない
+    run(m, 6, () => false);
+    expect(m.job).toBe(-1);
+    blaze.fire[at(18, 13)] = 0;
+    expect(run(m, 60, () => !blaze.burnt[ash])).not.toBeNull();
+  });
 });
 
 describe('修復機', () => {

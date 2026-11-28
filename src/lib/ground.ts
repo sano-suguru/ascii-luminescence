@@ -219,12 +219,11 @@ export function updateCritter(m: Mob, dt: number, t: number, dp: number): void {
     ty.critter === 'fish' ? 1.4 + 0.4 * Math.sin(t * 3 + m.ph) : ty.critter === 'grazer' ? 1.5 + 0.3 * Math.sin(t * 1.2 + m.ph) : 1.2;
 }
 /**
- * 掃除機と修復機の仕事（dt 秒）。掃除機は灰と火を消し、修復機は焼け落ちた扉を作り直す。仕事の所にいる間は true（動かない）。
+ * 掃除機と修復機の仕事（dt 秒）。掃除機は灰を片付け（燃え残りの火も消す）、修復機は焼け落ちた扉を作り直す。仕事の所にいる間は true（動かない）。
  * 仕事が無ければ、1.5秒ごとに近くの仕事を探す（掃除機は上下左右10マスの枠の中の灰、修復機は直線で40以内の焼け落ちた扉。そのうち歩いて行ける
- * （jobReach の歩数以内）一番歩数の少ない物。修復機は扉の両側のマスのどちらかへ。燃えているマスには入れないので、火は灰の所の燃え残りだけを消す）
+ * （jobReach の歩数以内）一番歩数の少ない物。修復機は扉の両側のマスのどちらかへ。燃えているマスには入れないので、選ばない）
  */
 export function machineWork(m: Mob, dt: number): boolean {
-  // cleaners clear ash and put out fires; engineers rebuild burnt doors
   const ty = m.ty;
   if (m.job !== undefined && m.job >= 0) {
     const [jx, jz] = ty.critter === 'engineer' ? [nth(level().doors, m.job).bx, nth(level().doors, m.job).bz] : cpos(m.job);
