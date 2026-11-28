@@ -8,14 +8,20 @@
 //   --dry                           水の外にも1体置く（雷は跳ぶが、水を伝わらない物）
 //   --weapon bolt                   右手の武器（RUNE_DEF の攻撃の鍵）。性質は雷にする
 //   --frames 18                     当たった後に写すフレームの数（1フレーム＝ゲームの1/30秒）
+//   --views eye,high,side           写す見え方（eye：目の高さ・high：真上に近い高い所・side：プレイヤーから見て横の、目の高さ。見え方ごとに自分のページで同じ場面を作る）
+//   --hud                           画面に重ねた表示（状態・ミニマップ・伝言・矢印など）も写す（ふだんは隠す）
+//   --hide particles,…              tick の段（src/lib/loop.ts の inPhase の名前）を止めて写す（何が光っているかの切り分けに。__test.skipPhase。稲妻の段 bolt は、遅れて当たる処理も止まる）
+//   --rev <版>                      前の版（git の版。例 origin/main）とも同じ場面・同じカメラで写し、6枚ごとに前（上）と今（下）を並べる（src/ と組み立てを前の版にした一時的な作業場所で。tools/field.mjs と同じ）
 //   --out <ディレクトリ>            置き場所（既定 tests/out/zap/）
 // 写す物：水のマスが固まっている所を探し、当てる1体と、そのまわり 1.6〜4.5 の水のマスに残りを置いて止め（__test.hold）、3.5〜5.5 離れた床から照準を合わせる。
-// 目の高さ（eye）と、プレイヤーの後ろの高い所に置いたカメラ（top。__test.cam）の2通りで、当てる前の1枚と、当たったフレームから --frames 枚を写す
-// （テスト用モードなので、2通りとも同じ場面になる）。写真は <見え方>-<before|hNN>.png（画面全体）と、体のまわりを切り抜いて時間の順に並べた
+// 目の高さ（eye）と、__test.cam で置いたカメラ（high・side）で、当てる前の1枚と、当たったフレームから --frames 枚を写す
+// （テスト用モードなので、2通りとも同じ場面になる）。写真は <見え方>[-old]-<before|hNN>.png（画面全体）と、体のまわりを切り抜いて時間の順に並べた
 // <見え方>.png（行ごとに6枚）。数は summary.json：フレームごとの、置いた生き物の体力と、稲妻の数（__test.traces の bolts）。
-import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { withBrowser, newPage, openTest, advance, frames, aimAt, strike, arg, OUT } from '../tests/lib.mjs';
+import { withBrowser, newPage, openTest, advance, frames, aimAt, strike, waterScene, arg, OUT, ROOT } from '../tests/lib.mjs';
 import { cropRect, writeSheet } from './sheet.mjs';
 import { MTYPES } from '../src/lib/creatures.ts';
 
@@ -24,7 +30,9 @@ const W = 960,
   CLIP = { x: 0, y: 0, width: W, height: H };
 const argv = process.argv.slice(2);
 const usage = (why) => {
-  console.log(`${why}\n使い方：pnpm zap [名前] [--scene 4:202] [--n 4] [--dry] [--weapon bolt] [--frames 18] [--out <ディレクトリ>]`);
+  console.log(
+    `${why}\n使い方：pnpm zap [名前] [--scene 4:202] [--n 4] [--dry] [--weapon bolt] [--frames 18] [--views eye,high,side] [--hide 段,…] [--hud] [--rev <版>] [--out <ディレクトリ>]`,
+  );
   process.exit(1);
 };
 const opt = (k) => {
@@ -44,7 +52,12 @@ if (!(count >= 2 && count <= 7)) usage('--n は 2 から 7');
 const after = Number(opt('--frames') ?? 18);
 const weapon = opt('--weapon') ?? 'bolt';
 const dry = argv.includes('--dry');
-const VALUED = new Set(['--out', '--scene', '--n', '--weapon', '--frames']);
+const views = (opt('--views') ?? 'eye,high,side').split(',');
+if (!views.every((v) => ['eye', 'high', 'side'].includes(v))) usage('--views は eye・high・side から');
+const hud = argv.includes('--hud');
+const hide = opt('--hide')?.split(',').filter(Boolean) ?? [];
+const rev = opt('--rev');
+const VALUED = new Set(['--out', '--scene', '--n', '--weapon', '--frames', '--views', '--hide', '--rev']);
 const want = argv.find((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1] ?? '')) ?? 'ゴブリン';
 const hit = Object.entries(MTYPES).filter(([k, t]) => !t.dummy && (k === want || t.name === want));
 if (hit.length !== 1) usage(`表に無い名前：${want}`);
@@ -52,144 +65,168 @@ const key = hit[0][0];
 mkdirSync(outDir, { recursive: true });
 for (const f of readdirSync(outDir)) if (f.endsWith('.png')) rmSync(join(outDir, f));
 
-/** 場面を作る：水の固まりを探し、生き物を置いて止め、プレイヤーを離れた床に立たせて当てる1体を向く。置いた所を返す */
-const setup = (pg) =>
-  pg.evaluate(
-    ([key, count, dry, weapon]) => {
-      const eq = __test.equip('R', weapon);
-      if (eq !== weapon) return { err: `武器 ${weapon}：${eq}` };
-      const el = __test.elem('R', 'thunder');
-      if (el !== 'thunder') return { err: `雷：${el}` };
-      __test.clearAll();
-      const { w, h } = __test.size(),
-        cells = [];
-      for (let i = 0; i < w * h; i++) {
-        const c = __test.cell(i);
-        cells.push({ i, ...c });
-      }
-      const water = cells.filter((c) => c.water && c.floor),
-        floor = cells.filter((c) => c.floor),
-        d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
-      for (const t of water) {
-        // まわりの水：互いに 1.4 以上離れた物を、近い順に選ぶ
-        const near = water.filter((c) => c !== t && d(c, t) >= 1.6 && d(c, t) <= 4.5).sort((a, b) => d(a, t) - d(b, t)),
-          picks = [t];
-        for (const c of near) if (picks.length < count && picks.every((p) => d(p, c) >= 1.4)) picks.push(c);
-        if (picks.length < count) continue;
-        let dryCell = null;
-        if (dry) {
-          dryCell = floor.find((c) => !c.water && d(c, t) >= 1.6 && d(c, t) <= 3.5 && picks.every((p) => d(p, c) >= 1.4));
-          if (!dryCell) continue;
-        }
-        // 立つ所：当てる1体から 5〜7 離れた、水でない床で、置いた物が全部見える所
-        const stands = floor.filter((c) => !c.water && d(c, t) >= 3.5 && d(c, t) <= 5.5);
-        for (const s of stands) {
-          dbg.step(s.x, s.z);
-          __test.fov();
-          const all = dryCell ? [...picks, dryCell] : picks;
-          if (!all.every((c) => __test.cell(c.i).seen)) continue;
-          all.forEach((c) => __test.summon(key, c.i));
-          __test.state().monsters.forEach((_, n) => __test.hold(n, {}));
-          return { ok: true, stand: [s.x, s.z], target: [t.x, t.z], cells: all.map((c) => [c.x, c.z]), dry: !!dryCell };
-        }
-      }
-      return { err: `水の中に ${count} 体を置ける所が無い` };
-    },
-    [key, count, dry, weapon],
-  );
-
-const result = { query, key, weapon, views: {} };
 const errs = [];
-await withBrowser(async ({ browser, base }) => {
-  for (const view of ['eye', 'top']) {
-    const pageErrs = [];
-    const pg = await newPage(browser, pageErrs, { width: W, height: H, still: true });
-    await openTest(pg, base, `${query}&god=1`);
-    await advance(pg, 2);
-    const s = await setup(pg);
-    if (s.err) {
-      errs.push(`${view}：${s.err}`);
-      await pg.close();
-      continue;
-    }
-    await advance(pg, 0.5);
+/** 作業場所 root で組み立てたゲームで、見え方ごとに写す（suffix は写真の名前の後ろ。前の版は '-old'）。見え方ごとの {setup, rows（写真と体力と稲妻の数）, boxes} を返す */
+async function shootAll(root, suffix) {
+  const got = {};
+  await withBrowser(
+    async ({ browser, base }) => {
+      for (const view of views) {
+        const pageErrs = [];
+        const pg = await newPage(browser, pageErrs, { width: W, height: H, still: true });
+        await openTest(pg, base, `${query}&god=1`);
+        // 画面に重ねた表示（状態・ミニマップ・伝言・矢印など）を隠す（--hud で残す）
+        if (!hud) await pg.addStyleTag({ content: 'body > :not(#gl) { visibility: hidden !important; }' });
+        if (hide.length) {
+          const got = await pg.evaluate((h) => __test.skipPhase(h), hide);
+          if (got.join() !== hide.join()) usage(`止められない段がある（${hide.join('・')} → ${got.join('・')}）`);
+        }
+        await advance(pg, 2);
+        const s = await waterScene(pg, { key, count, dry, weapon });
+        if (s.err) {
+          errs.push(`${view}${suffix}：${s.err}`);
+          await pg.close();
+          continue;
+        }
+        await advance(pg, 0.5);
+        try {
+          await aimAt(pg, key);
+        } catch (e) {
+          errs.push(`${view}${suffix}：${e.message}`);
+          await pg.close();
+          continue;
+        }
+        if (view !== 'eye') {
+          const placed = await pg.evaluate(
+            ([s, view]) => {
+              const [px, pz] = s.stand,
+                mx = s.cells.reduce((a, c) => a + c[0], 0) / s.cells.length,
+                mz = s.cells.reduce((a, c) => a + c[1], 0) / s.cells.length,
+                dl = Math.hypot(mx - px, mz - pz) || 1,
+                ux = (mx - px) / dl,
+                uz = (mz - pz) / dl,
+                tries = [];
+              // high：置いた物の真ん中の、プレイヤー側の少し手前の高い所から、ほぼ真下を見る。side：置いた物の真ん中から見て、プレイヤーの向きを 40〜120 度回した横から、目の高さで見る
+              if (view === 'high')
+                for (const y of [7, 6, 5, 4.2, 3.6, 3, 2.6])
+                  for (const back of [1.5, 2.5, 0.8]) tries.push([mx - ux * back, y, mz - uz * back]);
+              else
+                for (const deg of [90, -90, 60, -60, 120, -120, 40, -40])
+                  for (const d of [6, 5, 4.2])
+                    for (const y of [1.6, 2.2]) {
+                      const a = (deg * Math.PI) / 180;
+                      tries.push([mx - (ux * Math.cos(a) - uz * Math.sin(a)) * d, y, mz - (ux * Math.sin(a) + uz * Math.cos(a)) * d]);
+                    }
+              for (const pos of tries) {
+                // 置いた物から 3 より近い所には置かない（体で前が塞がる）
+                if (view === 'side' && s.cells.some(([x, z]) => Math.hypot(x - pos[0], z - pos[2]) < 3)) continue;
+                const r = __test.cam({ pos, at: [mx, 0.4, mz] });
+                if (typeof r !== 'string' && r.clear) return r;
+              }
+              return null;
+            },
+            [s, view],
+          );
+          if (!placed) errs.push(`${view}${suffix}：カメラを置けない（目の高さで写す）`);
+          else console.log(`${view}：カメラ ${placed.pos.map((v) => v.toFixed(1)).join(',')}`);
+        }
+        const rows = [];
+        const snap = async (tag) => {
+          const file = join(outDir, `${view}${suffix}-${tag}.png`);
+          await pg.screenshot({ path: file, timeout: 90000 });
+          const st = await pg.evaluate(() => {
+            const s = __test.state();
+            return { hp: s.monsters.map((m) => m[3]), bolts: __test.traces().bolts ?? null, time: +s.time.toFixed(3) };
+          });
+          rows.push({ tag, file, ...st });
+        };
+        // 切り抜く範囲：置いた所の足元と、頭の上 1.2 の画面の位置を、全部含む範囲（前の版には __test.project が無いので、今の版の範囲を使う）
+        const boxes = await pg.evaluate((s) => {
+          if (!__test.project) return null;
+          const p = __test
+            .project(
+              s.cells.flatMap(([x, z]) => [
+                [x, 0, z],
+                [x, 1.2, z],
+              ]),
+            )
+            .filter(Boolean);
+          if (!p.length) return null;
+          const xs = p.map((q) => q[0]),
+            ys = p.map((q) => q[1]);
+          return [{ x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) }];
+        }, s);
+        await frames(pg, 1);
+        await snap('before');
+        try {
+          await strike(pg, 'R', key);
+        } catch (e) {
+          errs.push(`${view}${suffix}：${e.message}`);
+          await pg.close();
+          continue;
+        }
+        for (let k = 0; k <= after; k++) {
+          await frames(pg, 1);
+          await snap(`h${String(k).padStart(2, '0')}`);
+        }
+        if (pageErrs.length) errs.push(`${view}${suffix}：${pageErrs.join(' / ')}`);
+        await pg.close();
+        got[view] = { setup: s, rows, boxes };
+      }
+    },
+    { root },
+  );
+  return got;
+}
+
+const now = await shootAll(ROOT, '');
+let old = null;
+if (rev) {
+  // src/ と組み立て（vite.config.mjs と、それが読む tools/）を前の版にした一時的な作業場所（tools/field.mjs の --rev と同じ）
+  const tmp = mkdtempSync(join(tmpdir(), 'al-zap-'));
+  const git = (...a) => execFileSync('git', a, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
+  try {
+    git('worktree', 'add', '--detach', tmp, 'HEAD');
+    rmSync(join(tmp, 'src'), { recursive: true, force: true });
+    execFileSync('git', ['checkout', rev, '--', 'src', 'vite.config.mjs', 'tools'], { cwd: tmp, stdio: 'ignore' });
+    symlinkSync(join(ROOT, 'node_modules'), join(tmp, 'node_modules'));
+    old = await shootAll(tmp, '-old');
+  } finally {
+    // 消す前にリンクを外す（リンクを残したまま worktree remove --force で消すと、リンクの先の node_modules まで消えることがある）
+    rmSync(join(tmp, 'node_modules'), { force: true });
     try {
-      await aimAt(pg, key);
-    } catch (e) {
-      errs.push(`${view}：${e.message}`);
-      await pg.close();
-      continue;
+      git('worktree', 'remove', '--force', tmp);
+    } catch {
+      rmSync(tmp, { recursive: true, force: true });
+      git('worktree', 'prune');
     }
-    if (view === 'top') {
-      // プレイヤーの後ろ 2.5、高さ 3.2（天井が低ければ下げる）から、当てる1体と置いた物の真ん中を見下ろす
-      const placed = await pg.evaluate((s) => {
-        const [px, pz] = s.stand,
-          [tx, tz] = s.target,
-          mx = s.cells.reduce((a, c) => a + c[0], 0) / s.cells.length,
-          mz = s.cells.reduce((a, c) => a + c[1], 0) / s.cells.length,
-          dl = Math.hypot(mx - px, mz - pz) || 1;
-        for (const y of [3.2, 2.8, 2.4, 2.0])
-          for (const back of [2.5, 1.5, 0.5]) {
-            const r = __test.cam({
-              pos: [px - ((mx - px) / dl) * back, y, pz - ((mz - pz) / dl) * back],
-              at: [(mx + tx) / 2, 0.3, (mz + tz) / 2],
-            });
-            if (typeof r !== 'string' && r.clear) return r;
-          }
-        return null;
-      }, s);
-      if (!placed) errs.push('top：見下ろすカメラを置けない（目の高さで写す）');
-    }
-    const rows = [];
-    const snap = async (tag) => {
-      const file = join(outDir, `${view}-${tag}.png`);
-      await pg.screenshot({ path: file, timeout: 90000 });
-      const st = await pg.evaluate(() => {
-        const s = __test.state();
-        return { hp: s.monsters.map((m) => m[3]), bolts: __test.traces().bolts ?? null, time: +s.time.toFixed(3) };
-      });
-      rows.push({ tag, file, ...st });
-    };
-    // 切り抜く範囲：置いた所の足元と、頭の上 1.2 の画面の位置を、全部含む範囲
-    const boxes = await pg.evaluate((s) => {
-      const p = __test
-        .project(
-          s.cells.flatMap(([x, z]) => [
-            [x, 0, z],
-            [x, 1.2, z],
-          ]),
-        )
-        .filter(Boolean);
-      if (!p.length) return null;
-      const xs = p.map((q) => q[0]),
-        ys = p.map((q) => q[1]);
-      return [{ x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) }];
-    }, s);
-    await frames(pg, 1);
-    await snap('before');
-    try {
-      await strike(pg, 'R', key);
-    } catch (e) {
-      errs.push(`${view}：${e.message}`);
-      await pg.close();
-      continue;
-    }
-    for (let k = 0; k <= after; k++) {
-      await frames(pg, 1);
-      await snap(`h${String(k).padStart(2, '0')}`);
-    }
-    if (pageErrs.length) errs.push(`${view}：${pageErrs.join(' / ')}`);
-    await pg.close();
-    result.views[view] = { setup: s, rows: rows.map(({ file, ...r }) => r) };
-    const rect = boxes ? cropRect(boxes, CLIP) : { x: 0, y: 0, side: H };
-    const per = 6,
-      sheet = [];
-    for (let i = 0; i < rows.length; i += per) sheet.push(rows.slice(i, i + per).map((r) => ({ file: r.file, rect })));
-    writeSheet(sheet, join(outDir, `${view}.png`), 320);
-    console.log(`${view}：${join(outDir, `${view}.png`)}`);
-    for (const r of rows) console.log(`  ${r.tag.padEnd(6)} 体力 ${r.hp.join(' ')}  稲妻 ${r.bolts}`);
   }
-});
+}
+const result = { query, key, weapon, rev, views: {} };
+for (const view of views) {
+  const g = now[view];
+  if (!g) continue;
+  const rect = g.boxes ? cropRect(g.boxes, CLIP) : { x: 0, y: 0, side: H },
+    per = 6,
+    sheet = [];
+  const o = old?.[view];
+  for (let i = 0; i < g.rows.length; i += per) {
+    // --rev の時は、前の版の行を今の版の行の上に置く（同じフレーム・同じ枠）
+    if (o) sheet.push(o.rows.slice(i, i + per).map((r) => ({ file: r.file, rect })));
+    sheet.push(g.rows.slice(i, i + per).map((r) => ({ file: r.file, rect })));
+  }
+  writeSheet(sheet, join(outDir, `${view}.png`), 320);
+  result.views[view] = {
+    setup: g.setup,
+    rows: g.rows.map(({ file, ...r }) => r),
+    ...(o ? { old: o.rows.map(({ file, ...r }) => r) } : {}),
+  };
+  console.log(`${view}：${join(outDir, `${view}.png`)}${o ? '（6枚ごとに、上が前の版・下が今）' : ''}`);
+  for (const [k, r] of g.rows.entries())
+    console.log(
+      `  ${r.tag.padEnd(6)} 体力 ${r.hp.join(' ')}  稲妻 ${r.bolts}${o?.rows[k] ? `   前：体力 ${o.rows[k].hp.join(' ')}  稲妻 ${o.rows[k].bolts}` : ''}`,
+    );
+}
 writeFileSync(join(outDir, 'summary.json'), JSON.stringify(result, null, 2) + '\n');
 if (errs.length) {
   console.log('うまくいかなかった物：', errs);

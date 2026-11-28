@@ -6,7 +6,7 @@ import { handPoint, losClear, shotFrame, aimOrigin, beamFrame, doorBlock, ground
 import { placeAltar } from './altars.ts';
 import { sChime, sNoise, sOut, sTone, sWhoosh, sndReady, castSound, sBoom, sCrackleBurst } from './audio.ts';
 import { css } from './color.ts';
-import { addBolt, sparkCrown } from './fx.ts';
+import { RIPPLE_SPEED, WATER_ZAP_Y, addBolt, addRipple, shockRise, sparkCrown } from './fx.ts';
 import { type Spec, bodyN, type Side, atkType, isTwo, specOf, turnElem } from './gear.ts';
 import { G } from './glyphs.ts';
 import { chillArea, ignite } from './ground.ts';
@@ -1174,6 +1174,11 @@ export function applyHit(m: Mob, dmg: number, sp: Spec, quiet?: boolean): void {
     onNoticed(m);
   }
   if (el && mult > 0.25 && !m.dead) applyElem(m, el, sp, dmg);
+  else if (el === 'thunder' && mult > 0.25 && m.dead && clock.time - (m.chainT || -9) >= 0.5) {
+    // 倒した一撃でも、水には伝わる
+    m.chainT = clock.time;
+    conductWater(m, dmg);
+  }
 }
 /**
  * 性質を生き物に移す（燃える・冷える・痺れる・毒。前の性質と出会えば反応が起きる。連鎖の効き方で、近くの敵へも移る）
@@ -1381,26 +1386,50 @@ export function chainLightning(m: Mob, jumps: number, dmg: number, areaK: number
     sEnv(sNoise(t, 0.18, 'highpass', 3200, 0.6, sOut(m.x, m.z, 0.25)), t, 0.002, 0.16);
   }
 }
-/** 水の中の生き物に雷が当たると、同じ水の中の近くの敵（6 以内、多くても7）へ伝わる */
+/**
+ * 水の中の (x, z) から雷が水を伝わり、同じ水の中の近くの敵（r 以内で、近い順に多くても6体。skip は除く）へ広がる。
+ * 足元から水面に輪が広がり、輪が届いた敵へ（距離 / RIPPLE_SPEED 秒後）、水面を這う稲妻が走って、傷 dmgOf(敵) を与え、痺れさせる
+ */
+function waterShock(x: number, z: number, r: number, skip: Mob | null, dmgOf: (o: Mob) => number): void {
+  const col = must(lookup(RUNE_DEF, 'thunder').col);
+  addRipple(x, z, r, col);
+  vfx.zapFlash = { x, y: 0.4, z, col, t: 0.16, r: 6 };
+  const near = here.monsters
+    .filter((o) => o !== skip && foe(o) && inWater(o))
+    .map((o) => ({ o, d: Math.hypot(o.x - x, o.z - z) }))
+    .filter((e) => e.d <= r)
+    .sort((p, q) => p.d - q.d || p.o.seq - q.o.seq)
+    .slice(0, 6);
+  near.forEach(({ o, d }, k) =>
+    fight.zapQueue.push({
+      t: Math.max(0.04, d / RIPPLE_SPEED),
+      fn: () => {
+        if (o.dead || !inWater(o)) return;
+        addBolt([x, WATER_ZAP_Y, z], [o.x, WATER_ZAP_Y, o.z], col, 'water');
+        const n = dmgOf(o);
+        if (n > 0) damageMonster(o, n, 'thunder');
+        if (!o.dead) {
+          const s2 = o.st || (o.st = {});
+          s2.shock = Math.max(s2.shock || 0, 0.3);
+          o.wind = 0;
+        }
+        shockRise(o, col);
+        if (sndReady()) {
+          const t = must(SND.ctx).currentTime,
+            out = sOut(o.x, o.z, 0.25);
+          sEnv(sNoise(t, 0.2, 'bandpass', 2200 + k * 300, 0.5, out), t, 0.003, 0.18);
+        }
+      },
+    }),
+  );
+}
+/** 水の中の生き物 m に雷が当たると（倒れた一撃でも）、同じ水の中の近くの敵（6 以内）へ伝わる（waterShock）。傷は base の半分に雷の効き目を掛け、水の中なので 1.5 倍 */
 export function conductWater(m: Mob, base: number): void {
   if (!inWater(m)) return;
-  let n = 0;
-  for (const o of here.monsters) {
-    if (o === m || !foe(o) || !inWater(o)) continue;
-    if (Math.hypot(o.x - m.x, o.z - m.z) > 6) continue;
-    if (n++ > 5) break;
-    addBolt([m.x, 0.15, m.z], [o.x, 0.15, o.z], must(lookup(RUNE_DEF, 'thunder').col), 'thunder');
-    const r = (RES[o.key] || {})['thunder'],
-      k = r === undefined ? 1 : r,
-      d2 = Math.round(Math.max(1, base * 0.5) * k * 1.5);
-    if (d2 > 0) damageMonster(o, d2, 'thunder');
-    if (!o.dead) {
-      const s2 = o.st || (o.st = {});
-      s2.shock = Math.max(s2.shock || 0, 0.3);
-      o.wind = 0;
-    }
-    sparkCrown(o, must(lookup(RUNE_DEF, 'thunder').col));
-  }
+  waterShock(m.x, m.z, 6, m, (o) => {
+    const r = (RES[o.key] || {})['thunder'];
+    return Math.round(Math.max(1, base * 0.5) * (r === undefined ? 1 : r) * 1.5);
+  });
 }
 /** 性質を地面のマス ci に落とす（火は燃える所に火を、氷は冷気を、雷は水の中の敵へ） */
 export function landElem(sp: Spec, x: number, _y: number, z: number, ci: number): void {
@@ -1411,13 +1440,7 @@ export function landElem(sp: Spec, x: number, _y: number, z: number, ci: number)
   } else if (sp.elem === 'ice') chillArea(x, z, 1.2 * areaK);
   else if (sp.elem === 'thunder') {
     const lq = level().liquid[ci];
-    if (lq === LQ_WATER || lq === LQ_DEEP) {
-      for (const o of here.monsters) {
-        if (!foe(o) || !inWater(o) || Math.hypot(o.x - x, o.z - z) > 5) continue;
-        addBolt([x, 0.15, z], [o.x, 0.15, o.z], must(lookup(RUNE_DEF, 'thunder').col), 'thunder');
-        damageMonster(o, 2, 'thunder');
-      }
-    }
+    if (lq === LQ_WATER || lq === LQ_DEEP) waterShock(x, z, 5, null, () => 2);
   }
 }
 /** 倒した時に放つ発動のルーン：手ごとに、一番近い見通せる敵へ術を放つ（剣は近くだけ） */

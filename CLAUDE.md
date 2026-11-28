@@ -95,11 +95,11 @@ src/lib/*.ts         ゲーム本体（TypeScript）。厳しい型で確かめ�
                      fixtures：階に置いてある物を描く（灯りの備品 drawFixtures・扉 drawDoors・泉 drawSprings・墓 drawGraves・クモの巣 drawWebs・罠と鉄格子 drawTraps・床と台と祭壇のルーンと石碑と宝物庫の兆し drawRunesWorld（光線・飛ぶ物・詠唱している手の前と付け替えの間のルーンも））と巣に触れた時 webTouch、
                      arrows：方向の矢印（行き先 arrowTargets・見通せるか inPlainSight・画面に重ねた 2D のキャンバス #arrows に描く drawArrows。キャンバスと下の HUD は boot が ui に入れる）、
                      chantfx：詠唱の見た目（術が飛ぶ道 simPath・手の前の円と飛ぶ道と落ちる所 drawCastFx・照準の文字 #cross と詠唱の間の画面の色 updateCross）、
-                     fx：火と術の跡を描く（火 drawFire・凍らせた水 drawFrozen・稲妻 addBolt・sparkCrown・drawBoltFx・床の目印と魔法の場 drawZones）、
+                     fx：火と術の跡を描く（火 drawFire・凍らせた水 drawFrozen・稲妻 addBolt・sparkCrown・drawBoltFx（水面を這う雷と、水面に広がる輪 addRipple・足元から上る火花 shockRise も）・床の目印と魔法の場 drawZones）、
                      omens：先にある物の手がかり（表 STRATUM_OMEN など・computeOmen・omenOf・drawOmens）と階段の封（stairsGuarded・drawStairSeal）、
                      look：見た時の説明 look（照準の先の生き物 ui.aimMon も入れる）、
                      aim：照準（目の位置と向き aimOrigin・viewDir・handUp、攻撃が当たる生き物か hittable、照準の先の点 aimPoint、手の前の点 centerPoint・handPoint、詠唱の円の位置 castPoint、武器を振った線 drawSwing、照準の先の生き物 aimTarget・狙いを助ける点 assistPoint・撃つ所と向き shotFrame・beamFrame、閉じた扉 doorBlock・見通し losClear・地面に落とす所 groundPoint・跳ね返る向き reflectDir）、
-                     combat：詠唱と当たり（術を放つ castNow と武器の種類ごとの撃ち方 meleeCast・dashCast・fireBeam・castStar・castRapid・startRain・fireWave、玉が弾ける orbBurst、当たり applyHit・性質を移す applyElem・反応 react・稲妻 chainLightning・conductWater、火 burstFire・ガスが爆ぜる boom、生き物の傷 damageMonster・プレイヤーの傷 hurtPlayer、生き物の近接の攻撃 monsterStrike、発動のルーン onKilledBy・かわした時 onDodged（かわした時の加護の効く間も始める）、立ち直り rallyOnHit・updateRally、命の一歩 updateLife（火の中で焼ける・体力の表示）、主が倒れた時 dropRune・lordFell、経験 gainExp、遅れて起きること later、魔法の場 addZone など）、
+                     combat：詠唱と当たり（術を放つ castNow と武器の種類ごとの撃ち方 meleeCast・dashCast・fireBeam・castStar・castRapid・startRain・fireWave、玉が弾ける orbBurst、当たり applyHit・性質を移す applyElem・反応 react・稲妻 chainLightning・水を伝わる雷 conductWater（倒した一撃でも。輪が届いた近い順に、遅れて当たる）、火 burstFire・ガスが爆ぜる boom、生き物の傷 damageMonster・プレイヤーの傷 hurtPlayer、生き物の近接の攻撃 monsterStrike、発動のルーン onKilledBy・かわした時 onDodged（かわした時の加護の効く間も始める）、立ち直り rallyOnHit・updateRally、命の一歩 updateLife（火の中で焼ける・体力の表示）、主が倒れた時 dropRune・lordFell、経験 gainExp、遅れて起きること later、魔法の場 addZone など）、
                      chant：詠唱と転がり（ゲームの時間の速さ timeScale・溜め始める beginCast・溜めが散る fizzle・放つ releaseCast・溜めを進める updateCast・転がる startRoll）、
                      projs：飛ぶ物と、毎フレーム続く戦いの跡を進める（飛ぶ物 updateProjs と光の月が弾ける moonBurst、状態異常 updateStatuses・生き物の時間の速さ monTimeK、遅れて起きることと魔法の場 updateZones・雨 updateRains、毒の霧に火が届く cloudsMeetFire）、
                      events：部屋の出来事を進める updateEvents と罠（踏んだ時 triggerTrap・見つける・網・鉄格子のレバー updateTraps）、
@@ -139,9 +139,12 @@ tools/glare.mjs      敵に攻撃を当てた時の眩しさを数える（pnpm 
                      当てる前の1枚と、当たった次のフレームから光り終わる（hitT が 0 になる）フレームまでを1枚ずつ写す（場合ごとに自分のページで、3つずつ同時に）。--hide 段,…（tick の段の名前。例：hands,swing。体は 'mob draw'、剣の波は飛ぶ物の 'projs'）で、
                      その段を止めて（__test.skipPhase）撃った数も、止めない時と並べて出す（何が光っているかの切り分けに）。体の範囲の白飛び（3つの色がどれも 245 以上）・眩しさ（明るさ 200 以上）・明るさの平均と、画面全体の眩しさ、写した時の hitT・glow・照準の先かを出す。
                      写真・体のまわりを切り抜いて並べた glare.png・summary.json は tests/out/glare/。CI には入れない）
-tools/zap.mjs        雷が水を伝わるところを写す（pnpm zap [名前]。水のマスが固まっている所に生き物を何体か置いて止め、右手を雷の武器にして1体に当て、目の高さと、後ろの高い所に置いたカメラ（__test.cam）から、
-                     当てる前と当たったフレームから1フレームずつ写す。--scene（深さ:シードか URL の指定。例：seed=202&branch=snake）・--n（水の中の数）・--dry（水の外にも1体）・--frames。
-                     写真・置いた所のまわりを切り抜いて時間の順に並べた eye.png・top.png・フレームごとの体力と稲妻の数の summary.json は tests/out/zap/。CI には入れない）
+tools/zap.mjs        雷が水を伝わるところを写す（pnpm zap [名前]。場面は tests/lib.mjs の waterScene：水のマスが固まっている所に生き物を何体か置いて止め、右手を雷の武器にして1体に当てる。
+                     目の高さ（eye）と、__test.cam で置いた真上に近い高い所（high）・横（side）のカメラから、当てる前と当たったフレームから1フレームずつ写す。
+                     水面の線と輪の文字の向きは、遊ぶ人の目から選ぶので、high・side では向きが合わない。画面に重ねた表示は隠す（--hud で写す）。
+                     --scene（深さ:シードか URL の指定。既定は seed=202&branch=snake）・--n（水の中の数）・--dry（水の外にも1体）・--weapon・--frames・--views・--hide（tick の段を止める）・
+                     --rev <版>（src/ と組み立てを前の版にした一時的な作業場所でも同じ場面・同じカメラで写し、6枚ごとに前と今を上下に並べる）。
+                     写真・置いた所のまわりを切り抜いて時間の順に並べた eye.png・high.png・side.png・フレームごとの体力と稲妻の数の summary.json は tests/out/zap/。CI には入れない）
 tools/sheet.mjs      写真を体のまわり（__test.monsterView の画面の範囲）で切り抜いて大きくし、枡に並べた1枚にする（cropRect・writeSheet。shots.mjs・field.mjs・glare.mjs が使う）
 tools/lords.mjs      主たちを本当にいる場所（支道の奥の階・最深部）に置き、プレイヤーの目の高さから写す（pnpm lords。主の体が描かれた画面の範囲・はみ出し・
                      主の体が足した眩しい画素の割合を出す。写真・眩しい所を赤く塗った写真・summary.json は tests/out/lords/）
@@ -161,7 +164,8 @@ tools/diag-report.mjs  診断の記録を表にする（node tools/diag-report.m
 tests/lib.mjs        テストの共通部分（組み立て・配信・ブラウザ（描き方の引数 GL_ARGS）・テスト用モードのページ・ゲームの文言を含む文 gameText（src/index.html と src/lib/ の .ts。文字を調べる glyphs.mjs・panels.mjs が使う）。newPage の device で、Playwright の端末の名前（スマホの真似）で開ける。ページはポインタロックを差し替えて止める（realLock で止めない）。環境変数 AL_PREBUILT が 1 なら、組み立て済みとして組み立てない。withBrowser の root で、別の作業場所を組み立てて配信する（tools/field.mjs の --rev）。
                      生き物を撃つ部品：aimAt(pg, 鍵) は、照準の先（__test.mob(n).aimed）になるまで dbg.look で体の高さの真ん中を向いて 1/30 秒ずつ進める（12 回でなれなければ Error）。
                      strike(pg, 手, 鍵) は、押して、近接ならすぐ当たり、溜める武器なら cast.full まで待って向き直してから離し、体力が減るまで描かずに 1/30 秒ずつ進める（{hit, frame} を返す。150 フレームで当たらなければ Error）。
-                     tools/glare.mjs と tests/world.mjs の 18・20 が使う）
+                     tools/glare.mjs と tests/world.mjs の 18・20 が使う）。
+                     waterScene(pg, {key, count, dry, weapon}) は、雷が水を伝わる場面を作る（tools/zap.mjs と tests/world.mjs の 22 が使う）
 tests/run.mjs        ブラウザのテストをまとめて走らせる（pnpm test）：テスト版と Artifact 版を1回だけ組み立て、12のテスト（画面写真の比較 visual も。一覧はおよその秒の表 SEC。tests/ に SEC にも部品の一覧 NOT_TESTS にも無い .mjs があれば止める）を同時に3つずつ走らせる（--jobs で数、名前を挙げるとそれだけ、--shard i/n で n 組に分けた i 組目だけ。分け方はおよその秒の表 SEC で、組ごとの合計が近くなるように決める）。
                      どのテストも自分のブラウザと空いているポートを使うので、ぶつからない。出力（標準出力と標準エラー）はテストごとにまとめて出す。1つが10分を越えたら止めて、それまでの出力を出す。
                      同じ出力を tests/out/run/<名前>.log にも書く（走らせ始める時に前の回の物を書き直し、出力が来るたびに書き足すので、時間切れ・シグナル・この道具ごと止められた時も、そこまでが残る。
@@ -190,7 +194,7 @@ tests/touch.mjs      指で遊ぶ時の土台（スマホの真似で、テス�
                      診断の記録：偽の window.claude（tests/page-fakes.mjs）で、持ち主なら端末・できごと・速さ・かかった時間・遅いフレーム（40件を越えたら短い物から捨てる）・メニューで押した項目とその前の項目からの秒（閉じて、すぐ開き直しても前の項目を持たない）を書き、持ち主でなければ書かないか・書き込みの途中に頼まれた分も後で書くか
 tests/gallery.mjs    図鑑：全部の生き物を立つ・歩く・眠るの姿で出して、例外・描いた文字の数・NaN を確かめる ＋ 図鑑を手で動かす（ホイールで寄る・引く、ドラッグで回す・見下ろす、離すとしばらく止まってまた回る、R と ← → で戻る、ドラッグが外れる、背の高い生き物に寄ると狙う点が上がる） ＋ ほかの所で見た目の乱数を余分に引いても、前に別の生き物を出しても、図鑑の写真（画面写真の比較の4体）が変わらないか（違えば、3つのページの画面写真を tests/out/gallery-rand/ に残す。走らせるたびに空にする） ＋ 出してすぐ __test.galleryDraw で覗いても、後の描いた物が変わらないか
 tests/gallery-specimens.mjs  画面写真の比較で写す図鑑の4体と写し方（visual.mjs と gallery.mjs が使う）
-tests/world.mjs      世界とのやり取り：扉・火・氷と冷気・小さな生き物（修復機・清掃機・猟犬）がマスや扉を変える処理（扉が視界を遮る・燃え尽きる・修復機が作り直す、階に残る物が階を移ると消える、猟犬が匂いの無いマスを追わない、硫黄・氷・冷気と火、薄い氷に乗っていた秒が階を移ると0に戻る、火口が噴き上がって溶岩が流れ、引き、また噴き上がる、溶岩の上に立つ生き物がいない・引き始める前に生き物のいないマスの穴が残らない、吹き飛ばされた生き物が溶岩の手前で止まる、攻撃を転がってかわすとかわした時の加護が効き、ただ転がっただけでは効かない、宝物庫の落石がゲームの時刻で進む（溜めている間は半分、止まっている間は進まない、階段を下りて暗くなり始めたら進まない）・階を移ると消える）、倒れた生き物が崩れて積もる（残す文字の数の上限・光とみなしてすぐ消す文字は半分より少ない・床より下に沈まない・高い塔にならない・倒れた所の近く・しばらくして全部消える・同時にたくさん倒れても崩れる体は12まで）、敵に攻撃を当てても画面が白く飛ばない（トロルに照準を合わせ、すぐ近くで小剣を当てた時、画面全体の眩しい画素が 25% 以下で、体は当てる前より明るくなる）、反応と火が重なっても画面が白く飛ばない（大洞窟で、凍えさせたトロルに炎の樫の杖を当て、蒸気の反応と枯れ草の火が起きた時、当たって 2〜8 フレームの間、画面全体の眩しい画素が 25% 以下・体の範囲の白飛びが 12% 以下で、体は当てる前より明るくなる）、気づいた敵に照準を合わせて当てても体が白く飛ばない（同じ場所のトロルに氷の樫の杖を両手で当てた時、当たって光っている間の体の範囲の白飛びが 5% 以下、光り終わった後（照準の先のまま）が 2% 以下で、当たって光っている間は光り終わった後より明るい）、場面を作る道具（__test.elem で性質を付け替えられる・__test.hold で止めた生き物は隣でも歩かず攻撃せず言った向きへ回り、放すとまた動く・__test.cam で目と同じ所に置いたカメラは目と同じに写し、前へ出すと見ている点を真ん中にしたまま大きく写し、null で目に戻る。岩の中には置かない・ほかの階へ移ると目に戻る。置いている間も術はプレイヤーから出て当たる。小さな生き物は止められない）。生き物は全部消してから、要る物だけ置く
+tests/world.mjs      世界とのやり取り：扉・火・氷と冷気・小さな生き物（修復機・清掃機・猟犬）がマスや扉を変える処理（扉が視界を遮る・燃え尽きる・修復機が作り直す、階に残る物が階を移ると消える、猟犬が匂いの無いマスを追わない、硫黄・氷・冷気と火、薄い氷に乗っていた秒が階を移ると0に戻る、火口が噴き上がって溶岩が流れ、引き、また噴き上がる、溶岩の上に立つ生き物がいない・引き始める前に生き物のいないマスの穴が残らない、吹き飛ばされた生き物が溶岩の手前で止まる、攻撃を転がってかわすとかわした時の加護が効き、ただ転がっただけでは効かない、宝物庫の落石がゲームの時刻で進む（溜めている間は半分、止まっている間は進まない、階段を下りて暗くなり始めたら進まない）・階を移ると消える）、倒れた生き物が崩れて積もる（残す文字の数の上限・光とみなしてすぐ消す文字は半分より少ない・床より下に沈まない・高い塔にならない・倒れた所の近く・しばらくして全部消える・同時にたくさん倒れても崩れる体は12まで）、敵に攻撃を当てても画面が白く飛ばない（トロルに照準を合わせ、すぐ近くで小剣を当てた時、画面全体の眩しい画素が 25% 以下で、体は当てる前より明るくなる）、反応と火が重なっても画面が白く飛ばない（大洞窟で、凍えさせたトロルに炎の樫の杖を当て、蒸気の反応と枯れ草の火が起きた時、当たって 2〜8 フレームの間、画面全体の眩しい画素が 25% 以下・体の範囲の白飛びが 12% 以下で、体は当てる前より明るくなる）、気づいた敵に照準を合わせて当てても体が白く飛ばない（同じ場所のトロルに氷の樫の杖を両手で当てた時、当たって光っている間の体の範囲の白飛びが 5% 以下、光り終わった後（照準の先のまま）が 2% 以下で、当たって光っている間は光り終わった後より明るい）、雷が水を伝わる（蛇の穴の水場で、水の中のコボルトを雷の樫の杖で一撃で倒すと、水の中のほかの3体に、当たったフレームより後に、近い順に伝わり、水の外の1体には伝わらない）、場面を作る道具（__test.elem で性質を付け替えられる・__test.hold で止めた生き物は隣でも歩かず攻撃せず言った向きへ回り、放すとまた動く・__test.cam で目と同じ所に置いたカメラは目と同じに写し、前へ出すと見ている点を真ん中にしたまま大きく写し、null で目に戻る。岩の中には置かない・ほかの階へ移ると目に戻る。置いている間も術はプレイヤーから出て当たる。小さな生き物は止められない）。生き物は全部消してから、要る物だけ置く
 tests/determinism.mjs  同じシードで同じ結果になるか ＋ tick の段の終わりごとと tick の外で見た目の乱数を余分に引いても、戦いと生き物の動き・伝言・画面写真が変わらないか（__test.tickNoise）＋
                      描くだけの段（hands・swing・mob draw）を止めても、戦いと生き物の動き・伝言が変わらず、画面写真は変わるか（__test.skipPhase）＋
                      見た目の乱数を余分に進めても、眠っている生き物・祭壇の中身・レベルアップの選択肢・代わりのルーン・宝物庫の番人の場所と、
@@ -331,7 +335,7 @@ node tools/feel.mjs [aim|walk]   # 手触りの試し打ち（見回す速さ・
 pnpm field <名前…>    # 生き物を本物の階で、向かってくるところを距離ごとに写す（--scenes 1:202,3:7 で階、--rev origin/main で前の版と並べる。--kill で倒して時間を追って写す。見た目を直す時の最後に。4分ほど）
 pnpm lords [場所…]    # 主たちを本当にいる場所で、目の高さから写し、大きさと眩しさを数で出す（crypt・lair・sunken・nest・snake・final。--dist で距離（既定 8））
 pnpm glare [名前…]    # 敵に攻撃を当てた時の眩しさを数で出す（既定はゴブリン・トロル・レイスを小剣と光弾で。--weapons・--scene 1:202・--hide hands,swing。40秒ほど）
-pnpm zap [名前]       # 雷が水を伝わるところを、時間を追って写す（既定は蛇の穴の水場。--scene 4:202 で階を変える。2分ほど）
+pnpm zap [名前]       # 雷が水を伝わるところを、時間を追って写す（既定は蛇の穴の水場。--scene 4:202 で階を変える。--rev origin/main で前の版と並べる。見え方1つで2分ほど）
 node tools/transitions.mjs [--rate 1,4]   # 場面が切り替わる時の確かめ（Artifact 版を本物の時計で通し、診断の記録を表にする。1つの速さで3分ほど）
 node tools/diag-report.mjs <フォルダ>     # 診断の記録（ArtifactData の道具で保存した JSON）を表にする（--compare 前.json 今.json で、自動で試した段を並べる）
 node tools/auto-run.mjs [--cond lowpower]  # 自動で試す台本を、スマホの遅さを真似て流す（条件ごとに5分ほど）

@@ -762,7 +762,7 @@ export interface Bolt {
   a: readonly [number, number, number];
   b: readonly [number, number, number];
   col: readonly number[];
-  /** 描き方（'thunder'・'fire'・'ice' と、ほか） */
+  /** 描き方（'thunder'・'fire'・'ice'、水面を這う雷 'water'、水面に広がる輪 'ripple'（a が真ん中、amp が広がりきった半径）と、ほか） */
   style: string;
   amp: number;
   t: number;
@@ -770,6 +770,8 @@ export interface Bolt {
   /** ぎざぎざの線を引き直すまでの秒 */
   re: number;
   pts: (readonly [number, number, number])[];
+  /** 水面を這う雷の枝（引き直すたびに作り直す） */
+  br?: (readonly [number, number, number])[][];
 }
 /**
  * 飛ぶ物（矢 bolt・玉 orb。src/lib/combat.ts の撃ち方が作り、src/lib/projs.ts の updateProjs が動かす）。

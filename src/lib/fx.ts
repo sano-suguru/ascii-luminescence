@@ -1,20 +1,20 @@
-// 火と術の跡を描く（drawFire・drawFrozen・addBolt・sparkCrown・drawBoltFx・drawZones・drawWave）：
-// 燃えているマスの炎、凍らせた水、たどれる稲妻（ぎざぎざの線がちらつき、遅れて落ちる稲妻を順に起こす）、
+// 火と術の跡を描く（drawFire・drawFrozen・addBolt・addRipple・sparkCrown・shockRise・drawBoltFx・drawZones・drawWave）：
+// 燃えているマスの炎、凍らせた水、たどれる稲妻（ぎざぎざの線がちらつき、遅れて落ちる稲妻を順に起こす。水を伝わる雷は、水面を這う線と、水面に広がる輪と、足元から上る火花）、
 // 当たった生き物の頭の火花の輪、床の目印と魔法の場、剣が飛ばす風の刃。毎フレーム、世界の中に文字を置き（dyn）、粒子を出す（spawn）。
 // 状態の入れ物 blaze（火）・fight（稲妻・目印）・vfx（稲妻の光り）・player・gfx（カメラの位置。読むだけ）に頼る。呼ぶのは描画（src/lib/loop.ts の tick と
 // src/lib/fixtures.ts の drawRunesWorld）と、稲妻を出す処理（src/lib/combat.ts）。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
 import { must, nth } from './array.ts';
-import { handUp } from './aim.ts';
+import { aimOrigin, handUp } from './aim.ts';
 import { G } from './glyphs.ts';
-import { vmGlyph } from './hands.ts';
+import { vmGlyph, vmGlyphS } from './hands.ts';
 import { jagged } from './math.ts';
 import { dyn, spawn } from './particles.ts';
 import { mpick, mr } from './random.ts';
 import { clamp } from './rng.ts';
 import { elemCol } from './runes.ts';
-import { type Monster, type Proj, blaze, fight, gfx, player, vfx } from './state.ts';
-import { CELL, MW, cpos } from './world.ts';
+import { type Bolt, type Monster, type Proj, blaze, fight, gfx, here, player, vfx } from './state.ts';
+import { CELL, LQ_DEEP, LQ_WATER, MW, cpos } from './world.ts';
 
 /** 燃えているマスの炎（34 より遠いマスは描かない。ときどき火の粉を出す） */
 export function drawFire(t: number, dt: number): void {
@@ -75,7 +75,9 @@ export function drawFrozen(t: number): void {
   }
 }
 
-/** a から b への稲妻の見た目を足す（style は 'thunder'（書かなければこれ）・'fire'・'ice' など。雷は大きく揺れ、長く残る） */
+/** 水面を這う雷の高さ（水面 gfx.waterMesh は 0.06） */
+export const WATER_ZAP_Y = 0.1;
+/** a から b への稲妻の見た目を足す（style は 'thunder'（書かなければこれ）・'fire'・'ice'・水面を這う雷 'water' など。雷は大きく揺れ、長く残る） */
 export function addBolt(
   a: readonly [number, number, number],
   b: readonly [number, number, number],
@@ -83,9 +85,66 @@ export function addBolt(
   style?: string,
 ): void {
   style = style || 'thunder';
-  const amp = style === 'thunder' ? 0.35 : 0.14;
-  fight.boltFx.push({ a, b, col, style, amp, t: 0, life: style === 'thunder' ? 0.36 : 0.3, re: 0, pts: jagged(a, b, amp) });
+  const amp = style === 'thunder' ? 0.35 : style === 'water' ? 0.3 : 0.14,
+    f: Bolt = {
+      a,
+      b,
+      col,
+      style,
+      amp,
+      t: 0,
+      life: style === 'thunder' ? 0.36 : style === 'water' ? 0.42 : 0.3,
+      re: 0,
+      pts: jagged(a, b, amp),
+    };
+  if (style === 'water') {
+    flatten(f);
+    // 線の上で跳ねる小さな火花（目の高さから見ても、水面の線に高さが出る）
+    for (let k = 0; k < 7; k++) {
+      const s = (k + 0.5) / 7,
+        x = a[0] + (b[0] - a[0]) * s,
+        z = a[2] + (b[2] - a[2]) * s;
+      spawn(
+        x,
+        WATER_ZAP_Y,
+        z,
+        (mr() - 0.5) * 0.6,
+        0.9 + 0.9 * mr(),
+        (mr() - 0.5) * 0.6,
+        0.22 + 0.1 * mr(),
+        G(mpick(["'", '|', '.'])),
+        0.1,
+        (col[0] ?? 0) * 2.4,
+        (col[1] ?? 0) * 2.4,
+        (col[2] ?? 0) * 2.4,
+        0,
+      );
+    }
+  }
+  fight.boltFx.push(f);
 }
+/** 水面を這う雷の線を水面の高さに揃え、枝を作り直す */
+function flatten(f: Bolt): void {
+  f.pts = f.pts.map((v) => [v[0], WATER_ZAP_Y, v[2]] as const);
+  f.br = waterBranches(f.pts);
+}
+
+/** 水面の (x, z) から、半径 r まで広がる輪を足す（水のマスの上だけに描く） */
+export function addRipple(x: number, z: number, r: number, col: readonly number[]): void {
+  fight.boltFx.push({
+    a: [x, WATER_ZAP_Y, z],
+    b: [x, WATER_ZAP_Y, z],
+    col,
+    style: 'ripple',
+    amp: r,
+    t: 0,
+    life: r / RIPPLE_SPEED + 0.2,
+    re: 0,
+    pts: [],
+  });
+}
+/** 水を伝わる雷と水面の輪が広がる速さ（1秒に何進むか。src/lib/combat.ts の waterShock は、輪が届いた敵に雷を走らせる） */
+export const RIPPLE_SPEED = 15;
 
 /** 稲妻が当たった生き物の頭のまわりに、火花の輪を出す（当たって光る時間も 0.3 秒は残す） */
 export function sparkCrown(m: Monster, col: readonly number[]): void {
@@ -111,6 +170,149 @@ export function sparkCrown(m: Monster, col: readonly number[]): void {
   }
 }
 
+/** 水を伝わった雷が当たった生き物の、足元から体へ上る細い火花（当たって光る時間も 0.18 秒は残す。頭の火花の輪より細く暗くして、群れの上を白くにじませない） */
+export function shockRise(m: Monster, col: readonly number[]): void {
+  const s = m.ty.scale,
+    y0 = (m.y ?? 0) + 0.05;
+  m.hitT = Math.max(m.hitT || 0, 0.18);
+  for (let q = 0; q < 8; q++) {
+    const a = (q / 8) * Math.PI * 2 + mr() * 0.5,
+      r = (0.15 + 0.2 * mr()) * s;
+    spawn(
+      m.x + Math.cos(a) * r,
+      y0,
+      m.z + Math.sin(a) * r,
+      0,
+      (2.2 + 1.4 * mr()) * s,
+      0,
+      0.3 + 0.12 * mr(),
+      G(q % 3 ? '|' : "'"),
+      0.11,
+      (col[0] ?? NaN) * 2.2,
+      (col[1] ?? NaN) * 2.2,
+      (col[2] ?? NaN) * 2.2,
+      0,
+    );
+  }
+}
+
+/** 目から見た点（右・上・前の3つ。vmGlyphS に渡す形） */
+const eyeOf = (
+  p: readonly number[],
+  o: readonly number[],
+  f: readonly number[],
+  rt: readonly number[],
+  up: readonly number[],
+): [number, number, number] => {
+  const v0 = (p[0] ?? 0) - (o[0] ?? 0),
+    v1 = (p[1] ?? 0) - (o[1] ?? 0),
+    v2 = (p[2] ?? 0) - (o[2] ?? 0);
+  return [
+    v0 * (rt[0] ?? 0) + v1 * (rt[1] ?? 0) + v2 * (rt[2] ?? 0),
+    v0 * (up[0] ?? 0) + v1 * (up[1] ?? 0) + v2 * (up[2] ?? 0),
+    Math.max(0.05, v0 * (f[0] ?? 0) + v1 * (f[1] ?? 0) + v2 * (f[2] ?? 0)),
+  ];
+};
+
+/** 水面の線 pts を、目から見た傾きに合う文字で描く（芯 core は白に寄せた明るい文字、縁は性質の色の小さな文字） */
+function drawWaterLine(pts: readonly (readonly [number, number, number])[], c: readonly number[], br: number, size: number): void {
+  const [f, rt, up] = handUp(),
+    o = aimOrigin();
+  for (let k = 0; k + 1 < pts.length; k++) {
+    const p = nth(pts, k),
+      q = nth(pts, k + 1),
+      dx = q[0] - p[0],
+      dz = q[2] - p[2],
+      ch = vmGlyphS(eyeOf(p, o, f, rt, up), eyeOf(q, o, f, rt, up)),
+      n = Math.max(1, Math.round(Math.hypot(dx, dz) / 0.12));
+    for (let j = 0; j < n; j++) {
+      const s = j / n,
+        x = p[0] + dx * s,
+        z = p[2] + dz * s;
+      dyn(
+        x,
+        WATER_ZAP_Y,
+        z,
+        G(ch),
+        size,
+        (0.45 + 0.55 * (c[0] ?? 0)) * br,
+        (0.45 + 0.55 * (c[1] ?? 0)) * br,
+        (0.45 + 0.55 * (c[2] ?? 0)) * br,
+      );
+      if (j % 2 === 0)
+        dyn(
+          x,
+          WATER_ZAP_Y + 0.02,
+          z,
+          G('~'),
+          size * 1.6,
+          (c[0] ?? 0) * br * 0.25,
+          (c[1] ?? 0) * br * 0.25,
+          (c[2] ?? 0) * br * 0.25,
+          1,
+          Math.atan2(dx, dz),
+        );
+    }
+  }
+}
+
+/** 水面の輪（今の半径に、水のマスの上だけ、輪に沿う向きの文字を並べる。少し内側に、薄いもう1つの輪） */
+function drawRipple(f: Bolt): void {
+  const D = here.D;
+  if (!D) return;
+  const [fw, rt, up] = handUp(),
+    o = aimOrigin(),
+    c = f.col,
+    rNow = Math.min(f.amp, f.t * RIPPLE_SPEED),
+    fade = Math.max(0, 1 - f.t / f.life);
+  for (const [k, b] of [
+    [1, 3],
+    [0.8, 1.2],
+  ] as const) {
+    const r = rNow * k;
+    if (r < 0.2) continue;
+    const n = Math.max(12, Math.round((Math.PI * 2 * r) / 0.22)),
+      bb = b * fade * (1 - 0.45 * (r / f.amp));
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2,
+        x = f.a[0] + Math.cos(a) * r,
+        z = f.a[2] + Math.sin(a) * r,
+        ci = Math.floor(z / CELL) * MW + Math.floor(x / CELL),
+        lq = D.liquid[ci];
+      if (lq !== LQ_WATER && lq !== LQ_DEEP) continue;
+      const tx = -Math.sin(a) * 0.1,
+        tz = Math.cos(a) * 0.1,
+        ch = vmGlyphS(eyeOf([x - tx, WATER_ZAP_Y, z - tz], o, fw, rt, up), eyeOf([x + tx, WATER_ZAP_Y, z + tz], o, fw, rt, up));
+      dyn(
+        x,
+        WATER_ZAP_Y + 0.02,
+        z,
+        G(ch),
+        0.22,
+        (0.3 + 0.7 * (c[0] ?? 0)) * bb,
+        (0.3 + 0.7 * (c[1] ?? 0)) * bb,
+        (0.3 + 0.7 * (c[2] ?? 0)) * bb,
+      );
+    }
+  }
+}
+
+/** 水面を這う雷の枝：線 pts の途中から、横へ短く2本 */
+function waterBranches(pts: readonly (readonly [number, number, number])[]): (readonly [number, number, number])[][] {
+  const out: (readonly [number, number, number])[][] = [];
+  for (let b = 0; b < 2 && pts.length > 3; b++) {
+    const i = 1 + Math.floor(mr() * (pts.length - 2)),
+      p = nth(pts, i),
+      q = nth(pts, Math.min(pts.length - 1, i + 1)),
+      dir = Math.atan2(q[2] - p[2], q[0] - p[0]) + (b ? 1 : -1) * (0.6 + 0.6 * mr()),
+      len = 0.5 + 0.7 * mr();
+    out.push(
+      jagged(p, [p[0] + Math.cos(dir) * len, WATER_ZAP_Y, p[2] + Math.sin(dir) * len], 0.12).map((v) => [v[0], WATER_ZAP_Y, v[2]] as const),
+    );
+  }
+  return out;
+}
+
 /** 稲妻を進めて描く：遅れて落ちる稲妻を時間が来たら起こし、稲妻の光りを弱め、ぎざぎざの線を 0.07 秒ごとに引き直して描き、消えた物を除く */
 export function drawBoltFx(_t: number, dt: number): void {
   for (const z of fight.zapQueue) {
@@ -124,14 +326,25 @@ export function drawBoltFx(_t: number, dt: number): void {
   if (vfx.zapFlash && vfx.zapFlash.t < 900) vfx.zapFlash.t -= dt;
   for (const f of fight.boltFx) {
     f.t += dt;
+    if (f.style === 'ripple') {
+      drawRipple(f);
+      continue;
+    }
     f.re -= dt;
     if (f.re <= 0) {
       f.re = 0.07;
       f.pts = jagged(f.a, f.b, f.amp);
+      if (f.style === 'water') flatten(f);
     }
     const fade = Math.max(0, 1 - f.t / f.life),
-      c = f.col,
-      br = (f.style === 'thunder' ? 3.2 : 2.2) * fade * (0.75 + 0.5 * mr());
+      c = f.col;
+    if (f.style === 'water') {
+      const br = 2.7 * fade * (0.75 + 0.5 * mr());
+      drawWaterLine(f.pts, c, br, 0.24);
+      for (const b of f.br || []) drawWaterLine(b, c, br * 0.55, 0.17);
+      continue;
+    }
+    const br = (f.style === 'thunder' ? 3.2 : 2.2) * fade * (0.75 + 0.5 * mr());
     for (let k = 0; k + 1 < f.pts.length; k++) {
       const p = nth(f.pts, k),
         q = nth(f.pts, k + 1),
