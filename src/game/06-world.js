@@ -1,5 +1,4 @@
 // ---------------------------------------------------------------- world state
-let staticMesh=null;
 // player は src/lib/state.ts（丸ごと入れ替えないので、名前はそのまま）
 // edge は src/lib/state.ts
 // 画面の下の一言 showHint は src/lib/status.ts
