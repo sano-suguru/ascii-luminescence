@@ -73,7 +73,7 @@ export interface TouchActions {
 
 /**
  * 指の遊び方の事件と、タッチのボタンを用意する（ページを開いた時に1回）。
- * ゲームのマウスの処理（src/game/17-meta.js）より先に呼ぶこと（後から出るマウスの事件を、それより先に止めるため。src/game/16-view-input.js が呼ぶ）
+ * ゲームのマウスの処理（src/lib/input.ts の initInput）より先に呼ぶこと（後から出るマウスの事件を、それより先に止めるため。src/lib/input.ts の initPointer が呼ぶ）
  */
 export function initTouch(act: TouchActions): void {
   // 最後の指の事件の時刻（事件の timeStamp。テスト用モードで止まる performance.now ではなく、事件と同じ時計で比べる）

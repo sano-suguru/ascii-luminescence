@@ -36,7 +36,7 @@ export async function motesCases(F, A, seeds) {
     // 中身を書き換える配列（粒子・塵・描く粒子）は写しを取って、終わったら書き戻す
     arrays: [...Object.values(P), ...Object.values(dust), A.ptPos, A.ptCol, A.ptSize, A.ptGly].map((a) => [a, a.slice()]),
   };
-  // GPU に渡す形と属性（05-renderer.js と同じ作り方。three.js は作る時に Math.random を引くので、場合の前に作る）
+  // GPU に渡す形と属性（src/lib/render.ts の initRenderer と同じ作り方。three.js は作る時に Math.random を引くので、場合の前に作る）
   const geo = new THREE.BufferGeometry(),
     at = [
       new THREE.BufferAttribute(A.ptPos, 3).setUsage(THREE.DynamicDrawUsage),
