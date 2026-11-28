@@ -228,8 +228,8 @@ await withBrowser(
     await dr.close();
 
     // 9. 最深部：伝説の物を3つ持つと、少しして王の影が出る（持っていない間は出ない）。背の高さは約7（天井より低い）で、8離れて見ると全身が画面に収まる。
-    console.log('■ 9');
     // どこでも攻撃が当たり、体力を半分より減らすと二つ目の姿になる。大きさは一つ目のまま（天井が低い所だけ縮む）で、天井より低い
+    console.log('■ 9');
     const fin = await newPage(browser, errs);
     await openTest(fin, base, 'seed=202&depth=13&god=1');
     await advance(fin, 1);

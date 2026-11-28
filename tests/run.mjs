@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // ブラウザのテスト（pnpm test）をまとめて走らせる：テスト版と Artifact 版を1回だけ組み立て（.build/test/・.build/artifact/）、12のテスト（画面写真の比較 visual も）を同時に jobs 個ずつ走らせる。
 // どのテストも、自分のブラウザと、空いているポートの配信を使うので、互いにぶつからない（組み立ては、ここで済ませたことを AL_PREBUILT で伝える）。
-// 出力は、テストが終わるたびにまとめて出す（混ざらないように）。1つのテストが LIMIT_MIN 分を越えたら止めて、それまでの出力と「時間切れ」を出す。
+// 出力は、テストが終わるたびにまとめて出す（混ざらないように）。行の頭には、そのテストを始めてからの秒を付ける（smoke・frame は段の始めに「■ 段」の行を出すので、どの段が遅いかが分かる）。1つのテストが LIMIT_MIN 分を越えたら止めて、それまでの出力と「時間切れ」を出す。
 // どれかが失敗したら（時間切れ・シグナルで止められた時も）、終わりのコードを 1 にする。
 // テストごとの出力（画面に出す物と同じ中身）は、tests/out/run/<名前>.log にも書く（後から失敗の文を読むため）。走らせ始める時に、そのテストの前の回のログを書き直し、
 // 出力が来るたびに書き足す（この道具ごと止められても、そこまでの出力が残る）。終わった時に、頭に日時と終わり方を書いた形で書き直す。走らせないテストの前の回のログは残る。
@@ -128,25 +128,25 @@ const run = (name) =>
       LIMIT_MIN * 60 * 1000,
     );
     // 行の頭に、テストを始めてからの秒を付ける（CI でどの段が遅いかを見るため。smoke・frame は段の始めに「■ 段」の行を出す）。
-    // 出力の切れ目は行や文字の途中にもあるので、流れ（標準出力と標準エラー）ごとに文字を組み立て、行の頭かを覚える
-    const stamp = () => {
-      const dec = new StringDecoder('utf8');
-      let atHead = true;
-      return (d) => {
-        const s = dec.write(d);
-        if (!s) return;
-        const at = `[${((Date.now() - t) / 1000).toFixed(1).padStart(6)}s] `;
-        const body = s.replace(/\n(?=.)/gs, `\n${at}`);
-        const b = Buffer.from((atHead ? at : '') + body);
-        atHead = s.endsWith('\n');
-        out.push(b);
-        tryLog(() => appendFileSync(log, b));
-      };
+    // 出力の切れ目は文字の途中にもあるので、流れ（標準出力と標準エラー）ごとに文字を組み立てる。行の頭かは、2つの流れが同じ out に書くので1つで覚える
+    let atHead = true;
+    const put = (s) => {
+      if (!s) return;
+      const at = `[${((Date.now() - t) / 1000).toFixed(1).padStart(6)}s] `;
+      const b = Buffer.from((atHead ? at : '') + s.replace(/\n(?=.)/gs, `\n${at}`));
+      atHead = s.endsWith('\n');
+      out.push(b);
+      tryLog(() => appendFileSync(log, b));
     };
-    ch.stdout.on('data', stamp());
-    ch.stderr.on('data', stamp());
+    const decs = [ch.stdout, ch.stderr].map((st) => {
+      const dec = new StringDecoder('utf8');
+      st.on('data', (d) => put(dec.write(d)));
+      return dec;
+    });
     ch.on('close', (code, signal) => {
       clearTimeout(timer);
+      // 止められた時などに、文字の途中で残ったバイトも出す
+      for (const dec of decs) put(dec.end());
       const sec = ((Date.now() - t) / 1000).toFixed(1),
         failed = code !== 0,
         why = timedOut ? `時間切れ（${LIMIT_MIN}分）` : signal ? `シグナル ${signal} で止められた` : `終わりのコード ${code}`;
