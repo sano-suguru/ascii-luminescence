@@ -1125,7 +1125,7 @@ export interface Mob extends Monster {
   seq: number;
   /** 次に近接の攻撃をするまでの秒（src/lib/monsters.ts の initMonsterLife が入れる） */
   atkCd?: number;
-  /** 掃除機・修復機：している仕事（灰や火のマス、作り直す扉の番号。無ければ -1）・仕事をした秒・最後に仕事を探したゲームの時刻 */
+  /** 掃除機・修復機：している仕事（片付ける灰のマス、作り直す扉の番号。無ければ -1）・仕事をした秒・最後に仕事を探したゲームの時刻 */
   job?: number;
   work?: number;
   scanT?: number;
