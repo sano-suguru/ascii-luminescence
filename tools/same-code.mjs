@@ -22,6 +22,8 @@
 //   ただし、古い方の関数も同じ名前で読んでいて、その名前を古い JS が src/game/imports.mjs でこのファイルから読んでいる道具（そのファイルが export する物。sndReady など）は、
 //   古い方と同じ物を呼んでいるので開かない（export しない道具や、別のファイルから読んでいる名前と同じ名前の道具は開く）
 //   古い JS が imports.mjs で別のファイルから読んでいる名前は、このファイルの同じ名前の物とは比べない（同じ名前の別の物。比べるのは読んでいるファイルの物）
+//   一番外の文を関数に包んで移した物：今の古い JS の一番外の F();・if(!F())return;・x = 条件 ? F() : y; は、古い版の一番外の文（すぐ呼ぶ関数は中身を開く）を
+//   F の本体の文の数だけ取って、古い側の関数 F にして比べる（詳しくは wrappedDecls）。ほかの一番外の文は、古い版と同じかを比べる
 //   先に読む：const X = 式（式は名前と欄の読み取りだけか、数・名前とその計算だけでできた、ループや関数の内側でない所で1回だけ使うオブジェクト）、
 //   const [a, b] = 式 の後ろで、X を式に戻す（両方に当てる。X を書き換えている・宣言し直している時と、式が読む名前をその先で宣言し直している時は戻さない。
 //   古い方と新しい方の両方にある先読みは、消した所に印を残し、位置も比べる）
@@ -84,6 +86,161 @@ export function legacyDecls(files) {
 }
 /** フォルダの古い JS（名前の順の「2桁の番号-名前.js」） */
 export const readGame = (dir) => new Map(gameParts(dir).map((f) => [f, readFileSync(join(dir, f), 'utf8')]));
+
+// ---------------------------------------------------------------- 一番外の文を関数に包んで移した物
+/**
+ * 古い JS の一番外の文（すぐ呼ぶ関数は中身を開く）を、関数に包んで src/lib に移した物を、比べられる形にする。
+ * 今の古い JS の一番外の文を、古い版の同じファイルの一番外の文と、順に突き合わせる：
+ *   F();                  … 移した関数 F の本体の文の数だけ、古い版の文を取り、古い側の「関数 F」にする
+ *   if(!F())return;       … 同じく（本体の最後の return true; は数えない）。古い版の、包みから抜ける return; は return false; にし、最後に return true; を足す
+ *   x = 条件 ? F() : y;   … 古い版の同じ形の文の、すぐ呼ぶ矢印の関数（(()=>{ … })()）の中身を、古い側の「関数 F」にする
+ *   ほかの文              … 古い版の次の文と同じか（違えば mismatches に出す）。上の3つの形でも、古い版の次の文と同じなら、ただの文（前からある呼び出し）
+ * F は、渡した .ts の一番外の関数で、今の古い JS に宣言が無い物。古い版の一番外の変数の宣言は、渡した .ts に同じ名前の一番外の宣言が無い物だけを文として数える
+ * （ある物は、名前で比べる。無い物は、包んだ関数の中の局所の名前になったので absorbed に入れる）。
+ * oldGame・nowGame はファイル名 → 文（oldGame は状態を入れ物に移した書き換えの後）。返すのは、古い側の関数の宣言（名前 → legacyDecls と同じ形）と、
+ * 包んだ関数の中に入った古い変数の名前と、突き合わなかった文
+ */
+export function wrappedDecls(oldGame, nowGame, files) {
+  const decls = new Map(),
+    absorbed = new Set(),
+    mismatches = [];
+  const tsFns = new Map(),
+    tsTop = new Set();
+  for (const { text, file } of files) {
+    const body = parseAst(text, { lang: 'ts' }).body;
+    for (const [k, v] of topDecls(body, file, text, 0)) {
+      tsTop.add(k);
+      if (v.node.type === 'FunctionDeclaration') tsFns.set(k, v.node.body.body.length);
+    }
+  }
+  const nowDeclared = new Set(legacyDecls(nowGame).keys());
+  const stmts = (text, keepVar) => {
+    const out = [];
+    for (const st of parseAst(`${WRAP}${text}\n})`, { lang: 'js' }).body[0].expression.body.body) {
+      if (st.type === 'FunctionDeclaration' || st.type === 'ClassDeclaration') continue;
+      if (st.type === 'VariableDeclaration' && !keepVar(st)) continue;
+      // すぐ呼ぶ関数 (function 名前(){ … })(); は、中身の文を並べる
+      if (
+        st.type === 'ExpressionStatement' &&
+        st.expression.type === 'CallExpression' &&
+        st.expression.callee.type === 'FunctionExpression' &&
+        !st.expression.arguments.length
+      ) {
+        for (const b of st.expression.callee.body.body) out.push({ node: b, text });
+        continue;
+      }
+      out.push({ node: st, text });
+    }
+    return out;
+  };
+  const src = (x) => x.text.slice(x.node.start - WRAP.length, x.node.end - WRAP.length);
+  const calledFn = (n) =>
+    n?.type === 'CallExpression' &&
+    n.callee.type === 'Identifier' &&
+    !n.arguments.length &&
+    tsFns.has(n.callee.name) &&
+    !nowDeclared.has(n.callee.name)
+      ? n.callee.name
+      : null;
+  // 包みから抜ける return;（中の関数の return は数えない）を return false; にする
+  const exitReturns = (x) => {
+    const at = [];
+    const walk = (n, inFn) => {
+      if (!n || typeof n !== 'object') return;
+      if (Array.isArray(n)) return n.forEach((c) => walk(c, inFn));
+      if (typeof n.type !== 'string') return;
+      if (n.type === 'ReturnStatement' && !n.argument && !inFn) at.push(n);
+      const fn = inFn || /Function/.test(n.type);
+      for (const k in n) if (k !== 'type') walk(n[k], fn);
+    };
+    walk(x.node, false);
+    let t = src(x);
+    const base = x.node.start;
+    for (const r of at.sort((a, b) => b.start - a.start)) t = t.slice(0, r.start - base) + 'return false;' + t.slice(r.end - base);
+    return t;
+  };
+  const make = (name, file, body) => {
+    const text = `function ${name}(){\n${body}\n}`;
+    decls.set(name, { node: parseAst(text, { lang: 'js' }).body[0], file, text, base: 0 });
+  };
+  // 古い版の変数の宣言で、名前が今の古い JS にも渡した .ts にも出てこない物は、消した物（呼び出しの側の「消した」の一覧に出る）なので、突き合わせない
+  const allNow = [...nowGame.values(), ...files.map((f) => f.text)].join('\n');
+  const deletedVar = (x) =>
+    x?.node.type === 'VariableDeclaration' && x.node.declarations.every((d) => boundNames(d.id).every((nm) => !referenced(allNow, nm)));
+  for (const [file, nowText] of nowGame) {
+    if (!/^\d{2}-[a-z0-9-]+\.js$/.test(file)) continue;
+    const oldText = oldGame.get(file);
+    if (oldText === undefined) continue;
+    const keepVar = (st) => !st.declarations.some((d) => boundNames(d.id).some((n) => tsTop.has(n)));
+    const olds = stmts(oldText, keepVar),
+      nows = stmts(nowText, () => true);
+    let i = 0;
+    const take = (k, name) => {
+      const got = olds.slice(i, i + k);
+      i += k;
+      if (got.length < k) mismatches.push({ file, old: '（無い）', new: `${name} の文 ${k} 個` });
+      for (const g of got)
+        if (g.node.type === 'VariableDeclaration') for (const d of g.node.declarations) for (const n of boundNames(d.id)) absorbed.add(n);
+      return got;
+    };
+    for (const x of nows) {
+      const n = x.node;
+      while (deletedVar(olds[i])) i++;
+      // 古い版の次の文と同じなら、ただの文（前からある呼び出し addLooks(); なども）
+      if (olds[i] && key(olds[i].node) === key(n)) {
+        i++;
+        continue;
+      }
+      const f1 = n.type === 'ExpressionStatement' ? calledFn(n.expression) : null;
+      const f2 =
+        n.type === 'IfStatement' &&
+        !n.alternate &&
+        n.test.type === 'UnaryExpression' &&
+        n.test.operator === '!' &&
+        n.consequent.type === 'ReturnStatement' &&
+        !n.consequent.argument
+          ? calledFn(n.test.argument)
+          : null;
+      const cond =
+        n.type === 'ExpressionStatement' &&
+        n.expression.type === 'AssignmentExpression' &&
+        n.expression.right.type === 'ConditionalExpression'
+          ? n.expression
+          : null;
+      const f3 = cond ? calledFn(cond.right.consequent) : null;
+      if (f1) make(f1, file, take(tsFns.get(f1), f1).map(src).join('\n'));
+      else if (f2)
+        make(
+          f2,
+          file,
+          take(tsFns.get(f2) - 1, f2)
+            .map(exitReturns)
+            .join('\n') + '\nreturn true;',
+        );
+      else if (f3) {
+        const o = olds[i++],
+          oc = o?.node.type === 'ExpressionStatement' && o.node.expression.type === 'AssignmentExpression' ? o.node.expression : null,
+          iife = oc?.right.type === 'ConditionalExpression' ? oc.right.consequent : null;
+        if (
+          !iife ||
+          iife.type !== 'CallExpression' ||
+          iife.callee.type !== 'ArrowFunctionExpression' ||
+          iife.callee.body.type !== 'BlockStatement' ||
+          key(oc.left) !== key(cond.left) ||
+          key(oc.right.test) !== key(cond.right.test) ||
+          key(oc.right.alternate) !== key(cond.right.alternate)
+        )
+          mismatches.push({ file, old: o ? src(o) : '（無い）', new: src(x) });
+        else make(f3, file, iife.callee.body.body.map((b) => src({ node: b, text: o.text })).join('\n'));
+      } else {
+        const o = olds[i++];
+        if (!o || key(o.node) !== key(n)) mismatches.push({ file, old: o ? src(o) : '（無い）', new: src(x) });
+      }
+    }
+    for (; i < olds.length; i++) if (!deletedVar(olds[i])) mismatches.push({ file, old: src(olds[i]), new: '（無い）' });
+  }
+  return { decls, absorbed, mismatches };
+}
 
 // ---------------------------------------------------------------- 書き換えを元に戻す
 const isCall = (n, name) => n?.type === 'CallExpression' && n.callee.type === 'Identifier' && n.callee.name === name;
@@ -828,6 +985,9 @@ if (process.argv[1] && import.meta.filename === process.argv[1]) {
     states.push(...found);
   }
   const old = legacyDecls(withStates(rawOld, states));
+  // 一番外の文を関数に包んで移した物（wrappedDecls）：古い側の関数として足し、ほかの関数と同じ規則で比べる
+  const wrapped = wrappedDecls(withStates(rawOld, states), nowGame, sources);
+  for (const [k, v] of wrapped.decls) if (!old.has(k)) old.set(k, v);
   // 比べるのは、古い JS から消えた名前だけ（src/lib の名前が、今も古い JS にある別の物と同じ名前のこともある）
   const goneAll = new Set([...old.keys()].filter((k) => !now.has(k)));
   // 古い JS が imports.mjs で読む名前（--rev は、その版の imports.mjs。--old は、そのフォルダの imports.mjs）
@@ -845,6 +1005,12 @@ if (process.argv[1] && import.meta.filename === process.argv[1]) {
     importedFrom(existsSync(nowImports) ? readFileSync(nowImports, 'utf8') : ''),
   );
   let bad = 0;
+  for (const m of wrapped.mismatches) {
+    console.log(`✗ src/game/${m.file} の一番外の文が、古い版と違う`);
+    console.log(`    古 ${m.old.slice(0, 220)}`);
+    console.log(`    新 ${m.new.slice(0, 220)}`);
+    bad++;
+  }
   for (const r of results) {
     console.log(`${r.diffs.length ? '✗' : '✓'} ${r.file} ${r.name}${r.diffs.length ? `：違い ${r.diffs.length}` : ''}`);
     for (const d of r.diffs) {
@@ -855,7 +1021,7 @@ if (process.argv[1] && import.meta.filename === process.argv[1]) {
   }
   // 古い JS から消えたのに、渡した .ts で比べていない名前。古い JS でも使われていなかった物と、今はどこからも使われていない物（呼ぶ所も一緒に消した物）は、
   // 消しただけなので止めない（名前を変えて移すと、ここで「消した」に見えてしまうので、移す時は名前を変えない）
-  const unchecked = [...goneAll].filter((k) => !compared.has(k)),
+  const unchecked = [...goneAll].filter((k) => !compared.has(k) && !wrapped.absorbed.has(k)),
     oldGame = withStates(rawOld, states),
     // 今も使っているか：古い JS は名前がどの宣言を指すかで（局所の同じ名前は別の物）、src/lib の .ts は文字で見る
     gameUsed = gameUses(join(root, 'src/game'), new Set(unchecked)),

@@ -4,7 +4,16 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { boxFields, compareSources, detectStates, gameUses, legacyDecls, referenced, wasUnused } from '../../tools/same-code.mjs';
+import {
+  boxFields,
+  compareSources,
+  detectStates,
+  gameUses,
+  legacyDecls,
+  referenced,
+  wasUnused,
+  wrappedDecls,
+} from '../../tools/same-code.mjs';
 
 /** 古い JS の文 oldJs と新しい .ts の文 newTs を比べ、関数ごとの違いの数・人が確かめる一覧・比べた名前を返す */
 function cmp(oldJs, newTs, imported = new Map(), importedNow = new Map()) {
@@ -383,5 +392,64 @@ describe('今どこかで使っているか（referenced）', () => {
     ]);
     // 名前の中の記号（$）は、正規表現の記号としてでなく、その文字として探す
     expect([referenced('a$b();', 'a$b'), referenced('ab();', 'a$b')]).toEqual([true, false]);
+  });
+});
+
+describe('一番外の文を関数に包んで移した物（wrappedDecls）', () => {
+  /** 古い版の一番外の文 oldJs と、今の古い JS の一番外の文 nowJs と、移した .ts の文 newTs を突き合わせ、関数ごとの違いの数と、突き合わなかった文と、包んだ関数に入った名前を返す */
+  function wrap(oldJs, nowJs, newTs) {
+    const files = [{ file: 'src/lib/a.ts', text: newTs }],
+      w = wrappedDecls(new Map([['01-a.js', oldJs]]), new Map([['01-a.js', nowJs]]), files),
+      old = legacyDecls(new Map([['01-a.js', oldJs]]));
+    for (const [k, v] of w.decls) old.set(k, v);
+    const { results } = compareSources(old, files, new Set(w.decls.keys()));
+    return {
+      n: Object.fromEntries(results.map((r) => [r.name, r.diffs.length])),
+      mismatches: w.mismatches.length,
+      absorbed: [...w.absorbed],
+    };
+  }
+  it('F(); は、F の本体の文の数だけ古い版の文を取って比べる（前後のただの文はそのまま比べる。局所の名前になった変数は absorbed）', () => {
+    expect(
+      wrap(
+        `a(); const x=g(); h(x, must); (function logo(){ b(1); })(); z();`,
+        `a(); init(); logo(); z();`,
+        `export function init(): void { const x = g(); h(x, must); }\nexport function logo() { b(1); }`,
+      ),
+    ).toEqual({ n: { init: 0, logo: 0 }, mismatches: 0, absorbed: ['x'] });
+  });
+  it('if(!F())return; と、x = 条件 ? F() : y;', () => {
+    expect(
+      wrap(
+        `c.k=T?(()=>{ q(); return 1; })():null; try{ r(); }catch(e){ return; } s(()=>{ return; });`,
+        `c.k=T?mode():null; if(!ren())return;`,
+        `export function mode() { q(); return 1; }\nexport function ren(): boolean { try { r(); } catch (e) { return false; } s(() => { return; }); return true; }`,
+      ),
+    ).toEqual({ n: { mode: 0, ren: 0 }, mismatches: 0, absorbed: [] });
+  });
+  it('包んだ関数の中身の違い・文の順番の違い・抜けた文を見つける', () => {
+    // 中身が違う（係数）
+    expect(wrap(`a(1); b(2);`, `f();`, `export function f() { a(1); b(3); }`).n).toEqual({ f: 1 });
+    // 順番を入れ替えた（包んだ関数とただの文）
+    expect(wrap(`a(); b();`, `b(); f();`, `export function f() { a(); }`).mismatches).toBeGreaterThan(0);
+    // 古い版の文が、どこにも無い
+    expect(wrap(`a(); b(); c();`, `f();`, `export function f() { a(); b(); }`).mismatches).toBe(1);
+    // 包みから抜ける return; を return true; にした
+    expect(
+      wrap(
+        `try{ r(); }catch(e){ return; }`,
+        `if(!f())return;`,
+        `export function f() { try { r(); } catch (e) { return true; } return true; }`,
+      ).n,
+    ).toEqual({
+      f: 1,
+    });
+  });
+  it('前からある引数の無い呼び出し（古い版の次の文と同じ物）は、包んだ物と見ない', () => {
+    expect(wrap(`addLooks(); a();`, `addLooks(); a();`, `export function addLooks() { x(); y(); }`)).toEqual({
+      n: {},
+      mismatches: 0,
+      absorbed: [],
+    });
   });
 });
