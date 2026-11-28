@@ -37,10 +37,22 @@ export const GAME_FILES = [
     .sort()
     .map((f) => `src/lib/${f}`),
 ];
+// HTML のコメント（<!-- から --> まで）を除く。閉じていないコメントは残す
+const dropComments = (t) => {
+  let out = '',
+    i = 0;
+  for (let a; (a = t.indexOf('<!--', i)) >= 0;) {
+    out += t.slice(i, a);
+    const b = t.indexOf('-->', a + 4);
+    if (b < 0) return out + t.slice(a);
+    i = b + 3;
+  }
+  return out + t.slice(i);
+};
 export const gameText = () =>
   GAME_FILES.map((f) => {
     const t = readFileSync(join(ROOT, f), 'utf8');
-    return f.endsWith('.html') ? t.replace(/<!--[\s\S]*?-->/g, '') : t;
+    return f.endsWith('.html') ? dropComments(t) : t;
   }).join('\n');
 
 // ページのエラーの「assets/index-xxxx.js:行:列」に、src/lib/ の場所を書き足す（組み立てた JS は書き直されていて、行が違うため）。
