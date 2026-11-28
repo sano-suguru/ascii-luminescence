@@ -238,7 +238,8 @@ export const waterScene = (pg, { key, count, dry, weapon, elem = 'thunder', floo
         wet = cells.filter((c) => c.water && c.floor),
         floor = cells.filter((c) => c.floor),
         // floor の時は、まわりの8マスも床の所（狭い通路の行き止まりに置かない）
-        open = (c) => [-1, 0, 1].every((dz) => [-1, 0, 1].every((dx) => cells[c.i + dx + dz * w]?.floor)),
+        open = (c) =>
+          [-1, 0, 1].every((dz) => [-1, 0, 1].every((dx) => (c.i % w) + dx >= 0 && (c.i % w) + dx < w && cells[c.i + dx + dz * w]?.floor)),
         water = onFloor
           ? floor.filter((c) => !c.water && !c.ice && !c.lava && !c.bog && !c.tall && open(c) && wet.every((w) => d(w, c) >= 2.5))
           : wet;

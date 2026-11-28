@@ -8,16 +8,22 @@ import { ICE_CRACK, ICE_N, drawFrozen, iceCrackKey } from '../../src/lib/fx.ts';
 import { G } from '../../src/lib/glyphs.ts';
 import { chillMob } from '../../src/lib/ground.ts';
 import { dPar, dPos } from '../../src/lib/particles.ts';
-import { blaze, buf, player } from '../../src/lib/state.ts';
-import { MW } from '../../src/lib/world.ts';
+import { blaze, buf, here, player } from '../../src/lib/state.ts';
+import { MW, NCELL, SF_FOLIAGE } from '../../src/lib/world.ts';
 
 /** 今までに置いた文字の番号の並び */
 const placed = () => Array.from({ length: buf.dn }, (_, k) => dPar[k * 4]);
 const count = (g) => placed().filter((v) => v === G(g)).length;
-const mob = (st, more = {}) => ({ x: 10, z: 10, y: 0, ty: { scale: 1 }, st, ...more });
+const mob = (st, more = {}) => ({ x: 10, z: 10, y: 0, cx: 5, cz: 5, ty: { scale: 1 }, st, ...more });
 
 beforeEach(() => {
   buf.dn = 0;
+  player.x = 12;
+  player.z = 10;
+  // 茂みかを読む小さな階（床だけ。茂みのテストで1マスを茂みにする）
+  here.D = { surface: new Uint8Array(NCELL), liquid: new Uint8Array(NCELL) };
+  blaze.cellFlag = new Uint8Array(NCELL);
+  blaze.burnt = new Uint8Array(NCELL);
 });
 
 describe('冷えを付ける（chillMob）', () => {
@@ -72,6 +78,21 @@ describe('凍えた生き物の足元の氷の輪（drawChillRing）', () => {
       expect(drawChillRing(m, 0)).toBe(0);
       expect(buf.dn).toBe(0);
     }
+  });
+  it('体が描かれない所（遠い・潜ったうなぎ・沈んだ沼の物・遠い茂みの中）では置かず、姿を見せれば置く', () => {
+    const st = () => ({ chill: 2, chillFull: 2 });
+    expect(drawChillRing(mob(st(), { x: 60 }), 0)).toBe(0);
+    expect(drawChillRing(mob(st(), { ty: { scale: 1, form: 'eel' }, surf: 0 }), 0)).toBe(0);
+    expect(drawChillRing(mob(st(), { ty: { scale: 1, habitat: 'bog' }, rise: 0.1 }), 0)).toBe(0);
+    here.D.surface[5 * MW + 5] = SF_FOLIAGE;
+    player.x = 15; // 茂みから 5
+    expect(drawChillRing(mob(st()), 0)).toBe(0);
+    expect(buf.dn).toBe(0);
+    player.x = 12; // 茂みから 2：見える
+    expect(drawChillRing(mob(st()), 0)).toBe(CHILL_RING);
+    here.D.surface[5 * MW + 5] = 0;
+    expect(drawChillRing(mob(st(), { ty: { scale: 1, form: 'eel' }, surf: 0.5 }), 0)).toBe(CHILL_RING);
+    expect(drawChillRing(mob(st(), { ty: { scale: 1, habitat: 'bog' }, rise: 0.5 }), 0)).toBe(CHILL_RING);
   });
   it('輪は床に寝かせ、体の大きさに合わせて広がる', () => {
     const r = (scale) => {
@@ -165,6 +186,13 @@ describe('凍らせた水（drawFrozen・iceCrackKey）', () => {
           expect(k).toBeLessThan(1);
           expect(k < 0.5).toBe(outer);
         }
+  });
+  it('行の端のマスの横は、隣の行に凍ったマスがあっても、縁と見る', () => {
+    const left = 21 * MW,
+      prevEnd = left - 1; // 前の行の右の端
+    blaze.frozen = new Map([left, prevEnd].map((i) => [i, { t: 25, liq: 1, surf: 0 }]));
+    expect(iceCrackKey(left, 0, 1)).toBeLessThan(0.5);
+    expect(iceCrackKey(prevEnd, ICE_N - 1, 1)).toBeLessThan(0.5);
   });
   it('30 より遠いマスは描かない', () => {
     freeze(25);

@@ -253,7 +253,7 @@ tests/unit/level.test.mjs  階を移る処理（newLevel・advance・checkEvents
                      （探索を始め、進む向きと場所と着く所を変えて階を移り、階段・門・穴・封じられた階段を踏み、死んで結果の画面のボタンを押す。three.js の物は Node でも本物を作り、
                      描画する部品だけ偽物。迷宮の生成を変えると、この指紋も変わる。単独で15秒ほど、ほかのテストと同時なら25秒ほど。ほとんどは本物の newLevel・buildWorld の時間）を使う
 tests/unit/frost.test.mjs  凍る見た目の決まり：冷えを付ける chillMob（長い時だけ、輪の分母 chillFull も書き直す）・凍えた生き物の足元の氷の輪 drawChillRing（明るい * の数が残りの割合の切り上げで、1つずつ減る。
-                     凍えていない・倒れた・化けている・見えない物には置かない）・霜の色 frostK・frostCol（明るさを変えない）・凍らせた水 drawFrozen（1マスに4×4、= を使わない、残り10秒からひびが縁の側から入る）
+                     凍えていない・倒れた・化けている物と、体が描かれない所（遠い・潜ったうなぎ・沈んだ沼の物・遠い茂みの中）には置かない）・霜の色 frostK・frostCol（明るさを変えない）・凍らせた水 drawFrozen（1マスに4×4、= を使わない、残り10秒からひびが縁の側から入る）
 tests/unit/traits.test.mjs  特性を名前で読む所（TL・tv・wTL）が、どれも特性の表（src/lib/runes.ts の TRAITS）にある名前か（src/lib/ の .ts を構文の木で調べる）
 tests/unit/case-out.mjs  指紋の元の文を書き出す caseOut と、状態の指紋 stateFp（環境変数 AL_CASES_OUT がある時だけ、書き出し、状態を欄ごと・生き物ごとの指紋にする。tools/case-diff.mjs が使う）。
                      指紋を取るテストを足す時は、指紋を比べる行の前に caseOut('名前', 文) を置く

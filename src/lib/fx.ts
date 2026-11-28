@@ -70,11 +70,13 @@ export const ICE_CRACK = 10;
  * 凍っていないマスに接する辺の文字は 0 から 0.5、内の文字は 0.5 から 1 なので、縁の側から内へひびが進む。同じ側の中の順番は、マスと文字の位置から作った決まった値
  */
 export function iceCrackKey(i: number, a: number, b: number): number {
-  const edge =
-    (a === 0 && !blaze.frozen.has(i - 1)) ||
-    (a === ICE_N - 1 && !blaze.frozen.has(i + 1)) ||
-    (b === 0 && !blaze.frozen.has(i - MW)) ||
-    (b === ICE_N - 1 && !blaze.frozen.has(i + MW));
+  // 行の端のマスの横は、隣の行のマスではなく、凍っていない所と見る
+  const x = i % MW,
+    edge =
+      (a === 0 && (x === 0 || !blaze.frozen.has(i - 1))) ||
+      (a === ICE_N - 1 && (x === MW - 1 || !blaze.frozen.has(i + 1))) ||
+      (b === 0 && !blaze.frozen.has(i - MW)) ||
+      (b === ICE_N - 1 && !blaze.frozen.has(i + MW));
   let h = Math.sin(i * 12.9898 + a * 78.233 + b * 37.719) * 43758.5453;
   h -= Math.floor(h);
   return (edge ? 0 : 0.5) + h * 0.5;

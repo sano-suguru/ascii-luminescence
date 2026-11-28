@@ -12,6 +12,7 @@ import { dyn, spawn } from '../particles.ts';
 import { clamp } from '../rng.ts';
 import { mr, withMobRand } from '../random.ts';
 import { type Mob, clock, gfx, player, ui } from '../state.ts';
+import { bodyUnseen } from '../monsters.ts';
 import { drawMark } from '../status.ts';
 import {
   bogAura,
@@ -173,12 +174,15 @@ export function frostCol(c: readonly number[], k: number): [number, number, numb
 export const CHILL_RING = 12;
 /**
  * 凍えた生き物の足元の氷の輪：床に寝かせた CHILL_RING 個の文字。冷えの残りの割合（残りの秒 ÷ 冷えが付いた時の秒）の数だけ明るい *、使い終わった所は暗い . にする。
- * 真上から見て時計回りに、1つずつ暗くなる。最後の1つは、残りが 0.6 秒を切ると瞬く。置いた明るい文字の数を返す（凍えていなければ何も置かず 0）
+ * 真上から見て時計回りに、1つずつ暗くなる。最後の1つは、残りが 0.6 秒を切ると瞬く。置いた明るい文字の数を返す（凍えていなければ何も置かず 0）。
+ * 体が描かれない所（プレイヤーから 44 より遠い・水に潜った・沼に沈んだ・3 より遠い茂みの中。bodyUnseen）でも置かない（輪で居場所が分からないように）
  */
 export function drawChillRing(m: Mob, t: number): number {
   const st = m.st,
     ch = st?.chill ?? 0;
-  if (!st || ch <= 0 || m.dead || m.hidden || m.ty.invisible) return 0;
+  if (!st || ch <= 0 || m.dead || m.hidden) return 0;
+  const dp = Math.hypot(m.x - player.x, m.z - player.z);
+  if (dp > 44 || bodyUnseen(m, dp)) return 0;
   const lit = Math.min(CHILL_RING, Math.ceil((CHILL_RING * ch) / Math.max(ch, st.chillFull ?? ch) - 1e-6)),
     sc = m.ty.scale,
     r = 0.55 * sc + 0.2,
