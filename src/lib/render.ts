@@ -203,10 +203,10 @@ export function initRenderer(): boolean {
 
   // ---------------------------------------------------------------- shared uniforms
   gfx.cellTex = new T.DataTexture(cellData, MW, MH, T.RGBAFormat, T.UnsignedByteType);
-  /* oxlint-disable typescript/consistent-type-assertions -- gfx.cellTex の TS の側の型は、TS が使う欄だけ（上で three.js の絵を入れた） */
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- gfx.cellTex の TS の側の型は、TS が使う欄だけ（上で three.js の絵を入れた）
   (gfx.cellTex as InstanceType<typeof T.DataTexture>).magFilter = T.LinearFilter;
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- gfx.cellTex の TS の側の型は、TS が使う欄だけ（上で three.js の絵を入れた）
   (gfx.cellTex as InstanceType<typeof T.DataTexture>).minFilter = T.LinearFilter;
-  /* oxlint-enable typescript/consistent-type-assertions */
   gfx.cellTex.needsUpdate = true;
   gfx.U = {
     uCell: { value: gfx.cellTex },

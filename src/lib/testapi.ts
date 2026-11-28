@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/consistent-type-assertions -- テストから受け取った値で、ゲームの状態を直に作る道具（元の書き方のまま。型を外すと元と同じ文） */
 // テスト用モードの道具 window.__test（もとは src/game/30-loop-init.js）。テスト用モード（?test=1）の時だけ initTestApi が置く。
 // 使い方は CLAUDE.md の「テスト用モード」。ゲームは自分では進まないので、advance（描かずに進める）か frames（描いて進める）で進める。
 import { lookup, must, nth } from './array.ts';
@@ -269,6 +268,7 @@ export function initTestApi(): void {
           const f = k / 40;
           if (rockAt(x + (ax - x) * f, y + (ay - y) * f, z + (az - z) * f)) clear = false;
         }
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- 受け取った pos・at は、上で3つの数と確かめた
         gfx.testCam = { pos: o.pos.slice() as [number, number, number], at: o.at.slice() as [number, number, number], lvl: here.D };
         return { pos: gfx.testCam.pos, at: gfx.testCam.at, clear };
       },
@@ -350,9 +350,11 @@ export function initTestApi(): void {
         const x = player.x,
           z = player.z;
         crumble(makeMonster({ key: 'Zi', cx: Math.floor(x / CELL), cz: Math.floor(z / CELL), g: -1, lead: true }));
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- 何もしない魔法の場（性質の無い術の中身。ほかの欄は使わない）
         addZone(x, z, 2, { elem: null } as Spec, 60, false);
         later(60, () => {});
         fight.marks.push({ x, z, r: 1, t: 60, c: [1, 0.5, 0.2] });
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- 何もしない雨（性質の無い術の中身。ほかの欄は使わない）
         fight.rains.push({ x, z, r: 1, n: 1, left: 1, iv: 1, tick: 60, sp: { elem: null } as Spec, follow: false, elemK: 0, again: false });
         fight.beamRun = { h: 'L', t: 60, tick: 60, auto: true, dir: null };
         const a: [number, number, number] = [x, 1, z],
@@ -465,6 +467,7 @@ export function initTestApi(): void {
           buf.dn = d0;
           buf.pN = p0;
           m.rnd = r0;
+          // oxlint-disable-next-line typescript/consistent-type-assertions -- 描く時に生き物に増えた欄を、名前で外す
           for (const k of Object.keys(m)) if (!k0.has(k)) delete (m as unknown as Record<string, unknown>)[k];
         }
         const sparks = p1 - p0;
@@ -568,6 +571,7 @@ export function initTestApi(): void {
           for (const [x, y, z] of pts) {
             y0 = Math.min(y0, y);
             y1 = Math.max(y1, y);
+            // oxlint-disable-next-line typescript/consistent-type-assertions -- gfx.camera の TS の側の型は、TS が使う欄だけ（本物は three.js のカメラ）
             v.set(x, y, z).project(gfx.camera as unknown as Camera);
             const sx = ((v.x + 1) / 2) * W,
               sy = ((1 - v.y) / 2) * H;

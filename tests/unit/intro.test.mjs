@@ -177,7 +177,7 @@ describe('移す前と同じ', () => {
     expect(calls.filter((c) => c.name === 'enter' && c.mock.includes('took')).length).toBeGreaterThan(5);
     expect(calls.filter((c) => c.mock.includes('setDbg') || c.dom.includes('dbgp')).length).toBeGreaterThan(0);
     caseOut('intro', all);
-    expect([fnv(all), all.length]).toEqual(['88ba9f8d', 3183980]);
+    expect([fnv(all), all.length]).toEqual(['db31bf91', 3183958]);
   }, 120000);
   it('開発用の命令（8の場合）の指紋', async () => {
     const all = await debugCases(F, 8),

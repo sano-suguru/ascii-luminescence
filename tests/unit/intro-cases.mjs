@@ -165,6 +165,8 @@ function fakePage(log) {
       for (const [t, fn] of list.slice()) if (t === type) fn(e);
     },
     reset() {
+      Object.assign(page.document, { activeElement: null, pointerLockElement: null, hidden: false });
+      page.coarse = false;
       byId.clear();
       win.all.length = 0;
       doc.all.length = 0;
