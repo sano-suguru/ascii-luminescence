@@ -115,6 +115,7 @@ export function wrappedDecls(oldGame, nowGame, files) {
     }
   }
   const nowDeclared = new Set(legacyDecls(nowGame).keys());
+  let groupN = 0;
   const stmts = (text, keepVar) => {
     const out = [];
     for (const st of parseAst(`${WRAP}${text}\n})`, { lang: 'js' }).body[0].expression.body.body) {
@@ -127,7 +128,9 @@ export function wrappedDecls(oldGame, nowGame, files) {
         st.expression.callee.type === 'FunctionExpression' &&
         !st.expression.arguments.length
       ) {
-        for (const b of st.expression.callee.body.body) out.push({ node: b, text, inFn: true });
+        const group = ++groupN,
+          size = st.expression.callee.body.body.length;
+        for (const b of st.expression.callee.body.body) out.push({ node: b, text, inFn: true, group, size });
         continue;
       }
       out.push({ node: st, text });
@@ -145,9 +148,9 @@ export function wrappedDecls(oldGame, nowGame, files) {
       : null;
   // 包みから抜ける return;（中の関数の return は数えない）を return false; にする
   // すぐ呼ぶ関数の中身を開いた文の return; は、その関数から抜ける物（包みからは抜けない）
-  const exitsOf = (x) => {
+  const exitsOf = (x, iife = false) => {
     const at = [];
-    if (x.inFn) return at;
+    if (x.inFn && !iife) return at;
     const walk = (n, inFn) => {
       if (!n || typeof n !== 'object') return;
       if (Array.isArray(n)) return n.forEach((c) => walk(c, inFn));
@@ -184,6 +187,14 @@ export function wrappedDecls(oldGame, nowGame, files) {
     // 古い JS では一番外の文の順に作っていた物を、モジュールを読んだ時に作るようになるので、人が確かめる一覧に出す（読む時に何かするか・乱数を引くか）
     const keepVar = (st) => {
       const names = st.declarations.flatMap((d) => boundNames(d.id)).filter((n) => tsTop.has(n));
+      // 宣言の一部の名前だけを .ts の一番外に移した物は、残りの名前と初めの値を比べられないので違いにする
+      const all = st.declarations.flatMap((d) => boundNames(d.id));
+      if (names.length && names.length < all.length)
+        mismatches.push({
+          file: '（宣言）',
+          old: all.join(', '),
+          new: `${names.join(', ')} だけを .ts の一番外に移した（宣言を分けてから移す）`,
+        });
       for (const n of names) {
         const t = tsTop.get(n);
         if (t.init && !fixed(t.init))
@@ -194,6 +205,11 @@ export function wrappedDecls(oldGame, nowGame, files) {
     const olds = stmts(oldText, keepVar),
       nows = stmts(nowText, () => true);
     let i = 0;
+    // すぐ呼ぶ関数の中身を開いた文に、その関数から抜ける return; があるのに、F がその関数の中身だけでできていなければ、
+    // return; が F から抜けるようになり、後ろの文が走らなくなる（すぐ呼ぶ関数の中身をちょうど全部取った時だけ、同じ動き）
+    const iifeLeak = (got) =>
+      got.some((g) => g.inFn && exitsOf(g, true).length) &&
+      !(got.every((g) => g.inFn && g.group === got[0].group) && got.length === got[0].size);
     const take = (k, name) => {
       const got = olds.slice(i, i + k);
       i += k;
@@ -232,6 +248,12 @@ export function wrappedDecls(oldGame, nowGame, files) {
         // 包みから抜ける return; は、関数に包むと、その関数から抜けるだけになる（後ろの文が走る）。if(!F())return; の形でないといけない
         if (got.some((g) => exitsOf(g).length))
           mismatches.push({ file, old: '包みから抜ける return; がある', new: `${f1}();（if(!${f1}())return; の形にする）` });
+        else if (iifeLeak(got))
+          mismatches.push({
+            file,
+            old: 'すぐ呼ぶ関数から抜ける return; がある',
+            new: `${f1}();（その関数の中身と、ほかの文を一緒に包んでいる）`,
+          });
         else make(f1, file, got.map(src).join('\n'));
       } else if (f2) {
         const body = tsFns.get(f2),
@@ -240,14 +262,16 @@ export function wrappedDecls(oldGame, nowGame, files) {
         if (!(last?.type === 'ReturnStatement' && last.argument?.type === 'Literal' && last.argument.value === true)) {
           mismatches.push({ file, old: '（本体の最後が return true; でない）', new: `if(!${f2}())return;` });
           i += body.length; // 古い版の文は、本体の文の数だけ読み飛ばす（後ろの文の突き合わせがずれないように）
-        } else
-          make(
-            f2,
-            file,
-            take(body.length - 1, f2)
-              .map(exitReturns)
-              .join('\n') + '\nreturn true;',
-          );
+        } else {
+          const got = take(body.length - 1, f2);
+          if (got.some((g) => g.inFn && exitsOf(g, true).length))
+            mismatches.push({
+              file,
+              old: 'すぐ呼ぶ関数から抜ける return; がある',
+              new: `if(!${f2}())return;（その return; は、包みから抜ける物と見分けられない）`,
+            });
+          else make(f2, file, got.map(exitReturns).join('\n') + '\nreturn true;');
+        }
       } else if (f3) {
         const o = olds[i++],
           oc = o?.node.type === 'ExpressionStatement' && o.node.expression.type === 'AssignmentExpression' ? o.node.expression : null,
@@ -257,6 +281,8 @@ export function wrappedDecls(oldGame, nowGame, files) {
           iife.type !== 'CallExpression' ||
           iife.callee.type !== 'ArrowFunctionExpression' ||
           iife.callee.body.type !== 'BlockStatement' ||
+          iife.arguments.length ||
+          oc.operator !== cond.operator ||
           key(oc.left) !== key(cond.left) ||
           key(oc.right.test) !== key(cond.right.test) ||
           key(oc.right.alternate) !== key(cond.right.alternate)
@@ -1022,7 +1048,16 @@ if (process.argv[1] && import.meta.filename === process.argv[1]) {
   const old = legacyDecls(withStates(rawOld, states));
   // 一番外の文を関数に包んで移した物（wrappedDecls）：古い側の関数として足し、ほかの関数と同じ規則で比べる
   const wrapped = wrappedDecls(withStates(rawOld, states), nowGame, sources);
-  for (const [k, v] of wrapped.decls) if (!old.has(k)) old.set(k, v);
+  for (const [k, v] of wrapped.decls) {
+    // 古い JS に同じ名前の宣言があると、包んだ文を比べられないので違いにする
+    if (old.has(k))
+      wrapped.mismatches.push({
+        file: v.file,
+        old: `function ${k}（古い JS に同じ名前の宣言がある）`,
+        new: `${k}();（包んだ関数の名前を変える）`,
+      });
+    else old.set(k, v);
+  }
   // 比べるのは、古い JS から消えた名前だけ（src/lib の名前が、今も古い JS にある別の物と同じ名前のこともある）
   const goneAll = new Set([...old.keys()].filter((k) => !now.has(k)));
   // 古い JS が imports.mjs で読む名前（--rev は、その版の imports.mjs。--old は、そのフォルダの imports.mjs）

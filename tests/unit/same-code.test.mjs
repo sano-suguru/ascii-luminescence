@@ -478,6 +478,25 @@ describe('一番外の文を関数に包んで移した物（wrappedDecls）', (
         .review,
     ).toEqual(['src/lib/a.ts の一番外：el（古い JS の一番外の宣言を、モジュールの一番外に移した。読み込んだ時に作られる）']);
   });
+  it('すぐ呼ぶ関数から抜ける return; は、F がその関数の中身ちょうどの時だけ同じ（ほかの文と一緒に包むと違い）', () => {
+    expect(
+      wrap(`(function(){ if(!el)return; b(); })(); c();`, `f();`, `export function f() { if (!el) return; b(); c(); }`).mismatches,
+    ).toBe(1);
+    expect(
+      wrap(`(function(){ if(!el)return; b(); })();`, `if(!f())return;`, `export function f() { if (!el) return; b(); return true; }`)
+        .mismatches,
+    ).toBe(1);
+  });
+  it('x = 条件 ? F() : y; は、引数のあるすぐ呼ぶ関数や、代入の書き方が違えば違い', () => {
+    expect(wrap(`c.k=T?((s)=>{ use(s); })(seed):null;`, `c.k=T?f():null;`, `export function f() { use(s); }`).mismatches).toBe(1);
+    expect(wrap(`c.k=T?(()=>{ use(1); })():null;`, `c.k||=T?f():null;`, `export function f() { use(1); }`).mismatches).toBe(1);
+  });
+  it('宣言の一部の名前だけを .ts の一番外に移した時は違い', () => {
+    const files = [{ file: 'src/lib/a.ts', text: `export const T = { n: 1 };` }];
+    expect(wrappedDecls(new Map([['01-a.js', `const a=doSetup(), T={n:1};`]]), new Map([['01-a.js', '']]), files).mismatches.length).toBe(
+      1,
+    );
+  });
   it('前からある引数の無い呼び出し（古い版の次の文と同じ物）は、包んだ物と見ない', () => {
     expect(wrap(`addLooks(); a();`, `addLooks(); a();`, `export function addLooks() { x(); y(); }`)).toEqual({
       n: {},
