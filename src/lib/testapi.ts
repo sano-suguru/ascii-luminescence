@@ -600,6 +600,20 @@ export function initTestApi(): void {
           cut: +(out / pts.length).toFixed(3),
         };
       },
+      // 世界の点 [x,y,z] の並びが、描いたカメラ（__test.cam で置いていれば、そのカメラ）で画面のどこに写るか（CSS の画素 [x, y]。カメラの後ろなら null）
+      project(pts: [number, number, number][]) {
+        const W = must(gfx.canvas, '描く画面 gfx.canvas').clientWidth,
+          H = must(gfx.canvas, '描く画面 gfx.canvas').clientHeight,
+          v = new T.Vector3();
+        return withTestCam(() => {
+          gfx.camera.updateMatrixWorld();
+          return pts.map(([x, y, z]) => {
+            // oxlint-disable-next-line typescript/consistent-type-assertions -- gfx.camera の TS の側の型は、TS が使う欄だけ（本物は three.js のカメラ）
+            v.set(x, y, z).project(gfx.camera as unknown as Camera);
+            return v.z > 1 ? null : [Math.round(((v.x + 1) / 2) * W), Math.round(((1 - v.y) / 2) * H)];
+          });
+        });
+      },
       // stop drawing a creature (the first one alive with this key) for a moment, and draw it again (on false). It stays in the level, so its light still shines
       hideMonster(key: string, on: boolean) {
         const m = here.monsters.find((m) => m.key === key && !m.dead);

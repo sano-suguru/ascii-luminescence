@@ -29,6 +29,6 @@ describe('指紋', () => {
     expect(new Set(st.map((s) => s.gfx[0])).size).toBeGreaterThan(3);
     expect(calls.filter((c) => c.log.includes('"render"')).length).toBeGreaterThan(100);
     caseOut('loop', all);
-    expect([fnv(all), all.length]).toEqual(['2f507049', 22677618]);
+    expect([fnv(all), all.length]).toEqual(['c8130a50', 22677827]);
   }, 180000);
 });

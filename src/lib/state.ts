@@ -762,7 +762,7 @@ export interface Bolt {
   a: readonly [number, number, number];
   b: readonly [number, number, number];
   col: readonly number[];
-  /** 描き方（'thunder'・'fire'・'ice' と、ほか） */
+  /** 描き方（'thunder'・'fire'・'ice'、水面を這う雷 'water'、水面に広がる輪 'ripple'（a が真ん中、amp が広がりきった半径）と、ほか） */
   style: string;
   amp: number;
   t: number;
@@ -770,6 +770,8 @@ export interface Bolt {
   /** ぎざぎざの線を引き直すまでの秒 */
   re: number;
   pts: (readonly [number, number, number])[];
+  /** 水面を這う雷の枝（引き直すたびに作り直す） */
+  br?: (readonly [number, number, number])[][];
 }
 /**
  * 飛ぶ物（矢 bolt・玉 orb。src/lib/combat.ts の撃ち方が作り、src/lib/projs.ts の updateProjs が動かす）。
@@ -1125,7 +1127,7 @@ export interface Mob extends Monster {
   seq: number;
   /** 次に近接の攻撃をするまでの秒（src/lib/monsters.ts の initMonsterLife が入れる） */
   atkCd?: number;
-  /** 掃除機・修復機：している仕事（灰や火のマス、作り直す扉の番号。無ければ -1）・仕事をした秒・最後に仕事を探したゲームの時刻 */
+  /** 掃除機・修復機：している仕事（片付ける灰のマス、作り直す扉の番号。無ければ -1）・仕事をした秒・最後に仕事を探したゲームの時刻 */
   job?: number;
   work?: number;
   scanT?: number;

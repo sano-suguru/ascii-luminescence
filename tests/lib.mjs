@@ -216,3 +216,51 @@ export const nearAltar = (pg) =>
     dbg.step(ax + (px - ax) * k, az + (pz - az) * k);
     return true;
   });
+// 雷が水を伝わる場面（tools/zap.mjs と tests/world.mjs の 22 が使う）：右手を雷の武器 weapon にし、生き物を全部消して、水のマスが固まっている所に、鍵 key の生き物を count 体
+// （当てる1体 target と、そのまわり 1.6〜4.5 の、互いに 1.4 以上離れた水のマス。dry なら水の外にも1体）置いて止め（__test.hold）、プレイヤーを当てる1体から 3.5〜5.5 離れた
+// 水でない床（水の外の1体から 2.5 以上離れた所）に立たせる。置いた物が全部見える所を選ぶ。{ok, stand, target, cells（置いた順。dry の1体は最後）, dry} か {err} を返す
+export const waterScene = (pg, { key, count, dry, weapon }) =>
+  pg.evaluate(
+    ([key, count, dry, weapon]) => {
+      const eq = __test.equip('R', weapon);
+      if (eq !== weapon) return { err: `武器 ${weapon}：${eq}` };
+      const el = __test.elem('R', 'thunder');
+      if (el !== 'thunder') return { err: `雷：${el}` };
+      __test.clearAll();
+      const { w, h } = __test.size(),
+        cells = [];
+      for (let i = 0; i < w * h; i++) {
+        const c = __test.cell(i);
+        cells.push({ i, ...c });
+      }
+      const water = cells.filter((c) => c.water && c.floor),
+        floor = cells.filter((c) => c.floor),
+        d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+      for (const t of water) {
+        // まわりの水：互いに 1.4 以上離れた物を、近い順に選ぶ
+        const near = water.filter((c) => c !== t && d(c, t) >= 1.6 && d(c, t) <= 4.5).sort((a, b) => d(a, t) - d(b, t)),
+          picks = [t];
+        for (const c of near) if (picks.length < count && picks.every((p) => d(p, c) >= 1.4)) picks.push(c);
+        if (picks.length < count) continue;
+        let dryCell = null;
+        if (dry) {
+          dryCell = floor.find((c) => !c.water && d(c, t) >= 1.6 && d(c, t) <= 3.5 && picks.every((p) => d(p, c) >= 1.4));
+          if (!dryCell) continue;
+        }
+        // 立つ所：当てる1体から 3.5〜5.5 離れた、水でない床で、置いた物が全部見える所
+        const stands = floor.filter((c) => !c.water && d(c, t) >= 3.5 && d(c, t) <= 5.5);
+        for (const s of stands) {
+          if (dryCell && d(dryCell, s) < 2.5) continue;
+          dbg.step(s.x, s.z);
+          __test.fov();
+          const all = dryCell ? [...picks, dryCell] : picks;
+          if (!all.every((c) => __test.cell(c.i).seen)) continue;
+          all.forEach((c) => __test.summon(key, c.i));
+          __test.state().monsters.forEach((_, n) => __test.hold(n, {}));
+          return { ok: true, stand: [s.x, s.z], target: [t.x, t.z], cells: all.map((c) => [c.x, c.z]), dry: !!dryCell };
+        }
+      }
+      return { err: `水の中に ${count} 体を置ける所が無い` };
+    },
+    [key, count, dry, weapon],
+  );
