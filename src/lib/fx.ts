@@ -61,16 +61,44 @@ export function drawFire(t: number, dt: number): void {
   }
 }
 
-/** 凍らせた水のマス（30 より遠いマスは描かない。溶けかけの5秒は、ひびが入る） */
+/** 凍らせた水の1マスに並べる氷の文字の、1辺の数（4×4） */
+export const ICE_N = 4;
+/** 凍らせた水が解けるまでの残りの秒がこれより短くなると、ひびが入り始める（残り 0 で全部の文字がひびになる） */
+export const ICE_CRACK = 10;
+/**
+ * マス i の氷の文字 (a, b)（0 から ICE_N-1）がひびになる順番の鍵（0 から 1。小さいほど先にひびになる）。
+ * 凍っていないマスに接する辺の文字は 0 から 0.5、内の文字は 0.5 から 1 なので、縁の側から内へひびが進む。同じ側の中の順番は、マスと文字の位置から作った決まった値
+ */
+export function iceCrackKey(i: number, a: number, b: number): number {
+  // 行の端のマスの横は、隣の行のマスではなく、凍っていない所と見る
+  const x = i % MW,
+    edge =
+      (a === 0 && (x === 0 || !blaze.frozen.has(i - 1))) ||
+      (a === ICE_N - 1 && (x === MW - 1 || !blaze.frozen.has(i + 1))) ||
+      (b === 0 && !blaze.frozen.has(i - MW)) ||
+      (b === ICE_N - 1 && !blaze.frozen.has(i + MW));
+  let h = Math.sin(i * 12.9898 + a * 78.233 + b * 37.719) * 43758.5453;
+  h -= Math.floor(h);
+  return (edge ? 0 : 0.5) + h * 0.5;
+}
+/**
+ * 凍らせた水（30 より遠いマスは描かない）：1マスに ICE_N×ICE_N の氷の文字（# と + を互い違いに）を床に寝かせて並べ、青白く少し光らせる（下の水面は描かない。src/lib/build.ts の updateWaterCell）。
+ * 解けるまでの残りが ICE_CRACK 秒を切ると、縁の側から順に文字がひび（/ と \）に変わり、ひびの割合は 1 から 残り/ICE_CRACK を引いた物
+ */
 export function drawFrozen(t: number): void {
+  const step = CELL / ICE_N;
   for (const [i, f] of blaze.frozen) {
     const [x, z] = cpos(i);
     if (Math.hypot(x - player.x, z - player.z) > 30) continue;
-    const crack = f.t < 5;
-    for (let a = 0; a < 3; a++)
-      for (let b = 0; b < 3; b++) {
-        const sh = 0.85 + 0.15 * Math.sin(t * 2 + a + b * 1.7);
-        dyn(x + (a - 1) * 0.62, 0.08, z + (b - 1) * 0.62, G(crack && (a + b) % 2 ? '/' : '='), 0.36, 0.7 * sh, 0.92 * sh, 1.25 * sh);
+    const crack = 1 - f.t / ICE_CRACK;
+    for (let a = 0; a < ICE_N; a++)
+      for (let b = 0; b < ICE_N; b++) {
+        const px = x + (a - (ICE_N - 1) / 2) * step,
+          pz = z + (b - (ICE_N - 1) / 2) * step,
+          sh = 0.85 + 0.15 * Math.sin(t * 1.6 + px * 1.3 + pz * 0.9);
+        if (crack > 0 && iceCrackKey(i, a, b) < crack)
+          dyn(px, 0.07, pz, G((a + b) % 2 ? '/' : '\\'), 0.44, 0.45 * sh, 0.7 * sh, 1.05 * sh, 1);
+        else dyn(px, 0.07, pz, G((a + b) % 2 ? '+' : '#'), 0.44, 0.62 * sh, 0.82 * sh, 1.12 * sh, 1);
       }
   }
 }

@@ -9,6 +9,7 @@
 import { must, nth } from './array.ts';
 import { sBubble, sChime, sCrackleBurst, sDist, sHiss, sNoise, sOut, sShriek, sSplash, sSqueak, sTone, sndReady } from './audio.ts';
 import { type Color, css } from './color.ts';
+import { updateWaterCell } from './build.ts';
 import { boom } from './combat.ts';
 import { G } from './glyphs.ts';
 import { msg } from './log.ts';
@@ -18,7 +19,7 @@ import { mname } from './names.ts';
 import { spawn } from './particles.ts';
 import { mpick, mr } from './random.ts';
 import { sEnv } from './sound.ts';
-import { type Mob, SND, blaze, cellData, clock, gfx, here, iceT, player, stealth, ui, vfx } from './state.ts';
+import { type Mob, type MonStatus, SND, blaze, cellData, clock, gfx, here, iceT, player, stealth, ui, vfx } from './state.ts';
 import {
   CELL,
   D4,
@@ -349,6 +350,8 @@ export function crackIce(i: number, dt: number): void {
     level().thin[i] = 0;
     blaze.cellFlag[i] = 50;
     uploadCells();
+    // 割れた所に水面を出す（残った氷の文字は、マスの変わり方 50 で水に浮いて揺れる）
+    updateWaterCell(i);
     sSplash(0.45);
     vfx.shake = Math.max(vfx.shake, 0.15);
     msg('<b style="color:#6ab4ff">~</b>氷が割れ、冷たい水に足が沈んだ。');
@@ -403,7 +406,13 @@ export function brimFlare(i: number): void {
     msg('<b style="color:#ffd04a">*</b>足元の硫黄が、ぼっと燃え上がった！ しばらくすると、また燃えるようになる。');
   }
 }
-/** 冷気（x・z のまわり r）：火を消し、水を25秒凍らせる（凍らせた水の上の生き物は冷える。凍っている所は25秒に戻す）。凍らせた時は音を鳴らす */
+/** 生き物の状態 st を sec 秒冷えさせる（今の残りより長い時だけ。その時は、足元の氷の輪の分母 chillFull も sec にする） */
+export function chillMob(st: MonStatus, sec: number): void {
+  if (sec <= (st.chill ?? 0)) return;
+  st.chill = sec;
+  st.chillFull = sec;
+}
+/** 冷気（x・z のまわり r）：火を消し、水を25秒凍らせる（凍ったマスの水面は描かない。凍らせた水の上の生き物は冷える。凍っている所は25秒に戻す）。凍らせた時は音を鳴らす */
 export function chillArea(x: number, z: number, r: number): void {
   const cx = Math.floor(x / CELL),
     cz = Math.floor(z / CELL),
@@ -428,12 +437,12 @@ export function chillArea(x: number, z: number, r: number): void {
         blaze.frozen.set(i, { t: 25, liq: lq, surf: must(level().surface[i], '床') });
         level().liquid[i] = 0;
         level().surface[i] = SF_ICE;
+        updateWaterCell(i);
         ch = true;
         froze = true;
         for (const m of here.monsters) {
           if (m.dead || m.cx !== cx + dx || m.cz !== cz + dz) continue;
-          const s2 = m.st || (m.st = {});
-          s2.chill = Math.max(s2.chill || 0, 4);
+          chillMob(m.st || (m.st = {}), 4);
         }
       } else if (blaze.frozen.has(i)) must(blaze.frozen.get(i), '凍らせた水').t = 25;
     }
@@ -457,6 +466,7 @@ export function updateFrozen(dt: number): void {
       blaze.fire[i] = 0;
       blaze.fuel[i] = 0;
       blaze.frozen.delete(i);
+      updateWaterCell(i);
       ch = true;
       const [x, z] = cpos(i);
       for (let q = 0; q < 8; q++) {

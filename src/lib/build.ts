@@ -73,29 +73,38 @@ export function setFog(): void {
 /** 水面の絵を書き直す（水のマスごとに、深さ・流れ・湖か・藻と、上から届く2つの灯りの番号と重み） */
 export function updateWater(): void {
   const W2 = must(gfx.waterTex).image.data,
-    L2 = must(gfx.waterLTex).image.data,
-    oI = new Float32Array(3),
-    oW = new Float32Array(3);
-  for (let i = 0; i < NCELL; i++) {
-    const lq = level().liquid[i],
-      o = i * 4;
-    W2[o] = W2[o + 1] = W2[o + 2] = W2[o + 3] = 0;
-    L2[o] = L2[o + 1] = L2[o + 2] = L2[o + 3] = 0;
-    if (lq !== LQ_WATER && lq !== LQ_DEEP) continue;
-    const r = nth(level().roomOf, i) >= 0 ? nth(level().rooms, nth(level().roomOf, i)) : null,
-      lake = (r && r.theme && r.theme.k === 'lake') || level().stratum.k === 'cavern';
-    W2[o] = lq === LQ_DEEP ? 1 : 0.5;
-    W2[o + 1] = level().flow[i] ? flowW(nth(level().flow, i)) : 0;
-    W2[o + 2] = lake ? 1 : 0;
-    W2[o + 3] = level().algae && level().algae[i] ? 1 : 0;
-    topLights(level().lights, ((i % MW) + 0.5) * CELL, 0.1, (((i / MW) | 0) + 0.5) * CELL, 0, 1, 0, i, oI, oW, 0);
-    L2[o] = nth(oI, 0) >= 0 ? nth(oI, 0) + 1 : 0;
-    L2[o + 1] = nth(oW, 0);
-    L2[o + 2] = nth(oI, 1) >= 0 ? nth(oI, 1) + 1 : 0;
-    L2[o + 3] = nth(oW, 1);
-  }
+    L2 = must(gfx.waterLTex).image.data;
+  for (let i = 0; i < NCELL; i++) writeWater(i, W2, L2);
   must(gfx.waterTex).needsUpdate = true;
   must(gfx.waterLTex).needsUpdate = true;
+}
+/** 水面の絵のマス i だけを書き直す（水が凍った・解けた・薄い氷が割れた時。水面の絵がまだ無い時（単体テスト）は何もしない） */
+export function updateWaterCell(i: number): void {
+  if (!gfx.waterTex || !gfx.waterLTex) return;
+  writeWater(i, gfx.waterTex.image.data, gfx.waterLTex.image.data);
+  gfx.waterTex.needsUpdate = true;
+  gfx.waterLTex.needsUpdate = true;
+}
+const oI = new Float32Array(3),
+  oW = new Float32Array(3);
+/** 水面の絵の欄に、マス i を書く（水でなければ 0） */
+function writeWater(i: number, W2: { [n: number]: number }, L2: { [n: number]: number }): void {
+  const lq = level().liquid[i],
+    o = i * 4;
+  W2[o] = W2[o + 1] = W2[o + 2] = W2[o + 3] = 0;
+  L2[o] = L2[o + 1] = L2[o + 2] = L2[o + 3] = 0;
+  if (lq !== LQ_WATER && lq !== LQ_DEEP) return;
+  const r = nth(level().roomOf, i) >= 0 ? nth(level().rooms, nth(level().roomOf, i)) : null,
+    lake = (r && r.theme && r.theme.k === 'lake') || level().stratum.k === 'cavern';
+  W2[o] = lq === LQ_DEEP ? 1 : 0.5;
+  W2[o + 1] = level().flow[i] ? flowW(nth(level().flow, i)) : 0;
+  W2[o + 2] = lake ? 1 : 0;
+  W2[o + 3] = level().algae && level().algae[i] ? 1 : 0;
+  topLights(level().lights, ((i % MW) + 0.5) * CELL, 0.1, (((i / MW) | 0) + 0.5) * CELL, 0, 1, 0, i, oI, oW, 0);
+  L2[o] = nth(oI, 0) >= 0 ? nth(oI, 0) + 1 : 0;
+  L2[o + 1] = nth(oW, 0);
+  L2[o + 2] = nth(oI, 1) >= 0 ? nth(oI, 1) + 1 : 0;
+  L2[o + 3] = nth(oW, 1);
 }
 /**
  * 像の形（石の人。buildForm）。像の種類 kind（'room'・'vault'・'colossus'）と階のシードとマス cell から作った、像ごとの見た目の乱数の並びで作る。

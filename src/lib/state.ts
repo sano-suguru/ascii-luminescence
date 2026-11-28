@@ -1143,11 +1143,12 @@ export interface Mob extends Monster {
   /** 状態異常（残りの秒など。死ぬと null） */
   st?: MonStatus | null;
 }
-/** 生き物の状態異常（燃える burn・冷える chill・毒 poison・痺れ shock・動けない pin の残りの秒、次に動けなくなれるゲームの時刻 pinCd、
- * 焦がしの加護が効いたか scorched、毒と燃えの傷の溜め pt・bt） */
+/** 生き物の状態異常（燃える burn・冷える chill・毒 poison・痺れ shock・動けない pin の残りの秒、冷えが付いた時の秒 chillFull（足元の氷の輪の残りの割合の分母）、
+ * 次に動けなくなれるゲームの時刻 pinCd、焦がしの加護が効いたか scorched、毒と燃えの傷の溜め pt・bt） */
 export interface MonStatus {
   burn?: number;
   chill?: number;
+  chillFull?: number;
   poison?: number;
   shock?: number;
   pin?: number;

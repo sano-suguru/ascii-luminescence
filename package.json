@@ -20,6 +20,7 @@
     "field": "node tools/field.mjs",
     "glare": "node tools/glare.mjs",
     "zap": "node tools/zap.mjs",
+    "frost": "node tools/frost.mjs",
     "verify": "pnpm check && pnpm test",
     "serve": "vite build && node tools/serve.mjs",
     "where": "node tools/where.mjs",
