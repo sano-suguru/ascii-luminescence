@@ -1,4 +1,4 @@
-// 小さな生き物の形（もとは src/game/09-bodies-creatures.js の初めと、13-creatures.js の古い形。古いトロルは 07-bodies-lords.js）。
+// 小さな生き物の形と、古い形（古いトロルも）。
 import { nth } from '../array.ts';
 import type { Color } from '../color.ts';
 import { mpick, mr } from '../random.ts';
@@ -402,7 +402,7 @@ export function crabForm(ty: BodyType): Body {
   return pts;
 }
 
-// ---- 古い形（色を持たない点。13-creatures.js の初めにあった物）
+// ---- 古い形（色を持たない点）
 
 /** 小さな生き物（魚・茸・虫）。form で形が変わる */
 export function critterForm(ty: { form?: string }): Body {

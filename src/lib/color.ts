@@ -1,4 +1,4 @@
-// 色の道具（もとは src/game/02-constants.js の css と、07-bodies-lords.js の hsl2rgb）。
+// 色の道具（css・hsl2rgb など）。
 import { must, nth } from './array.ts';
 
 /** 色（0 から 1 の RGB の、3つの数の組） */

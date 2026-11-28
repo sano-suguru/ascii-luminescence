@@ -8,7 +8,7 @@
 // 決まり：
 //   - 自動で試している間は、ゲームの保存（al_ で始まる名前）を localStorage に書かない（autoGuard。伝承・解放・見た生き物・墓・音量などを、
 //     ふだん遊ぶ時の記録に残さないため。ほかの名前は書く。同じページのほかの仕組みを止めないように）。
-//     開発用モードはオンにしない（?dev=1 は al_dev を書き残す）。生き物を置く・階段の前へ移る・体力を減らすのは、古い JS の dbg の中身を直に呼ぶ（AutoHooks）
+//     開発用モードはオンにしない（?dev=1 は al_dev を書き残す）。生き物を置く・階段の前へ移る・体力を減らすのは、dbg の中身を直に呼ぶ（AutoHooks）
 //   - 探索のシードは、1周目だけ AUTO_SEED（毎回同じ迷宮で、前の結果と比べるため）。死んで［新しい探索へ］を押した後は、ゲームが選ぶ
 //   - 生き物に倒されないように、死ぬ段の前までは開発用の不死（ui.godMode）にする
 //   - ゲームの中で着くのを待つ所と撃つ段は、ゲームの時刻とゲームの状態（溜めきった・戻りが終わった など）で待つ（遅い端末では、1フレームで進むゲームの時間に上限があるため）
@@ -107,7 +107,7 @@ export function autoMode(search: string): { laps: number; quick: boolean } {
 }
 
 /**
- * 自動で試すなら、ゲームの保存（al_ で始まる名前）を localStorage に書かないようにする。保存の処理より先に（src/game/00-test-mode.js が、ゲームの古い JS の初めに）呼ぶ。
+ * 自動で試すなら、ゲームの保存（al_ で始まる名前）を localStorage に書かないようにする。保存の処理より先に（src/lib/boot.ts の boot が、初めに）呼ぶ。
  * 読むのはそのまま（ふだんの視点・見回す速さで遊ぶ）
  */
 export function autoGuard(): void {
@@ -548,7 +548,7 @@ function resumeIfPaused(): void {
   if (ui.menuOpen && document.querySelector('#menu button[data-k="resume"]')) tap('#menu button[data-k="resume"]');
 }
 
-/** 古い JS から受け取った処理（initAuto が入れる。入るまではタイトルに［自動で試す］を出さない） */
+/** src/lib/boot.ts の start から受け取った処理（initAuto が入れる。入るまではタイトルに［自動で試す］を出さない） */
 let hooks: AutoHooks | null = null;
 
 /** ゲームの用意ができた時に1回（src/lib/boot.ts の start が呼ぶ）。?auto があれば、そのまま流す */

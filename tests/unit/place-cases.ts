@@ -1,6 +1,6 @@
 // テストの道具：階ごとに祭壇とルーンを置く関数（src/lib/altars.ts）と、階のシード・生き物の強さ・墓のルーン・試練を、たくさんの場合で呼び、
 // 返す値と、階の床の物・湧く所・十字路などの変わり方を、1つの文字列にまとめる。F は関数をまとめた物。
-// place.test.ts が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
+// place.test.ts が、この文字列の指紋を確かめる。
 // 階は、Node で本物の迷宮を生成する（gen-places.ts の全部の場所）。なので、迷宮の生成を変えると、この指紋も変わる。
 // 場合ごとに、探索のシード・深さ1の台と最初の祭壇を取ったか・取った物・墓の記録・試しの間の中か・試練・解放と、階の形（ときどき少し変える）を、シードの乱数で変える。
 // 書き換えた状態（here・adv・saved・ui・gear・player・生き物の表の主と忘れられた獣）と Math.random は、終わったら元に戻す。
@@ -131,7 +131,7 @@ export async function placeCases(F: PlaceFns, seeds: number): Promise<string> {
         here.inter = place.inter ?? null;
         const seed = F.levelSeed(),
           res = gen(env, seed, place, adv.runSeed);
-        // 古い JS の generate と同じく、その階の主と忘れられた獣を、生き物の表に入れる
+        // src/lib/levels.ts の generate と同じく、その階の主と忘れられた獣を、生き物の表に入れる
         if (res.lordType) MTYPES['lord'] = res.lordType;
         if (res.beastType) MTYPES['X'] = res.beastType;
         here.D = res.level;

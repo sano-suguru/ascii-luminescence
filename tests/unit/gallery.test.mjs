@@ -1,7 +1,5 @@
 // 見た物の記録・図鑑・試しの間（src/lib/gallery.ts）の単体テスト。
-// 指紋は、gallery-cases.mjs の場合の結果。移す時に、古い JS を消す前に比べた：tools/legacy-eval.mjs の legacyValues で、
-// 移す前の src/game/25-gallery.js（状態を入れ物に移した名前 gfx.canvas・ui.seenT を書き換えた物）の関数を取り出し、同じ場合で呼んで、文字列が同じだった
-// （12の場合・840回の呼び出し）。わざと1か所変えると違いが出ることも確かめた。
+// 指紋は、gallery-cases.mjs の場合の結果。
 // 動きを意図して変えた時や、場合の入力を変えた時は、変わり方を確かめてから作り直す（何が変わったかは、コミットと PR に書く）。
 // 部屋は Node で本物の迷宮を生成するので、迷宮の生成を変えると、この指紋も変わる（その時は generate.test.ts の指紋と一緒に作り直す）。
 // テストを .mjs で書くのは、偽の画面の部品・描く画面を、本物の型に合わせられないため。
@@ -11,7 +9,7 @@ import { caseOut } from './case-out.mjs';
 import { fakeDom, fnv } from './fight-cases.mjs';
 import { NAMES, galleryCases } from './gallery-cases.mjs';
 
-describe('移す前と同じ', () => {
+describe('指紋', () => {
   it('見た物の記録・図鑑・試しの間（12の場合、20の関数）の指紋', async () => {
     const all = await galleryCases(GA, 12, fakeDom()),
       lines = all.split('\n'),

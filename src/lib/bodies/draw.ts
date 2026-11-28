@@ -1,4 +1,4 @@
-// 生き物を描く（もとは src/game/13-creatures.js の drawMonster・drawMonster1・drawMonster0・drawTentacles）：
+// 生き物を描く（drawMonster・drawMonster1・drawMonster0・drawTentacles）：
 // 形の点を、体の部位ごとの動き（歩く・揺れる・羽ばたく・回るなど）で動かし、向きと大きさを掛けて、世界の中に文字を置く（dyn）。
 // まわりの飾り（auras.ts）・頭の上の印（status.ts の drawMark）・姿を変える途中（drawMorph）・照準の先の輪・強い個体の輪・剣を操る者の剣・深みの主の触手・クラーケンの立ち上がる腕も、ここから描く。
 // 状態の入れ物 player・clock・ui（照準の先の生き物 aimMon）・gfx（カメラの位置。読むだけ。体だけを描くか drawBodyOnly）に頼る。

@@ -1,6 +1,5 @@
 // 音を鳴らす処理と詠唱の声 chantStart（どちらも src/lib/audio.ts）の単体テスト。Node には Web Audio が無いので、偽の Web Audio（fake-audio.mjs）で確かめる。
-// 指紋の値は、移す前の古い JS（src/game/15-sound-fire.js と、遠吠え・警報は 13-creatures.js。詠唱の声は 26-spells-hud.js の、Math.random を直に引いていた版）に、
-// 音の乱数（sndRand）と同じ並びを Math.random として入れた時と同じになる（audio-cases.mjs の場合を、古い関数で数えて確かめた）。
+// 指紋は、audio-cases.mjs の場合の結果。
 // 迷宮の生成は使わないので、生成を変えてもこの指紋は変わらない。
 // 音を鳴らす所が見た目の乱数を引いていないかは、src/ を構文の木で調べて確かめる（sound-random-check.mjs）。
 // テストを .mjs で書くのは、偽の Web Audio を AudioContext の型に合わせられないため（型の言い切り as を使わない）
@@ -179,7 +178,7 @@ describe('音の土台', () => {
   });
 });
 
-describe('移す前と同じ', () => {
+describe('指紋', () => {
   it('音の部品・効果音・まわりの音の記録と状態の変わり方（60シード、1440の場合）の指紋', () => {
     const before = JSON.stringify([player, SND.lv, SND.on, SND.ctx]);
     const all = audioCases(A, 60),
@@ -250,7 +249,7 @@ describe('音を鳴らす所が、見た目の乱数を引かない（src/ を�
   it('見本：4つの形を見つけ、音のほかのこともする判定は見逃す', () => {
     const files = [
       {
-        name: 'game/01-a.js',
+        name: 'lib/a.js',
         text: [
           'function sPing(x){ if(!sndReady())return; sTone(0,"sine",440+mr()*9,0,1,null); }', // 3：音を鳴らす関数の中
           'function f(dt,i){ sDrip(1,2,0.2+mr()*0.1);', // 1：引数
@@ -278,7 +277,7 @@ describe('音を鳴らす所が、見た目の乱数を引かない（src/ を�
           'function g1(m){ if(clock.time>m.nextMove)moveNow(m); }', // 見逃す：呼ぶ関数がゲームのこともする（次の行）
           'function moveNow(m){ m.nextMove=clock.time+mr(); step(m); sDrip(1,2,0.1); }',
           'function h1(m){ if(clock.time>m.t){ const d=mr()*3; m.t=clock.time+d; sDrip(1,2,0.1); } }', // 4：入れる先への代入にだけ使う変数の宣言
-          'function f2(m){ if(clock.time>m.hT)hissNow(m); }', // 呼ぶ所（hissNow は game/02-b.js）
+          'function f2(m){ if(clock.time>m.hT)hissNow(m); }', // 呼ぶ所（hissNow は lib/c.js）
           'function i1(m){ if(clock.time>m.t){ const q=mr(); spawn(q,0,0); m.t=clock.time+mr(); sDrip(1,2,0.1); } }', // 見逃す：ゲームに使う変数の宣言がある
           'function j1(m){ if(clock.time>m.t){ m.t=clock.time+mr()*3; sDrip(1,2,0.1); } else { hide(m); } }', // 見逃す：もう片方でゲームのことをする
           'function k1(o){ if(clock.time<o.t){ wander(o); return; } o.t=clock.time+mr()*3; sDrip(1,2,0.1); }', // 見逃す：return の前でゲームのことをする
@@ -286,8 +285,8 @@ describe('音を鳴らす所が、見た目の乱数を引かない（src/ を�
           'function wailNow(m){ m.wT=clock.time+mr()*3; sDrip(1,2,0.1); }',
         ].join('\n'),
       },
-      // 4：呼ぶ所が、ほかのファイルにある（game/01-a.js の f2 が、ここの hissNow を比べてから呼ぶ）
-      { name: 'game/02-b.js', text: 'function hissNow(m){ m.hT=clock.time+mr()*2; sDrip(1,2,0.1); }' },
+      // 4：呼ぶ所が、ほかのファイルにある（lib/a.js の f2 が、ここの hissNow を比べてから呼ぶ）
+      { name: 'lib/c.js', text: 'function hissNow(m){ m.hT=clock.time+mr()*2; sDrip(1,2,0.1); }' },
       { name: 'lib/b.ts', text: 'export function g(): void { if (on && sndReady()) { const v = mr(); sDrip(0, 0, v); } }' }, // 3：sndReady の中
       {
         // 自分で roll を宣言しているファイルでは、roll は見た目の乱数として数えない
@@ -298,35 +297,35 @@ describe('音を鳴らす所が、見た目の乱数を引かない（src/ を�
     const r = soundRandomCheck(files, ['sTone', 'sDrip', 'sBubble', 'sChime']);
     expect(r.sound).toEqual(['sBubble', 'sChime', 'sDrip', 'sPing', 'sPop', 'sTone']);
     expect(r.bad).toEqual([
-      'game/01-a.js:1 音を鳴らす関数の中',
-      'game/01-a.js:1 sTone の引数',
-      'game/01-a.js:2 sDrip の引数',
-      'game/01-a.js:3 if の条件で、音を鳴らすか',
-      'game/01-a.js:5 次に鳴らす時刻',
-      'game/01-a.js:6 音を鳴らす関数の中',
-      'game/01-a.js:6 sTone の引数',
-      'game/01-a.js:7 if の条件で、音を鳴らすか',
-      'game/01-a.js:7 sChime の引数',
-      'game/01-a.js:8 次に鳴らす時刻',
-      'game/01-a.js:9 次に鳴らす時刻',
-      'game/01-a.js:12 if の条件で、音を鳴らすか',
-      'game/01-a.js:14 次に鳴らす時刻',
-      'game/01-a.js:15 次に鳴らす時刻',
-      'game/01-a.js:19 sndReady の中',
-      'game/01-a.js:19 次に鳴らす時刻',
-      'game/01-a.js:20 次に鳴らす時刻',
-      'game/01-a.js:21 次に鳴らす時刻',
-      'game/01-a.js:23 次に鳴らす時刻',
-      'game/01-a.js:32 次に鳴らす時刻',
-      'game/01-a.js:26 変数 d を経て 次に鳴らす時刻',
-      'game/02-b.js:1 次に鳴らす時刻',
+      'lib/a.js:1 音を鳴らす関数の中',
+      'lib/a.js:1 sTone の引数',
+      'lib/a.js:2 sDrip の引数',
+      'lib/a.js:3 if の条件で、音を鳴らすか',
+      'lib/a.js:5 次に鳴らす時刻',
+      'lib/a.js:6 音を鳴らす関数の中',
+      'lib/a.js:6 sTone の引数',
+      'lib/a.js:7 if の条件で、音を鳴らすか',
+      'lib/a.js:7 sChime の引数',
+      'lib/a.js:8 次に鳴らす時刻',
+      'lib/a.js:9 次に鳴らす時刻',
+      'lib/a.js:12 if の条件で、音を鳴らすか',
+      'lib/a.js:14 次に鳴らす時刻',
+      'lib/a.js:15 次に鳴らす時刻',
+      'lib/a.js:19 sndReady の中',
+      'lib/a.js:19 次に鳴らす時刻',
+      'lib/a.js:20 次に鳴らす時刻',
+      'lib/a.js:21 次に鳴らす時刻',
+      'lib/a.js:23 次に鳴らす時刻',
+      'lib/a.js:32 次に鳴らす時刻',
+      'lib/a.js:26 変数 d を経て 次に鳴らす時刻',
+      'lib/c.js:1 次に鳴らす時刻',
       'lib/b.ts:1 sndReady の中',
     ]);
   });
   it('見本：引いた値を変数に入れてから音に使う形を見つけ、音のほかのことにも使う変数は見逃す', () => {
     const files = [
       {
-        name: 'game/01-a.js',
+        name: 'lib/a.js',
         text: [
           'function f(dt,i){ const v=mr(); sDrip(1,2,v);', // 捕まえる：変数に入れてから引数に
           '  const a=mr()*0.1; const vol=0.2+a; sChime(1,2,vol);', // 捕まえる：変数から変数へ
@@ -356,23 +355,23 @@ describe('音を鳴らす所が、見た目の乱数を引かない（src/ を�
     ];
     const r = soundRandomCheck(files, ['sTone', 'sDrip', 'sBubble', 'sChime']);
     expect(r.bad).toEqual([
-      'game/01-a.js:1 変数 v を経て sDrip の引数',
-      'game/01-a.js:2 変数 a・vol を経て sChime の引数',
-      'game/01-a.js:3 変数 r を経て if の条件で、音を鳴らすか',
-      'game/01-a.js:4 変数 w を経て sDrip の引数',
-      'game/01-a.js:5 変数 d を経て 次に鳴らす時刻',
-      'game/01-a.js:14 変数 b2 を経て sDrip の引数',
-      'game/01-a.js:15 変数 pp を経て sDrip の引数',
+      'lib/a.js:1 変数 v を経て sDrip の引数',
+      'lib/a.js:2 変数 a・vol を経て sChime の引数',
+      'lib/a.js:3 変数 r を経て if の条件で、音を鳴らすか',
+      'lib/a.js:4 変数 w を経て sDrip の引数',
+      'lib/a.js:5 変数 d を経て 次に鳴らす時刻',
+      'lib/a.js:14 変数 b2 を経て sDrip の引数',
+      'lib/a.js:15 変数 pp を経て sDrip の引数',
       'lib/b.ts:1 変数 v・s を経て sDrip の引数',
     ]);
   });
   it('src/ のどこにも無い（音を鳴らす所は、音の乱数 sndRand を使う）', () => {
     const files = readdirSync(SRC, { recursive: true })
       .map(String)
-      .filter((f) => (f.startsWith('game/') && f.endsWith('.js')) || (f.startsWith('lib/') && f.endsWith('.ts')))
+      .filter((f) => f.startsWith('lib/') && f.endsWith('.ts'))
       .map((name) => ({ name, text: readFileSync(join(SRC, name), 'utf8') }));
     const r = soundRandomCheck(files, audioNames);
-    // 古い JS の音を鳴らす関数も見つけている（本体が if(!sndReady())return で始まる関数）
+    // 音を鳴らす関数を見つけている（本体が if(!sndReady())return で始まる関数）
     expect(r.sound).toEqual(expect.arrayContaining(['castSound', 'chantStart', 'omenSound', 'sShriek', 'sDrip', 'sChime']));
     expect(r.bad).toEqual([]);
     // audio.ts（コメントを除く。詠唱の声も入る）は丸ごと調べる：見た目の乱数を、どんな形でも使わない（音だけの処理の外の形も、変数に入れてから渡す形も）

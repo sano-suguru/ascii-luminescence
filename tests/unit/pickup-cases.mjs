@@ -1,13 +1,13 @@
 // テストの道具：足元の物を拾う処理（src/lib/pickup.ts）・立ち直り（combat.ts の updateRally）・最深部（levels.ts の updateFinal・spawnFinalBoss）を、
 // たくさんの場合で呼び、結果を1つの文字列にまとめる。makeF は、場合ごとに関数をまとめた物を返す（場合ごとに、関数が覚える状態を初めに戻すため）。
-// pickup.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
+// pickup.test.mjs が、この文字列の指紋を確かめる。
 // 階は Node で本物の迷宮を生成する（gen-places.ts の全部の場所）ので、迷宮の生成を変えると、この指紋も変わる。
 // 1つの場合では、本物の階に、拾う物の種類ごとの物（ルーン・組の祭壇・番人のいる祭壇・墓・泉・枠・伝説の物・宝物庫の褒美）と生き物を置き、分かれ道ごとの「場面」を通す
 // （拾える距離の内と外・出てすぐ・番人が倒れる・鍛える・枠を開ける・癒す・置き場所を選ぶ・開ける枠が0と1と2つ以上・番人が起きる・天井が崩れて石が当たる・
 // 立ち直りの光の粒が着く・王の影が立ち上がり、二つ目の姿になり、亡霊を呼ぶ）。setTimeout は、時計を進めながらここで流す。
 // 記録するのは、返す値と、呼ぶたびの状態（プレイヤー・生き物・今の階の物・探索の記録・手と袋・保存した物・伝説の物・最深部・粒子と置いた文字・伝言・画面の部品・音の記録）と、
-// 見た目の乱数と音の乱数を引いた数。入れ物に移した状態（fight.rockfall・fight.rallyChime・hudInfo.rallyShown・adv.slotPickN）そのものは記録しない
-// （古い JS では包みの一番外の変数だったので。動きは、置いた文字・傷・伝言・画面の描き直しに出る）。
+// 見た目の乱数と音の乱数を引いた数。入れ物の状態のうち fight.rockfall・fight.rallyChime・hudInfo.rallyShown・adv.slotPickN は、そのものは記録しない
+// （動きは、置いた文字・傷・伝言・画面の描き直しに出る）。
 // テストを .mjs で書くのは、偽の画面の部品・偽の Web Audio を、本物の型に合わせられないため。
 // 書き換えた状態と、document・window・localStorage・performance・setTimeout・Math.random・音の乱数は、終わったら元に戻す。
 import { sndInit } from '../../src/lib/audio.ts';
@@ -30,7 +30,7 @@ import { PLACES, gen, loadEnv } from './gen-places.ts';
 import { swapGlobals } from './ui-cases.mjs';
 import { stateFp } from './case-out.mjs';
 
-/** 移した関数の名前（場合が全部を呼ぶか、pickup.test.mjs が確かめる） */
+/** 確かめる関数の名前（場合が全部を呼ぶか、pickup.test.mjs が確かめる） */
 export const NAMES = [
   'pickupItems',
   'grabItem',
@@ -42,8 +42,6 @@ export const NAMES = [
   'updateFinal',
   'spawnFinalBoss',
 ];
-/** 古い JS から取り出す時の名前（関数と、関数が読む包みの一番外の変数） */
-export const LEGACY_NAMES = [...NAMES, 'rockfall', 'rallyShown', 'rallyChime', 'slotPickN'];
 const LEGENDS = ['candle', 'bell', 'mirror'];
 
 /** makeF：場合ごとに呼ぶ、関数をまとめた物を返す関数（async でもよい）。seeds：場合の数。page：fakeDom() の偽の画面 */

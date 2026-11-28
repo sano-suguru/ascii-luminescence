@@ -1,6 +1,5 @@
-// 照準と線（もとは src/game/28-camera-player.js の aimOrigin、20-chant-hits.js の viewDir・groundPoint・reflectDir、18-level-player.js の hittable、
-// 22-world-hints.js の handUp・aimPoint・centerPoint・castPoint・handPoint・aimTarget・assistPoint・shotFrame、19-hands-runes.js の drawSwing、
-// 26-spells-hud.js の doorBlock・losClear・beamFrame）：目の位置と見ている向き、攻撃や投げた物が出る所、照準の先の点と生き物、狙いを助ける点、撃つ所と向き、
+// 照準と線（aimOrigin・viewDir・groundPoint・reflectDir・hittable・handUp・aimPoint・centerPoint・castPoint・handPoint・aimTarget・assistPoint・shotFrame・
+// drawSwing・doorBlock・losClear・beamFrame）：目の位置と見ている向き、攻撃や投げた物が出る所、照準の先の点と生き物、狙いを助ける点、撃つ所と向き、
 // 手の前の点、詠唱の円の位置、武器を振った線、閉じた扉・見通し・地面に落とす所・跳ね返る向き。
 // 状態の入れ物 player・ui（照準の先を探した時刻 aimT と生き物 crossMon は読み書きする）・gfx（カメラの位置。読むだけ）・here（今の階）・clock に頼る。
 import { must, nth } from './array.ts';
@@ -133,14 +132,14 @@ export function drawSwing(): void {
     );
   }
 }
-/** マスに閉じた扉があるか（燃え尽きた扉と、半分より開いた扉は通す。マップの外のマスは扉が無い。もとは src/game/26-spells-hud.js） */
+/** マスに閉じた扉があるか（燃え尽きた扉と、半分より開いた扉は通す。マップの外のマスは扉が無い） */
 export function doorBlock(ci: number): boolean {
-  // マップの外のマスも渡される（光線がマップの端で止まった所など）。その時は扉が無い（元のまま。範囲の外の読みは undefined で、比べると false）
+  // マップの外のマスも渡される（光線がマップの端で止まった所など）。その時は扉が無い（範囲の外の読みは undefined で、比べると false）
   const di = level().doorAt[ci],
     d = (di ?? NaN) >= 0 ? nth(level().doors, must(di)) : null;
   return !!d && !d.gone && d.o < 0.5;
 }
-/** 2つの点の間を、壁・閉じた扉・天井に遮られずに見通せるか（0.3 ごとに調べる。マップの外に出たら見通せない。もとは src/game/26-spells-hud.js） */
+/** 2つの点の間を、壁・閉じた扉・天井に遮られずに見通せるか（0.3 ごとに調べる。マップの外に出たら見通せない） */
 export function losClear(ax: number, ay: number, az: number, bx: number, by: number, bz: number): boolean {
   const d = Math.hypot(bx - ax, by - ay, bz - az),
     n = Math.ceil(d / 0.3);
@@ -158,7 +157,6 @@ export function losClear(ax: number, ay: number, az: number, bx: number, by: num
 }
 /**
  * 地面に落とす術の落ちる所：o から向き d に 0.3 ずつ進み（maxD まで。既定 22）、敵の体に当たればその足もと、壁・閉じた扉に当たればその手前、床に着けばそこ
- * （もとは src/game/20-chant-hits.js）
  */
 export function groundPoint(o: readonly number[], d: readonly number[], maxD?: number): [number, number] {
   let x = nth(o, 0),
@@ -183,7 +181,7 @@ export function groundPoint(o: readonly number[], d: readonly number[], maxD?: n
   }
   return [x, z];
 }
-/** 跳ね返る向き：少し先が床か天井なら上下を、壁なら当たった向きを反す（角なら両方。もとは src/game/20-chant-hits.js） */
+/** 跳ね返る向き：少し先が床か天井なら上下を、壁なら当たった向きを反す（角なら両方） */
 export function reflectDir(x: number, y: number, z: number, d: readonly number[]): V3 {
   const s = 0.25,
     cx = Math.floor((x + nth(d, 0) * s) / CELL),
@@ -210,7 +208,7 @@ export function reflectDir(x: number, y: number, z: number, d: readonly number[]
 }
 /**
  * 照準の先の生き物：見えている敵のうち、目から 28 以内で、照準からの角度が体の大きさの分の内にあり、見通せる物（角度と距離で一番近い物）。
- * 0.1 秒ごとに探し直し、間は前の答えを返す（ui.aimT・ui.crossMon。もとは src/game/22-world-hints.js）
+ * 0.1 秒ごとに探し直し、間は前の答えを返す（ui.aimT・ui.crossMon）
  */
 export function aimTarget(): Mob | null {
   if (clock.time - ui.aimT < 0.1) return ui.crossMon;
@@ -218,8 +216,6 @@ export function aimTarget(): Mob | null {
   ui.crossMon = null;
   const [ox, oy, oz] = aimOrigin(),
     [vx, vy, vz] = viewDir();
-  // @ts-expect-error -- 古い JS のまま（使っていない。tools/same-code.mjs が同じ文と見るため）
-  let bd = 1e9;
   let ba = 1e9;
   for (const m of here.monsters) {
     if (!foe(m) || !m.visible) continue;
@@ -241,7 +237,7 @@ export function aimTarget(): Mob | null {
   }
   return ui.crossMon;
 }
-/** 狙いを助ける点：撃つ物が bolt か beam で、照準の先に生き物がいれば、その体（bolt は、動いている向きに飛ぶ時間の分だけ先）。ほかは null（もとは src/game/22-world-hints.js） */
+/** 狙いを助ける点：撃つ物が bolt か beam で、照準の先に生き物がいれば、その体（bolt は、動いている向きに飛ぶ時間の分だけ先）。ほかは null */
 export function assistPoint(o: readonly number[], kind: string | undefined): V3 | null {
   if (kind !== 'bolt' && kind !== 'beam') return null;
   const m = aimTarget();
@@ -251,7 +247,7 @@ export function assistPoint(o: readonly number[], kind: string | undefined): V3 
   const t = Math.hypot(c[0] - nth(o, 0), c[1] - nth(o, 1), c[2] - nth(o, 2)) / 20;
   return [c[0] + (m.vlx || 0) * t, c[1], c[2] + (m.vlz || 0) * t];
 }
-/** 撃つ所 o と向き d（長さ1）：詠唱した時は詠唱の円の少し下から、ほかは手の前から、狙いを助ける点か照準の先の点へ（近すぎる時は見ている向き。もとは src/game/22-world-hints.js） */
+/** 撃つ所 o と向き d（長さ1）：詠唱した時は詠唱の円の少し下から、ほかは手の前から、狙いを助ける点か照準の先の点へ（近すぎる時は見ている向き） */
 export function shotFrame(h: string, chanted: boolean, kind: string | undefined): { o: V3; d: V3 } {
   const o: V3 = chanted
       ? (() => {
@@ -267,7 +263,7 @@ export function shotFrame(h: string, chanted: boolean, kind: string | undefined)
     l = Math.hypot(dx, dy, dz);
   return { o, d: l > 1 ? [dx / l, dy / l, dz / l] : viewDir() };
 }
-/** 光線を撃つ所 o と向き d（手の前から、狙いを助ける点か照準の先の点へ。もとは src/game/26-spells-hud.js） */
+/** 光線を撃つ所 o と向き d（手の前から、狙いを助ける点か照準の先の点へ） */
 export function beamFrame(h: string): { o: V3; d: V3 } {
   const o = handPoint(h),
     a = assistPoint(o, 'beam') || aimPoint(),

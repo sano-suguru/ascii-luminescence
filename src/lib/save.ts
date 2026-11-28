@@ -1,4 +1,4 @@
-// 保存（もとは src/game/17-meta.js・25-gallery.js・10-bodies-beast.js）。localStorage に書く。保存が使えない時（保存を止めたブラウザなど）は、何もしない。
+// 保存。localStorage に書く。保存が使えない時（保存を止めたブラウザなど）は、何もしない。
 import type { MonsterType } from './creatures.ts';
 import { adv, saved } from './state.ts';
 

@@ -1,5 +1,5 @@
-// 伝言（もとは src/game/16-view-input.js）。状態の入れ物 msgs（伝言の一覧）に頼り、画面の #log に書く。
-// 1秒ごとの描き直し（古い伝言を薄くして消す）は、古い JS（16-view-input.js）の setInterval が呼ぶ。
+// 伝言。状態の入れ物 msgs（伝言の一覧）に頼り、画面の #log に書く。
+// 1秒ごとの描き直し（古い伝言を薄くして消す）は、src/lib/boot.ts の boot の setInterval が呼ぶ。
 import { must, nth } from './array.ts';
 import { clamp } from './rng.ts';
 import { msgs } from './state.ts';

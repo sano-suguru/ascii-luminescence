@@ -1,5 +1,5 @@
-// 生き物の処理と加護の段（もとは src/game/18-level-player.js の statOf・BL・hostile・foe・initMonsterLife、11-monster-move.js の makeMonster・fireAt・fireNear・canStep・chooseNext、
-// 13-creatures.js の critterStep・houndScent・updateMonster、15-sound-fire.js の summon）：生き物を作る、歩いて行けるか、次に向かうマス、敵か、生き物の動き。
+// 生き物の処理と加護の段（statOf・BL・hostile・foe・initMonsterLife・makeMonster・fireAt・fireNear・canStep・chooseNext・
+// critterStep・houndScent・updateMonster・summon）：生き物を作る、歩いて行けるか、次に向かうマス、敵か、生き物の動き。
 // 状態の入れ物 adv（選んでいる試練・加護の段・年代記）・here（今の階と生き物）・blaze（火と匂い）・player・clock・ui（伝言の時刻）・stealth（忍び足）・vfx（揺れ）に頼る。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う動きになるので、順番を変えないこと。
 import { lookup, must, nth } from './array.ts';
@@ -339,7 +339,7 @@ export function houndScent(m: Mob): readonly [number, number] | null {
 }
 /**
  * 猟犬が匂いを嗅ぎつけた伝言を最後に出したゲームの時刻（関数の欄。20秒あける。chooseNext が読み書きする）。
- * 型だけの declare namespace で欄の型を付ける（組み立てで消える。古い JS の houndScent.msgT の文をそのまま残すため）
+ * 型だけの declare namespace で欄の型を付ける（組み立てで消える）
  */
 export declare namespace houndScent {
   let msgT: number | undefined;
@@ -368,7 +368,7 @@ export const bodyUnseen = (m: Mob, dp: number): boolean =>
   (m.ty.habitat === 'bog' && !((m.rise || 0) > 0.25)) ||
   (tallAt(m.cz * MW + m.cx) && dp > 3);
 /**
- * 生き物の動き（毎フレーム。もとは src/game/13-creatures.js）：沼と深みの物が姿を現す、見えるか、茂みと硫黄、小さな生き物、ノームの昔話、
+ * 生き物の動き（毎フレーム）：沼と深みの物が姿を現す、見えるか、茂みと硫黄、小さな生き物、ノームの昔話、
  * 気づき（明るい所ほど遠くから）と眠りから覚める、飛ぶ物・待つ物・歩く物の動き、向きと歩き、うなぎ、膨れた物が弾ける、剣を操る者の剣、
  * 初めて見た時の伝言、近接の攻撃、重い足音、溶岩と火の猟犬の火、氷の猟犬、忘れられた獣、光の尾
  */

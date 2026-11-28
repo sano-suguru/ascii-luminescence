@@ -1,7 +1,5 @@
-// ゲームの状態の入れ物。古い JS（src/game/）の一番外の状態（let など）を、分野ごとに型の付いた入れ物にまとめる。
-// 古い JS は src/game/imports.mjs で入れ物を読み、vfx.shake のように欄で読み書きする（入れ物そのものは差し替えない）。
-// 移す時は tools/state-move.mjs を使う（同じ名前の局所の変数は書き換えない）。初めの値は、古い JS の宣言のまま。
-// 入れ物の名前は、古い JS の局所の名前とぶつからない物にする（道具が確かめる。fx は座標の fx とぶつかるので vfx にした）。
+// ゲームの状態の入れ物。状態を、分野ごとに型の付いた入れ物にまとめる。
+// 各モジュールは入れ物を import して、vfx.shake のように欄で読み書きする（入れ物そのものは差し替えない）。
 import { type MonsterType } from './creatures.ts';
 import { type BranchPlace, type Fixture, type InterPlace, type Level, type LevelLight, type RealmPlace, type Web } from './generate.ts';
 import { META_DEF, type Meta } from './progress.ts';
@@ -72,7 +70,7 @@ export interface Clock {
   perfAcc: number;
   perfN: number;
   warm: number;
-  /** テスト用モードの時計（テスト用モードでない時は null。00-test-mode.js がその場で入れる） */
+  /** テスト用モードの時計（テスト用モードでない時は null。src/lib/boot.ts の boot が初めに入れる） */
   TESTCLK: TestClock | null;
   /** テスト用モードで、用意ができたか（true）、用意の途中で止まったわけ（'error: …'）、まだか（false）。__test.ready・error が読む */
   testBoot: boolean | string;
@@ -225,14 +223,12 @@ export interface Ui {
   unlockedAt: number;
   /** Esc のキーを処理している間か（その間は tryLock が捕まえにいかない） */
   escKey: boolean;
-  /** エラーを出す所 #err（00-test-mode.js がその場で入れる。WebGL を作れなかった時に書く） */
+  /** エラーを出す所 #err（src/lib/boot.ts の boot が初めに入れる。WebGL を作れなかった時に書く） */
   errEl: HTMLElement | null;
   /** マウスを捕まえていない時に、描く画面を押してドラッグしているか と、前のマウスの位置（見回す） */
   dragging: boolean;
   lmx: number;
   lmy: number;
-  /** 左のボタンを押した所（書くだけで、読む所は無い） */
-  downAt: [number, number] | null;
   /** タイトルの画面に出している物（'main'：タイトル、'unlock'：解放の画面） */
   introMode: 'main' | 'unlock';
   /** 指で遊んでいるか（指で触れたら true、マウスを動かしたら false。src/lib/touch.ts。この間は tryLock が捕まえにいかない） */
@@ -279,16 +275,16 @@ export interface Ui {
   menuPage: string;
   /** タイトルの画面で選んだ、始める深さ（開発用モードの「開始する層」。ふだんは 1） */
   startDepth: number;
-  /** タイトルの画面（16-view-input.js で document から読む） */
+  /** タイトルの画面（src/lib/boot.ts の boot が document から読む） */
   introEl: HTMLElement | null;
-  /** ミニマップのキャンバス mapC と、その 2D の描き手 mctx（16-view-input.js で document から読む。src/lib/minimap.ts が描く） */
+  /** ミニマップのキャンバス mapC と、その 2D の描き手 mctx（src/lib/boot.ts の boot が document から読む。src/lib/minimap.ts が描く） */
   mapC: HTMLCanvasElement | null;
   mctx: CanvasRenderingContext2D | null;
-  /** 方向の矢印を描くキャンバス arrowCv と、その 2D の描き手 arrowCtx、下の HUD hotbarEl（22-world-hints.js で document から読む。src/lib/arrows.ts が描く） */
+  /** 方向の矢印を描くキャンバス arrowCv と、その 2D の描き手 arrowCtx、下の HUD hotbarEl（src/lib/boot.ts の boot が document から読む。src/lib/arrows.ts が描く） */
   arrowCv: HTMLCanvasElement | null;
   arrowCtx: CanvasRenderingContext2D | null;
   hotbarEl: HTMLElement | null;
-  /** 下の HUD の大きさの変わり目を ResizeObserver で見ているか（22-world-hints.js が入れる。見ていなければ hotbarTop を覚えず、毎回読む） */
+  /** 下の HUD の大きさの変わり目を ResizeObserver で見ているか（src/lib/boot.ts の boot が入れる。見ていなければ hotbarTop を覚えず、毎回読む） */
   hotbarWatch: boolean;
   /** 方向の矢印を前のフレームに描いたか（描いた時だけ消す） */
   arrowsDrawn: boolean;
@@ -319,12 +315,12 @@ export interface Ui {
   packSnap: { key: string; snap: HandsSnap } | null;
   /** 照準の先の生き物（src/lib/look.ts の look が毎フレーム入れ直す。src/lib/bodies/draw.ts の drawMonster1 が、明るく描いて輪を足す）。無ければ null */
   aimMon: Monster | null;
-  /** 見た時の説明：今見ている物の説明（変わった時刻 lookPendT から0.5秒見続けると出す）と、出している説明 lookHTML、出す所 lookEl（30-loop-init.js より前、29-look.js で document から読む） */
+  /** 見た時の説明：今見ている物の説明（変わった時刻 lookPendT から0.5秒見続けると出す）と、出している説明 lookHTML、出す所 lookEl（src/lib/boot.ts の boot が document から読む） */
   lookPend: string;
   lookPendT: number;
   lookHTML: string;
   lookEl: HTMLElement | null;
-  /** 照準の文字を書く所（22-world-hints.js で document から読む。src/lib/chantfx.ts の updateCross が書く） */
+  /** 照準の文字を書く所（src/lib/boot.ts の boot が document から読む。src/lib/chantfx.ts の updateCross が書く） */
   crossEl: HTMLElement | null;
   /** 伝言を出したゲームの時刻：生き物が炎から逃げた（6秒あける）・叫ぶ生き物が叫んだ（8秒あける）。src/lib/monsters.ts の chooseNext・src/lib/ground.ts の updateCritter */
   fleeMsgT: number;
@@ -356,7 +352,6 @@ export const ui: Ui = {
   dragging: false,
   lmx: 0,
   lmy: 0,
-  downAt: null,
   introMode: 'main',
   touch: false,
   portrait: false,
@@ -419,7 +414,7 @@ export const ui: Ui = {
   tallMsg: false,
 };
 
-/** レベルと経験（n：レベル、exp：経験、pending：まだ選んでいない加護の数、bless：加護ごとの段、strata：入った層）。後から足される欄は、使う処理を移す時に型を足す */
+/** レベルと経験（n：レベル、exp：経験、pending：まだ選んでいない加護の数、bless：加護ごとの段、strata：入った層） */
 export interface Lvl {
   n: number;
   exp: number;
@@ -429,7 +424,7 @@ export interface Lvl {
   /** 初めてのレベルアップの選択肢を出したか（初めは、恩恵を行いに結び付いた物から選ぶ。src/lib/panels.ts の levelChoices） */
   firstDone?: boolean;
 }
-/** 探索の記録（倒した数・始めた時刻）。後から足される欄（maxDepth・cause など）は、使う処理を移す時に型を足す */
+/** 探索の記録（倒した数・始めた時刻。届いた深さ・死因などは後から足す） */
 export interface RunStats {
   kills: number;
   t0: number;
@@ -441,7 +436,7 @@ export interface RunStats {
   cause?: string;
   loreRes?: LoreResult;
 }
-/** 探索の進み（最初の武器を選んだか・最初の祭壇・取った物・倒した主・開いた体の枠の数）。古い JS が後から足すほかの欄は、使う処理を移す時に型を足す */
+/** 探索の進み（最初の武器を選んだか・最初の祭壇・取った物・倒した主・開いた体の枠の数） */
 export interface RunState {
   startChosen: boolean;
   altar1: boolean;
@@ -454,7 +449,7 @@ export interface RunState {
 }
 /** 今の探索（シード・レベル・死んだか・勝ったか・記録・進み・試練・体力の上限・表示している体力） */
 export interface Adv {
-  /** 探索のシード。本当の初めの値は、古い JS（18-level-player.js）がテスト用モードの乱数の入れ替えの後に入れる。ここの 0 は仮 */
+  /** 探索のシード。本当の初めの値は、src/lib/boot.ts の boot がテスト用モードの乱数の入れ替えの後に入れる。ここの 0 は仮 */
   runSeed: number;
   lvl: Lvl;
   dead: boolean;
@@ -494,7 +489,7 @@ export const thumb: {
   stick: [number, number] | null;
 } = { stick: null };
 
-/** プレイヤー（位置・速さ・向き・揺れ・目の高さ・体力）。丸ごと入れ替えることは無いので、古い JS は今までどおり player.x のように読む */
+/** プレイヤー（位置・速さ・向き・揺れ・目の高さ・体力）。丸ごと入れ替えることは無いので、player.x のように読む */
 export interface Player {
   x: number;
   z: number;
@@ -570,7 +565,7 @@ export const player: Player = {
   blockType: '',
 };
 
-/** 片手（L・R）の状態：武器のルーン atk と、付けたルーンの枠 slots（枠の数 slotN）。elem・trig は、その手の性質と発動のルーン。後から足される欄は、使う処理を移す時に型を足す。
+/** 片手（L・R）の状態：武器のルーン atk と、付けたルーンの枠 slots（枠の数 slotN）。elem・trig は、その手の性質と発動のルーン。
  * runes.ts の Hand（handRunes などが読む、枠だけの形）とは別の物 */
 export interface HandState {
   atk: Rune | null;
@@ -904,7 +899,7 @@ export interface Trans {
   /** 真っ暗になったら、新しい探索を始める（src/lib/levels.ts の startNewRun） */
   run?: boolean;
 }
-/** 今の階に、古い JS が後から足す欄（型は、使う処理を移す時に足す） */
+/** 今の階に、生成の後から足す欄 */
 export interface LevelExtra {
   /** 最深部の階（王の影が現れる。src/lib/levels.ts の newLevel が入れる） */
   finalVault?: boolean;
@@ -1161,7 +1156,7 @@ export interface MonStatus {
 }
 /** 今いる場所と、階の中身。深さ・支道・異界・特別な階、生き物、灯りの備品、階を移る途中、着いた所 */
 export interface Here {
-  /** 階の生き物（型は、TypeScript が読む欄だけ。ほかの欄は、生き物の処理を移す時に足す） */
+  /** 階の生き物 */
   monsters: Mob[];
   depth: number;
   branch: BranchPlace | null;
@@ -1176,7 +1171,7 @@ export interface Here {
   fade: number;
   /** 図鑑の見本の階を作っているか */
   showroomGen: boolean;
-  /** 今の階の中身（generate.ts の generateLevel の結果）。初期化（src/lib/boot.ts の init）で1つ目の階を作るまでは null。古い JS が後から足す欄は LevelExtra（まだ型の無い hub などは、使う処理を移す時に足す） */
+  /** 今の階の中身（generate.ts の generateLevel の結果）。初期化（src/lib/boot.ts の init）で1つ目の階を作るまでは null。生成の後から足す欄は LevelExtra */
   D: (Level & LevelExtra) | null;
   /** 見たことのあるマス（階に入るたびに作り直す。src/lib/levels.ts の newLevel） */
   explored: Uint8Array;
@@ -1286,7 +1281,7 @@ export const here: Here = {
   stairsSeen: false,
   lastStratum: null,
 };
-/** 行った階の覚え（場所の名前 → 見えた所と覚えた色の写し）。丸ごと入れ替えないので、古い JS は今までどおり placeMem で読む */
+/** 行った階の覚え（場所の名前 → 見えた所と覚えた色の写し）。丸ごと入れ替えないので、placeMem の名前のまま読む */
 export const placeMem = new Map<string, { explored: Uint8Array; mem: Float32Array }>();
 
 /** 伝説の物（名前・言い伝え・ある支道 branch・種類 kind） */
@@ -1305,8 +1300,8 @@ export interface Legend {
 }
 /** 保存する記録（localStorage）：伝承・解放・墓・試練 META、魔導書に記した反応 BOOK、見たルーン RSEEN、見た生き物 SEEN、開発用モード DEVALL、
  * それと今の探索の伝説の物 LEGEND（これは保存しない）。
- * 本当の初めの値は、古い JS が localStorage から読んでその場で入れる（META・DEVALL は src/lib/intro.ts の initIntro、BOOK は 19-hands-runes.js、
- * SEEN・RSEEN は 25-gallery.js）。ここの値は仮 */
+ * 本当の初めの値は、localStorage から読んでその場で入れる（META・DEVALL は src/lib/intro.ts の initIntro、BOOK・SEEN・RSEEN は src/lib/boot.ts の boot）。
+ * ここの値は仮 */
 export interface Saved {
   META: Meta;
   BOOK: Set<string>;
@@ -1342,7 +1337,7 @@ export interface SoundLoops {
   wind?: SoundLoop;
   drone?: DroneLoop;
 }
-/** 音（音量の段 lv・音の仕組み ctx と、その部品・鳴り続ける音 L・まわりの音の様子 env）。丸ごと入れ替えないので、古い JS は今までどおり SND.lv のように読む。
+/** 音（音量の段 lv・音の仕組み ctx と、その部品・鳴り続ける音 L・まわりの音の様子 env）。丸ごと入れ替えないので、SND.lv のように読む。
  * 部品は、タイトルを出した時に先に作り（src/lib/audio.ts の sndPrep）、最初に音を鳴らす時（sndInit）にここへ入れる */
 export interface SoundState {
   /** 音量の段（src/lib/sound.ts の SND_LV の番号） */

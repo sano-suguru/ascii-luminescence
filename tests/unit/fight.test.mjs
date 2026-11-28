@@ -20,7 +20,7 @@ const fnv = (s) => {
   return (h >>> 0).toString(16).padStart(8, '0');
 };
 
-describe('移す前と同じ', () => {
+describe('指紋', () => {
   it('詠唱と当たり・プレイヤーと生き物の動き（16の場合、59の関数）の指紋', { timeout: 120000 }, async () => {
     const all = await fightCases({ ...AIM, ...AUDIO, ...COMBAT, ...GEAR, ...MON, ...PLAYER, ...RESULTS }, 16, fakeDom()),
       body = fightText(all),

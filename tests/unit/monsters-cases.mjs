@@ -1,5 +1,5 @@
 // テストの道具：生き物を作る・歩いて行けるか・次に向かうマス（src/lib/monsters.ts）と、小さな生き物と地面（src/lib/ground.ts）・叫び声の音（audio.ts の sShriek）を、
-// たくさんの場合で呼び、結果を1つの文字列にまとめる。F は関数をまとめた物。monsters.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
+// たくさんの場合で呼び、結果を1つの文字列にまとめる。F は関数をまとめた物。monsters.test.mjs が、この文字列の指紋を確かめる。
 // 階は Node で本物の迷宮を生成する（gen-places.ts の全部の場所）ので、迷宮の生成を変えると、この指紋も変わる。
 // 1つの場合では、本物の階に、表の全部の種類の生き物を、いろいろな湧き方（群れの頭・部屋の中だけ・見回りの道・野営・強い個体）で作り、
 // 火・灰・匂い・焼け落ちた扉・光る苔・茂み・硫黄・薄い氷・水を足して、何歩か続けて、生き物の動きと地面の処理を呼ぶ。
@@ -35,7 +35,7 @@ import { fakeAudioClass } from './fake-audio.mjs';
 import { PLACES, gen, loadEnv } from './gen-places.ts';
 import { swapGlobals } from './ui-cases.mjs';
 
-/** 移した関数の名前（場合が全部を呼ぶか、monsters.test.mjs が確かめる） */
+/** 確かめる関数の名前（場合が全部を呼ぶか、monsters.test.mjs が確かめる） */
 export const NAMES = [
   'makeMonster',
   'initMonsterLife',

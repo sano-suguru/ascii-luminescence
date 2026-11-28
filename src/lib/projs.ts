@@ -1,4 +1,4 @@
-// 飛ぶ物と、毎フレーム続く戦いの跡を進める（もとは src/game/20-chant-hits.js・26-spells-hud.js）：矢と玉（まっすぐ飛ぶ矢・弧を描いて弾ける玉。
+// 飛ぶ物と、毎フレーム続く戦いの跡を進める：矢と玉（まっすぐ飛ぶ矢・弧を描いて弾ける玉。
 // 跳ね返る・追う・貫く・壁を抜ける）、状態異常（燃える・毒・冷える・動けない・痺れる）と吹き飛び、毒の霧、遅れて起きること、魔法の場、雨、
 // 毒の霧に火がつく、生き物の時間の速さ。状態の入れ物 fight・here・player・clock・vfx・blaze・saved に頼る。呼ぶのはメインループ（src/lib/loop.ts の tick）。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う結果になるので、順番を変えないこと。
@@ -434,7 +434,7 @@ export function updateProjs(dt: number): void {
           if (pl >= 5) p.wallPass = 1;
         }
         if ((p.pierce ?? NaN) > 0) {
-          // @ts-expect-error -- 上の比べ方で数と分かっている（型では言えない。古い JS のまま）
+          // @ts-expect-error -- 上の比べ方で数と分かっている（型では言えない）
           p.pierce--;
           if (!p.keep) p.dmgK = (p.dmgK || 1) * 0.7;
           p.x = nx;
@@ -455,7 +455,7 @@ export function updateProjs(dt: number): void {
     if (wall || floor || ceil) {
       if (wall && !floor && !ceil && p.wallPass === undefined && p.kind === 'bolt' && !p.wind && TL(p.sp, 'pierce') >= 5) p.wallPass = 1;
       if (wall && !floor && !ceil && (p.wallPass ?? NaN) > 0 && p.kind === 'bolt') {
-        // @ts-expect-error -- 上の比べ方で数と分かっている（型では言えない。古い JS のまま）
+        // @ts-expect-error -- 上の比べ方で数と分かっている（型では言えない）
         p.wallPass--;
         p.passing = true;
       }

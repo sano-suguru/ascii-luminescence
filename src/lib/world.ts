@@ -1,4 +1,4 @@
-// 迷宮の大きさとタイル・液体と地面・支道と異界・深さごとの係数（depthProfile）と深さごとに順に使う霧の色（FOGS）・岩の色（もとは src/game/02-constants.js と、03・06 の一部）。
+// 迷宮の大きさとタイル・液体と地面・支道と異界・深さごとの係数（depthProfile）と深さごとに順に使う霧の色（FOGS）・岩の色。
 import { clamp } from './rng.ts';
 
 /** 1マスの大きさ（m）・天井の高さ・目の高さ・迷宮の横と奥のマスの数・マスの数 */
@@ -160,7 +160,7 @@ export const VEIN_COL: Record<number, [number, number, number]> = {
   },
   VEIN_NAME: Record<number, string> = { 1: '金', 2: '紅玉', 3: '青玉', 4: '翠玉' };
 
-/** マス i の真ん中の、世界の座標 [x, z]（もとは src/game/15-sound-fire.js） */
+/** マス i の真ん中の、世界の座標 [x, z] */
 export const cpos = (i: number): [number, number] => [((i % MW) + 0.5) * CELL, (((i / MW) | 0) + 0.5) * CELL];
-/** 火の備品の種類（火の音や、燃え広がる元に使う。もとは src/game/15-sound-fire.js） */
+/** 火の備品の種類（火の音や、燃え広がる元に使う） */
 export const FIRE_TYPES = new Set(['brazier', 'torch', 'lava', 'embers', 'abyss']);

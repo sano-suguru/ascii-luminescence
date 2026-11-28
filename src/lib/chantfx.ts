@@ -1,8 +1,8 @@
-// 詠唱の見た目（もとは src/game/22-world-hints.js の simPath・drawCastFx・updateCross）：溜めている手の前の円（性質のルーンと点が回り、詠唱の声の音節で光る）、
+// 詠唱の見た目（simPath・drawCastFx・updateCross）：溜めている手の前の円（性質のルーンと点が回り、詠唱の声の音節で光る）、
 // 手へ集まる光、術が飛ぶ道（まっすぐか弧。跳ね返りも）と落ちる所、道の先の生き物を挟む括弧、照準の文字（溜めると性質のルーンが寄り、生き物を捉えると ‹·› になる）と、
 // 詠唱している間に画面をゆっくりにする見た目。
 // 状態の入れ物 gear（溜めている手）・here（今の階と生き物）・player・ui・vfx・gfx（後処理の uniform）・clock に頼る。
-// 呼ぶのは src/lib/loop.ts の tick（段 'castfx' で drawCastFx、段 'cross' で updateCross）。照準の文字は #cross（22-world-hints.js が ui.crossEl に入れる）に書く。
+// 呼ぶのは src/lib/loop.ts の tick（段 'castfx' で drawCastFx、段 'cross' で updateCross）。照準の文字は #cross（src/lib/boot.ts の boot が ui.crossEl に入れる）に書く。
 // 見た目の乱数 mr() を引く順番を変えると、同じシードでも違う見た目になるので、順番を変えないこと。
 import { lookup, must, nth } from './array.ts';
 import { aimOrigin, aimTarget, beamFrame, castPoint, handUp, reflectDir, shotFrame } from './aim.ts';
@@ -150,8 +150,7 @@ export function drawCastFx(t: number): void {
     full = gear.castSt.full;
   // the circle at the hand
   const P = castPoint(gear.castSt.h, k),
-    // @ts-expect-error -- 古い JS のまま（前の向き f は使っていない）
-    [f, r, u] = handUp(),
+    [, r, u] = handUp(),
     H = gear.hands[gear.castSt.h],
     rs = [H.elem].filter(Boolean).map((ru) => must(lookup(RUNE_DEF, must(ru, '手の性質のルーン').type).ch, 'ルーンの文字')),
     n = 12,

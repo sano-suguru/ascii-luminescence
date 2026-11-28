@@ -1,4 +1,4 @@
-// 先にある物の手がかり（もとは src/game/22-world-hints.js）：言葉では告げず、近くで感じ取るだけの物。
+// 先にある物の手がかり：言葉では告げず、近くで感じ取るだけの物。
 // 下り階段から漏れる物（次の層・特別な階・支道の奥）、支道の入口のまわりの跡、異界の門の光、それぞれの小さな音。封じられた階段の封も描く。
 // 状態の入れ物 here（今いる場所と階）・adv（探索のシード）・player・clock・ui（図鑑）に頼る。呼ぶのは描画（src/lib/loop.ts の tick と
 // src/lib/fixtures.ts の drawRunesWorld）と、見た時の説明（src/lib/look.ts）・階段の封（src/lib/levels.ts・src/lib/debug.ts）。
@@ -166,7 +166,7 @@ export function drawOmens(t: number, dt: number): void {
   const D = here.D;
   const near = (x: number, z: number, r: number): boolean => Math.hypot(x - player.x, z - player.z) < r,
     rate = (n: number): boolean => mr() < n * (dt || 0.016);
-  // 立ちのぼる粒子を、1秒に n 個ほど出す（決まりに gl・vy が無ければ、元と同じく、ここで止まるか NaN になる）
+  // 立ちのぼる粒子を、1秒に n 個ほど出す（決まりに gl・vy が無ければ、ここで止まるか NaN になる）
   const rise = (x: number, z: number, def: OmenDef | Rise, n: number, spread?: number): void => {
     if (!rate(n)) return;
     const vy = def.vy ?? NaN,

@@ -1,5 +1,4 @@
-// 状態の表示と、まわりへの気配（もとは src/game/12-hud-text.js、02-constants.js の placeLabel、06-world.js の showHint、26-spells-hud.js の isPaused、
-// 27-rune-screen.js の renderBook・updateSearch）。状態の入れ物 here・player・adv・ui・stealth・lantern・hudInfo・vfx・clock・keys・saved（魔導書）に頼り、画面の #status・#help・#hint に書く。
+// 状態の表示と、まわりへの気配（placeLabel・showHint・isPaused・renderBook・updateSearch も）。状態の入れ物 here・player・adv・ui・stealth・lantern・hudInfo・vfx・clock・keys・saved（魔導書）に頼り、画面の #status・#help・#hint に書く。
 // 状態の表示（体力・経験・場所・明るさ・伝説の物・見つかっているか・速さ）、明るさと気配の範囲、年代記・操作の案内・魔導書、表示の量、
 // 生き物に見つかった時と物音、立ち止まって辺りを調べる、生き物の頭の上の印（世界の中に文字を置く）
 import { lookup, must, nth } from './array.ts';
@@ -344,7 +343,7 @@ export function updateSearch(dt: number): void {
 }
 
 /**
- * 生き物の頭の上の印（もとは src/game/12-hud-text.js）：眠っている z（上へ流れる2つ）・気づいた !（出た時に大きく）・怪しんでいる ?。
+ * 生き物の頭の上の印：眠っている z（上へ流れる2つ）・気づいた !（出た時に大きく）・怪しんでいる ?。
  * 争わない生き物・見えていない生き物・見えない生き物と、22より遠い（dp はカメラからの距離）時は出さない。近いほど暗くする
  */
 export function drawMark(m: Monster, t: number, dp: number): void {

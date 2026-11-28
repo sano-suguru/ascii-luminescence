@@ -1,6 +1,6 @@
-// 粒子と、世界の中に置く文字（もとは src/game/05-renderer.js）。どちらも、決まった大きさの配列に値を書いて、数を増やすだけ。
-// 配列を GPU に渡す部品（three.js の属性）と、置いた文字の数の受け渡し（flushDyn）は、古い JS（05）にある。粒子を動かして GPU に渡す数を書く処理は src/lib/motes.ts。
-// 数は状態の入れ物 buf（dn・pN）。漂う塵の粒を置く処理（initDust・respawnDust。もとは 15-sound-fire.js）もここ（塵の配列 dust は src/lib/state.ts）。
+// 粒子と、世界の中に置く文字。どちらも、決まった大きさの配列に値を書いて、数を増やすだけ。
+// 配列を GPU に渡す部品（three.js の属性）と、置いた文字の数の受け渡し（flushDyn）は src/lib/render.ts。粒子を動かして GPU に渡す数を書く処理は src/lib/motes.ts。
+// 数は状態の入れ物 buf（dn・pN）。漂う塵の粒を置く処理（initDust・respawnDust）もここ（塵の配列 dust は src/lib/state.ts）。
 import { must, nth } from './array.ts';
 import { G } from './glyphs.ts';
 import { mpick, mr } from './random.ts';
@@ -49,7 +49,7 @@ export function dyn(
 }
 
 /** 描く粒子（塵・ガス・そのほかの粒子を、この順に並べる。src/lib/motes.ts の updateParticles が毎フレーム書き、src/lib/render.ts の initRenderer が作る gfx.ptGeo が描画に渡す）：
- * 位置 ptPos・色 ptCol（1つに3つ）、大きさ ptSize・文字 ptGly（1つに1つ。もとは src/game/05-renderer.js） */
+ * 位置 ptPos・色 ptCol（1つに3つ）、大きさ ptSize・文字 ptGly（1つに1つ） */
 export const ptPos = new Float32Array(PT_TOTAL * 3),
   ptCol = new Float32Array(PT_TOTAL * 3),
   ptSize = new Float32Array(PT_TOTAL),
@@ -116,7 +116,7 @@ export function killP(i: number): void {
   const j = --buf.pN;
   if (i !== j) for (const a of PF) a[i] = a[j] ?? NaN;
 }
-/** 塵の粒 i を、プレイヤーのまわりの床の上（near なら近く、ほかは 10 から 15 先）に置き直す。置ける所が無ければ見えない所へ（もとは src/game/15-sound-fire.js） */
+/** 塵の粒 i を、プレイヤーのまわりの床の上（near なら近く、ほかは 10 から 15 先）に置き直す。置ける所が無ければ見えない所へ */
 export function respawnDust(i: number, near: boolean): void {
   for (let tries = 0; tries < 8; tries++) {
     const a = mr() * Math.PI * 2,
@@ -140,7 +140,7 @@ export function respawnDust(i: number, near: boolean): void {
   dust.z[i] = player.z;
   dust.y[i] = -50;
 }
-/** 塵の粒を全部置き直す（層の降る物で文字を変える：雪・灰・ふつうの塵。もとは src/game/15-sound-fire.js） */
+/** 塵の粒を全部置き直す（層の降る物で文字を変える：雪・灰・ふつうの塵） */
 export function initDust(): void {
   const fl = level().stratum.fall;
   for (let i = 0; i < DUST_N; i++) {

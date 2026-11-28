@@ -1,4 +1,4 @@
-// 世界の組み立て（もとは src/game/06-world.js・18-level-player.js）：階の霧の色、水面の絵、階の文字の組み立て。
+// 世界の組み立て：階の霧の色、水面の絵、階の文字の組み立て。
 // 状態の入れ物 here（今の階）・gfx（three.js の物）に頼る。three.js は src/lib/three.ts の T。
 import { lookup, must, nth } from './array.ts';
 import { type FormType, buildForm } from './bodies/build.ts';
@@ -53,7 +53,7 @@ import {
 /** 今の階 */
 const level = () => must(here.D, '今の階 here.D');
 
-/** 階の霧の色と濃さ（層の霧の色、無ければ溶岩の海・深淵の色か、深さごとの色。階の暗さを掛ける。もとは src/game/18-level-player.js） */
+/** 階の霧の色と濃さ（層の霧の色、無ければ溶岩の海・深淵の色か、深さごとの色。階の暗さを掛ける） */
 export function setFog(): void {
   const k = level().prof.fogDark,
     f = (
@@ -70,7 +70,7 @@ export function setFog(): void {
   gfx.fogBase = 0.05 + Math.min(here.depth - 1, 6) * 0.002;
   must(gfx.U).uFogDen.value = gfx.fogBase;
 }
-/** 水面の絵を書き直す（水のマスごとに、深さ・流れ・湖か・藻と、上から届く2つの灯りの番号と重み。もとは src/game/06-world.js） */
+/** 水面の絵を書き直す（水のマスごとに、深さ・流れ・湖か・藻と、上から届く2つの灯りの番号と重み） */
 export function updateWater(): void {
   const W2 = must(gfx.waterTex).image.data,
     L2 = must(gfx.waterLTex).image.data,
@@ -199,7 +199,7 @@ function sentAttr(a: Float32Array | Uint16Array | Uint32Array, size: number) {
 }
 /**
  * 階の文字を組み立てる（壁の面・洞窟の岩肌と天井・床と液体・橋・茂み・結晶・大きな茸・部屋の仕掛け・宝物庫・柱）。文字は区切りごとに1つの
- * three.js の Mesh にまとめて場面に入れ（gfx.chunks）、壁の向こうを隠す板も作る（gfx.occMesh）。前の階の物は捨てる（もとは src/game/06-world.js）
+ * three.js の Mesh にまとめて場面に入れ（gfx.chunks）、壁の向こうを隠す板も作る（gfx.occMesh）。前の階の物は捨てる
  */
 export function buildWorld(): void {
   for (const c of gfx.chunks) {
@@ -263,13 +263,13 @@ export function buildWorld(): void {
       const ci = cellOf(x, z),
         dm = ci >= 0 ? nth(level().darkMul, ci) : 1;
       if (dm < 1) {
-        // oxlint-disable-next-line typescript/consistent-type-assertions -- この要素はすぐ上の push で書いたので、いつもある（元の書き方のまま）
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- この要素はすぐ上の push で書いたので、いつもある
         (LW[n * 3] as number) *= dm;
-        // oxlint-disable-next-line typescript/consistent-type-assertions -- この要素はすぐ上の push で書いたので、いつもある（元の書き方のまま）
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- この要素はすぐ上の push で書いたので、いつもある
         (LW[n * 3 + 1] as number) *= dm;
-        // oxlint-disable-next-line typescript/consistent-type-assertions -- この要素はすぐ上の push で書いたので、いつもある（元の書き方のまま）
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- この要素はすぐ上の push で書いたので、いつもある
         (LW[n * 3 + 2] as number) *= dm;
-        // oxlint-disable-next-line typescript/consistent-type-assertions -- この要素はすぐ上の push で書いたので、いつもある（元の書き方のまま）
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- この要素はすぐ上の push で書いたので、いつもある
         (EM[n * 4] as number) *= 0.3 + 0.7 * dm;
       }
     }
@@ -796,7 +796,7 @@ export function buildWorld(): void {
         th = room
           ? room.theme
           : ti === TC
-            ? // oxlint-disable-next-line typescript/consistent-type-assertions -- 部屋が見つからない時の空の物（元の読み方のまま。欄を読むための型だけ）
+            ? // oxlint-disable-next-line typescript/consistent-type-assertions -- 部屋が見つからない時の空の物（欄を読むための型だけ）
               (rooms.find((r) => r.theme) || ({} as { theme?: Theme | null })).theme || null
             : null,
         cave = !!(room && room.cave);
@@ -1005,6 +1005,7 @@ export function buildWorld(): void {
           }
       }
       if (ti === TC) {
+        // 裂け目のマスには、床の物を置かない
       } else if (level().bridge[i]) {
         const dir = level().bridgeDir[i],
           ax: [number, number] = dir === 0 ? [1, 0] : [0, 1],
@@ -1246,12 +1247,6 @@ export function buildWorld(): void {
             );
           }
       } else if (liquid[i] === LQ_WATER) {
-        const lake = th && (th.k === 'lake' || level().stratum.k === 'cavern'),
-          // @ts-expect-error -- 古い JS のまま（使っていない。tools/same-code.mjs が同じ文と見るため）
-          wc = lake ? [0.22, 0.72, 1.0] : [0.28, 0.62, 1.0];
-        // @ts-expect-error -- 古い JS のまま（使っていない。tools/same-code.mjs が同じ文と見るため）
-        const wn = level().stratum.flood ? 3 : 4,
-          ws = level().stratum.flood ? 0.6 : 0.5;
         // the surface itself is drawn by the water plane
       } else if (surface[i] === SF_ICE) {
         const tn = level().thin[i];
@@ -1357,6 +1352,7 @@ export function buildWorld(): void {
             );
         }
       } else if (level().decoCell.get(i) && must(level().decoCell.get(i)).k === 'carpet') {
+        // 敷物のマスには、床の物を置かない
       } else if (level().vaultCell[i] && !cave) {
         // mosaic floor: a fixed pattern marks vault ground as built, not natural
         const vs = nth(VAULTS, nth(level().vaultCell, i) - 1);

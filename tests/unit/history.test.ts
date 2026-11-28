@@ -10,10 +10,10 @@ const fnv = (s: string): string => {
 };
 
 describe('makeHistory', () => {
-  it('TypeScript に移す前と、同じシードで同じ歴史になる（乱数を引く順番が変わっていない）', () => {
+  it('同じシードで決まった歴史になる（乱数を引く順番が変わっていない）', () => {
     let all = '';
     for (let s = 0; s < 500; s++) all += JSON.stringify(makeHistory(s));
-    expect(fnv(all)).toBe('86b388a2'); // 移す前の実装で出した値
+    expect(fnv(all)).toBe('86b388a2');
     const h = makeHistory(202);
     expect(h.civ).toEqual({ name: 'ゼラ', ep: '光を編む民' });
     expect(h.events[0]).toEqual({ art: 'tower', text: '第一の王マグザは、石の迷宮の上にゼラの最初の都を築いた。', ruler: 0 });

@@ -1,4 +1,4 @@
-// マウスを捕まえる（ポインタロック）・音量（もとは src/game/16-view-input.js・15-sound-fire.js）。状態の入れ物 ui・SND に頼る。
+// マウスを捕まえる（ポインタロック）・音量。状態の入れ物 ui・SND に頼る。
 // ポインタロックの変わり目（pointerlockchange・pointerlockerror）を受け取る登録は、src/lib/input.ts の initPointer にある。
 import { must, nth } from './array.ts';
 import { msg } from './log.ts';

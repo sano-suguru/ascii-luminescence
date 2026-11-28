@@ -1,4 +1,4 @@
-// プレイヤーの動き（もとは src/game/28-camera-player.js・16-view-input.js）：通れない所の当たり判定、歩く・泳ぐ・滑る・転がる・
+// プレイヤーの動き：通れない所の当たり判定、歩く・泳ぐ・滑る・転がる・
 // 突進、通れない所の一言、生き物に押されること、カメラ。状態の入れ物 player・here・ui・gfx・edge・keys に頼る。
 import { must } from './array.ts';
 import { sRumble, sSplash } from './audio.ts';
@@ -18,7 +18,7 @@ import { CELL, EYE, LQ_BOG, LQ_DEEP, LQ_LAVA, LQ_WATER, MH, MW, PR, SF_ICE, SF_M
 /** 今の階 */
 const level = () => must(here.D, '今の階 here.D');
 
-/** 半径 r の丸が、(x, z) で通れない所に重なるか（壁・裂け目・結晶・溶岩・閉じた鉄格子・柱・置物。重なった物を player.blockType に入れる。もとは src/game/16-view-input.js） */
+/** 半径 r の丸が、(x, z) で通れない所に重なるか（壁・裂け目・結晶・溶岩・閉じた鉄格子・柱・置物。重なった物を player.blockType に入れる） */
 export function solidAt(x: number, z: number, r: number): boolean {
   const x0 = Math.floor((x - r) / CELL),
     x1 = Math.floor((x + r) / CELL),
@@ -64,7 +64,7 @@ export function solidAt(x: number, z: number, r: number): boolean {
 }
 /**
  * プレイヤーの動き（毎フレーム）：歩く・泳ぐ（深い水・沼・浅い水・泥で遅く、網で止まる）・氷で滑る・突進・転がる、通れない所の一言と裂け目の縁、
- * 生き物に押される、目の高さ（深い水では低く）とカメラ（もとは src/game/28-camera-player.js）
+ * 生き物に押される、目の高さ（深い水では低く）とカメラ
  */
 export function updatePlayer(dt: number): void {
   if (adv.dead) return;
@@ -236,7 +236,7 @@ export function updatePlayer(dt: number): void {
   );
   gfx.camera.rotation.set(player.pitch, player.yaw, Math.sin(player.bob) * 0.004 * spd);
 }
-// 型だけの declare namespace で、関数の欄の型を付ける（組み立てで消える。古い JS の文をそのまま残すため）
+// 型だけの declare namespace で、関数の欄の型を付ける（組み立てで消える）
 export declare namespace updatePlayer {
   /** 階段の封の伝言を最後に出したゲームの時刻（src/lib/levels.ts の checkEvents が読み書きする） */
   let sealT: number | undefined;

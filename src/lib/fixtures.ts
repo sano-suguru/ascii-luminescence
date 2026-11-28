@@ -1,7 +1,7 @@
-// 階に置いてある物を描く（もとは src/game/14-lights-fixtures.js の drawFixtures・drawDoors、21-altars-heal.js の drawSprings、
-// 22-world-hints.js の drawGraves、13-creatures.js の drawWebs・webTouch）：灯りの備品（火鉢・水晶・たいまつ・階段など）、扉（近づくと開く）、
-// 泉、墓、クモの巣（触れると震え、燃えると落ちる）、罠と鉄格子（18-level-player.js の drawTraps）。毎フレーム、世界の中に文字を置き（dyn）、粒子を出す（spawn）。
-// 床と台と祭壇のルーン・石碑・宝物庫の兆しと、光線・飛ぶ物・詠唱と付け替えのルーン（22-world-hints.js の drawRunesWorld）。
+// 階に置いてある物を描く（drawFixtures・drawDoors・drawSprings・drawGraves・drawWebs・webTouch・drawTraps・drawRunesWorld）：
+// 灯りの備品（火鉢・水晶・たいまつ・階段など）、扉（近づくと開く）、
+// 泉、墓、クモの巣（触れると震え、燃えると落ちる）、罠と鉄格子。毎フレーム、世界の中に文字を置き（dyn）、粒子を出す（spawn）。
+// 床と台と祭壇のルーン・石碑・宝物庫の兆しと、光線・飛ぶ物・詠唱と付け替えのルーン。
 // 状態の入れ物 here（今の階）・player・blaze（火）・clock・ui・gfx（カメラの位置。読むだけ）・fight（光線・飛ぶ物）・gear（溜めと付け替え）に頼る。
 // 呼ぶのは描画（src/lib/loop.ts の tick。泉と墓はこのファイルの drawRunesWorld も）と、
 // プレイヤーの動き（src/lib/player.ts の updatePlayer が webTouch）。
@@ -897,7 +897,7 @@ export function drawFixtures(t: number, dt: number): void {
         break;
       }
       case 'torch': {
-        // たいまつには壁の向き nx・nz と壁の位置 wx・wz がある（無ければ、元と同じく NaN になる）
+        // たいまつには壁の向き nx・nz と壁の位置 wx・wz がある（無ければ NaN になる）
         const nx = f.nx ?? NaN,
           nz = f.nz ?? NaN,
           yaw = Math.atan2(nx, nz),
@@ -1320,7 +1320,7 @@ export function drawGraves(t: number): void {
     for (let y = 0; y < 3; y++) dyn(x, 0.2 + y * 0.3, z, G(y === 2 ? '+' : '|'), 0.34, 0.55, 0.55, 0.62, 0, 0);
     dyn(x - 0.18, 0.62, z, G('-'), 0.3, 0.5, 0.5, 0.58, 0, 0);
     dyn(x + 0.18, 0.62, z, G('-'), 0.3, 0.5, 0.5, 0.58, 0, 0);
-    // 墓には必ずルーンがある（無ければ、元と同じくここで止まる）
+    // 墓には必ずルーンがある（無ければここで止まる）
     const rune = must(it.rune, '墓のルーン'),
       c = must(runeCol(rune), '墓のルーンの色'),
       b = 0.9 + 0.4 * Math.sin(t * 1.8 + it.i);
@@ -1434,7 +1434,7 @@ export function webTouch(i: number): boolean {
 }
 
 /**
- * 罠と鉄格子を描く（もとは src/game/18-level-player.js の drawTraps）：見つかった罠（30 より遠い物は描かない。作動した物は暗い）、
+ * 罠と鉄格子を描く：見つかった罠（30 より遠い物は描かない。作動した物は暗い）、
  * 鉄格子の宝物庫の格子（開くほど上がる）と壁のレバー、網に掛かっている間の目の前の網
  */
 export function drawTraps(t: number): void {
@@ -1508,7 +1508,7 @@ export function drawTraps(t: number): void {
 }
 
 /**
- * 床のルーンと、置いてある物の光（もとは src/game/22-world-hints.js）：床の目印と魔法の場・階段の封・泉・墓を描き、
+ * 床のルーンと、置いてある物の光：床の目印と魔法の場・階段の封・泉・墓を描き、
  * 宝物庫の褒美の部屋の兆し（番人が目を覚ます部屋は、床に立つ影と赤い目。天井が崩れる部屋は、床のひびと落ちる砂）、空の枠、床と台と祭壇のルーン（番人が生きている間は暗く）、
  * 石碑を描く。術の跡（光線・飛ぶ物）と、詠唱している手の前を回るルーン、付け替えの間に体のまわりを回るルーンも、ここで描く
  */

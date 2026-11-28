@@ -1,6 +1,6 @@
 // テストの道具：世界の中の手がかりと詠唱の見た目（src/lib/arrows.ts の arrowTargets・inPlainSight・drawArrows、camera.ts の updateSectionAir、
 // fixtures.ts の drawRunesWorld、chantfx.ts の simPath・drawCastFx・updateCross）を、たくさんの場合で呼び、結果を1つの文字列にまとめる。
-// F は関数をまとめた物。hints.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
+// F は関数をまとめた物。hints.test.mjs が、この文字列の指紋を確かめる。
 // 階は Node で本物の迷宮を生成する（gen-places.ts の全部の場所）ので、迷宮の生成を変えると、この指紋も変わる。
 // 1つの場合では、本物の階に、祭壇の組（ルーン・鍛え・癒し・枠を開ける・まだ中身の無い物・番人のいる物・主の物）・台・主の褒美・宝物庫の褒美（番人・崩れる・何も無い）・
 // 空の枠・泉・墓・石碑・分かれ道・階段までの距離・支道の階段・異界の門・宝物庫の門・光線・飛ぶ物（矢・玉・剣の波・突き）と、生き物（番人の群れ・見えている敵・

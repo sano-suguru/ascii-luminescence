@@ -1,4 +1,4 @@
-// 音を鳴らす（Web Audio。もとは src/game/15-sound-fire.js。術を放つ音 castSound は 22-world-hints.js、詠唱の声 chantStart は 26-spells-hud.js）。
+// 音を鳴らす（Web Audio。術を放つ音 castSound と詠唱の声 chantStart も）。
 // 状態の入れ物 SND（音）・player（聞く位置と向き）・here・blaze（まわりの様子）・gear（詠唱の声が溜めに音節を書く）に頼る物。
 // 音の表と小さな道具（SND_LV・sEnv など）は src/lib/sound.ts。
 import { must, nth } from './array.ts';
@@ -504,7 +504,7 @@ export function sAlarm(x: number | undefined, z: number | undefined): void {
     os.stop(t + k * 0.22 + 0.21);
   }
 }
-/** 術を放つ音（性質ごと：火はこもった音とぱちぱち、氷は高い澄んだ音、雷は鋭い音と低いうなり、毒は泡、ほかは風切り。もとは src/game/22-world-hints.js） */
+/** 術を放つ音（性質ごと：火はこもった音とぱちぱち、氷は高い澄んだ音、雷は鋭い音と低いうなり、毒は泡、ほかは風切り） */
 export function castSound(sp: { elem: string | null }, x?: number, z?: number): void {
   if (!sndReady()) return;
   const t = must(SND.ctx).currentTime,
@@ -535,7 +535,7 @@ export function chantStart(el: string | null): ChantVoice | null {
     out = ctx.createGain();
   out.gain.value = 1;
   out.connect(sOut(undefined, undefined, 0.85));
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- 性質が無い時（null）も、元のまま表を引いて 165 にする（表を文字の鍵で引くための型だけ）
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- 性質が無い時（null）も、表を引いて 165 にする（表を文字の鍵で引くための型だけ）
   const root = ELEM_ROOT[el as string] || 165;
   let next = ctx.currentTime + 0.03,
     syl = 0,

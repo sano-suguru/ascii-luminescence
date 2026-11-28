@@ -1,4 +1,4 @@
-// 入力（もとは src/game/17-meta.js と 16-view-input.js）：マウスを捕まえた・捕まえられなかった時の受け取りと指で遊ぶ時の土台を用意する initPointer、
+// 入力：マウスを捕まえた・捕まえられなかった時の受け取りと指で遊ぶ時の土台を用意する initPointer、
 // マウスとキーの処理を用意する initInput（診断の記録もここで始める）、キーの処理 onKeyDown、次のビルドに持ち替える nextBuild（ホイールと、指の操作の [持ち替え]）、
 // 装備の画面とメニューを開け閉めする togglePack・toggleMenu（Tab・Esc とタッチのボタン）。
 import { must, nth } from './array.ts';
@@ -83,7 +83,7 @@ function onKeyDown(e: KeyboardEvent): void {
     e.preventDefault();
     return;
   }
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- キーを受けた所は画面の部品（元の読み方のまま）
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- キーを受けた所は画面の部品
   if (e.target && (e.target as HTMLElement).tagName === 'INPUT') {
     if (e.code === 'Enter') {
       e.preventDefault();
@@ -238,7 +238,7 @@ export function initInput(): void {
     (e) => {
       if (!ui.menuOpen && !ui.invOpen) return;
       if (ui.dbgOpen) {
-        // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品（元の読み方のまま）
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品
         if (!(e.target && (e.target as Element).closest && (e.target as Element).closest('#dbgp'))) {
           e.preventDefault();
           e.stopPropagation();
@@ -246,7 +246,7 @@ export function initInput(): void {
         }
         return;
       }
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品（元の読み方のまま）
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- 押された所は画面の部品
       const inside = e.target && (e.target as Element).closest && (e.target as Element).closest('#menu,#pack');
       if (inside) return;
       e.preventDefault();
@@ -282,10 +282,7 @@ export function initInput(): void {
       beginCast('L');
       return;
     }
-    if (e.button === 0) {
-      ui.downAt = [e.clientX, e.clientY];
-      beginCast('L');
-    }
+    if (e.button === 0) beginCast('L');
     ui.dragging = true;
     ui.lmx = e.clientX;
     ui.lmy = e.clientY;
@@ -298,7 +295,6 @@ export function initInput(): void {
       if (e.button === 0) releaseCast('L');
       if (e.button === 2) releaseCast('R');
     }
-    ui.downAt = null;
     ui.dragging = false;
     updateResume();
   });

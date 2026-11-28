@@ -1,5 +1,5 @@
 // 特性を名前で読む所（TL(術, '名前')・tv(術, '名前')・wTL(手, '名前')）が、どれも特性の表（src/lib/runes.ts の TRAITS）にある名前かを、
-// src/lib/*.ts と src/game/*.js を構文の木で調べて確かめる。武器に特性を付ける所（rollTraits・鍛えの祭壇・試しの間・墓のルーン）は TRAITS の名前しか付けないので、
+// src/lib/ の .ts を構文の木で調べて確かめる。武器に特性を付ける所（rollTraits・鍛えの祭壇・試しの間・墓のルーン）は TRAITS の名前しか付けないので、
 // 表に無い名前を読む所は、ゲームの中ではいつも 0 になる（効かない処理が残る）。
 // テストを .mjs で書くのは、構文の木の型を、as を使わずに付けられないため。
 import { readFileSync, readdirSync } from 'node:fs';
@@ -12,14 +12,13 @@ const ROOT = join(import.meta.dirname, '../..');
 const READERS = new Set(['TL', 'tv', 'wTL']);
 
 /**
- * 文 text（lang は 'ts' か 'js'。古い JS は包みの中の文なので、関数で包んで読む）の中の、特性を名前で読む所 [名前か null（名前が文字列でない）, 行]。
+ * TypeScript の文 text の中の、特性を名前で読む所 [名前か null（名前が文字列でない）, 行]。
  * TL・tv・wTL の定義の中（tv が TL を呼ぶ所）は数えない
  */
-export function traitReads(text, lang) {
-  const wrap = lang === 'js' ? '(function(){\n' : '',
-    ast = parseAst(`${wrap}${text}${lang === 'js' ? '\n})' : ''}`, { lang }),
+export function traitReads(text) {
+  const ast = parseAst(text, { lang: 'ts' }),
     out = [];
-  const line = (pos) => text.slice(0, Math.max(0, pos - wrap.length)).split('\n').length;
+  const line = (pos) => text.slice(0, pos).split('\n').length;
   const walk = (node) => {
     if (!node || typeof node.type !== 'string') return;
     if ((node.type === 'VariableDeclarator' || node.type === 'FunctionDeclaration') && READERS.has(node.id?.name)) return;
@@ -38,27 +37,23 @@ export function traitReads(text, lang) {
 describe('特性の名前', () => {
   it('src/ の中で特性を名前で読む所は、全部 TRAITS にある（名前は文字列で書く）', () => {
     const known = new Set(Object.values(TRAITS).flatMap((t) => Object.keys(t))),
-      files = [
-        ...readdirSync(join(ROOT, 'src/lib'))
-          .filter((f) => f.endsWith('.ts'))
-          .map((f) => [`src/lib/${f}`, 'ts']),
-        ...readdirSync(join(ROOT, 'src/game'))
-          .filter((f) => /^\d{2}-[a-z0-9-]+\.js$/.test(f))
-          .map((f) => [`src/game/${f}`, 'js']),
-      ],
-      reads = files.flatMap(([f, lang]) => traitReads(readFileSync(join(ROOT, f), 'utf8'), lang).map(([k, ln]) => [k, `${f}:${ln}`])),
+      files = readdirSync(join(ROOT, 'src/lib'), { recursive: true })
+        .map(String)
+        .filter((f) => f.endsWith('.ts'))
+        .map((f) => `src/lib/${f}`),
+      reads = files.flatMap((f) => traitReads(readFileSync(join(ROOT, f), 'utf8')).map(([k, ln]) => [k, `${f}:${ln}`])),
       bad = reads.filter(([k]) => k === null || !known.has(k)).map(([k, at]) => `${k ?? '（文字列でない）'} ${at}`);
     expect(bad).toEqual([]);
     // 調べ方が中身を通っているか：読む所と名前の種類が十分ある（数・ホーミング・跳ね返りは sp.aff で読むので、TL では読まない）
     expect([reads.length > 20, new Set(reads.map(([k]) => k)).size > 12]).toEqual([true, true]);
   });
-  it('調べ方：表に無い名前・文字列でない名前・古い JS の中の物を見つける', () => {
-    expect(traitReads("const a = TL(sp, 'echo'),\n  b = tv(sp, 'speed');\nwTL(h, k);", 'ts')).toEqual([
+  it('調べ方：表に無い名前・文字列でない名前を見つける', () => {
+    expect(traitReads("const a = TL(sp, 'echo'),\n  b = tv(sp, 'speed');\nwTL(h, k);")).toEqual([
       ['echo', 1],
       ['speed', 2],
       [null, 3],
     ]);
-    expect(traitReads("function f(){\n  return TL(p.sp, 'pin') + other(sp, 'x');\n}", 'js')).toEqual([['pin', 2]]);
-    expect(traitReads('export const tv = (sp, k) => TRAIT_V[k][TL(sp, k)];\nfunction wTL(h, k) { return TL(h, k); }', 'ts')).toEqual([]);
+    expect(traitReads("function f(){\n  return TL(p.sp, 'pin') + other(sp, 'x');\n}")).toEqual([['pin', 2]]);
+    expect(traitReads('export const tv = (sp, k) => TRAIT_V[k][TL(sp, k)];\nfunction wTL(h, k) { return TL(h, k); }')).toEqual([]);
   });
 });

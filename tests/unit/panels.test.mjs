@@ -12,7 +12,7 @@ import { NAMES, panelCases, panelDom, panelText } from './panels-cases.mjs';
 import { swapGlobals } from './ui-cases.mjs';
 import { caseOut } from './case-out.mjs';
 
-// ここで移さない重い処理は、呼んだ時の記録だけ取る（新しい階・新しい探索・装備の画面の開け閉め。どれも古い関数と新しい関数の両方から、同じ入れ替えた物が呼ばれる）
+// ここで確かめない重い処理は、呼んだ時の記録だけ取る（新しい階・新しい探索・装備の画面の開け閉め）
 const mocked = vi.hoisted(() => []);
 vi.mock('../../src/lib/levels.ts', async (orig) => {
   const { here, adv, ui: u } = await import('../../src/lib/state.ts');
@@ -37,7 +37,7 @@ const makeF = async () => {
   return { ...P, ...M, updateLife: C.updateLife };
 };
 
-describe('移す前と同じ', () => {
+describe('指紋', () => {
   it(`レベルアップ・祭壇・メニュー・命の一歩（${SEEDS}の場合）の指紋`, { timeout: 120000 }, async () => {
     // モジュールを、場合の前に読んでおく（初めて読む時に、モジュールの一番外が見た目の乱数を引くことがあるため）
     await Promise.all([import('../../src/lib/panels.ts'), import('../../src/lib/menu.ts'), import('../../src/lib/combat.ts')]);
@@ -46,7 +46,7 @@ describe('移す前と同じ', () => {
       calls = all.flatMap((c) => c.calls);
     caseOut('panels', body);
     expect([fnv(body), body.length]).toEqual(['8cc3f1be', 1499663]);
-    // 場合が中身を通っているか：移した関数が全部呼ばれ、どれも止まらず、待たせた処理も止まらない
+    // 場合が中身を通っているか：確かめる関数が全部呼ばれ、どれも止まらず、待たせた処理も止まらない
     expect(new Set(calls.map((c) => c.name).filter((n) => NAMES.includes(n)))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).map((c) => [c.name, c.threw])).toEqual([]);
     expect(all.every((c) => c.timers === 0)).toBe(true);

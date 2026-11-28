@@ -1,4 +1,4 @@
-// 乱数と小さな道具（もとは src/game/02-constants.js）。
+// 乱数と小さな道具。
 
 /** シードで決まる乱数（0 以上 1 未満）を返す関数を作る。同じシードなら、いつも同じ並びになる */
 export function mulberry32(seed: number): () => number {
