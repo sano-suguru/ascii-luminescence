@@ -1,4 +1,4 @@
-// 洞窟の形と宝物庫の絵と、壁に刻む絵 ARTS（もとは src/game/03-vaults-history.js）。洞窟の形は迷宮の乱数（rand）を使う。
+// 洞窟の形と宝物庫の絵と、壁に刻む絵 ARTS。洞窟の形は迷宮の乱数（rand）を使う。
 import { nth } from './array.ts';
 import { rand } from './random.ts';
 import { D4 } from './world.ts';
@@ -347,7 +347,7 @@ export function vaultCells(v: { map: readonly string[] }): string[][] {
 }
 
 // ASCII-art motifs carved into walls; each row is exactly 7 characters
-/** 壁に刻む絵（行はどれも7文字。年代記の出来事の彫刻に使う。もとは src/game/03-vaults-history.js） */
+/** 壁に刻む絵（行はどれも7文字。年代記の出来事の彫刻に使う） */
 export const ARTS: Record<string, string[]> = {
   tower: ['   ^   ', '  /#\\  ', '  |#|  ', ' /|#|\\ ', '/_|#|_\\'],
   star: ['   .   ', ' \\ | / ', '-- * --', ' / | \\ ', "   '   "],

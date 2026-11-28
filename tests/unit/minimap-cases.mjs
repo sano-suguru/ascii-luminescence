@@ -1,5 +1,5 @@
 // テストの道具：ミニマップ（src/lib/minimap.ts の sizeMap・drawMap）を、たくさんの場合で呼び、描き手にしたことを1つの文字列にまとめる。
-// F は関数をまとめた物。minimap.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
+// F は関数をまとめた物。minimap.test.mjs が、この文字列の指紋を確かめる。
 // 階は Node で本物の迷宮を生成する（gen-places.ts の全部の場所）ので、迷宮の生成を変えると、この指紋も変わる。
 // 1つの場合では、本物の階のマスに、地面・液体・橋・鉱脈・水晶・穴・扉（開き・閉じ・焼け落ち）・火・灰・踏み分けた茂み・毒の霧・備品・飾りを散らし、
 // 床の物・罠・鉄格子・クモの巣・生き物（見えている・化けている・透明で近い・遠い）を足して、見たマス・今見えているマス・覚えた色を決め、
@@ -65,7 +65,7 @@ export function fakeCanvas() {
   return { canvas, ctx, log };
 }
 
-/** seeds：drawMap の場合の数。canvas：fakeCanvas() の結果（古い JS も新しい関数も、同じ物に描く） */
+/** seeds：drawMap の場合の数。canvas：fakeCanvas() の結果 */
 export async function minimapCases(F, fake, seeds) {
   const env = await loadEnv(),
     out = [];

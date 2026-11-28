@@ -1,4 +1,4 @@
-// 結果の画面（もとは src/game/18-level-player.js・24-goal.js）：死んだ時と勝った時の画面に出す場所・伝承・墓に遺す物、勝った時の画面。
+// 結果の画面：死んだ時と勝った時の画面に出す場所・伝承・墓に遺す物、勝った時の画面。
 // 状態の入れ物 adv・saved・here・gear・ui（墓に遺せる物と選んでいる物）に頼る。
 import { lookup, must, nth } from './array.ts';
 import { sChime } from './audio.ts';

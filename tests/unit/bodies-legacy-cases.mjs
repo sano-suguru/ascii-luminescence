@@ -1,5 +1,5 @@
 // テストの道具：生き物の形（src/lib/bodies/build.ts の buildForm）・まわりの飾りと王の影の変身（auras.ts）・忘れられた獣の記録（save.ts）を、
-// たくさんの場合で呼び、結果を1つの文字列にまとめる。bodies-legacy.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
+// たくさんの場合で呼び、結果を1つの文字列にまとめる。bodies-legacy.test.mjs が、この文字列の指紋を確かめる。
 // F は関数をまとめた物。形の場合は、種類ごとに見た目の乱数（Math.random）をシードで決めてから作り、点の並びを数える。
 // テストを .mjs で書くのは、偽の画面の部品・偽の Web Audio・偽の localStorage を、本物の型に合わせられないため。
 // 書き換えた状態と、document・localStorage・setTimeout・Math.random・音の乱数は、終わったら元に戻す。

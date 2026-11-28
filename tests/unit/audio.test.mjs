@@ -1,6 +1,5 @@
 // 音を鳴らす処理と詠唱の声 chantStart（どちらも src/lib/audio.ts）の単体テスト。Node には Web Audio が無いので、偽の Web Audio（fake-audio.mjs）で確かめる。
-// 指紋の値は、移す前の古い JS（src/game/15-sound-fire.js と、遠吠え・警報は 13-creatures.js。詠唱の声は 26-spells-hud.js の、Math.random を直に引いていた版）に、
-// 音の乱数（sndRand）と同じ並びを Math.random として入れた時と同じになる（audio-cases.mjs の場合を、古い関数で数えて確かめた）。
+// 指紋は、audio-cases.mjs の場合の結果。
 // 迷宮の生成は使わないので、生成を変えてもこの指紋は変わらない。
 // 音を鳴らす所が見た目の乱数を引いていないかは、src/ を構文の木で調べて確かめる（sound-random-check.mjs）。
 // テストを .mjs で書くのは、偽の Web Audio を AudioContext の型に合わせられないため（型の言い切り as を使わない）
@@ -179,7 +178,7 @@ describe('音の土台', () => {
   });
 });
 
-describe('移す前と同じ', () => {
+describe('指紋', () => {
   it('音の部品・効果音・まわりの音の記録と状態の変わり方（60シード、1440の場合）の指紋', () => {
     const before = JSON.stringify([player, SND.lv, SND.on, SND.ctx]);
     const all = audioCases(A, 60),
@@ -372,7 +371,7 @@ describe('音を鳴らす所が、見た目の乱数を引かない（src/ を�
       .filter((f) => (f.startsWith('game/') && f.endsWith('.js')) || (f.startsWith('lib/') && f.endsWith('.ts')))
       .map((name) => ({ name, text: readFileSync(join(SRC, name), 'utf8') }));
     const r = soundRandomCheck(files, audioNames);
-    // 古い JS の音を鳴らす関数も見つけている（本体が if(!sndReady())return で始まる関数）
+    // 音を鳴らす関数を見つけている（本体が if(!sndReady())return で始まる関数）
     expect(r.sound).toEqual(expect.arrayContaining(['castSound', 'chantStart', 'omenSound', 'sShriek', 'sDrip', 'sChime']));
     expect(r.bad).toEqual([]);
     // audio.ts（コメントを除く。詠唱の声も入る）は丸ごと調べる：見た目の乱数を、どんな形でも使わない（音だけの処理の外の形も、変数に入れてから渡す形も）

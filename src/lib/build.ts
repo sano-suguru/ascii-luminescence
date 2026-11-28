@@ -1,4 +1,4 @@
-// 世界の組み立て（もとは src/game/06-world.js・18-level-player.js）：階の霧の色、水面の絵、階の文字の組み立て。
+// 世界の組み立て：階の霧の色、水面の絵、階の文字の組み立て。
 // 状態の入れ物 here（今の階）・gfx（three.js の物）に頼る。three.js は src/lib/three.ts の T。
 import { lookup, must, nth } from './array.ts';
 import { type FormType, buildForm } from './bodies/build.ts';
@@ -53,7 +53,7 @@ import {
 /** 今の階 */
 const level = () => must(here.D, '今の階 here.D');
 
-/** 階の霧の色と濃さ（層の霧の色、無ければ溶岩の海・深淵の色か、深さごとの色。階の暗さを掛ける。もとは src/game/18-level-player.js） */
+/** 階の霧の色と濃さ（層の霧の色、無ければ溶岩の海・深淵の色か、深さごとの色。階の暗さを掛ける） */
 export function setFog(): void {
   const k = level().prof.fogDark,
     f = (
@@ -70,7 +70,7 @@ export function setFog(): void {
   gfx.fogBase = 0.05 + Math.min(here.depth - 1, 6) * 0.002;
   must(gfx.U).uFogDen.value = gfx.fogBase;
 }
-/** 水面の絵を書き直す（水のマスごとに、深さ・流れ・湖か・藻と、上から届く2つの灯りの番号と重み。もとは src/game/06-world.js） */
+/** 水面の絵を書き直す（水のマスごとに、深さ・流れ・湖か・藻と、上から届く2つの灯りの番号と重み） */
 export function updateWater(): void {
   const W2 = must(gfx.waterTex).image.data,
     L2 = must(gfx.waterLTex).image.data,
@@ -199,7 +199,7 @@ function sentAttr(a: Float32Array | Uint16Array | Uint32Array, size: number) {
 }
 /**
  * 階の文字を組み立てる（壁の面・洞窟の岩肌と天井・床と液体・橋・茂み・結晶・大きな茸・部屋の仕掛け・宝物庫・柱）。文字は区切りごとに1つの
- * three.js の Mesh にまとめて場面に入れ（gfx.chunks）、壁の向こうを隠す板も作る（gfx.occMesh）。前の階の物は捨てる（もとは src/game/06-world.js）
+ * three.js の Mesh にまとめて場面に入れ（gfx.chunks）、壁の向こうを隠す板も作る（gfx.occMesh）。前の階の物は捨てる
  */
 export function buildWorld(): void {
   for (const c of gfx.chunks) {

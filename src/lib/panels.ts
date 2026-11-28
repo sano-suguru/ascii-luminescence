@@ -1,5 +1,4 @@
 // レベルアップの画面と祭壇の画面（どちらも #altarp に描く。開いている間は、ゲームが止まる）。
-// もとは src/game/18-level-player.js（レベルアップ）と src/game/21-altars-heal.js（祭壇の画面）。
 // レベルアップ：敵を倒して経験が貯まると、時が止まり、3つから1つを選ぶ（恩恵（加護。行いと性質に結び付いた強さ。代償のある物も）を2つと、ルーンか護符を1つ）。
 // 最大体力はレベルでは増えない（新しい層に入るたびに 4 増える）。
 // 祭壇の画面：灯った祭壇の近くで、3つの選択肢を並べる。クリックで選ぶ。
@@ -292,7 +291,7 @@ export function updateAltarPanel(): void {
   if (ui.started && !adv.dead && !isPaused() && here.D) {
     let best: Item | null = null,
       bd = 1.5;
-    // oxlint-disable-next-line typescript/no-unnecessary-condition -- 古い JS のまま（items はいつもある）
+    // oxlint-disable-next-line typescript/no-unnecessary-condition -- items はいつもある
     for (const it of here.D.items || []) {
       if (it.taken || !it.altar || !it.rune || it.slot !== 1) continue;
       if (it.guardG !== undefined && guardedNow(it)) continue;

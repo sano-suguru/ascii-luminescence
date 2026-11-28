@@ -1,4 +1,4 @@
-// 開発用（もとは src/game/23-debug.js）：F2 の画面と window.dbg（自動の確かめ用）が同じ命令 dbg を使う。F2 の画面 setDbg・renderDbg と、URL の指定 dbgUrl、
+// 開発用：F2 の画面と window.dbg（自動の確かめ用）が同じ命令 dbg を使う。F2 の画面 setDbg・renderDbg と、URL の指定 dbgUrl、
 // window.dbg に置く initDbg（開発用モードがオフの時は、命令を動かさずにわけの文を返す）。
 import { aimOrigin } from './aim.ts';
 import { guardedNow, takeRune } from './altars.ts';

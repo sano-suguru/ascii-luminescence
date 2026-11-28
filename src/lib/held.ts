@@ -1,4 +1,4 @@
-// 手元の武器を描く（もとは src/game/19-hands-runes.js の drawViewWeapons）。形と色の表は src/lib/hands.ts。
+// 手元の武器を描く（drawViewWeapons）。形と色の表は src/lib/hands.ts。
 // src/lib/loop.ts の tick の 'hands' の段から、毎フレーム呼ばれる（性質の火花は、その段の見た目の乱数 mr を引く）。
 import { must, nth } from './array.ts';
 import { aimOrigin, doorBlock, handUp } from './aim.ts';

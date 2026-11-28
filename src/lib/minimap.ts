@@ -1,9 +1,9 @@
-// ミニマップ（もとは src/game/16-view-input.js の sizeMap・drawMap）：右上のキャンバス（#map）に、プレイヤーのまわりの見たマスを文字で描く。
+// ミニマップ（sizeMap・drawMap）：右上のキャンバス（#map）に、プレイヤーのまわりの見たマスを文字で描く。
 // 今見えているマスは、灯りと手元の灯りで照らした色で描き、その色を here.mem に覚える。見えていないマスは、覚えた色を暗く、青みに寄せて描く。
 // 燃えているマスは、地面（氷・瓦礫・枯れ草）や飾りより火を描き、燃え尽きた草は灰の印で描く。
 // 床の物（ルーン）・見つけた罠・鉄格子とレバー・クモの巣・見えている生き物（透明な物は近い時だけ薄く）・プレイヤーと向きの矢印を、上に重ねる。
-// 状態の入れ物 ui（キャンバスと描き手。16-view-input.js が document から入れる）・here（今の階と見たマス）・player・blaze（火と灰）・lantern に頼る。
-// 呼ぶのは、16-view-input.js が読み込んだ時と、30-loop-init.js が画面の大きさが変わった時に sizeMap、src/lib/loop.ts の tick の段 'map' で drawMap。
+// 状態の入れ物 ui（キャンバスと描き手。src/lib/boot.ts の boot が document から入れる）・here（今の階と見たマス）・player・blaze（火と灰）・lantern に頼る。
+// 呼ぶのは、src/lib/boot.ts の boot がページの用意の時と画面の大きさが変わった時に sizeMap、src/lib/loop.ts の tick の段 'map' で drawMap。
 import { lookup, must, nth } from './array.ts';
 import { css } from './color.ts';
 import { MCH, MCW, MMC, MMR, MPAD, tone } from './hud.ts';

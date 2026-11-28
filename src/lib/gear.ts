@@ -1,4 +1,4 @@
-// 手と持ち物の処理（もとは src/game/19-hands-runes.js。枠を開ける applyOpen は 24-goal.js）。状態の入れ物 gear（両手・持ち物）に頼る物。
+// 手と持ち物の処理（枠を開ける applyOpen も）。状態の入れ物 gear（両手・持ち物）に頼る物。
 // 探索の始めの手に戻す resetRunes は、fight・ui・adv・saved・here も戻す。
 // 表だけに頼る物（ルーンの名前・色・付けられるか）は src/lib/runes.ts。
 import { lookup, must, nth } from './array.ts';
@@ -98,7 +98,7 @@ export function effHand(h: Side): EffHand {
   const sl = [...hs.L.slots.slice(0, hs.L.slotN || 2), ...hs.R.slots.slice(0, hs.R.slotN || 2)].slice(0, TWO_SLOTS);
   return { atk: hs.R.atk, slots: sl, slotN: sl.length, turn: hs.R.turn || 0, two: true };
 }
-/** 手 h の攻撃の種類（素手は 'bare'。両手持ちは左右で別の撃ち方。定義に無ければ、移す前と同じく undefined） */
+/** 手 h の攻撃の種類（素手は 'bare'。両手持ちは左右で別の撃ち方。定義に無ければ undefined） */
 export const atkType = (h: Side): string | undefined => {
   const H = hands()[h];
   if (!H || !H.atk) return 'bare';
@@ -281,7 +281,7 @@ export interface Spec {
   pow: number;
   powK?: number;
 }
-/** 手 h で今放つ術の中身（両手持ちは、次に放つ性質と発動を左右でそろえる。もとは src/game/19-hands-runes.js） */
+/** 手 h で今放つ術の中身（両手持ちは、次に放つ性質と発動を左右でそろえる） */
 export function specOf(h: Side): Spec {
   const H = effHand(h);
   syncHand(H);
@@ -306,8 +306,8 @@ export function specOf(h: Side): Spec {
   return { h, atk: atkType(h), elem: el, aff, tr, pow: el ? ELEM_POW[Math.min(4, elemCount(H, el))] || 1 : 1 };
 }
 /**
- * 探索の始めの手と持ち物に戻す（右手は杖・左手は剣、袋は空。ビルド・祭壇の記録・伝説の物・最深部の状態も。もとは src/game/19-hands-runes.js）。
- * 探索を始める時だけ、ページを読み終えた後に呼ぶ（見たルーン saved.RSEEN は 25-gallery.js が al_runes から読む。それより前は空の仮の物）
+ * 探索の始めの手と持ち物に戻す（右手は杖・左手は剣、袋は空。ビルド・祭壇の記録・伝説の物・最深部の状態も）。
+ * 探索を始める時だけ、ページを読み終えた後に呼ぶ（見たルーン saved.RSEEN は src/lib/boot.ts の boot が al_runes から読む。それより前は空の仮の物）
  */
 export function resetRunes(): void {
   fight.trigCd = { L: 0, R: 0 };
@@ -334,7 +334,7 @@ export function resetRunes(): void {
     }
   } catch {}
 }
-/** 枠を1つ開ける（t：手の枠 'slotL'・'slotR' は多くても SLOT_MAX まで、体の枠 'body' は2まで。もとは src/game/24-goal.js） */
+/** 枠を1つ開ける（t：手の枠 'slotL'・'slotR' は多くても SLOT_MAX まで、体の枠 'body' は2まで） */
 export function applyOpen(t: string): void {
   if (t === 'slotR' || t === 'slotL') {
     // oxlint-disable-next-line typescript/consistent-type-assertions -- t は 'slotR' か 'slotL' なので、t.slice(4) は 'R' か 'L'（元の読み方のまま）

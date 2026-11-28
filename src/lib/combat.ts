@@ -1,4 +1,4 @@
-// 詠唱と当たり（もとは src/game/18-level-player.js・20-chant-hits.js・21-altars-heal.js・24-goal.js）：遅れて起きること、魔法の場、雨、連射、
+// 詠唱と当たり：遅れて起きること、魔法の場、雨、連射、
 // 剣の波、当たった時の見た目と音、ひるみと吹き飛び、水の中か、稲妻の線、近くの敵、冷気、立ち直り（光の粒が戻る updateRally も）、主が倒れた時の祭壇と伝説の物、経験。
 // 状態の入れ物 fight・player・here・adv・clock に頼る。
 import { lookup, must, nth } from './array.ts';
@@ -315,7 +315,7 @@ export function rallyOnHit(m: Mob, n: number, how: string): void {
   }
 }
 /**
- * 命の一歩を dt 秒進める（もとは src/game/18-level-player.js）：振った線の残りを減らし、立ち直りを進め、体力の表示を描き直し、傷の光りを薄める。
+ * 命の一歩を dt 秒進める：振った線の残りを減らし、立ち直りを進め、体力の表示を描き直し、傷の光りを薄める。
  * 0.5秒ごとに、火の中にいるプレイヤーと生き物（小さな生き物・溶岩に住む物・飛ぶ物は除く）が焼ける
  */
 export function updateLife(dt: number): void {
@@ -498,7 +498,7 @@ export interface CastOpt {
 type Col3 = [number, number, number];
 /**
  * 手 h の術を放つ（武器の種類ごと：剣・素手・大剣の払いは近くを切る、突進、大剣の波、矢、星屑の矢、月、雨と星、連射、ほかは矢・玉・光線）。
- * 立ち直りの秒を付け、次に放つ性質を回す（もとは src/game/20-chant-hits.js）
+ * 立ち直りの秒を付け、次に放つ性質を回す
  */
 export function castNow(h: Side, opt?: CastOpt): void {
   opt = opt || {};
@@ -866,7 +866,7 @@ export function castStar(sp: Spec, x: number, z: number): void {
 }
 /**
  * 近くを切る（剣・素手・大剣の払い）：手の届く所で、照準からの角度の小さい順に、数の分だけ切る。剣の波を撃ち、
- * 性質を足もとに落とす（もとは src/game/20-chant-hits.js）
+ * 性質を足もとに落とす
  */
 export function meleeCast(sp: Spec, dir: V3): void {
   player.swingWave = false;
@@ -908,7 +908,7 @@ export function meleeCast(sp: Spec, dir: V3): void {
 }
 /**
  * 光線を撃つ（手 h から。数の分だけ少しずつずらす）：当たった生き物を焼く。壁に当たると性質を落とし、
- * 跳ね返りの数だけ跳ね返る。撃ち続けるほど強くなる（集中）（もとは src/game/20-chant-hits.js）
+ * 跳ね返りの数だけ跳ね返る。撃ち続けるほど強くなる（集中）
  */
 export function fireBeam(h: Side, dirIn: V3 | null, orgIn: readonly number[] | null, auto: boolean): void {
   const sp = specOf(h),
@@ -1009,7 +1009,7 @@ export function fireBeam(h: Side, dirIn: V3 | null, orgIn: readonly number[] | n
     fight.beamSegs.push({ pts: seg, col: auto ? must(elemCol(sp.elem)).map((v) => v * 0.6 + 0.4) : must(elemCol(sp.elem)), t: 0.16 });
   }
 }
-/** 玉が弾ける（まわりの見通せる生き物に当て、性質ごとに火・冷気・稲妻・毒の霧を残す。もとは src/game/20-chant-hits.js） */
+/** 玉が弾ける（まわりの見通せる生き物に当て、性質ごとに火・冷気・稲妻・毒の霧を残す） */
 export function orbBurst(
   x: number,
   y: number,
@@ -1126,14 +1126,13 @@ export function boom(i: number): void {
     msg('<b style="color:#ffb347">*</b>沼のガスに火が回り、轟音とともに爆ぜた！');
   }
 }
-// 型だけの declare namespace で、関数の欄の型を付ける（組み立てで消える。古い JS の文をそのまま残すため）
+// 型だけの declare namespace で、関数の欄の型を付ける（組み立てで消える）
 export declare namespace boom {
   /** 爆ぜる音を最後に鳴らしたゲームの時刻（0.35 秒あける） */
   let last: number | undefined;
 }
 /**
- * 攻撃が生き物に当たる（性質の効き目・水の中の雷・加護の倍率を掛けて傷を与える。効かない時も気づかせる。効いたら性質を移す。
- * もとは src/game/20-chant-hits.js）
+ * 攻撃が生き物に当たる（性質の効き目・水の中の雷・加護の倍率を掛けて傷を与える。効かない時も気づかせる。効いたら性質を移す）
  */
 export function applyHit(m: Mob, dmg: number, sp: Spec, quiet?: boolean): void {
   if (m.dead) return;
@@ -1177,8 +1176,7 @@ export function applyHit(m: Mob, dmg: number, sp: Spec, quiet?: boolean): void {
   if (el && mult > 0.25 && !m.dead) applyElem(m, el, sp, dmg);
 }
 /**
- * 性質を生き物に移す（燃える・冷える・痺れる・毒。前の性質と出会えば反応が起きる。連鎖の効き方で、近くの敵へも移る。
- * もとは src/game/20-chant-hits.js）
+ * 性質を生き物に移す（燃える・冷える・痺れる・毒。前の性質と出会えば反応が起きる。連鎖の効き方で、近くの敵へも移る）
  */
 export function applyElem(m: Mob, el: string, sp: Spec, base: number): void {
   const st = m.st || (m.st = {}),
@@ -1241,7 +1239,7 @@ export function applyElem(m: Mob, el: string, sp: Spec, base: number): void {
   }
 }
 /**
- * 性質の反応（kind：蒸気・爆炎・過負荷・砕け・凍傷・伝染）。まわりの敵を巻き込む。初めて起きた反応は魔導書に記す（もとは src/game/20-chant-hits.js）
+ * 性質の反応（kind：蒸気・爆炎・過負荷・砕け・凍傷・伝染）。まわりの敵を巻き込む。初めて起きた反応は魔導書に記す
  */
 export function react(kind: string, m: Mob, sp: Spec, base: number): void {
   const st = must(m.st),
@@ -1335,7 +1333,7 @@ export function react(kind: string, m: Mob, sp: Spec, base: number): void {
     setTimeout(() => sChime(player.x, player.z, 0.35), 120);
   }
 }
-/** 稲妻が近くの敵へ跳ぶ（jumps 回まで。少しずつ遅れて、雷の効き目と水の中の倍率で傷を与え、痺れさせる。もとは src/game/20-chant-hits.js） */
+/** 稲妻が近くの敵へ跳ぶ（jumps 回まで。少しずつ遅れて、雷の効き目と水の中の倍率で傷を与え、痺れさせる） */
 export function chainLightning(m: Mob, jumps: number, dmg: number, areaK: number): void {
   let from = m;
   const seen = new Set([m]),
@@ -1383,7 +1381,7 @@ export function chainLightning(m: Mob, jumps: number, dmg: number, areaK: number
     sEnv(sNoise(t, 0.18, 'highpass', 3200, 0.6, sOut(m.x, m.z, 0.25)), t, 0.002, 0.16);
   }
 }
-/** 水の中の生き物に雷が当たると、同じ水の中の近くの敵（6 以内、多くても7）へ伝わる（もとは src/game/26-spells-hud.js） */
+/** 水の中の生き物に雷が当たると、同じ水の中の近くの敵（6 以内、多くても7）へ伝わる */
 export function conductWater(m: Mob, base: number): void {
   if (!inWater(m)) return;
   let n = 0;
@@ -1404,7 +1402,7 @@ export function conductWater(m: Mob, base: number): void {
     sparkCrown(o, must(lookup(RUNE_DEF, 'thunder').col));
   }
 }
-/** 性質を地面のマス ci に落とす（火は燃える所に火を、氷は冷気を、雷は水の中の敵へ。もとは src/game/26-spells-hud.js） */
+/** 性質を地面のマス ci に落とす（火は燃える所に火を、氷は冷気を、雷は水の中の敵へ） */
 export function landElem(sp: Spec, x: number, _y: number, z: number, ci: number): void {
   if (!sp.elem || ci < 0 || ci >= NCELL) return;
   const areaK = 1 + (sp.aff.area || 0) / 100;
@@ -1422,7 +1420,7 @@ export function landElem(sp: Spec, x: number, _y: number, z: number, ci: number)
     }
   }
 }
-/** 倒した時に放つ発動のルーン：手ごとに、一番近い見通せる敵へ術を放つ（剣は近くだけ。もとは src/game/20-chant-hits.js） */
+/** 倒した時に放つ発動のルーン：手ごとに、一番近い見通せる敵へ術を放つ（剣は近くだけ） */
 export function onKilledBy(m: Mob): void {
   for (const h of ['L', 'R'] as const) {
     if (h === 'R' && isTwo()) continue;
@@ -1453,7 +1451,7 @@ export function onKilledBy(m: Mob): void {
 }
 /**
  * 生き物に傷を与える（how：攻撃の種類。'env' は罠や火などまわりの物）。眠っている物は3倍。倒れたら、主・伝説の物・祭壇・発動のルーン・経験・
- * 加護（勢い・砕け）・体の粒・音・伝言（もとは src/game/18-level-player.js）
+ * 加護（勢い・砕け）・体の粒・音・伝言
  */
 export function damageMonster(m: Mob, n: number, how: string): void {
   if (m.dead || n <= 0) return;
@@ -1544,7 +1542,7 @@ export function damageMonster(m: Mob, n: number, how: string): void {
 }
 /**
  * プレイヤーが傷を受ける（加護と護符で増減。受けた分の一部は取り戻せる。体が赤く光って揺れ、音と伝言（同じ原因は 0.8 秒あける）。
- * 体力が尽きたら死ぬ。もとは src/game/18-level-player.js）
+ * 体力が尽きたら死ぬ）
  */
 export function hurtPlayer(n: number, cause: string): void {
   if (ui.godMode) return;
@@ -1573,7 +1571,7 @@ export function hurtPlayer(n: number, cause: string): void {
   renderStatus();
   if (player.hp <= 0) die(cause);
 }
-// 型だけの declare namespace で、関数の欄の型を付ける（組み立てで消える。古い JS の文をそのまま残すため）
+// 型だけの declare namespace で、関数の欄の型を付ける（組み立てで消える）
 export declare namespace hurtPlayer {
   /** 傷の伝言を最後に出したゲームの時刻と、その原因 */
   let mt: number | undefined;
@@ -1581,7 +1579,7 @@ export declare namespace hurtPlayer {
 }
 /**
  * 転がって攻撃をかわした時：加護の身軽な詠唱（quickdodge）と返しの一撃（counter）の効く間を始め、かわした時に放つ発動のルーンで、手ごとに、
- * かわした相手へ術を放つ（剣は近くだけ）。粒と音（もとは src/game/26-spells-hud.js）。生き物の攻撃1回ごとに呼ばれる（何体も同時なら、効く間を入れ直すだけ）
+ * かわした相手へ術を放つ（剣は近くだけ）。粒と音。生き物の攻撃1回ごとに呼ばれる（何体も同時なら、効く間を入れ直すだけ）
  */
 export function onDodged(m: Mob): void {
   if (BL('quickdodge')) player.qcUntil = clock.time + (BL('quickdodge') >= 2 ? 2.5 : 1.5);
@@ -1626,7 +1624,7 @@ export function onDodged(m: Mob): void {
     sEnv(sTone(t, 'sine', 1320, 1980, 0.18, sOut(undefined, undefined, 0.12)), t, 0.003, 0.16);
   }
 }
-/** 生き物の近接の攻撃：届く所で溜め（0.55 秒）、溜め終わりに届けば当てる（転がっていればかわす。もとは src/game/18-level-player.js） */
+/** 生き物の近接の攻撃：届く所で溜め（0.55 秒）、溜め終わりに届けば当てる（転がっていればかわす） */
 export function monsterStrike(m: Mob, dt: number, dp: number): void {
   if (!hostile(m) || !m.noticed || m.sleep || adv.dead) return;
   if (m.ty.form === 'eel' && !(m.surf > 0)) return;
@@ -1652,7 +1650,7 @@ export function monsterStrike(m: Mob, dt: number, dp: number): void {
     m.wind = 0.55;
   }
 }
-// 型だけの declare namespace で、関数の欄の型を付ける（組み立てで消える。古い JS の文をそのまま残すため）
+// 型だけの declare namespace で、関数の欄の型を付ける（組み立てで消える）
 export declare namespace monsterStrike {
   /** かわした伝言を最後に出したゲームの時刻（2秒あける） */
   let mt: number | undefined;

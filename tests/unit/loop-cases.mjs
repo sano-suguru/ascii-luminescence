@@ -1,5 +1,5 @@
 // テストの道具：大きさとメインループ（src/lib/loop.ts）と描画の土台（src/lib/render.ts）を、たくさんの場合で呼び、結果を1つの文字列にまとめる。
-// F は関数をまとめた物。loop.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
+// F は関数をまとめた物。loop.test.mjs が、この文字列の指紋を確かめる。
 // 階は Node で本物の迷宮を生成する（newLevel）ので、迷宮の生成を変えると、この指紋も変わる。
 // 1つの場合では、本物の階で探索を始め、tick を何十回も進めながら、止める・階を移る・置いたカメラ・止めた段・余分に引く乱数・画面の大きさ・
 // 画質（速いフレームと遅いフレーム・隠れたページ）・体力を変え、frame・stepTick・applySize・setQuality・withTestCam・cullChunks・flushDyn も直に呼ぶ。
@@ -45,7 +45,7 @@ import { boom, hurtPlayer, monsterStrike } from '../../src/lib/combat.ts';
 import { houndScent } from '../../src/lib/monsters.ts';
 import { updatePlayer } from '../../src/lib/player.ts';
 
-/** 移した関数の名前（場合が全部を呼ぶか、loop.test.mjs が確かめる。keyedPhase・tickRandOn・inPhase・inMobPhase・placeTestCam は tick の中から呼ばれる） */
+/** 確かめる関数の名前（場合が全部を呼ぶか、loop.test.mjs が確かめる。keyedPhase・tickRandOn・inPhase・inMobPhase・placeTestCam は tick の中から呼ばれる） */
 export const NAMES = [
   'applySize',
   'frame',

@@ -1,4 +1,4 @@
-// パネルの文字の幅と枠・幅に合わせて HTML を切る clipHtml（もとは src/game/12-hud-text.js・19-hands-runes.js・27-rune-screen.js）。
+// パネルの文字の幅と枠・幅に合わせて HTML を切る clipHtml。
 //
 // パネルのフォントは M PLUS 1 Code（半角は1マス、全角は2マス）。M PLUS 1 Code に無い文字（← → と全角の ！：？［］）は
 // BIZ UDGothic で補っていて、そこでも全角（2マス）。全角スペース（U+3000）は M PLUS 1 Code では半角なので1マス。

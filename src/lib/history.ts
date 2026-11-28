@@ -1,4 +1,4 @@
-// 迷宮の歴史（年代記）を作る（もとは src/game/03-vaults-history.js）。
+// 迷宮の歴史（年代記）を作る。
 // シードだけで決まる。乱数を引く順番を変えると、同じシードでも違う歴史になるので、順番を変えないこと（tests/unit/history.test.ts）。
 import { mulberry32 } from './rng.ts';
 

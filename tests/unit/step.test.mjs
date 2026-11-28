@@ -15,7 +15,7 @@ import { fakeDom, fnv } from './fight-cases.mjs';
 import { NAMES, stepCases, stepText } from './step-cases.mjs';
 import { caseOut } from './case-out.mjs';
 
-describe('移す前と同じ', () => {
+describe('指紋', () => {
   it('詠唱と転がり・飛ぶ物と戦いの跡・火とガス・部屋の出来事と罠（8の場合、23の関数）の指紋', { timeout: 120000 }, async () => {
     const F = { ...AUDIO, ...CHANT, ...EVENTS, ...FX, ...GROUND, ...LEGEND, ...PROJS },
       all = await stepCases(F, 8, fakeDom()),

@@ -1,6 +1,6 @@
 // テストの道具：階を移る処理（src/lib/levels.ts の newLevel・advance・checkEvents・die・newRun など）と、世界の組み立て（build.ts の buildWorld・setFog・updateWater）・
 // 火と出来事と塵の用意（ground.ts の initFire、particles.ts の initDust・respawnDust）を、たくさんの場合で呼び、結果を1つの文字列にまとめる。
-// F は関数をまとめた物。level.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
+// F は関数をまとめた物。level.test.mjs が、この文字列の指紋を確かめる。
 // 階は Node で本物の迷宮を生成する（newLevel の中の generate）ので、迷宮の生成を変えると、この指紋も変わる。
 // 1つの場合では、探索を始め（newRun）、次の場所へ進む向き（下り・上り・支道・異界、押し返される最深部）と着く所を変えながら階を移り、
 // 階の中で、階段・支道・門・崩れた穴・封じられた階段を踏む場面と、死んで結果の画面のボタンを押す場面を通す。
@@ -45,7 +45,7 @@ import { fakeCamera, fakeDom, fakeTimers, fakeUniforms, hashArr } from './fight-
 import { swapGlobals } from './ui-cases.mjs';
 import { stateFp } from './case-out.mjs';
 
-/** 移した関数の名前（場合が全部を呼ぶか、level.test.mjs が確かめる） */
+/** 確かめる関数の名前（場合が全部を呼ぶか、level.test.mjs が確かめる） */
 export const NAMES = [
   'placeKey',
   'advance',

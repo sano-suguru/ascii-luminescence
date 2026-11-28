@@ -1,5 +1,5 @@
 // テストの道具：見た物の記録・図鑑・試しの間（src/lib/gallery.ts）を、たくさんの場合で呼び、結果を1つの文字列にまとめる。
-// F は関数をまとめた物。gallery.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
+// F は関数をまとめた物。gallery.test.mjs が、この文字列の指紋を確かめる。
 // 図鑑と試しの間の部屋は Node で本物の迷宮を生成する（newLevel）ので、迷宮の生成を変えると、この指紋も変わる。
 // 1つの場合では、見た生き物・開発用モード・忘れられた獣の記録（無い・ある・壊れている）を変えて図鑑を開き、生き物を切り替え、
 // 一歩ずつ進めながら、ホイール・ドラッグ・つまむ・指を置く・戻す・__test.galleryShow のように向きと姿を止める・止めをやめる・描く・説明を書き直す、を乱数で混ぜる。
@@ -21,7 +21,7 @@ import { fakeAudioClass } from './fake-audio.mjs';
 import { fakeCamera, fakeDom, fakeTimers, fakeUniforms, fnv, hashArr } from './fight-cases.mjs';
 import { swapGlobals } from './ui-cases.mjs';
 
-/** 移した関数の名前（場合が全部を呼ぶか、gallery.test.mjs が確かめる） */
+/** 確かめる関数の名前（場合が全部を呼ぶか、gallery.test.mjs が確かめる） */
 export const NAMES = [
   'seenKey',
   'trackSeen',
@@ -119,7 +119,7 @@ export async function galleryCases(F, seeds, page) {
   const LOOK_FIELDS = ['look', 'form', 'trail', 'col', 'lcol'],
     keptTypes = Object.entries(MTYPES).map(([k, t]) => [k, LOOK_FIELDS.map((f) => [f, Object.getOwnPropertyDescriptor(t, f)])]);
   addLooks();
-  // 試しの間の的の種類（ゲームでは src/game/25-gallery.js が足す）
+  // 試しの間の的の種類（ゲームでは src/lib/boot.ts の boot が足す）
   for (const d of DUMMY_KINDS)
     MTYPES[d.k] = {
       ch: '+',

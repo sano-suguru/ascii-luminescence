@@ -109,7 +109,7 @@ describe('まわりの明かりの頭打ち（LIT_MAX）', () => {
   });
 });
 
-describe('移す前と同じ', () => {
+describe('指紋', () => {
   it('描く・調べる処理（240の場合、17の関数）の指紋', { timeout: 60000 }, async () => {
     const all = await viewCases({ ...AIM, ...DRAW, ...FIX, ...LM, ...LOOK }, 240),
       body = viewText(all),

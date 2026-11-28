@@ -1,5 +1,5 @@
-// 霧と目の慣れと、その点が岩の中か（もとは src/game/28-camera-player.js の updateAtmosphere・rockAt）と、
-// 階の場所ごとの空気（22-world-hints.js の updateSectionAir）。
+// 霧と目の慣れと、その点が岩の中か（updateAtmosphere・rockAt）と、
+// 階の場所ごとの空気（updateSectionAir）。
 import { must, nth } from './array.ts';
 import { cellLight } from './lightmap.ts';
 import { bodyUnseen } from './monsters.ts';
@@ -66,7 +66,7 @@ export function rockAt(x: number, y: number, z: number): boolean {
 }
 
 // the air of each part of a level: the crossroads a little brighter, the way to the stairs a little darker and quieter
-/** 階の場所ごとの空気（もとは src/game/22-world-hints.js）：分かれ道は少し明るく、階段へ向かう道の終わりの3割は少し暗く。まわりの明るさ uAmb をゆっくり合わせる */
+/** 階の場所ごとの空気：分かれ道は少し明るく、階段へ向かう道の終わりの3割は少し暗く。まわりの明るさ uAmb をゆっくり合わせる */
 export function updateSectionAir(dt: number): void {
   if (!here.D || !here.D.prof) return;
   const pc = ((player.z / CELL) | 0) * MW + ((player.x / CELL) | 0);

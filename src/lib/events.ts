@@ -1,4 +1,4 @@
-// 部屋の出来事と罠を進める。もとは src/game/15-sound-fire.js（updateEvents）・18-level-player.js（triggerTrap・updateTraps）。
+// 部屋の出来事と罠を進める（updateEvents・triggerTrap・updateTraps）。
 // 部屋の出来事（src/lib/levels.ts の initEvents が作る）：目覚める像・崩れる床・神託・水攻めと溶岩・転移の陣・火口の噴き出し・墓の霊。
 // 罠：隠れた罠を見つける・踏む（鐘・落とし穴・網・水・沼のガス）、網から抜け出す、レバーで鉄格子を上げる。
 // 状態の入れ物 here（今の階・生き物・出来事・備品）・blaze（火と地面のマス）・player・adv（年代記）・clock・vfx（揺れ）・gfx（崩れた時刻 uCollT）・

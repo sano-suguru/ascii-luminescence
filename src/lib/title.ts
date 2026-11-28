@@ -1,4 +1,4 @@
-// タイトルのロゴ（もとは src/game/01-title.js）。ロゴを描く buildLogo と、ロゴの絵が無い時の点の字 buildDotLogo も。
+// タイトルのロゴ。ロゴを描く buildLogo と、ロゴの絵が無い時の点の字 buildDotLogo も。
 import { must, nth } from './array.ts';
 // ロゴの絵は、oh-my-logo の塗りのブロック字（cfonts の block）で1字ずつ描いて、文字のまま貼った物。
 // タイトルを変える時は、同じやり方で描き直して（node gen2.mjs WORD1 WORD2）LOGO_ART を置き換える。TITLE_LINES は LOGO_ART の名前と合わせる。

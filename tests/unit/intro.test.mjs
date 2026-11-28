@@ -1,8 +1,6 @@
 // タイトルの画面（src/lib/intro.ts）・入力（src/lib/input.ts）・開発用の命令（src/lib/debug.ts）の単体テスト。
-// 指紋は、intro-cases.mjs の場合の結果。移す時に、古い JS を消す前に比べた：tools/legacy-eval.mjs の legacyValues で、
-// 移す前の src/game/17-meta.js・16-view-input.js・23-debug.js（状態を入れ物に移し、一番外の文を関数に包んだ物）の関数を取り出し、
-// 古い側と新しい側を別々のプロセスで同じ場合に通して、文字列が同じだった。わざと1か所変えると違いが出ることも確かめた。
-// ここで移さない処理は、下の vi.mock で、呼んだ時の記録（globalThis.__alMock.log）だけ取る物にする（返す値は __alMock.ret）。
+// 指紋は、intro-cases.mjs の場合の結果。
+// ここで確かめない処理は、下の vi.mock で、呼んだ時の記録（globalThis.__alMock.log）だけ取る物にする（返す値は __alMock.ret）。
 // 動きを意図して変えた時や、場合の入力を変えた時は、変わり方を確かめてから作り直す（何が変わったかは、コミットと PR に書く）。
 // 開発用の命令の場合は Node で本物の迷宮を生成するので、迷宮の生成を変えると、この指紋も変わる。
 // テストを .mjs で書くのは、偽の画面の部品を、本物の型に合わせられないため。
@@ -151,7 +149,7 @@ const F = {
 };
 const SEEDS = 16;
 
-describe('移す前と同じ', () => {
+describe('指紋', () => {
   it('タイトルの画面と入力（16の場合）の指紋', async () => {
     const all = await introCases(F, SEEDS),
       lines = all.split('\n'),

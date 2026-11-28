@@ -1,4 +1,4 @@
-// 四つ足・大きな生き物（オーガ・竜も）・死者の形（もとは src/game/09-bodies-creatures.js）。q2・q3 の道具で、面の向きに合わせて文字と明るさを決める。
+// 四つ足・大きな生き物（オーガ・竜も）・死者の形。q2・q3 の道具で、面の向きに合わせて文字と明るさを決める。
 import { nth } from '../array.ts';
 import type { Color } from '../color.ts';
 import { G } from '../glyphs.ts';
@@ -2584,7 +2584,7 @@ export function dragonForm(ty: BodyType): Body {
   return pts;
 }
 
-// ---- 死者の体（もとは src/game/09-bodies-creatures.js）
+// ---- 死者の体
 /** リッチ（浮かぶ骸骨の術師）：裾が霧にほどける衣、開いた胸の肋骨、冷たい目と色あせた冠、骨の杖、回る本 */
 export function lichForm(ty: BodyType): Body {
   const { S, pts, lit, stroke, ell } = q3(ty);

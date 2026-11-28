@@ -1,4 +1,4 @@
-// 灯りの計算（もとは src/game/02-constants.js の light helpers）。
+// 灯りの計算。
 import { CELL, MH, MW, NCELL, TP, TW } from './world.ts';
 
 /** 灯り（位置と届く半径。vis はその灯りから見えるマス） */
@@ -122,5 +122,5 @@ export function topLights(
   outW[o + 2] = w2;
 }
 
-/** 手元の灯り（ランタン）の色（もとは src/game/14-lights-fixtures.js） */
+/** 手元の灯り（ランタン）の色 */
 export const LANTERN = [0.6, 0.58, 0.86];

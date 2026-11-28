@@ -2,8 +2,7 @@
 // 見た目の乱数（mr・Math.random）を引かず、出来事ごとに keyedRand で作った乱数で決める（祭壇は階のシードと祭壇のマス、レベルアップは探索のシードと何レベル目か）。
 //   - 見た目の乱数を1回も引かない（Math.random を、呼ばれたら止まる物に入れ替えて確かめる）
 //   - 鍵が同じなら、見た目の乱数をどれだけ進めても、ほかの出来事をどの順番で起こしても、同じ選択肢になる
-//   - 選び方は変えていない：見た目の乱数で選んでいた時と同じ乱数を渡すと、同じ選択肢になる（レベルアップの指紋は、乱数を分ける前の古い JS で出した値。
-//     祭壇は altars.test.mjs の指紋で確かめる）
+//   - 選び方：見た目の乱数と同じ乱数を渡すと、決まった選択肢になる（レベルアップは下の指紋。祭壇は altars.test.mjs の指紋で確かめる）
 // テストの中で作る小さな階を、生成の結果の型に合わせられないので .mjs で書く
 import { afterEach, describe, expect, it } from 'vitest';
 import { altarFill, placeAltar } from '../../src/lib/altars.ts';
@@ -102,7 +101,7 @@ describe('レベルアップの選択肢', () => {
     }
     const txt = all.join('\n');
     caseOut('choices', txt);
-    expect([fnv(txt), txt.length]).toEqual(['6aeb2b3a', 19148]); // 乱数を分ける前の古い JS で出した値
+    expect([fnv(txt), txt.length]).toEqual(['6aeb2b3a', 19148]);
   });
 });
 

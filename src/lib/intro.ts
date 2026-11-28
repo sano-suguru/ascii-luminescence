@@ -1,4 +1,4 @@
-// タイトルの画面（もとは src/game/17-meta.js）：記録 META を読む loadMeta、解放の画面 buildUnlockPanel、タイトルの枠 buildIntroPanel（指で触る端末ではキーボードの操作の一覧を出さない）、
+// タイトルの画面：記録 META を読む loadMeta、解放の画面 buildUnlockPanel、タイトルの枠 buildIntroPanel（指で触る端末ではキーボードの操作の一覧を出さない）、
 // 後から描き直す redrawIntroLater、初めて指で入った時の一言 touchTip と、タイトルの画面を用意する initIntro（記録を読み、タイトルを描き、[迷宮に入る] を受け取る）。
 import { must, nth } from './array.ts';
 import { sChime, sndInit } from './audio.ts';

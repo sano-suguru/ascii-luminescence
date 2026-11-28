@@ -1,4 +1,4 @@
-// 見た物の記録・図鑑・試しの間（もとは src/game/25-gallery.js）。
+// 見た物の記録・図鑑・試しの間。
 // 見た物の記録 trackSeen、図鑑（一覧 galleryList・部屋 showroom・開く openBestiary・生き物を出す showBeast・カメラを動かす galleryWheel・galleryDrag・galleryZoom・
 // galleryHold・galleryReset・毎フレームの updateGallery・説明 galleryDesc・galleryLine・renderGallery）、試しの間（部屋 galleryRoom・的 spawnDummy・開く openRange）と、
 // 図鑑と試しの間の世界の中の文字 drawGallery。

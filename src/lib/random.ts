@@ -1,4 +1,4 @@
-// 乱数（もとは src/game/02-constants.js の mr・mpick・rand・R・RI・pick）。
+// 乱数（mr・mpick・rand・R・RI・pick など）。
 //   見た目の乱数（mr・mpick）：Math.random。テスト用モードでは、シードで決まる物に入れ替わる。withVisualRand の間だけ、渡した並びになる（図鑑で生き物を出している間と、生き物の形と初めの値を作る間）
 //   迷宮の乱数（rand・R・RI・pick）：迷宮の生成が、階ごとのシードで setRand して使う。同じシードなら同じ迷宮になる
 //   出来事ごとの乱数（keyedRand）：祭壇の中身・レベルアップの選択肢など、遊びの中身を選ぶ所が、出来事の鍵から作る。見た目の乱数の並びに左右されない
@@ -104,5 +104,5 @@ export const setSoundRand = (f: () => number): (() => number) => {
   return old;
 };
 
-/** a 以上 b 以下の整数（見た目の乱数 mr。もとは src/game/18-level-player.js） */
+/** a 以上 b 以下の整数（見た目の乱数 mr） */
 export const roll = (a: number, b: number): number => a + Math.floor(mr() * (b - a + 1));

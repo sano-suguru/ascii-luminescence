@@ -1,6 +1,6 @@
 // テストの道具：詠唱と転がり（src/lib/chant.ts）・飛ぶ物と戦いの跡を進める処理（projs.ts）・詠唱の声（audio.ts の chantStart）・剣の波を描く（fx.ts の drawWave）・
 // 火とガスと地面を進める処理（ground.ts の stepFire・stepGas・regrow・brimRecover）・部屋の出来事と罠（events.ts）・神託所の伝説の物の手がかり（legend.ts の oracleLegendHints）を、
-// たくさんの場合で呼び、結果を1つの文字列にまとめる。F は関数をまとめた物。step.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
+// たくさんの場合で呼び、結果を1つの文字列にまとめる。F は関数をまとめた物。step.test.mjs が、この文字列の指紋を確かめる。
 // 階は Node で本物の迷宮を生成する（gen-places.ts の全部の場所）ので、迷宮の生成を変えると、この指紋も変わる。
 // 1つの場合では、本物の階に、表の全部の種類の生き物を置き、両手の武器と特性と加護をシードの乱数で選んで、分かれ道ごとの「場面」を通す
 // （詠唱を始めて溜める・離す・溜めすぎる、転がる、武器ごとに撃って飛ぶ物を何歩も進める、状態異常・魔法の場・雨・毒の霧、火とガス、部屋の出来事の種類ごと、罠の種類ごと）。
@@ -29,7 +29,7 @@ import { PLACES, gen, loadEnv } from './gen-places.ts';
 import { swapGlobals } from './ui-cases.mjs';
 import { stateFp } from './case-out.mjs';
 
-/** 移した関数の名前（場合が全部を呼ぶか、step.test.mjs が確かめる） */
+/** 確かめる関数の名前（場合が全部を呼ぶか、step.test.mjs が確かめる） */
 export const NAMES = [
   'timeScale',
   'beginCast',

@@ -1,8 +1,8 @@
-// 迷宮の生成（もとは src/game/04-generate.js の generate）。「入力 → 結果」の形：
+// 迷宮の生成。「入力 → 結果」の形：
 //   generateLevel(seed, depth, input, env) → { level, lordType, beastType }
 //   input：探索のシード runSeed、場所（branch・realm・inter）、図鑑の見本か（showroom）、年代記（hist）、試練（trials）、使える武器（weapons）
 //   env：生き物の表 MTYPES（src/lib/creatures.ts。読むだけ）と、ルーンを作る makeRune（src/lib/gear.ts）・特性を決める rollTraits（src/lib/runes.ts）
-//   結果：階（level）と、その階の主の種類（lordType）・忘れられた獣（beastType）。生き物の表への書き込みは、古い JS の生成の呼び出し口（04-generate.js の generate）が行う
+//   結果：階（level）と、その階の主の種類（lordType）・忘れられた獣（beastType）。生き物の表への書き込みは、生成の呼び出し口（src/lib/levels.ts の generate）が行う
 // 迷宮の乱数（setRand）とノイズの種（setNoiseSeed）は、ここで階のシードから入れ替える。
 import { lookup, must, nth } from './array.ts';
 import type { Color } from './color.ts';
@@ -203,7 +203,7 @@ export interface Spawn {
   route?: number[];
   elite?: boolean;
 }
-/** 灯り（light.ts の Light に、色・強さ・種類・揺らぎを足した物。vis は後で古い JS が入れる） */
+/** 灯り（light.ts の Light に、色・強さ・種類・揺らぎを足した物。vis は後で入れる） */
 export interface LevelLight extends Omit<Light, 'vis'> {
   col: Color;
   int: number;
@@ -333,7 +333,7 @@ export interface Item {
   legend?: string;
   born?: number;
 }
-/** その階の主の種類（生き物の表の1つを元に、名前や形を変えた物。古い JS が MTYPES.lord に入れる） */
+/** その階の主の種類（生き物の表の1つを元に、名前や形を変えた物。src/lib/levels.ts の generate が MTYPES.lord に入れる） */
 export type LordType = MonsterType & { sk: string; boss: boolean };
 
 /**
@@ -3780,5 +3780,5 @@ export function generateLevel(seed: number, depth: number, input: GenInput, env:
 }
 /** 生成の結果（階・その階の主の種類・忘れられた獣） */
 export type GenResult = ReturnType<typeof generateLevel>;
-/** 生成した階（古い JS の D に入る物） */
+/** 生成した階（here.D に入る物） */
 export type Level = GenResult['level'];

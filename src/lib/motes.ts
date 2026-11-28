@@ -1,4 +1,4 @@
-// 粒子を動かす（もとは src/game/15-sound-fire.js の updateGasPoints・riverFX・updateParticles）：漂う塵（降る層では雪や灰）、沼のガスの粒、川のさざ波、
+// 粒子を動かす（updateGasPoints・riverFX・updateParticles）：漂う塵（降る層では雪や灰）、沼のガスの粒、川のさざ波、
 // 術や火が出したそのほかの粒子（動き方 ty：0 は昇りながら赤から消える火の粉、1 は瞬く、ほかはそのまま）。毎フレーム、描く粒子の配列（src/lib/particles.ts の ptPos など）に書き、
 // 描く数を GPU に渡す（形と属性 gfx.ptGeo・bpPos などは src/lib/render.ts の initRenderer が作る）。
 import { must, nth } from './array.ts';

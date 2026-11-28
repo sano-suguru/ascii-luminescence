@@ -1,4 +1,4 @@
-// 主・機械・忘れられた獣の形（もとは src/game/07-bodies-lords.js・08-bodies-shadow.js・10-bodies-beast.js）。
+// 主・機械・忘れられた獣の形。
 import { must, nth } from '../array.ts';
 import { type Color, hsl2rgb } from '../color.ts';
 import { G } from '../glyphs.ts';
@@ -695,7 +695,7 @@ export function watcherForm(ty: BodyType): Body {
   return pts;
 }
 
-// ---- 忘れられた獣（もとは src/game/10-bodies-beast.js）
+// ---- 忘れられた獣
 /** 獣の大きさ（獣の大きさで、文字が約 0.3 m になる） */
 export const BEAST_S = { scale: 2.35 };
 /** 獣の体の色から、飾りの色（補色寄り）を作る */
@@ -728,7 +728,7 @@ export function beastSleep(form: readonly Glyph[], ty: { spec?: { plan: string }
 }
 
 /**
- * 忘れられた獣の形（もとは src/game/10-bodies-beast.js）：年代記から決まる体の作り spec（獣・竜・大蛇・蛾・百足）の上に、特徴
+ * 忘れられた獣の形：年代記から決まる体の作り spec（獣・竜・大蛇・蛾・百足）の上に、特徴
  * （六本脚の・翼なき・千の眼を持つ・燃える鱗の・影を喰らう・歌う）を重ねる。体の色と、飾りの色（beastAcc）
  */
 export function beastForm2(ty: { col: Color; spec?: BeastBody | undefined }): Body {

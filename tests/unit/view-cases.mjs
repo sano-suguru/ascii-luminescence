@@ -1,7 +1,7 @@
 // テストの道具：カメラから見て描く・調べる処理を、たくさんの場合で呼び、結果を1つの文字列にまとめる。
 // 生き物を描く処理（src/lib/bodies/draw.ts の drawMonster・drawMonster1・drawMonster0・drawTentacles）・罠と鉄格子を描く処理（fixtures.ts の drawTraps）・
 // 見た時の説明（look.ts の look）・灯りの揺らぎと灯りを描画に渡す配列（lightmap.ts の flicker・updateLights）・照準（aim.ts）。
-// F は関数をまとめた物。view.test.mjs が、この文字列の指紋を、移す前の古い JS と同じ値として確かめる。
+// F は関数をまとめた物。view.test.mjs が、この文字列の指紋を確かめる。
 // 階は Node で本物の迷宮を生成する（gen-places.ts の全部の場所）ので、迷宮の生成を変えると、この指紋も変わる。
 // 1つの場合では、本物の階に、全部の種類の生き物（主・忘れられた獣・王の影も）と、罠・鉄格子・床の物・灯りの種類を足し、
 // カメラ（gfx.camera は、TypeScript が読む位置だけの偽物）とプレイヤーの向きを、どれかの物へ向けて、関数を続けて呼ぶ。

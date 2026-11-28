@@ -1,4 +1,4 @@
-// テスト用モードの道具 window.__test（もとは src/game/30-loop-init.js）。テスト用モード（?test=1）の時だけ initTestApi が置く。
+// テスト用モードの道具 window.__test。テスト用モード（?test=1）の時だけ initTestApi が置く。
 // 使い方は CLAUDE.md の「テスト用モード」。ゲームは自分では進まないので、advance（描かずに進める）か frames（描いて進める）で進める。
 import { lookup, must, nth } from './array.ts';
 import { beginCast, releaseCast } from './chant.ts';

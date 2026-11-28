@@ -1,4 +1,4 @@
-// 入力（もとは src/game/17-meta.js と 16-view-input.js）：マウスを捕まえた・捕まえられなかった時の受け取りと指で遊ぶ時の土台を用意する initPointer、
+// 入力：マウスを捕まえた・捕まえられなかった時の受け取りと指で遊ぶ時の土台を用意する initPointer、
 // マウスとキーの処理を用意する initInput（診断の記録もここで始める）、キーの処理 onKeyDown、次のビルドに持ち替える nextBuild（ホイールと、指の操作の [持ち替え]）、
 // 装備の画面とメニューを開け閉めする togglePack・toggleMenu（Tab・Esc とタッチのボタン）。
 import { must, nth } from './array.ts';

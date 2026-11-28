@@ -43,7 +43,7 @@ describe('特別な階の場所・天井の高さ', () => {
   });
 });
 
-describe('移す前と同じ', () => {
+describe('指紋', () => {
   it('描く処理と手がかり・伝説の物の読み方（300の場合、25の関数）の指紋', async () => {
     const all = await drawCases({ ...FX, ...FXX, ...OM, ...LG, ...LV, ...LM }, 300),
       lines = all.split('\n'),

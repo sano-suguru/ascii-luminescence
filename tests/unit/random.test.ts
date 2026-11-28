@@ -24,14 +24,14 @@ describe('rand・R・RI・pick（迷宮の乱数）', () => {
     Math.random = () => 0.5;
     expect([fresh.rand(), fresh.R(0, 10), fresh.RI(0, 9), fresh.pick(['a', 'b', 'c', 'd'])]).toEqual([0.5, 5, 5, 'c']);
   });
-  it('setRand した乱数を使い、TypeScript に移す前と同じ並びになる', () => {
+  it('setRand した乱数を使い、決まった並びになる', () => {
     const LIST = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
     setRand(mulberry32(202));
     const out: (number | string)[] = [];
     for (let i = 0; i < 500; i++) out.push(R(-3, 7), RI(0, 9), RI(-2, 2), pick(LIST), rand());
     const s = JSON.stringify(out);
     expect(s.length).toBe(23292);
-    expect(fnv(s)).toBe('d601c721'); // 移す前の実装で出した値
+    expect(fnv(s)).toBe('d601c721');
   });
   it('入れ替えた後は Math.random を使わない。R は a 以上 b 未満、RI は a 以上 b 以下', () => {
     setRand(mulberry32(7));

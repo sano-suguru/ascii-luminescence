@@ -1,6 +1,6 @@
 // 世界の中の手がかりと詠唱の見た目（src/lib/arrows.ts の方向の矢印、camera.ts の updateSectionAir、fixtures.ts の drawRunesWorld、
 // chantfx.ts の simPath・drawCastFx・updateCross）の単体テスト。
-// 指紋は、hints-cases.mjs の場合の結果（移す前の古い JS と同じ値）。動きを意図して変えた時や、場合の入力を変えた時は、変わり方を確かめてから作り直す（何が変わったかは、コミットと PR に書く）。
+// 指紋は、hints-cases.mjs の場合の結果。動きを意図して変えた時や、場合の入力を変えた時は、変わり方を確かめてから作り直す（何が変わったかは、コミットと PR に書く）。
 // 階は Node で本物の迷宮を生成するので、迷宮の生成を変えると、この指紋も変わる（その時は generate.test.ts の指紋と一緒に作り直す）。
 // テストを .mjs で書くのは、偽の描き手・キャンバス・画面の部品を、本物の型に合わせられないため。
 import { describe, expect, it } from 'vitest';
@@ -17,7 +17,7 @@ const fnv = (s) => {
   return (h >>> 0).toString(16).padStart(8, '0');
 };
 
-describe('移す前と同じ', () => {
+describe('指紋', () => {
   it('方向の矢印・場所ごとの空気・床のルーン・詠唱の見た目・照準の文字（300の場合、8の関数）の指紋', async () => {
     const all = await hintsCases({ ...AR, ...CA, ...FX, ...CF }, 300),
       lines = all.split('\n'),
