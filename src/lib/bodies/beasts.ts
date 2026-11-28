@@ -223,54 +223,227 @@ export function ratForm(ty: BodyType): Body {
   return pts;
 }
 
+/** ジャッカルの体の輪：[z, cy, rx, ry]。前から順に：鼻先・細い鼻づら・額・頭の後ろ・首・深い胸・締まった腰・尻 */
+const JACKAL_KEYS: LoftKeys = [
+  [0.88, 0.85, 0.014, 0.014],
+  [0.83, 0.855, 0.032, 0.03],
+  [0.75, 0.865, 0.045, 0.044],
+  [0.66, 0.89, 0.07, 0.064],
+  [0.57, 0.915, 0.095, 0.085],
+  [0.48, 0.9, 0.085, 0.085],
+  [0.4, 0.84, 0.072, 0.085],
+  [0.31, 0.76, 0.09, 0.115],
+  [0.2, 0.7, 0.12, 0.155],
+  [0.04, 0.7, 0.118, 0.14],
+  [-0.13, 0.72, 0.098, 0.1],
+  [-0.28, 0.71, 0.11, 0.12],
+  [-0.38, 0.69, 0.085, 0.09],
+  [-0.44, 0.68, 0.02, 0.02],
+];
+/** ジャッカルの体（鼻先から尻まで、ひと続きに）。細い鼻づらと額から、首を下りて深い胸へ、腰で締まり、尻で閉じる。
+ *  体の点と、目・耳の位置を、同じ式から出す（背の鞍の範囲 saddle・尾の付け根 tailRoot と、脚の付け根 JACKAL_SHOULDER・JACKAL_HIP は決まった値。体の式を変えたら合わせる） */
+export const jackalBody = {
+  /** 鼻先と尻の端の奥行き */
+  z1: 0.88,
+  z0: -0.44,
+  ...loft(JACKAL_KEYS),
+  /** 頭（これより前は part 'head'） */
+  headZ: 0.44,
+  /** 背の黒い鞍の前と後ろの端の奥行き */
+  saddle: [0.3, -0.36] as const,
+  /** 尾の付け根の所 */
+  tailRoot: [0, 0.72, -0.46] satisfies Vec3,
+};
+/** ジャッカルの脚の付け根（肩と腰）。脚の点は、これを軸に回る */
+export const JACKAL_SHOULDER = { piv: 0.74, pz: 0.2 },
+  JACKAL_HIP = { piv: 0.74, pz: -0.28 };
+/** ジャッカルの色 */
+export const JACKAL = {
+  /** 脇・脚・頭・耳の外：赤みのある黄土 */
+  tawny: [0.74, 0.35, 0.11],
+  /** 背の鞍：黒に近い灰 */
+  saddle: [0.17, 0.15, 0.15],
+  /** 鞍に混じる白い毛 */
+  silver: [0.5, 0.48, 0.46],
+  /** 喉・胸・腹・脚の内・耳の内・口のまわり：白に近いクリーム */
+  cream: [0.84, 0.78, 0.64],
+  /** 鼻と尾の先：黒 */
+  black: [0.08, 0.07, 0.07],
+  /** 目：琥珀 */
+  eye: [1.0, 0.72, 0.22],
+} as const satisfies Record<string, Color>;
+
+// jackal: a lean, leggy wild dog. A narrow pointed muzzle, very large upright ears, a deep chest and a tucked waist,
+// a tawny coat with a dark grizzled saddle along the back, a cream throat and belly, and a bushy tail hanging low with a black tip
 export function jackalForm(ty: BodyType): Body {
-  const { S, pts, lit, stroke, ell } = q2(ty),
-    SAND: Color = [0.82, 0.66, 0.42],
-    DARK: Color = [0.42, 0.3, 0.2],
-    WHITE: Color = [0.92, 0.88, 0.8],
-    EYE: Color = [1, 0.85, 0.3];
-  for (let z = -0.4; z <= 0.42; z += S * 0.8) {
-    const f = (z + 0.4) / 0.82,
-      r = 0.11 + 0.06 * Math.sin(Math.PI * Math.min(1, f * 1.3)) + (f > 0.7 ? 0.03 : 0),
-      ry = 0.15 + 0.05 * f,
-      cy = 0.72 + 0.06 * f,
-      n = Math.max(5, Math.round((2 * Math.PI * r) / (S * 0.85)));
+  const { S, pts, put, lit, tube } = q3({ scale: ty.scale * 1.5 }),
+    B = jackalBody,
+    C = JACKAL,
+    // 段の初め（0番目）は使われない（光の当たらない面でも 1番目）。光の当たらない脇と腹がすかすかにならないように、1番目は詰まった文字にする
+    PELT: Ramp = [':', '%', '"', '%', '#'],
+    DARK: Ramp = [':', '%', '%', '#', '#'],
+    CREAM: Ramp = [':', '%', 'o', '%', '#'];
+  // 頭と胴：輪を、鼻先から尻まで、背筋に沿った長さで等しい間隔に並べる（首は急に下りるので、奥行きで等しく割ると輪の間が空く）。
+  // 輪の点は前後に少しずつずらす（揃うと縦の縞に見える）
+  const SN = 400,
+    arc = [0];
+  for (let j = 1; j <= SN; j++) {
+    const za = B.z1 - ((B.z1 - B.z0) * (j - 1)) / SN,
+      zb = B.z1 - ((B.z1 - B.z0) * j) / SN;
+    arc.push(nth(arc, j - 1) + Math.hypot(za - zb, B.at(za).cy - B.at(zb).cy));
+  }
+  const len = nth(arc, SN),
+    nz = Math.round(len / (S * 0.65)),
+    // 背筋に沿った長さ d の所の奥行き
+    zAt = (d: number): number => {
+      let j = 1;
+      while (j < SN && nth(arc, j) < d) j++;
+      const a0 = nth(arc, j - 1),
+        f = clamp((d - a0) / (nth(arc, j) - a0 || 1), 0, 1);
+      return B.z1 - ((B.z1 - B.z0) * (j - 1 + f)) / SN;
+    };
+  for (let i = 0; i <= nz; i++) {
+    const d0 = (len * i) / nz,
+      z0 = zAt(d0),
+      n = Math.max(5, Math.round((2 * Math.PI * Math.max(B.at(z0).rx, B.at(z0).ry)) / (S * 0.7)));
     for (let k = 0; k < n; k++) {
-      const a = (k / n) * Math.PI * 2,
-        nx = Math.cos(a),
-        ny = Math.sin(a);
-      lit(
-        nx * r,
-        cy + ny * ry,
-        z,
-        ny > 0.75 ? '"' : ny < -0.4 ? ':' : mpick(['%', '"', ',']),
-        1,
-        ny > 0.75 ? 1.0 : 1.2,
-        ny > 0.75 ? DARK : ny < -0.4 ? WHITE : SAND,
-      );
+      const f = (k * 0.618) % 1,
+        z = zAt(clamp(d0 + (f - 0.5) * (len / nz), 0, len)),
+        { rx, ry } = B.at(z),
+        a = (k / n) * Math.PI * 2 + i * 0.5,
+        cs = Math.cos(a),
+        sn = Math.sin(a),
+        [x, y] = B.surf(z, a),
+        l = Math.hypot(cs / rx, sn / ry),
+        // 面の向きの奥行きの分：輪の式（横の半径・縦の半径・真ん中の高さ）の、奥行きでの変わり方から出す（首は真ん中の高さが急に下りるので、高さの変わり方も入れる）
+        zA = B.at(z + 0.02),
+        zB = B.at(z - 0.02),
+        nzr = -((cs * cs * (zA.rx - zB.rx)) / rx + (sn * (zA.cy - zB.cy)) / ry + (sn * sn * (zA.ry - zB.ry)) / ry) / 0.04,
+        part = z > B.headZ ? 'head' : 'body',
+        // 鞍：肩から尻までの背。真ん中ほど脇へ広い
+        sw = z < B.saddle[0] && z > B.saddle[1] ? Math.sin((Math.PI * (B.saddle[0] - z)) / (B.saddle[0] - B.saddle[1])) : 0,
+        saddle = sn > 0.75 - 0.6 * sw && sw > 0.15,
+        // 喉と胸と腹（頭では、鼻づらの下と頬）
+        under = z > B.headZ ? sn < -0.2 : z > 0.22 ? sn < -0.1 : sn < -0.55;
+      if (saddle) put(x, y, z, cs / rx / l, sn / ry / l, nzr / l, DARK, f < 0.15 ? C.silver : C.saddle, part);
+      else put(x, y, z, cs / rx / l, sn / ry / l, nzr / l, under ? CREAM : PELT, under ? C.cream : C.tawny, part);
     }
   }
-  ell([0, 0.9, 0.52], 0.09, 0.09, 0.1, FUR, (_nx, ny) => (ny < -0.3 ? WHITE : SAND), 'head');
-  stroke([0, 0.87, 0.6], [0, 0.82, 0.84], SAND, 1.3, 0.9, 'head');
-  lit(0, 0.82, 0.88, '.', 0.8, 1.8, [0.2, 0.15, 0.12], 'head');
+  // 鼻：鼻先の黒
+  lit(0, B.at(B.z1).cy + 0.005, B.z1 + 0.01, 'o', 0.8, 1.0, C.black, 'head');
+  // 目：額の脇、表面のすぐ外
   for (const sd of [-1, 1]) {
-    stroke([sd * 0.05, 0.97, 0.5], [sd * 0.09, 1.17, 0.47], SAND, 1.4, 0.9, 'head');
-    lit(sd * 0.09, 1.21, 0.47, '^', 1, 1.6, SAND, 'head');
-    lit(sd * 0.04, 0.93, 0.6, '.', 0.7, 3.2, EYE, 'head');
+    const z = 0.66,
+      [x, y] = B.surf(z, Math.PI / 2 - sd * 0.75, 1.1);
+    lit(x, y, z, 'o', 0.85, 1.15, C.eye, 'head');
   }
-  for (const [x, z, part] of [
-    [-0.08, 0.34, 'legL'],
-    [0.08, 0.34, 'legR'],
-    [-0.08, -0.32, 'legR'],
-    [0.08, -0.32, 'legL'],
-  ] as const satisfies readonly Leg[]) {
-    stroke([x, 0.62, z], [x, 0.3, z - 0.04], SAND, 1.1, 0.85, part, { piv: 0.62, pz: z });
-    stroke([x, 0.3, z - 0.04], [x, 0.02, z + 0.02], SAND, 1.1, 0.85, part, { piv: 0.62, pz: z });
+  // 耳：頭の後ろの上に、大きな三角を立てる。面は前と少し外を向く。前の面は、内がクリームで縁は暗い。後ろの面は黄土（2枚を少し離して重ねる）
+  for (const sd of [-1, 1]) {
+    const z = 0.5,
+      [bx, by] = B.surf(z, Math.PI / 2 - sd * 0.62, 0.95),
+      H = 0.21,
+      W = 0.065,
+      nx = sd * 0.35,
+      nzz = 0.94,
+      rows = Math.max(3, Math.round(H / (S * 0.48)));
+    for (let r = 0; r <= rows; r++) {
+      const v = r / rows,
+        hw = W * (1 - v),
+        cols = Math.max(1, Math.round((2 * hw) / (S * 0.48)));
+      for (let c = 0; c <= cols; c++) {
+        const u = cols ? -1 + (2 * c) / cols : 0,
+          edge = Math.abs(u) > 0.7 || v > 0.8,
+          x = bx + sd * 0.06 * v + u * hw * nzz,
+          y = by + v * H,
+          zz = z - u * hw * nx - v * H * 0.12;
+        for (const face of [1, -1]) {
+          const o = face * 0.01,
+            col = face < 0 ? C.tawny : edge ? C.saddle : C.cream;
+          put(
+            x + nx * o,
+            y,
+            zz + nzz * o,
+            nx * face,
+            0.2 * face,
+            nzz * face,
+            face > 0 && edge ? DARK : face > 0 ? CREAM : PELT,
+            col,
+            'head',
+          );
+        }
+      }
+    }
   }
-  for (let k = 0; k < 8; k++) {
-    const f = k / 7;
-    for (const o of [-0.03, 0.03])
-      lit(o, 0.68 - 0.38 * f, -0.42 - 0.18 * f, mpick(['"', '%']), 1, 1.1, f > 0.75 ? WHITE : SAND, 'tail', { piv: k * 0.4 });
+  // 脚：細く長い。点はどれも肩か腰を軸に回る。前の左と後ろの右が同じ向きに振れる。黄土で、もも・二の腕の内（体の真ん中を向く側）だけクリーム
+  // （すねの内までクリームにすると、細い所で点が重なり、足先が白くにじむ）。
+  // 太いもも・二の腕は管、細いすねは輪を2点にして細かく並べる（管の間隔では、細い所の点がまばらになり、途切れて見える）
+  const legCol =
+    (sd: number) =>
+    (ox: number): Color =>
+      ox * sd < -0.3 ? C.cream : C.tawny;
+  const shin = (p0: Vec3, p1: Vec3, r: number, part: string, ex: Extra): void => {
+    const dx = p1[0] - p0[0],
+      dy = p1[1] - p0[1],
+      dz = p1[2] - p0[2],
+      m = Math.max(2, Math.round(Math.hypot(dx, dy, dz) / (S * 0.42))),
+      dl = Math.hypot(dy, dz) || 1;
+    for (let j = 0; j <= m; j++) {
+      const f = j / m,
+        a = j * 1.9;
+      for (const sg of [1, -1]) {
+        // 脚の向きに直角な、横（x）と前後（脚の向きを回した向き）の輪
+        const ox = Math.cos(a) * sg,
+          oy = (-dz / dl) * Math.sin(a) * sg,
+          oz = (dy / dl) * Math.sin(a) * sg;
+        put(p0[0] + dx * f + ox * r, p0[1] + dy * f + oy * r, p0[2] + dz * f + oz * r, ox, oy + 0.3, oz, PELT, C.tawny, part, ex);
+      }
+    }
+  };
+  for (const front of [true, false])
+    for (const sd of [-1, 1]) {
+      const part = front === sd < 0 ? 'legL' : 'legR',
+        ex = front ? JACKAL_SHOULDER : JACKAL_HIP,
+        z0 = ex.pz,
+        col = legCol(sd);
+      if (front) {
+        const root: Vec3 = [sd * 0.085, ex.piv, z0],
+          elbow: Vec3 = [sd * 0.08, 0.46, z0 - 0.02],
+          wrist: Vec3 = [sd * 0.075, 0.12, z0 + 0.01],
+          paw: Vec3 = [sd * 0.075, 0.03, z0 + 0.06];
+        tube(root, elbow, 0.05, 0.035, PELT, col, part, ex);
+        shin(elbow, wrist, 0.026, part, ex);
+        shin(wrist, paw, 0.024, part, ex);
+      } else {
+        const root: Vec3 = [sd * 0.095, ex.piv, z0],
+          knee: Vec3 = [sd * 0.1, 0.44, z0 + 0.08],
+          hock: Vec3 = [sd * 0.09, 0.2, z0 - 0.1],
+          paw: Vec3 = [sd * 0.085, 0.03, z0 - 0.05];
+        tube(root, knee, 0.07, 0.04, PELT, col, part, ex, 0.15);
+        shin(knee, hock, 0.03, part, ex);
+        shin(hock, paw, 0.024, part, ex);
+      }
+    }
+  // 尾：尻から下へ垂れ、ふさふさに太り、先は黒い。上は鞍に続く暗い毛。付け根から先へ、だんだん大きく振れる（part 'tailw'。piv は付け根から、その輪の真ん中までの距離）
+  const [, ry0, rz0] = B.tailRoot,
+    TN = Math.round(0.5 / (S * 0.48));
+  for (let j = 0; j <= TN; j++) {
+    const f = j / TN,
+      y = ry0 - 0.36 * f,
+      z = rz0 - 0.3 * Math.sin(f * 1.3),
+      r = 0.035 + 0.05 * Math.sin(Math.PI * Math.min(1, f * 1.1)),
+      n = Math.max(5, Math.round((2 * Math.PI * r) / (S * 0.7))),
+      tip = f > 0.78;
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + j * 0.7,
+        ca = Math.cos(a),
+        sa = Math.sin(a),
+        x = ca * r,
+        zz = z + sa * r,
+        ex = { piv: Math.hypot(ry0 - y, rz0 - z) },
+        // 後ろ向きの面（sa < 0）が尾の上の側
+        top = sa < -0.3;
+      put(x, y, zz, ca, 0.25, sa, tip || top ? DARK : PELT, tip ? C.black : top ? C.saddle : C.tawny, 'tailw', ex);
+    }
   }
   return pts;
 }
@@ -345,7 +518,7 @@ export const salaBody = {
   /** 尾の付け根の奥行き（ここより後ろの点は、付け根からの距離に合わせて左右に振れる） */
   tailZ: -0.36,
 };
-/** サラマンダーとネズミの尾の、左右の振れ（形の中の横 x のずれ）。d は尾の付け根からの距離（付け根で 0、先ほど大きい）。歩くと大きく振る（位相 ph と歩く度合い moving が無い時は 0）。
+/** サラマンダー・ネズミ・ジャッカルの尾の、左右の振れ（形の中の横 x のずれ）。d は尾の付け根からの距離（付け根で 0、先ほど大きい）。歩くと大きく振る（位相 ph と歩く度合い moving が無い時は 0）。
  *  尾（part 'tailw'）とサラマンダーの尾の先の炎を描く時（draw.ts）と、炎から出る火の粉（auras.ts）が使う */
 export const tailSwish = (m: { ph?: number; moving?: number }, t: number, d: number): number =>
   Math.sin(t * 4 - d * 5 + (m.ph ?? 0)) * (0.04 + 0.05 * (m.moving || 0)) * d;
