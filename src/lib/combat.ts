@@ -1391,15 +1391,19 @@ export function chainLightning(m: Mob, jumps: number, dmg: number, areaK: number
  * 足元から水面に輪が広がり、輪が届いた敵へ（距離 / RIPPLE_SPEED 秒後）、水面を這う稲妻が走って、傷 dmgOf(敵) を与え、痺れさせる
  */
 function waterShock(x: number, z: number, r: number, skip: Mob | null, dmgOf: (o: Mob) => number): void {
+  // 同じ一撃が、当たった生き物から（conductWater）と、落ちた所から（landElem）の2度、水に伝わらないように：このフレームに近くで輪を出していれば、伝えない
+  if (fight.boltFx.some((f) => f.style === 'ripple' && f.t === 0 && Math.hypot(f.a[0] - x, f.a[2] - z) < 1.5)) return;
   const col = must(lookup(RUNE_DEF, 'thunder').col);
-  addRipple(x, z, r, col);
-  vfx.zapFlash = { x, y: 0.4, z, col, t: 0.16, r: 6 };
   const near = here.monsters
     .filter((o) => o !== skip && foe(o) && inWater(o))
     .map((o) => ({ o, d: Math.hypot(o.x - x, o.z - z) }))
     .filter((e) => e.d <= r)
     .sort((p, q) => p.d - q.d || p.o.seq - q.o.seq)
     .slice(0, 6);
+  // 輪と光は、伝わる敵がいる時だけ（水辺で雷の剣を振るたびに光らないように）。直に当たった稲妻の光（このフレームに点けた物）は上書きしない
+  if (!near.length) return;
+  addRipple(x, z, r, col);
+  if (!(vfx.zapFlash && vfx.zapFlash.t >= 0.16)) vfx.zapFlash = { x, y: 0.4, z, col, t: 0.16, r: 6 };
   near.forEach(({ o, d }, k) =>
     fight.zapQueue.push({
       t: Math.max(0.04, d / RIPPLE_SPEED),

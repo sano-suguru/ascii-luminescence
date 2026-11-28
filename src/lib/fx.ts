@@ -256,10 +256,12 @@ function drawWaterLine(pts: readonly (readonly [number, number, number])[], c: r
   }
 }
 
-/** 水面の輪（今の半径に、水のマスの上だけ、輪に沿う向きの文字を並べる。少し内側に、薄いもう1つの輪） */
+/** 水面の輪（今の半径に、水のマスの上だけ、輪に沿う向きの文字を並べる。1つの輪に160字まで。少し内側に、薄いもう1つの輪。真ん中が 34 より遠い輪は描かない） */
 function drawRipple(f: Bolt): void {
   const D = here.D;
   if (!D) return;
+  // 遠い輪は描かない（火の 34 と同じ）
+  if (Math.hypot(f.a[0] - player.x, f.a[2] - player.z) - f.amp > 34) return;
   const [fw, rt, up] = handUp(),
     o = aimOrigin(),
     c = f.col,
@@ -271,7 +273,7 @@ function drawRipple(f: Bolt): void {
   ] as const) {
     const r = rNow * k;
     if (r < 0.2) continue;
-    const n = Math.max(12, Math.round((Math.PI * 2 * r) / 0.22)),
+    const n = Math.min(160, Math.max(12, Math.round((Math.PI * 2 * r) / 0.22))),
       bb = b * fade * (1 - 0.45 * (r / f.amp));
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2,

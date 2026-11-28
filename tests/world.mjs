@@ -30,8 +30,8 @@
 //      当たって 2〜8 フレームの間、画面全体の眩しい画素が 25% 以下・体の範囲の白飛びが 12% 以下）。体は当てる前より 1.1 倍を越えて明るくなり、画面の眩しい画素は増える
 //  21. 気づいた敵に照準を合わせて当てても、体が白く飛ばない（20 と同じ場所のトロルに、氷の樫の杖を両手で当てる。火は起きない。当たって光っている間の体の範囲の白飛びが 5% 以下、
 //      光り終わった後（照準の先のまま）が 2% 以下）。当たった光は残っている（当たって光っている間の体の明るさが、光り終わった後より 1.05 倍を越えて明るい）
-//  22. 雷は水を伝わる（蛇の穴の水場に、コボルトを水の中に4体と水の外に1体置き、雷の樫の杖で水の中の1体を一撃で倒す）。倒した一撃でも、水の中のほかの3体に伝わる。
-//      当たったフレームには、まだほかの体力は減らず、当てた1体から近い順に、遅れて減る（水面の輪が届いた時）。水の外の1体には伝わらない
+//  22. 雷は水を伝わる（蛇の穴の水場に、コボルトを水の中に4体と水の外に1体置き、雷の短弓で水の中の1体を一撃で倒す）。倒した一撃でも、水の中のほかの3体に伝わる。
+//      当たったフレームには、まだほかの体力は減らず、当てた1体から近い順に、遅れて減る（水面の輪が届いた時。距離 / 15 秒、2フレームまでの遅れは許す）。水の外の1体には伝わらない
 // 生き物は __test.clearAll() で全部消してから、要る物だけを __test.summon で置く（近くの生き物が扉を開けたり、火を消したりしないように）。
 import { PNG } from 'pngjs';
 import { withBrowser, newPage, openTest, advance, frames, aimAt, strike, waterScene } from './lib.mjs';
@@ -923,7 +923,8 @@ async function hitGlowChecks(pg, base) {
 async function waterZapChecks(pg, base) {
   await openTest(pg, base, 'seed=202&branch=snake&god=1');
   await advance(pg, 2);
-  const s = await waterScene(pg, { key: 'k', count: 4, dry: true, weapon: 'orb' });
+  // 短弓の矢は、当たった生き物の所で地面に落ちない（landElem を呼ばない）ので、倒した一撃から水に伝わる分だけを確かめられる
+  const s = await waterScene(pg, { key: 'k', count: 4, dry: true, weapon: 'bolt' });
   if (s.err) return void errs.push(`22：${s.err}（テストの前提が崩れた）`);
   await advance(pg, 0.5);
   try {
@@ -945,7 +946,7 @@ async function waterZapChecks(pg, base) {
     }
     return out;
   }, s.cells);
-  if (hp[0][0] > 0) return void errs.push(`22：雷の樫の杖の一撃で、当てたコボルトが倒れない（テストの前提が崩れた。体力 ${hp[0][0]}）`);
+  if (hp[0][0] > 0) return void errs.push(`22：雷の短弓の一撃で、当てたコボルトが倒れない（テストの前提が崩れた。体力 ${hp[0][0]}）`);
   const full = hp[0].slice(1),
     first = full.map((v, i) => hp.findIndex((row) => row[i + 1] < v)),
     dist = s.cells.map(([x, z]) => Math.hypot(x - s.target[0], z - s.target[1])),
@@ -953,6 +954,12 @@ async function waterZapChecks(pg, base) {
   if (water.some((w) => w.f < 0))
     errs.push(`22：倒した一撃が、水の中のコボルトに伝わらない（減り始めたフレーム ${first.join('・')}。-1 は減らない）`);
   if (water.some((w) => w.f === 0)) errs.push(`22：当たったフレームに、水を伝わる雷がもう当たっている（${first.join('・')}）`);
+  // 当てた1体から伝わるなら、輪が届く時刻（距離 / 15 秒）に当たる。遅すぎる時は、矢が落ちた所など、ほかの所から伝わっている
+  const late = water.filter((w) => w.f > Math.round((w.d / 15) * 30) + 2);
+  if (late.length)
+    errs.push(
+      `22：倒した一撃から、輪が届く時刻に伝わらない（距離 ${late.map((w) => w.d.toFixed(1)).join('・')} に ${late.map((w) => w.f).join('・')} フレーム目）`,
+    );
   const byDist = [...water].sort((a, b) => a.d - b.d);
   if (byDist.some((w, i) => i > 0 && w.f < byDist[i - 1].f))
     errs.push(

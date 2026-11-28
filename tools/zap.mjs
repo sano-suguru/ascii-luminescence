@@ -79,7 +79,8 @@ async function shootAll(root, suffix) {
         if (!hud) await pg.addStyleTag({ content: 'body > :not(#gl) { visibility: hidden !important; }' });
         if (hide.length) {
           const got = await pg.evaluate((h) => __test.skipPhase(h), hide);
-          if (got.join() !== hide.join()) usage(`止められない段がある（${hide.join('・')} → ${got.join('・')}）`);
+          // 前の版（--rev）の作業場所を片付けられるように、止めずに例外にする
+          if (got.join() !== hide.join()) throw new Error(`止められない段がある（${hide.join('・')} → ${got.join('・')}）`);
         }
         await advance(pg, 2);
         const s = await waterScene(pg, { key, count, dry, weapon });
@@ -123,6 +124,8 @@ async function shootAll(root, suffix) {
                 const r = __test.cam({ pos, at: [mx, 0.4, mz] });
                 if (typeof r !== 'string' && r.clear) return r;
               }
+              // どこも見通せなければ、最後に置いたカメラを外して目に戻す
+              __test.cam(null);
               return null;
             },
             [s, view],
