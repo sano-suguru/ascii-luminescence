@@ -317,10 +317,18 @@ export function chooseNext(m: Mob): void {
 }
 /**
  * 掃除機・修復機 m が仕事の所へ向かう、歩数が一番少ない隣の向き（opts から選ぶ。歩数が同じなら opts の順）。仕事が無ければ null。
- * 仕事の所へもう行けなければ（火が回った・鉄格子が閉じた・吹き飛ばされたなど）、仕事を手放して null（次に探す時に選び直す）
+ * 仕事がもう済んでいるか（ほかの物が先に片付けた）、仕事の所へもう行けなければ（火が回った・鉄格子が閉じた・吹き飛ばされたなど）、
+ * 仕事を手放し（仕事をした秒も 0 に戻す）、null（次に探す時に選び直す）
  */
 function jobStep(m: Mob, opts: readonly (readonly [number, number])[]): readonly [number, number] | null {
   if ((m.ty.critter !== 'cleaner' && m.ty.critter !== 'engineer') || m.job === undefined || m.job < 0) return null;
+  const drop = (): null => {
+    m.job = -1;
+    m.work = 0;
+    return null;
+  };
+  // ほかの物が先に片付けた・作り直した仕事は、着く前に手放す
+  if (m.ty.critter === 'engineer' ? !nth(level().doors, m.job).gone : !blaze.burnt[m.job]) return drop();
   const steps = walkSteps(
     m,
     jobCells(m, m.job).filter((i) => canStep(m, i)),
@@ -335,8 +343,7 @@ function jobStep(m: Mob, opts: readonly (readonly [number, number])[]): readonly
       best = d;
     }
   }
-  if (!best) m.job = -1;
-  return best;
+  return best ?? drop();
 }
 /** 小さな生き物 m が次のマスに着いた時、次に向かうマスを選ぶ。逃げる時はプレイヤーから遠く、掃除機・修復機は仕事の所へ道なりに、草を食べる物は光る苔へ、ほかはなるべくまっすぐ */
 export function critterStep(m: Mob, away: boolean): void {

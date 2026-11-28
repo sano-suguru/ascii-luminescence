@@ -21,7 +21,7 @@ describe('指紋（思わず変わっていないか）', () => {
       body = monsterText(all),
       calls = all.flatMap((c) => c.calls);
     caseOut('monsters', body);
-    expect([fnv(body), body.length]).toEqual(['b8bd676c', 22737574]);
+    expect([fnv(body), body.length]).toEqual(['6d025be4', 22738113]);
     // 場合が中身を通っているか：23の関数が全部呼ばれ、どれも止まらない。伝言・見た目の乱数・音の乱数を引く呼び出しもある
     expect(new Set(calls.map((c) => c.name))).toEqual(new Set(NAMES));
     expect(calls.filter((c) => c.threw).length).toBe(0);

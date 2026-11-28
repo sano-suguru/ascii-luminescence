@@ -132,6 +132,17 @@ describe('掃除機', () => {
     blaze.fire[at(18, 13)] = 0;
     expect(run(m, 60, () => !blaze.burnt[ash])).not.toBeNull();
   });
+  it('向かっている仕事をほかの物が先に片付けたら、着く前に手放し、仕事をした秒も 0 に戻す', () => {
+    const ash = at(24, 13);
+    blaze.burnt[ash] = 1;
+    const m = put('Rc', 15, 13);
+    expect(run(m, 3, () => m.job === ash)).not.toBeNull();
+    m.work = 1.5; // 前の仕事の所から吹き飛ばされた時の残り
+    blaze.burnt[ash] = 0; // ほかの掃除機が片付けた
+    expect(run(m, 5, () => m.job === -1)).not.toBeNull();
+    expect(m.work).toBe(0);
+    expect(Math.abs(m.cx - 24)).toBeGreaterThan(3);
+  });
 });
 
 describe('修復機', () => {
