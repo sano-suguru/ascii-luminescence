@@ -143,6 +143,30 @@ describe('掃除機', () => {
     expect(m.work).toBe(0);
     expect(Math.abs(m.cx - 24)).toBeGreaterThan(3);
   });
+  it('2台が近くにいても、ほかの掃除機が向かっている灰は選ばず、別の灰を片付ける', () => {
+    const a = at(16, 10), // 2台に近い灰
+      b = at(16, 18); // 遠い灰
+    blaze.burnt[a] = 1;
+    blaze.burnt[b] = 1;
+    const m1 = put('Rc', 15, 13),
+      m2 = put('Rc', 17, 13);
+    // 2台を同じ時刻に動かす（同じ 1.5 秒の探しで選ぶ）
+    let both = null;
+    for (let q = 0; q < 900 && both === null; q++) {
+      clock.time += 0.1;
+      updateCritter(m1, 0.1, clock.time, 99);
+      updateCritter(m2, 0.1, clock.time, 99);
+      if (m1.job >= 0 && m2.job >= 0) both = [m1.job, m2.job];
+    }
+    expect(both).not.toBeNull();
+    expect(new Set(both)).toEqual(new Set([a, b]));
+    for (let q = 0; q < 600 && (blaze.burnt[a] || blaze.burnt[b]); q++) {
+      clock.time += 0.1;
+      updateCritter(m1, 0.1, clock.time, 99);
+      updateCritter(m2, 0.1, clock.time, 99);
+    }
+    expect([blaze.burnt[a], blaze.burnt[b]]).toEqual([0, 0]);
+  });
 });
 
 describe('修復機', () => {
@@ -153,6 +177,27 @@ describe('修復機', () => {
     const m = put('Re', 16, 13);
     expect(run(m, 60, () => !here.D.doors[near].gone)).not.toBeNull();
     expect(here.D.doors[far].gone).toBe(true);
+  });
+  it('2台が近くにいても、ほかの修復機が向かっている扉は選ばず、別の扉を作り直す', () => {
+    const a = burntDoor(16, 10, 0, -1),
+      b = burntDoor(16, 18, 0, 1);
+    const m1 = put('Re', 15, 13),
+      m2 = put('Re', 17, 13);
+    let both = null;
+    for (let q = 0; q < 900 && both === null; q++) {
+      clock.time += 0.1;
+      updateCritter(m1, 0.1, clock.time, 99);
+      updateCritter(m2, 0.1, clock.time, 99);
+      if (m1.job >= 0 && m2.job >= 0) both = [m1.job, m2.job];
+    }
+    expect(both).not.toBeNull();
+    expect(new Set(both)).toEqual(new Set([a, b]));
+    for (let q = 0; q < 600 && (here.D.doors[a].gone || here.D.doors[b].gone); q++) {
+      clock.time += 0.1;
+      updateCritter(m1, 0.1, clock.time, 99);
+      updateCritter(m2, 0.1, clock.time, 99);
+    }
+    expect([here.D.doors[a].gone, here.D.doors[b].gone]).toEqual([false, false]);
   });
   it('壁の無い所の扉は、今までどおり作り直す', () => {
     const k = burntDoor(24, 9, 0, -1);
